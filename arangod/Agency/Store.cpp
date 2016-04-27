@@ -113,10 +113,10 @@ std::vector<bool> Store::apply (query_t const& query) {
     case 1:
       applied.push_back(applies(i[0])); break; // no precond
     case 2:
-      if (check(i[1])) {
-        applied.push_back(applies(i[0]));      // precondition
-      } else {
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Precondition failed!";
+      if (check(i[1])) {                       // precondition
+        applied.push_back(applies(i[0]));      
+      } else {                                 // precondition failed
+        LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
         applied.push_back(false);
       }
       break;

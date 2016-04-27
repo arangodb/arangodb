@@ -91,6 +91,8 @@ public:
   /// @brief Copy out a node
   Node const get (std::string const& path) const;
 
+  std::string toJson () const;
+
   friend class Node;
 
 private:

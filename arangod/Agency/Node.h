@@ -171,6 +171,8 @@ public:
   Store& store();
   Store const& store() const;
 
+  std::string toJson() const;
+
 protected:
 
   /// @brief Add time to live entry

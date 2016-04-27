@@ -165,8 +165,6 @@ function getByPrefix (values, prefix) {
   var a;
   var n = prefix.length;
 
-  require("internal").print ("prefix::::::", prefix);
-
   for (a in values) {
     if (values.hasOwnProperty(a)) {
       if (a.substr(0, n) === prefix) {
@@ -388,6 +386,7 @@ function getLocalCollections () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function createLocalDatabases (plannedDatabases) {
+
   var ourselves = global.ArangoServerState.id();
   var createDatabaseAgency = function (payload) {
     global.ArangoAgency.set("Current/Databases/" + payload.name + "/" + ourselves,
@@ -400,15 +399,10 @@ function createLocalDatabases (plannedDatabases) {
   var localDatabases = getLocalDatabases();
   var name;
 
-  require("internal").print(plannedDatabases);
-
   // check which databases need to be created locally
   for (name in plannedDatabases) {
-    require("internal").print(name);
     if (plannedDatabases.hasOwnProperty(name)) {
       var payload = plannedDatabases[name];
-      require("internal").print("+++");
-      require("internal").print(payload);
       payload.error = false;
       payload.errorNum = 0;
       payload.errorMessage = "no error";
@@ -544,12 +538,8 @@ function cleanupCurrentDatabases () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function handleDatabaseChanges (plan) {
-  var plannedDatabases = getByPrefix(plan, "Plan/Databases/");
+  var plannedDatabases = plan.arango.Plan.Databases;
 
-  require("internal").print("++++++");
-  require("internal").print(plan);
-  require("internal").print("-----");
-  
   createLocalDatabases(plannedDatabases);
   dropLocalDatabases(plannedDatabases);
   cleanupCurrentDatabases();
@@ -1117,12 +1107,13 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function handleCollectionChanges (plan, takeOverResponsibility) {
-  var plannedCollections = getByPrefix3d(plan, "Plan/Collections/");
+//  var plannedCollections = getByPrefix3d(plan, "Plan/Collections/");
+  var plannedCollections = plan.arango.Plan.Collections;
 
   var ok = true;
 
   try {
-    createLocalCollections(plannedCollections, plan["Plan/Version"], takeOverResponsibility);
+    createLocalCollections(plannedCollections, plan.arango.Plan.Version, takeOverResponsibility);
     dropLocalCollections(plannedCollections);
     cleanupCurrentCollections(plannedCollections);
     synchronizeLocalFollowerCollections(plannedCollections);
@@ -1230,20 +1221,18 @@ function handleChanges (plan, current) {
     // Need to check role change for automatic failover:
     var myId = ArangoServerState.id();
     if (role === "PRIMARY") {
-      if (! plan.hasOwnProperty("Plan/DBServers/"+myId)) {
+      if (! plan.arango.Plan.DBServers[myId]) {
         // Ooops! We do not seem to be a primary any more!
         changed = ArangoServerState.redetermineRole();
       }
-    }
-    else { // role === "SECONDARY"
-      if (plan.hasOwnProperty("Plan/DBServers/"+myId)) {
+    } else { // role === "SECONDARY"
+      if (plan.arango.Plan.DBServers[myId]) {
         changed = ArangoServerState.redetermineRole();
         if (!changed) {
           // mop: oops...changing role has failed. retry next time.
           return false;
         }
-      }
-      else {
+      } else {
         var found = null;
         var p;
         for (p in plan) {
@@ -1274,6 +1263,8 @@ function handleChanges (plan, current) {
   handleDatabaseChanges(plan, current);
   var success;
   if (role === "PRIMARY" || role === "COORDINATOR") {
+    require("internal").print(myId);
+    require("internal").print(current);
     // Note: This is only ever called for DBservers (primary and secondary),
     // we keep the coordinator case here just in case...
     success = handleCollectionChanges(plan, changed);
@@ -1442,17 +1433,11 @@ var handlePlanChange = function () {
   }
 
   try {
-
     var plan    = global.ArangoAgency.get("Plan", true);
-
-    require("internal").print(plan);
-    
     var current = global.ArangoAgency.get("Current", true);
-
     handleChanges(plan, current);
     console.info("plan change handling successful");
-  }
-  catch (err) {
+  } catch (err) {
     console.error("error details: %s", JSON.stringify(err));
     console.error("error stack: %s", err.stack);
     console.error("plan change handling failed");

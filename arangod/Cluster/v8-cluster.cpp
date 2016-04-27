@@ -238,54 +238,48 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     withIndexes = TRI_ObjectToBoolean(args[2]);
   }
 
-  std::cout << recursive << " ::::::::::::::::::::: " << withIndexes << std::endl;
-  
   AgencyComm comm;
   AgencyCommResult result = comm.getValues2(key, recursive);
-
-  std::cout << result._vpack->toJson() << std::endl;
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
   }
 
-//  result.parse("", false);
-
   v8::Handle<v8::Object> l = v8::Object::New(isolate);
 
   if (withIndexes) {
-//    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-    //      result._values.begin();
-
     
-    for (auto const& i : VPackObjectIterator(result._vpack->slice())) {
-//    while (it != result._values.end()) {
-      //std::string const key = (*it).first;
-      std::string const key = i.key.copyString();
-      //VPackSlice const slice = it->second._vpack->slice();
-      VPackSlice const slice = i.value;
-      std::string const idx = "0";//StringUtils::itoa((*it).second._index);
-
-      if (!slice.isNone()) {
-        v8::Handle<v8::Object> sub = v8::Object::New(isolate);
-
-        sub->Set(TRI_V8_ASCII_STRING("value"), TRI_VPackToV8(isolate, slice));
-        sub->Set(TRI_V8_ASCII_STRING("index"), TRI_V8_STD_STRING(idx));
-
-        l->Set(TRI_V8_STD_STRING(key), sub);
+    for (auto const& a : VPackArrayIterator(result._vpack->slice())) {
+      for (auto const& o : VPackObjectIterator(a)) {
+        
+        std::string const key = o.key.copyString();
+        VPackSlice const slice = o.value;
+#warning TODO index
+        std::string const idx = "0";//StringUtils::itoa((*it).second._index); 
+        
+        if (!slice.isNone()) {
+          v8::Handle<v8::Object> sub = v8::Object::New(isolate);
+          
+          sub->Set(TRI_V8_ASCII_STRING("value"), TRI_VPackToV8(isolate, slice));
+          sub->Set(TRI_V8_ASCII_STRING("index"), TRI_V8_STD_STRING(idx));
+          
+          l->Set(TRI_V8_STD_STRING(key), sub);
+        }
       }
-
-      //++it;
+      
     }
   } else {
     // return just the value for each key
-    for (auto const& i : VPackObjectIterator(result._vpack->slice())) {
-
-      std::string const key = i.key.copyString();
-      VPackSlice const slice = i.value;
-
-      if (!slice.isNone()) {
-        l->ForceSet(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
+    
+    for (auto const& a : VPackArrayIterator(result._vpack->slice())) {
+      for (auto const& o : VPackObjectIterator(a)) {
+        
+        std::string const key = o.key.copyString();
+        VPackSlice const slice = o.value;
+        
+        if (!slice.isNone()) {
+          l->ForceSet(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
+        }
       }
     }
   }

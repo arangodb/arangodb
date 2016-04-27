@@ -171,6 +171,7 @@ void HeartbeatThread::runDBServer() {
 
     {
       // send an initial GET request to Sync/Commands/my-id
+    
       AgencyCommResult result =
         _agency.getValues("Sync/Commands/" + _myId, false);
       
@@ -270,6 +271,7 @@ void HeartbeatThread::runCoordinator() {
     }
 
     {
+    
       // send an initial GET request to Sync/Commands/my-id
       AgencyCommResult result =
           _agency.getValues("Sync/Commands/" + _myId, false);
@@ -286,6 +288,7 @@ void HeartbeatThread::runCoordinator() {
     bool shouldSleep = true;
 
     // get the current version of the Plan
+  
     AgencyCommResult result = _agency.getValues("Plan/Version", false);
 
     if (result.successful()) {
@@ -310,6 +313,7 @@ void HeartbeatThread::runCoordinator() {
 
     result.clear();
 
+  
     result = _agency.getValues("Sync/UserVersion", false);
     if (result.successful()) {
       result.parse("", false);
@@ -435,6 +439,7 @@ void HeartbeatThread::removeDispatchedJob(bool success) {
 
 uint64_t HeartbeatThread::getLastCommandIndex() {
   // get the initial command state
+
   AgencyCommResult result = _agency.getValues("Sync/Commands/" + _myId, false);
 
   if (result.successful()) {
@@ -488,8 +493,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       result = _agency.getValues2(prefixPlanChangeCoordinator, true);
     }
   }
-
-  std::cout << AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2) << std::endl;
+  
   if (result.successful()) {
     
     std::vector<TRI_voc_tick_t> ids;
@@ -502,29 +506,27 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     // instance if not yet present:
     
     for (auto const& options : VPackObjectIterator (databases)) {
-
+      
       std::string const name = options.value.get("name").copyString();
       TRI_voc_tick_t id = 0;
-
+      
       if (options.value.hasKey("id")) {
         VPackSlice const v = options.value.get("id");
-        if (v.isString()) {
-          id = arangodb::basics::StringUtils::uint64(v.copyString());
+        if (v.isNumber()) {
+          id = v.getUInt();
         }
       }
       
       if (id > 0) {
         ids.push_back(id);
       }
-
-      std::cout << "++++++++++++++++" << name.c_str() << std::endl;
       
       TRI_vocbase_t* vocbase =
-          TRI_UseCoordinatorDatabaseServer(_server, name.c_str());
+        TRI_UseCoordinatorDatabaseServer(_server, name.c_str());
       
       if (vocbase == nullptr) {
         // database does not yet exist, create it now
-
+        
         if (id == 0) {
           // verify that we have an id
           id = ClusterInfo::instance()->uniqid();
@@ -532,7 +534,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         
         TRI_vocbase_defaults_t defaults;
         TRI_GetDatabaseDefaultsServer(_server, &defaults);
-
+        
         // create a local database object...
         TRI_CreateCoordinatorDatabaseServer(_server, id, name.c_str(),
                                             &defaults, &vocbase);

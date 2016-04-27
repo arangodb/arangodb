@@ -1390,11 +1390,12 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
 /// @brief compares and swaps a single value in the backend
 /// the CAS condition is whether or not a previous value existed for the key
 ////////////////////////////////////////////////////////////////////////////////
-
+#include <iostream>
 AgencyCommResult AgencyComm::casValue(std::string const& key,
                                       arangodb::velocypack::Slice const& json,
                                       bool prevExist, double ttl,
                                       double timeout) {
+
   AgencyCommResult result;
   
   VPackBuilder newBuilder;
@@ -1452,6 +1453,8 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
 
   AgencyTransaction transaction(operation, precondition);
   
+#warning must remove
+  std::cout << transaction.toJson() << std::endl;
 
   sendWithFailover(
       arangodb::GeneralRequest::RequestType::POST,

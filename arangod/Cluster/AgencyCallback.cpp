@@ -35,6 +35,8 @@
 
 using namespace arangodb;
 
+#include <iostream>
+
 AgencyCallback::AgencyCallback(AgencyComm& agency, 
                                std::string const& key, 
                                std::function<bool(VPackSlice const&)> const& cb,
@@ -57,48 +59,20 @@ void AgencyCallback::refetchAndUpdate() {
     return;
   }
 
-  AgencyCommResult result = _agency.getValues(key, true);
+  AgencyCommResult result = _agency.getValues2(key, true);
 
   if (!result.successful()) {
     return;
   }
   
-  if (!result.parse("", false)) {
-    LOG(ERR) << "Cannot parse body " << result.body();
-    return;
-  }
-
-  // mop: we need to find out if it is a directory :S
-  // because we lost this information while parsing
-  std::shared_ptr<VPackBuilder> bodyBuilder =
-      VPackParser::fromJson(result.body().c_str());
-  
-  VPackSlice slice = bodyBuilder->slice();
-  if (!slice.isObject() || !slice.hasKey("node")) {
-    LOG(ERR) << "Invalid structure " << result.body();
-    return;
-  }
-
-  VPackSlice node = slice.get("node");
-  if (!slice.isObject()) {
-    LOG(ERR) << "Node is not an object";
-    return;
-  }
-
-  bool isDir = node.hasKey("dir");
+  std::vector<std::string> kv = basics::StringUtils::split(AgencyComm::prefix() + key,'/');
+  kv.erase(std::remove(kv.begin(), kv.end(), ""), kv.end());
   
   std::shared_ptr<VPackBuilder> newData = std::make_shared<VPackBuilder>();
-  if (isDir) {
-    VPackObjectBuilder builder(newData.get());
-    for (auto& it: result._values) {
-      newData->add(it.first, it.second._vpack->slice());
-    }
-  } else if (result._values.size() == 0) {
-    newData->add(VPackSlice::noneSlice());
-  } else {
-    newData->add(result._values.begin()->second._vpack->slice());
-  }
+  newData->add(result._vpack->slice()[0].get(kv));
+  
   checkValue(newData);
+  
 }
 
 void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData) {
