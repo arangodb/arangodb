@@ -94,14 +94,12 @@ void ServerJob::cleanup(DispatcherQueue* queue) {
 bool ServerJob::execute() {
   // default to system database
 
-  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-    ApplicationServer::lookupFeature("Database"));
+  DatabaseFeature* database = 
+    ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   TRI_vocbase_t* const vocbase = database->vocbase();
 
   if (vocbase == nullptr) {
-
-    std::cout << "+++++++++++++ oops ++++++++++++++" << std::endl;
     // database is gone
     return false;
   }

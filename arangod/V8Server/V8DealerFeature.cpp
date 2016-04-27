@@ -851,8 +851,8 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
 void V8DealerFeature::initializeContext(size_t i) {
   CONDITION_LOCKER(guard, _contextCondition);
 
-  V8PlatformFeature* v8platform = dynamic_cast<V8PlatformFeature*>(
-      application_features::ApplicationServer::lookupFeature("V8Platform"));
+  V8PlatformFeature* v8platform = 
+      application_features::ApplicationServer::getFeature<V8PlatformFeature>("V8Platform");
   TRI_ASSERT(v8platform != nullptr);
 
   v8::Isolate::CreateParams createParams;

@@ -146,8 +146,8 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
     }
 
     // the select backend has more restrictions
-    SchedulerFeature* scheduler = dynamic_cast<SchedulerFeature*>(
-        ApplicationServer::lookupFeature("Scheduler"));
+    SchedulerFeature* scheduler = 
+        ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 
     if (scheduler != nullptr && scheduler->backend() == 1) {
       if (FD_SETSIZE < _descriptorsMinimum) {

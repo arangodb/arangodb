@@ -159,8 +159,8 @@ void AgencyFeature::start() {
   std::string endpoint;
   std::string port = "8529";
 
-  EndpointFeature* endpointFeature = dynamic_cast<EndpointFeature*>(
-    ApplicationServer::lookupFeature("Endpoint"));
+  EndpointFeature* endpointFeature = 
+    ApplicationServer::getFeature<EndpointFeature>("Endpoint");
   auto endpoints = endpointFeature->httpEndpoints();
   
   if (!endpoints.empty()) {

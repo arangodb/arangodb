@@ -55,8 +55,8 @@ void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void ActionFeature::start() {
   ACTION = this;
 
-  V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
-      ApplicationServer::lookupFeature("V8Dealer"));
+  V8DealerFeature* dealer = 
+      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   if (dealer != nullptr) {
     dealer->defineContextUpdate(

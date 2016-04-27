@@ -199,8 +199,8 @@ void ClusterFeature::prepare() {
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
 
-  AgencyFeature* agency = dynamic_cast<AgencyFeature*>(
-      application_features::ApplicationServer::lookupFeature("Agency"));
+  AgencyFeature* agency = 
+      application_features::ApplicationServer::getFeature<AgencyFeature>("Agency");
 
   if (agency->isEnabled() || _enableCluster) {
     // initialize ClusterComm library, must call initialize only once
@@ -455,8 +455,8 @@ void ClusterFeature::start() {
     ServerState::instance()->setState(ServerState::STATE_SYNCING);
   }
 
-  DispatcherFeature* dispatcher = dynamic_cast<DispatcherFeature*>(
-      ApplicationServer::lookupFeature("Dispatcher"));
+  DispatcherFeature* dispatcher = 
+      ApplicationServer::getFeature<DispatcherFeature>("Dispatcher");
 
   dispatcher->buildAqlQueue();
 }
