@@ -1454,7 +1454,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyTransaction transaction(operation, precondition);
   
 #warning must remove
-  std::cout << transaction.toJson() << std::endl;
+  std::cout << " +++++ " << transaction.toJson() << std::endl;
 
   sendWithFailover(
       arangodb::GeneralRequest::RequestType::POST,
