@@ -35,10 +35,7 @@ using namespace arangodb::options;
 ApplicationServer* ApplicationServer::server = nullptr;
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options)
-    : _options(options),
-      _stopping(false),
-      _privilegesDropped(false),
-      _dumpDependencies(false) {
+    : _options(options), _stopping(false) {
   if (ApplicationServer::server != nullptr) {
     LOG(ERR) << "ApplicationServer initialized twice";
   }
@@ -155,6 +152,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
   // collect options from all features
   // in this phase, all features are order-independent
+  _state = ServerState::IN_COLLECT_OPTIONS;
   collectOptions();
 
   // setup dependency, but ignore any failure for now
@@ -168,6 +166,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
   _options->seal();
 
   // validate options of all features
+  _state = ServerState::IN_VALIDATE_OPTIONS;
   validateOptions();
 
   // enable automatic features
@@ -184,6 +183,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // furthermore, they must not write any files under elevated privileges
   // if they want other features to access them, or if they want to access
   // these files with dropped privileges
+  _state = ServerState::IN_PREPARE;
   prepare();
 
   // permanently drop the privileges
@@ -193,13 +193,18 @@ void ApplicationServer::run(int argc, char* argv[]) {
   Thread::allowThreadCreation();
 
   // start features. now features are allowed to start threads, write files etc.
+  _state = ServerState::IN_START;
   start();
 
   // wait until we get signaled the shutdown request
   wait();
 
   // stop all features
+  _state = ServerState::IN_STOP;
   stop();
+
+  // stopped
+  _state = ServerState::STOPPED;
 }
 
 // signal the server to shut down

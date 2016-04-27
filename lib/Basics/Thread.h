@@ -148,6 +148,9 @@ class Thread {
   virtual ~Thread();
 
  public:
+  // whether or not the thread is allowed to start during prepare
+  virtual bool isSystem() { return false; }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the thread is chatty on shutdown
   //////////////////////////////////////////////////////////////////////////////

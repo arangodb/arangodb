@@ -91,7 +91,8 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "append line number and file name",
                            new BooleanParameter(&_lineNumber));
 
-  options->addHiddenOption("--log.thread", "show thread identifier in log message",
+  options->addHiddenOption("--log.thread",
+                           "show thread identifier in log message",
                            new BooleanParameter(&_thread));
 
   options->addHiddenOption("--log.performance",
@@ -168,9 +169,6 @@ void LoggerFeature::prepare() {
   } else {
     Logger::initialize(_threaded);
   }
-}
-
-void LoggerFeature::start() {
 }
 
 void LoggerFeature::stop() {
