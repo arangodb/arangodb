@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 
+#define BOOST_TEST_INCLUDED
 #include <boost/test/unit_test.hpp>
 
 #include "Basics/SkipList.h"

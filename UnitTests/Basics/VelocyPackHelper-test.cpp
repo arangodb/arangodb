@@ -27,7 +27,9 @@
 
 #include "Basics/Common.h"
 
+#define BOOST_TEST_INCLUDED
 #include <boost/test/unit_test.hpp>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
