@@ -45,7 +45,18 @@ name in AQL queries now requires quoting.
 The AQL optimizer rule "merge-traversal-filter" was renamed to "optimize-traversals".
 
 
-!SECTION Command Line Options
+!SECTION ArangoShell and client tools
+
+The ArangoShell (arangosh) and the other client tools bundled with ArangoDB can only
+connect to an ArangoDB server of version 3.0 or higher. They will not connect to an
+ArangoDB 2.8. This is because the server HTTP APIs have changed between 2.8 and 3.0,
+and all client tools uses these APIs.
+
+In order to connect to earlier versions of ArangoDB with the client tools, an older
+version of the client tools needs to be kept installed.
+
+
+!SECTION Command-line options
 
 Quite a few startup options in ArangoDB 2 were double negations (like
 `--server.disable-authentication false`). In ArangoDB 3 these are now expressed as 
@@ -160,6 +171,6 @@ and were not part of ArangoDB's public API.
 !SECTION Miscellaneous changes
 
 The checksum calculation algorithm for the `collection.checksum()` method and its
-corresponding REST API has changed in 3.0. Checksums calculated in 2.8 will differ
-from checksums calculated with 3.0.
+corresponding REST API has changed in 3.0. Checksums calculated in 3.0 will differ
+from checksums calculated with 2.8 or before.
 
