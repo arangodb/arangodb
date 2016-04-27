@@ -407,8 +407,10 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     }
   }
 
-  _console->printLine("");
-  _console->printByeBye();
+  if (!_console->quiet()) {
+    _console->printLine("");
+    _console->printByeBye();
+  }
 
   return promptError ? TRI_ERROR_INTERNAL : TRI_ERROR_NO_ERROR;
 }

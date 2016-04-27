@@ -93,6 +93,7 @@ else ()
   set(LIB_ARANGO_POSIX
     ApplicationFeatures/DaemonFeature.cpp
     ApplicationFeatures/PrivilegeFeature.cpp
+    ApplicationFeatures/PrivilegeFeature.cpp
     ApplicationFeatures/SupervisorFeature.cpp
     Basics/locks-posix.cpp
     Basics/memory-map-posix.cpp

@@ -23,6 +23,7 @@
 #include "ApplicationServer.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/PrivilegeFeature.h"
 #include "Basics/StringUtils.h"
 #include "ProgramOptions/ArgumentParser.h"
 #include "Logger/Logger.h"
@@ -58,7 +59,8 @@ void ApplicationServer::throwFeatureNotFoundException(std::string const& name) {
                                  "unknown feature '" + name + "'");
 }
 
-void ApplicationServer::throwFeatureNotEnabledException(std::string const& name) {
+void ApplicationServer::throwFeatureNotEnabledException(
+    std::string const& name) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "feature '" + name + "' is not enabled");
 }
@@ -80,11 +82,13 @@ void ApplicationServer::disableFeatures(std::vector<std::string> const& names) {
   disableFeatures(names, false);
 }
 
-void ApplicationServer::forceDisableFeatures(std::vector<std::string> const& names) {
+void ApplicationServer::forceDisableFeatures(
+    std::vector<std::string> const& names) {
   disableFeatures(names, true);
 }
 
-void ApplicationServer::disableFeatures(std::vector<std::string> const& names, bool force) {
+void ApplicationServer::disableFeatures(std::vector<std::string> const& names,
+                                        bool force) {
   for (auto const& name : names) {
     auto feature = ApplicationServer::lookupFeature(name);
 
@@ -329,7 +333,7 @@ void ApplicationServer::enableAutomaticFeatures() {
 void ApplicationServer::setupDependencies(bool failOnMissing) {
   LOG_TOPIC(TRACE, Logger::STARTUP)
       << "ApplicationServer::validateDependencies";
-  
+
   // calculate ancestors for all features
   for (auto& it : _features) {
     it.second->determineAncestors();
@@ -350,7 +354,6 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
       }
     }, true);
   }
-  
 
   // first insert all features, even the inactive ones
   std::vector<ApplicationFeature*> features;
@@ -498,7 +501,7 @@ void ApplicationServer::raisePrivilegesTemporarily() {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "must not raise privileges after dropping them");
   }
-  
+
   LOG_TOPIC(TRACE, Logger::STARTUP) << "raising privileges";
 
   // TODO
@@ -511,7 +514,7 @@ void ApplicationServer::dropPrivilegesTemporarily() {
         TRI_ERROR_INTERNAL,
         "must not try to drop privileges after dropping them");
   }
-  
+
   LOG_TOPIC(TRACE, Logger::STARTUP) << "dropping privileges";
 
   // TODO
@@ -524,7 +527,12 @@ void ApplicationServer::dropPrivilegesPermanently() {
         TRI_ERROR_INTERNAL,
         "must not try to drop privileges after dropping them");
   }
-  _privilegesDropped = true;
 
-  // TODO
+  auto privilege = dynamic_cast<PrivilegeFeature*>(lookupFeature("Privilege"));
+
+  if (privilege != nullptr) {
+    privilege->dropPrivilegesPermanently();
+  }
+
+  _privilegesDropped = true;
 }
