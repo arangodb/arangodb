@@ -1,8 +1,0 @@
-# config file for arangob
-
-keep-alive = true
-progress = true
-
-[server]
-endpoint = tcp://127.0.0.1:8529
-authentication = false

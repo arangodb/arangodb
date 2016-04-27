@@ -1,0 +1,16 @@
+//[example_output
+> ./boost_test_strings --log_level=all
+Running 2 test cases...
+Entering test module "boost_test_strings"
+test.cpp(15): Entering test case "test_pointers"
+test.cpp(19): info: check a == b has passed
+test.cpp(20): error: in "test_pointers": check pa == pb has failed [0x7fff51cdcc04 != 0x7fff51cdcc00]
+test.cpp(15): Leaving test case "test_pointers"; testing time: 306us
+test.cpp(23): Entering test case "test_strings"
+test.cpp(28): error: in "test_strings": check a == b has failed [test1 != test2]
+test.cpp(29): info: check a == c has passed
+test.cpp(23): Leaving test case "test_strings"; testing time: 198us
+Leaving test module "boost_test_strings"; testing time: 702us
+
+*** 2 failures are detected in the test module "boost_test_strings"
+//]

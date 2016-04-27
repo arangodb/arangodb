@@ -75,7 +75,7 @@ void SchedulerFeature::collectOptions(
 
   options->addHiddenOption("--scheduler.show-backends",
                            "show available backends",
-                           new BooleanParameter(&_showBackends, false));
+                           new BooleanParameter(&_showBackends));
 }
 
 void SchedulerFeature::validateOptions(

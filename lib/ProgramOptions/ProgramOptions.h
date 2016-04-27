@@ -327,7 +327,7 @@ class ProgramOptions {
 
     if (!result.empty()) {
       // parameter validation failed
-      return fail("error setting value for option '" + name + "': " + result);
+      return fail("error setting value for option '--" + name + "': " + result);
     }
 
     _processingResult.touch(name);

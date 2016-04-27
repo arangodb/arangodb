@@ -29,7 +29,7 @@
 #include "Basics/MutexLocker.h"
 
 namespace arangodb {
-namespace arangob {
+namespace arangobench {
 
 template <class T>
 class BenchmarkCounter {

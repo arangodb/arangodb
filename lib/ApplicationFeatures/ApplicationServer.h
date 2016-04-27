@@ -93,13 +93,25 @@ class ApplicationServer {
  public:
   static ApplicationServer* server;
   static ApplicationFeature* lookupFeature(std::string const&);
-  static bool isStopping() { return server != nullptr && server->_stopping.load(); }
+  static bool isStopping() {
+    return server != nullptr && server->_stopping.load();
+  }
+
+  enum class FeatureState {
+    UNINITIALIZED,
+    INITIALIZED,
+    VALIDATED,
+    PREPARED,
+    STARTED,
+    STOPPED
+  };
 
   // returns the feature with the given name if known
   // throws otherwise
-  template<typename T>
+  template <typename T>
   static T* getFeature(std::string const& name) {
-    T* feature = dynamic_cast<T*>(application_features::ApplicationServer::lookupFeature(name));
+    T* feature = dynamic_cast<T*>(
+        application_features::ApplicationServer::lookupFeature(name));
     if (feature == nullptr) {
       throwFeatureNotFoundException(name);
     }
@@ -108,7 +120,7 @@ class ApplicationServer {
 
   // returns the feature with the given name if known and enabled
   // throws otherwise
-  template<typename T>
+  template <typename T>
   static T* getEnabledFeature(std::string const& name) {
     T* feature = getFeature<T>(name);
     if (!feature->isEnabled()) {
@@ -164,11 +176,12 @@ class ApplicationServer {
  private:
   // throws an exception if a requested feature was not found
   static void throwFeatureNotFoundException(std::string const& name);
-  
+
   // throws an exception if a requested feature is not enabled
   static void throwFeatureNotEnabledException(std::string const& name);
 
-  static void disableFeatures(std::vector<std::string> const& names, bool force);
+  static void disableFeatures(std::vector<std::string> const& names,
+                              bool force);
 
   // fail and abort with the specified message
   void fail(std::string const& message);

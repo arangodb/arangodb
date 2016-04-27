@@ -111,7 +111,7 @@ void ImportFeature::collectOptions(
       "--overwrite",
       "overwrite collection if it exist (WARNING: this will remove any data "
       "from the collection)",
-      new BooleanParameter(&_overwrite, false));
+      new BooleanParameter(&_overwrite));
 
   options->addOption("--quote", "quote character(s), used for csv",
                      new StringParameter(&_quote));

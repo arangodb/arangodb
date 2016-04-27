@@ -28,7 +28,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
 namespace arangodb {
-namespace arangob {
+namespace arangobench {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple interface for benchmark operations

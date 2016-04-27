@@ -66,7 +66,7 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console", "start a JavaScript emergency console",
-                     new BooleanParameter(&_console, false));
+                     new BooleanParameter(&_console));
 
   options->addSection("server", "Server features");
 

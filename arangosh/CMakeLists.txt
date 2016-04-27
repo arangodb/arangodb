@@ -5,13 +5,13 @@ include_directories(.)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
 ################################################################################
-## arangob
+## arangobench
 ################################################################################
 
 if (MSVC)
-  generate_product_version(ProductVersionFiles_arangob
-    NAME arangob
-    FILE_DESCRIPTION ${ARANGOB_FRIENDLY_STRING}
+  generate_product_version(ProductVersionFiles_arangobench
+    NAME arangobench
+    FILE_DESCRIPTION ${ARANGOBENCH_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
@@ -20,14 +20,14 @@ if (MSVC)
   )
 endif ()
 
-add_executable(${BIN_ARANGOB}
-  ${ProductVersionFiles_arangob}
+add_executable(${BIN_ARANGOBENCH}
+  ${ProductVersionFiles_arangobench}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Benchmark/BenchFeature.cpp
-  Benchmark/arangob.cpp
+  Benchmark/arangobench.cpp
 )
 
-target_link_libraries(${BIN_ARANGOB}
+target_link_libraries(${BIN_ARANGOBENCH}
   ${LIB_ARANGO}
   ${LINENOISE_LIBS}
   ${MSVC_LIBS}
@@ -35,15 +35,15 @@ target_link_libraries(${BIN_ARANGOB}
 )
 
 install(
-  TARGETS ${BIN_ARANGOB}
+  TARGETS ${BIN_ARANGOBENCH}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(arangob)
+install_config(arangobench)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangob zlibstatic v8_build) # v8_build includes ICU build
+  add_dependencies(arangobench zlibstatic v8_build) # v8_build includes ICU build
 else ()
-  add_dependencies(arangob zlibstatic)
+  add_dependencies(arangobench zlibstatic)
 endif ()
 
 ################################################################################

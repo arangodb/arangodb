@@ -23,6 +23,7 @@
 #include "ApplicationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb::application_features;
@@ -32,9 +33,11 @@ ApplicationFeature::ApplicationFeature(ApplicationServer* server,
                                        std::string const& name)
     : _server(server),
       _name(name),
+      _state(ApplicationServer::FeatureState::UNINITIALIZED),
       _enabled(true),
       _optional(false),
-      _requiresElevatedPrivileges(false) {}
+      _requiresElevatedPrivileges(false),
+      _ancestorsDetermined(false) {}
 
 ApplicationFeature::~ApplicationFeature() {}
 
@@ -74,29 +77,14 @@ void ApplicationFeature::stop() {}
 
 // determine all direct and indirect ancestors of a feature
 std::unordered_set<std::string> ApplicationFeature::ancestors() const {
-  std::function<void(std::unordered_set<std::string>&, std::string const&)>
-      build = [this, &build](std::unordered_set<std::string>& found,
-                             std::string const& name) {
-        for (auto& ancestor : this->server()->feature(name)->startsAfter()) {
-          found.emplace(ancestor);
-          build(found, ancestor);
-        }
-      };
-
-  std::unordered_set<std::string> found;
-  build(found, name());
-  if (found.find(name()) != found.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "dependencies for feature '" + name() + "' are cyclic");
-  }
-  return found;
+  TRI_ASSERT(_ancestorsDetermined);
+  return _ancestors;
 }
 
 // whether the feature starts before another
 bool ApplicationFeature::doesStartBefore(std::string const& other) const {
   auto otherAncestors = _server->feature(other)->ancestors();
-  if (otherAncestors.find(name()) != otherAncestors.end()) {
+  if (otherAncestors.find(_name) != otherAncestors.end()) {
     // we are an ancestor of the other feature
     return true;
   }
@@ -110,3 +98,34 @@ bool ApplicationFeature::doesStartBefore(std::string const& other) const {
   // no direct or indirect relationship between features
   return false;
 }
+
+// determine all direct and indirect ancestors of a feature
+void ApplicationFeature::determineAncestors() {
+  if (_ancestorsDetermined) {
+    return;
+  }
+
+  std::vector<std::string> path;
+
+  std::function<void(std::string const&)> build = [this, &build, &path](std::string const& name) {
+    path.emplace_back(name);
+
+    for (auto& ancestor : this->server()->feature(name)->startsAfter()) {
+      if (_ancestors.emplace(ancestor).second) {
+        if (ancestor == _name) {
+          path.emplace_back(ancestor);
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "dependencies for feature '" + _name + "' are cyclic: " + arangodb::basics::StringUtils::join(path, " <= "));
+        }
+        build(ancestor);
+      }
+    }
+
+    path.pop_back();
+  };
+
+  build(_name);
+  _ancestorsDetermined = true;
+}
+

@@ -23878,8 +23878,14 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.enableSaveButton();
     },
 
+    resize: function() {
+      $('#documentEditor').height($('.centralRow').height() - 300);
+    },
+
     render: function() {
       $(this.el).html(this.template.render({}));
+
+      $('#documentEditor').height($('.centralRow').height() - 300);
       this.disableSaveButton();
       this.breadcrumb();
 
@@ -24069,8 +24075,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     resize: function() {
-      $('#documentsTableID_wrapper').height($('.centralRow').height() - 210);
-      $('#documentsTableID tbody').css('max-height', $('#documentsTableID_wrapper').height() - 47);
+      $('#docPureTable').height($('.centralRow').height() - 210);
+      $('#docPureTable .pure-table-body').css('max-height', $('#docPureTable').height() - 47);
     },
 
     setCollectionId : function (colid, page) {
@@ -24134,8 +24140,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #resetView"           : "resetView",
       "click #confirmDocImport"    : "startUpload",
       "click #exportDocuments"     : "startDownload",
-      "change #documentSize"            : "setPagesize",
-      "change #docsSort"                : "setSorting"
+      "change #documentSize"       : "setPagesize",
+      "change #docsSort"           : "setSorting"
     },
 
     showSpinner: function() {
@@ -24367,7 +24373,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     changeEditMode: function (enable) {
       if (enable === false || this.editMode === true) {
-        $('#documentsTableID tbody tr').css('cursor', 'default');
+        $('#docPureTable .pure-table-body .pure-table-row').css('cursor', 'default');
         $('.deleteButton').fadeIn();
         $('.addButton').fadeIn();
         $('.selected-row').removeClass('selected-row');
@@ -24375,7 +24381,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.tableView.setRowClick(this.clicked.bind(this));
       }
       else {
-        $('#documentsTableID tbody tr').css('cursor', 'copy');
+        $('#docPureTable .pure-table-body .pure-table-row').css('cursor', 'copy');
         $('.deleteButton').fadeOut();
         $('.addButton').fadeOut();
         $('.selectedCount').text(0);
@@ -24814,7 +24820,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     getSelectedDocs: function() {
       var toDelete = [];
-      _.each($('#documentsTableID tbody tr'), function(element) {
+      _.each($('#docPureTable .pure-table-body .pure-table-row'), function(element) {
         if ($(element).hasClass('selected-row')) {
           toDelete.push($($(element).children()[1]).find('.key').text());
         }
@@ -24823,7 +24829,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     remove: function (a) {
-      this.docid = $(a.currentTarget).closest("tr").attr("id").substr(4);
+      this.docid = $(a.currentTarget).parent().parent().prev().find('.key').text();
       $("#confirmDeleteBtn").attr("disabled", false);
       $('#docDeleteModal').modal('show');
     },
@@ -24880,6 +24886,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         target.addClass('selected-row');
       }
 
+      console.log(target);
       var selected = this.getSelectedDocs();
       $('.selectedCount').text(selected.length);
 
@@ -24925,8 +24932,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     drawTable: function() {
-      this.tableView.setElement($(this.table)).render();
-
+      this.tableView.setElement($('#docPureTable')).render();
       // we added some icons, so we need to fix their tooltips
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
 
@@ -27844,7 +27850,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         collection: options.notificationCollection
       });
       this.statisticBarView = new window.StatisticBarView({
-          currentDB: this.currentDB
+        currentDB: this.currentDB
       });
 
       this.isCluster = options.isCluster;
@@ -27880,7 +27886,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       }));
       
       this.dbSelectionView.render($("#dbSelect"));
-      this.notificationView.render($("#notificationBar"));
+      //this.notificationView.render($("#notificationBar"));
 
       var callback = function(error) {
         if (!error) {
@@ -27889,11 +27895,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       }.bind(this);
 
       this.userCollection.whoAmI(callback);
-      this.statisticBarView.render($("#statisticBar"));
+      //this.statisticBarView.render($("#statisticBar"));
 
       if (this.renderFirst) {
         this.renderFirst = false;
-          
+
         this.selectMenuItem();
 
         $('.arangodbLogo').on('click', function() {
@@ -28151,6 +28157,12 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
       }
       arangoHelper.hideArangoNotifications();
+    },
+
+    showSubDropdown: function(e) {
+      console.log($(e.currentTarget));
+      console.log($(e.currentTarget).find('.subBarDropdown'));
+      $(e.currentTarget).find('.subBarDropdown').toggle();  
     },
 
     showDropdown: function (e) {
@@ -33026,8 +33038,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     events: {
-      "click tbody tr": "rowClick",
-      "click .deleteButton": "removeClick",
+      "click .pure-table-body .pure-table-row": "rowClick",
+      "click .deleteButton": "removeClick"
     },
 
     rowClick: function(event) {
@@ -33841,6 +33853,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       e.preventDefault();
     },
 
+    toggleUserMenu: function() {
+      $('#userBar .subBarDropdown').toggle();
+    },
+
     showDropdown: function () {
       $("#user_dropdown").fadeIn(1);
     },
@@ -33850,6 +33866,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function () {
+      var self = this;
 
       var callback = function(error, username) {
         if (error) {
@@ -33870,7 +33887,7 @@ window.ArangoUsers = Backbone.Collection.extend({
               img = "img/default_user.png";
             } 
             else {
-              img = "https://s.gravatar.com/avatar/" + img + "?s=24";
+              img = "https://s.gravatar.com/avatar/" + img + "?s=80";
             }
             if (! name) {
               name = "";
@@ -33889,6 +33906,10 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         }
       }.bind(this);
+
+      $('#userBar').on('click', function() {
+        self.toggleUserMenu();
+      });
 
       this.userCollection.whoAmI(callback);
     },
@@ -35360,6 +35381,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
       if (this.documentsView) {
         this.documentsView.resize();
+      }
+      if (this.documentView) {
+        this.documentView.resize();
       }
     },
 

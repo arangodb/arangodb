@@ -198,6 +198,7 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDebugHandler.cpp
   RestHandler/RestDocumentHandler.cpp
+  RestHandler/RestEchoHandler.cpp
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestExportHandler.cpp
   RestHandler/RestImportHandler.cpp

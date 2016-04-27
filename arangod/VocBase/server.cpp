@@ -509,8 +509,8 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
     // create app directories
     // .........................................................................
 
-    V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
-        ApplicationServer::lookupFeature("V8Dealer"));
+    V8DealerFeature* dealer = 
+        ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
     auto appPath = (dealer == nullptr ? std::string() : dealer->appPath());
 
     res = CreateApplicationDirectory(databaseName.c_str(), appPath.c_str());
@@ -1028,8 +1028,8 @@ static void DatabaseManager(void* data) {
                    << "'";
 
         // remove apps directory for database
-        V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
-            ApplicationServer::lookupFeature("V8Dealer"));
+        V8DealerFeature* dealer = 
+            ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
         auto appPath = (dealer == nullptr ? std::string() : dealer->appPath());
 
         if (database->_isOwnAppsDirectory && !appPath.empty()) {
@@ -1305,8 +1305,8 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   // create shared application directories
   // ...........................................................................
 
-  V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
-      ApplicationServer::lookupFeature("V8Dealer"));
+  V8DealerFeature* dealer = 
+      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
   auto appPath = (dealer == nullptr ? std::string() : dealer->appPath());
 
   if (!appPath.empty() && !TRI_IsDirectory(appPath.c_str())) {
@@ -1618,8 +1618,8 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
     }
 
     // create application directories
-    V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
-        ApplicationServer::lookupFeature("V8Dealer"));
+    V8DealerFeature* dealer = 
+        ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
     auto appPath = (dealer == nullptr ? std::string() : dealer->appPath());
 
     CreateApplicationDirectory(vocbase->_name, appPath.c_str());

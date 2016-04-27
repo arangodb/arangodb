@@ -1,0 +1,361 @@
+[/
+ / Copyright (c) 2003-2015 Boost.Test contributors 
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[/ ################################################ ]
+[section:floating_point Floating point comparison]
+
+Unless you specify otherwise, when two values of floating-point type are compared inside assertion  __BOOST_TEST__,
+operators `==` and `!=` defined for these types are used. In most cases, however, what we need is not an ['exact] equality (or inequality),
+but to check that the two numbers are 'sufficiently close' or 'sufficiently different'. In order to do that we need to provide a ['tolerance]
+parameter that will instruct the framework what we consider 'sufficiently close'.
+
+We can define a per-[link ref_test_unit test unit] tolerance for a given floating point type by using
+[link boost_test.tests_organization.decorators decorator] __decorator_tolerance__:
+
+[bt_example tolerance_01..specifying tolerance per test case..run-fail]
+
+How the tolerance parameter is processed in detail is described [link boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_impl here].
+
+It is possible to specify floating point comparison tolerance per single assertion, by providing ['manipulator] [funcref boost::test_tools::tolerance]
+as the second argument to __BOOST_TEST__.
+
+[bt_example tolerance_02..specifying tolerance per assertion..run-fail]
+
+[caution The support for manipulators requires that your compiler supports variadic macros, `auto` for type deduction
+ and `decltype`. These are C++11 features, but are also available on some pre-C++11 compilers. On compilers that are
+ lacking these features resort to defining tolerance per test unit, or to compatibility test assertions: __BOOST_CHECK_CLOSE__ and __BOOST_CHECK_SMALL__.]
+
+It is possible to specify the tolerance as percentage. At test unit level, the decorator syntax is:
+
+```
+* boost::unit_test::tolerance( boost::test_tools::fpc::percent_tolerance(2.0) )
+// equivalent to: boost::unit_test::tolerance( 2.0 / 100 )
+```
+
+At assertion level, the manipulator syntax is:
+
+```
+2.0% boost::test_tools::tolerance()
+boost::test_tools::tolerance( boost::test_tools::fpc::percent_tolerance(2.0) )
+// both equivalent to: boost::test_tools::tolerance( 2.0 / 100 )
+```
+
+Manipulator `tolerance` specifies the tolerance only for a single floating-point type. This type is deduced from form
+the numeric value passed along the manipulator:
+
+[table
+[[expression][semantics]]
+[[`tolerance(0.5)`][tolerance for type `double` changed to 0.5]]
+[[`tolerance(float(0.5))`][tolerance for type `float` changed to 0.5]]
+[[`tolerance(0.5f)`][tolerance for type `float` changed to 0.5]]
+[[`tolerance(0.5L)`][tolerance for type `long double` changed to 0.5]]
+[[`tolerance(Decimal("0.5"))`][tolerance for a user-defined type `Decimal` changed to the supplied value]]
+[[`5.0% tolerance()`][tolerance for type `double` changed to 0.05 (`5.0 / 100`)]]
+[[`5.0f% tolerance()`][tolerance for type `float` changed to 0.05]]
+[[`Decimal("5.0")% tolerance()`][tolerance for type `Decimal` changed to value `(Decimal("5.0") / 100)`]]
+]
+
+This is also the case for decorator `tolerance`. In case of the decorator, however, it is possible to apply multiple
+decorators `tolerance` defining the tolerance for different types.
+
+When values of two different floating point types `T` and `U` are compared, __BOOST_TEST__ uses the tolerance
+specified for type `boost::common_type<T, U>::type`. For instance, when setting a tolerance for mixed `float`-to-`double` comparison,
+the tolerance for type `double` needs to be set.
+
+Given two floating point types `T` and `U` and their common type `C`, the tolerance specified for type `C` is applied only when
+types `T` and `U` are appear as sub-expressions of the full expression inside assertion __BOOST_TEST__. It is not applied when
+`T` and `U` are compared inside a function invoked during the evaluation of the expression:
+
+```
+BOOST_AUTO_TEST_CASE(test, * utf::tolerance(0.02))
+{
+  double                  d1 = 1.00, d2 = 0.99;
+  boost::optional<double> o1 = 1.00, o2 = 0.99;
+
+  BOOST_TEST(d1 == d2);   // with tolerance    (double vs. double)
+  BOOST_TEST(o1 == o2);   // without tolerance (optional vs. optional)
+  BOOST_TEST(o1 == d2);   // without tolerance (optional vs. double)
+  BOOST_TEST(*o1 == *o2); // with tolerance    (double vs. double)
+}
+```
+
+Finally, note that comparisons for tolerance are also applied to `operator<` with semantics 'less by more than some tolerance`,
+and other relational operators. Also, the tolerance-based comparisons are involved when a more complicated expression tree is
+processed within the assertion body:
+
+[bt_example tolerance_03..tolerance applied in more complex expressions..run-fail]
+
+
+[/############################################################################]
+
+[section:customizing_for_tolerance Enabling tolerance for user-defined types]
+
+The __UTF__ recognizes that a given type `T` is suitable for tolerance-based comparisons using the expression
+[classref boost::math::fpc::tolerance_based]`<T>::value`. This meta-function already returns true for built-in
+floating-point types as well as any other types that match the following compile-time expression:
+
+```
+boost::is_floating_point<T>::value ||
+    ( std::numeric_limits<T>::is_specialized &&
+     !std::numeric_limits<T>::is_integer &&
+     !std::numeric_limits<T>::is_exact)
+```
+
+If you require your type to also participate in tolerance-based comparisons, regardless of the above expression,
+you can just specialize [classref boost::math::fpc::tolerance_based] for your type directly, and derive it from
+`boost::true_type`. Your type does not even have to be a floating-point type provided that it models concept
+[link boost_test.testing_tools.extended_comparison.floating_point.customizing_for_tolerance.concept_tolerance_based `ToleranceCompatible`].
+
+[bt_example tolerance_04..adapting user-defined types for tolerance-based comparison..run-fail]
+
+[h3:concept_tolerance_based Concept `ToleranceCompatible`]
+
+[h4 Refinement of]
+
+`MoveConstructible`, [@http://www.sgi.com/tech/stl/EqualityComparable.html `EqualityComparable`],
+[@http://www.sgi.com/tech/stl/LessThanComparable.html `LessThanComparable`]
+
+[h4 Notation]
+
+[table
+  [[][]]
+  [[`T`][A type that is a model of `ToleranceCompatible`]]
+  [[`x`, `y`][objects of type `T`]]
+  [[`i`, `j`][objects of type `int`]]
+]
+
+[h4 Valid expressions]
+
+[table
+  [[Name][Expression][Return type]]
+  [[Conversion from `int`][`T j = i;`][]]
+  [[Addition][`x + y`][`T`]]
+  [[Subtraction][`x - y`][`T`]]
+  [[Negation][`-x`][`T`]]
+  [[Multiplication][`x * y`[br]`x * i`][`T`]]
+  [[Division][`x / y`[br]`x / i`][`T`]]
+  [[Mixed equality][`x == i`[br]`x != i`][`bool`]]
+  [[Mixed ordering][`x < i`[br]`x > i`[br]`x <= i`[br]`x >= i`][`bool`]]
+]
+
+[h4 Invariants]
+
+[table
+  [[`T` and `int` consistency][`(x == T(i)) == (x == i)`[br]`(x != T(i)) == (x != i)`[br]`(x < T(i)) == (x < i)`[br]`(x > T(i)) == (x > i)`[br]`(x / T(i)) == (x / i)`[br]`(x * T(i)) == (x * i)`]]
+]
+
+[endsect] [/ customizing_for_tolerance]
+
+
+[/############################################################################################]
+
+[section:floating_points_comparison_impl Tolerance-based comparisons]
+
+
+Assertions in the __UTF__ use two kinds of comparison. For `u` being close to zero with absolute tolerance `eps`:
+
+``
+   abs(u) <= eps; // (abs)
+``
+
+For `u` and `v` being close with relative tolerance `eps`:
+
+```
+   abs(u - v)/abs(u) <= eps
+&& abs(u - v)/abs(v) <= eps; // (rel)
+```
+
+For rationale for choosing these formulae, see section __floating_points_testing_tools__.
+
+
+Assertion __BOOST_TEST__ (when comparing floating-point numbers) uses the following algorithm:
+
+* When either value `u` or `v` is zero, evaluates formula (abs) on the other value.
+* When the specified tolerance is zero, performs direct (native) comparison between `u` and `v`.
+* Otherwise, performs formula (rel) on `u` and `v`.
+
+[note Therefore in order to check if a number is close to zero with tolerance, you need to type:
+```
+BOOST_TEST(v == T(0), tt::tolerance(eps));
+```]
+
+The compatibility assertions __BOOST_LEVEL_CLOSE__ and __BOOST_LEVEL_CLOSE_FRACTION__ perform formula (rel).
+
+The compatibility assertion __BOOST_LEVEL_SMALL__ performs formula (abs).
+
+The __UTF__ also provides unary predicate [classref boost::math::fpc::small_with_tolerance `small_with_tolerance`] and binary predicate predicate
+[classref boost::math::fpc::close_at_tolerance `close_at_tolerance`] that implement formula (abs) and (rel) respectively.
+
+[h3 Tolerance in `operator<`]
+
+Tolerance-based computations also apply to `operator<` and other relational operators. The semantics are defined as follows:
+
+* ['less-at-tolerance] <==> ['strictly-less] and not ['close-at-tolerance]
+* ['greater-at-tolerance] <==> ['strictly-greater] and not ['close-at-tolerance]
+* ['less-or-equal-at-tolerance] <==> ['strictly-less] or ['close-at-tolerance]
+* ['greater-or-equal-at-tolerance] <==> ['strictly-greater] or ['close-at-tolerance]
+
+[note This implies that the exactly one of these: `u < v`, `u == v`, `u > v`, passes with __BOOST_TEST__ at any given tolerance.]
+[caution Relation less-at-tolerance is not a Strict Weak Ordering; using it as predicate in `std::map` or any order-based STL
+  algorithm would result in undefined behavior.]
+
+[endsect] [/ floating_points_comparison_impl]
+
+[/############################################################################################]
+
+[section:floating_points_comparison_theory Theory behind floating point comparisons]
+
+
+The following is the most obvious way to compare two floating-point values `u` and `v` for being close at a given absolute tolerance `epsilon`:
+
+[#equ1]
+``
+   abs(u - v) <= epsilon; // (1)
+``
+
+However, in many circumstances, this is not what we want. The same absolute tolerance value `0.01` may be too small to meaningfully compare
+two values of magnitude `10e12` and at the same time too little to meaningfully compare values of magnitude `10e-12`. For examples, see [link Squassabia].
+
+We do not want to apply the same absolute tolerance for huge and tiny numbers. Instead, we would like to scale the `epsilon` with `u` and `v`.
+The __UTF__ implements floating-point comparison algorithm that is based on the solution presented in [link KnuthII Knuth]:
+
+[#equ2]
+``
+   abs(u - v) <= epsilon * abs(u)
+&& abs(u - v) <= epsilon * abs(v)); // (2)
+``
+
+defines a ['very close with tolerance `epsilon`] relationship between `u` and `v`, while
+
+[#equ3]
+``
+   abs(u - v) <= epsilon * abs(u)
+|| abs(u - v) <= epsilon * abs(v); // (3)
+``
+
+defines a ['close enough with tolerance `epsilon`] relationship between `u` and `v`.
+
+Both relationships are commutative but are not transitive. The relationship defined in
+[link equ2 (2)] is stronger that the relationship defined in [link equ3 (3)] since [link equ2 (2)] necessarily implies [link equ3 (3)].
+
+The multiplication in the right side of inequations may cause an unwanted underflow condition. To prevent this,
+the implementation is using modified version of [link equ2 (2)] and [link equ3 (3)], which scales the checked difference rather than `epsilon`:
+
+[#equ4]
+``
+   abs(u - v)/abs(u) <= epsilon
+&& abs(u - v)/abs(v) <= epsilon; // (4)
+``
+
+[#equ5]
+``
+   abs(u - v)/abs(u) <= epsilon
+|| abs(u - v)/abs(v) <= epsilon; // (5)
+``
+
+This way all underflow and overflow conditions can be guarded safely. The above however, will not work when `v` or `u` is zero.
+In such cases the solution is to resort to a different algorithm, e.g. [link equ1 (1)].
+
+
+[h3 Tolerance selection considerations]
+
+In case of absence of domain specific requirements the value of tolerance can be chosen as a sum of the predicted
+upper limits for "relative rounding errors" of compared values. The "rounding" is the operation by which a real
+value 'x' is represented in a floating-point format with 'p' binary digits (bits) as the floating-point value [*X].
+The "relative rounding error" is the difference between the real and the floating point values in relation to real
+value: `abs(x-X)/abs(x)`. The discrepancy between real and floating point value may be caused by several reasons:
+
+* Type promotion
+* Arithmetic operations
+* Conversion from a decimal presentation to a binary presentation
+* Non-arithmetic operation
+
+
+The first two operations proved to have a relative rounding error that does not exceed
+
+  half_epsilon = half of the 'machine epsilon value'
+
+for the appropriate floating point type `FPT` [footnote [*machine epsilon value] is represented by `std::numeric_limits<FPT>::epsilon()`].
+Conversion to binary presentation, sadly, does not have such requirement. So we can't assume that `float(1.1)` is close
+to the real number `1.1` with tolerance `half_epsilon` for float (though for 11./10 we can). Non-arithmetic operations either do not have a
+predicted upper limit relative rounding errors.
+
+[note Note that both arithmetic and non-arithmetic operations might also
+produce others "non-rounding" errors, such as underflow/overflow, division-by-zero or "operation errors".]
+
+
+All theorems about the upper limit of a rounding error, including that of `half_epsilon`, refer only to
+the 'rounding' operation, nothing more. This means that the 'operation error', that is, the error incurred by the
+operation itself, besides rounding, isn't considered. In order for numerical software to be able to actually
+predict error bounds, the __IEEE754__ standard requires arithmetic operations to be 'correctly or exactly rounded'.
+That is, it is required that the internal computation of a given operation be such that the floating point result
+is the exact result rounded to the number of working bits. In other words, it is required that the computation used
+by the operation itself doesn't introduce any additional errors. The __IEEE754__ standard does not require same behavior
+from most non-arithmetic operation. The underflow/overflow and division-by-zero errors may cause rounding errors
+with unpredictable upper limits.
+
+At last be aware that `half_epsilon` rules are not transitive. In other words combination of two
+arithmetic operations may produce rounding error that significantly exceeds `2*half_epsilon`. All
+in all there are no generic rules on how to select the tolerance and users need to apply common sense and domain/
+problem specific knowledge to decide on tolerance value.
+
+To simplify things in most usage cases latest version of algorithm below opted to use percentage values for
+tolerance specification (instead of fractions of related values). In other words now you use it to check that
+difference between two values does not exceed x percent.
+
+For more reading about floating-point comparison see references below.
+
+[h4 Bibliographic references]
+[variablelist Books
+  [
+    [[#KnuthII]The art of computer programming (vol II)]
+    [Donald. E. Knuth, 1998, Addison-Wesley Longman, Inc., ISBN 0-201-89684-2, Addison-Wesley Professional; 3rd edition.
+     (The relevant equations are in §4.2.2, Eq. 36 and 37.)]
+  ]
+  [
+    [Rounding near zero, in [@http://www.amazon.com/Advanced-Arithmetic-Digital-Computer-Kulisch/dp/3211838708 Advanced Arithmetic for the Digital Computer]]
+    [Ulrich W. Kulisch, 2002, Springer, Inc., ISBN 0-201-89684-2, Springer; 1st edition]
+  ]
+]
+
+[variablelist Periodicals
+  [
+    [[#Squassabia][@https://adtmag.com/articles/2000/03/16/comparing-floats-how-to-determine-if-floating-quantities-are-close-enough-once-a-tolerance-has-been.aspx
+      Comparing Floats: How To Determine if Floating Quantities Are Close Enough Once a Tolerance Has Been Reached]]
+    [Alberto Squassabia, in C++ Report (March 2000)]
+  ]
+
+  [
+    [The Journeyman's Shop: Trap Handlers, Sticky Bits, and Floating-Point Comparisons]
+    [Pete Becker, in C/C++ Users Journal (December 2000)]
+  ]
+]
+
+[variablelist Publications
+  [
+    [[@http://dl.acm.org/citation.cfm?id=103163
+      What Every Computer Scientist Should Know About Floating-Point Arithmetic]]
+    [David Goldberg, pages 150-230, in Computing Surveys (March 1991), Association for Computing Machinery, Inc.]
+  ]
+
+  [
+    [[@http://hal.archives-ouvertes.fr/docs/00/07/26/81/PDF/RR-3967.pdf From Rounding Error Estimation to Automatic Correction with Automatic Differentiation]]
+    [Philippe Langlois, Technical report, INRIA]
+  ]
+
+  [
+    [[@http://www.cs.berkeley.edu/~wkahan/
+      William Kahan home page]]
+    [Lots of information on floating point arithmetics.]
+  ]
+
+]
+
+[endsect] [/ theory]
+
+[endsect] [/ floating points]

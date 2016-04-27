@@ -550,7 +550,9 @@
                 });
               }
               else {
-                this.deleteAllAardvarkJobs(); 
+                if (AaJobs.length > 0) {
+                  this.deleteAllAardvarkJobs(); 
+                }
               }
               callback(false, array);
             }

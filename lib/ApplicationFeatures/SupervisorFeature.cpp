@@ -47,7 +47,7 @@ void SupervisorFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--supervisor",
                            "background the server, starts a supervisor",
-                           new BooleanParameter(&_supervisor, false));
+                           new BooleanParameter(&_supervisor));
 }
 
 void SupervisorFeature::validateOptions(

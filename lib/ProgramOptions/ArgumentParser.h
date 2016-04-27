@@ -112,7 +112,18 @@ class ArgumentParser {
 
           if (!_options->requiresValue(option)) {
             // option does not require a parameter
-            if (!_options->setValue(option, "")) {
+            std::string nextValue;
+            if (i + 1 < argc) {
+              // we have a next option. check if its true or false
+              std::string const next(argv[i + 1]);
+              if (next == "true" || next == "false" || 
+                  next == "on" || next == "off" || 
+                  next == "1" || next == "0") {
+                nextValue = next;
+                ++i; // skip next argument when continuing the parsing
+              }
+            }
+            if (!_options->setValue(option, nextValue)) {
               return false;
             }
           } else {
@@ -138,7 +149,7 @@ class ArgumentParser {
 
     // we got some previous option, but no value was specified for it
     if (!lastOption.empty()) {
-      return _options->fail("no value specified for option '" + lastOption +
+      return _options->fail("no value specified for option '--" + lastOption +
                             "'");
     }
 

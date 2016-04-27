@@ -40,7 +40,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
 namespace arangodb {
-namespace arangob {
+namespace arangobench {
 
 class BenchmarkThread : public arangodb::Thread {
  public:
@@ -169,7 +169,7 @@ class BenchmarkThread : public arangodb::Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string rewriteLocation(void* data, std::string const& location) {
-    auto t = static_cast<arangob::BenchmarkThread*>(data);
+    auto t = static_cast<arangobench::BenchmarkThread*>(data);
 
     TRI_ASSERT(t != nullptr);
 
@@ -190,7 +190,7 @@ class BenchmarkThread : public arangodb::Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   void executeBatchRequest(const unsigned long numOperations) {
-    static char const boundary[] = "XXXarangob-benchmarkXXX";
+    static char const boundary[] = "XXXarangobench-benchmarkXXX";
     size_t blen = strlen(boundary);
 
     basics::StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
@@ -388,7 +388,7 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief the operation to benchmark
   //////////////////////////////////////////////////////////////////////////////
 
-  arangob::BenchmarkOperation* _operation;
+  arangobench::BenchmarkOperation* _operation;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief condition variable
@@ -424,7 +424,7 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief benchmark counter
   //////////////////////////////////////////////////////////////////////////////
 
-  arangob::BenchmarkCounter<unsigned long>* _operationsCounter;
+  arangobench::BenchmarkCounter<unsigned long>* _operationsCounter;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief client feature

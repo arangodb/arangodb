@@ -1,6 +1,8 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* renamed arangob tool to arangobench
+
 * added AQL string comparison operator `LIKE`
 
   The operator can be used to compare strings like this:
@@ -10,7 +12,7 @@ v3.0.0 (XXXX-XX-XX)
   The operator is currently implemented by calling the already existing AQL
   function `LIKE`.
 
-  This change also makes `LIKE` an AQL keyword. Using `like` in either case as
+  This change also makes `LIKE` an AQL keyword. Using `LIKE` in either case as
   an attribute or collection name in AQL thus requires quoting.
 
 * make AQL optimizer rule "remove-unnecessary-calculations" fire in more cases
