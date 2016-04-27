@@ -93,7 +93,6 @@ else ()
   set(LIB_ARANGO_POSIX
     ApplicationFeatures/DaemonFeature.cpp
     ApplicationFeatures/PrivilegeFeature.cpp
-    ApplicationFeatures/PrivilegeFeature.cpp
     ApplicationFeatures/SupervisorFeature.cpp
     Basics/locks-posix.cpp
     Basics/memory-map-posix.cpp
@@ -155,6 +154,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ConsoleFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
+  ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/SslFeature.cpp
   ApplicationFeatures/TempFeature.cpp
