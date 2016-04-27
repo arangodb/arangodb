@@ -38,7 +38,10 @@
 /* regression testing program for GeoIndex module     */
 /*  R.A.P. 2.1  8.1.2012                              */
 
-#include <boost/test/unit_test.hpp>
+#include "Basics/Common.h"
+
+#define BOOST_TEST_MODULE "C Unit Tests for Cambridge"
+#include <boost/test/included/unit_test.hpp>
 
 #include "GeoIndex/GeoIndex.h"
 #include "Basics/StringUtils.h"
