@@ -20,27 +20,23 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_SCRIPT_FEATURE_H
-#define APPLICATION_FEATURES_SCRIPT_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_UNIT_TEST_FEATURE_H
+#define APPLICATION_FEATURES_UNIT_TEST_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Rest/OperationMode.h"
 
 namespace arangodb {
-class ScriptFeature final : public application_features::ApplicationFeature {
+class UnitTestsFeature final : public application_features::ApplicationFeature {
  public:
-  explicit ScriptFeature(application_features::ApplicationServer*, int* result);
+  explicit UnitTestsFeature(application_features::ApplicationServer*, int* result);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
 
  private:
-  std::vector<std::string> _scriptParameters;
-
- private:
-  int runScript(std::vector<std::string> const& scripts);
+  int runUnitTests(std::vector<std::string> const& scripts);
 
  private:
   int* _result;

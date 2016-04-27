@@ -54,6 +54,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
   }
 
   std::vector<std::string> const& scripts() const { return _scripts; }
+  std::vector<std::string> const& unitTests() const { return _unitTests; }
 
  private:
   bool _console = false;
@@ -63,7 +64,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
 
  private:
   void waitForHeartbeat();
-  int runUnitTests();
 
  private:
   int* _result;

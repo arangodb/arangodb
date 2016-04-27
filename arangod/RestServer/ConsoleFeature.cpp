@@ -50,6 +50,8 @@ void ConsoleFeature::start() {
     return;
   }
 
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: CONSOLE";
+
   auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   _consoleThread.reset(

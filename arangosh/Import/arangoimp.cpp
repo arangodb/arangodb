@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new ImportFeature(&server, &ret));
   server.addFeature(new LoggerFeature(&server, false));
   server.addFeature(new RandomFeature(&server));
-  server.addFeature(new ShutdownFeature(&server, "Import"));
+  server.addFeature(new ShutdownFeature(&server, {"Import"}));
   server.addFeature(new TempFeature(&server, "arangoimp"));
   server.addFeature(new VersionFeature(&server));
 

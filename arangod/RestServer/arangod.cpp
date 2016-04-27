@@ -56,6 +56,7 @@
 #include "RestServer/RestServerFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -133,10 +134,11 @@ int main(int argc, char* argv[]) {
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ScriptFeature(&server, &ret));
   server.addFeature(new ServerFeature(&server, &ret));
-  server.addFeature(new ShutdownFeature(&server, "Server"));
+  server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
   server.addFeature(new SslFeature(&server));
   server.addFeature(new StatisticsFeature(&server));
   server.addFeature(new TempFeature(&server, name));
+  server.addFeature(new UnitTestsFeature(&server, &ret));
   server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new V8DealerFeature(&server));
   server.addFeature(new V8PlatformFeature(&server));

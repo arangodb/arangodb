@@ -177,15 +177,8 @@ void ServerFeature::start() {
    
   switch (_operationMode) {
     case OperationMode::MODE_UNITTESTS:
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "server about to run unit-tests";
-      *_result = runUnitTests();
-      break;
-
     case OperationMode::MODE_SCRIPT:
-      break;
-
     case OperationMode::MODE_CONSOLE:
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: CONSOLE";
       break;
 
     case OperationMode::MODE_SERVER:
@@ -227,61 +220,4 @@ std::string ServerFeature::operationModeString(OperationMode mode) {
     default: 
       return "unknown";
   }
-}
-
-int ServerFeature::runUnitTests() {
-  DatabaseFeature* database = 
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
-  V8Context* context =
-      V8DealerFeature::DEALER->enterContext(database->vocbase(), true);
-
-  auto isolate = context->_isolate;
-
-  bool ok = false;
-  {
-    v8::HandleScope scope(isolate);
-    v8::TryCatch tryCatch;
-
-    auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    localContext->Enter();
-    {
-      v8::Context::Scope contextScope(localContext);
-      // set-up unit tests array
-      v8::Handle<v8::Array> sysTestFiles = v8::Array::New(isolate);
-
-      for (size_t i = 0; i < _unitTests.size(); ++i) {
-        sysTestFiles->Set((uint32_t)i, TRI_V8_STD_STRING(_unitTests[i]));
-      }
-
-      localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS"),
-                                  sysTestFiles);
-      localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT"),
-                                  v8::True(isolate));
-
-      v8::Local<v8::String> name(
-          TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
-
-      // run tests
-      auto input = TRI_V8_ASCII_STRING(
-          "require(\"@arangodb/testrunner\").runCommandLineTests();");
-      TRI_ExecuteJavaScriptString(isolate, localContext, input, name, true);
-
-      if (tryCatch.HasCaught()) {
-        if (tryCatch.CanContinue()) {
-          std::cerr << TRI_StringifyV8Exception(isolate, &tryCatch);
-        } else {
-          // will stop, so need for v8g->_canceled = true;
-          TRI_ASSERT(!ok);
-        }
-      } else {
-        ok = TRI_ObjectToBoolean(localContext->Global()->Get(
-            TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT")));
-      }
-    }
-    localContext->Exit();
-  }
-
-  V8DealerFeature::DEALER->exitContext(context);
-
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
