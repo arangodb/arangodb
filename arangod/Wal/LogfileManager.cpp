@@ -244,7 +244,6 @@ void LogfileManager::start() {
   _server = DatabaseServerFeature::SERVER;
 
   DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
-
   _databasePath = database->directory();
 
   // needs server initialized

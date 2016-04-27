@@ -238,17 +238,11 @@ void DatabaseFeature::openDatabases() {
   RestServerFeature* rest = 
       ApplicationServer::getFeature<RestServerFeature>("RestServer");
 
-  if (rest != nullptr) {
-    defaults.requireAuthentication = rest->authentication();
-    defaults.requireAuthenticationUnixSockets =
-        rest->authenticationUnixSockets();
-    defaults.authenticateSystemOnly = rest->authenticationSystemOnly();
-  } else {
-    defaults.requireAuthentication = true;
-    defaults.requireAuthenticationUnixSockets = true;
-    defaults.authenticateSystemOnly = false;
-  }
-
+  defaults.requireAuthentication = rest->authentication();
+  defaults.requireAuthenticationUnixSockets =
+      rest->authenticationUnixSockets();
+  defaults.authenticateSystemOnly = rest->authenticationSystemOnly();
+  
   bool const iterateMarkersOnOpen =
       !wal::LogfileManager::instance()->hasFoundLastTick();
 

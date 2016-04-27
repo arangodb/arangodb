@@ -77,7 +77,6 @@ void CheckVersionFeature::validateOptions(
   database->enableCheckVersion();
 
   V8DealerFeature* v8dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-
   v8dealer->setNumberContexts(1);
 }
 

@@ -182,9 +182,7 @@ void V8DealerFeature::start() {
     DispatcherFeature* dispatcher = 
         ApplicationServer::getFeature<DispatcherFeature>("Dispatcher");
 
-    if (dispatcher != nullptr) {
-      _nrContexts = dispatcher->concurrency();
-    }
+    _nrContexts = dispatcher->concurrency();
   }
 
   // set a minimum of V8 contexts

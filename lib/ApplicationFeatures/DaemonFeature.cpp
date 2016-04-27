@@ -72,10 +72,7 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
 
     LoggerFeature* logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
-
-    if (logger != nullptr) {
-      logger->setBackgrounded(true);
-    }
+    logger->setBackgrounded(true);
 
     // make the pid filename absolute
     int err = 0;

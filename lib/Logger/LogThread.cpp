@@ -30,7 +30,10 @@ using namespace arangodb;
 
 boost::lockfree::queue<LogMessage*>* LogThread::MESSAGES = nullptr;
 
-LogThread::LogThread(std::string const& name) : Thread(name), _messages(0) {
+// the "true" parameter in the parent constructor call means that we 
+// are allowed to create this thread even during the prepare phase, 
+// when thread creation is normally disallowed
+LogThread::LogThread(std::string const& name) : Thread(name, true), _messages(0) {
   MESSAGES = &_messages;
 }
 

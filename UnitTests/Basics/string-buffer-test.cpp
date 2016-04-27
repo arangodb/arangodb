@@ -86,7 +86,7 @@ BOOST_FIXTURE_TEST_SUITE(CStringBufferTest, CStringBufferSetup)
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_str_append) {
-  int l1, l2;
+  size_t l1, l2;
 
   TRI_string_buffer_t sb;
   TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
@@ -646,8 +646,6 @@ BOOST_AUTO_TEST_CASE (tst_timing) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // try to turn off compiler warning for deliberate division by zero
-#pragma GCC diagnostic ignored "-Wdiv-by-zero"
-
 BOOST_AUTO_TEST_CASE (tst_doubles) {
   TRI_string_buffer_t sb;
   double value;

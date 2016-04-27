@@ -156,7 +156,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
   if (_operationMode == OperationMode::MODE_SERVER ||
       _operationMode == OperationMode::MODE_CONSOLE) {
-    ApplicationServer::lookupFeature("Shutdown")->disable();
+    ApplicationServer::getFeature<ApplicationFeature>("Shutdown")->disable();
   }
 }
 
@@ -165,9 +165,7 @@ void ServerFeature::start() {
     auto scheduler = 
         ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 
-    if (scheduler != nullptr) {
-      scheduler->buildControlCHandler();
-    }
+    scheduler->buildControlCHandler();
   }
 
   waitForHeartbeat();
