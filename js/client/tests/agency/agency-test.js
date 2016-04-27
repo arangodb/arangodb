@@ -156,7 +156,15 @@ function agencyTestSuite () {
       // fail precond isArray
       res = writeAgency([[{"a":14},{"a":{"isArray":true}}]]); 
       assertEqual(res.statusCode, 412);
-      assertEqual(res.bodyParsed, {"results":[0]}); 
+      assertEqual(res.bodyParsed, {"results":[0]});
+      // check object precondition
+      res = writeAgency([[{"/a/b/c":{"op":"set","new":12}}]]);
+      res = writeAgency([[{"/a/b/c":{"op":"set","new":13}},{"a":{"b":{"c":12}}}]]);
+      assertEqual(res.statusCode, 200);
+      res = writeAgency([[{"/a/b/c":{"op":"set","new":14}},{"/a":{"old":{"b":{"c":12}}}}]]);
+      assertEqual(res.statusCode, 412);
+      res = writeAgency([[{"/a/b/c":{"op":"set","new":14}},{"/a":{"old":{"b":{"c":13}}}}]]);
+      assertEqual(res.statusCode, 200);
     },
 
 

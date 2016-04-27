@@ -133,10 +133,14 @@ Node& Node::operator= (Node const& rhs) {
   _children = rhs._children;
   return *this;
 }
-
+#include <iostream>
 // Comparison with slice
 bool Node::operator== (VPackSlice const& rhs) const {
-  return rhs.equals(slice());
+  if (rhs.isObject()) {
+    return rhs.toJson() == toJson();
+  } else {
+    return rhs.equals(slice());
+  }
 }
 
 // Remove this node from store
@@ -574,3 +578,18 @@ std::ostream& Node::print (std::ostream& o) const {
   return o;
 }
 
+Node::Children& Node::children () {
+  return _children;
+}
+
+Node::Children const& Node::children () const {
+  return _children;
+}
+
+std::string Node::toJson() const {
+  Builder builder;
+  builder.openArray();
+  toBuilder(builder);
+  builder.close();
+  return builder.slice()[0].toJson();
+}
