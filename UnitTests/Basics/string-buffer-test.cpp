@@ -26,6 +26,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
 #include <boost/test/unit_test.hpp>
 
 #include "Basics/StringBuffer.h"

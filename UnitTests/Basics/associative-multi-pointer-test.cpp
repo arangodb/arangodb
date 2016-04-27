@@ -25,6 +25,8 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
 #include <boost/test/unit_test.hpp>
 
 #include "Basics/AssocMulti.h"
@@ -32,8 +34,6 @@
 #include "Basics/fasthash.h"
 #include "Basics/tri-strings.h"
 #include "Basics/conversions.h"
-
-#include <vector>
 
 using namespace std;
 

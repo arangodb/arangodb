@@ -25,11 +25,12 @@
 /// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
 #include <boost/test/unit_test.hpp>
+#include <iomanip>
 
 #include "Basics/StringUtils.h"
-
-#include <iomanip>
 
 using namespace arangodb;
 using namespace arangodb::basics;

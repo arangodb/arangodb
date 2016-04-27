@@ -25,13 +25,14 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
 #include <boost/test/unit_test.hpp>
-
-#include "Basics/VelocyPackHelper.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/VelocyPackHelper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros

@@ -25,6 +25,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
 #include <boost/test/unit_test.hpp>
 
 #include "Basics/Traverser.h"

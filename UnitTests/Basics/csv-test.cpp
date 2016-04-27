@@ -25,8 +25,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <boost/test/unit_test.hpp>
+#include "Basics/Common.h"
 
+#include <boost/test/unit_test.hpp>
 #include <sstream>
 
 #include "Basics/csv.h"

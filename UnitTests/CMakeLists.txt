@@ -41,6 +41,7 @@ target_include_directories(
 
 target_link_libraries(${TEST_BASICS_SUITE}
   ${LIB_ARANGO}
+  ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
 )
 
@@ -60,6 +61,7 @@ add_executable(${TEST_GEO_SUITE}
 
 target_link_libraries(${TEST_GEO_SUITE}
   ${LIB_ARANGO}
+  ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
 )
 
