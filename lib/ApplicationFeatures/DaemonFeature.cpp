@@ -37,10 +37,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Daemon"),
-      _daemon(false),
-      _pidFile(""),
-      _workingDirectory(".") {
+    : ApplicationFeature(server, "Daemon") {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -104,7 +101,6 @@ void DaemonFeature::daemonize() {
 
   LOG_TOPIC(INFO, Logger::STARTUP) << "starting up in daemon mode";
 
-  _pidFile = "MYPID";
   checkPidFile();
 
   int pid = forkProcess();
