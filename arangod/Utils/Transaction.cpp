@@ -1058,6 +1058,8 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
 OperationResult Transaction::documentLocal(std::string const& collectionName,
                                            VPackSlice const value,
                                            OperationOptions& options) {
+  TIMER_START(TRANSACTION_DOCUMENT_LOCAL);
+
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
@@ -1066,6 +1068,8 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   VPackBuilder resultBuilder;
 
   auto workOnOneDocument = [&](VPackSlice const value, bool isMultiple) -> int {
+    TIMER_START(TRANSACTION_DOCUMENT_EXTRACT);
+
     std::string key(Transaction::extractKey(value));
     if (key.empty()) {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
@@ -1075,9 +1079,13 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     if (!options.ignoreRevs) {
       expectedRevision = TRI_ExtractRevisionIdAsSlice(value);
     }
+    
+    TIMER_STOP(TRANSACTION_DOCUMENT_EXTRACT);
 
     TRI_doc_mptr_t mptr;
+    TIMER_START(TRANSACTION_DOCUMENT_DOCUMENT_DOCUMENT);
     int res = document->read(this, key, &mptr, !isLocked(document, TRI_TRANSACTION_READ));
+    TIMER_STOP(TRANSACTION_DOCUMENT_DOCUMENT_DOCUMENT);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -1101,11 +1109,13 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
       // This is the future, for now, we have to do this:
       resultBuilder.add(VPackSlice(mptr.vpack()));
     } else if (isMultiple) {
-      resultBuilder.add(VPackValue(VPackValueType::Null));
+      resultBuilder.add(VPackSlice::nullSlice());
     }
 
     return TRI_ERROR_NO_ERROR;
   };
+
+  TIMER_START(TRANSACTION_DOCUMENT_WORK_FOR_ONE);
 
   int res = TRI_ERROR_NO_ERROR;
   std::unordered_map<int, size_t> countErrorCodes;
@@ -1121,6 +1131,10 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     }
     res = TRI_ERROR_NO_ERROR;
   }
+  
+  TIMER_STOP(TRANSACTION_DOCUMENT_WORK_FOR_ONE);
+  
+  TIMER_STOP(TRANSACTION_DOCUMENT_LOCAL);
 
   return OperationResult(resultBuilder.steal(), 
                          transactionContext()->orderCustomTypeHandler(), "",

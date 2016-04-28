@@ -405,6 +405,8 @@ static void DocumentVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
+  
+  TIMER_START(JS_DOCUMENT_ALL);
 
   // first and only argument should be a document handle or key or an object
   if (args.Length() != 1) {
@@ -426,22 +428,9 @@ static void DocumentVocbaseCol(
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
-
-  SingleCollectionTransaction trx(transactionContext, collectionName, 
-                                  TRI_TRANSACTION_READ);
-  if (!args[0]->IsArray()) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
-  }
-
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
+  
   VPackBuilder searchBuilder;
-
+  
   auto workOnOneDocument = [&](v8::Local<v8::Value> const searchValue, bool isBabies) {
     std::string collName;
     if (!ExtractDocumentHandle(isolate, searchValue, collName, searchBuilder,
@@ -469,8 +458,26 @@ static void DocumentVocbaseCol(
 
   VPackSlice search = searchBuilder.slice();
 
-  // No options here
+
+  TIMER_START(JS_DOCUMENT_CREATE_TRX);
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+
+  SingleCollectionTransaction trx(transactionContext, collectionName, 
+                                  TRI_TRANSACTION_READ);
+  if (!args[0]->IsArray()) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
+  
+  TIMER_STOP(JS_DOCUMENT_CREATE_TRX);
+
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+  
+  TIMER_START(JS_DOCUMENT_DOCUMENT);
   OperationResult opResult = trx.document(collectionName, search, options);
+  TIMER_STOP(JS_DOCUMENT_DOCUMENT);
 
   res = trx.finish(opResult.code);
 
@@ -481,9 +488,15 @@ static void DocumentVocbaseCol(
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
+  
+  TIMER_START(JS_DOCUMENT_VPACK_TO_V8);
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(),
       transactionContext->getVPackOptions());
+  
+  TIMER_STOP(JS_DOCUMENT_VPACK_TO_V8);
+
+  TIMER_STOP(JS_DOCUMENT_ALL);
 
   TRI_V8_RETURN(result);
 }
