@@ -997,7 +997,6 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
                                            std::string& errorMsg,
                                            double timeout) {
   
-  LOG(INFO) << " +++ " ;
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1023,7 +1022,6 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
                          errorMsg);
     }
   }
-  LOG(INFO) << " +++ " ;
 
   // Now update our own cache of planned databases:
   loadPlannedDatabases();
@@ -1031,7 +1029,6 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   // Now wait for it to appear and be complete:
   res.clear();
   res = ac.getValues2("Current/Version", false);
-  LOG(INFO) << " +++ " ;
   if (!res.successful()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
@@ -1044,7 +1041,6 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   while (TRI_microtime() <= endTime) {
     res.clear();
 
-    LOG(INFO) << where;
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where + "/", false)) {
       if (res._values.size() == DBServers.size()) {

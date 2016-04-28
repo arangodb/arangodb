@@ -174,7 +174,6 @@ void HeartbeatThread::runDBServer() {
     
       AgencyCommResult result =
         _agency.getValues("Sync/Commands/" + _myId, false);
-      LOG(INFO) << result._body;
       
       if (result.successful()) {
         handleStateChange(result, lastCommandIndex);

@@ -1262,8 +1262,6 @@ function handleChanges (plan, current) {
   handleDatabaseChanges(plan, current);
   var success;
   if (role === "PRIMARY" || role === "COORDINATOR") {
-    require("internal").print(myId);
-    require("internal").print(current);
     // Note: This is only ever called for DBservers (primary and secondary),
     // we keep the coordinator case here just in case...
     success = handleCollectionChanges(plan, changed);

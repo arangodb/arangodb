@@ -69,9 +69,7 @@ function get_api_database (req, res) {
       if (cluster.isCoordinator()) {
         // fetch database information from Agency
         var values = ArangoAgency.get("Plan/Databases/" + encodeURIComponent(req.database), false);
-        var dbEntry = values["Plan/Databases/" + encodeURIComponent(req.database)];
-        require("internal").print(values);
-        require("internal").print(dbEntry);        
+        var dbEntry = values.arango.Plan.Databases[encodeURIComponent(req.database)];
         result = {
           name: dbEntry.name,
           id: dbEntry.id,
