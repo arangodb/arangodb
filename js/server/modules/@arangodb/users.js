@@ -359,10 +359,8 @@ exports.reload = function () {
 
     while (! done) {
       try {
-        UserVersion = ArangoAgency.get("Sync/UserVersion")["Sync/UserVersion"];
+        UserVersion = ArangoAgency.get("Sync/UserVersion");
         UserVersion = UserVersion.arango.Sync.UserVersion;
-        require("internal").print(UserVersion);
-        // This is now a string!
       }
       catch (err) {
         break;

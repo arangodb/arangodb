@@ -70,6 +70,8 @@ function get_api_database (req, res) {
         // fetch database information from Agency
         var values = ArangoAgency.get("Plan/Databases/" + encodeURIComponent(req.database), false);
         var dbEntry = values["Plan/Databases/" + encodeURIComponent(req.database)];
+        require("internal").print(values);
+        require("internal").print(dbEntry);        
         result = {
           name: dbEntry.name,
           id: dbEntry.id,

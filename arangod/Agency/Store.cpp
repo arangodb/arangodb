@@ -388,7 +388,7 @@ void Store::dumpToBuilder (Builder& builder) const {
       auto in_time_t = std::chrono::system_clock::to_time_t(i.first);
       std::string ts = ctime(&in_time_t);
       ts.resize(ts.size()-1);
-      builder.add(ts, VPackValue((size_t)i.second.get()));
+      builder.add(ts, VPackValue(i.second->uri()));
     }
   }
   {

@@ -718,7 +718,6 @@ void ClusterInfo::loadPlannedCollections() {
         (*it2).second.emplace(std::make_pair(collection, collectionData));
         (*it2).second.emplace(
           std::make_pair(collectionData->name(), collectionData));
-        std::cout << database << "/" << collection << std::endl; 
         
       }
     }
@@ -998,6 +997,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
                                            std::string& errorMsg,
                                            double timeout) {
   
+  LOG(INFO) << " +++ " ;
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1023,6 +1023,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
                          errorMsg);
     }
   }
+  LOG(INFO) << " +++ " ;
 
   // Now update our own cache of planned databases:
   loadPlannedDatabases();
@@ -1030,6 +1031,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   // Now wait for it to appear and be complete:
   res.clear();
   res = ac.getValues2("Current/Version", false);
+  LOG(INFO) << " +++ " ;
   if (!res.successful()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
@@ -1039,11 +1041,10 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   int count = 0;  // this counts, when we have to reload the DBServers
 
   std::string where = "Current/Databases/" + name;
-  std::cout << "#####################" << where << std::endl;
   while (TRI_microtime() <= endTime) {
     res.clear();
-      std::cout << __FILE__ << __func__ << __LINE__ << std::endl;
 
+    LOG(INFO) << where;
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where + "/", false)) {
       if (res._values.size() == DBServers.size()) {
@@ -1149,7 +1150,6 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
 
   // Now wait for it to appear and be complete:
   res.clear();
-  std::cout << __FILE__ << __func__ << __LINE__ << std::endl;
 
   res = ac.getValues("Current/Version", false);
   if (!res.successful()) {
@@ -1160,7 +1160,6 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   std::string where = "Current/Databases/" + name;
   while (TRI_microtime() <= endTime) {
     res.clear();
-  std::cout << __FILE__ << __func__ << __LINE__ << std::endl;
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where + "/", false)) {
       if (res._values.size() == 0) {
@@ -1445,8 +1444,6 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
       .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
       .get("Plan").get("Collections").get(collectionID);
 
-    std::cout << collection.toJson() << std::endl;
-
     VPackObjectIterator cols (collection);
     
     //if (it == res._values.end()) {
@@ -1513,8 +1510,6 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
 
-  std::cout << __FILE__ << __func__ << __LINE__ << std::endl;
-    
     res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID,
                        false);
 
@@ -1872,7 +1867,6 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
   std::string const key =
       "Plan/Collections/" + databaseName + "/" + collectionID;
-    std::cout << __FILE__ << __func__ << __LINE__ << std::endl;
 
   AgencyCommResult previous = ac.getValues(key, false);
   previous.parse("", false);
@@ -1987,7 +1981,6 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   loadPlannedCollections();
 
   TRI_ASSERT(numberOfShards > 0);
-  std::cout << __FILE__ << __func__ << __LINE__ << std::endl;
 
   // now wait for the index to disappear
   AgencyCommResult res = ac.getValues("Current/Version", false);
@@ -2000,7 +1993,6 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
     res.clear();
-      std::cout << __FILE__ << __func__ << __LINE__ << std::endl;
 
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where + "/", false)) {
@@ -2730,7 +2722,6 @@ void FollowerInfo::add(ServerID const& sid) {
   double startTime = TRI_microtime();
   bool success = false;
   do {
-      std::cout << __FILE__ << __func__ << __LINE__ << std::endl;
 
     AgencyCommResult res = ac.getValues(path, false);
     if (res.successful()) {
@@ -2797,7 +2788,6 @@ void FollowerInfo::remove(ServerID const& sid) {
   double startTime = TRI_microtime();
   bool success = false;
   do {
-      std::cout << __FILE__ << __func__ << __LINE__ << std::endl;
 
     AgencyCommResult res = ac.getValues(path, false);
     if (res.successful()) {

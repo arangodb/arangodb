@@ -510,7 +510,7 @@ function cleanupCurrentDatabases () {
   db._useDatabase("_system");
 
   var all = global.ArangoAgency.get("Current/Databases", true);
-  var currentDatabases = getByPrefix3d(all, "Current/Databases/");
+  var currentDatabases = all.arango.Current.Databases;
   var localDatabases = getLocalDatabases();
   var name;
 
@@ -538,7 +538,7 @@ function cleanupCurrentDatabases () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function handleDatabaseChanges (plan) {
-  var plannedDatabases = plan.arango.Plan.Databases;
+  var plannedDatabases = plan.Databases;
 
   createLocalDatabases(plannedDatabases);
   dropLocalDatabases(plannedDatabases);
@@ -918,7 +918,7 @@ function cleanupCurrentCollections (plannedCollections) {
   db._useDatabase("_system");
 
   var all = global.ArangoAgency.get("Current/Collections", true);
-  var currentCollections = getByPrefix4d(all, "Current/Collections/");
+  var currentCollections = all.arango.Current.Collections;
   var shardMap = getShardMap(plannedCollections);
   var database;
 
@@ -973,7 +973,7 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
 
   // Get current information about collections from agency:
   var all = global.ArangoAgency.get("Current/Collections", true);
-  var currentCollections = getByPrefix4d(all, "Current/Collections/");
+  var currentCollections = all.arango.Current.Collections;
 
   var rep = require("@arangodb/replication");
 
@@ -1024,8 +1024,7 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
                       require("internal").wait(0.5);
                       all = global.ArangoAgency.get("Current/Collections",
                                                     true);
-                      currentCollections = getByPrefix4d(all,
-                                                   "Current/Collections/");
+                      currentCollections = all.Current.Collections;
                       inCurrent = lookup4d(currentCollections, database, 
                                            collection, shard);
                     }
@@ -1108,12 +1107,12 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
 
 function handleCollectionChanges (plan, takeOverResponsibility) {
 //  var plannedCollections = getByPrefix3d(plan, "Plan/Collections/");
-  var plannedCollections = plan.arango.Plan.Collections;
+  var plannedCollections = plan.Collections;
 
   var ok = true;
 
   try {
-    createLocalCollections(plannedCollections, plan.arango.Plan.Version, takeOverResponsibility);
+    createLocalCollections(plannedCollections, plan.Version, takeOverResponsibility);
     dropLocalCollections(plannedCollections);
     cleanupCurrentCollections(plannedCollections);
     synchronizeLocalFollowerCollections(plannedCollections);
@@ -1221,12 +1220,12 @@ function handleChanges (plan, current) {
     // Need to check role change for automatic failover:
     var myId = ArangoServerState.id();
     if (role === "PRIMARY") {
-      if (! plan.arango.Plan.DBServers[myId]) {
+      if (! plan.DBServers[myId]) {
         // Ooops! We do not seem to be a primary any more!
         changed = ArangoServerState.redetermineRole();
       }
     } else { // role === "SECONDARY"
-      if (plan.arango.Plan.DBServers[myId]) {
+      if (plan.DBServers[myId]) {
         changed = ArangoServerState.redetermineRole();
         if (!changed) {
           // mop: oops...changing role has failed. retry next time.
@@ -1433,8 +1432,8 @@ var handlePlanChange = function () {
   }
 
   try {
-    var plan    = global.ArangoAgency.get("Plan", true);
-    var current = global.ArangoAgency.get("Current", true);
+    var plan    = global.ArangoAgency.get("Plan", true).arango.Plan;
+    var current = global.ArangoAgency.get("Current", true).arango.Current;
     handleChanges(plan, current);
     console.info("plan change handling successful");
   } catch (err) {

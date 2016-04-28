@@ -174,6 +174,7 @@ void HeartbeatThread::runDBServer() {
     
       AgencyCommResult result =
         _agency.getValues("Sync/Commands/" + _myId, false);
+      LOG(INFO) << result._body;
       
       if (result.successful()) {
         handleStateChange(result, lastCommandIndex);
@@ -191,7 +192,6 @@ void HeartbeatThread::runDBServer() {
       bool wasNotified;
       {
         CONDITION_LOCKER(locker, _condition);
-        LOG(INFO) << _wasNotified;
         wasNotified = _wasNotified;
         if (!wasNotified) {
           locker.wait(static_cast<uint64_t>(remain * 1000000.0));
@@ -668,8 +668,8 @@ bool HeartbeatThread::handleStateChange(AgencyCommResult& result,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::sendState() {
-  const AgencyCommResult result = _agency.sendServerState(
-      8.0 * static_cast<double>(_interval) / 1000.0 / 1000.0);
+  const AgencyCommResult result = _agency.sendServerState(0.0);
+//      8.0 * static_cast<double>(_interval) / 1000.0 / 1000.0);
 
   if (result.successful()) {
     _numFails = 0;
