@@ -73,7 +73,11 @@ BOOST_AUTO_TEST_CASE (tst_nan) {
   BOOST_CHECK_EQUAL(true, std::isnan(value));
   length = fpconv_dtoa(value, out);
 
+#ifdef _WIN32
+  BOOST_CHECK_EQUAL(std::string("-NaN"), std::string(out, length));
+#else
   BOOST_CHECK_EQUAL(std::string("NaN"), std::string(out, length));
+#endif
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
