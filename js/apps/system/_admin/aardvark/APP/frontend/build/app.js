@@ -10901,7 +10901,9 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
                 });
               }
               else {
-                this.deleteAllAardvarkJobs(); 
+                if (AaJobs.length > 0) {
+                  this.deleteAllAardvarkJobs(); 
+                }
               }
               callback(false, array);
             }
@@ -18581,11 +18583,12 @@ window.arangoDocument = Backbone.Collection.extend({
         query: query,
         bindVars: bindVars
       };
+      /*
       if (this.getTotal() < 10000 || this.filters.length > 0) {
         queryObj.options = {
           fullCount: true,
         };
-      }
+      }*/
 
       var checkCursorStatus = function(jobid) {
         $.ajax({
@@ -21746,7 +21749,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     el2: '#collectionsThumbnailsIn',
 
     searchTimeout: null,
-    refreshRate: 2000,
+    refreshRate: 10000,
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
@@ -21764,7 +21767,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         var callback = function(error, lockedCollections) {
           var self = this;
           if (error) {
-            //arangoHelper.arangoError("Collections", "Could not check locked collections");
             console.log("Could not check locked collections");
           }
           else {
@@ -21791,6 +21793,8 @@ window.ArangoUsers = Backbone.Collection.extend({
               if (model.get("locked") || model.get("status") === 'loading') {
                 $('#collection_' + model.get("name")).addClass('locked');
                 if (model.get("locked")) {
+                  $('#collection_' + model.get("name")).find('.corneredBadge').removeClass('loaded unloaded');
+                  $('#collection_' + model.get("name")).find('.corneredBadge').addClass('inProgress');
                   $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("desc"));
                 }
                 else {
@@ -22235,7 +22239,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           advancedTableContent.push(
             window.modalView.createSelectEntry(
               "new-collection-sync",
-              "Sync",
+              "Wait for sync",
               "",
               "Synchronize to disk before returning from a create or update of a document.",
               [{value: false, label: "No"}, {value: true, label: "Yes"}]
@@ -28021,7 +28025,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       queries: [
         {
           name: 'Editor',
-          route: 'query2',
+          route: 'query',
           active: true
         },
         {
@@ -30183,7 +30187,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       $('#queryImportDialog').modal('show'); 
     },
 
-    closeExportDialo: function() {
+    closeExportDialog: function() {
       $('#queryImportDialog').modal('hide'); 
     },
 
@@ -30764,10 +30768,12 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     checkForNewBindParams: function() {
       var self = this,
-      words = (this.aqlEditor.getValue()).split(" "),
+      text = this.aqlEditor.getValue() //Remove comments
+      .replace(/\s*\/\/.*\n/g, '\n')
+      .replace(/\s*\/\*.*?\*\//g, ''),
+      words = text.split(" "),
       words1 = [],
       pos = 0;
-
       _.each(words, function(word) {
         word = word.split("\n");
         _.each(word, function(x) {
@@ -31369,6 +31375,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           warnings += "\r\n" + "Result:" + "\r\n\r\n";
         }
         outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
+        outputEditor.getSession().setScrollTop(0);
       };
 
       var fetchQueryResult = function(data) {
@@ -31701,11 +31708,10 @@ window.ArangoUsers = Backbone.Collection.extend({
             arangoHelper.arangoError('Could not delete collection.');
           },
           success: function() {
-            window.modalView.hide();
+            window.App.navigate("#collections", {trigger: true});
           }
         }
       );
-      this.collectionsView.render();
     },
 
     saveModifiedCollection: function() {
@@ -34637,8 +34643,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "cInfo/:colname": "cInfo",
       "collection/:colid/:docid": "document",
       "shell": "shell",
-      "queries": "query2",
-      "query2": "query",
+      "queries": "query",
       "workMonitor": "workMonitor",
       "databases": "databases",
       "settings": "databases",
@@ -35172,25 +35177,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.shellView.render();
     },
 
-    /*query: function (initialized) {
+    query: function (initialized) {
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.query.bind(this));
-        return;
-      }
-      if (!this.queryView) {
-        this.queryView = new window.queryView({
-          collection: this.queryCollection
-        });
-      }
-      this.queryView.render();
-    },
-    */
-
-    query2: function (initialized) {
-      this.checkUser();
-      if (!initialized) {
-        this.waitForInit(this.query2.bind(this));
         return;
       }
       if (!this.queryView2) {
