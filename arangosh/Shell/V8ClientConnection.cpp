@@ -389,7 +389,7 @@ static void ClientConnection_reconnect(
     ConsoleFeature* console = 
         ApplicationServer::getFeature<ConsoleFeature>("Console");
 
-    if (console == nullptr || !console->isEnabled()) {
+    if (!console->isEnabled()) {
       std::cout << "Please specify a password: " << std::flush;
       getline(std::cin, password);
     } else {

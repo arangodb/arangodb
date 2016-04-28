@@ -178,14 +178,10 @@ void AffinityFeature::start() {
     SchedulerFeature* scheduler = 
         ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 
-    if (dispatcher != nullptr || scheduler != nullptr) {
-      size_t nd = (dispatcher == nullptr ? 0 : dispatcher->concurrency());
-      size_t ns = (scheduler == nullptr ? 0 : scheduler->concurrency());
+    size_t nd = (dispatcher == nullptr ? 0 : dispatcher->concurrency());
+    size_t ns = (scheduler == nullptr ? 0 : scheduler->concurrency());
 
-      LOG(INFO) << "the server has " << _n << " (hyper) cores, using " << ns
+    LOG(INFO) << "the server has " << _n << " (hyper) cores, using " << ns
                 << " scheduler threads, " << nd << " dispatcher threads";
-    } else {
-      LOG(INFO) << "the server has " << _n << " (hyper) cores";
-    }
   }
 }

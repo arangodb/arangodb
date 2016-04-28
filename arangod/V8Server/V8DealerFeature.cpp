@@ -102,6 +102,8 @@ V8DealerFeature::V8DealerFeature(
   startsAfter("Database");
   startsAfter("Dispatcher");
   startsAfter("QueryRegistry");
+  startsAfter("Random");
+  startsAfter("Recovery");
   startsAfter("Scheduler");
   startsAfter("V8Platform");
   startsAfter("WorkMonitor");
@@ -182,9 +184,7 @@ void V8DealerFeature::start() {
     DispatcherFeature* dispatcher = 
         ApplicationServer::getFeature<DispatcherFeature>("Dispatcher");
 
-    if (dispatcher != nullptr) {
-      _nrContexts = dispatcher->concurrency();
-    }
+    _nrContexts = dispatcher->concurrency();
   }
 
   // set a minimum of V8 contexts

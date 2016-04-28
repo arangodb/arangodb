@@ -22,8 +22,10 @@
 
 #include "ArangoGlobalContext.h"
 
+#include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
+#include "Logger/Logger.h"
 #include "Rest/InitializeRest.h"
 
 using namespace arangodb;
@@ -94,6 +96,15 @@ void ArangoGlobalContext::unmaskStandardSignals() {
 }
 
 void ArangoGlobalContext::runStartupChecks() {
+  // test if this binary uses and stdlib that supports std::regex properly
+  if (!TRI_SupportsRegexDebugging()) {
+    LOG(FATAL) << "the required std::regex functionality required to run "
+               << "ArangoDB is not provided by this build. please try " 
+               << "rebuilding ArangoDB in a build environment that properly "
+               << "supports std::regex"; 
+    FATAL_ERROR_EXIT();
+  }
+
 #ifdef __arm__
   // detect alignment settings for ARM
   {

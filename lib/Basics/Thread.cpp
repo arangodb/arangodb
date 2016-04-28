@@ -147,7 +147,7 @@ std::string Thread::stringify(ThreadState state) {
 /// @brief constructs a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Thread::Thread(std::string const& name)
+Thread::Thread(std::string const& name) 
     : _name(name),
       _thread(),
       _threadNumber(0),
@@ -156,6 +156,7 @@ Thread::Thread(std::string const& name)
       _state(ThreadState::CREATED),
       _affinity(-1),
       _workDescription(nullptr) {
+  
   TRI_InitThread(&_thread);
 }
 
@@ -187,7 +188,7 @@ Thread::~Thread() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flags the tread as stopping
+/// @brief flags the thread as stopping
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::beginShutdown() {

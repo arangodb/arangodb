@@ -111,7 +111,6 @@ class ApplicationServer {
   };
 
   static ApplicationServer* server;
-  static ApplicationFeature* lookupFeature(std::string const&);
   static bool isStopping() {
     return server != nullptr && server->_stopping.load();
   }
@@ -191,10 +190,13 @@ class ApplicationServer {
   ServerState state() const { return _state; }
 
  private:
-  // throws an exception if a requested feature was not found
+  // look up a feature and return a pointer to it. may be nullptr
+  static ApplicationFeature* lookupFeature(std::string const&);
+
+  // throws an exception that a requested feature was not found
   static void throwFeatureNotFoundException(std::string const& name);
 
-  // throws an exception if a requested feature is not enabled
+  // throws an exception that a requested feature is not enabled
   static void throwFeatureNotEnabledException(std::string const& name);
 
   static void disableFeatures(std::vector<std::string> const& names,

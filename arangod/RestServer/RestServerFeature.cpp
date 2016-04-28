@@ -94,6 +94,8 @@ RestServerFeature::RestServerFeature(
   startsAfter("Scheduler");
   startsAfter("Server");
   startsAfter("Agency");
+  startsAfter("LogfileManager");
+  startsAfter("Database");
   startsAfter("Upgrade");
   startsAfter("CheckVersion");
 }
@@ -269,7 +271,7 @@ void RestServerFeature::buildServers() {
         application_features::ApplicationServer::getFeature<SslFeature>("Ssl");
 
     // check the ssl context
-    if (ssl == nullptr || ssl->sslContext() == nullptr) {
+    if (ssl->sslContext() == nullptr) {
       LOG(FATAL) << "no ssl context is known, cannot create https server, "
                     "please use the '--ssl.keyfile' option";
       FATAL_ERROR_EXIT();

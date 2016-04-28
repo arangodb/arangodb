@@ -25,6 +25,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
+#define BOOST_TEST_INCLUDED
 #include <boost/test/unit_test.hpp>
 
 #include "Basics/StringBuffer.h"
@@ -80,7 +83,7 @@ struct CFilesSetup {
     FILE* fd = fopen(filename->c_str(), "wb");
 
     if (fd) {
-      ssize_t numWritten = fwrite(blob, strlen(blob), 1, fd);
+      size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
       (void) numWritten;
       fclose(fd);
     }

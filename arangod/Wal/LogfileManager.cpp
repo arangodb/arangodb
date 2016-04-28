@@ -90,7 +90,6 @@ LogfileManager::LogfileManager(ApplicationServer* server)
       _allowWrites(false),  // start in read-only mode
       _hasFoundLastTick(false),
       _inRecovery(true),
-      _startCalled(false),
       _logfilesLock(),
       _logfiles(),
       _slots(nullptr),
@@ -237,15 +236,34 @@ void LogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> op
   // we use microseconds
   _syncInterval = _syncInterval * 1000;
 }
+  
+void LogfileManager::prepare() {
+  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  _databasePath = database->directory();
+
+  std::string const shutdownFile = shutdownFilename();
+  bool const shutdownFileExists = basics::FileUtils::exists(shutdownFile);
+
+  if (shutdownFileExists) {
+    LOG(TRACE) << "shutdown file found";
+
+    int res = readShutdownInfo();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG(FATAL) << "could not open shutdown file '" << shutdownFile
+                 << "': " << TRI_errno_string(res);
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    LOG(TRACE) << "no shutdown file found";
+  }
+}
 
 void LogfileManager::start() {
   Instance = this;
 
   _server = DatabaseServerFeature::SERVER;
-
-  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
-
-  _databasePath = database->directory();
+  TRI_ASSERT(_server != nullptr);
 
   // needs server initialized
   _filesize = static_cast<uint32_t>(((_filesize + PageSize - 1) / PageSize) * PageSize);
@@ -288,7 +306,7 @@ void LogfileManager::start() {
     // append a trailing slash to directory name
     _directory.push_back(TRI_DIR_SEPARATOR_CHAR);
   }
-
+  
   // initialize some objects
   _slots = new Slots(this, _numberOfSlots, 0);
   _recoverState = new RecoverState(_server, _ignoreRecoveryErrors);
@@ -301,23 +319,6 @@ void LogfileManager::start() {
     LOG(FATAL) << "could not create WAL logfile inventory: "
                << TRI_errno_string(res);
     FATAL_ERROR_EXIT();
-  }
-
-  std::string const shutdownFile = shutdownFilename();
-  bool const shutdownFileExists = basics::FileUtils::exists(shutdownFile);
-
-  if (shutdownFileExists) {
-    LOG(TRACE) << "shutdown file found";
-
-    res = readShutdownInfo();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG(FATAL) << "could not open shutdown file '" << shutdownFile
-                 << "': " << TRI_errno_string(res);
-      FATAL_ERROR_EXIT();
-    }
-  } else {
-    LOG(TRACE) << "no shutdown file found";
   }
 
   res = inspectLogfiles();
@@ -334,23 +335,6 @@ void LogfileManager::start() {
 }
 
 bool LogfileManager::open() {
-  static bool opened = false;
-
-  if (opened) {
-    // we were already started
-    return true;
-  }
-
-  opened = true;
-  _startCalled = true;
-
-  int res = runRecovery();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "unable to finish WAL recovery: " << TRI_errno_string(res);
-    return false;
-  }
-
   // note all failed transactions that we found plus the list
   // of collections and databases that we can ignore
   {
@@ -395,19 +379,19 @@ bool LogfileManager::open() {
   }
 
   // now start allocator and synchronizer
-  res = startAllocatorThread();
+  int res = startAllocatorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not start WAL allocator thread: "
-             << TRI_errno_string(res);
+    LOG(FATAL) << "could not start WAL allocator thread: "
+               << TRI_errno_string(res);
     return false;
   }
 
   res = startSynchronizerThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not start WAL synchronizer thread: "
-             << TRI_errno_string(res);
+    LOG(FATAL) << "could not start WAL synchronizer thread: "
+               << TRI_errno_string(res);
     return false;
   }
 
@@ -418,7 +402,7 @@ bool LogfileManager::open() {
   res = _recoverState->abortOpenTransactions();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not abort open transactions: " << TRI_errno_string(res);
+    LOG(FATAL) << "could not abort open transactions: " << TRI_errno_string(res);
     return false;
   }
 
@@ -440,8 +424,8 @@ bool LogfileManager::open() {
   res = startCollectorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not start WAL collector thread: "
-             << TRI_errno_string(res);
+    LOG(FATAL) << "could not start WAL collector thread: "
+               << TRI_errno_string(res);
     return false;
   }
 
@@ -450,7 +434,7 @@ bool LogfileManager::open() {
   res = startRemoverThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not start WAL remover thread: " << TRI_errno_string(res);
+    LOG(FATAL) << "could not start WAL remover thread: " << TRI_errno_string(res);
     return false;
   }
 
@@ -461,7 +445,7 @@ bool LogfileManager::open() {
   res = TRI_InitDatabasesServer(_server);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not initialize databases: " << TRI_errno_string(res);
+    LOG(FATAL) << "could not initialize databases: " << TRI_errno_string(res);
     return false;
   }
 
@@ -469,14 +453,6 @@ bool LogfileManager::open() {
 }
 
 void LogfileManager::stop() {
-  if (!_startCalled) {
-    return;
-  }
-
-  if (_shutdown > 0) {
-    return;
-  }
-
   _shutdown = 1;
 
   LOG(TRACE) << "shutting down WAL";
@@ -1680,9 +1656,9 @@ int LogfileManager::waitForCollector(Logfile::IdType logfileId,
 }
 
 // run the recovery procedure
-/// this is called after the logfiles have been scanned completely and
-/// recovery state has been build. additionally, all databases have been
-/// opened already so we can use collections
+// this is called after the logfiles have been scanned completely and
+// recovery state has been build. additionally, all databases have been
+// opened already so we can use collections
 int LogfileManager::runRecovery() {
   TRI_ASSERT(!_allowWrites);
 
