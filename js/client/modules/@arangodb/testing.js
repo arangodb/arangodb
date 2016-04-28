@@ -477,7 +477,7 @@ function checkArangoAlive(arangod, options) {
       const storeArangodPath = "/var/tmp/arangod_" + arangod.pid;
 
       print("Core dump written; copying arangod to " +
-          arangod.rootDir + " for later analysis.");
+        arangod.rootDir + " for later analysis.");
 
       let corePath = (options.coreDirectory === "") ?
         "core" :
@@ -618,8 +618,7 @@ function runThere(options, instanceInfo, file) {
     }
 
     if (options.propagateInstanceInfo) {
-      testCode = 'global.instanceInfo = ' + JSON.stringify(instanceInfo) 
-                 + ';\n' + testCode;
+      testCode = 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode;
     }
 
     let httpOptions = makeAuthorizationHeaders(options);
@@ -1300,7 +1299,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
     console.log('bootstrap dbservers failed', response);
     wait(1);
   }
-  
+
   httpOptions.timeout = 3600;
   response = download(coordinatorUrl + '/_admin/cluster/upgradeClusterDatabase', '{"isRelaunch":false}', httpOptions);
   if (response.code !== 200) {
@@ -3922,26 +3921,30 @@ function unitTest(cases, options) {
   let caselist = [];
 
   for (let n = 0; n < cases.length; ++n) {
-    let which = cases[n];
+    let splitted = cases[n].split(/[,;|]/);
 
-    if (which === "all") {
-      caselist = caselist.concat(allTests);
-    } else if (testFuncs.hasOwnProperty(which)) {
-      caselist.push(which);
-    } else {
-      let line = "Unknown test '" + which + "'\nKnown tests are: ";
-      let sep = "";
+    for (let m = 0; m < splitted.length; ++m) {
+      let which = splitted[m];
 
-      Object.keys(testFuncs).map(function(key) {
-        line += sep + key;
-        sep = ", ";
-      });
+      if (which === "all") {
+        caselist = caselist.concat(allTests);
+      } else if (testFuncs.hasOwnProperty(which)) {
+        caselist.push(which);
+      } else {
+        let line = "Unknown test '" + which + "'\nKnown tests are: ";
+        let sep = "";
 
-      print(line);
+        Object.keys(testFuncs).map(function(key) {
+          line += sep + key;
+          sep = ", ";
+        });
 
-      return {
-        status: false
-      };
+        print(line);
+
+        return {
+          status: false
+        };
+      }
     }
   }
 
