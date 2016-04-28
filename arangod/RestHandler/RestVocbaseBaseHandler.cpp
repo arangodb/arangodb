@@ -343,9 +343,10 @@ void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
+void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
                                               bool generateBody,
                                               VPackOptions const* options) {
+  VPackSlice document = input.resolveExternal();
   std::string rev;
   if (document.isObject()) {
     rev = VelocyPackHelper::getStringValue(document, TRI_VOC_ATTRIBUTE_REV, "");
