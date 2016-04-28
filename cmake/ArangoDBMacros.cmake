@@ -308,7 +308,7 @@ if (MSVC)
   set(CPACK_NSIS_CONTACT             ${ARANGODB_CONTACT})
 endif ()
 
-configure_file("${CMAKE_SOURCE_DIR}/CMakeCPackOptions.cmake.in"
+configure_file("${CMAKE_SOURCE_DIR}/Installation/cmake/CMakeCPackOptions.cmake.in"
     "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake" @ONLY)
 set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake")
 
