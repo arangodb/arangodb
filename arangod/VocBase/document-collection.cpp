@@ -3273,7 +3273,9 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
 int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
                                       TRI_doc_mptr_t* mptr,
                                       OperationOptions& options,
+                                      TRI_voc_tick_t& resultMarkerTick,
                                       bool lock) {
+  resultMarkerTick = 0;
 
   if (_info.type() == TRI_COL_TYPE_EDGE) {
     // _from:
@@ -3328,7 +3330,6 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     TIMER_STOP(TRANSACTION_CREATE_VPACK_INSERT_MARKER);
   }
 
-  TRI_voc_tick_t markerTick = 0;
   // now insert into indexes
   {
     TRI_IF_FAILURE("InsertDocumentNoLock") {
@@ -3380,18 +3381,11 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
       operation.revert();
     } else {
       TRI_ASSERT(mptr->getDataPtr() != nullptr);  
-
-      if (options.waitForSync) {
-        markerTick = operation.tick;
-      }
+        
+      resultMarkerTick = operation.tick;
     }
   }
-
-  if (markerTick > 0 && trx->isSingleOperationTransaction()) {
-    // need to wait for tick, outside the lock
-    arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
-  }
-
+  
   return res;
 }
 

@@ -194,7 +194,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int read(arangodb::Transaction*, std::string const&,
            TRI_doc_mptr_t*, bool);
   int insert(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             TRI_doc_mptr_t*, arangodb::OperationOptions&, bool);
+             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool);
   int update(arangodb::Transaction*, arangodb::velocypack::Slice const,
              TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
              VPackSlice&, TRI_doc_mptr_t&);
