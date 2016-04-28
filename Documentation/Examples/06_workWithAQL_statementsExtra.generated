@@ -8,6 +8,7 @@ arangosh&gt; db._query(<span class="hljs-string">`
 ........&gt; ).getExtra();
 { 
   <span class="hljs-string">"stats"</span> : { 
+    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0025060176849365234</span>, 
     <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
@@ -25,6 +26,7 @@ arangosh&gt; db._query({
 ........&gt; }).getExtra();
 { 
   <span class="hljs-string">"stats"</span> : { 
+    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0024988651275634766</span>, 
     <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 

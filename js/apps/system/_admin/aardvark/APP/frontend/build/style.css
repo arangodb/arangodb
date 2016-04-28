@@ -79,7 +79,7 @@ textarea,
 
 .fa {
   display: inline-block;
-  font: normal normal normal 14px / 1 FontAwesome;
+  font: normal normal normal 14px/1 FontAwesome;
   font-size: inherit;
   text-rendering: auto;
   -webkit-font-smoothing: antialiased;
@@ -2650,7 +2650,7 @@ button.btn-server {
   width: 120px; }
 
 button.btn-small {
-  padding: 0px 8px; }
+  padding: 0 8px; }
 
 button.gv-zoom-btn {
   background-size: 14px 14px;
@@ -6709,7 +6709,8 @@ div.headerBar {
     height: 40px;
     width: 100%; }
 
-toolbar {
+.query-toolbar, .aql-editor,
+.vars-editor {
   background-color: #f0f0f0;
   border-bottom: 0;
   border-style: solid;
@@ -6718,7 +6719,8 @@ toolbar {
   height: 27px;
   margin-left: 0;
   margin-right: 0; }
-  toolbar span:hover {
+  .query-toolbar span:hover, .aql-editor span:hover,
+  .vars-editor span:hover {
     background-color: #e74c3c;
     color: #fff; }
 
@@ -7399,8 +7401,7 @@ toolbar {
   margin-top: 0;
   padding-top: 12px;
   text-align: center; }
-  .pagination-line li a:hover, .pagination-line li.active a,
-  .pagination-line li.active span {
+  .pagination-line li a:hover, .pagination-line li.active a, .pagination-line li.active span {
     background-color: #404a53;
     color: #fff; }
   .pagination-line li a {
@@ -9042,6 +9043,8 @@ table .sorting {
 
 #documentsDiv {
   padding-top: 0; }
+  #documentsDiv .pure-table .snippet-container {
+    margin-top: 10px; }
 
 .edit-index-table {
   margin-top: 5px;
@@ -9159,9 +9162,6 @@ table .sorting {
 
 .totalDocuments:hover {
   color: #000; }
-
-#documentsDiv .pure-table .snippet-container {
-  margin-top: 10px; }
 
 .ajax-file-upload-statusbar {
   -moz-border-radius: 2px;

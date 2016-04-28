@@ -6,64 +6,64 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 { 
   <span class="hljs-string">"indexes"</span> : [ 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/0"</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
       <span class="hljs-string">"fields"</span> : [ 
         <span class="hljs-string">"_key"</span> 
       ], 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/0"</span>, 
       <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
-      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
+      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
+      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/784734930"</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
       <span class="hljs-string">"fields"</span> : [ 
         <span class="hljs-string">"name"</span> 
       ], 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/9622"</span>, 
       <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
-      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
-      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
+      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
+      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/784997074"</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
       <span class="hljs-string">"fields"</span> : [ 
         <span class="hljs-string">"price"</span> 
       ], 
-      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
-      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span> 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/9625"</span>, 
+      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span> 
     } 
   ], 
   <span class="hljs-string">"identifiers"</span> : { 
     <span class="hljs-string">"products/0"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/0"</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
       <span class="hljs-string">"fields"</span> : [ 
         <span class="hljs-string">"_key"</span> 
       ], 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/0"</span>, 
       <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
-      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
+      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
+      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
     }, 
-    <span class="hljs-string">"products/784734930"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/784734930"</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
+    <span class="hljs-string">"products/9622"</span> : { 
       <span class="hljs-string">"fields"</span> : [ 
         <span class="hljs-string">"name"</span> 
       ], 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/9622"</span>, 
       <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
-      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
-      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
+      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
+      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span> 
     }, 
-    <span class="hljs-string">"products/784997074"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/784997074"</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+    <span class="hljs-string">"products/9625"</span> : { 
       <span class="hljs-string">"fields"</span> : [ 
         <span class="hljs-string">"price"</span> 
       ], 
-      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
-      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span> 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/9625"</span>, 
+      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span> 
     } 
   }, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 

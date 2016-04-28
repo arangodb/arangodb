@@ -1,3 +1,4 @@
+[ArangoError <span class="hljs-number">1207</span>: the collection: [<span class="hljs-string">"relation"</span>,<span class="hljs-string">"female"</span>,<span class="hljs-string">"male"</span>] already exists. Please clean up and <span class="hljs-keyword">try</span> again.]
 arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/general-graph"</span>);
 arangosh&gt; graph_module._drop(<span class="hljs-string">"social"</span>, <span class="hljs-literal">true</span>);
 <span class="hljs-literal">true</span>

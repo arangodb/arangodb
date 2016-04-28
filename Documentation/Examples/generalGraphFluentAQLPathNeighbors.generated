@@ -7,28 +7,28 @@ arangosh&gt; query.neighbors().path().toArray();
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"649547336"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19269"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
     }, 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"650071624"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19273"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
     } 
   ], 
   [ 
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"649547336"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19269"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
     }, 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"649875016"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19277"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
     } 
   ] 
 ]
