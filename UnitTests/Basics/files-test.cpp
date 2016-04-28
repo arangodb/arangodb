@@ -54,7 +54,9 @@ struct CFilesSetup {
       arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
     }
 
-    _directory.appendText("/tmp/arangotest-");
+    _directory.appendText(TRI_GetTempPath());
+    _directory.appendChar(TRI_DIR_SEPARATOR_CHAR);
+    _directory.appendText("arangotest-");
     _directory.appendInteger(static_cast<uint64_t>(TRI_microtime()));
     _directory.appendInteger(arangodb::RandomGenerator::interval(UINT32_MAX));
 
@@ -66,7 +68,6 @@ struct CFilesSetup {
     
     // let's be sure we delete the right stuff
     assert(_directory.length() > 10);
-    assert(memcmp((void*) _directory.c_str(), (void*) "/tmp/arangotest-", 16) == 0);
 
     TRI_RemoveDirectory(_directory.c_str());
   }
