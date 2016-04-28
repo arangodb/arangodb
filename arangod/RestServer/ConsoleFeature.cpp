@@ -42,7 +42,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
 }
 
 void ConsoleFeature::start() {
-  ServerFeature* server = ApplicationServer::getFeature<ServerFeature>("Server");
+  auto server = ApplicationServer::getFeature<ServerFeature>("Server");
 
   _operationMode = server->operationMode();
 
@@ -50,8 +50,9 @@ void ConsoleFeature::start() {
     return;
   }
 
-  DatabaseFeature* database = 
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: CONSOLE";
+
+  auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   _consoleThread.reset(
       new ConsoleThread(ApplicationFeature::server(), database->vocbase()));

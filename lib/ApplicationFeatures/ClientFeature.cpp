@@ -134,7 +134,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     ConsoleFeature* console =
         ApplicationServer::getFeature<ConsoleFeature>("Console");
 
-    if (console != nullptr) {
+    if (console->isEnabled()) {
       _password = console->readPassword("Please specify a password: ");
     } else {
       std::cout << "Please specify a password: " << std::flush;

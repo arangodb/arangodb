@@ -25,7 +25,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
+#define BOOST_TEST_INCLUDED
 #include <boost/test/unit_test.hpp>
+
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 

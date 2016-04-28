@@ -225,7 +225,9 @@ add_executable(${BIN_ARANGOD}
   RestServer/FrontendFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/RestServerFeature.cpp
+  RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
+  RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/arangod.cpp
@@ -302,6 +304,7 @@ add_executable(${BIN_ARANGOD}
   Wal/LogfileManager.cpp
   Wal/Marker.cpp
   Wal/RecoverState.cpp
+  Wal/RecoveryFeature.cpp
   Wal/RemoverThread.cpp
   Wal/Slot.cpp
   Wal/Slots.cpp

@@ -1,6 +1,0 @@
-//[example_output
-> decorator_02 --run_test=@trivial
-Running 2 test cases...
-
-*** No errors detected
-//]

@@ -70,9 +70,8 @@ ApplicationFeature* ApplicationServer::lookupFeature(std::string const& name) {
   try {
     return ApplicationServer::server->feature(name);
   } catch (...) {
+    return nullptr;
   }
-
-  return nullptr;
 }
 
 void ApplicationServer::disableFeatures(std::vector<std::string> const& names) {
@@ -147,7 +146,7 @@ bool ApplicationServer::isRequired(std::string const& name) const {
 // signal. after that, it will shutdown all features
 void ApplicationServer::run(int argc, char* argv[]) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::run";
-
+  
   // collect options from all features
   // in this phase, all features are order-independent
   _state = ServerState::IN_COLLECT_OPTIONS;
@@ -186,7 +185,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
   // permanently drop the privileges
   dropPrivilegesPermanently();
-
+  
   // start features. now features are allowed to start threads, write files etc.
   _state = ServerState::IN_START;
   start();
@@ -375,7 +374,6 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     features.insert(insertPosition, it.second);
   }
 
-  /* move features up a bit... still test if this is any relevant
   for (size_t i = 1; i < features.size(); ++i) {
     auto feature = features[i];
     size_t insert = i;
@@ -392,7 +390,6 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
       features[insert] = feature;
     }
   }
-  */
 
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ordered features:";
 

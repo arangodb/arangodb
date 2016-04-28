@@ -48,7 +48,10 @@ function runSetup () {
   c.save({ _key: "crashme" }, true); // wait for sync
   internal.debugSetFailAt("CreateDatafile1");
   internal.debugSetFailAt("LogfileManagerGetWriteableLogfile");
-  internal.wal.flush(false, false);
+  try {
+    internal.wal.flush(false, false); // will fail
+  } catch (err) {
+  }
   internal.wait(2);
 
   internal.debugSegfault("crashing server");

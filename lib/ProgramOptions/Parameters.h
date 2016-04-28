@@ -24,6 +24,7 @@
 #define ARANGODB_PROGRAM_OPTIONS_PARAMETERS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/fpconv.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -81,6 +82,14 @@ typename std::enable_if<std::is_same<T, std::string>::value, T>::type fromString
 template <typename T>
 inline std::string stringifyValue(T const& value) {
   return std::to_string(value);
+}
+
+// stringify a value, base version for any type
+template <>
+inline std::string stringifyValue<double>(double const& value) {
+  char buf[32];
+  int length = fpconv_dtoa(value, &buf[0]);
+  return std::string(&buf[0], static_cast<size_t>(length));
 }
 
 // stringify a boolean value, specialized version

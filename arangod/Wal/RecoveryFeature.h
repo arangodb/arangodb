@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,23 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_SHUTDOWN_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_SHUTDOWN_FEATURE_H 1
+#ifndef ARANGOD_WAL_RECOVERY_FEATURE_H
+#define ARANGOD_WAL_RECOVERY_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-class ShutdownFeature final : public application_features::ApplicationFeature {
+namespace options {
+class ProgramOptions;
+}
+
+namespace wal {
+struct RecoverState;
+
+class RecoveryFeature final : public application_features::ApplicationFeature {
+
+  RecoveryFeature(RecoveryFeature const&) = delete;
+  RecoveryFeature& operator=(RecoveryFeature const&) = delete;
+
  public:
-  ShutdownFeature(application_features::ApplicationServer* server,
-                  std::vector<std::string> const& features);
+  explicit RecoveryFeature(application_features::ApplicationServer* server);
+  ~RecoveryFeature() {}
 
  public:
   void start() override final;
+
 };
+}
 }
 
 #endif

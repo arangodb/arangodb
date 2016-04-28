@@ -23,12 +23,13 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
+#define BOOST_TEST_INCLUDED
 #include <boost/test/unit_test.hpp>
 
 #include "Basics/Traverser.h"
 #include "Basics/voc-errors.h"
-
-#include <vector>
 
 using namespace std;
 

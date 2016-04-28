@@ -3301,13 +3301,7 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._listEndpoints()");
   }
 
-  HttpEndpointProvider* server = dynamic_cast<HttpEndpointProvider*>(
-    ApplicationServer::lookupFeature("Endpoint"));
-
-  if (server == nullptr) {
-    // not implemented in console mode
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  HttpEndpointProvider* server = ApplicationServer::getFeature<HttpEndpointProvider>("Endpoint");
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
