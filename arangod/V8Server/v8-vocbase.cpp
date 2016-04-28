@@ -73,7 +73,6 @@
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
-using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::traverser;
@@ -1700,7 +1699,6 @@ static void JS_ThrowCollectionNotLoaded(
 ///        NOTE: Collection has to be known to the transaction.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
                                             Transaction* trx,
                                             std::string const& vertexId) {
@@ -1730,7 +1728,6 @@ static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
                                             VPackSlice const& vertexId) {
   return VertexIdToData(isolate, trx, vertexId.copyString());
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Start a new transaction for the given collections and request
@@ -1785,7 +1782,8 @@ static v8::Handle<v8::Value> PathIdsToV8(v8::Isolate* isolate,
     }
     for (uint32_t j = 0; j < en; ++j) {
       VPackOptions resultOptions = VPackOptions::Defaults;
-      resultOptions.customTypeHandler = trx->transactionContext()->orderCustomTypeHandler().get();
+      resultOptions.customTypeHandler =
+          trx->transactionContext()->orderCustomTypeHandler().get();
       edges->Set(j, TRI_VPackToV8(isolate, p.edges[j], &resultOptions));
     }
   } else {
@@ -1828,7 +1826,8 @@ static v8::Handle<v8::Value> PathIdsToV8(
     }
     for (uint32_t j = 0; j < en; ++j) {
       VPackOptions resultOptions = VPackOptions::Defaults;
-      resultOptions.customTypeHandler = trx->transactionContext()->orderCustomTypeHandler().get();
+      resultOptions.customTypeHandler =
+          trx->transactionContext()->orderCustomTypeHandler().get();
       edges->Set(j, TRI_VPackToV8(isolate, p.edges[j], &resultOptions));
     }
   } else {
@@ -2174,10 +2173,10 @@ static void JS_QueryShortestPath(
 /// @brief Transforms an vector<VertexId> to v8 json values
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> VertexIdsToV8(
-    v8::Isolate* isolate, ExplicitTransaction* trx,
-    std::vector<std::string> const& ids,
-    bool includeData = false) {
+static v8::Handle<v8::Value> VertexIdsToV8(v8::Isolate* isolate,
+                                           ExplicitTransaction* trx,
+                                           std::vector<std::string> const& ids,
+                                           bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);
   uint32_t const vn = static_cast<uint32_t>(ids.size());
   v8::Handle<v8::Array> vertices =
@@ -2356,7 +2355,6 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
   for (auto const& it : vertexCollectionNames) {
     opts.addCollectionRestriction(it);
   }
-
 
   if (opts.useEdgeFilter) {
     std::string errorMessage;
@@ -3301,7 +3299,9 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._listEndpoints()");
   }
 
-  HttpEndpointProvider* server = ApplicationServer::getFeature<HttpEndpointProvider>("Endpoint");
+  auto server =
+      application_features::ApplicationServer::getFeature<HttpEndpointProvider>(
+          "Endpoint");
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
@@ -3343,12 +3343,15 @@ static void JS_GetTimers(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> totals = v8::Object::New(isolate);
   v8::Handle<v8::Object> counts = v8::Object::New(isolate);
-  
+
   for (auto& it : arangodb::basics::Timers::get()) {
-    totals->ForceSet(TRI_V8_STD_STRING(it.first), v8::Number::New(isolate, it.second.first));
-    counts->ForceSet(TRI_V8_STD_STRING(it.first), v8::Number::New(isolate, static_cast<double>(it.second.second)));
+    totals->ForceSet(TRI_V8_STD_STRING(it.first),
+                     v8::Number::New(isolate, it.second.first));
+    counts->ForceSet(
+        TRI_V8_STD_STRING(it.first),
+        v8::Number::New(isolate, static_cast<double>(it.second.second)));
   }
-  
+
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result->ForceSet(TRI_V8_ASCII_STRING("totals"), totals);
   result->ForceSet(TRI_V8_ASCII_STRING("counts"), counts);
@@ -3607,14 +3610,13 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("Debug"),
                                JS_Debug, true);
-  
+
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("CLEAR_TIMERS"),
                                JS_ClearTimers, true);
-  
-  TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("GET_TIMERS"),
-                               JS_GetTimers, true);
+
+  TRI_AddGlobalFunctionVocbase(
+      isolate, context, TRI_V8_ASCII_STRING("GET_TIMERS"), JS_GetTimers, true);
 
   // .............................................................................
   // create global variables
@@ -3640,7 +3642,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // whether or not statistics are enabled
   context->Global()->ForceSet(
       TRI_V8_ASCII_STRING("ENABLE_STATISTICS"),
-      v8::Boolean::New(isolate, StatisticsFeature::enabled())); //, v8::ReadOnly);
+      v8::Boolean::New(isolate,
+                       StatisticsFeature::enabled()));  //, v8::ReadOnly);
 
   // a thread-global variable that will is supposed to contain the AQL module
   // do not remove this, otherwise AQL queries will break
