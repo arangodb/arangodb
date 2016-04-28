@@ -3796,16 +3796,17 @@ function unitTestPrettyPrintResults(r) {
     }
     /*jshint forin: true */
 
-    let color = (r.status === true) ? GREEN : RED;
-    print("\n" + color + "* Overall state: " + ((r.status === true) ? "Success" : "Fail") + RESET);
+    let color = (!r.crashed && r.status === true) ? GREEN : RED;
+    let crashText = "";
+    if (r.crashed === true) {
+      crashText = RED + " BUT! - We had at least one unclean shutdown or crash during the testrun." + RESET;
+    }
+    print("\n" + color + "* Overall state: " + ((r.status === true) ? "Success" : "Fail") + RESET + crashText);
 
     if (r.status !== true) {
       print(color + "   Suites failed: " + failedSuite + " Tests Failed: " + failedTests + RESET);
     }
 
-    if (r.crashed === true) {
-      print("\nWe had at least one unclean shutdown or crash during the testrun.");
-    }
   } catch (x) {
     print("exception caught while pretty printing result: ");
     print(x.message);
