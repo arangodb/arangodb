@@ -77,7 +77,7 @@ git add -f \
 (
   cd js/apps/system/_admin/aardvark/APP
   npm install --only=dev
-  npm run grunt
+  grunt deploy
 )
 
 git add -f Documentation/Examples/*.generated
