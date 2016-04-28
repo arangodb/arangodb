@@ -70,7 +70,6 @@
 #include "VocBase/server.h"
 
 using namespace arangodb;
-using namespace arangodb::application_features;
 using namespace arangodb::rest;
 using namespace arangodb::options;
 
