@@ -148,11 +148,8 @@ void RestBaseHandler::dumpResponse(VPackSlice const& slice,
 //////////////////////////////////////////////////////////////////////////////
 
 bool RestBaseHandler::returnVelocypack() const {
-  auto accept = std::string(_request->header("accept"));
-  if (std::string::npos == accept.find("application/x-velocypack")) {
-    return false;
-  }
-  return true;
+  std::string const& result = _request->header("accept");
+  return (std::string::npos != result.find("application/x-velocypack"));
 }
 
 //////////////////////////////////////////////////////////////////////////////
