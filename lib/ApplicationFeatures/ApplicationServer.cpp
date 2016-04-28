@@ -494,7 +494,9 @@ void ApplicationServer::start() {
 void ApplicationServer::stop() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::stop";
 
-  for (auto feature : _orderedFeatures) {
+  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+    auto feature = *it;
+
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::stop";
     feature->stop();
     feature->state(FeatureState::STOPPED);
