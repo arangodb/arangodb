@@ -78,11 +78,11 @@ class MasterPointers {
 
  private:
 
-  TRI_doc_mptr_t const* _freelist;  // free headers
+  TRI_doc_mptr_t* _freelist;  // free headers
 
   uint64_t _nrAllocated;     // number of allocated headers
 
-  std::vector<TRI_doc_mptr_t const*> _blocks;
+  std::vector<TRI_doc_mptr_t*> _blocks;
 };
 
 }

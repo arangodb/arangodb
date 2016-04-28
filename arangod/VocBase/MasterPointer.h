@@ -59,7 +59,7 @@ struct TRI_doc_mptr_t {
   void clear() {
     _fid = 0;
     _hash = 0;
-    setDataPtr(nullptr);
+    setVPack(nullptr);
   }
 
   // This is for cases where we explicitly have to copy originals!
@@ -96,20 +96,43 @@ struct TRI_doc_mptr_t {
     }
   }
 
-  // return a pointer to the beginning of the marker 
-  inline struct TRI_df_marker_t const* getMarkerPtr() const { 
-    return static_cast<TRI_df_marker_t const*>(_dataptr); 
+  // set the pointer to the beginning of the VPack memory
+  inline void setVPackFromMarker(TRI_df_marker_t const* value) { 
+    _dataptr = reinterpret_cast<char const*>(value) + arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
   }
+  
+  // set the pointer to the beginning of the VPack memory
+  inline void setVPack(void const* value) { _dataptr = value; }
 
+  // return a pointer to the beginning of the Vpack  
+  inline uint8_t const* vpack() const throw() { 
+    TRI_ASSERT(_dataptr != nullptr);
+    return reinterpret_cast<uint8_t const*>(_dataptr);
+  }
+ 
+  // return the size of the stored VPack 
+  inline uint32_t vpackSize() const { 
+    return VPackSlice(vpack()).byteSize();
+  }
+  
+  // return a pointer to the beginning of the Vpack  
+  inline void const* dataptr() const throw() { 
+    return _dataptr;
+  }
+  
+  // return the size of the marker 
+  inline uint32_t markerSize() const { 
+    return arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + vpackSize();
+  }
+  
+  inline uint32_t alignedMarkerSize() const { 
+    return arangodb::DatafileHelper::AlignedSize<uint32_t>(markerSize());
+  }
+  
   // return a pointer to the beginning of the marker
-  inline void const* getDataPtr() const { return _dataptr; }
-
-  // set the pointer to the beginning of the memory for the marker
-  inline void setDataPtr(void const* value) { _dataptr = value; }
-
-  // return a pointer to the beginning of the vpack  
-  inline uint8_t const* vpack() const { 
-    return reinterpret_cast<uint8_t const*>(_dataptr) + arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+  // this is only safe to call if pointsToWal() is false
+  inline TRI_df_marker_t const* getMarkerPtr() const { 
+    return reinterpret_cast<TRI_df_marker_t const*>(vpack() - arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
   }
   
   // whether or not the master pointer points into the WAL
@@ -122,14 +145,12 @@ struct TRI_doc_mptr_t {
 
   // return the marker's revision id
   VPackSlice revisionIdAsSlice() const {
-    VPackSlice const slice(vpack());
-    return slice.get(TRI_VOC_ATTRIBUTE_REV);
+    return VPackSlice(vpack()).get(TRI_VOC_ATTRIBUTE_REV);
   }
 
   // return the marker's revision id as string slice or None slice if not there
   TRI_voc_rid_t revisionId() const {
-    VPackSlice const slice(vpack());
-    return TRI_ExtractRevisionId(slice);
+    return TRI_ExtractRevisionId(VPackSlice(vpack()));
   }
 };
 

@@ -30,6 +30,7 @@
 namespace arangodb {
 namespace wal {
 
+class Marker;
 class Slots;
 
 class Slot {
@@ -67,6 +68,10 @@ class Slot {
   /// @brief return the slot status as a string
   std::string statusText() const;
 
+  /// @brief calculate the CRC and length values for the slot and
+  /// store them in the marker
+  void finalize(Marker const*);
+  
   /// @brief calculate the CRC value for the source region (this will modify
   /// the source region) and copy the calculated marker data into the slot
   void fill(void*, size_t);

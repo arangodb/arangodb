@@ -680,6 +680,8 @@ void LogfileManager::signalSync(bool waitForSync) {
 
 // allocate space in a logfile for later writing
 SlotInfo LogfileManager::allocate(uint32_t size) {
+  TRI_ASSERT(size >= sizeof(TRI_df_marker_t));
+
   if (!_allowWrites) {
     // no writes allowed
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
@@ -701,6 +703,8 @@ SlotInfo LogfileManager::allocate(uint32_t size) {
 // allocate space in a logfile for later writing
 SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId,
                                   TRI_voc_cid_t collectionId, uint32_t size) {
+  TRI_ASSERT(size >= sizeof(TRI_df_marker_t));
+
   if (!_allowWrites) {
     // no writes allowed
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
@@ -723,53 +727,56 @@ SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId,
 // this is a convenience function that combines allocate, memcpy and finalize
 SlotInfoCopy LogfileManager::allocateAndWrite(TRI_voc_tick_t databaseId,
                                               TRI_voc_cid_t collectionId,
-                                              void* src, uint32_t size,
+                                              Marker const* marker,
                                               bool wakeUpSynchronizer,
                                               bool waitForSyncRequested,
                                               bool waitUntilSyncDone) {
-  SlotInfo slotInfo = allocate(databaseId, collectionId, size);
+  TRI_ASSERT(marker != nullptr);
+  SlotInfo slotInfo = allocate(databaseId, collectionId, marker->size());
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
   }
   
-  return writeSlot(slotInfo, src, size, 
-                   wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
+  return writeSlot(slotInfo, marker, wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
 }
 
 // write data into the logfile
 // this is a convenience function that combines allocate, memcpy and finalize
-SlotInfoCopy LogfileManager::allocateAndWrite(void* src, uint32_t size,
+SlotInfoCopy LogfileManager::allocateAndWrite(Marker const* marker,
                                               bool wakeUpSynchronizer,
                                               bool waitForSyncRequested,
                                               bool waitUntilSyncDone) {
-  SlotInfo slotInfo = allocate(size);
+  TRI_ASSERT(marker != nullptr);
+  SlotInfo slotInfo = allocate(marker->size());
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
   }
 
-  return writeSlot(slotInfo, src, size, 
-                   wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
+  return writeSlot(slotInfo, marker, wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
 }
 
 // write marker into the logfile
 // this is a convenience function with less parameters
 SlotInfoCopy LogfileManager::allocateAndWrite(Marker const& marker, bool waitForSync) {
-  return allocateAndWrite(marker.mem(), marker.size(), true, waitForSync, waitForSync);
+  return allocateAndWrite(&marker, true, waitForSync, waitForSync);
 }
 
 // memcpy the data into the WAL region and return the filled slot
 // to the WAL logfile manager
 SlotInfoCopy LogfileManager::writeSlot(SlotInfo& slotInfo,
-                                       void* src, uint32_t size,
+                                       Marker const* marker,
                                        bool wakeUpSynchronizer,
                                        bool waitForSyncRequested,
                                        bool waitUntilSyncDone) {
   TRI_ASSERT(slotInfo.slot != nullptr);
+  TRI_ASSERT(marker != nullptr);
 
   try {
-    slotInfo.slot->fill(src, size);
+    // write marker data into slot
+    marker->store(static_cast<char*>(slotInfo.slot->mem()));
+    slotInfo.slot->finalize(marker);
 
     // we must copy the slotinfo because Slots::returnUsed() will set the
     // internals of slotInfo.slot to 0 again
@@ -801,8 +808,8 @@ int LogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeout) {
 }
 
 // finalize and seal the currently open logfile
-/// this is useful to ensure that any open writes up to this point have made
-/// it into a logfile
+// this is useful to ensure that any open writes up to this point have made
+// it into a logfile
 int LogfileManager::flush(bool waitForSync, bool waitForCollector,
                           bool writeShutdownFile) {
   TRI_ASSERT(!_inRecovery);

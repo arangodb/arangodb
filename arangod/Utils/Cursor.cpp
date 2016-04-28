@@ -298,8 +298,7 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
       buffer.appendChar(',');
     }
 
-    char const* p = reinterpret_cast<char const*>(_ex->_documents->at(_position++));
-    VPackSlice const slice(p + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+    VPackSlice const slice(reinterpret_cast<char const*>(_ex->_documents->at(_position++)));
 
     {
       result.clear();

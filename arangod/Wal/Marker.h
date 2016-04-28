@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "VocBase/datafile.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -34,131 +35,265 @@
 namespace arangodb {
 namespace wal {
 
-/// @brief wal remote transaction begin marker
-struct transaction_remote_begin_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_tid_t _transactionId;
-  TRI_voc_tid_t _externalId;
-};
-
-/// @brief wal remote transaction commit marker
-struct transaction_remote_commit_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_tid_t _transactionId;
-  TRI_voc_tid_t _externalId;
-};
-
-/// @brief wal remote transaction abort marker
-struct transaction_remote_abort_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_tid_t _transactionId;
-  TRI_voc_tid_t _externalId;
-};
-
+/// @brief abstract base class for all markers
 class Marker {
+ private:
   Marker& operator=(Marker const&) = delete;
   Marker(Marker&&) = delete;
   Marker(Marker const&) = delete;
-
  protected:
-  /// @brief create a marker from a marker existing in memory
-  Marker(TRI_df_marker_t const*, TRI_voc_fid_t);
-
-  /// @brief create a marker that manages its own memory
-  Marker(TRI_df_marker_type_t, size_t);
-
-  /// @brief create marker from a VPackSlice
-  Marker(TRI_df_marker_type_t, arangodb::velocypack::Slice const&);
+  Marker() = default;
 
  public:
-  virtual ~Marker() { freeBuffer(); }
+  virtual ~Marker() {}
+ 
+  /// @brief returns the marker type 
+  virtual TRI_df_marker_type_t type() const = 0;
 
-  inline void freeBuffer() {
-    if (_buffer != nullptr && _mustFree) {
-      delete[] _buffer;
+  /// @brief returns the datafile id the marker comes from
+  /// this should be 0 for new markers, but contain the actual
+  /// datafile id for an existing marker during recovery
+  virtual TRI_voc_fid_t fid() const = 0;
 
-      _buffer = nullptr;
-      _mustFree = false;
-    }
+  /// @brief return the total size of the marker, including the header
+  virtual uint32_t size() const = 0;
+
+  /// @brief store the marker in the memory region starting at mem
+  /// the region is guaranteed to be big enough to hold size() bytes
+  virtual void store(char* mem) const = 0;
+
+  /// @brief a pointer to the beginning of the VPack payload
+  virtual void* vpack() const {
+    // not implemented for base marker type
+    TRI_ASSERT(false);
+    return nullptr;
   }
-
-  inline TRI_voc_fid_t fid() const { return _fid; }
-
-  inline void* mem() const { return static_cast<void*>(_buffer); }
-  
-  /// @brief return the size of the marker
-  inline uint32_t size() const { return _size; }
-
- protected:
-
-  inline char* begin() const { return _buffer; }
-
-  inline char* end() const { return _buffer + _size; }
-
-  /// @brief store a vpack slice
-  void storeSlice(size_t, arangodb::velocypack::Slice const&);
-
- protected:
-
-  /// @brief pointer to marker data
-  char* _buffer;
-
-  /// @brief size of marker data
-  uint32_t const _size;
-
-  /// @brief id of the logfile the marker is stored in
-  TRI_voc_fid_t _fid;
-  
-  bool _mustFree;
-  /// @brief whether or not the destructor must free the memory
 };
 
+/// @brief an envelope that contains a pointer to an existing marker
+/// this type is used during recovery only, to represent existing markers
 class MarkerEnvelope : public Marker {
  public:
-  MarkerEnvelope(TRI_df_marker_t const*, TRI_voc_fid_t);
+  MarkerEnvelope(TRI_df_marker_t const* other, TRI_voc_fid_t fid) 
+      : _other(other),
+        _fid(fid),
+        _size(other->getSize()) {
+    // we must always have a datafile id, and a reasonable marker size
+    TRI_ASSERT(_fid > 0);
+    TRI_ASSERT(_size >= sizeof(TRI_df_marker_t));
+  }
+
   ~MarkerEnvelope() = default;
+
+  /// @brief returns the marker type 
+  TRI_df_marker_type_t type() const override final { 
+    // simply return the wrapped marker's type
+    return _other->getType(); 
+  }
+  
+  /// @brief returns the datafile id the marker comes from
+  TRI_voc_fid_t fid() const override final { return _fid; }
+ 
+  /// @brief a pointer the beginning of the VPack payload
+  void* vpack() const override final { 
+    return const_cast<void*>(reinterpret_cast<void const*>(reinterpret_cast<uint8_t const*>(_other) + DatafileHelper::VPackOffset(type()))); 
+  }
+
+  /// @brief a pointer to the beginning of the wrapped marker
+  void const* mem() const {
+    return static_cast<void const*>(_other);
+  }
+
+  /// @brief return the size of the wrapped marker
+  uint32_t size() const override final { return _size; }
+
+  /// @brief store the marker in the memory region starting at mem
+  void store(char* mem) const override final {
+    // intentionally nothing... should never be called for MarkerEnvelopes,
+    // as they represent existing markers from the WAL that do not need to
+    // be written again!
+    TRI_ASSERT(false); 
+  }
+
+ private:
+  TRI_df_marker_t const* _other;
+  TRI_voc_fid_t _fid;
+  uint32_t _size;
 };
 
+/// @brief a marker type that is used when inserting new documents,
+/// updating/replacing or removing documents
 class CrudMarker : public Marker {
  public:
-  CrudMarker(TRI_df_marker_type_t, TRI_voc_tid_t, arangodb::velocypack::Slice const&);
+  CrudMarker(TRI_df_marker_type_t type, 
+             TRI_voc_tid_t transactionId, 
+             arangodb::velocypack::Slice const& data)
+    : _transactionId(transactionId),
+      _data(data),
+      _type(type) {}
+
   ~CrudMarker() = default;
+
+  /// @brief returns the marker type 
+  TRI_df_marker_type_t type() const override final { return _type; }
+  
+  /// @brief returns the datafile id
+  /// this is always 0 for this type of marker, as the marker is not
+  /// yet in any datafile
+  TRI_voc_fid_t fid() const override final { return 0; }
+ 
+  /// @brief returns the marker size 
+  uint32_t size() const override final { 
+    return DatafileHelper::VPackOffset(_type) + _data.byteSize();
+  }
+
+  /// @brief store the marker in the memory region starting at mem
+  void store(char* mem) const override final { 
+    // store transaction id
+    DatafileHelper::StoreNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + DatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
+    // store VPack
+    memcpy(mem + DatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
+  }
+  
+  /// @brief a pointer the beginning of the VPack payload
+  void* vpack() const override final { return const_cast<void*>(_data.startAs<void>()); }
+
+ private:
+  TRI_voc_tid_t _transactionId;
+  arangodb::velocypack::Slice _data;
+  TRI_df_marker_type_t _type;
 };
 
+/// @brief a marker used for database-related operations
 class DatabaseMarker : public Marker {
  public:
-  DatabaseMarker(TRI_df_marker_type_t, TRI_voc_tick_t, arangodb::velocypack::Slice const&);
+  DatabaseMarker(TRI_df_marker_type_t type, 
+                 TRI_voc_tick_t databaseId, 
+                 arangodb::velocypack::Slice const& data)
+    : _databaseId(databaseId),
+      _data(data),
+      _type(type) {
+    TRI_ASSERT(databaseId > 0);
+  }
+
   ~DatabaseMarker() = default;
+
+  /// @brief returns the marker type 
+  TRI_df_marker_type_t type() const override final { return _type; }
+
+  /// @brief returns the datafile id
+  /// this is always 0 for this type of marker, as the marker is not
+  /// yet in any datafile
+  TRI_voc_fid_t fid() const override final { return 0; }
+  
+  /// @brief returns the marker size 
+  uint32_t size() const override final { 
+    return DatafileHelper::VPackOffset(_type) + _data.byteSize();
+  }
+
+  /// @brief store the marker in the memory region starting at mem
+  void store(char* mem) const override final { 
+    // store database id
+    DatafileHelper::StoreNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + DatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    // store VPack
+    memcpy(mem + DatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
+  }
+
+ private:
+  TRI_voc_tick_t _databaseId;
+  arangodb::velocypack::Slice _data;
+  TRI_df_marker_type_t _type;
 };
 
+/// @brief a marker used for collection-related operations
 class CollectionMarker : public Marker {
  public:
-  CollectionMarker(TRI_df_marker_type_t, TRI_voc_tick_t, TRI_voc_cid_t, arangodb::velocypack::Slice const&);
+  CollectionMarker(TRI_df_marker_type_t type, 
+                   TRI_voc_tick_t databaseId, 
+                   TRI_voc_cid_t collectionId, 
+                   arangodb::velocypack::Slice const& data)
+    : _databaseId(databaseId),
+      _collectionId(collectionId),
+      _data(data.begin()),
+      _type(type) {
+
+    TRI_ASSERT(databaseId > 0);
+    TRI_ASSERT(collectionId > 0);
+  }
+
   ~CollectionMarker() = default;
+
+  /// @brief returns the marker type 
+  TRI_df_marker_type_t type() const override final { return _type; }
+  
+  /// @brief returns the datafile id
+  /// this is always 0 for this type of marker, as the marker is not
+  /// yet in any datafile
+  TRI_voc_fid_t fid() const override final { return 0; }
+  
+  /// @brief returns the marker size 
+  uint32_t size() const override final { 
+    return DatafileHelper::VPackOffset(_type) + _data.byteSize();
+  }
+
+  /// @brief store the marker in the memory region starting at mem
+  void store(char* mem) const override final { 
+    // store database id
+    DatafileHelper::StoreNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + DatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    // store collection id
+    DatafileHelper::StoreNumber<decltype(_collectionId)>(reinterpret_cast<uint8_t*>(mem) + DatafileHelper::CollectionIdOffset(_type), _collectionId, sizeof(decltype(_collectionId)));
+    // store VPack
+    memcpy(mem + DatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
+  }
+
+ private:
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
+  arangodb::velocypack::Slice _data;
+  TRI_df_marker_type_t _type;
 };
 
+/// @brief a marker used for transaction-related operations
 class TransactionMarker : public Marker {
  public:
-  TransactionMarker(TRI_df_marker_type_t, TRI_voc_tick_t, TRI_voc_tid_t);
+  TransactionMarker(TRI_df_marker_type_t type, 
+                    TRI_voc_tick_t databaseId, 
+                    TRI_voc_tid_t transactionId)
+    : _databaseId(databaseId),
+      _transactionId(transactionId),
+      _type(type) {
+    TRI_ASSERT(databaseId > 0);
+    TRI_ASSERT(transactionId > 0);
+  }
+
   ~TransactionMarker() = default;
-};
 
-class BeginRemoteTransactionMarker : public Marker {
- public:
-  BeginRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
-  ~BeginRemoteTransactionMarker() = default;
-};
+  /// @brief returns the marker type 
+  TRI_df_marker_type_t type() const override final { return _type; }
+  
+  /// @brief returns the datafile id
+  /// this is always 0 for this type of marker, as the marker is not
+  /// yet in any datafile
+  TRI_voc_fid_t fid() const override final { return 0; }
+  
+  /// @brief returns the marker size 
+  uint32_t size() const override final {
+    // these markers do not have any VPack payload 
+    return DatafileHelper::VPackOffset(_type);
+  }
 
-class CommitRemoteTransactionMarker : public Marker {
- public:
-  CommitRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
-  ~CommitRemoteTransactionMarker() = default;
-};
+  /// @brief store the marker in the memory region starting at mem
+  void store(char* mem) const override final { 
+    // store database id
+    DatafileHelper::StoreNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + DatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    // store transaction id
+    DatafileHelper::StoreNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + DatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
+  }
 
-class AbortRemoteTransactionMarker : public Marker {
- public:
-  AbortRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
-  ~AbortRemoteTransactionMarker() = default;
+ private:
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_tid_t _transactionId;
+  TRI_df_marker_type_t _type;
 };
 
 }

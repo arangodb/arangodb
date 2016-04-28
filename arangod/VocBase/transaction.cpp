@@ -203,15 +203,13 @@ static void FreeOperations(TRI_transaction_t* trx) {
             op->type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
             op->type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
           TRI_voc_fid_t fid = op->oldHeader.getFid();
-          auto marker = op->oldHeader.getMarkerPtr();
-
           auto it2 = stats.find(fid);
 
           if (it2 == stats.end()) {
-            stats.emplace(fid, std::make_pair(1, DatafileHelper::AlignedMarkerSize<int64_t>(marker)));
+            stats.emplace(fid, std::make_pair(1, static_cast<int64_t>(op->oldHeader.alignedMarkerSize())));
           } else {
             (*it2).second.first++;
-            (*it2).second.second += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
+            (*it2).second.second += static_cast<int64_t>(op->oldHeader.alignedMarkerSize());
           }
         }
       }
@@ -1095,7 +1093,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(
             trx->_vocbase->_id, document->_info.id(), 
-            operation.marker->mem(), operation.marker->size(), wakeUpSynchronizer,
+            operation.marker, wakeUpSynchronizer,
             localWaitForSync, waitForTick);
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // some error occurred
@@ -1105,10 +1103,10 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     fid = slotInfo.logfileId;
     position = slotInfo.mem;
   } else {
-    // this is an envelope marker that has been written to the logfiles before
+    // this is an envelope marker that has been written to the logfiles before.
     // avoid writing it again!
     fid = operation.marker->fid();
-    position = operation.marker->mem();
+    position = static_cast<wal::MarkerEnvelope const*>(operation.marker)->mem();
   }
 
   TRI_ASSERT(fid > 0);
@@ -1118,7 +1116,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
       operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     // adjust the data position in the header
-    operation.header->setDataPtr(position); 
+    operation.header->setVPackFromMarker(reinterpret_cast<TRI_df_marker_t const*>(position)); 
   }
 
   TRI_IF_FAILURE("TransactionOperationAfterAdjust") { return TRI_ERROR_DEBUG; }
@@ -1140,9 +1138,8 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       // update datafile statistics for the old header
-      TRI_df_marker_t const* marker = operation.oldHeader.getMarkerPtr();
       document->_datafileStatistics.increaseDead(
-          operation.oldHeader.getFid(), 1, DatafileHelper::AlignedMarkerSize<int64_t>(marker));
+          operation.oldHeader.getFid(), 1, static_cast<int64_t>(operation.oldHeader.alignedMarkerSize()));
     }
   } else {
     // operation is buffered and might be rolled back

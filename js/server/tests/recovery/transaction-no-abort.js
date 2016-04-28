@@ -50,7 +50,9 @@ function runSetup () {
 
         var i, c = db._collection("UnitTestsRecovery");
         for (i = 0; i < 100; ++i) {
-          c.save({ _key: "test" + i, value1: "test" + i, value2: i }, true); // wait for sync
+          c.save({ _key: "test" + i, value1: "test" + i, value2: i }, { 
+            waitForSync: i === 99
+          }); 
         }
   
         internal.debugSetFailAt("TransactionWriteAbortMarker");

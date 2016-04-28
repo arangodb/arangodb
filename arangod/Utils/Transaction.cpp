@@ -1096,7 +1096,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
       return res;
     }
   
-    TRI_ASSERT(mptr.getDataPtr() != nullptr);
+    TRI_ASSERT(mptr.vpack() != nullptr);
     if (!expectedRevision.isNone()) {
       VPackSlice foundRevision = mptr.revisionIdAsSlice();
       if (expectedRevision != foundRevision) {
@@ -1265,7 +1265,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
       return TRI_ERROR_NO_ERROR;
     }
 
-    TRI_ASSERT(mptr.getDataPtr() != nullptr);
+    TRI_ASSERT(mptr.vpack() != nullptr);
     
     std::string keyString 
         = VPackSlice(mptr.vpack()).get(KeyString).copyString();
@@ -1615,7 +1615,7 @@ OperationResult Transaction::modifyLocal(
       return res;
     }
 
-    TRI_ASSERT(mptr.getDataPtr() != nullptr);
+    TRI_ASSERT(mptr.vpack() != nullptr);
 
     if (!options.silent || doingSynchronousReplication) {
       std::string key = newVal.get(KeyString).copyString();

@@ -54,8 +54,10 @@ function runSetup () {
       var i;
 
       for (i = 0; i < 100; ++i) {
-        c1.save({ _key: "foo" + i, value: "testfoo" + i }, true); // wait for sync
-        c2.save({ _key: "bar" + i, value: "testbar" + i }, true); // wait for sync
+        c1.save({ _key: "foo" + i, value: "testfoo" + i });
+        c2.save({ _key: "bar" + i, value: "testbar" + i }, {
+          waitForSync: (i === 99)
+        });
       }
     }
   });

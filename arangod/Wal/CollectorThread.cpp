@@ -237,19 +237,6 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       }
       break;
     }
-    
-    case TRI_DF_MARKER_BEGIN_REMOTE_TRANSACTION:
-    case TRI_DF_MARKER_COMMIT_REMOTE_TRANSACTION: {
-      break;
-    }
-
-    case TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION: {
-      transaction_remote_abort_marker_t const* m =
-          reinterpret_cast<transaction_remote_abort_marker_t const*>(marker);
-      // note which abort markers we found
-      state->handledTransactions.emplace(m->_transactionId);
-      break;
-    }
 
     case TRI_DF_MARKER_HEADER: 
     case TRI_DF_MARKER_FOOTER: {
@@ -608,15 +595,14 @@ void CollectorThread::processCollectionMarker(
     auto found = document->primaryIndex()->lookupKey(&trx, slice.get(TRI_VOC_ATTRIBUTE_KEY));
 
     if (found == nullptr || found->revisionId() != revisionId ||
-        found->getDataPtr() != walMarker) {
+        found->getMarkerPtr() != walMarker) {
       // somebody inserted a new revision of the document or the revision
       // was already moved by the compactor
       dfi.numberDead++;
       dfi.sizeDead += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
     } else {
       // we can safely update the master pointer's dataptr value
-      found->setDataPtr(
-          static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
+      found->setVPackFromMarker(reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition));
       found->setFid(fid, false); // points to datafile now
 
       dfi.numberAlive++;
