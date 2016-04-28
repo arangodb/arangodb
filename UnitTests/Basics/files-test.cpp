@@ -83,7 +83,7 @@ struct CFilesSetup {
     FILE* fd = fopen(filename->c_str(), "wb");
 
     if (fd) {
-      ssize_t numWritten = fwrite(blob, strlen(blob), 1, fd);
+      size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
       (void) numWritten;
       fclose(fd);
     }

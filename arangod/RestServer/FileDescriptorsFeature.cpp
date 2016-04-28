@@ -146,17 +146,21 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
     }
 
     // the select backend has more restrictions
-    SchedulerFeature* scheduler = 
-        ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
+    try {
+      SchedulerFeature* scheduler = 
+          ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 
-    if (scheduler != nullptr && scheduler->backend() == 1) {
-      if (FD_SETSIZE < _descriptorsMinimum) {
-        LOG(FATAL)
-            << "i/o backend 'select' has been selected, which supports only "
-            << FD_SETSIZE << " descriptors, but " << _descriptorsMinimum
-            << " are required";
-        FATAL_ERROR_EXIT();
+      if (scheduler->backend() == 1) {
+        if (FD_SETSIZE < _descriptorsMinimum) {
+          LOG(FATAL)
+              << "i/o backend 'select' has been selected, which supports only "
+              << FD_SETSIZE << " descriptors, but " << _descriptorsMinimum
+              << " are required";
+          FATAL_ERROR_EXIT();
+        }
       }
+    } catch (...) {
+      // Scheduler feature not present... simply ignore this
     }
   }
 #endif

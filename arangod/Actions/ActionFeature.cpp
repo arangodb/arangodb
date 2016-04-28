@@ -58,13 +58,11 @@ void ActionFeature::start() {
   V8DealerFeature* dealer = 
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
-  if (dealer != nullptr) {
-    dealer->defineContextUpdate(
-        [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
-          TRI_InitV8Actions(isolate, context);
-        },
-        nullptr);
-  }
+  dealer->defineContextUpdate(
+      [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
+        TRI_InitV8Actions(isolate, context);
+      },
+      nullptr);
 }
 
 void ActionFeature::stop() {

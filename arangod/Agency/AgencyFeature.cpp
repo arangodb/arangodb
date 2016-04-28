@@ -51,6 +51,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
   startsAfter("Dispatcher");
   startsAfter("Endpoint");
   startsAfter("QueryRegistry");
+  startsAfter("Random");
+  startsAfter("Recovery");
   startsAfter("Scheduler");
   startsAfter("Server");
 }

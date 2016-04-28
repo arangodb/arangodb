@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new LoggerFeature(&server, false));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new ShellFeature(&server, &ret));
-  server.addFeature(new ShutdownFeature(&server, "Shell"));
+  server.addFeature(new ShutdownFeature(&server, {"Shell"}));
   server.addFeature(new TempFeature(&server, name));
   server.addFeature(new V8PlatformFeature(&server));
   server.addFeature(new V8ShellFeature(&server, name));

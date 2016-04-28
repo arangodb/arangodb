@@ -30,14 +30,16 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 ShutdownFeature::ShutdownFeature(
-    application_features::ApplicationServer* server, std::string const& feature)
+                                 application_features::ApplicationServer* server, std::vector<std::string> const& features)
     : ApplicationFeature(server, "Shutdown") {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
 
-  if (feature != "Logger") {
-    startsAfter(feature);
+  for (auto feature : features) {
+    if (feature != "Logger") {
+      startsAfter(feature);
+    }
   }
 }
 
