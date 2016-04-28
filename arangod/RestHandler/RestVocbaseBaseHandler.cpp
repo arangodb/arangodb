@@ -23,6 +23,7 @@
 
 #include "RestVocbaseBaseHandler.h"
 #include "Basics/conversions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -360,12 +361,11 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
   if (generateBody) {
     writeResult(document, *options);
   } else {
-    if(returnVelocypack()){
-      //TODO REVIEW
-      _response->setContentType("application/x-velocypack");
+    if (returnVelocypack()){
+      _response->setContentType(StaticStrings::MimeTypeVPack);
       _response->headResponse(document.byteSize());
     } else {
-      _response->setContentType("application/json; charset=utf-8");
+      _response->setContentType(StaticStrings::MimeTypeJson);
 
       // TODO can we optimize this?
       // Just dump some where else to find real length
@@ -680,18 +680,14 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
 
 std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     VPackOptions const* options, bool& success) {
-  static std::string CONTENT_TYPE = "content-type";
-  static std::string X_VELOCYPACK = "application/x-velocypack";
-  static size_t XVN = X_VELOCYPACK.size();
-
   bool found;
-  auto& contentType = _request->header(CONTENT_TYPE, found);
+  std::string const& contentType = _request->header(StaticStrings::MimeTypeVPack, found);
 
   try {
     success = true;
 
-    if (found && contentType.size() == XVN && contentType[XVN-1] == 'k'
-      && contentType == X_VELOCYPACK) {
+    if (found && contentType.size() == StaticStrings::MimeTypeVPack.size() && 
+        contentType == StaticStrings::MimeTypeVPack) {
       VPackSlice slice{_request->body().c_str()};
       auto builder = std::make_shared<VPackBuilder>(options);
       builder->add(slice);
@@ -722,8 +718,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
   std::string const& shardId = _request->header("x-arango-nolock", found);
 
   if (found) {
-    _nolockHeaderSet = new std::unordered_set<std::string>();
-    _nolockHeaderSet->insert(std::string(shardId));
+    _nolockHeaderSet = new std::unordered_set<std::string>{ std::string(shardId) };
     arangodb::Transaction::_makeNolockHeaders = _nolockHeaderSet;
   }
 }

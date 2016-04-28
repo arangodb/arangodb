@@ -25,13 +25,14 @@
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
-#include "Logger/Logger.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherThread.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/server.h"
@@ -338,7 +339,7 @@ void RestAqlHandler::createQueryFromString() {
   }
 
   createResponse(GeneralResponse::ResponseCode::ACCEPTED);
-  _response->setContentType("application/json; charset=utf-8");
+  _response->setContentType(StaticStrings::MimeTypeJson);
   arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 2);
   answerBody("queryId",
              arangodb::basics::Json(arangodb::basics::StringUtils::itoa(_qId)))(
@@ -549,7 +550,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
   _queryRegistry->close(_vocbase, _qId);
 
   createResponse(GeneralResponse::ResponseCode::OK);
-  _response->setContentType("application/json; charset=utf-8");
+  _response->setContentType(StaticStrings::MimeTypeJson);
   answerBody("error", arangodb::basics::Json(false));
   _response->body().appendText(answerBody.toString());
 }
@@ -900,8 +901,9 @@ std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
 void RestAqlHandler::sendResponse(
     GeneralResponse::ResponseCode code, VPackSlice const slice,
     arangodb::TransactionContext* transactionContext) {
+  // TODO: use RestBaseHandler
   createResponse(code);
-  _response->setContentType("application/json; charset=utf-8");
+  _response->setContentType(StaticStrings::MimeTypeJson);
   arangodb::basics::VPackStringBufferAdapter buffer(
       _response->body().stringBuffer());
   VPackDumper dumper(&buffer, transactionContext->getVPackOptions());

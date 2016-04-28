@@ -23,6 +23,7 @@
 
 #include "RestImportHandler.h"
 #include "Basics/json-utilities.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -776,8 +777,9 @@ bool RestImportHandler::createFromKeyValueList() {
 
 void RestImportHandler::generateDocumentsCreated(
     RestImportResult const& result) {
+  // TODO: is it necessary to create a response object here already
   createResponse(GeneralResponse::ResponseCode::CREATED);
-  _response->setContentType("application/json; charset=utf-8");
+  _response->setContentType(StaticStrings::MimeTypeJson);
 
   try {
     VPackBuilder json;
@@ -802,8 +804,7 @@ void RestImportHandler::generateDocumentsCreated(
       json.close();
     }
     json.close();
-    VPackSlice s = json.slice();
-    generateResult(GeneralResponse::ResponseCode::CREATED, s);
+    generateResult(GeneralResponse::ResponseCode::CREATED, json.slice());
   } catch (...) {
     // Ignore the error
   }

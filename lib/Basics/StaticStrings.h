@@ -29,11 +29,20 @@ namespace arangodb {
 class StaticStrings {
   StaticStrings() = delete;
  public:
+  // system attribute names
   static std::string const IdString;
   static std::string const KeyString;
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
+
+  // HTTP headers
+  static std::string const AcceptHeader;
+  static std::string const ContentTypeHeader;
+
+  // mime types
+  static std::string const MimeTypeVPack;
+  static std::string const MimeTypeJson;
 };
 }
 

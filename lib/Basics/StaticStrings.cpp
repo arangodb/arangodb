@@ -24,9 +24,18 @@
 
 using namespace arangodb;
 
+// system attribute names
 std::string const StaticStrings::IdString("_id");
 std::string const StaticStrings::KeyString("_key");
 std::string const StaticStrings::RevString("_rev");
 std::string const StaticStrings::FromString("_from");
 std::string const StaticStrings::ToString("_to");
+
+// HTTP headers
+std::string const StaticStrings::AcceptHeader("accept");
+std::string const StaticStrings::ContentTypeHeader("content-type");
+
+// mime types
+std::string const StaticStrings::MimeTypeJson("application/json; charset=utf-8");
+std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 

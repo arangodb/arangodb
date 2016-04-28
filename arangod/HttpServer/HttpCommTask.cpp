@@ -25,6 +25,7 @@
 #include "HttpCommTask.h"
 
 #include "Basics/MutexLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
 #include "HttpServer/HttpHandler.h"
@@ -499,7 +500,7 @@ bool HttpCommTask::processRead() {
   // not found
   else if (authResult == GeneralResponse::ResponseCode::NOT_FOUND) {
     HttpResponse response(authResult, compatibility);
-    response.setContentType("application/json; charset=utf-8");
+    response.setContentType(StaticStrings::MimeTypeJson);
 
     response.body()
         .appendText(TRI_CHAR_LENGTH_PAIR("{\"error\":true,\"errorMessage\":\""))
@@ -517,7 +518,7 @@ bool HttpCommTask::processRead() {
   // forbidden
   else if (authResult == GeneralResponse::ResponseCode::FORBIDDEN) {
     HttpResponse response(authResult, compatibility);
-    response.setContentType("application/json; charset=utf-8");
+    response.setContentType(StaticStrings::MimeTypeJson);
 
     response.body()
         .appendText(TRI_CHAR_LENGTH_PAIR(
