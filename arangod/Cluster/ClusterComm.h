@@ -457,6 +457,7 @@ class ClusterCommThread : public Thread {
 
  public:
   void beginShutdown() override;
+  bool isSystem() override final { return true; }
 
  protected:
   void run() override final;
