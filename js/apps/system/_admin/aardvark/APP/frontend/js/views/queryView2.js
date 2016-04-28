@@ -109,7 +109,7 @@
       $('#queryImportDialog').modal('show'); 
     },
 
-    closeExportDialo: function() {
+    closeExportDialog: function() {
       $('#queryImportDialog').modal('hide'); 
     },
 
@@ -690,10 +690,12 @@
 
     checkForNewBindParams: function() {
       var self = this,
-      words = (this.aqlEditor.getValue()).split(" "),
+      text = this.aqlEditor.getValue() //Remove comments
+      .replace(/\s*\/\/.*\n/g, '\n')
+      .replace(/\s*\/\*.*?\*\//g, ''),
+      words = text.split(" "),
       words1 = [],
       pos = 0;
-
       _.each(words, function(word) {
         word = word.split("\n");
         _.each(word, function(x) {
@@ -1295,6 +1297,7 @@
           warnings += "\r\n" + "Result:" + "\r\n\r\n";
         }
         outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
+        outputEditor.getSession().setScrollTop(0);
       };
 
       var fetchQueryResult = function(data) {

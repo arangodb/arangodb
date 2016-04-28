@@ -5,6 +5,10 @@
   .selected-row {
     background-color: rgba(46, 204, 113, .2);
   }
+
+  .dataTables_empty {
+    padding-left: 10px;
+  }
 }
 
 .pure-table {
