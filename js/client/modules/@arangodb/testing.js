@@ -3921,7 +3921,7 @@ function unitTest(cases, options) {
   let caselist = [];
 
   for (let n = 0; n < cases.length; ++n) {
-    let splitted = cases[n].split(",");
+    let splitted = cases[n].split(/[,;|]/);
 
     for (let m = 0; m < splitted.length; ++m) {
       let which = splitted[m];
