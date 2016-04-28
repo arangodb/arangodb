@@ -215,20 +215,20 @@ int RestImportHandler::handleSingleDocument(
       tempBuilder.clear();
       tempBuilder.openObject();
       if (!_fromPrefix.empty()) {
-        VPackSlice from = slice.get(TRI_VOC_ATTRIBUTE_FROM);
+        VPackSlice from = slice.get(Transaction::FromString);
         if (from.isString()) {
           std::string f = from.copyString();
           if (f.find('/') == std::string::npos) {
-            tempBuilder.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(_fromPrefix + f));
+            tempBuilder.add(Transaction::FromString, VPackValue(_fromPrefix + f));
           }
         }
       }
       if (!_toPrefix.empty()) {
-        VPackSlice to = slice.get(TRI_VOC_ATTRIBUTE_TO);
+        VPackSlice to = slice.get(Transaction::ToString);
         if (to.isString()) {
           std::string t = to.copyString();
           if (t.find('/') == std::string::npos) {
-            tempBuilder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(_toPrefix + t));
+            tempBuilder.add(Transaction::ToString, VPackValue(_toPrefix + t));
           }
         }
       }
@@ -242,9 +242,9 @@ int RestImportHandler::handleSingleDocument(
 
     try {
       arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-          slice, TRI_VOC_ATTRIBUTE_FROM);
+          slice, Transaction::FromString);
       arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-          slice, TRI_VOC_ATTRIBUTE_TO);
+          slice, Transaction::ToString);
     } catch (arangodb::basics::Exception const&) {
       std::string part = VPackDumper::toString(slice);
       if (part.size() > 255) {
@@ -273,7 +273,7 @@ int RestImportHandler::handleSingleDocument(
   // special behavior in case of unique constraint violation . . .
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
       _onDuplicateAction != DUPLICATE_ERROR) {
-    VPackSlice const keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+    VPackSlice const keySlice = slice.get(Transaction::KeyString);
 
     if (keySlice.isString()) {
       // insert failed. now try an update/replace
