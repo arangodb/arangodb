@@ -459,14 +459,24 @@
       self = this;
 
       if (queryObject !== null && queryObject !== undefined && queryObject !== "") {
+        this.aqlEditor.setValue(queryObject.query);
         if (queryObject.parameter !== '' || queryObject !== undefined) {
           try {
+            // then fill values into input boxes
             self.bindParamTableObj = JSON.parse(queryObject.parameter);
+
+            var key;
+            _.each($('#arangoBindParamTable input'), function(element) {
+              key = $(element).attr('name');
+              $(element).val(self.bindParamTableObj[key]);
+            });
+
+            //resave cached query
+            self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
           }
           catch (ignore) {
           }
         }
-        this.aqlEditor.setValue(queryObject.query);
       }
     },
 
@@ -532,10 +542,10 @@
       var self = this;
       this.initAce();
       this.initTables();
-      this.getCachedQueryAfterRender();
       this.fillSelectBoxes();
       this.makeResizeable();
       this.initQueryImport();
+      self.getCachedQueryAfterRender();
 
       //set height of editor wrapper
       $('.inputEditorWrapper').height($(window).height() / 10 * 5 + 25);
@@ -796,10 +806,8 @@
 
       var newObject = {};
       _.each(foundBindParams, function(word) {
-        var match = word.match(self.bindParamRegExp);
-        if (match) {
-          word = match[1];
-          newObject[word] = '';
+        if (self.bindParamTableObj[word]) {
+          newObject[word] = self.bindParamTableObj[word];
         }
         else {
           newObject[word] = '';
@@ -887,7 +895,15 @@
           self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
         }
         catch (e) {
-          self.allowParamToggle = false;
+          if (self.bindParamAceEditor.getValue() === '') {
+            _.each(self.bindParamTableObj, function(v, k) {
+              self.bindParamTableObj[k] = '';
+            });
+            self.allowParamToggle = true;
+          }
+          else {
+            self.allowParamToggle = false;
+          }
         }
       });
 

@@ -13,6 +13,7 @@
 *.gcno
 *.gcda
 
+*.swp
 *.diff
 *.patch
 *.lnk

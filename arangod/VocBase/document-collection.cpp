@@ -4302,7 +4302,7 @@ void TRI_document_collection_t::mergeObjectsForUpdate(
 
   std::unordered_map<std::string, VPackSlice> newValues;
   { 
-    VPackObjectIterator it(newValue);
+    VPackObjectIterator it(newValue, false);
     while (it.valid()) {
       std::string key = it.key().copyString();
       if (!key.empty() && key[0] == '_' &&
@@ -4356,7 +4356,7 @@ void TRI_document_collection_t::mergeObjectsForUpdate(
 
   // add other attributes after the system attributes
   { 
-    VPackObjectIterator it(oldValue);
+    VPackObjectIterator it(oldValue, false);
     while (it.valid()) {
       std::string key = it.key().copyString();
       // exclude system attributes in old value now

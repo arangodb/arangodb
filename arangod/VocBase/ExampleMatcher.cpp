@@ -85,7 +85,7 @@ void ExampleMatcher::fillExampleDefinition(
     char const* _key = strchr(tmp.c_str(), '/');
     if (_key != nullptr) {
       _key += 1;
-      std::vector<std::string> key({TRI_VOC_ATTRIBUTE_KEY});
+      std::vector<std::string> key({ StaticStrings::KeyString });
       def._paths.emplace_back(key);
       def._values.add(VPackValue(_key));
       return;

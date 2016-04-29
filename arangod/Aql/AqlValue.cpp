@@ -532,7 +532,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
     TRI_ASSERT(left > 0);
 
     // iterate over all the object's attributes
-    for (auto const& it : VPackObjectIterator(s)) {
+    for (auto const& it : VPackObjectIterator(s, false)) {
       // check if we need to render this attribute
       auto it2 = attributes.find(it.key.copyString());
 

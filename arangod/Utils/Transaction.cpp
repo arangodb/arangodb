@@ -672,7 +672,50 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
   memcpy(&buffer[len + 1], p, keyLength);
   return std::string(&buffer[0], len + 1 + keyLength);
 }
-  
+
+VPackSlice Transaction::extractKeyFromDocument(VPackSlice const& slice) {
+  TRI_ASSERT(slice.isObject());
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+
+  if (*p == 0x31) {
+    return VPackSlice(p);
+  }
+  return slice.get(StaticStrings::KeyString); 
+}
+
+VPackSlice Transaction::extractFromFromDocument(VPackSlice const& slice) {
+  TRI_ASSERT(slice.isObject());
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+  VPackValueLength l = slice.length();
+  VPackValueLength count = 0;
+
+  while (*p <= 0x35 && count++ < l) {
+    if (*p == 0x35) {
+      return VPackSlice(p);
+    }
+    p += VPackSlice(p).byteSize();
+  }
+  return slice.get(StaticStrings::FromString); 
+}
+
+VPackSlice Transaction::extractToFromDocument(VPackSlice const& slice) {
+  TRI_ASSERT(slice.isObject());
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+  VPackValueLength l = slice.length();
+  VPackValueLength count = 0;
+
+  while (*p <= 0x34 && count++ < l) {
+    if (*p == 0x34) {
+      return VPackSlice(p);
+    }
+    p += VPackSlice(p).byteSize();
+  }
+  return slice.get(StaticStrings::FromString); 
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief build a VPack object with _id, _key and _rev, the result is
 /// added to the builder in the argument as a single object.

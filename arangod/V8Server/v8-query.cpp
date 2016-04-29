@@ -384,7 +384,7 @@ static void JS_ChecksumCollection(
       uint64_t const n = slice.length() ^ 0xf00ba44ba5;
       uint64_t seed = fasthash64(&n, sizeof(n), 0xdeadf054);
 
-      for (auto const& it : VPackObjectIterator(slice)) {
+      for (auto const& it : VPackObjectIterator(slice, false)) {
         // loop over all attributes, but exclude _rev, _id and _key
         // _id is different for each collection anyway, _rev is covered by withRevisions, and _key
         // was already handled before
