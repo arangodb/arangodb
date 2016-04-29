@@ -73,14 +73,14 @@ exports.Communication = function() {
     var stubs = {
       get: function(route, recursive) {
         var ret =  _agency.get(route, recursive);
-//        require("internal").print(route);
-//        require("internal").print(ret);
+        require("internal").print("----" + route);
+        require("internal").print(ret);
         return ret;
       },
       getValue: function(route, name) {
         var res  = _agency.get(route + "/" + name);
-//        require("internal").print(route + "/" + name);
-//        require("internal").print(res);
+        require("internal").print("++++" + route + "/" + name);
+        require("internal").print(res);
         return _.values(res)[0];
       },
       set: function(route, name, value) {
@@ -603,7 +603,9 @@ exports.Communication = function() {
   var Sync = function() {
     var Heartbeats;
     var interval = agency.sync.interval.get();
+    require("internal").print(interval);
     interval = _.values(interval)[0];
+    require("internal").print(interval);    
 
     var didBeatInTime = function(time) {
 
