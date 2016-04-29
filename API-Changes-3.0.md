@@ -129,6 +129,10 @@ Explanations
     a document does not exist at all or whether the queries revision is
     outdated.
     
+10. /_api/document?collection=<name> withdrawn,
+    is now
+    /_api/simple/all?collection=<name> with same functionality.
+
 16. createCollection was only supported in single-server, but not in the
     cluster.
 
