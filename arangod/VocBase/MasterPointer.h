@@ -112,7 +112,7 @@ struct TRI_doc_mptr_t {
  
   // return the size of the stored VPack 
   inline uint32_t vpackSize() const { 
-    return VPackSlice(vpack()).byteSize();
+    return static_cast<uint32_t>(VPackSlice(vpack()).byteSize());
   }
   
   // return a pointer to the beginning of the Vpack  
@@ -122,7 +122,7 @@ struct TRI_doc_mptr_t {
   
   // return the size of the marker 
   inline uint32_t markerSize() const { 
-    return arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + vpackSize();
+    return static_cast<uint32_t>(arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + vpackSize());
   }
   
   inline uint32_t alignedMarkerSize() const { 
