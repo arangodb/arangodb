@@ -1267,8 +1267,9 @@ function startInstanceCluster(instanceInfo, protocol, options,
 
   startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator', coordinatorArgs));
 
-  let coordinatorUrl = instanceInfo.url;
-  let response;
+  //disabled because not in use (jslint)
+  //let coordinatorUrl = instanceInfo.url;
+  //let response;
   let httpOptions = makeAuthorizationHeaders(options);
   httpOptions.method = 'POST';
   httpOptions.returnBodyOnError = true;
