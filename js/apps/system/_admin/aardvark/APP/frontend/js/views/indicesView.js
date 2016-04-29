@@ -60,15 +60,6 @@
       var sparse;
 
       switch (indexType) {
-        case 'Cap':
-          var size = parseInt($('#newCapSize').val(), 10) || 0;
-        var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
-        postParameter = {
-          type: 'cap',
-          size: size,
-          byteSize: byteSize
-        };
-        break;
         case 'Geo':
           //HANDLE ARRAY building
           fields = $('#newGeoFields').val();
@@ -303,7 +294,7 @@
 
     resetIndexForms: function () {
       $('#indexHeader input').val('').prop("checked", false);
-      $('#newIndexType').val('Cap').prop('selected',true);
+      $('#newIndexType').val('Geo').prop('selected',true);
       this.selectIndexType();
     },
 
