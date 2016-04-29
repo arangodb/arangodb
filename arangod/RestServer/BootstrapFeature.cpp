@@ -85,7 +85,7 @@ static void raceForClusterBootstrap() {
     b.add(VPackValue(arangodb::ServerState::instance()->getId()));
     result = agency.casValue("Bootstrap", b.slice(), false, 300, 15);
     if (!result.successful()) {
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "raceForClusterBootstrap: lost race";
+      LOG_TOPIC(INFO, Logger::STARTUP) << "raceForClusterBootstrap: lost race";
       // Cannot get foot into the door, try again later:
       sleep(1);
       continue;
@@ -101,12 +101,12 @@ static void raceForClusterBootstrap() {
       continue;
     }
 
-    LOG_TOPIC(TRACE, Logger::STARTUP) 
+    LOG_TOPIC(INFO, Logger::STARTUP) 
         << "raceForClusterBootstrap: race won, we do the bootstrap";
     auto vocbase = DatabaseFeature::DATABASE->vocbase();
     V8DealerFeature::DEALER->loadJavascriptFiles(vocbase, "server/bootstrap/cluster-bootstrap.js", 0);
 
-    LOG_TOPIC(TRACE, Logger::STARTUP) 
+    LOG_TOPIC(INFO, Logger::STARTUP) 
         << "raceForClusterBootstrap: bootstrap done";
 
     b.clear();
