@@ -2489,9 +2489,11 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionUnload
 ////////////////////////////////////////////////////////////////////////////////
-
+#warning iostream
+#include <iostream>
 static void JS_UnloadVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
+  std::cout << __FILE__ << __LINE__ << ":" << ServerState::instance()->isCoordinator() << std::endl;
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2503,6 +2505,8 @@ static void JS_UnloadVocbaseCol(
   }
 
   int res;
+
+  LOG(INFO) << __FILE__ << __LINE__ << ":" << ServerState::instance()->isCoordinator();
 
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName(collection->_dbName);

@@ -39,7 +39,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Agency"),
       _size(1),
       _agentId((std::numeric_limits<uint32_t>::max)()),
-      _minElectionTimeout(0.1),
+      _minElectionTimeout(0.15),
       _maxElectionTimeout(2.0),
       _notify(false),
       _supervision(false),

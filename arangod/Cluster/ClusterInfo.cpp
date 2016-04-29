@@ -1506,26 +1506,32 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
 
-    res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID,
+    res = ac.getValues2("Plan/Collections/" + databaseName + "/" + collectionID,
                        false);
+
+    velocypack::Slice col =
+      res._vpack->slice()[0]
+      .get(AgencyComm::prefixStripped()).get("Plan").get("Collections")
+      .get(databaseName).get(collectionID);
+
+    LOG(INFO) << col.toJson();
 
     if (!res.successful()) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    res.parse("", false);
-    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-        res._values.begin();
-
-    if (it == res._values.end()) {
+    VPackObjectIterator collections(col);
+    if (!collections.valid()) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    VPackSlice const slice = it->second._vpack->slice();
+    VPackSlice const slice = collections.value();
     if (slice.isNone()) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
+    LOG(INFO) << slice.toJson();
+    
     TRI_vocbase_col_status_e old = static_cast<TRI_vocbase_col_status_e>(
         arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             slice, "status", static_cast<int>(TRI_VOC_COL_STATUS_CORRUPTED)));
