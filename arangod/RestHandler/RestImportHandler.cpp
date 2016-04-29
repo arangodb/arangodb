@@ -216,20 +216,20 @@ int RestImportHandler::handleSingleDocument(
       tempBuilder.clear();
       tempBuilder.openObject();
       if (!_fromPrefix.empty()) {
-        VPackSlice from = slice.get(Transaction::FromString);
+        VPackSlice from = slice.get(StaticStrings::FromString);
         if (from.isString()) {
           std::string f = from.copyString();
           if (f.find('/') == std::string::npos) {
-            tempBuilder.add(Transaction::FromString, VPackValue(_fromPrefix + f));
+            tempBuilder.add(StaticStrings::FromString, VPackValue(_fromPrefix + f));
           }
         }
       }
       if (!_toPrefix.empty()) {
-        VPackSlice to = slice.get(Transaction::ToString);
+        VPackSlice to = slice.get(StaticStrings::ToString);
         if (to.isString()) {
           std::string t = to.copyString();
           if (t.find('/') == std::string::npos) {
-            tempBuilder.add(Transaction::ToString, VPackValue(_toPrefix + t));
+            tempBuilder.add(StaticStrings::ToString, VPackValue(_toPrefix + t));
           }
         }
       }
@@ -243,9 +243,9 @@ int RestImportHandler::handleSingleDocument(
 
     try {
       arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-          slice, Transaction::FromString);
+          slice, StaticStrings::FromString);
       arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-          slice, Transaction::ToString);
+          slice, StaticStrings::ToString);
     } catch (arangodb::basics::Exception const&) {
       std::string part = VPackDumper::toString(slice);
       if (part.size() > 255) {
@@ -274,7 +274,7 @@ int RestImportHandler::handleSingleDocument(
   // special behavior in case of unique constraint violation . . .
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
       _onDuplicateAction != DUPLICATE_ERROR) {
-    VPackSlice const keySlice = slice.get(Transaction::KeyString);
+    VPackSlice const keySlice = slice.get(StaticStrings::KeyString);
 
     if (keySlice.isString()) {
       // insert failed. now try an update/replace

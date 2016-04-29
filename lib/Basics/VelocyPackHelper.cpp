@@ -782,6 +782,27 @@ uint64_t VelocyPackHelper::hashByAttributes(
   return hash;
 }
 
+void VelocyPackHelper::SanitizeExternals(VPackSlice const input, VPackBuilder& output) {
+  if (input.isExternal()) {
+    output.add(input.resolveExternal());
+  } else if (input.isObject()) {
+    output.openObject();
+    for (auto const& it : VPackObjectIterator(input)) {
+      output.add(VPackValue(it.key.copyString()));
+      SanitizeExternals(it.value, output);
+    }
+    output.close();
+  } else if (input.isArray()) {
+    output.openArray();
+    for (auto const& it : VPackArrayIterator(input)) {
+      SanitizeExternals(it, output);
+    }
+    output.close();
+  } else {
+    output.add(input);
+  }
+}
+
 arangodb::LoggerStream& operator<< (arangodb::LoggerStream& logger,
   VPackSlice const& slice) {
   size_t const cutoff = 100;

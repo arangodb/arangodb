@@ -222,9 +222,9 @@ module.exports = class FoxxService {
               res.headers.allow = error.methods.join(', ');
             }
             if (service.isDevelopment) {
-              let err = error.cause || error;
+              const err = error.cause || error;
               body.exception = String(err);
-              body.stacktrace = err.stack;
+              body.stacktrace = err.stack.replace(/\n+$/, '').split('\n');
             }
             if (error.extra) {
               Object.keys(error.extra).forEach(function (key) {

@@ -243,11 +243,14 @@ struct AqlValue final {
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::AqlTransaction*) const;
 
   /// @brief materializes a value into the builder
-  void toVelocyPack(arangodb::AqlTransaction*, arangodb::velocypack::Builder& builder) const;
-  
+  void toVelocyPack(arangodb::AqlTransaction*,
+                    arangodb::velocypack::Builder& builder,
+                    bool resolveExternals) const;
+
   /// @brief materialize a value into a new one. this expands docvecs and 
   /// ranges
-  AqlValue materialize(arangodb::AqlTransaction*, bool& hasCopied) const;
+  AqlValue materialize(arangodb::AqlTransaction*, bool& hasCopied,
+                       bool resolveExternals) const;
 
   /// @brief return the slice for the value
   /// this will throw if the value type is not VPACK_POINTER, VPACK_INLINE or
@@ -341,8 +344,9 @@ struct AqlValueMaterializer {
     } 
   }
 
-  arangodb::velocypack::Slice slice(AqlValue const& value) {
-    materialized = value.materialize(trx, hasCopied);
+  arangodb::velocypack::Slice slice(AqlValue const& value,
+                                    bool resolveExternals) {
+    materialized = value.materialize(trx, hasCopied, resolveExternals);
     return materialized.slice();
   }
 

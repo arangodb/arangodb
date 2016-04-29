@@ -81,8 +81,8 @@ describe ArangoDB do
 
       doc.parsed_response['_id'].should eq(id)
       doc.parsed_response['_rev'].should_not eq('99')
-      doc.parsed_response.should have_key('_from')
-      doc.parsed_response.should have_key('_to')
+      doc.parsed_response.should_not have_key('_from')
+      doc.parsed_response.should_not have_key('_to')
       doc.parsed_response.should have_key('_test')
       doc.parsed_response['_test'].should eq('c')
       doc.parsed_response.should have_key('meow')

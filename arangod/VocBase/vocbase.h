@@ -648,5 +648,6 @@ VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder);
+void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder);
   
 #endif

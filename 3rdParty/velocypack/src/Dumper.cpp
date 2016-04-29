@@ -226,6 +226,8 @@ void Dumper::dumpString(char const* src, ValueLength len) {
       0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
       0,    0,   0,   0};
 
+  _sink->reserve(len);
+
   uint8_t const* p = reinterpret_cast<uint8_t const*>(src);
   uint8_t const* e = p + len;
   while (p < e) {
@@ -292,11 +294,6 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
   }
 
   switch (slice->type()) {
-    case ValueType::None: {
-      handleUnsupportedType(slice);
-      break;
-    }
-
     case ValueType::Null: {
       _sink->append("null", 4);
       break;
@@ -396,13 +393,6 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
       break;
     }
 
-    case ValueType::Illegal:
-    case ValueType::MinKey:
-    case ValueType::MaxKey: {
-      handleUnsupportedType(slice);
-      break;
-    }
-
     case ValueType::Int:
     case ValueType::UInt:
     case ValueType::SmallInt: {
@@ -420,7 +410,11 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
       break;
     }
 
-    case ValueType::Binary: {
+    case ValueType::None: 
+    case ValueType::Binary: 
+    case ValueType::Illegal:
+    case ValueType::MinKey:
+    case ValueType::MaxKey: {
       handleUnsupportedType(slice);
       break;
     }
