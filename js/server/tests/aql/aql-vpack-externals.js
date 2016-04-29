@@ -38,19 +38,26 @@ var db = require("@arangodb").db;
 function aqlVPackExternalsTestSuite () {
 
   const collName = "UnitTestsVPackExternals";
+  const edgeColl = "UnitTestsVPackEdges"
   const cleanUp = function () {
     db._drop(collName);
+    db._drop(edgeColl);
   };
-  var coll;
 
   return {
 
     setUp: function () {
       cleanUp();
-      coll = db._create(collName);
+      let coll = db._create(collName);
 
-      for (var i = 1000; i < 5000; ++i) {
+      for (let i = 1000; i < 5000; ++i) {
         coll.save({_key: "test" + i});
+      }
+
+      let ecoll = db._createEdgeCollection(edgeColl);
+
+      for(let i = 1001; i < 3000; ++i) {
+        ecoll.save({_from: collName + "/test1000", _to: collName + "/test" + i});
       }
     },
 
@@ -106,7 +113,30 @@ function aqlVPackExternalsTestSuite () {
         let n = cursor.next();
         assertEqual(n[1].doc[0]._key, "test" + i);
       }
-    }
+    },
+
+    testExternalInMerge: function () {
+      const query = `FOR x IN ${collName} SORT x._key RETURN MERGE({value: 5}, x)`;
+      const cursor = db._query(query);
+      for (let i = 1000; i < 5000; ++i) {
+        assertTrue(cursor.hasNext());
+        let n = cursor.next();
+        assertEqual(n._key, "test" + i);
+        assertEqual(n.value, 5);
+      }
+    },
+
+    testExternalInNeighbors: function () {
+      const query = `FOR n IN NEIGHBORS(${collName}, ${edgeColl}, "${collName}/test1000", "outbound", [], {includeData: true}) SORT n._key RETURN n`;
+      const cursor = db._query(query);
+      for (let i = 1001; i < 3000; ++i) {
+        assertTrue(cursor.hasNext());
+        let n = cursor.next();
+        assertEqual(n._key, "test" + i);
+      }
+    },
+
+
   };
 
 }
