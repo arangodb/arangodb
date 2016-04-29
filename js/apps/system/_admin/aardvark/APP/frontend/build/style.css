@@ -2332,6 +2332,23 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
   .navbar .nav > li > a:hover {
     background-color: #000;
     color: #686766; }
+  .navbar .shortcut {
+    bottom: 31px;
+    left: 13px;
+    position: absolute; }
+    .navbar .shortcut i {
+      background-color: transparent;
+      border-radius: 20px;
+      color: #fff;
+      padding-bottom: 6px;
+      padding-left: 4px;
+      padding-right: 0;
+      padding-top: 5px;
+      width: 20px; }
+    .navbar .shortcut i:hover {
+      background-color: #2ecc71;
+      color: #fff;
+      cursor: pointer; }
   .navbar .social-icons {
     bottom: 0;
     float: left;
@@ -2588,16 +2605,6 @@ div.footer-center {
   background: none repeat scroll 0 0 transparent;
   color: #686766;
   width: 10%; }
-  div.footer-center i {
-    background-color: #fff;
-    border: 1px solid rgba(104, 103, 102, 0.1);
-    border-radius: 20px;
-    margin-left: 1px;
-    padding: 6px 2px;
-    width: 20px; }
-  div.footer-center i:hover {
-    background-color: #2ecc71;
-    color: #fff; }
   div.footer-center p {
     padding-top: 5px; }
   div.footer-center p:hover {
