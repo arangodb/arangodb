@@ -66,7 +66,8 @@ Overview
 
 17. GET /_api/document?collection=<name> withdrawn,
     is now
-    PUT /_api/simple/all  with body {"collection":<name>} with same functionality.
+    PUT /_api/simple/all-keys  with body {"collection":<name>} with same functionality.
+    The type parameter is now an attribute in the body.
 
 ### New capabilities:
 
