@@ -37,7 +37,6 @@ const parameterTypes = require('@arangodb/foxx/manager-utils').parameterTypes;
 const getReadableName = require('@arangodb/foxx/manager-utils').getReadableName;
 const Router = require('@arangodb/foxx/router/router');
 const Tree = require('@arangodb/foxx/router/tree');
-const actions = require('@arangodb/actions');
 
 const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
 const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
