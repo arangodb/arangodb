@@ -690,10 +690,11 @@
 
     checkForNewBindParams: function() {
       var self = this,
-      text = this.aqlEditor.getValue() //Remove comments
-      .replace(/\s*\/\/.*\n/g, '\n')
-      .replace(/\s*\/\*.*?\*\//g, ''),
-      words = text.split(" "),
+      //Remove comments
+      text = this.aqlEditor.getValue() + "\n";
+      text = text.replace(/\s*\/\/.*\n/g, '\n').replace(/\s*\/\*.*?\*\//g, '');
+
+      var words = text.split(" "),
       words1 = [],
       pos = 0;
       _.each(words, function(word) {
@@ -1146,8 +1147,9 @@
         data.batchSize = parseInt(sizeBox.val(), 10);
       }
 
-      var parsedBindVars = {}, tmpVar;
+      //var parsedBindVars = {}, tmpVar;
       if (Object.keys(this.bindParamTableObj).length > 0) {
+        /*
         _.each(this.bindParamTableObj, function(value, key) {
           try {
             tmpVar = JSON.parse(value);
@@ -1156,8 +1158,8 @@
             tmpVar = value;
           }
           parsedBindVars[key] = tmpVar;
-        });
-        data.bindVars = parsedBindVars;
+        });*/
+        data.bindVars = this.bindParamTableObj;
       }
       return JSON.stringify(data);
     },
@@ -1166,6 +1168,7 @@
       var self = this;
 
       var queryData = this.readQueryData();
+
       if (queryData) {
         sentQueryEditor.setValue(self.aqlEditor.getValue());
 

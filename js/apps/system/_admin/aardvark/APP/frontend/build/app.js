@@ -26730,15 +26730,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       var sparse;
 
       switch (indexType) {
-        case 'Cap':
-          var size = parseInt($('#newCapSize').val(), 10) || 0;
-        var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
-        postParameter = {
-          type: 'cap',
-          size: size,
-          byteSize: byteSize
-        };
-        break;
         case 'Geo':
           //HANDLE ARRAY building
           fields = $('#newGeoFields').val();
@@ -26973,7 +26964,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     resetIndexForms: function () {
       $('#indexHeader input').val('').prop("checked", false);
-      $('#newIndexType').val('Cap').prop('selected',true);
+      $('#newIndexType').val('Geo').prop('selected',true);
       this.selectIndexType();
     },
 
@@ -27436,7 +27427,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('.createModalDialog .modal-footer button').first().focus();
         }
         else if (direction === 'right') {
-          $('..createModalDialog .modal-footer button').last().focus();
+          $('.createModalDialog .modal-footer button').last().focus();
         }
       }
       else if (hasFocus === true) {
@@ -27714,7 +27705,7 @@ window.ArangoUsers = Backbone.Collection.extend({
                 $(focus[0]).focus();
               }
           }
-        }, 800);
+        }, 400);
       }
 
     },
@@ -30768,10 +30759,11 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     checkForNewBindParams: function() {
       var self = this,
-      text = this.aqlEditor.getValue() //Remove comments
-      .replace(/\s*\/\/.*\n/g, '\n')
-      .replace(/\s*\/\*.*?\*\//g, ''),
-      words = text.split(" "),
+      //Remove comments
+      text = this.aqlEditor.getValue() + "\n";
+      text = text.replace(/\s*\/\/.*\n/g, '\n').replace(/\s*\/\*.*?\*\//g, '');
+
+      var words = text.split(" "),
       words1 = [],
       pos = 0;
       _.each(words, function(word) {
@@ -31224,8 +31216,9 @@ window.ArangoUsers = Backbone.Collection.extend({
         data.batchSize = parseInt(sizeBox.val(), 10);
       }
 
-      var parsedBindVars = {}, tmpVar;
+      //var parsedBindVars = {}, tmpVar;
       if (Object.keys(this.bindParamTableObj).length > 0) {
+        /*
         _.each(this.bindParamTableObj, function(value, key) {
           try {
             tmpVar = JSON.parse(value);
@@ -31234,8 +31227,8 @@ window.ArangoUsers = Backbone.Collection.extend({
             tmpVar = value;
           }
           parsedBindVars[key] = tmpVar;
-        });
-        data.bindVars = parsedBindVars;
+        });*/
+        data.bindVars = this.bindParamTableObj;
       }
       return JSON.stringify(data);
     },
@@ -31244,6 +31237,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       var self = this;
 
       var queryData = this.readQueryData();
+
       if (queryData) {
         sentQueryEditor.setValue(self.aqlEditor.getValue());
 
@@ -34155,6 +34149,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     editUser : function(e) {
 
       if ($(e.currentTarget).find('a').attr('id') === 'createUser') {
+        console.log($(e.currentTarget).find('a').attr('id'));
         return;
       }
 
