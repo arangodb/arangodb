@@ -106,6 +106,7 @@
         };
         break;
       }
+
       var callback = function(error, msg){
         if (error) {
           if (msg) {
@@ -116,10 +117,14 @@
             arangoHelper.arangoError("Document error", "Could not create index.");
           }
         }
+        //toggle back
         self.toggleNewIndexView();
+
+        //rerender
+        self.render();
       };
 
-      self.model.createIndex(postParameter, callback);
+      this.model.createIndex(postParameter, callback);
     },
 
     bindIndexEvents: function() {

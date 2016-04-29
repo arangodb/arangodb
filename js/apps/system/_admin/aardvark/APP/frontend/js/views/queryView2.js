@@ -460,6 +460,10 @@
 
       if (queryObject !== null && queryObject !== undefined && queryObject !== "") {
         this.aqlEditor.setValue(queryObject.query);
+
+        //reset undo history for initial text value
+        this.aqlEditor.getSession().setUndoManager(new ace.UndoManager());
+
         if (queryObject.parameter !== '' || queryObject !== undefined) {
           try {
             // then fill values into input boxes
@@ -545,7 +549,7 @@
       this.fillSelectBoxes();
       this.makeResizeable();
       this.initQueryImport();
-      self.getCachedQueryAfterRender();
+      this.getCachedQueryAfterRender();
 
       //set height of editor wrapper
       $('.inputEditorWrapper').height($(window).height() / 10 * 5 + 25);
