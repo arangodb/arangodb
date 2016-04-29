@@ -24,6 +24,7 @@
 #include "v8-query.h"
 #include "Aql/Query.h"
 #include "Aql/QueryResultV8.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/GeoIndex2.h"
 #include "Utils/OperationCursor.h"
@@ -128,8 +129,8 @@ static void EdgesQuery(TRI_edge_direction_e direction,
       builder->add(VPackValue(TRI_ObjectToString(val)));
     } else if (val->IsObject()) {
       v8::Handle<v8::Object> obj = val->ToObject();
-      if (obj->Has(TRI_V8_ASCII_STD_STRING(isolate, Transaction::IdString))) {
-        builder->add(VPackValue(TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STD_STRING(isolate, Transaction::IdString)))));
+      if (obj->Has(TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString))) {
+        builder->add(VPackValue(TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString)))));
       } else {
         builder->add(VPackValue(""));
       }
@@ -372,10 +373,10 @@ static void JS_ChecksumCollection(
   trx.invokeOnAllElements(col->_name, [&hash, &withData, &withRevisions](TRI_doc_mptr_t const* mptr) {
     VPackSlice const slice(mptr->vpack());
 
-    uint64_t localHash = slice.get(Transaction::KeyString).hash();
+    uint64_t localHash = slice.get(StaticStrings::KeyString).hash();
 
     if (withRevisions) {
-      localHash += slice.get(Transaction::RevString).hash();
+      localHash += slice.get(StaticStrings::RevString).hash();
     }
 
     if (withData) {

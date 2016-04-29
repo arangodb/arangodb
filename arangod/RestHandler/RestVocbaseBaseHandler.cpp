@@ -245,10 +245,10 @@ void RestVocbaseBaseHandler::generate20x(
   VPackSlice slice = result.slice();
   TRI_ASSERT(slice.isObject() || slice.isArray());
   if (slice.isObject()) {
-    _response->setHeaderNC("etag", "\"" + slice.get(Transaction::RevString).copyString() + "\"");
+    _response->setHeaderNC("etag", "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
     // pre 1.4 location headers withdrawn for >= 3.0
     std::string escapedHandle(assembleDocumentId(
-        collectionName, slice.get(Transaction::KeyString).copyString(), true));
+        collectionName, slice.get(StaticStrings::KeyString).copyString(), true));
     _response->setHeaderNC("location",
                          std::string("/_db/" + _request->databaseName() +
                                      DOCUMENT_PATH + "/" + escapedHandle));
@@ -285,7 +285,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   createResponse(GeneralResponse::ResponseCode::PRECONDITION_FAILED);
 
   if (slice.isObject()) {  // single document case
-    std::string const rev = VelocyPackHelper::getStringValue(slice, Transaction::KeyString, "");
+    std::string const rev = VelocyPackHelper::getStringValue(slice, StaticStrings::KeyString, "");
     _response->setHeaderNC("etag", "\"" + rev + "\"");
   }
   VPackBuilder builder;
@@ -298,9 +298,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     builder.add("errorNum", VPackValue(TRI_ERROR_ARANGO_CONFLICT));
     builder.add("errorMessage", VPackValue("precondition failed"));
     if (slice.isObject()) {
-      builder.add(Transaction::IdString, slice.get(Transaction::IdString));
-      builder.add(Transaction::KeyString, slice.get(Transaction::KeyString));
-      builder.add(Transaction::RevString, slice.get(Transaction::RevString));
+      builder.add(StaticStrings::IdString, slice.get(StaticStrings::IdString));
+      builder.add(StaticStrings::KeyString, slice.get(StaticStrings::KeyString));
+      builder.add(StaticStrings::RevString, slice.get(StaticStrings::RevString));
     } else {
       builder.add("result", slice);
     }
@@ -319,9 +319,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(Transaction::IdString, VPackValue(assembleDocumentId(collectionName, key, false)));
-  builder.add(Transaction::KeyString, VPackValue(std::to_string(rev)));
-  builder.add(Transaction::RevString, VPackValue(key));
+  builder.add(StaticStrings::IdString, VPackValue(assembleDocumentId(collectionName, key, false)));
+  builder.add(StaticStrings::KeyString, VPackValue(std::to_string(rev)));
+  builder.add(StaticStrings::RevString, VPackValue(key));
   builder.close();
 
   generatePreconditionFailed(builder.slice());
@@ -350,7 +350,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   VPackSlice document = input.resolveExternal();
   std::string rev;
   if (document.isObject()) {
-    rev = VelocyPackHelper::getStringValue(document, Transaction::RevString, "");
+    rev = VelocyPackHelper::getStringValue(document, StaticStrings::RevString, "");
   }
 
   // and generate a response

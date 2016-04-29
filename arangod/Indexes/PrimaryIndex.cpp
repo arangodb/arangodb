@@ -24,6 +24,7 @@
 #include "PrimaryIndex.h"
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
@@ -61,7 +62,7 @@ static bool IsEqualKeyElement(void*, uint8_t const* key,
   
   VPackSlice slice(key);
   VPackSlice other(element->vpack());
-  return other.get(Transaction::KeyString).equals(slice);
+  return other.get(StaticStrings::KeyString).equals(slice);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +78,7 @@ static bool IsEqualElementElement(void*, TRI_doc_mptr_t const* left,
   VPackSlice l(left->vpack());
   VPackSlice r(right->vpack());
 
-  return l.get(Transaction::KeyString).equals(r.get(Transaction::KeyString));
+  return l.get(StaticStrings::KeyString).equals(r.get(StaticStrings::KeyString));
 }
 
 TRI_doc_mptr_t* PrimaryIndexIterator::next() {
@@ -125,7 +126,7 @@ void AnyIndexIterator::reset() {
 PrimaryIndex::PrimaryIndex(TRI_document_collection_t* collection)
     : Index(0, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
-                {{{Transaction::KeyString, false}}}),
+                {{{StaticStrings::KeyString, false}}}),
             true, false),
       _primaryIndex(nullptr) {
   uint32_t indexBuckets = 1;
@@ -397,8 +398,8 @@ bool PrimaryIndex::supportsFilterCondition(
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
   SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(Transaction::IdString, false)},
-       {arangodb::basics::AttributeName(Transaction::KeyString, false)}});
+      {{arangodb::basics::AttributeName(StaticStrings::IdString, false)},
+       {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}});
 
   return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems,
                           estimatedCost);
@@ -415,8 +416,8 @@ IndexIterator* PrimaryIndex::iteratorForCondition(
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(Transaction::IdString, false)},
-       {arangodb::basics::AttributeName(Transaction::KeyString, false)}});
+      {{arangodb::basics::AttributeName(StaticStrings::IdString, false)},
+       {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}});
 
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -485,8 +486,8 @@ arangodb::aql::AstNode* PrimaryIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
   SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(Transaction::IdString, false)},
-       {arangodb::basics::AttributeName(Transaction::KeyString, false)}});
+      {{arangodb::basics::AttributeName(StaticStrings::IdString, false)},
+       {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}});
 
   return matcher.specializeOne(this, node, reference);
 }
