@@ -51,7 +51,7 @@
           message = latestModel.get('title'),
           time = 3000,
           closeWidth = ['click'],
-          buttons = undefined;
+          buttons;
 
           if (latestModel.get('content')) {
             message = message + ": " + latestModel.get('content');
@@ -64,7 +64,7 @@
               addClass: 'button-danger', text: 'Close', onClick: function($noty) {
                 $noty.close();
               }
-            }]
+            }];
           }
           $.noty.clearQueue();
           $.noty.closeAll();

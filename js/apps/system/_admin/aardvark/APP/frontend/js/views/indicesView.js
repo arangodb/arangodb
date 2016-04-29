@@ -137,6 +137,7 @@
         $('#cancelIndex').unbind('click');
         $('#cancelIndex').bind('click', function() {
           self.toggleNewIndexView();
+          self.render();
         });
 
         $('#createIndex').unbind('click');
