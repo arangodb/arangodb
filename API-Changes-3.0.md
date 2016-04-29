@@ -58,6 +58,11 @@ Overview
     once per distinct input edge id. However, it may break client applications that 
     rely on the old behavior.
 
+15. the HTTP for "/_api/gharial" now returns 202 (Accepted) instead of 200 (OK) or
+    201 (Created).
+
+16. the HTTP API for creating documents (/_api/document) no longer supports the
+    createCollection parameter.
 
 ### New capabilities:
 
@@ -124,6 +129,9 @@ Explanations
     a document does not exist at all or whether the queries revision is
     outdated.
     
+16. createCollection was only supported in single-server, but not in the
+    cluster.
+
 ### New capabilities:
 
  1. Babies for document queries.
@@ -138,4 +146,3 @@ Explanations
  3. _key, _from, _to can be indexed like normal attributes.
 
     Comes with the VelocyPack change.
-

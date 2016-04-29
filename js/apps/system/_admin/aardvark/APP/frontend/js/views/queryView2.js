@@ -102,7 +102,6 @@
         arangoHelper.arangoError("Bind parameter", "Could not parse bind parameter");
       }
       this.resize();
-
     },
 
     openExportDialog: function() {
@@ -688,46 +687,126 @@
       }
     },
 
+    parseQuery: function (query) {
+
+      var STATE_NORMAL = 0,
+      STATE_STRING_SINGLE = 1,
+      STATE_STRING_DOUBLE = 2,
+      STATE_STRING_TICK = 3,
+      STATE_COMMENT_SINGLE = 4,
+      STATE_COMMENT_MULTI = 5,
+      STATE_BIND = 6,
+      STATE_STRING_BACKTICK = 7;
+
+      query += " ";
+      var start;
+      var state = STATE_NORMAL;
+      var n = query.length;
+      var i, c;
+
+      var bindParams = [];
+
+      for (i = 0; i < n; ++i) {
+        c = query.charAt(i);
+
+        switch (state) {
+          case STATE_NORMAL: 
+            if (c === '@') {
+              state = STATE_BIND;
+              start = i;
+            } else if (c === '\'') {
+              state = STATE_STRING_SINGLE;
+            } else if (c === '"') {
+              state = STATE_STRING_DOUBLE;
+            } else if (c === '`') {
+              state = STATE_STRING_TICK;
+            } else if (c === '´') {
+              state = STATE_STRING_BACKTICK;
+            } else if (c === '/') {
+              if (i + 1 < n) {
+                if (query.charAt(i + 1) === '/') {
+                  state = STATE_COMMENT_SINGLE;
+                  ++i;
+                } else if (query.charAt(i + 1) === '*') {
+                  state = STATE_COMMENT_MULTI;
+                  ++i;
+                } 
+              }
+            }
+            break;
+          case STATE_COMMENT_SINGLE:
+            if (c === '\r' || c === '\n') {
+              state = STATE_NORMAL;
+            }
+            break;
+          case STATE_COMMENT_MULTI:
+            if (c === '*') {
+              if (i + 1 <= n && query.charAt(i + 1) === '/') {
+                state = STATE_NORMAL;
+                ++i;
+              }
+            }
+            break;
+          case STATE_STRING_SINGLE:
+            if (c === '\\') {
+              ++i;
+            } else if (c === '\'') {
+              state = STATE_NORMAL;
+            }
+            break;
+          case STATE_STRING_DOUBLE:
+            if (c === '\\') {
+              ++i;
+            } else if (c === '"') {
+              state = STATE_NORMAL;
+            }
+            break;
+          case STATE_STRING_TICK:
+            if (c === '`') {
+              state = STATE_NORMAL;
+            }
+            break;
+          case STATE_STRING_BACKTICK:
+            if (c === '´') {
+              state = STATE_NORMAL;
+            }
+            break;
+          case STATE_BIND:
+            if (!/^[@a-zA-Z0-9_]+$/.test(c)) {
+              //console.log("FOUND BIND PARAMETER: ", query.substring(start, i));
+              bindParams.push(query.substring(start, i));
+              state = STATE_NORMAL;
+              start = undefined;
+            } 
+            break;
+        }
+      }
+
+      return {
+        query: query,
+        bindParams: bindParams 
+      };
+
+    },
+
     checkForNewBindParams: function() {
-      var self = this,
-      text = this.aqlEditor.getValue() //Remove comments
-      .replace(/\s*\/\/.*\n/g, '\n')
-      .replace(/\s*\/\*.*?\*\//g, ''),
-      words = text.split(" "),
-      words1 = [],
-      pos = 0;
-      _.each(words, function(word) {
-        word = word.split("\n");
-        _.each(word, function(x) {
-          words1.push(x);
-        });
-      });
-
-      _.each(words, function(word) {
-        word = word.split(",");
-        _.each(word, function(x) {
-          words1.push(x);
-        });
-      });
-
-      _.each(words1, function(word) {
-        // remove newlines and whitespaces
-        words[pos] = word.replace(/(\r\n|\n|\r)/gm,"");
-        pos++;
-      });
+      var self = this;
+      //Remove comments
+      var foundBindParams = this.parseQuery(this.aqlEditor.getValue()).bindParams;
 
       var newObject = {};
-      _.each(words1, function(word) {
-        //found a valid bind param expression
+      _.each(foundBindParams, function(word) {
         var match = word.match(self.bindParamRegExp);
         if (match) {
-          //if property is not available
           word = match[1];
+          newObject[word] = '';
+        }
+        else {
           newObject[word] = '';
         }
       });
 
-      Object.keys(newObject).forEach(function(keyNew) {
+      Object.keys(foundBindParams).forEach(function(keyNew) {
         Object.keys(self.bindParamTableObj).forEach(function(keyOld) {
           if (keyNew === keyOld) {
             newObject[keyNew] = self.bindParamTableObj[keyOld];
@@ -801,7 +880,7 @@
       this.bindParamAceEditor.getSession().setMode("ace/mode/json");
       this.bindParamAceEditor.setFontSize("10pt");
 
-      this.bindParamAceEditor.getSession().on('change', function(a, b, c) {
+      this.bindParamAceEditor.getSession().on('change', function() {
         try {
           self.bindParamTableObj = JSON.parse(self.bindParamAceEditor.getValue());
           self.allowParamToggle = true;
@@ -902,15 +981,17 @@
       });
 
       function compare(a,b) {
+        var x;
         if (a.name < b.name) {
-          return -1;
+          x = -1;
         }
         else if (a.name > b.name) {
-          return 1;
+          x = 1;
         }
         else {
-          return 0;
+          x = 0;
         }
+        return x;
       }
 
       this.myQueriesTableDesc.rows.sort(compare);
@@ -1146,8 +1227,9 @@
         data.batchSize = parseInt(sizeBox.val(), 10);
       }
 
-      var parsedBindVars = {}, tmpVar;
+      //var parsedBindVars = {}, tmpVar;
       if (Object.keys(this.bindParamTableObj).length > 0) {
+        /*
         _.each(this.bindParamTableObj, function(value, key) {
           try {
             tmpVar = JSON.parse(value);
@@ -1156,8 +1238,8 @@
             tmpVar = value;
           }
           parsedBindVars[key] = tmpVar;
-        });
-        data.bindVars = parsedBindVars;
+        });*/
+        data.bindVars = this.bindParamTableObj;
       }
       return JSON.stringify(data);
     },
@@ -1166,6 +1248,7 @@
       var self = this;
 
       var queryData = this.readQueryData();
+
       if (queryData) {
         sentQueryEditor.setValue(self.aqlEditor.getValue());
 

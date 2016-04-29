@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -183,7 +183,8 @@ ExampleMatcher::ExampleMatcher(VPackSlice const& example,
 /// @brief Checks if the given velocyPack matches the examples in this class
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExampleMatcher::matches(VPackSlice const toMatch) const {
+bool ExampleMatcher::matches(VPackSlice const test) const {
+  VPackSlice toMatch = test.resolveExternal();
   for (auto const& def : definitions) {
     VPackSlice const compareValue = def.slice();
     size_t i = 0;

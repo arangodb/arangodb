@@ -238,7 +238,7 @@ bool TraverserExpression::matchesCheck(arangodb::Transaction* trx,
                                        VPackSlice const& element) const {
   TRI_ASSERT(trx != nullptr);
 
-  VPackSlice value = element; 
+  VPackSlice value = element.resolveExternal(); 
   
   // initialize compare value to Null
   VPackSlice result = arangodb::basics::VelocyPackHelper::NullValue();

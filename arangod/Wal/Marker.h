@@ -144,7 +144,7 @@ class CrudMarker : public Marker {
  
   /// @brief returns the marker size 
   uint32_t size() const override final { 
-    return DatafileHelper::VPackOffset(_type) + _data.byteSize();
+    return static_cast<uint32_t>(DatafileHelper::VPackOffset(_type) + _data.byteSize());
   }
 
   /// @brief store the marker in the memory region starting at mem
@@ -188,7 +188,7 @@ class DatabaseMarker : public Marker {
   
   /// @brief returns the marker size 
   uint32_t size() const override final { 
-    return DatafileHelper::VPackOffset(_type) + _data.byteSize();
+    return static_cast<uint32_t>(DatafileHelper::VPackOffset(_type) + _data.byteSize());
   }
 
   /// @brief store the marker in the memory region starting at mem
@@ -233,7 +233,7 @@ class CollectionMarker : public Marker {
   
   /// @brief returns the marker size 
   uint32_t size() const override final { 
-    return DatafileHelper::VPackOffset(_type) + _data.byteSize();
+    return static_cast<uint32_t>(DatafileHelper::VPackOffset(_type) + _data.byteSize());
   }
 
   /// @brief store the marker in the memory region starting at mem
@@ -279,7 +279,7 @@ class TransactionMarker : public Marker {
   /// @brief returns the marker size 
   uint32_t size() const override final {
     // these markers do not have any VPack payload 
-    return DatafileHelper::VPackOffset(_type);
+    return static_cast<uint32_t>(DatafileHelper::VPackOffset(_type));
   }
 
   /// @brief store the marker in the memory region starting at mem

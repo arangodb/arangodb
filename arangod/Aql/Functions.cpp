@@ -548,7 +548,7 @@ static void RequestEdges(VPackSlice const& vertexSlice,
               THROW_ARANGO_EXCEPTION(vertexResult.code);
             }
           } else {
-            result.add("vertex", vertexResult.slice());
+            result.add("vertex", vertexResult.slice().resolveExternal());
           }
         }
       }
@@ -596,51 +596,28 @@ static void RegisterCollectionInTransaction(
 /// @brief Helper function to get a document by it's identifier
 ///        Lazy Locks the collection if necessary.
 static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
-                                    std::string const& collectionName,
+                                    std::string& collectionName,
                                     std::string const& identifier,
                                     bool ignoreError,
                                     VPackBuilder& result) {
   OperationOptions options;
   OperationResult opRes;
-  VPackBuilder searchBuilder;
-  searchBuilder.openObject();
-  searchBuilder.add(VPackValue(TRI_VOC_ATTRIBUTE_KEY));
+  TransactionBuilderLeaser searchBuilder(trx);
+
+  searchBuilder->openObject();
+  searchBuilder->add(VPackValue(TRI_VOC_ATTRIBUTE_KEY));
 
   std::vector<std::string> parts =
       arangodb::basics::StringUtils::split(identifier, "/");
 
-
   if (parts.size() == 1) {
-    searchBuilder.add(VPackValue(identifier));
-    searchBuilder.close();
-
-    try {
-      TRI_voc_cid_t cid;
-      RegisterCollectionInTransaction(trx, collectionName, cid);
-    } catch (arangodb::basics::Exception const&) {
-      if (ignoreError) {
-        return;
-      }
-      throw;
-    }
-
-    opRes = trx->document(collectionName, searchBuilder.slice(), options);
+    searchBuilder->add(VPackValue(identifier));
+    searchBuilder->close();
   } else if (parts.size() == 2) {
     if (collectionName.empty()) {
-      searchBuilder.add(VPackValue(parts[1]));
-      searchBuilder.close();
-
-      try {
-        TRI_voc_cid_t cid;
-        RegisterCollectionInTransaction(trx, parts[0], cid);
-      } catch (arangodb::basics::Exception const&) {
-        if (ignoreError) {
-          return;
-        }
-        throw;
-      }
-
-      opRes = trx->document(parts[0], searchBuilder.slice(), options);
+      searchBuilder->add(VPackValue(parts[1]));
+      searchBuilder->close();
+      collectionName = parts[0];
     } else if (parts[0] != collectionName) {
       // Reqesting an _id that cannot be stored in this collection
       if (ignoreError) {
@@ -648,20 +625,8 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
       }
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     } else {
-      searchBuilder.add(VPackValue(parts[1]));
-      searchBuilder.close();
-
-      try {
-        TRI_voc_cid_t cid;
-        RegisterCollectionInTransaction(trx, collectionName, cid);
-      } catch (arangodb::basics::Exception const&) {
-        if (ignoreError) {
-          return;
-        }
-        throw;
-      }
-
-      opRes = trx->document(collectionName, searchBuilder.slice(), options);
+      searchBuilder->add(VPackValue(parts[1]));
+      searchBuilder->close();
     }
   } else {
     if (ignoreError) {
@@ -669,6 +634,16 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
+
+  try {
+    opRes = trx->document(collectionName, searchBuilder->slice(), options);
+  } catch (arangodb::basics::Exception const&) {
+    if (ignoreError) {
+      return;
+    }
+    throw;
+  }
+
   if (opRes.failed()) {
     if (ignoreError) {
       return;
@@ -756,7 +731,7 @@ static AqlValue MergeParameters(arangodb::aql::Query* query,
   return AqlValue(builder);
 }
 
-/// @brief Transforms an unordered_map<VertexId> to AQL VelocyPack values
+/// @brief Transforms an std::vector<VertexId> to AQL VelocyPack values
 static AqlValue VertexIdsToAqlValueVPack(arangodb::aql::Query* query,
                                          arangodb::AqlTransaction* trx,
                                          std::vector<std::string> const& ids,
@@ -766,7 +741,8 @@ static AqlValue VertexIdsToAqlValueVPack(arangodb::aql::Query* query,
   if (includeData) {
     for (auto& it : ids) {
       // THROWS ERRORS if the Document was not found
-      GetDocumentByIdentifier(trx, "", it, false, *builder.get());
+      std::string colName;
+      GetDocumentByIdentifier(trx, colName, it, false, *builder.get());
     }
   } else {
     for (auto& it : ids) {
@@ -777,6 +753,32 @@ static AqlValue VertexIdsToAqlValueVPack(arangodb::aql::Query* query,
 
   return AqlValue(builder.get());
 }
+
+/// @brief Transforms an std::vector<VPackSlice> to AQL VelocyPack values
+static AqlValue VertexIdsToAqlValueVPack(arangodb::aql::Query* query,
+                                         arangodb::AqlTransaction* trx,
+                                         std::vector<VPackSlice> const& ids,
+                                         bool includeData = false) {
+  TransactionBuilderLeaser builder(trx);
+  builder->openArray();
+  if (includeData) {
+    for (auto& it : ids) {
+      // THROWS ERRORS if the Document was not found
+      std::string colName;
+      // TODO
+      GetDocumentByIdentifier(trx, colName, it.copyString(), false, *builder.get());
+    }
+  } else {
+    for (auto& it : ids) {
+      builder->add(it);
+    }
+  }
+  builder->close();
+
+  return AqlValue(builder.get());
+}
+
+
 
 /// @brief Load geoindex for collection name
 static arangodb::Index* getGeoIndex(arangodb::AqlTransaction* trx,
@@ -2023,9 +2025,9 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
                                     "'%s'", collectionName.c_str());
     }
 
-    opts.start = vertexId;
+    opts.setStart(vertexId);
   } else {
-    opts.start = vertexId;
+    opts.setStart(vertexId);
   }
 
   AqlValue direction = ExtractFunctionParameterValue(trx, parameters, 3);
@@ -2112,8 +2114,11 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  std::vector<std::string> neighbors;
-  TRI_RunNeighborsSearch(edgeCollectionInfos, opts, neighbors);
+  std::unordered_set<VPackSlice,
+                     arangodb::basics::VelocyPackHelper::VPackStringHash,
+                     arangodb::basics::VelocyPackHelper::VPackStringEqual> visited;
+  std::vector<VPackSlice> neighbors;
+  TRI_RunNeighborsSearch(edgeCollectionInfos, opts, visited, neighbors);
 
   return VertexIdsToAqlValueVPack(query, trx, neighbors, includeData);
 }
@@ -2436,7 +2441,8 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
     TransactionBuilderLeaser builder(trx);
     if (id.isString()) {
       std::string identifier(id.slice().copyString());
-      GetDocumentByIdentifier(trx, "", identifier, true, *builder.get());
+      std::string colName;
+      GetDocumentByIdentifier(trx, colName, identifier, true, *builder.get());
       if (builder->isEmpty()) {
         // not found
         return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
@@ -2450,7 +2456,8 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
       for (auto const& next : VPackArrayIterator(idSlice)) {
         if (next.isString()) {
           std::string identifier = next.copyString();
-          GetDocumentByIdentifier(trx, "", identifier, true, *builder.get());
+          std::string colName;
+          GetDocumentByIdentifier(trx, colName, identifier, true, *builder.get());
         }
       }
       builder->close();
@@ -2463,7 +2470,7 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
   if (!collectionValue.isString()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-  std::string const collectionName(collectionValue.slice().copyString());
+  std::string collectionName(collectionValue.slice().copyString());
 
   bool notFound = false; // TODO: what does this do?
 
