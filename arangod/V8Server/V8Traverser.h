@@ -24,6 +24,7 @@
 #ifndef ARANGOD_V8_SERVER_V8_TRAVERSER_H
 #define ARANGOD_V8_SERVER_V8_TRAVERSER_H 1
 
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/ExampleMatcher.h"
 #include "VocBase/Traverser.h"
 
@@ -116,6 +117,7 @@ struct NeighborsOptions : BasicOptions {
   TRI_edge_direction_e direction;
   uint64_t minDepth;
   uint64_t maxDepth;
+  arangodb::velocypack::Builder startBuilder; 
 
   explicit NeighborsOptions(arangodb::Transaction* trx)
       : BasicOptions(trx), direction(TRI_EDGE_OUT), minDepth(1), maxDepth(1) {}
@@ -124,8 +126,13 @@ struct NeighborsOptions : BasicOptions {
                      arangodb::velocypack::Slice) const override;
 
   bool matchesVertex(std::string const&) const;
+  bool matchesVertex(arangodb::velocypack::Slice const&) const;
 
   void addCollectionRestriction(std::string const&);
+
+  void setStart(std::string const& id);
+
+  arangodb::velocypack::Slice getStart() const;
 };
 
 struct ShortestPathOptions : BasicOptions {
@@ -455,8 +462,11 @@ TRI_RunSimpleShortestPathSearch(
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RunNeighborsSearch(
-    std::vector<EdgeCollectionInfo*>& collectionInfos,
-    arangodb::traverser::NeighborsOptions& opts,
-    std::vector<std::string>& distinct);
+    std::vector<EdgeCollectionInfo*> const& collectionInfos,
+    arangodb::traverser::NeighborsOptions const& opts,
+    std::unordered_set<arangodb::velocypack::Slice,
+                       arangodb::basics::VelocyPackHelper::VPackStringHash,
+                       arangodb::basics::VelocyPackHelper::VPackStringEqual>& visited,
+    std::vector<arangodb::velocypack::Slice>& distinct);
 
 #endif

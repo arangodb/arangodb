@@ -1,5 +1,3 @@
-'use strict';
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -19,28 +17,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alan Plum
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-const db = require('@arangodb').db;
-const sessionsMiddleware = require('@arangodb/foxx/sessions');
-const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
-const systemStorage = require('@arangodb/foxx/sessions/storages/_system');
-const sessions = systemStorage();
+#ifndef APPLICATION_FEATURES_BOOTSTRAP_FEATURE_H
+#define APPLICATION_FEATURES_BOOTSTRAP_FEATURE_H 1
 
-module.context.use(sessionsMiddleware({
-  transport: cookieTransport(`arango_sid_${db._name()}`),
-  storage: sessions
-}));
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-module.context.use((req, res, next) => {
-  if (module.context.configuration.sessionPruneProb > Math.random()) {
-    sessions.prune();
-  }
-  next();
-});
+namespace arangodb {
+class BootstrapFeature final : public application_features::ApplicationFeature {
+ public:
+  explicit BootstrapFeature(application_features::ApplicationServer*);
 
-module.context.use(require('./aardvark'));
-module.context.use('/foxxes', require('./foxxes'));
-module.context.use('/cluster', require('./cluster'));
-module.context.use('/statistics', require('./statistics'));
+ public:
+  void start() override final;
+};
+}
+
+#endif

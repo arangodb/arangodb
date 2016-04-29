@@ -36,7 +36,6 @@ FoxxQueuesFeature::FoxxQueuesFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("V8Platform");
-  startsAfter("RestServer");
 }
 
 void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -32,12 +32,12 @@ const aql = arangodb.aql;
 
 module.exports = function systemStorage(cfg) {
   assert(!cfg, 'System session storage does not expect any options');
-  const expiry = Number(internal.options()['server.session-timeout']) * 1000;
+  const ttl = Number(internal.options()['server.session-timeout']) * 1000;
   return {
     prune() {
       return db._query(aql`
         FOR session IN _sessions
-        FILTER session.lastAccess < ${Date.now() - expiry}
+        FILTER (session.lastAccess + ${ttl}) < ${Date.now()}
         REMOVE session IN _sessions
         RETURN OLD._key
       `).toArray();
@@ -50,21 +50,20 @@ module.exports = function systemStorage(cfg) {
         if (doc.uid && internalAccessTime) {
           doc.lastAccess = internalAccessTime;
         }
-        if ((doc.lastAccess + expiry) < now) {
+        const lastAccess = doc.lastAccess;
+        if ((doc.lastAccess + ttl) < now) {
           this.clear(sid);
           return null;
         }
         if (doc.uid) {
-          const user = db._users.document(doc.uid);
           internal.clearSid(doc._key);
-          internal.createSid(doc._key, user.user);
+          internal.createSid(doc._key, doc.uid);
         }
         db._sessions.update(sid, {lastAccess: now});
         return {
           _key: doc._key,
           uid: doc.uid,
-          created: doc.created,
-          data: doc.sessionData
+          lastAccess: lastAccess
         };
       } catch (e) {
         if (e.isArangoError && e.errorNum === NOT_FOUND) {
@@ -83,10 +82,7 @@ module.exports = function systemStorage(cfg) {
       const uid = session.uid;
       const payload = {
         uid: uid || null,
-        sessionData: session.data || {},
-        created: session.created || Date.now(),
-        lastAccess: Date.now(),
-        lastUpdate: Date.now()
+        lastAccess: Date.now()
       };
       let sid = session._key;
       const isNew = !sid;
@@ -98,18 +94,18 @@ module.exports = function systemStorage(cfg) {
         db._sessions.replace(sid, payload);
       }
       if (uid) {
-        const user = db._users.document(uid);
         internal.clearSid(session._key);
-        internal.createSid(session._key, user.user);
+        internal.createSid(session._key, uid);
       }
+      session.lastAccess = payload.lastAccess;
       return session;
     },
-    setUser(session, user) {
-      if (user) {
-        session.uid = user._key;
+    setUser(session, uid) {
+      if (uid) {
+        session.uid = uid;
         if (session._key) {
           internal.clearSid(session._key);
-          internal.createSid(session._key, user.user);
+          internal.createSid(session._key, uid);
         }
       } else {
         session.uid = null;
@@ -137,8 +133,7 @@ module.exports = function systemStorage(cfg) {
     new() {
       return {
         uid: null,
-        created: Date.now(),
-        data: {}
+        lastAccess: null
       };
     }
   };

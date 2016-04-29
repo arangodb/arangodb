@@ -3276,25 +3276,29 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
                                       TRI_voc_tick_t& resultMarkerTick,
                                       bool lock) {
   resultMarkerTick = 0;
+  VPackSlice fromSlice;
+  VPackSlice toSlice;
 
-  if (_info.type() == TRI_COL_TYPE_EDGE) {
+  bool const isEdgeCollection = (_info.type() == TRI_COL_TYPE_EDGE);
+
+  if (isEdgeCollection) {
     // _from:
-    VPackSlice s = slice.get(Transaction::FromString);
-    if (!s.isString()) {
+    fromSlice = slice.get(Transaction::FromString);
+    if (!fromSlice.isString()) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
     VPackValueLength len;
-    char const* docId = s.getString(len);
+    char const* docId = fromSlice.getString(len);
     size_t split;
     if (!TRI_ValidateDocumentIdKeyGenerator(docId, len, &split)) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
     // _to:
-    s = slice.get(Transaction::ToString);
-    if (!s.isString()) {
+    toSlice = slice.get(Transaction::ToString);
+    if (!toSlice.isString()) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
-    docId = s.getString(len);
+    docId = toSlice.getString(len);
     if (!TRI_ValidateDocumentIdKeyGenerator(docId, len, &split)) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
@@ -3307,7 +3311,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
   int res = TRI_ERROR_NO_ERROR;
   if (options.recoveryMarker == nullptr) {
     TIMER_START(TRANSACTION_NEW_OBJECT_FOR_INSERT);
-    res = newObjectForInsert(trx, slice, hash, *builder.get(), options.isRestore);
+    res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection, hash, *builder.get(), options.isRestore);
     TIMER_STOP(TRANSACTION_NEW_OBJECT_FOR_INSERT);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -3404,6 +3408,7 @@ int TRI_document_collection_t::update(Transaction* trx,
   if (!newSlice.isObject()) {
     return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
   }
+  
   // initialize the result
   TRI_ASSERT(mptr != nullptr);
   mptr->setVPack(nullptr);
@@ -3421,6 +3426,13 @@ int TRI_document_collection_t::update(Transaction* trx,
   } else {
     revisionId = TRI_NewTickServer();
   }
+    
+  VPackSlice key = newSlice.get(Transaction::KeyString);
+  if (key.isNone()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+  
+  bool const isEdgeCollection = (_info.type() == TRI_COL_TYPE_EDGE);
   
   TRI_voc_tick_t markerTick = 0;
   int res;
@@ -3431,10 +3443,6 @@ int TRI_document_collection_t::update(Transaction* trx,
     
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
-    VPackSlice key = newSlice.get(Transaction::KeyString);
-    if (key.isNone()) {
-      return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-    }
     res = lookupDocument(trx, key, oldHeader);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -3472,7 +3480,7 @@ int TRI_document_collection_t::update(Transaction* trx,
     TransactionBuilderLeaser builder(trx);
     if (options.recoveryMarker == nullptr) {
       mergeObjectsForUpdate(
-        trx, VPackSlice(oldHeader->vpack()), newSlice, 
+        trx, VPackSlice(oldHeader->vpack()), newSlice, isEdgeCollection,
         std::to_string(revisionId), options.mergeObjects, options.keepNull,
         *builder.get());
  
@@ -3543,14 +3551,18 @@ int TRI_document_collection_t::replace(Transaction* trx,
   }
 
   prevRev = VPackSlice();
+  VPackSlice fromSlice;
+  VPackSlice toSlice;
 
-  if (_info.type() == TRI_COL_TYPE_EDGE) {
-    VPackSlice s = newSlice.get(Transaction::FromString);
-    if (!s.isString()) {
+  bool const isEdgeCollection = (_info.type() == TRI_COL_TYPE_EDGE);
+  
+  if (isEdgeCollection) {
+    fromSlice = newSlice.get(Transaction::FromString);
+    if (!fromSlice.isString()) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
-    s = newSlice.get(Transaction::ToString);
-    if (!s.isString()) {
+    toSlice = newSlice.get(Transaction::ToString);
+    if (!toSlice.isString()) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
   }
@@ -3616,7 +3628,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     TransactionBuilderLeaser builder(trx);
     newObjectForReplace(
         trx, VPackSlice(oldHeader->vpack()),
-        newSlice, std::to_string(revisionId), *builder.get());
+        newSlice, fromSlice, toSlice, isEdgeCollection, std::to_string(revisionId), *builder.get());
 
     if (ServerState::isDBServer(trx->serverRole())) {
       // Need to check that no sharding keys have changed:
@@ -4135,61 +4147,84 @@ int TRI_document_collection_t::deleteSecondaryIndexes(
 int TRI_document_collection_t::newObjectForInsert(
     Transaction* trx,
     VPackSlice const& value,
+    VPackSlice const& fromSlice,
+    VPackSlice const& toSlice,
+    bool isEdgeCollection,
     uint64_t& hash,
     VPackBuilder& builder,
     bool isRestore) {
-  // insert
-  { 
-    VPackObjectBuilder guard(&builder);
 
-    TRI_SanitizeObject(value, builder);
-    uint8_t* p = builder.add(Transaction::IdString,
-        VPackValuePair(9ULL, VPackValueType::Custom));
-    *p++ = 0xf3;  // custom type for _id
-    if (ServerState::isDBServer(trx->serverRole())) {
-      // db server in cluster
-      DatafileHelper::StoreNumber<uint64_t>(p, _info.planId(), sizeof(uint64_t));
-    } else {
-      // local server
-      DatafileHelper::StoreNumber<uint64_t>(p, _info.id(), sizeof(uint64_t));
+  TRI_voc_tick_t newRev = 0;
+  builder.openObject();
+  
+  // add system attributes first 
+
+  // _key
+  VPackSlice s = value.get(Transaction::KeyString);
+  if (s.isNone()) {
+    TRI_ASSERT(!isRestore);   // need key in case of restore
+    newRev = TRI_NewTickServer();
+    std::string keyString = _keyGenerator->generate(newRev);
+    if (keyString.empty()) {
+      return TRI_ERROR_ARANGO_OUT_OF_KEYS;
     }
-    VPackSlice s = value.get(Transaction::KeyString);
-    TRI_voc_rid_t newRev = 0;
-    std::string newRevSt;
-    if (isRestore) {
-      VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(value);
-      if (!oldRev.isString()) {
-        return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
-      }
-      newRevSt = oldRev.copyString();
-    } else {
-      newRev = TRI_NewTickServer();
-      newRevSt = std::to_string(newRev);
+    uint8_t* where = builder.add(Transaction::KeyString,
+                                  VPackValue(keyString));
+    s = VPackSlice(where);  // point to newly built value, the string
+  } else if (!s.isString()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  } else {
+    std::string keyString = s.copyString();
+    int res = _keyGenerator->validate(keyString, isRestore);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
     }
-    if (s.isNone()) {
-      TRI_ASSERT(!isRestore);   // need key in case of restore
-      std::string keyString = _keyGenerator->generate(newRev);
-      if (keyString.empty()) {
-        return TRI_ERROR_ARANGO_OUT_OF_KEYS;
-      }
-      uint8_t* where = builder.add(Transaction::KeyString,
-                                   VPackValue(keyString));
-      s = VPackSlice(where);  // point to newly built value, the string
-    } else if (!s.isString()) {
-      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-    } else {
-      std::string keyString = s.copyString();
-      int res = _keyGenerator->validate(keyString, isRestore);
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
-      builder.add(Transaction::KeyString, s);
-    }
-    // we can get away with the fast hash function here, as key values are 
-    // restricted to strings
-    hash = s.hash();
-    builder.add(Transaction::RevString, VPackValue(newRevSt));
+    builder.add(Transaction::KeyString, s);
   }
+  
+  // _id
+  uint8_t* p = builder.add(Transaction::IdString,
+      VPackValuePair(9ULL, VPackValueType::Custom));
+  *p++ = 0xf3;  // custom type for _id
+  if (ServerState::isDBServer(trx->serverRole())) {
+    // db server in cluster
+    DatafileHelper::StoreNumber<uint64_t>(p, _info.planId(), sizeof(uint64_t));
+  } else {
+    // local server
+    DatafileHelper::StoreNumber<uint64_t>(p, _info.id(), sizeof(uint64_t));
+  }
+  // we can get away with the fast hash function here, as key values are 
+  // restricted to strings
+  hash = s.hash();
+
+  // _from and _to
+  if (isEdgeCollection) {
+    TRI_ASSERT(!fromSlice.isNone());
+    TRI_ASSERT(!toSlice.isNone());
+    builder.add(Transaction::FromString, fromSlice);
+    builder.add(Transaction::ToString, toSlice);
+  }
+
+  // _rev
+  std::string newRevSt;
+  if (isRestore) {
+    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(value);
+    if (!oldRev.isString()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
+    }
+    newRevSt = oldRev.copyString();
+  } else {
+    if (newRev == 0) {
+      newRev = TRI_NewTickServer();
+    }
+    newRevSt = std::to_string(newRev);
+  }
+  builder.add(Transaction::RevString, VPackValue(newRevSt));
+  
+  // add other attributes after the system attributes
+  TRI_SanitizeObjectWithEdges(value, builder);
+
+  builder.close();
   return TRI_ERROR_NO_ERROR;
 } 
 
@@ -4202,19 +4237,39 @@ void TRI_document_collection_t::newObjectForReplace(
     Transaction* trx,
     VPackSlice const& oldValue,
     VPackSlice const& newValue,
+    VPackSlice const& fromSlice,
+    VPackSlice const& toSlice,
+    bool isEdgeCollection,
     std::string const& rev,
     VPackBuilder& builder) {
 
   builder.openObject();
 
-  TRI_SanitizeObject(newValue, builder);
-  VPackSlice s = oldValue.get(Transaction::IdString);
-  TRI_ASSERT(!s.isNone());
-  builder.add(Transaction::IdString, s);
-  s = oldValue.get(Transaction::KeyString);
+  // add system attributes first
+  
+  // _key
+  VPackSlice s = oldValue.get(Transaction::KeyString);
   TRI_ASSERT(!s.isNone());
   builder.add(Transaction::KeyString, s);
+
+  // _id
+  s = oldValue.get(Transaction::IdString);
+  TRI_ASSERT(!s.isNone());
+  builder.add(Transaction::IdString, s);
+
+  // _from and _to here
+  if (isEdgeCollection) {
+    TRI_ASSERT(!fromSlice.isNone());
+    TRI_ASSERT(!toSlice.isNone());
+    builder.add(Transaction::FromString, fromSlice);
+    builder.add(Transaction::ToString, toSlice);
+  }
+  
+  // _rev
   builder.add(Transaction::RevString, VPackValue(rev));
+  
+  // add other attributes after the system attributes
+  TRI_SanitizeObjectWithEdges(newValue, builder);
 
   builder.close();
 } 
@@ -4228,35 +4283,92 @@ void TRI_document_collection_t::mergeObjectsForUpdate(
       arangodb::Transaction* trx,
       VPackSlice const& oldValue,
       VPackSlice const& newValue,
+      bool isEdgeCollection,
       std::string const& rev,
       bool mergeObjects, bool keepNull,
       VPackBuilder& b) {
 
   b.openObject();
 
+  VPackSlice keySlice = oldValue.get(Transaction::KeyString);
+  VPackSlice idSlice = oldValue.get(Transaction::IdString);
+  TRI_ASSERT(!keySlice.isNone());
+  TRI_ASSERT(!idSlice.isNone());
+  
   // Find the attributes in the newValue object:
+  VPackSlice fromSlice;
+  VPackSlice toSlice;
+
   std::unordered_map<std::string, VPackSlice> newValues;
   { 
     VPackObjectIterator it(newValue);
     while (it.valid()) {
       std::string key = it.key().copyString();
-      if (key != Transaction::KeyString &&
-          key != Transaction::IdString &&
-          key != Transaction::RevString) {
-        newValues.emplace(it.key().copyString(), it.value());
+      if (!key.empty() && key[0] == '_' &&
+          (key == Transaction::KeyString ||
+           key == Transaction::IdString ||
+           key == Transaction::RevString ||
+           key == Transaction::FromString ||
+           key == Transaction::ToString)) {
+        // note _from and _to and ignore _id, _key and _rev
+        if (key == Transaction::FromString) {
+          fromSlice = it.value();
+        } else if (key == Transaction::ToString) {
+          toSlice = it.value();
+        }
+      } else {
+        // regular attribute
+        newValues.emplace(std::move(key), it.value());
       }
+
       it.next();
     }
   }
 
+  if (isEdgeCollection) {
+    if (fromSlice.isNone()) {
+      fromSlice = oldValue.get(Transaction::FromString);
+    }
+    if (toSlice.isNone()) {
+      toSlice = oldValue.get(Transaction::ToString);
+    }
+  }
+
+  // add system attributes first
+
+  // _key
+  b.add(Transaction::KeyString, keySlice);
+
+  // _id
+  b.add(Transaction::IdString, idSlice);
+
+  // _from, _to
+  if (isEdgeCollection) {
+    TRI_ASSERT(!fromSlice.isNone());
+    TRI_ASSERT(!toSlice.isNone());
+    b.add(Transaction::FromString, fromSlice);
+    b.add(Transaction::ToString, toSlice);
+  }
+
+  // _rev
+  b.add(Transaction::RevString, VPackValue(rev));
+
+  // add other attributes after the system attributes
   { 
     VPackObjectIterator it(oldValue);
     while (it.valid()) {
-      auto key = it.key().copyString();
-      if (key == Transaction::RevString) {
+      std::string key = it.key().copyString();
+      // exclude system attributes in old value now
+      if (!key.empty() && key[0] == '_' &&
+          (key == Transaction::KeyString ||
+           key == Transaction::IdString ||
+           key == Transaction::RevString ||
+           key == Transaction::FromString ||
+           key == Transaction::ToString)) {
         it.next();
         continue;
       }
+      
       auto found = newValues.find(key);
 
       if (found == newValues.end()) {
@@ -4297,9 +4409,6 @@ void TRI_document_collection_t::mergeObjectsForUpdate(
     }
     b.add(std::move(it.first), s);
   }
-
-  // Finally, add the new revision:
-  b.add(Transaction::RevString, VPackValue(rev));
 
   b.close();
 }

@@ -2197,6 +2197,31 @@ static v8::Handle<v8::Value> VertexIdsToV8(v8::Isolate* isolate,
   return scope.Escape<v8::Value>(vertices);
 }
 
+static v8::Handle<v8::Value> VertexIdsToV8(v8::Isolate* isolate,
+                                           ExplicitTransaction* trx,
+                                           std::vector<VPackSlice> const& ids,
+                                           bool includeData = false) {
+  v8::EscapableHandleScope scope(isolate);
+  uint32_t const vn = static_cast<uint32_t>(ids.size());
+  v8::Handle<v8::Array> vertices =
+      v8::Array::New(isolate, static_cast<int>(vn));
+
+  uint32_t j = 0;
+  if (includeData) {
+    for (auto& it : ids) {
+      vertices->Set(j, VertexIdToData(isolate, trx, it.copyString()));
+      ++j;
+    }
+  } else {
+    for (auto& it : ids) {
+      vertices->Set(j, TRI_V8_STD_STRING(it.copyString()));
+      ++j;
+    }
+  }
+  return scope.Escape<v8::Value>(vertices);
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Executes a Neighbors computation
 ////////////////////////////////////////////////////////////////////////////////
@@ -2387,11 +2412,14 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::vector<std::string> neighbors;
+  std::vector<VPackSlice> neighbors;
+  std::unordered_set<VPackSlice,
+                     arangodb::basics::VelocyPackHelper::VPackStringHash,
+                     arangodb::basics::VelocyPackHelper::VPackStringEqual> visited;
   for (auto const& startVertex : startVertices) {
-    opts.start = startVertex;
+    opts.setStart(startVertex);
     try {
-      TRI_RunNeighborsSearch(edgeCollectionInfos, opts, neighbors);
+      TRI_RunNeighborsSearch(edgeCollectionInfos, opts, visited, neighbors);
     } catch (Exception& e) {
       trx->finish(e.code());
       TRI_V8_THROW_EXCEPTION(e.code());

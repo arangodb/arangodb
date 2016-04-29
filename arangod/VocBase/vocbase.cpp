@@ -2350,6 +2350,7 @@ VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
+/// the result is the object excluding _id, _key and _rev
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
@@ -2357,11 +2358,33 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
   VPackObjectIterator it(slice);
   while (it.valid()) {
     std::string key(it.key().copyString());
-    if (key[0] != '_' ||
-        (key != TRI_VOC_ATTRIBUTE_ID &&
-         key != TRI_VOC_ATTRIBUTE_KEY &&
-         key != TRI_VOC_ATTRIBUTE_REV)) {
-      builder.add(key, it.value());
+    if (key.empty() || key[0] != '_' ||
+         (key != Transaction::KeyString &&
+          key != Transaction::IdString &&
+          key != Transaction::RevString)) {
+      builder.add(std::move(key), it.value());
+    }
+    it.next();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sanitize an object, given as slice, builder must contain an
+/// open object which will remain open. also excludes _from and _to
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) {
+  TRI_ASSERT(slice.isObject());
+  VPackObjectIterator it(slice);
+  while (it.valid()) {
+    std::string key(it.key().copyString());
+    if (key.empty() || key[0] != '_' ||
+         (key != Transaction::KeyString &&
+          key != Transaction::IdString &&
+          key != Transaction::RevString &&
+          key != Transaction::FromString &&
+          key != Transaction::ToString)) {
+      builder.add(std::move(key), it.value());
     }
     it.next();
   }

@@ -1320,13 +1320,13 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
 
     VPackBuilder payload;
 
-    auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
+    auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
       VPackObjectBuilder guard(&payload);
-      TRI_SanitizeObject(doc, payload);
       VPackSlice s = result.get(KeyString);
       payload.add(KeyString, s);
       s = result.get(RevString);
       payload.add(RevString, s);
+      TRI_SanitizeObject(doc, payload);
     };
 
     VPackSlice ourResult = resultBuilder.slice();
@@ -1662,13 +1662,13 @@ OperationResult Transaction::modifyLocal(
 
     VPackBuilder payload;
 
-    auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
+    auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
       VPackObjectBuilder guard(&payload);
-      TRI_SanitizeObject(doc, payload);
       VPackSlice s = result.get(KeyString);
       payload.add(KeyString, s);
       s = result.get(RevString);
       payload.add(RevString, s);
+      TRI_SanitizeObject(doc, payload);
     };
 
     VPackSlice ourResult = resultBuilder.slice();
@@ -1909,13 +1909,13 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
 
     VPackBuilder payload;
 
-    auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
+    auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
       VPackObjectBuilder guard(&payload);
-      TRI_SanitizeObject(doc, payload);
       VPackSlice s = result.get(KeyString);
       payload.add(KeyString, s);
       s = result.get(RevString);
       payload.add(RevString, s);
+      TRI_SanitizeObject(doc, payload);
     };
 
     VPackSlice ourResult = resultBuilder.slice();
