@@ -1252,6 +1252,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
           }
         }
       } else if (node.isArray()) {
+        LOG(ERR) << node.toJson();
         LOG(ERR) << "Oops...TODO array unexpected";
       } else {
         builder.add("value", node);
