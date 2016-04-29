@@ -690,10 +690,11 @@
 
     checkForNewBindParams: function() {
       var self = this,
-      text = this.aqlEditor.getValue() //Remove comments
-      .replace(/\s*\/\/.*\n/g, '\n')
-      .replace(/\s*\/\*.*?\*\//g, ''),
-      words = text.split(" "),
+      //Remove comments
+      text = this.aqlEditor.getValue() + "\n";
+      text = text.replace(/\s*\/\/.*\n/g, '\n').replace(/\s*\/\*.*?\*\//g, '');
+
+      var words = text.split(" "),
       words1 = [],
       pos = 0;
       _.each(words, function(word) {
