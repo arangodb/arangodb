@@ -84,7 +84,7 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
              << _connectionInfo.clientPort;
 
   // release the statistics object we got from the socket task first
-  // this is required at the moment for proper statistics calculation  
+  // this is required at the moment for proper statistics calculation
   connectionStatisticsAgentSetHttp();
   ConnectionStatisticsAgent::release();
 
@@ -350,8 +350,10 @@ bool HttpCommTask::processRead() {
           TRI_invalidatesocket(&_commSocket);
 
           // might delete this
-          // note that as we closed the socket above, the response will not make it to
-          // the client! will result in a "Empty reply from server" error in curl etc.
+          // note that as we closed the socket above, the response will not make
+          // it to
+          // the client! will result in a "Empty reply from server" error in
+          // curl etc.
           handleResponse(&response);
 
           return false;
@@ -536,14 +538,12 @@ bool HttpCommTask::processRead() {
   else {
     HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED,
                           compatibility);
-    static std::string const wwwAuthenticate = "www-authenticate";
-
     if (sendWwwAuthenticateHeader()) {
       static std::string const realm =
           "basic realm=\"" +
           _server->handlerFactory()->authenticationRealm(_request) + "\"";
 
-      response.setHeaderNC(wwwAuthenticate, realm);
+      response.setHeaderNC(StaticStrings::WwwAuthenticate, realm);
     }
 
     clearRequest();
@@ -608,32 +608,27 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     // access-control-allow-origin header now
     LOG(TRACE) << "handling CORS response";
 
-    static std::string const accessControl = "access-control-expose-headers";
     static std::string const exposedHeaders =
         "etag, content-encoding, content-length, location, "
         "server, x-arango-errors, x-arango-async-id";
 
-    response->setHeaderNC(accessControl, exposedHeaders);
+    response->setHeaderNC(StaticStrings::AccessControlExposeHeaders,
+                          exposedHeaders);
 
     // send back original value of "Origin" header
-    static std::string const accessOrigin = "access-control-allow-origin";
-
-    response->setHeaderNC(accessOrigin, _origin);
+    response->setHeaderNC(StaticStrings::AccessControlAllowOrigin, _origin);
 
     // send back "Access-Control-Allow-Credentials" header
-    static std::string const accessCredentials =
-        "access-control-allow-credentials";
-
-    response->setHeaderNC(accessCredentials,
+    response->setHeaderNC(StaticStrings::AccessControlAllowCredentials,
                           (_denyCredentials ? "false" : "true"));
   }
   // CORS request handling EOF
 
   // set "connection" header
   // keep-alive is the default
-  static std::string const connection = "connection";
-
-  response->setHeaderNC(connection, (_closeRequested ? "Close" : "Keep-Alive"));
+  response->setHeaderNC(
+      StaticStrings::Connection,
+      (_closeRequested ? StaticStrings::Close : StaticStrings::KeepAlive));
 
   size_t const responseBodyLength = response->bodySize();
 
@@ -780,40 +775,37 @@ void HttpCommTask::fillWriteBuffer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::processCorsOptions(uint32_t compatibility) {
-  static std::string const allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
+  static std::string const allowedMethods =
+      "DELETE, GET, HEAD, PATCH, POST, PUT";
 
   HttpResponse response(GeneralResponse::ResponseCode::OK, compatibility);
 
-  static std::string const allow = "allow";
-  response.setHeaderNC(allow, allowedMethods);
+  response.setHeaderNC(StaticStrings::Allow, allowedMethods);
 
   if (!_origin.empty()) {
     LOG(TRACE) << "got CORS preflight request";
-    std::string const allowHeaders =
-        StringUtils::trim(_request->header("access-control-request-headers"));
+    std::string const allowHeaders = StringUtils::trim(
+        _request->header(StaticStrings::AccessControlRequestHeaders));
 
     // send back which HTTP methods are allowed for the resource
     // we'll allow all
-    static std::string const accessControl = "access-control-allow-methods";
-    response.setHeaderNC(accessControl, allowedMethods);
+    response.setHeaderNC(StaticStrings::AccessControlAllowMethods,
+                         allowedMethods);
 
     if (!allowHeaders.empty()) {
       // allow all extra headers the client requested
       // we don't verify them here. the worst that can happen is that the client
       // sends some broken headers and then later cannot access the data on the
       // server. that's a client problem.
-      static std::string const accessControl = "access-control-allow-headers";
-      response.setHeaderNC(accessControl, allowHeaders);
+      response.setHeaderNC(StaticStrings::AccessControlAllowHeaders,
+                           allowHeaders);
 
       LOG(TRACE) << "client requested validation of the following headers: "
                  << allowHeaders;
     }
 
     // set caching time (hard-coded value)
-    static std::string const accessAge = "access-control-max-age";
-    static std::string const maxAge = "1800";
-
-    response.setHeaderNC(accessAge, maxAge);
+    response.setHeaderNC(StaticStrings::AccessControlMaxAge, StaticStrings::N1800);
   }
 
   clearRequest();

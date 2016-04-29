@@ -24,6 +24,9 @@
 
 using namespace arangodb;
 
+// constants
+std::string const StaticStrings::N1800("1800");
+
 // system attribute names
 std::string const StaticStrings::IdString("_id");
 std::string const StaticStrings::KeyString("_key");
@@ -32,8 +35,21 @@ std::string const StaticStrings::FromString("_from");
 std::string const StaticStrings::ToString("_to");
 
 // HTTP headers
-std::string const StaticStrings::AcceptHeader("accept");
+std::string const StaticStrings::Accept("accept");
+std::string const StaticStrings::AccessControlAllowCredentials("access-control-allow-credentials");
+std::string const StaticStrings::AccessControlAllowHeaders("access-control-allow-headers");
+std::string const StaticStrings::AccessControlAllowMethods("access-control-allow-methods");
+std::string const StaticStrings::AccessControlAllowOrigin("access-control-allow-origin");
+std::string const StaticStrings::AccessControlExposeHeaders("access-control-expose-headers");
+std::string const StaticStrings::AccessControlMaxAge("access-control-max-age");
+std::string const StaticStrings::AccessControlRequestHeaders("access-control-request-headers");
+std::string const StaticStrings::Allow("allow");
+std::string const StaticStrings::Close("Close");
+std::string const StaticStrings::Connection("connection");
 std::string const StaticStrings::ContentTypeHeader("content-type");
+std::string const StaticStrings::KeepAlive("Close");
+std::string const StaticStrings::Location("location");
+std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 
 // mime types
 std::string const StaticStrings::MimeTypeJson("application/json; charset=utf-8");
