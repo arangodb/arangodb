@@ -49,7 +49,7 @@ router.use((req, res, next) => {
   } catch (e) {
     if (e.isArangoError) {
       const status = actions.arangoErrorToHttpCode(e.errorNum);
-      res.throw(status, e.errorMessage, {cause: e});
+      res.throw(status, e.errorMessage, {errorNum: e.errorNum, cause: e});
     }
     if (e.statusCode === NOT_MODIFIED) {
       res.status(NOT_MODIFIED);
