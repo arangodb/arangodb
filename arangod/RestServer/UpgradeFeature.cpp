@@ -52,6 +52,7 @@ UpgradeFeature::UpgradeFeature(
   startsAfter("CheckVersion");
   startsAfter("Cluster");
   startsAfter("Database");
+  startsAfter("Recovery");
   startsAfter("V8Dealer");
 }
 
@@ -94,12 +95,6 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void UpgradeFeature::start() {
-  // open the log file for writing
-  if (!wal::LogfileManager::instance()->open()) {
-    LOG(FATAL) << "Unable to finish WAL recovery procedure";
-    FATAL_ERROR_EXIT();
-  }
-
   // upgrade the database
   if (_upgradeCheck) {
     upgradeDatabase();

@@ -117,6 +117,11 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
+  
+  if (collection->_type != TRI_COL_TYPE_EDGE) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  }
+
 
   auto addOne = [](v8::Isolate* isolate, VPackBuilder* builder, v8::Handle<v8::Value> const val) {
     if (val->IsString() || val->IsStringObject()) {
@@ -161,10 +166,6 @@ static void EdgesQuery(TRI_edge_direction_e direction,
     filter = buildFilter(direction, "==");
   }
 
-  if (collection->_type != TRI_COL_TYPE_EDGE) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-  }
-
   std::string const queryString = "FOR doc IN @@collection " + filter + " RETURN doc";
   v8::Handle<v8::Value> result = AqlQuery(isolate, collection, queryString, bindVars).result;
     
@@ -202,6 +203,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!args[1]->IsNull() && !args[1]->IsUndefined()) {
     limit = TRI_ObjectToUInt64(args[1], false);
   }
+  
+  std::string collectionName(collection->_name);
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true),
                                           collection->_cid, TRI_TRANSACTION_READ);
@@ -211,8 +214,6 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
-  std::string collectionName(collection->_name);
 
   // We directly read the entire cursor. so batchsize == limit
   std::shared_ptr<OperationCursor> opCursor =
@@ -286,8 +287,8 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_doc_mptr_t document;
-
+  std::string collectionName(col->_name);
+  
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
                                           col->_cid, TRI_TRANSACTION_READ);
 
@@ -296,8 +297,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
-  std::string collectionName(col->_name);
+  
   OperationResult cursor = trx.any(collectionName);
 
   res = trx.finish(cursor.code);

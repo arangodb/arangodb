@@ -12,7 +12,11 @@ endif ()
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
-project(ArangoDB CXX C ASM)
+if (WIN32)
+  project(ArangoDB CXX C)
+else ()
+  project(ArangoDB CXX C ASM)
+endif ()
 
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
@@ -638,6 +642,19 @@ add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
 ################################################################################
 
 include_directories(${ICU_INCLUDE_DIR})
+
+if (MSVC)
+  add_custom_target(
+    icudat1
+    ALL
+    COMMAND ${CMAKE_COMMAND} -E copy
+      "${PROJECT_SOURCE_DIR}/3rdParty/V8/V8-4.9.391/third_party/icu/source/data/in/icudtl.dat"
+      "${PROJECT_BINARY_DIR}/bin/share/arangodb/icudt54l.dat"
+    COMMAND ${CMAKE_COMMAND} -E copy
+      "${PROJECT_SOURCE_DIR}/3rdParty/V8/V8-4.9.391/third_party/icu/source/data/in/icudtl.dat"
+      "${PROJECT_SOURCE_DIR}/icudt54l.dat"
+  )
+endif ()
 
 ################################################################################
 ## LIBEV

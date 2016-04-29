@@ -90,7 +90,6 @@ LogfileManager::LogfileManager(ApplicationServer* server)
       _allowWrites(false),  // start in read-only mode
       _hasFoundLastTick(false),
       _inRecovery(true),
-      _startCalled(false),
       _logfilesLock(),
       _logfiles(),
       _slots(nullptr),
@@ -237,15 +236,34 @@ void LogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> op
   // we use microseconds
   _syncInterval = _syncInterval * 1000;
 }
+  
+void LogfileManager::prepare() {
+  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  _databasePath = database->directory();
+
+  std::string const shutdownFile = shutdownFilename();
+  bool const shutdownFileExists = basics::FileUtils::exists(shutdownFile);
+
+  if (shutdownFileExists) {
+    LOG(TRACE) << "shutdown file found";
+
+    int res = readShutdownInfo();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG(FATAL) << "could not open shutdown file '" << shutdownFile
+                 << "': " << TRI_errno_string(res);
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    LOG(TRACE) << "no shutdown file found";
+  }
+}
 
 void LogfileManager::start() {
   Instance = this;
 
   _server = DatabaseServerFeature::SERVER;
-
-  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
-
-  _databasePath = database->directory();
+  TRI_ASSERT(_server != nullptr);
 
   // needs server initialized
   _filesize = static_cast<uint32_t>(((_filesize + PageSize - 1) / PageSize) * PageSize);
@@ -288,7 +306,7 @@ void LogfileManager::start() {
     // append a trailing slash to directory name
     _directory.push_back(TRI_DIR_SEPARATOR_CHAR);
   }
-
+  
   // initialize some objects
   _slots = new Slots(this, _numberOfSlots, 0);
   _recoverState = new RecoverState(_server, _ignoreRecoveryErrors);
@@ -301,23 +319,6 @@ void LogfileManager::start() {
     LOG(FATAL) << "could not create WAL logfile inventory: "
                << TRI_errno_string(res);
     FATAL_ERROR_EXIT();
-  }
-
-  std::string const shutdownFile = shutdownFilename();
-  bool const shutdownFileExists = basics::FileUtils::exists(shutdownFile);
-
-  if (shutdownFileExists) {
-    LOG(TRACE) << "shutdown file found";
-
-    res = readShutdownInfo();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG(FATAL) << "could not open shutdown file '" << shutdownFile
-                 << "': " << TRI_errno_string(res);
-      FATAL_ERROR_EXIT();
-    }
-  } else {
-    LOG(TRACE) << "no shutdown file found";
   }
 
   res = inspectLogfiles();
@@ -334,23 +335,6 @@ void LogfileManager::start() {
 }
 
 bool LogfileManager::open() {
-  static bool opened = false;
-
-  if (opened) {
-    // we were already started
-    return true;
-  }
-
-  opened = true;
-  _startCalled = true;
-
-  int res = runRecovery();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "unable to finish WAL recovery: " << TRI_errno_string(res);
-    return false;
-  }
-
   // note all failed transactions that we found plus the list
   // of collections and databases that we can ignore
   {
@@ -395,19 +379,19 @@ bool LogfileManager::open() {
   }
 
   // now start allocator and synchronizer
-  res = startAllocatorThread();
+  int res = startAllocatorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not start WAL allocator thread: "
-             << TRI_errno_string(res);
+    LOG(FATAL) << "could not start WAL allocator thread: "
+               << TRI_errno_string(res);
     return false;
   }
 
   res = startSynchronizerThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not start WAL synchronizer thread: "
-             << TRI_errno_string(res);
+    LOG(FATAL) << "could not start WAL synchronizer thread: "
+               << TRI_errno_string(res);
     return false;
   }
 
@@ -418,7 +402,7 @@ bool LogfileManager::open() {
   res = _recoverState->abortOpenTransactions();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not abort open transactions: " << TRI_errno_string(res);
+    LOG(FATAL) << "could not abort open transactions: " << TRI_errno_string(res);
     return false;
   }
 
@@ -440,8 +424,8 @@ bool LogfileManager::open() {
   res = startCollectorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not start WAL collector thread: "
-             << TRI_errno_string(res);
+    LOG(FATAL) << "could not start WAL collector thread: "
+               << TRI_errno_string(res);
     return false;
   }
 
@@ -450,7 +434,7 @@ bool LogfileManager::open() {
   res = startRemoverThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not start WAL remover thread: " << TRI_errno_string(res);
+    LOG(FATAL) << "could not start WAL remover thread: " << TRI_errno_string(res);
     return false;
   }
 
@@ -461,7 +445,7 @@ bool LogfileManager::open() {
   res = TRI_InitDatabasesServer(_server);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not initialize databases: " << TRI_errno_string(res);
+    LOG(FATAL) << "could not initialize databases: " << TRI_errno_string(res);
     return false;
   }
 
@@ -469,14 +453,6 @@ bool LogfileManager::open() {
 }
 
 void LogfileManager::stop() {
-  if (!_startCalled) {
-    return;
-  }
-
-  if (_shutdown > 0) {
-    return;
-  }
-
   _shutdown = 1;
 
   LOG(TRACE) << "shutting down WAL";
@@ -704,6 +680,8 @@ void LogfileManager::signalSync(bool waitForSync) {
 
 // allocate space in a logfile for later writing
 SlotInfo LogfileManager::allocate(uint32_t size) {
+  TRI_ASSERT(size >= sizeof(TRI_df_marker_t));
+
   if (!_allowWrites) {
     // no writes allowed
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
@@ -725,6 +703,8 @@ SlotInfo LogfileManager::allocate(uint32_t size) {
 // allocate space in a logfile for later writing
 SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId,
                                   TRI_voc_cid_t collectionId, uint32_t size) {
+  TRI_ASSERT(size >= sizeof(TRI_df_marker_t));
+
   if (!_allowWrites) {
     // no writes allowed
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
@@ -747,53 +727,56 @@ SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId,
 // this is a convenience function that combines allocate, memcpy and finalize
 SlotInfoCopy LogfileManager::allocateAndWrite(TRI_voc_tick_t databaseId,
                                               TRI_voc_cid_t collectionId,
-                                              void* src, uint32_t size,
+                                              Marker const* marker,
                                               bool wakeUpSynchronizer,
                                               bool waitForSyncRequested,
                                               bool waitUntilSyncDone) {
-  SlotInfo slotInfo = allocate(databaseId, collectionId, size);
+  TRI_ASSERT(marker != nullptr);
+  SlotInfo slotInfo = allocate(databaseId, collectionId, marker->size());
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
   }
   
-  return writeSlot(slotInfo, src, size, 
-                   wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
+  return writeSlot(slotInfo, marker, wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
 }
 
 // write data into the logfile
 // this is a convenience function that combines allocate, memcpy and finalize
-SlotInfoCopy LogfileManager::allocateAndWrite(void* src, uint32_t size,
+SlotInfoCopy LogfileManager::allocateAndWrite(Marker const* marker,
                                               bool wakeUpSynchronizer,
                                               bool waitForSyncRequested,
                                               bool waitUntilSyncDone) {
-  SlotInfo slotInfo = allocate(size);
+  TRI_ASSERT(marker != nullptr);
+  SlotInfo slotInfo = allocate(marker->size());
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
   }
 
-  return writeSlot(slotInfo, src, size, 
-                   wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
+  return writeSlot(slotInfo, marker, wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
 }
 
 // write marker into the logfile
 // this is a convenience function with less parameters
 SlotInfoCopy LogfileManager::allocateAndWrite(Marker const& marker, bool waitForSync) {
-  return allocateAndWrite(marker.mem(), marker.size(), true, waitForSync, waitForSync);
+  return allocateAndWrite(&marker, true, waitForSync, waitForSync);
 }
 
 // memcpy the data into the WAL region and return the filled slot
 // to the WAL logfile manager
 SlotInfoCopy LogfileManager::writeSlot(SlotInfo& slotInfo,
-                                       void* src, uint32_t size,
+                                       Marker const* marker,
                                        bool wakeUpSynchronizer,
                                        bool waitForSyncRequested,
                                        bool waitUntilSyncDone) {
   TRI_ASSERT(slotInfo.slot != nullptr);
+  TRI_ASSERT(marker != nullptr);
 
   try {
-    slotInfo.slot->fill(src, size);
+    // write marker data into slot
+    marker->store(static_cast<char*>(slotInfo.slot->mem()));
+    slotInfo.slot->finalize(marker);
 
     // we must copy the slotinfo because Slots::returnUsed() will set the
     // internals of slotInfo.slot to 0 again
@@ -825,8 +808,8 @@ int LogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeout) {
 }
 
 // finalize and seal the currently open logfile
-/// this is useful to ensure that any open writes up to this point have made
-/// it into a logfile
+// this is useful to ensure that any open writes up to this point have made
+// it into a logfile
 int LogfileManager::flush(bool waitForSync, bool waitForCollector,
                           bool writeShutdownFile) {
   TRI_ASSERT(!_inRecovery);
@@ -1680,9 +1663,9 @@ int LogfileManager::waitForCollector(Logfile::IdType logfileId,
 }
 
 // run the recovery procedure
-/// this is called after the logfiles have been scanned completely and
-/// recovery state has been build. additionally, all databases have been
-/// opened already so we can use collections
+// this is called after the logfiles have been scanned completely and
+// recovery state has been build. additionally, all databases have been
+// opened already so we can use collections
 int LogfileManager::runRecovery() {
   TRI_ASSERT(!_allowWrites);
 

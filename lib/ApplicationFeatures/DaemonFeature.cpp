@@ -37,10 +37,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Daemon"),
-      _daemon(false),
-      _pidFile(""),
-      _workingDirectory(".") {
+    : ApplicationFeature(server, "Daemon") {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -72,10 +69,7 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
 
     LoggerFeature* logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
-
-    if (logger != nullptr) {
-      logger->setBackgrounded(true);
-    }
+    logger->setBackgrounded(true);
 
     // make the pid filename absolute
     int err = 0;
@@ -104,7 +98,6 @@ void DaemonFeature::daemonize() {
 
   LOG_TOPIC(INFO, Logger::STARTUP) << "starting up in daemon mode";
 
-  _pidFile = "MYPID";
   checkPidFile();
 
   int pid = forkProcess();

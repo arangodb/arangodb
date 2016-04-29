@@ -33,6 +33,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 int32_t const GeneralRequest::MIN_COMPATIBILITY = 10300L;
+  
+static std::string const EMPTY_STR = "";
 
 std::string GeneralRequest::translateVersion(ProtocolVersion version) {
   switch (version) {
@@ -219,8 +221,6 @@ void GeneralRequest::addSuffix(std::string const& part) {
 }
 
 std::string const& GeneralRequest::header(std::string const& key) const {
-  static std::string EMPTY_STR = "";
-
   auto it = _headers.find(key);
 
   if (it == _headers.end()) {
@@ -231,8 +231,6 @@ std::string const& GeneralRequest::header(std::string const& key) const {
 }
 
 std::string const& GeneralRequest::header(std::string const& key, bool& found) const {
-  static std::string EMPTY_STR = "";
-
   auto it = _headers.find(key);
 
   if (it == _headers.end()) {
@@ -245,8 +243,6 @@ std::string const& GeneralRequest::header(std::string const& key, bool& found) c
 }
 
 std::string const& GeneralRequest::value(std::string const& key) const {
-  static std::string EMPTY_STR = "";
-
   auto it = _values.find(key);
 
   if (it == _values.end()) {
@@ -257,8 +253,6 @@ std::string const& GeneralRequest::value(std::string const& key) const {
 }
 
 std::string const& GeneralRequest::value(std::string const& key, bool& found) const {
-  static std::string EMPTY_STR = "";
-
   auto it = _values.find(key);
 
   if (it == _values.end()) {
@@ -271,8 +265,6 @@ std::string const& GeneralRequest::value(std::string const& key, bool& found) co
 }
 
 void GeneralRequest::setArrayValue(char* key, size_t length, char const* value) {
-  std::string keyStr(key, length);
-
-  _arrayValues[keyStr].emplace_back(value);
+  _arrayValues[std::string(key, length)].emplace_back(value);
 }
 

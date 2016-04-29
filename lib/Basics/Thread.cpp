@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <signal.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
@@ -36,6 +37,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,7 +147,7 @@ std::string Thread::stringify(ThreadState state) {
 /// @brief constructs a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Thread::Thread(std::string const& name)
+Thread::Thread(std::string const& name) 
     : _name(name),
       _thread(),
       _threadNumber(0),
@@ -154,6 +156,7 @@ Thread::Thread(std::string const& name)
       _state(ThreadState::CREATED),
       _affinity(-1),
       _workDescription(nullptr) {
+  
   TRI_InitThread(&_thread);
 }
 
@@ -185,7 +188,7 @@ Thread::~Thread() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flags the tread as stopping
+/// @brief flags the thread as stopping
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::beginShutdown() {
@@ -260,6 +263,15 @@ bool Thread::isStopping() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Thread::start(ConditionVariable* finishedCondition) {
+  if (!isSystem() && ! ApplicationServer::isPrepared()) {
+    LOG(FATAL) << "trying to start a thread '" << _name
+               << "' before prepare has finished, current state: "
+               << (ApplicationServer::server == nullptr
+                       ? -1
+                       : (int)ApplicationServer::server->state());
+    FATAL_ERROR_EXIT();
+  }
+
   _finishedCondition = finishedCondition;
 
   if (_state.load() != ThreadState::CREATED) {

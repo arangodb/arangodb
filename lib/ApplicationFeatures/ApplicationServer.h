@@ -36,6 +36,23 @@ class ProgramOptions;
 namespace application_features {
 class ApplicationFeature;
 
+enum class ServerState {
+  UNINITIALIZED,
+  IN_COLLECT_OPTIONS,
+  IN_VALIDATE_OPTIONS,
+  IN_PREPARE,
+  IN_START,
+  IN_WAIT,
+  IN_STOP,
+  STOPPED
+};
+
+class ProgressHandler {
+ public:
+  std::function<void(ServerState)> _state;
+  std::function<void(ServerState, std::string const& featureName)> _feature;
+};
+
 // the following phases exists:
 //
 // `collectOptions`
@@ -91,12 +108,6 @@ class ApplicationServer {
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
  public:
-  static ApplicationServer* server;
-  static ApplicationFeature* lookupFeature(std::string const&);
-  static bool isStopping() {
-    return server != nullptr && server->_stopping.load();
-  }
-
   enum class FeatureState {
     UNINITIALIZED,
     INITIALIZED,
@@ -105,6 +116,16 @@ class ApplicationServer {
     STARTED,
     STOPPED
   };
+
+  static ApplicationServer* server;
+  static bool isStopping() {
+    return server != nullptr && server->_stopping.load();
+  }
+  static bool isPrepared() {
+    return server != nullptr && (server->_state == ServerState::IN_START ||
+                                 server->_state == ServerState::IN_WAIT ||
+                                 server->_state == ServerState::IN_STOP);
+  }
 
   // returns the feature with the given name if known
   // throws otherwise
@@ -173,11 +194,21 @@ class ApplicationServer {
   // return VPack options
   VPackBuilder options(std::unordered_set<std::string> const& excludes) const;
 
+  // return the server state
+  ServerState state() const { return _state; }
+
+  void addReporter(ProgressHandler reporter) {
+    _progressReports.emplace_back(reporter);
+  }
+
  private:
-  // throws an exception if a requested feature was not found
+  // look up a feature and return a pointer to it. may be nullptr
+  static ApplicationFeature* lookupFeature(std::string const&);
+
+  // throws an exception that a requested feature was not found
   static void throwFeatureNotFoundException(std::string const& name);
 
-  // throws an exception if a requested feature is not enabled
+  // throws an exception that a requested feature is not enabled
   static void throwFeatureNotEnabledException(std::string const& name);
 
   static void disableFeatures(std::vector<std::string> const& names,
@@ -225,7 +256,13 @@ class ApplicationServer {
   void dropPrivilegesTemporarily();
   void dropPrivilegesPermanently();
 
+  void reportServerProgress(ServerState);
+  void reportFeatureProgress(ServerState, std::string const&);
+
  private:
+  // the current state
+  ServerState _state = ServerState::UNINITIALIZED;
+
   // the shared program options
   std::shared_ptr<options::ProgramOptions> _options;
 
@@ -239,10 +276,13 @@ class ApplicationServer {
   std::atomic<bool> _stopping;
 
   // whether or not privileges have been dropped permanently
-  bool _privilegesDropped;
+  bool _privilegesDropped = false;
 
   // whether or not to dump dependencies
-  bool _dumpDependencies;
+  bool _dumpDependencies = false;
+
+  // reporter for progress
+  std::vector<ProgressHandler> _progressReports;
 };
 }
 }

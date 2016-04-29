@@ -110,7 +110,7 @@ void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
 
 int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   TRI_ASSERT(doc != nullptr);
-  TRI_ASSERT(doc->getDataPtr() != nullptr);
+  TRI_ASSERT(doc->vpack() != nullptr);
 
   VPackSlice const slice(doc->vpack());
 
@@ -181,7 +181,7 @@ int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
 
 int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   TRI_ASSERT(doc != nullptr);
-  TRI_ASSERT(doc->getDataPtr() != nullptr);
+  TRI_ASSERT(doc->vpack() != nullptr);
 
   VPackSlice const slice(doc->vpack());
 

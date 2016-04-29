@@ -104,7 +104,7 @@ TRI_doc_mptr_t* MasterPointers::request() {
     header = nullptr;
 
     for (; begin <= ptr; ptr--) {
-      ptr->setDataPtr(header);  // ONLY IN HEADERS
+      ptr->setVPack(static_cast<void*>(header)); // ONLY IN HEADERS
       header = ptr;
     }
 
@@ -122,11 +122,11 @@ TRI_doc_mptr_t* MasterPointers::request() {
 
   TRI_ASSERT(_freelist != nullptr);
 
-  TRI_doc_mptr_t* result = const_cast<TRI_doc_mptr_t*>(_freelist);
+  TRI_doc_mptr_t* result = _freelist;
   TRI_ASSERT(result != nullptr);
 
-  _freelist = static_cast<TRI_doc_mptr_t const*>(result->getDataPtr());    
-  result->setDataPtr(nullptr);  // ONLY IN HEADERS
+  _freelist = const_cast<TRI_doc_mptr_t*>(static_cast<TRI_doc_mptr_t const*>(result->dataptr()));
+  result->setVPack(nullptr); 
 
   _nrAllocated++;
 
@@ -146,7 +146,7 @@ void MasterPointers::release(TRI_doc_mptr_t* header) {
   TRI_ASSERT(_nrAllocated > 0);
   _nrAllocated--;
 
-  header->setDataPtr(_freelist);  // ONLY IN HEADERS
+  header->setVPack(static_cast<void*>(_freelist)); 
   _freelist = header;
 
   if (_nrAllocated == 0 && _blocks.size() >= 8) {

@@ -816,7 +816,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
     header->setFid(fid, false);
     header->setHash(primaryIndex->calculateHash(trx, keySlice));
-    header->setDataPtr(marker);  // ONLY IN OPENITERATOR
+    header->setVPackFromMarker(marker);  
 
     // insert into primary index
     void const* result = nullptr;
@@ -844,7 +844,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
     // update the header info
     found->setFid(fid, false); // when we're here, we're looking at a datafile
-    found->setDataPtr(marker);
+    found->setVPackFromMarker(marker);
 
     // update the datafile info
     DatafileStatisticsContainer* dfi;
@@ -854,8 +854,8 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
       dfi = FindDatafileStats(state, oldData.getFid());
     }
 
-    if (oldData.getDataPtr() != nullptr) { 
-      int64_t size = static_cast<int64_t>(oldData.getMarkerPtr()->getSize());
+    if (oldData.vpack() != nullptr) { 
+      int64_t size = static_cast<int64_t>(oldData.markerSize());
 
       dfi->numberAlive--;
       dfi->sizeAlive -= DatafileHelper::AlignedSize<int64_t>(size);
@@ -869,10 +869,10 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
   // it is a stale update
   else {
-    TRI_ASSERT(found->getDataPtr() != nullptr);
+    TRI_ASSERT(found->vpack() != nullptr);
 
     state->_dfi->numberDead++;
-    state->_dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(found->getMarkerPtr()->getSize());
+    state->_dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(found->markerSize());
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -926,9 +926,9 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
       dfi = FindDatafileStats(state, found->getFid());
     }
 
-    TRI_ASSERT(found->getDataPtr() != nullptr);
+    TRI_ASSERT(found->vpack() != nullptr);
 
-    int64_t size = DatafileHelper::AlignedSize<int64_t>(found->getMarkerPtr()->getSize());
+    int64_t size = DatafileHelper::AlignedSize<int64_t>(found->markerSize());
 
     dfi->numberAlive--;
     dfi->sizeAlive -= DatafileHelper::AlignedSize<int64_t>(size);
@@ -3232,7 +3232,7 @@ int TRI_RotateJournalDocumentCollection(TRI_document_collection_t* document) {
 int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
                                     TRI_doc_mptr_t* mptr, bool lock) {
   TRI_ASSERT(mptr != nullptr);
-  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
+  mptr->setVPack(nullptr);  
 
   TransactionBuilderLeaser builder(trx);
   builder->add(VPackValue(key));
@@ -3261,7 +3261,7 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
     *mptr = *header;
   }
 
-  TRI_ASSERT(mptr->getDataPtr() != nullptr);
+  TRI_ASSERT(mptr->vpack() != nullptr);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3273,7 +3273,9 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
 int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
                                       TRI_doc_mptr_t* mptr,
                                       OperationOptions& options,
+                                      TRI_voc_tick_t& resultMarkerTick,
                                       bool lock) {
+  resultMarkerTick = 0;
 
   if (_info.type() == TRI_COL_TYPE_EDGE) {
     // _from:
@@ -3312,23 +3314,26 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     }
     newSlice = builder->slice();
   } else {
-    newSlice = slice;
+    TRI_ASSERT(slice.isObject());
     // we can get away with the fast hash function here, as key values are 
     // restricted to strings
     hash = slice.get(Transaction::KeyString).hash();
+    newSlice = slice;
   }
 
   TRI_ASSERT(mptr != nullptr);
-  mptr->setDataPtr(nullptr);
+  mptr->setVPack(nullptr);
 
-  std::unique_ptr<arangodb::wal::Marker> marker;
+  // create marker
+  arangodb::wal::CrudMarker insertMarker(TRI_DF_MARKER_VPACK_DOCUMENT, TRI_MarkerIdTransaction(trx->getInternals()), newSlice);
+
+  arangodb::wal::Marker const* marker;
   if (options.recoveryMarker == nullptr) {
-    TIMER_START(TRANSACTION_CREATE_VPACK_INSERT_MARKER);
-    marker.reset(createVPackInsertMarker(trx, newSlice));
-    TIMER_STOP(TRANSACTION_CREATE_VPACK_INSERT_MARKER);
+    marker = &insertMarker;
+  } else {
+    marker = options.recoveryMarker;
   }
 
-  TRI_voc_tick_t markerTick = 0;
   // now insert into indexes
   {
     TRI_IF_FAILURE("InsertDocumentNoLock") {
@@ -3336,17 +3341,11 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
       return TRI_ERROR_DEBUG;
     }
 
-    auto actualMarker = (options.recoveryMarker == nullptr ? marker.get() : options.recoveryMarker);
-    bool const freeMarker = (options.recoveryMarker == nullptr);
-    
     arangodb::wal::DocumentOperation operation(
-        trx, actualMarker, freeMarker, this, TRI_VOC_DOCUMENT_OPERATION_INSERT);
-
-    marker.release();
+        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
     // DocumentOperation has taken over the ownership for the marker
     TRI_ASSERT(operation.marker != nullptr);
-    TRI_ASSERT(marker == nullptr);
 
     TRI_IF_FAILURE("InsertDocumentNoHeader") {
       // test what happens if no header can be acquired
@@ -3369,9 +3368,12 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     }
 
     // update the header we got
-    void* mem = operation.marker->mem();
+    void* mem = operation.marker->vpack();
+    TRI_ASSERT(mem != nullptr);
     header->setHash(hash);
-    header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
+    header->setVPack(mem);  // PROTECTED by trx in trxCollection
+
+    TRI_ASSERT(VPackSlice(header->vpack()).isObject());
 
     // insert into indexes
     res = insertDocument(trx, header, operation, mptr, options.waitForSync);
@@ -3379,19 +3381,12 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert();
     } else {
-      TRI_ASSERT(mptr->getDataPtr() != nullptr);  
-
-      if (options.waitForSync) {
-        markerTick = operation.tick;
-      }
+      TRI_ASSERT(mptr->vpack() != nullptr);  
+        
+      resultMarkerTick = operation.tick;
     }
   }
-
-  if (markerTick > 0 && trx->isSingleOperationTransaction()) {
-    // need to wait for tick, outside the lock
-    arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
-  }
-
+  
   return res;
 }
 
@@ -3411,7 +3406,7 @@ int TRI_document_collection_t::update(Transaction* trx,
   }
   // initialize the result
   TRI_ASSERT(mptr != nullptr);
-  mptr->setDataPtr(nullptr);
+  mptr->setVPack(nullptr);
   prevRev = VPackSlice();
 
   TRI_voc_rid_t revisionId = 0;
@@ -3493,24 +3488,20 @@ int TRI_document_collection_t::update(Transaction* trx,
     }
 
     // create marker
-    std::unique_ptr<arangodb::wal::Marker> marker;
+    arangodb::wal::CrudMarker updateMarker(TRI_DF_MARKER_VPACK_DOCUMENT, TRI_MarkerIdTransaction(trx->getInternals()), builder->slice());
+  
+    arangodb::wal::Marker const* marker;
     if (options.recoveryMarker == nullptr) {
-      marker.reset(createVPackInsertMarker(trx, builder->slice()));
+      marker = &updateMarker;
+    } else {
+      marker = options.recoveryMarker;
     }
     
-    auto actualMarker = (options.recoveryMarker == nullptr 
-                        ? marker.get() 
-                        : options.recoveryMarker);
-    bool const freeMarker = (options.recoveryMarker == nullptr);
-
     arangodb::wal::DocumentOperation operation(
-        trx, actualMarker, freeMarker, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-
-    marker.release();
+        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 
     // DocumentOperation has taken over the ownership for the marker
     TRI_ASSERT(operation.marker != nullptr);
-    TRI_ASSERT(marker == nullptr);
 
     operation.header = oldHeader;
     operation.init();
@@ -3525,7 +3516,7 @@ int TRI_document_collection_t::update(Transaction* trx,
   }
   
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_ASSERT(mptr->getDataPtr() != nullptr); 
+    TRI_ASSERT(mptr->vpack() != nullptr); 
   }
 
   if (markerTick > 0 && trx->isSingleOperationTransaction()) {
@@ -3566,7 +3557,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
 
   // initialize the result
   TRI_ASSERT(mptr != nullptr);
-  mptr->setDataPtr(nullptr);
+  mptr->setVPack(nullptr);
 
   TRI_voc_rid_t revisionId = 0;
   if (options.isRestore) {
@@ -3638,22 +3629,19 @@ int TRI_document_collection_t::replace(Transaction* trx,
     }
 
     // create marker
-    std::unique_ptr<arangodb::wal::Marker> marker;
+    arangodb::wal::CrudMarker replaceMarker(TRI_DF_MARKER_VPACK_DOCUMENT, TRI_MarkerIdTransaction(trx->getInternals()), builder->slice());
+  
+    arangodb::wal::Marker const* marker;
     if (options.recoveryMarker == nullptr) {
-      marker.reset(createVPackInsertMarker(trx, builder->slice()));
+      marker = &replaceMarker;
+    } else {
+      marker = options.recoveryMarker;
     }
-    
-    auto actualMarker = (options.recoveryMarker == nullptr ? marker.get() : options.recoveryMarker);
-    bool const freeMarker = (options.recoveryMarker == nullptr);
 
-    arangodb::wal::DocumentOperation operation(
-        trx, actualMarker, freeMarker, this, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
-    
-    marker.release();
+    arangodb::wal::DocumentOperation operation(trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
     
     // DocumentOperation has taken over the ownership for the marker
     TRI_ASSERT(operation.marker != nullptr);
-    TRI_ASSERT(marker == nullptr);
     
     operation.header = oldHeader;
     operation.init();
@@ -3668,7 +3656,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
   }
   
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_ASSERT(mptr->getDataPtr() != nullptr); 
+    TRI_ASSERT(mptr->vpack() != nullptr); 
   }
 
   if (markerTick > 0 && trx->isSingleOperationTransaction()) {
@@ -3720,9 +3708,14 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   
-  std::unique_ptr<arangodb::wal::Marker> marker;
+  // create marker
+  arangodb::wal::CrudMarker removeMarker(TRI_DF_MARKER_VPACK_REMOVE, TRI_MarkerIdTransaction(trx->getInternals()), builder->slice());
+  
+  arangodb::wal::Marker const* marker;
   if (options.recoveryMarker == nullptr) {
-    marker.reset(createVPackRemoveMarker(trx, builder->slice()));
+    marker = &removeMarker;
+  } else {
+    marker = options.recoveryMarker;
   }
 
   int res;
@@ -3735,17 +3728,10 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
 
     arangodb::CollectionWriteLocker collectionLocker(this, lock);
 
-    auto actualMarker = (options.recoveryMarker == nullptr ? marker.get() : options.recoveryMarker);
-    bool const freeMarker = (options.recoveryMarker == nullptr);
+    arangodb::wal::DocumentOperation operation(trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
-    arangodb::wal::DocumentOperation operation(
-        trx, actualMarker, freeMarker, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-
-    marker.release();
-    
     // DocumentOperation has taken over the ownership for the marker
     TRI_ASSERT(operation.marker != nullptr);
-    TRI_ASSERT(marker == nullptr);
 
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader = nullptr;
@@ -3869,24 +3855,6 @@ int TRI_document_collection_t::rollbackOperation(arangodb::Transaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a vpack-based insert marker for documents / edges
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
-    Transaction* trx, VPackSlice const slice) {
-  return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_DOCUMENT, TRI_MarkerIdTransaction(trx->getInternals()), slice);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a vpack-based remove marker for documents / edges
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::wal::Marker* TRI_document_collection_t::createVPackRemoveMarker(
-    Transaction* trx, VPackSlice const slice) {
-  return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_REMOVE, TRI_MarkerIdTransaction(trx->getInternals()), slice);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document by key, low level worker
 /// the caller must make sure the read lock on the collection is held
 /// the key must be a string slice, no revision check is performed
@@ -3957,7 +3925,9 @@ int TRI_document_collection_t::updateDocument(arangodb::Transaction* trx,
   TRI_doc_mptr_t* newHeader = oldHeader;
 
   // update the header. this will modify oldHeader, too !!!
-  newHeader->setDataPtr(operation.marker->mem()); 
+  void* mem = operation.marker->vpack(); 
+  TRI_ASSERT(mem != nullptr);
+  newHeader->setVPack(mem);
 
   // insert new document into secondary indexes
   res = insertSecondaryIndexes(trx, newHeader, false);
@@ -4055,7 +4025,7 @@ int TRI_document_collection_t::insertPrimaryIndex(arangodb::Transaction* trx,
   TRI_doc_mptr_t* found;
 
   TRI_ASSERT(header != nullptr);
-  TRI_ASSERT(header->getDataPtr() != nullptr); 
+  TRI_ASSERT(header->vpack() != nullptr); 
 
   // insert into primary index
   int res = primaryIndex()->insertKey(trx, header, (void const**)&found);

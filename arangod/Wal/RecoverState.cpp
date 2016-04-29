@@ -284,7 +284,7 @@ TRI_document_collection_t* RecoverState::getCollection(
 int RecoverState::executeSingleOperation(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     TRI_df_marker_t const* marker, TRI_voc_fid_t fid,
-    std::function<int(SingleCollectionTransaction*, Marker*)> func) {
+    std::function<int(SingleCollectionTransaction*, MarkerEnvelope*)> func) {
   // first find the correct database
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
 
@@ -328,10 +328,10 @@ int RecoverState::executeSingleOperation(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    auto envelope = std::make_unique<MarkerEnvelope>(marker, fid);
+    MarkerEnvelope envelope(marker, fid);
 
     // execute the operation
-    res = func(&trx, envelope.get());
+    res = func(&trx, &envelope);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -340,8 +340,13 @@ int RecoverState::executeSingleOperation(
     // commit the operation
     res = trx.commit();
   } catch (arangodb::basics::Exception const& ex) {
+    LOG(ERR) << "caught exception during recovery of marker type " << TRI_NameMarkerDatafile(marker) << ": " << ex.what();
     res = ex.code();
+  } catch (std::exception const& ex) {
+    LOG(ERR) << "caught exception during recovery of marker type " << TRI_NameMarkerDatafile(marker) << ": " << ex.what();
+    res = TRI_ERROR_INTERNAL;
   } catch (...) {
+    LOG(ERR) << "caught unknown exception during recovery of marker type " << TRI_NameMarkerDatafile(marker);
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -392,41 +397,6 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
       TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
       TRI_voc_tid_t const tid = DatafileHelper::TransactionId(marker);
       state->failedTransactions[tid] = std::make_pair(databaseId, true);
-      break;
-    }
-
-    case TRI_DF_MARKER_BEGIN_REMOTE_TRANSACTION: {
-      transaction_remote_begin_marker_t const* m =
-          reinterpret_cast<transaction_remote_begin_marker_t const*>(marker);
-      // insert this transaction into the list of failed transactions
-      state->failedTransactions.emplace(m->_transactionId,
-                                        std::make_pair(m->_databaseId, false));
-      break;
-    }
-
-    case TRI_DF_MARKER_COMMIT_REMOTE_TRANSACTION: {
-      transaction_remote_commit_marker_t const* m =
-          reinterpret_cast<transaction_remote_commit_marker_t const*>(marker);
-      // remove this transaction from the list of failed transactions
-      state->failedTransactions.erase(m->_transactionId);
-      break;
-    }
-
-    case TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION: {
-      transaction_remote_abort_marker_t const* m =
-          reinterpret_cast<transaction_remote_abort_marker_t const*>(marker);
-      // insert this transaction into the list of failed transactions
-      // the transaction is treated the same as a regular local transaction that
-      // is aborted
-      auto it = state->failedTransactions.find(m->_transactionId);
-
-      if (it != state->failedTransactions.end()) {
-        state->failedTransactions.erase(m->_transactionId);
-      }
-
-      // and (re-)insert
-      state->failedTransactions.emplace(m->_transactionId,
-                                        std::make_pair(m->_databaseId, true));
       break;
     }
 
@@ -493,7 +463,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         int res = state->executeSingleOperation(
             databaseId, collectionId, marker, datafile->_fid,
-            [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
+            [&](SingleCollectionTransaction* trx, MarkerEnvelope* envelope) -> int {
               if (trx->documentCollection()->_info.isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
               }
@@ -510,6 +480,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               options.waitForSync = false;
 
               // try an insert first
+              TRI_ASSERT(VPackSlice(ptr).isObject());
               OperationResult opRes = trx->insert(collectionName, VPackSlice(ptr), options);
               int res = opRes.code;
 
@@ -554,7 +525,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         int res = state->executeSingleOperation(
             databaseId, collectionId, marker, datafile->_fid,
-            [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
+            [&](SingleCollectionTransaction* trx, MarkerEnvelope* envelope) -> int {
               if (trx->documentCollection()->_info.isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
               }

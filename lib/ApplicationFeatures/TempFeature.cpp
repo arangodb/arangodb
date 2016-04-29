@@ -22,6 +22,7 @@
 
 #include "ApplicationFeatures/TempFeature.h"
 
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -58,4 +59,11 @@ void TempFeature::start() {
   // must be used after drop privileges and be called to set it to avoid raise
   // conditions
   TRI_GetTempPath();
+
+  // signal that the temp path is available
+  auto context = ArangoGlobalContext::CONTEXT;
+
+  if (context != nullptr) {
+    context->tempPathAvailable();
+  }
 }

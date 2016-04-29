@@ -53,18 +53,18 @@ void SupervisorFeature::collectOptions(
 void SupervisorFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
   if (_supervisor) {
-    DaemonFeature* daemon = ApplicationServer::getFeature<DaemonFeature>("Daemon");
+    try {
+      DaemonFeature* daemon = ApplicationServer::getFeature<DaemonFeature>("Daemon");
 
-    if (daemon == nullptr) {
+      // force daemon mode
+      daemon->setDaemon(true);
+
+      // revalidate options
+      daemon->validateOptions(options);
+    } catch (...) {
       LOG(FATAL) << "daemon mode not available, cannot start supervisor";
       FATAL_ERROR_EXIT();
     }
-
-    // force daemon mode
-    daemon->setDaemon(true);
-
-    // revalidate options
-    daemon->validateOptions(options);
   }
 }
 
@@ -84,16 +84,13 @@ void SupervisorFeature::daemonize() {
 
   std::transform(_supervisorStart.begin(), _supervisorStart.end(),
                  supervisorFeatures.begin(), [](std::string const& name) {
-                   ApplicationFeature* feature =
-                       ApplicationServer::lookupFeature(name);
-
-                   if (feature == nullptr) {
-                     LOG_TOPIC(FATAL, Logger::STARTUP)
-                         << "unknown feature '" << name << "', giving up";
-                     FATAL_ERROR_EXIT();
-                   }
-
-                   return feature;
+                  try {
+                    return ApplicationServer::getFeature<ApplicationFeature>(name);
+                  } catch (...) { 
+                    LOG_TOPIC(FATAL, Logger::STARTUP)
+                        << "unknown feature '" << name << "', giving up";
+                    FATAL_ERROR_EXIT();
+                  }
                  });
 
   while (!done) {

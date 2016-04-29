@@ -49,6 +49,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/server.h"
+#include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -899,6 +900,11 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
 //////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t Transaction::addCollectionAtRuntime(std::string const& collectionName) {
+  auto t = dynamic_cast<SingleCollectionTransaction*>(this);
+  if (t != nullptr) {
+    return t->cid();
+  } 
+  
   auto cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
@@ -1058,6 +1064,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
 OperationResult Transaction::documentLocal(std::string const& collectionName,
                                            VPackSlice const value,
                                            OperationOptions& options) {
+  TIMER_START(TRANSACTION_DOCUMENT_LOCAL);
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
@@ -1066,6 +1073,8 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   VPackBuilder resultBuilder;
 
   auto workOnOneDocument = [&](VPackSlice const value, bool isMultiple) -> int {
+    TIMER_START(TRANSACTION_DOCUMENT_EXTRACT);
+
     std::string key(Transaction::extractKey(value));
     if (key.empty()) {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
@@ -1075,15 +1084,19 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     if (!options.ignoreRevs) {
       expectedRevision = TRI_ExtractRevisionIdAsSlice(value);
     }
+    
+    TIMER_STOP(TRANSACTION_DOCUMENT_EXTRACT);
 
     TRI_doc_mptr_t mptr;
+    TIMER_START(TRANSACTION_DOCUMENT_DOCUMENT_DOCUMENT);
     int res = document->read(this, key, &mptr, !isLocked(document, TRI_TRANSACTION_READ));
+    TIMER_STOP(TRANSACTION_DOCUMENT_DOCUMENT_DOCUMENT);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
   
-    TRI_ASSERT(mptr.getDataPtr() != nullptr);
+    TRI_ASSERT(mptr.vpack() != nullptr);
     if (!expectedRevision.isNone()) {
       VPackSlice foundRevision = mptr.revisionIdAsSlice();
       if (expectedRevision != foundRevision) {
@@ -1099,11 +1112,13 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     if (!options.silent) {
       resultBuilder.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
     } else if (isMultiple) {
-      resultBuilder.add(VPackValue(VPackValueType::Null));
+      resultBuilder.add(VPackSlice::nullSlice());
     }
 
     return TRI_ERROR_NO_ERROR;
   };
+
+  TIMER_START(TRANSACTION_DOCUMENT_WORK_FOR_ONE);
 
   int res = TRI_ERROR_NO_ERROR;
   std::unordered_map<int, size_t> countErrorCodes;
@@ -1119,6 +1134,10 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     }
     res = TRI_ERROR_NO_ERROR;
   }
+  
+  TIMER_STOP(TRANSACTION_DOCUMENT_WORK_FOR_ONE);
+  
+  TIMER_STOP(TRANSACTION_DOCUMENT_LOCAL);
 
   return OperationResult(resultBuilder.steal(), 
                          transactionContext()->orderCustomTypeHandler(), "",
@@ -1199,13 +1218,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
                                          VPackSlice const value,
                                          OperationOptions& options) {
   TIMER_START(TRANSACTION_INSERT_LOCAL);
-  TRI_voc_cid_t cid;
-  auto t = dynamic_cast<SingleCollectionTransaction*>(this);
-  if (t != nullptr) {
-    cid = t->cid();
-  } else {
-    cid = addCollectionAtRuntime(collectionName); 
-  }
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
   // First see whether or not we have to do synchronous replication:
@@ -1220,15 +1233,24 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
 
   VPackBuilder resultBuilder;
 
+  TRI_voc_tick_t maxTick = 0;
+
   auto workForOneDocument = [&](VPackSlice const value) -> int {
     if (!value.isObject()) {
       return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
     }
+
     TRI_doc_mptr_t mptr;
+    TRI_voc_tick_t resultMarkerTick = 0;
+
     TIMER_START(TRANSACTION_INSERT_DOCUMENT_INSERT);
-    int res = document->insert(this, value, &mptr, options,
+    int res = document->insert(this, value, &mptr, options, resultMarkerTick,
         !isLocked(document, TRI_TRANSACTION_WRITE));
     TIMER_STOP(TRANSACTION_INSERT_DOCUMENT_INSERT);
+
+    if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
+      maxTick = resultMarkerTick;
+    }
     
     if (res != TRI_ERROR_NO_ERROR) {
       // Error reporting in the babies case is done outside of here,
@@ -1241,7 +1263,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
       return TRI_ERROR_NO_ERROR;
     }
 
-    TRI_ASSERT(mptr.getDataPtr() != nullptr);
+    TRI_ASSERT(mptr.vpack() != nullptr);
     
     std::string keyString 
         = VPackSlice(mptr.vpack()).get(KeyString).copyString();
@@ -1258,7 +1280,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   };
 
   TIMER_START(TRANSACTION_INSERT_WORK_FOR_ONE);
-  
+
   int res = TRI_ERROR_NO_ERROR;
   bool const multiCase = value.isArray();
   std::unordered_map<int, size_t> countErrorCodes;
@@ -1277,6 +1299,11 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   }
   
   TIMER_STOP(TRANSACTION_INSERT_WORK_FOR_ONE);
+  
+  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0) {
+    arangodb::wal::LogfileManager::instance()->slots()->waitForTick(maxTick);
+  }
+  
 
   if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1586,7 +1613,7 @@ OperationResult Transaction::modifyLocal(
       return res;
     }
 
-    TRI_ASSERT(mptr.getDataPtr() != nullptr);
+    TRI_ASSERT(mptr.vpack() != nullptr);
 
     if (!options.silent || doingSynchronousReplication) {
       std::string key = newVal.get(KeyString).copyString();

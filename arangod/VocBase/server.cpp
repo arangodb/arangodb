@@ -511,7 +511,7 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
 
     V8DealerFeature* dealer = 
         ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-    auto appPath = (dealer == nullptr ? std::string() : dealer->appPath());
+    auto appPath = dealer->appPath();
 
     res = CreateApplicationDirectory(databaseName.c_str(), appPath.c_str());
 
@@ -1030,7 +1030,7 @@ static void DatabaseManager(void* data) {
         // remove apps directory for database
         V8DealerFeature* dealer = 
             ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-        auto appPath = (dealer == nullptr ? std::string() : dealer->appPath());
+        auto appPath = dealer->appPath();
 
         if (database->_isOwnAppsDirectory && !appPath.empty()) {
           path = TRI_Concatenate3File(appPath.c_str(), "_db", database->_name);
@@ -1307,7 +1307,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
 
   V8DealerFeature* dealer = 
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  auto appPath = (dealer == nullptr ? std::string() : dealer->appPath());
+  auto appPath = dealer->appPath();
 
   if (!appPath.empty() && !TRI_IsDirectory(appPath.c_str())) {
     long systemError;
@@ -1620,7 +1620,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
     // create application directories
     V8DealerFeature* dealer = 
         ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-    auto appPath = (dealer == nullptr ? std::string() : dealer->appPath());
+    auto appPath = dealer->appPath();
 
     CreateApplicationDirectory(vocbase->_name, appPath.c_str());
 

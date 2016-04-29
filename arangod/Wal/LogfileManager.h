@@ -114,12 +114,20 @@ class LogfileManager final : public application_features::ApplicationFeature {
   void collectOptions(
       std::shared_ptr<options::ProgramOptions> options) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
   void stop() override final;
 
+ public:
+  // run the recovery procedure
+  // this is called after the logfiles have been scanned completely and
+  // recovery state has been build. additionally, all databases have been
+  // opened already so we can use collections
+  int runRecovery();
+
+  // called by recovery feature once after runRecovery()
   bool open();
 
- public:
   // get the logfile directory
   inline std::string directory() const { return _directory; }
 
@@ -188,6 +196,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
 
   // allow or disallow writes to the WAL
   inline void allowWrites(bool value) { _allowWrites = value; }
+  inline bool allowWrites() const { return _allowWrites; }
 
   // get the value of --wal.throttle-when-pending
   inline uint64_t throttleWhenPending() const { return _throttleWhenPending; }
@@ -241,12 +250,12 @@ class LogfileManager final : public application_features::ApplicationFeature {
   /// this is a convenience function that combines allocate, memcpy and finalize
   SlotInfoCopy allocateAndWrite(TRI_voc_tick_t databaseId, 
                                 TRI_voc_cid_t collectionId, 
-                                void* mem, uint32_t size, bool wakeUpSynchronizer,
+                                Marker const*, bool wakeUpSynchronizer,
                                 bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // write data into the logfile
   /// this is a convenience function that combines allocate, memcpy and finalize
-  SlotInfoCopy allocateAndWrite(void* mem, uint32_t size, bool wakeUpSynchronizer, 
+  SlotInfoCopy allocateAndWrite(Marker const* marker, bool wakeUpSynchronizer, 
                                 bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // write marker into the logfile
@@ -369,7 +378,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   // memcpy the data into the WAL region and return the filled slot
   // to the WAL logfile manager
   SlotInfoCopy writeSlot(SlotInfo& slotInfo,
-                         void* src, uint32_t size,
+                         Marker const* marker,
                          bool wakeUpSynchronizer,
                          bool waitForSyncRequested,
                          bool waitUntilSyncDone);
@@ -379,12 +388,6 @@ class LogfileManager final : public application_features::ApplicationFeature {
 
   // wait for the collector thread to collect a specific logfile
   int waitForCollector(Logfile::IdType, double);
-
-  // run the recovery procedure
-  /// this is called after the logfiles have been scanned completely and
-  /// recovery state has been build. additionally, all databases have been
-  /// opened already so we can use collections
-  int runRecovery();
 
   // closes all logfiles
   void closeLogfiles();
@@ -474,10 +477,6 @@ class LogfileManager final : public application_features::ApplicationFeature {
 
   // whether or not the recovery procedure is running
   bool _inRecovery;
-
-  // whether or not the logfile manager was properly initialized and
-  /// started
-  bool _startCalled;
 
   // a lock protecting the _logfiles map and the logfiles' statuses
   basics::ReadWriteLock _logfilesLock;

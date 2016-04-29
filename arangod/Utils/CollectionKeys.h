@@ -121,7 +121,7 @@ class CollectionKeys {
   std::string const _name;
   arangodb::CollectionNameResolver _resolver;
   TRI_voc_tick_t _blockerId;
-  std::vector<TRI_df_marker_t const*>* _markers;
+  std::vector<void const*>* _markers;
 
   CollectionKeysId _id;
   double _ttl;

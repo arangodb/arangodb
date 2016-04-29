@@ -23,8 +23,7 @@
       "cInfo/:colname": "cInfo",
       "collection/:colid/:docid": "document",
       "shell": "shell",
-      "queries": "query2",
-      "query2": "query",
+      "queries": "query",
       "workMonitor": "workMonitor",
       "databases": "databases",
       "settings": "databases",
@@ -558,25 +557,10 @@
       this.shellView.render();
     },
 
-    /*query: function (initialized) {
+    query: function (initialized) {
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.query.bind(this));
-        return;
-      }
-      if (!this.queryView) {
-        this.queryView = new window.queryView({
-          collection: this.queryCollection
-        });
-      }
-      this.queryView.render();
-    },
-    */
-
-    query2: function (initialized) {
-      this.checkUser();
-      if (!initialized) {
-        this.waitForInit(this.query2.bind(this));
         return;
       }
       if (!this.queryView2) {

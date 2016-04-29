@@ -549,18 +549,14 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::vector<std::string> endpoints;
 
     // check if we are a server
-    HttpEndpointProvider* server = dynamic_cast<HttpEndpointProvider*>(
-        ApplicationServer::lookupFeature("Endpoint"));
-
-    if (server != nullptr) {
+    try {
+      HttpEndpointProvider* server = 
+          ApplicationServer::getFeature<HttpEndpointProvider>("Endpoint");
       endpoints = server->httpEndpoints();
-    } else {
-      HttpEndpointProvider* client = dynamic_cast<HttpEndpointProvider*>(
-          ApplicationServer::lookupFeature("Client"));
-
-      if (client != nullptr) {
-        endpoints = client->httpEndpoints();
-      }
+    } catch (...) {
+      HttpEndpointProvider* client = 
+          ApplicationServer::getFeature<HttpEndpointProvider>("Client");
+      endpoints = client->httpEndpoints();
     }
 
     // a relative url. now make this an absolute URL if possible

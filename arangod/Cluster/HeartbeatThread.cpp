@@ -186,12 +186,13 @@ void HeartbeatThread::runDBServer() {
       bool wasNotified;
       {
         CONDITION_LOCKER(locker, _condition);
+        LOG(INFO) << _wasNotified;
         wasNotified = _wasNotified;
         if (!wasNotified) {
           locker.wait(static_cast<uint64_t>(remain * 1000000.0));
           wasNotified = _wasNotified;
-          _wasNotified = false;
         }
+        _wasNotified = false;
       }
 
       if (!wasNotified) {

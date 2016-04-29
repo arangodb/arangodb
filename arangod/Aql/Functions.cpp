@@ -1403,7 +1403,7 @@ AqlValue Functions::Attributes(arangodb::aql::Query* query,
   VPackSlice slice = materializer.slice(value);
 
   if (doSort) {
-    std::set<std::string, arangodb::basics::VelocyPackHelper::AttributeSorter>
+    std::set<std::string, arangodb::basics::VelocyPackHelper::AttributeSorterUTF8>
         keys;
 
     VPackCollection::keys(slice, keys);

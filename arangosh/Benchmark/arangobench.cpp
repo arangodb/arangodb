@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new ConfigFeature(&server, "arangobench"));
   server.addFeature(new LoggerFeature(&server, false));
   server.addFeature(new RandomFeature(&server));
-  server.addFeature(new ShutdownFeature(&server, "Bench"));
+  server.addFeature(new ShutdownFeature(&server, {"Bench"}));
   server.addFeature(new TempFeature(&server, "arangobench"));
   server.addFeature(new VersionFeature(&server));
 

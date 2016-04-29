@@ -111,9 +111,7 @@ void DispatcherFeature::prepare() {
   V8DealerFeature* dealer = 
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
-  if (dealer != nullptr) {
-    dealer->defineDouble("DISPATCHER_THREADS", static_cast<double>(_nrStandardThreads));
-  }
+  dealer->defineDouble("DISPATCHER_THREADS", static_cast<double>(_nrStandardThreads));
 }
 
 void DispatcherFeature::start() {
@@ -123,13 +121,11 @@ void DispatcherFeature::start() {
   V8DealerFeature* dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
-  if (dealer != nullptr) {
-    dealer->defineContextUpdate(
-        [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
-          TRI_InitV8Dispatcher(isolate, context);
-        },
-        nullptr);
-  }
+  dealer->defineContextUpdate(
+      [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
+        TRI_InitV8Dispatcher(isolate, context);
+      },
+      nullptr);
 }
 
 void DispatcherFeature::beginShutdown() {

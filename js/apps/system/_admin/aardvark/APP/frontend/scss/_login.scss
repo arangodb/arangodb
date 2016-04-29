@@ -51,12 +51,12 @@
 
   .fa {
     color: rgba(0, 0, 0, .2);
-    float: right;
+    float: left;
     font-size: 14pt;
+    left: 30px;
     margin-right: 44px;
     margin-top: 11px;
     position: absolute;
-    right: -11px;
 
     &.fa-lock {
       right: -9px;
@@ -87,7 +87,8 @@
     height: 40px;
     margin: 0 0 15px;
     outline: 0;
-    padding: 15px;
+    padding: 10px;
+    padding-left: 35px;
     width: 100%;
   }
 

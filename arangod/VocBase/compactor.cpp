@@ -420,11 +420,11 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     }
 
     TRI_doc_mptr_t* found2 = const_cast<TRI_doc_mptr_t*>(found);
-    TRI_ASSERT(found2->getDataPtr() != nullptr);
-    TRI_ASSERT(found2->getMarkerPtr()->getSize() > 0);
+    TRI_ASSERT(found2->vpack() != nullptr);
+    TRI_ASSERT(found2->vpackSize() > 0);
 
     // let marker point to the new position
-    found2->setDataPtr(result);
+    found2->setVPackFromMarker(result);
     // update fid in case it changes
     if (found2->getFid() != targetFid) {
       found2->setFid(targetFid, false);

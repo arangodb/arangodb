@@ -207,7 +207,7 @@
       queries: [
         {
           name: 'Editor',
-          route: 'query2',
+          route: 'query',
           active: true
         },
         {

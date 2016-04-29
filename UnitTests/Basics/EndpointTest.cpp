@@ -25,14 +25,16 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Endpoint/Endpoint.h"
+#include "Basics/Common.h"
 
+#define BOOST_TEST_INCLUDED
 #include <boost/test/unit_test.hpp>
 
-#include "Endpoint/EndpointUnixDomain.h"
+#include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointIp.h"
 #include "Endpoint/EndpointIpV4.h"
 #include "Endpoint/EndpointIpV6.h"
+#include "Endpoint/EndpointUnixDomain.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -130,8 +132,10 @@ BOOST_AUTO_TEST_CASE (EndpointSpecification) {
   CHECK_ENDPOINT_FEATURE(client, "SSL://127.0.0.5", specification, "http+ssl://127.0.0.5:8529");
   CHECK_ENDPOINT_FEATURE(client, "httP@ssl://localhost:4635", specification, "http+ssl://localhost:4635");
 
+#ifndef _WIN32
   CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", specification, "http+unix:///path/to/socket");
   CHECK_ENDPOINT_SERVER_FEATURE(server, "htTp@UNIx:///a/b/c/d/e/f.s", specification, "http+unix:///a/b/c/d/e/f.s");
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,13 +149,17 @@ BOOST_AUTO_TEST_CASE (EndpointTypes) {
   CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", type, arangodb::Endpoint::EndpointType::CLIENT);
   CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", type, arangodb::Endpoint::EndpointType::CLIENT);
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", type, arangodb::Endpoint::EndpointType::CLIENT);
+#ifndef _WIN32
   CHECK_ENDPOINT_FEATURE(client, "unix:///path/to/socket", type, arangodb::Endpoint::EndpointType::CLIENT);
+#endif
 
   CHECK_ENDPOINT_SERVER_FEATURE(server, "tcp://127.0.0.1", type, arangodb::Endpoint::EndpointType::SERVER);
   CHECK_ENDPOINT_SERVER_FEATURE(server, "tcp://localhost", type, arangodb::Endpoint::EndpointType::SERVER);
   CHECK_ENDPOINT_SERVER_FEATURE(server, "ssl://127.0.0.1", type, arangodb::Endpoint::EndpointType::SERVER);
   CHECK_ENDPOINT_SERVER_FEATURE(server, "ssl://localhost", type, arangodb::Endpoint::EndpointType::SERVER);
+#ifndef _WIN32
   CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", type, arangodb::Endpoint::EndpointType::SERVER);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,9 +196,11 @@ BOOST_AUTO_TEST_CASE (EndpointDomains) {
   CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", domain, AF_INET6);
   CHECK_ENDPOINT_FEATURE(client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", domain, AF_INET6);
   
+#ifndef _WIN32
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", domain, AF_UNIX);
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", domain, AF_UNIX);
   CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", domain, AF_UNIX);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,12 +242,14 @@ BOOST_AUTO_TEST_CASE (EndpointDomainTypes) {
   CHECK_ENDPOINT_FEATURE(client, "sSL://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
   CHECK_ENDPOINT_FEATURE(client, "http@ssl://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
   
+#ifndef _WIN32
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", domainType, arangodb::Endpoint::DomainType::UNIX);
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", domainType, arangodb::Endpoint::DomainType::UNIX);
   CHECK_ENDPOINT_FEATURE(client, "UNIX:///tmp/socket", domainType, arangodb::Endpoint::DomainType::UNIX);
   CHECK_ENDPOINT_FEATURE(client, "Unix:///tmp/socket", domainType, arangodb::Endpoint::DomainType::UNIX);
   CHECK_ENDPOINT_FEATURE(client, "uNIX:///tmp/socket", domainType, arangodb::Endpoint::DomainType::UNIX);
   CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket", domainType, arangodb::Endpoint::DomainType::UNIX);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,9 +319,11 @@ BOOST_AUTO_TEST_CASE (EndpointPorts) {
   CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port, 666);
   CHECK_ENDPOINT_FEATURE(client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port, 666);
   
+#ifndef _WIN32
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", port, 0);
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", port, 0);
   CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", port, 0);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -348,12 +362,14 @@ BOOST_AUTO_TEST_CASE (EndpointEncryption) {
   CHECK_ENDPOINT_FEATURE(client, "sSL://[::]:8529", encryption, arangodb::Endpoint::EncryptionType::SSL);
   CHECK_ENDPOINT_FEATURE(client, "http@ssl://[::]:8529", encryption, arangodb::Endpoint::EncryptionType::SSL);
   
+#ifndef _WIN32
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", encryption, arangodb::Endpoint::EncryptionType::NONE);
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", encryption, arangodb::Endpoint::EncryptionType::NONE);
   CHECK_ENDPOINT_FEATURE(client, "UNIX:///tmp/socket/arango.sock", encryption, arangodb::Endpoint::EncryptionType::NONE);
   CHECK_ENDPOINT_FEATURE(client, "Unix:///tmp/socket/arango.sock", encryption, arangodb::Endpoint::EncryptionType::NONE);
   CHECK_ENDPOINT_FEATURE(client, "uNIX:///tmp/socket/arango.sock", encryption, arangodb::Endpoint::EncryptionType::NONE);
   CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", encryption, arangodb::Endpoint::EncryptionType::NONE);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -397,9 +413,11 @@ BOOST_AUTO_TEST_CASE (EndpointHost) {
   CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
   CHECK_ENDPOINT_FEATURE(client, "http@ssl://[::]:8529", host, "::");
   
+#ifndef _WIN32
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", host, "localhost");
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", host, "localhost");
   CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", host, "localhost");
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,9 +475,11 @@ BOOST_AUTO_TEST_CASE (EndpointHostString) {
   CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:994", hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:994");
   CHECK_ENDPOINT_FEATURE(client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:994", hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:994");
   
+#ifndef _WIN32
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", hostAndPort, "localhost");
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", hostAndPort, "localhost");
   CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", hostAndPort, "localhost");
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -490,6 +510,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer2) {
 /// @brief test isconnected
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef _WIN32
 BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer3) {
   Endpoint* e;
 
@@ -497,6 +518,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer3) {
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test isconnected
@@ -526,6 +548,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient2) {
 /// @brief test isconnected
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef _WIN32
 BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient3) {
   Endpoint* e;
 
@@ -533,6 +556,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient3) {
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test server endpoint
@@ -558,6 +582,7 @@ BOOST_AUTO_TEST_CASE (EndpointServerTcpIpv4WithPort) {
 /// @brief test server endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef _WIN32
 BOOST_AUTO_TEST_CASE (EndpointServerUnix) {
   Endpoint* e;
 
@@ -573,6 +598,7 @@ BOOST_AUTO_TEST_CASE (EndpointServerUnix) {
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test client endpoint

@@ -119,7 +119,7 @@ struct RecoverState {
   /// @brief executes a single operation inside a transaction
   int executeSingleOperation(
       TRI_voc_tick_t, TRI_voc_cid_t, TRI_df_marker_t const*, TRI_voc_fid_t,
-      std::function<int(SingleCollectionTransaction*, Marker*)>);
+      std::function<int(SingleCollectionTransaction*, MarkerEnvelope*)>);
 
   /// @brief callback to handle one marker during recovery
   /// this function modifies indexes etc.

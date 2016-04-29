@@ -23,6 +23,7 @@
 
 #include "ClusterMethods.h"
 #include "Basics/conversions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -1630,7 +1631,7 @@ int getFilteredEdgesOnCoordinator(
   // Now listen to the results:
   int count;
   responseCode = arangodb::GeneralResponse::ResponseCode::OK;
-  contentType = "application/json; charset=utf-8";
+  contentType = StaticStrings::MimeTypeJson;
   size_t filtered = 0;
   size_t scannedIndex = 0;
 

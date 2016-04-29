@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestBaseHandler.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Rest/HttpRequest.h"
@@ -148,11 +149,8 @@ void RestBaseHandler::dumpResponse(VPackSlice const& slice,
 //////////////////////////////////////////////////////////////////////////////
 
 bool RestBaseHandler::returnVelocypack() const {
-  auto accept = std::string(_request->header("accept"));
-  if (std::string::npos == accept.find("application/x-velocypack")) {
-    return false;
-  }
-  return true;
+  std::string const& result = _request->header(StaticStrings::AcceptHeader);
+  return (std::string::npos != result.find(StaticStrings::MimeTypeVPack));
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -162,10 +160,10 @@ bool RestBaseHandler::returnVelocypack() const {
 void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice, 
                                   VPackOptions const& options) {
   if (returnVelocypack()) {
-    _response->setContentType("application/x-velocypack");
+    _response->setContentType(StaticStrings::MimeTypeVPack);
     _response->body().appendText(slice.startAs<const char>(), slice.byteSize());
   } else {
-    _response->setContentType("application/json; charset=utf-8");
+    _response->setContentType(StaticStrings::MimeTypeJson);
     dumpResponse(slice, &options);
   }
 }

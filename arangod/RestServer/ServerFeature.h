@@ -35,7 +35,10 @@ class AsyncJobManager;
 
 class ServerFeature final : public application_features::ApplicationFeature {
  public:
-  ServerFeature(application_features::ApplicationServer* server, int*);
+  static std::string operationModeString(OperationMode mode);
+
+ public:
+  ServerFeature(application_features::ApplicationServer*, int* result);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -45,24 +48,22 @@ class ServerFeature final : public application_features::ApplicationFeature {
 
  public:
   OperationMode operationMode() const { return _operationMode; }
-  
+
   std::string operationModeString() const {
     return operationModeString(operationMode());
   }
 
-  static std::string operationModeString(OperationMode mode); 
+  std::vector<std::string> const& scripts() const { return _scripts; }
+  std::vector<std::string> const& unitTests() const { return _unitTests; }
 
  private:
-  bool _console;
-  bool _restServer;
+  bool _console = false;
+  bool _restServer = true;
   std::vector<std::string> _unitTests;
   std::vector<std::string> _scripts;
-  std::vector<std::string> _scriptParameters;
 
  private:
   void waitForHeartbeat();
-  int runUnitTests();
-  int runScript();
 
  private:
   int* _result;

@@ -116,9 +116,24 @@ arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
 }
 
 
-bool VelocyPackHelper::AttributeSorter::operator()(std::string const& l,
-                                                   std::string const& r) const {
+bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,
+                                                       std::string const& r) const {
+  // use UTF-8-based comparison of attribute names
   return TRI_compare_utf8(l.c_str(), l.size(), r.c_str(), r.size()) < 0;
+}
+
+bool VelocyPackHelper::AttributeSorterBinary::operator()(std::string const& l,
+                                                         std::string const& r) const {
+  // use binary comparison of attribute names
+  size_t cmpLength = (std::min)(l.size(), r.size());
+  int res = memcmp(l.c_str(), r.c_str(), cmpLength);
+  if (res < 0) {
+    return true;
+  }
+  if (res == 0) {
+    return l.size() < r.size();
+  }
+  return false;
 }
 
 size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
@@ -241,6 +256,28 @@ std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string sub-element, or throws if <name> does not exist
+/// or it is not a string
+////////////////////////////////////////////////////////////////////////////////
+
+std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
+                                                     std::string const& name) {
+  TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    std::string msg =
+        "The attribute '" + name + "' was not found.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+  }
+  VPackSlice const sub = slice.get(name);
+  if (!sub.isString()) {
+    std::string msg =
+        "The attribute '" + name + "' is not a string.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+  }
+  return sub.copyString();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string value, or the default value if it is not a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -260,6 +297,29 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
 
 std::string VelocyPackHelper::getStringValue(VPackSlice slice,
                                              char const* name,
+                                             std::string const& defaultValue) {
+  if (slice.isExternal()) {
+    slice = VPackSlice(slice.getExternal());
+  }
+  TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    return defaultValue;
+  }
+  VPackSlice const sub = slice.get(name);
+  if (!sub.isString()) {
+    return defaultValue;
+  }
+  return sub.copyString();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string sub-element, or the default value if it does not
+/// exist
+/// or it is not a string
+////////////////////////////////////////////////////////////////////////////////
+
+std::string VelocyPackHelper::getStringValue(VPackSlice slice,
+                                             std::string const& name,
                                              std::string const& defaultValue) {
   if (slice.isExternal()) {
     slice = VPackSlice(slice.getExternal());
@@ -559,7 +619,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
       return 0;
     }
     case VPackValueType::Object: {
-      std::set<std::string, AttributeSorter> keys;
+      std::set<std::string, AttributeSorterUTF8> keys;
       VPackCollection::keys(lhs, keys);
       VPackCollection::keys(rhs, keys);
       for (auto const& key : keys) {
