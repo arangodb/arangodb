@@ -52,8 +52,8 @@ module.exports = function sessionMiddleware(cfg) {
     `);
   }
   assert(
-    storage.forClient || storage.fromClient,
-    'Session storage must have a forClient and/or fromClient method'
+    storage.forClient && storage.fromClient,
+    'Session storage must have a forClient and fromClient method'
   );
   if (cfg.transports) {
     console.warn(il`
