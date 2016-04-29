@@ -1146,8 +1146,9 @@
         data.batchSize = parseInt(sizeBox.val(), 10);
       }
 
-      var parsedBindVars = {}, tmpVar;
+      //var parsedBindVars = {}, tmpVar;
       if (Object.keys(this.bindParamTableObj).length > 0) {
+        /*
         _.each(this.bindParamTableObj, function(value, key) {
           try {
             tmpVar = JSON.parse(value);
@@ -1156,8 +1157,8 @@
             tmpVar = value;
           }
           parsedBindVars[key] = tmpVar;
-        });
-        data.bindVars = parsedBindVars;
+        });*/
+        data.bindVars = this.bindParamTableObj;
       }
       return JSON.stringify(data);
     },
@@ -1166,6 +1167,9 @@
       var self = this;
 
       var queryData = this.readQueryData();
+      console.log(queryData);
+      console.log(self.bindParamTableObj);
+
       if (queryData) {
         sentQueryEditor.setValue(self.aqlEditor.getValue());
 
