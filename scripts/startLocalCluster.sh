@@ -196,7 +196,6 @@ echo Waiting for cluster to come up...
 testServer() {
     PORT=$1
     while true ; do
-        sleep 1
         curl -s -f -X GET "http://127.0.0.1:$PORT/_api/version" > /dev/null 2>&1
         if [ "$?" != "0" ] ; then
             echo Server on port $PORT does not answer yet.
@@ -204,6 +203,7 @@ testServer() {
             echo Server on port $PORT is ready for business.
             break
         fi
+        sleep 1
     done
 }
 
@@ -241,37 +241,6 @@ if [ -n "$SECONDARIES" ]; then
     let index=$index+1
   done
 fi
-
-echo Bootstrapping DBServers...
-curl -s -f -X POST "http://127.0.0.1:8530/_admin/cluster/bootstrapDbServers" \
-     -d '{"isRelaunch":false}' >> cluster/DBServersUpgrade.log 2>&1
-if [ "$?" != 0 ] ; then
-  echo "Bootstrapping DBServers failed"
-  exit 1;
-fi
-
-
-echo Running DB upgrade on cluster...
-curl -s -f -X POST "http://127.0.0.1:8530/_admin/cluster/upgradeClusterDatabase" \
-     -d '{"isRelaunch":false}' >> cluster/DBUpgrade.log 2>&1
-if [ "$?" != 0 ] ; then
-  echo "DB upgrade on cluster failed"
-  exit 1;
-fi
-
-echo Bootstrapping Coordinators...
-PIDS=""
-for p in `seq 8530 $PORTTOPCO` ; do
-    curl -s -X POST "http://127.0.0.1:$p/_admin/cluster/bootstrapCoordinator" \
-         -d '{"isRelaunch":false}' >> cluster/Coordinator.boot.log 2>&1 &
-    PIDS="$PIDS $!"
-done
-
-echo Pids: $PIDS
-for p in $PIDS ; do
-    wait $p
-    echo PID $p done
-done
 
 echo Done, your cluster is ready at
 for p in `seq 8530 $PORTTOPCO` ; do

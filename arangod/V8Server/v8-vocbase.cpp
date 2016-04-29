@@ -41,6 +41,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/Timers.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
@@ -1709,7 +1710,7 @@ static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(Transaction::KeyString, VPackValue(parts[1]));
+  builder.add(StaticStrings::KeyString, VPackValue(parts[1]));
   builder.close();
 
   OperationResult opRes = trx->document(parts[0], builder.slice(), options);

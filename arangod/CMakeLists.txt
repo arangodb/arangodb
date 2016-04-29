@@ -215,6 +215,7 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
   RestServer/AffinityFeature.cpp
+  RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
   RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp

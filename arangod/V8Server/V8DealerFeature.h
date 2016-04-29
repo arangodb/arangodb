@@ -86,10 +86,11 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   std::string const& appPath() const { return _appPath; }
 
+  void loadJavascriptFiles(TRI_vocbase_t*, std::string const&, size_t);
+
  private:
   V8Context* pickFreeContextForGc();
   void initializeContext(size_t);
-  void loadJavascriptFiles(TRI_vocbase_t*, std::string const&, size_t);
   void shutdownV8Instance(V8Context*);
 
  private:

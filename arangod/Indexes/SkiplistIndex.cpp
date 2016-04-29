@@ -25,6 +25,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/Transaction.h"
@@ -544,8 +545,8 @@ int SkiplistIndex::ElementElementComparator::operator()(
   }
 
   // We break this tie in the key comparison by looking at the key:
-  VPackSlice leftKey = VPackSlice(leftElement->document()->vpack()).get(Transaction::KeyString);
-  VPackSlice rightKey = VPackSlice(rightElement->document()->vpack()).get(Transaction::KeyString);
+  VPackSlice leftKey = VPackSlice(leftElement->document()->vpack()).get(StaticStrings::KeyString);
+  VPackSlice rightKey = VPackSlice(rightElement->document()->vpack()).get(StaticStrings::KeyString);
  
   int compareResult = leftKey.compareString(rightKey.copyString());
 

@@ -140,6 +140,8 @@ LogfileManager::~LogfileManager() {
     delete _slots;
     _slots = nullptr;
   }
+  
+  Instance = nullptr;
 }
 
 void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -528,8 +530,6 @@ void LogfileManager::stop() {
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "could not write WAL shutdown info: " << TRI_errno_string(res);
   }
-
-  Instance = nullptr;
 }
 
 // registers a transaction
