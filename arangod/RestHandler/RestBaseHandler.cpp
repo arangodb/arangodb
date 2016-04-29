@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestBaseHandler.h"
+
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -149,7 +150,7 @@ void RestBaseHandler::dumpResponse(VPackSlice const& slice,
 //////////////////////////////////////////////////////////////////////////////
 
 bool RestBaseHandler::returnVelocypack() const {
-  std::string const& result = _request->header(StaticStrings::AcceptHeader);
+  std::string const& result = _request->header(StaticStrings::Accept);
   return (std::string::npos != result.find(StaticStrings::MimeTypeVPack));
 }
 

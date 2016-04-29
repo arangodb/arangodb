@@ -59,10 +59,11 @@ HttpHandler::status_t RestVersionHandler::execute() {
       Version::getVPack(result);
 
       if (application_features::ApplicationServer::server != nullptr) {
-        auto server = application_features::ApplicationServer::server->getFeature<ServerFeature>("Server");
+        auto server = application_features::ApplicationServer::server
+                          ->getFeature<ServerFeature>("Server");
         result.add("mode", VPackValue(server->operationModeString()));
       }
-      
+
       result.close();
     }
     result.close();
