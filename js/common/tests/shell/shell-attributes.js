@@ -186,14 +186,12 @@ function AttributesSuite () {
       assertEqual(d1._rev, d2._rev);
       assertFalse(d2._test);
       assertEqual("bang", d2._boom);
+      
+      assertFalse(d2.hasOwnProperty("_from"));
+      assertFalse(d2.hasOwnProperty("_to"));
 
       // user specified _rev value must have been ignored
       assertTrue(d1._rev !== "99");
-      
-      assertTrue(d2.hasOwnProperty("_from"));
-      assertEqual("33", d2._from);
-      assertTrue(d2.hasOwnProperty("_to"));
-      assertEqual("99", d2._to);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
