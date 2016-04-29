@@ -1875,6 +1875,7 @@ function resultException (req, res, err, headers, verbose) {
       case arangodb.ERROR_INTERNAL:
       case arangodb.ERROR_OUT_OF_MEMORY:
       case arangodb.ERROR_GRAPH_TOO_MANY_ITERATIONS:
+      case arangodb.ERROR_ARANGO_DOCUMENT_KEY_BAD:
         code = exports.HTTP_SERVER_ERROR;
         break;
 
@@ -1908,6 +1909,26 @@ function resultException (req, res, err, headers, verbose) {
       case arangodb.ERROR_CLUSTER_UNSUPPORTED:
         code = exports.HTTP_NOT_IMPLEMENTED;
         break;
+
+      case arangodb.ERROR_ARANGO_ILLEGAL_NAME:
+      case arangodb.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
+      case arangodb.ERROR_ARANGO_CROSS_COLLECTION_REQUEST:
+      case arangodb.ERROR_ARANGO_INDEX_HANDLE_BAD:
+      case arangodb.ERROR_ARANGO_DOCUMENT_TOO_LARGE:
+      case arangodb.ERROR_ARANGO_COLLECTION_NOT_UNLOADED:
+      case arangodb.ERROR_ARANGO_COLLECTION_TYPE_INVALID:
+      case arangodb.ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED:
+      case arangodb.ERROR_ARANGO_DOCUMENT_KEY_BAD:
+      case arangodb.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
+      case arangodb.ERROR_ARANGO_DOCUMENT_KEY_MISSING:
+      case arangodb.ERROR_ARANGO_DOCUMENT_TYPE_INVALID:
+      case arangodb.ERROR_ARANGO_DATABASE_NAME_INVALID:
+      case arangodb.ERROR_ARANGO_INVALID_KEY_GENERATOR:
+      case arangodb.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE:
+      case arangodb.ERROR_ARANGO_COLLECTION_TYPE_MISMATCH:
+      case arangodb.ERROR_ARANGO_COLLECTION_NOT_LOADED:
+      case arangodb.ERROR_ARANGO_DOCUMENT_REV_BAD:
+        code = exports.HTTP_BAD;
     }
   }
   else if (err instanceof TypeError) {
