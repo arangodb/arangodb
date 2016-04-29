@@ -33,6 +33,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 
 #include <velocypack/AttributeTranslator.h>
+#include <velocypack/velocypack-common.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
@@ -140,8 +141,49 @@ size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
   return slice.normalizedHash();
 };
 
+size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) const {
+  auto const h = slice.head();
+  VPackValueLength l;
+  if (h == 0xbf) {
+    // long UTF-8 String
+    l = static_cast<VPackValueLength>(
+        1 + 8 + velocypack::readInteger<VPackValueLength>(slice.begin() + 1, 8));
+  } else {
+    l = static_cast<VPackValueLength>(1 + h - 0x40);
+  }
+  return velocypack::fasthash64(slice.start(), velocypack::checkOverflow(l),
+                                0xdeadbeef);
+};
+
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
   return VelocyPackHelper::compare(lhs, rhs, false) == 0;
+};
+
+bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
+  auto const lh = lhs.head();
+  VPackValueLength size;
+  if (lh == 0xbf) {
+    // long UTF-8 String
+    size = static_cast<VPackValueLength>(
+        1 + 8 + velocypack::readInteger<VPackValueLength>(lhs.begin() + 1, 8));
+  } else {
+    size = static_cast<VPackValueLength>(1 + lh - 0x40);
+  }
+
+  auto const rh = rhs.head();
+  if (rh == 0xbf) {
+    // long UTF-8 String
+    if (size !=static_cast<VPackValueLength>(
+        1 + 8 + velocypack::readInteger<VPackValueLength>(rhs.begin() + 1, 8))) {
+      return false;
+    }
+  } else {
+    if (size != static_cast<VPackValueLength>(1 + rh - 0x40)) {
+      return false;
+    }
+  }
+  return (memcmp(lhs.start(), rhs.start(),
+                 arangodb::velocypack::checkOverflow(size)) == 0);
 };
 
 static int TypeWeight(VPackSlice const& slice) {
