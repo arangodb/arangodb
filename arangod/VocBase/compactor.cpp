@@ -392,8 +392,8 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
   if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
     VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
-    VPackSlice const keySlice(slice.get(TRI_VOC_ATTRIBUTE_KEY));
-    TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+    VPackSlice const keySlice(slice.get(StaticStrings::KeyString));
+    TRI_voc_rid_t const rid = std::stoull(slice.get(StaticStrings::RevString).copyString());
 
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();
@@ -542,8 +542,8 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
   if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
     VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
-    VPackSlice const keySlice(slice.get(TRI_VOC_ATTRIBUTE_KEY));
-    TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+    VPackSlice const keySlice(slice.get(StaticStrings::KeyString));
+    TRI_voc_rid_t const rid = std::stoull(slice.get(StaticStrings::RevString).copyString());
 
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();

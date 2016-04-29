@@ -2324,7 +2324,7 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
   slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
 
-  VPackSlice r(slice.get(TRI_VOC_ATTRIBUTE_REV));
+  VPackSlice r(slice.get(StaticStrings::RevString));
   if (r.isString()) {
     VPackValueLength length;
     char const* p = r.getString(length);
@@ -2345,7 +2345,7 @@ VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice) {
     return VPackSlice();
   }
 
-  return slice.get(TRI_VOC_ATTRIBUTE_REV);
+  return slice.get(StaticStrings::RevString);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

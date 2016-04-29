@@ -23,6 +23,7 @@
 
 #include "datafile.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
@@ -1884,7 +1885,7 @@ static DatafileScan ScanDatafile(TRI_datafile_t const* datafile) {
         type == TRI_DF_MARKER_VPACK_REMOVE) {
       VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
       TRI_ASSERT(slice.isObject());
-      entry.key = slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+      entry.key = slice.get(StaticStrings::KeyString).copyString();
     }
 
     scan.entries.emplace_back(entry);
