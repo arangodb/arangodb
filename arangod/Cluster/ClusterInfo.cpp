@@ -1514,8 +1514,6 @@ int ClusterInfo::setCollectionStatusCoordinator(
       .get(AgencyComm::prefixStripped()).get("Plan").get("Collections")
       .get(databaseName).get(collectionID);
 
-    LOG(INFO) << col.toJson();
-
     if (!res.successful()) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
@@ -1530,8 +1528,6 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    LOG(INFO) << slice.toJson();
-    
     TRI_vocbase_col_status_e old = static_cast<TRI_vocbase_col_status_e>(
         arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             slice, "status", static_cast<int>(TRI_VOC_COL_STATUS_CORRUPTED)));
