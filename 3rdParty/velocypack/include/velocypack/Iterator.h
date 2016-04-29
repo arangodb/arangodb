@@ -206,7 +206,7 @@ class ObjectIterator {
       Slice key = Slice(_current);
       return ObjectPair(key, Slice(_current + key.byteSize()));
     }
-    return ObjectPair(_slice.keyAt(_position), _slice.valueAt(_position));
+    return ObjectPair(_slice.getNthKey(_position, true), _slice.getNthValue(_position));
   }
 
   ObjectIterator begin() { return ObjectIterator(_slice); }
@@ -234,7 +234,7 @@ class ObjectIterator {
     if (_current != nullptr) {
       return Slice(_current);
     }
-    return _slice.keyAt(_position, translate);
+    return _slice.getNthKey(_position, translate);
   }
 
   inline Slice value() const {
@@ -245,7 +245,7 @@ class ObjectIterator {
       Slice key = Slice(_current);
       return Slice(_current + key.byteSize());
     }
-    return _slice.valueAt(_position);
+    return _slice.getNthValue(_position);
   }
 
   inline bool next() throw() {
