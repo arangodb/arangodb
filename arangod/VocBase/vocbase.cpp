@@ -2319,7 +2319,8 @@ void TRI_FillVPackSub(TRI_vpack_sub_t* sub,
 /// @brief extract the _rev attribute from a slice
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice const slice) {
+TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
+  slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
 
   VPackSlice r(slice.get(TRI_VOC_ATTRIBUTE_REV));
