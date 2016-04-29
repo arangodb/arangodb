@@ -32,6 +32,7 @@
 #include "Aql/QueryList.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
@@ -2359,9 +2360,9 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
   while (it.valid()) {
     std::string key(it.key().copyString());
     if (key.empty() || key[0] != '_' ||
-         (key != Transaction::KeyString &&
-          key != Transaction::IdString &&
-          key != Transaction::RevString)) {
+         (key != StaticStrings::KeyString &&
+          key != StaticStrings::IdString &&
+          key != StaticStrings::RevString)) {
       builder.add(std::move(key), it.value());
     }
     it.next();
@@ -2379,11 +2380,11 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
   while (it.valid()) {
     std::string key(it.key().copyString());
     if (key.empty() || key[0] != '_' ||
-         (key != Transaction::KeyString &&
-          key != Transaction::IdString &&
-          key != Transaction::RevString &&
-          key != Transaction::FromString &&
-          key != Transaction::ToString)) {
+         (key != StaticStrings::KeyString &&
+          key != StaticStrings::IdString &&
+          key != StaticStrings::RevString &&
+          key != StaticStrings::FromString &&
+          key != StaticStrings::ToString)) {
       builder.add(std::move(key), it.value());
     }
     it.next();

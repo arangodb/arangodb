@@ -834,7 +834,7 @@ int createDocumentOnCoordinator(
       } else {
         reqBuilder.clear();
         reqBuilder.openObject();
-        reqBuilder.add(Transaction::KeyString, VPackValue(idx.second));
+        reqBuilder.add(StaticStrings::KeyString, VPackValue(idx.second));
         TRI_SanitizeObject(slice, reqBuilder);
         reqBuilder.close();
         body = std::make_shared<std::string>(reqBuilder.slice().toJson());
@@ -847,7 +847,7 @@ int createDocumentOnCoordinator(
           reqBuilder.add(slice.at(idx.first));
         } else {
           reqBuilder.openObject();
-          reqBuilder.add(Transaction::KeyString, VPackValue(idx.second));
+          reqBuilder.add(StaticStrings::KeyString, VPackValue(idx.second));
           TRI_SanitizeObject(slice.at(idx.first), reqBuilder);
           reqBuilder.close();
         }

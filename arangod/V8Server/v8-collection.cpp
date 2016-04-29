@@ -27,6 +27,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
@@ -2212,13 +2213,13 @@ static void JS_InsertVocbaseCol(
       if (tmpId.empty()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
-      builder.add(Transaction::FromString, VPackValue(tmpId));
+      builder.add(StaticStrings::FromString, VPackValue(tmpId));
 
       tmpId = ExtractIdString(isolate, args[1]);
       if (tmpId.empty()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
-      builder.add(Transaction::ToString, VPackValue(tmpId));
+      builder.add(StaticStrings::ToString, VPackValue(tmpId));
     }
 
     builder.close();
