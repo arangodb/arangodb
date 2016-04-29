@@ -42,6 +42,7 @@
 #include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
 
+#warning iostream
 #include <iostream>
 
 #ifdef _WIN32
@@ -411,6 +412,7 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
 std::vector<DatabaseID> ClusterInfo::listDatabases(bool reload) {
   std::vector<DatabaseID> result;
 
+  
   if (reload || !_plannedDatabasesProt.isValid ||
       !_currentDatabasesProt.isValid || !_DBServersProt.isValid) {
     loadPlannedDatabases();
