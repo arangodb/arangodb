@@ -58,6 +58,8 @@ Overview
     once per distinct input edge id. However, it may break client applications that 
     rely on the old behavior.
 
+15. the HTTP for "/_api/gharial" now returns 202 (Accepted) instead of 200 (OK) or
+    201 (Created).
 
 ### New capabilities:
 
@@ -138,4 +140,3 @@ Explanations
  3. _key, _from, _to can be indexed like normal attributes.
 
     Comes with the VelocyPack change.
-
