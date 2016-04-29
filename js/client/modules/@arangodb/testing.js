@@ -1293,25 +1293,6 @@ function startInstanceCluster(instanceInfo, protocol, options,
     }
   });
 
-  response = download(coordinatorUrl + '/_admin/cluster/bootstrapDbServers', '{"isRelaunch":false}', httpOptions);
-
-  while (response.code !== 200) {
-    console.log('bootstrap dbservers failed', response);
-    wait(1);
-  }
-
-  httpOptions.timeout = 3600;
-  response = download(coordinatorUrl + '/_admin/cluster/upgradeClusterDatabase', '{"isRelaunch":false}', httpOptions);
-  if (response.code !== 200) {
-    console.log(response);
-    throw new Error('Upgrading DB failed');
-  }
-
-  response = download(coordinatorUrl + '/_admin/cluster/bootstrapCoordinator', '{"isRelaunch":false}', httpOptions);
-  if (response.code !== 200) {
-    throw new Error('bootstraping coordinator failed');
-  }
-
   arango.reconnect(endpoint, "_system", 'root', '');
 
   return true;
