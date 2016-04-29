@@ -418,7 +418,7 @@
           success: function (data) {
             if (data.msg.includes('errorMessage')) {
               self.removeOutputEditor(counter);
-              arangoHelper.arangoError("Explain error", data.msg);
+              arangoHelper.arangoError("Explain", data.msg);
             }
             else {
               outputEditor.setValue(data.msg);
@@ -432,10 +432,10 @@
           error: function (data) {
             try {
               var temp = JSON.parse(data.responseText);
-              arangoHelper.arangoError("Explain error", temp.errorMessage);
+              arangoHelper.arangoError("Explain", temp.errorMessage);
             }
             catch (e) {
-              arangoHelper.arangoError("Explain error", "ERROR");
+              arangoHelper.arangoError("Explain", "ERROR");
             }
             self.handleResult(counter);
             self.removeOutputEditor(counter);
@@ -1479,6 +1479,8 @@
             }
           },
           error: function (resp) {
+            var error;
+
             try {
 
               if (resp.statusText === 'Gone') {
@@ -1487,7 +1489,8 @@
                 return;
               }
 
-              var error = JSON.parse(resp.responseText);
+              error = JSON.parse(resp.responseText);
+              arangoHelper.arangoError("Query", error.errorMessage);
               if (error.errorMessage) {
                 if (error.errorMessage.match(/\d+:\d+/g) !== null) {
                   self.markPositionError(
@@ -1500,13 +1503,14 @@
                     error.errorMessage.match(/\(\w+\)/g)[0]
                   );
                 }
-                arangoHelper.arangoError("Query", error.errorMessage);
                 self.removeOutputEditor(counter);
               }
             }
             catch (e) {
-              arangoHelper.arangoError("Query", "Successfully aborted.");
-              console.log(e);
+              console.log(error);
+              if (error.code !== 400) {
+                arangoHelper.arangoError("Query", "Successfully aborted.");
+              }
               self.removeOutputEditor(counter);
             }
 
