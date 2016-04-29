@@ -123,7 +123,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
         return false;
       }
       if (!mptr->pointsToWal()) {
-        _documents->emplace_back(mptr->getMarkerPtr());
+        _documents->emplace_back(mptr->vpack());
         --limit;
       }
       return true;

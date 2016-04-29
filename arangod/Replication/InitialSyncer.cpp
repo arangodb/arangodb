@@ -53,7 +53,7 @@ using namespace arangodb::rest;
 /// @brief performs a binary search for the given key in the markers vector
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool BinarySearch(std::vector<TRI_df_marker_t const*> const& markers,
+static bool BinarySearch(std::vector<void const*> const& markers,
                          std::string const& key, size_t& position) {
   TRI_ASSERT(!markers.empty());
 
@@ -65,7 +65,7 @@ static bool BinarySearch(std::vector<TRI_df_marker_t const*> const& markers,
     position = l + ((r - l) / 2);
 
     TRI_ASSERT(position < markers.size());
-    VPackSlice const otherSlice(reinterpret_cast<char const*>(markers.at(position)) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+    VPackSlice const otherSlice(reinterpret_cast<char const*>(markers.at(position)));
     VPackSlice const otherKey = otherSlice.get(TRI_VOC_ATTRIBUTE_KEY);
 
     int res = key.compare(otherKey.copyString());
@@ -93,7 +93,7 @@ static bool BinarySearch(std::vector<TRI_df_marker_t const*> const& markers,
 /// @brief finds a key range in the markers vector
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FindRange(std::vector<TRI_df_marker_t const*> const& markers,
+static bool FindRange(std::vector<void const*> const& markers,
                       std::string const& lower, std::string const& upper,
                       size_t& lowerPos, size_t& upperPos) {
   bool found = false;
@@ -1034,7 +1034,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
   setProgress(progress);
 
   // fetch all local keys from primary index
-  std::vector<TRI_df_marker_t const*> markers;
+  std::vector<void const*> markers;
     
   TRI_document_collection_t* document = nullptr;
   DocumentDitch* ditch = nullptr;
@@ -1079,7 +1079,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
     uint64_t iterations = 0;
     trx.invokeOnAllElements(trx.name(), [this, &markers, &iterations](TRI_doc_mptr_t const* mptr) {
-      markers.emplace_back(mptr->getMarkerPtr());
+      markers.emplace_back(mptr->vpack());
       
       if (++iterations % 10000 == 0) {
         if (checkAborted()) {
@@ -1104,9 +1104,9 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     // sort all our local keys
     std::sort(
         markers.begin(), markers.end(),
-        [](TRI_df_marker_t const* lhs, TRI_df_marker_t const* rhs) -> bool {
-          VPackSlice const l(reinterpret_cast<char const*>(lhs) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
-          VPackSlice const r(reinterpret_cast<char const*>(rhs) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+        [](void const* lhs, void const* rhs) -> bool {
+          VPackSlice const l(reinterpret_cast<char const*>(lhs));
+          VPackSlice const r(reinterpret_cast<char const*>(rhs));
 
           VPackValueLength lLength, rLength;
           char const* lKey = l.get(TRI_VOC_ATTRIBUTE_KEY).getString(lLength);
@@ -1217,7 +1217,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     std::string const lowKey(lowSlice.copyString());
       
     for (size_t i = 0; i < markers.size(); ++i) {
-      VPackSlice const k(reinterpret_cast<char const*>(markers[i]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+      VPackSlice const k(reinterpret_cast<char const*>(markers[i]));
      
       std::string const key(k.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
 
@@ -1243,7 +1243,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     std::string const highKey(highSlice.copyString());
 
     for (size_t i = markers.size(); i >= 1; --i) {
-      VPackSlice const k(reinterpret_cast<char const*>(markers[i - 1]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+      VPackSlice const k(reinterpret_cast<char const*>(markers[i - 1]));
 
       std::string const key(k.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
 
@@ -1328,7 +1328,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
       for (size_t i = localFrom; i <= localTo; ++i) {
         TRI_ASSERT(i < markers.size());
-        VPackSlice const current(reinterpret_cast<char const*>(markers.at(i)) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+        VPackSlice const current(reinterpret_cast<char const*>(markers.at(i)));
         hash ^= current.get(TRI_VOC_ATTRIBUTE_KEY).hash();
         hash ^= current.get(TRI_VOC_ATTRIBUTE_REV).hash();
       }
@@ -1396,7 +1396,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
       // delete all keys at start of the range
       while (nextStart < markers.size()) {
-        VPackSlice const keySlice(reinterpret_cast<char const*>(markers[nextStart]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+        VPackSlice const keySlice(reinterpret_cast<char const*>(markers[nextStart]));
         std::string const localKey(keySlice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
 
         if (localKey.compare(lowString) < 0) {
@@ -1450,7 +1450,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         std::string const keyString = keySlice.copyString();
 
         while (nextStart < markers.size()) {
-          VPackSlice const localKeySlice(reinterpret_cast<char const*>(markers[nextStart]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+          VPackSlice const localKeySlice(reinterpret_cast<char const*>(markers[nextStart]));
           std::string const localKey(localKeySlice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
 
           int res = localKey.compare(keyString);
@@ -1490,7 +1490,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         BinarySearch(markers, highString, nextStart);
 
         while (nextStart < markers.size()) {
-          VPackSlice const localKeySlice(reinterpret_cast<char const*>(markers[nextStart]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+          VPackSlice const localKeySlice(reinterpret_cast<char const*>(markers[nextStart]));
           std::string const localKey(localKeySlice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
           
           int res = localKey.compare(highString);

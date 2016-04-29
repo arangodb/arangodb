@@ -61,11 +61,20 @@ class VelocyPackHelper {
     size_t operator()(arangodb::velocypack::Slice const&) const;
   };
 
+  struct VPackStringHash {
+    size_t operator()(arangodb::velocypack::Slice const&) const;
+  };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief equality comparator for VelocyPack values
 ////////////////////////////////////////////////////////////////////////////////
 
   struct VPackEqual {
+    bool operator()(arangodb::velocypack::Slice const&,
+                    arangodb::velocypack::Slice const&) const;
+  };
+
+  struct VPackStringEqual {
     bool operator()(arangodb::velocypack::Slice const&,
                     arangodb::velocypack::Slice const&) const;
   };
@@ -91,7 +100,11 @@ class VelocyPackHelper {
     arangodb::velocypack::Slice const* rhsBase;
   };
 
-  struct AttributeSorter {
+  struct AttributeSorterUTF8 {
+    bool operator()(std::string const& l, std::string const& r) const;
+  };
+  
+  struct AttributeSorterBinary {
     bool operator()(std::string const& l, std::string const& r) const;
   };
 
@@ -137,6 +150,8 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string checkAndGetStringValue(VPackSlice const&, char const*);
+  
+  static std::string checkAndGetStringValue(VPackSlice const&, std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a Numeric sub-element, or throws if <name> does not exist
@@ -172,8 +187,8 @@ class VelocyPackHelper {
   /// or it is not a string
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::string getStringValue(VPackSlice, char const*,
-                                    std::string const&);
+  static std::string getStringValue(VPackSlice, char const*, std::string const&);
+  static std::string getStringValue(VPackSlice, std::string const&, std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief convert a Object sub value into a uint64
@@ -269,6 +284,9 @@ class VelocyPackHelper {
   static inline arangodb::velocypack::Slice IllegalValue() {
     return arangodb::velocypack::Slice::illegalSlice();
   }
+
+  static void SanitizeExternals(arangodb::velocypack::Slice const,
+                                arangodb::velocypack::Builder&);
 };
 }
 }

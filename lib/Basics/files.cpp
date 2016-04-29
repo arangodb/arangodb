@@ -1416,7 +1416,7 @@ char* TRI_GetAbsolutePath(char const* fileName,
   }
 
   // ...........................................................................
-  // The fileName itself was not absolute, so we attempt to amalagmate the
+  // The fileName itself was not absolute, so we attempt to amalgamate the
   // currentWorkingDirectory with the fileName
   // ...........................................................................
 
@@ -1446,6 +1446,13 @@ char* TRI_GetAbsolutePath(char const* fileName,
   }
 
   if (!ok) {
+    // directory name can also start with a backslash
+    if (currentWorkingDirectory[0] == '/' || currentWorkingDirectory[0] == '\\') {
+      ok = true;
+    }
+  }
+
+  if (!ok) {
     return nullptr;
   }
 
@@ -1457,7 +1464,9 @@ char* TRI_GetAbsolutePath(char const* fileName,
   fileLength = strlen(fileName);
 
   if (currentWorkingDirectory[cwdLength - 1] == '\\' ||
-      currentWorkingDirectory[cwdLength - 1] == '/') {
+      currentWorkingDirectory[cwdLength - 1] == '/' ||
+      fileName[0] == '\\' ||
+      fileName[0] == '/') {
     // we do not require a backslash
     result = static_cast<char*>(
         TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,

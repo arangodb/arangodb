@@ -185,7 +185,7 @@ void TraversalBlock::executeExpressions() {
         AqlValueGuard guard(a, mustDestroy);
         
         AqlValueMaterializer materializer(_trx);
-        VPackSlice slice = materializer.slice(a);
+        VPackSlice slice = materializer.slice(a, false);
 
         VPackBuilder* builder = new VPackBuilder;
         try {

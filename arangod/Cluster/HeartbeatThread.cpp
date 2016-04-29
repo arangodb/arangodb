@@ -183,9 +183,9 @@ void HeartbeatThread::runDBServer() {
     if (isStopping()) {
       break;
     }
-    // XXX execute at least once
     double remain = interval - (TRI_microtime() - start);
-    while (remain > 0) {
+    // mop: execute at least once
+    do {
       LOG(TRACE) << "Entering update loop";
       
       bool wasNotified;
@@ -217,7 +217,7 @@ void HeartbeatThread::runDBServer() {
         }
       }
       remain = interval - (TRI_microtime() - start);
-    }
+    } while (remain > 0);
   }
 
   _agencyCallbackRegistry->unregisterCallback(agencyCallback);

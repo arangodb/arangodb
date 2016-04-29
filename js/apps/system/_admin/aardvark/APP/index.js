@@ -26,19 +26,16 @@ const db = require('@arangodb').db;
 const sessionsMiddleware = require('@arangodb/foxx/sessions');
 const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
 const systemStorage = require('@arangodb/foxx/sessions/storages/_system');
-const auth = require('@arangodb/foxx/auth');
-
-module.context.sessions = systemStorage();
-module.context.auth = auth('sha256');
+const sessions = systemStorage();
 
 module.context.use(sessionsMiddleware({
   transport: cookieTransport(`arango_sid_${db._name()}`),
-  storage: module.context.sessions
+  storage: sessions
 }));
 
 module.context.use((req, res, next) => {
   if (module.context.configuration.sessionPruneProb > Math.random()) {
-    module.context.sessions.prune();
+    sessions.prune();
   }
   next();
 });

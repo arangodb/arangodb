@@ -92,11 +92,10 @@
             arangoHelper.arangoError('Could not delete collection.');
           },
           success: function() {
-            window.modalView.hide();
+            window.App.navigate("#collections", {trigger: true});
           }
         }
       );
-      this.collectionsView.render();
     },
 
     saveModifiedCollection: function() {

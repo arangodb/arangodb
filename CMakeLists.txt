@@ -210,9 +210,13 @@ if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++11")
 endif ()
 
-if (APPLE AND CMAKE_COMPILER_IS_CLANG)
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
-  add_definitions("-Wno-deprecated-declarations")
+if (CMAKE_COMPILER_IS_CLANG)
+  if (APPLE)
+    set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
+    add_definitions("-Wno-deprecated-declarations")
+  else ()
+    list(APPEND BASE_LIBS atomic)
+  endif ()
 endif ()
 
 # need c++11

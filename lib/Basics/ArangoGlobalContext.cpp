@@ -22,6 +22,10 @@
 
 #include "ArangoGlobalContext.h"
 
+#ifdef _WIN32
+#include <DbgHelp.h>
+#endif
+
 #include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
@@ -29,10 +33,6 @@
 #include "Rest/InitializeRest.h"
 
 using namespace arangodb;
-
-#ifndef _WIN32
-static void ReopenLog(int) { LogAppender::reopen(); }
-#endif
 
 static void AbortHandler(int signum) {
   TRI_PrintBacktrace();
@@ -44,11 +44,77 @@ static void AbortHandler(int signum) {
 #endif
 }
 
+#ifndef _WIN32
+static void ReopenLog(int) { LogAppender::reopen(); }
+#endif
+
+#ifdef _WIN32
+static std::string miniDumpFilename = "c:\\arangodpanic.dmp";
+
+LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
+#if ARANGODB_ENABLE_BACKTRACE
+
+  if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
+    LOG_FATAL_WINDOWS("Unhandled exception: %d",
+                      (int)e->ExceptionRecord->ExceptionCode);
+  } else {
+    LOG_FATAL_WINDOWS("Unhandled exception without ExceptionCode!");
+  }
+
+  std::string bt;
+  TRI_GetBacktrace(bt);
+  std::cerr << bt << std::endl;
+  LOG_FATAL_WINDOWS(bt.c_str());
+
+  HANDLE hFile =
+      CreateFile(miniDumpFilename.c_str(), GENERIC_WRITE, FILE_SHARE_READ, 0,
+                 CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+
+  if (hFile == INVALID_HANDLE_VALUE) {
+    LOG_FATAL_WINDOWS("could not open minidump file : %lu", GetLastError());
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+
+  MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
+  exceptionInfo.ThreadId = GetCurrentThreadId();
+  exceptionInfo.ExceptionPointers = e;
+  exceptionInfo.ClientPointers = FALSE;
+
+  MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile,
+                    MINIDUMP_TYPE(MiniDumpWithIndirectlyReferencedMemory |
+                                  MiniDumpScanMemory | MiniDumpWithFullMemory),
+                    e ? &exceptionInfo : nullptr, nullptr, nullptr);
+
+  if (hFile) {
+    CloseHandle(hFile);
+    hFile = nullptr;
+  }
+
+  LOG_FATAL_WINDOWS("wrote minidump: %s", miniDumpFilename.c_str());
+#endif
+
+  if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
+    LOG_FATAL_WINDOWS("Unhandled exception: %d - will crash now.",
+                      (int)e->ExceptionRecord->ExceptionCode);
+  } else {
+    LOG_FATAL_WINDOWS(
+        "Unhandled exception without ExceptionCode - will crash now.!");
+  }
+
+  return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif
+
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
 ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[])
     : _binaryName(TRI_BinaryName(argv[0])), _ret(EXIT_FAILURE) {
   ADB_WindowsEntryFunction();
+
+#ifdef _WIN32
+  SetUnhandledExceptionFilter(unhandledExceptionHandler);
+#endif
+
   TRIAGENS_REST_INITIALIZE();
   CONTEXT = this;
 }
@@ -184,3 +250,11 @@ void ArangoGlobalContext::runStartupChecks() {
 #endif
 }
 
+void ArangoGlobalContext::tempPathAvailable() {
+#ifdef _WIN32
+  miniDumpFilename = TRI_GetTempPath();
+
+  miniDumpFilename +=
+    "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
+#endif
+}

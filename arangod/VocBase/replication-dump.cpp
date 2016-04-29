@@ -328,9 +328,6 @@ static int StringifyMarker(TRI_replication_dump_t* dump,
       break;
     }
 
-    case TRI_DF_MARKER_BEGIN_REMOTE_TRANSACTION:
-    case TRI_DF_MARKER_COMMIT_REMOTE_TRANSACTION:
-    case TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION: 
     default: {
       TRI_ASSERT(false);
       return TRI_ERROR_INTERNAL;

@@ -26,6 +26,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/Cursor.h"
@@ -138,7 +139,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
   {
     createResponse(GeneralResponse::ResponseCode::CREATED);
-    _response->setContentType("application/json; charset=utf-8");
+    _response->setContentType(StaticStrings::MimeTypeJson);
 
     std::shared_ptr<VPackBuilder> extra = buildExtra(queryResult);
     VPackSlice opts = options->slice();
@@ -438,7 +439,7 @@ void RestCursorHandler::modifyCursor() {
 
   try {
     createResponse(GeneralResponse::ResponseCode::OK);
-    _response->setContentType("application/json; charset=utf-8");
+    _response->setContentType(StaticStrings::MimeTypeJson);
 
     _response->body().appendChar('{');
     cursor->dump(_response->body());

@@ -194,7 +194,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int read(arangodb::Transaction*, std::string const&,
            TRI_doc_mptr_t*, bool);
   int insert(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             TRI_doc_mptr_t*, arangodb::OperationOptions&, bool);
+             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool);
   int update(arangodb::Transaction*, arangodb::velocypack::Slice const,
              TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
              VPackSlice&, TRI_doc_mptr_t&);
@@ -238,6 +238,9 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int newObjectForInsert(
       arangodb::Transaction* trx,
       arangodb::velocypack::Slice const& value,
+      arangodb::velocypack::Slice const& fromSlice,
+      arangodb::velocypack::Slice const& toSlice,
+      bool isEdgeCollection,
       uint64_t& hash,
       arangodb::velocypack::Builder& builder,
       bool isRestore);
@@ -250,6 +253,9 @@ struct TRI_document_collection_t : public TRI_collection_t {
       arangodb::Transaction* trx,
       arangodb::velocypack::Slice const& oldValue,
       arangodb::velocypack::Slice const& newValue,
+      arangodb::velocypack::Slice const& fromSlice,
+      arangodb::velocypack::Slice const& toSlice,
+      bool isEdgeCollection,
       std::string const& rev,
       arangodb::velocypack::Builder& builder);
 
@@ -261,6 +267,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
       arangodb::Transaction* trx,
       arangodb::velocypack::Slice const& oldValue,
       arangodb::velocypack::Slice const& newValue,
+      bool isEdgeCollection,
       std::string const& rev,
       bool mergeObjects, bool keepNull,
       arangodb::velocypack::Builder& b);

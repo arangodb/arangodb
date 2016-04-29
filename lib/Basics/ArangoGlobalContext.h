@@ -42,6 +42,7 @@ class ArangoGlobalContext {
   void maskAllSignals();
   void unmaskStandardSignals();
   void runStartupChecks();
+  void tempPathAvailable();
 
  private:
   std::string _binaryName;

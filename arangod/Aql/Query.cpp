@@ -583,7 +583,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
             AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              val.toVelocyPack(_trx, *resultBuilder);
+              val.toVelocyPack(_trx, *resultBuilder, true);
             }
           }
           delete value;
@@ -614,7 +614,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
             AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              val.toVelocyPack(_trx, *resultBuilder);
+              val.toVelocyPack(_trx, *resultBuilder, false);
             }
           }
           delete value;
@@ -742,7 +742,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
             if (!val.isEmpty()) {
               result.result->Set(j++, val.toV8(isolate, _trx));
-              val.toVelocyPack(_trx, *builder);
+              val.toVelocyPack(_trx, *builder, true);
             }
           }
           delete value;

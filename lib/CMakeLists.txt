@@ -174,6 +174,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Nonce.cpp
   Basics/ReadWriteLock.cpp
   Basics/ReadWriteLockCPP11.cpp
+  Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp

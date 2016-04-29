@@ -23,6 +23,7 @@
 
 #include "RestVocbaseBaseHandler.h"
 #include "Basics/conversions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -244,10 +245,10 @@ void RestVocbaseBaseHandler::generate20x(
   VPackSlice slice = result.slice();
   TRI_ASSERT(slice.isObject() || slice.isArray());
   if (slice.isObject()) {
-    _response->setHeaderNC("etag", "\"" + slice.get(TRI_VOC_ATTRIBUTE_REV).copyString() + "\"");
+    _response->setHeaderNC("etag", "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
     // pre 1.4 location headers withdrawn for >= 3.0
     std::string escapedHandle(assembleDocumentId(
-        collectionName, slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), true));
+        collectionName, slice.get(StaticStrings::KeyString).copyString(), true));
     _response->setHeaderNC("location",
                          std::string("/_db/" + _request->databaseName() +
                                      DOCUMENT_PATH + "/" + escapedHandle));
@@ -284,7 +285,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   createResponse(GeneralResponse::ResponseCode::PRECONDITION_FAILED);
 
   if (slice.isObject()) {  // single document case
-    std::string const rev = VelocyPackHelper::getStringValue(slice, TRI_VOC_ATTRIBUTE_REV, "");
+    std::string const rev = VelocyPackHelper::getStringValue(slice, StaticStrings::KeyString, "");
     _response->setHeaderNC("etag", "\"" + rev + "\"");
   }
   VPackBuilder builder;
@@ -297,9 +298,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     builder.add("errorNum", VPackValue(TRI_ERROR_ARANGO_CONFLICT));
     builder.add("errorMessage", VPackValue("precondition failed"));
     if (slice.isObject()) {
-      builder.add(TRI_VOC_ATTRIBUTE_ID, slice.get(TRI_VOC_ATTRIBUTE_ID));
-      builder.add(TRI_VOC_ATTRIBUTE_KEY, slice.get(TRI_VOC_ATTRIBUTE_KEY));
-      builder.add(TRI_VOC_ATTRIBUTE_REV, slice.get(TRI_VOC_ATTRIBUTE_REV));
+      builder.add(StaticStrings::IdString, slice.get(StaticStrings::IdString));
+      builder.add(StaticStrings::KeyString, slice.get(StaticStrings::KeyString));
+      builder.add(StaticStrings::RevString, slice.get(StaticStrings::RevString));
     } else {
       builder.add("result", slice);
     }
@@ -318,9 +319,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(assembleDocumentId(collectionName, key, false)));
-  builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(std::to_string(rev)));
-  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(key));
+  builder.add(StaticStrings::IdString, VPackValue(assembleDocumentId(collectionName, key, false)));
+  builder.add(StaticStrings::KeyString, VPackValue(std::to_string(rev)));
+  builder.add(StaticStrings::RevString, VPackValue(key));
   builder.close();
 
   generatePreconditionFailed(builder.slice());
@@ -343,12 +344,13 @@ void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
+void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
                                               bool generateBody,
                                               VPackOptions const* options) {
+  VPackSlice document = input.resolveExternal();
   std::string rev;
   if (document.isObject()) {
-    rev = VelocyPackHelper::getStringValue(document, TRI_VOC_ATTRIBUTE_REV, "");
+    rev = VelocyPackHelper::getStringValue(document, StaticStrings::RevString, "");
   }
 
   // and generate a response
@@ -360,12 +362,11 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
   if (generateBody) {
     writeResult(document, *options);
   } else {
-    if(returnVelocypack()){
-      //TODO REVIEW
-      _response->setContentType("application/x-velocypack");
+    if (returnVelocypack()){
+      _response->setContentType(StaticStrings::MimeTypeVPack);
       _response->headResponse(document.byteSize());
     } else {
-      _response->setContentType("application/json; charset=utf-8");
+      _response->setContentType(StaticStrings::MimeTypeJson);
 
       // TODO can we optimize this?
       // Just dump some where else to find real length
@@ -680,18 +681,14 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
 
 std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     VPackOptions const* options, bool& success) {
-  static std::string CONTENT_TYPE = "content-type";
-  static std::string X_VELOCYPACK = "application/x-velocypack";
-  static size_t XVN = X_VELOCYPACK.size();
-
   bool found;
-  auto& contentType = _request->header(CONTENT_TYPE, found);
+  std::string const& contentType = _request->header(StaticStrings::MimeTypeVPack, found);
 
   try {
     success = true;
 
-    if (found && contentType.size() == XVN && contentType[XVN-1] == 'k'
-      && contentType == X_VELOCYPACK) {
+    if (found && contentType.size() == StaticStrings::MimeTypeVPack.size() && 
+        contentType == StaticStrings::MimeTypeVPack) {
       VPackSlice slice{_request->body().c_str()};
       auto builder = std::make_shared<VPackBuilder>(options);
       builder->add(slice);
@@ -722,8 +719,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
   std::string const& shardId = _request->header("x-arango-nolock", found);
 
   if (found) {
-    _nolockHeaderSet = new std::unordered_set<std::string>();
-    _nolockHeaderSet->insert(std::string(shardId));
+    _nolockHeaderSet = new std::unordered_set<std::string>{ std::string(shardId) };
     arangodb::Transaction::_makeNolockHeaders = _nolockHeaderSet;
   }
 }

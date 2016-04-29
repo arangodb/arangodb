@@ -24,6 +24,7 @@
 #include "v8-query.h"
 #include "Aql/Query.h"
 #include "Aql/QueryResultV8.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/GeoIndex2.h"
 #include "Utils/OperationCursor.h"
@@ -117,14 +118,19 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
+  
+  if (collection->_type != TRI_COL_TYPE_EDGE) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  }
+
 
   auto addOne = [](v8::Isolate* isolate, VPackBuilder* builder, v8::Handle<v8::Value> const val) {
     if (val->IsString() || val->IsStringObject()) {
       builder->add(VPackValue(TRI_ObjectToString(val)));
     } else if (val->IsObject()) {
       v8::Handle<v8::Object> obj = val->ToObject();
-      if (obj->Has(TRI_V8_ASCII_STD_STRING(isolate, Transaction::IdString))) {
-        builder->add(VPackValue(TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STD_STRING(isolate, Transaction::IdString)))));
+      if (obj->Has(TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString))) {
+        builder->add(VPackValue(TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString)))));
       } else {
         builder->add(VPackValue(""));
       }
@@ -159,10 +165,6 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   }
   else {
     filter = buildFilter(direction, "==");
-  }
-
-  if (collection->_type != TRI_COL_TYPE_EDGE) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
 
   std::string const queryString = "FOR doc IN @@collection " + filter + " RETURN doc";
@@ -202,6 +204,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!args[1]->IsNull() && !args[1]->IsUndefined()) {
     limit = TRI_ObjectToUInt64(args[1], false);
   }
+  
+  std::string collectionName(collection->_name);
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true),
                                           collection->_cid, TRI_TRANSACTION_READ);
@@ -211,8 +215,6 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
-  std::string collectionName(collection->_name);
 
   // We directly read the entire cursor. so batchsize == limit
   std::shared_ptr<OperationCursor> opCursor =
@@ -286,8 +288,8 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_doc_mptr_t document;
-
+  std::string collectionName(col->_name);
+  
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
                                           col->_cid, TRI_TRANSACTION_READ);
 
@@ -296,8 +298,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
-  std::string collectionName(col->_name);
+  
   OperationResult cursor = trx.any(collectionName);
 
   res = trx.finish(cursor.code);
@@ -372,10 +373,10 @@ static void JS_ChecksumCollection(
   trx.invokeOnAllElements(col->_name, [&hash, &withData, &withRevisions](TRI_doc_mptr_t const* mptr) {
     VPackSlice const slice(mptr->vpack());
 
-    uint64_t localHash = slice.get(Transaction::KeyString).hash();
+    uint64_t localHash = slice.get(StaticStrings::KeyString).hash();
 
     if (withRevisions) {
-      localHash += slice.get(Transaction::RevString).hash();
+      localHash += slice.get(StaticStrings::RevString).hash();
     }
 
     if (withData) {

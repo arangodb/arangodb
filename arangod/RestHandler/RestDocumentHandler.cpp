@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDocumentHandler.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -118,6 +119,7 @@ bool RestDocumentHandler::createDocument() {
   opOptions.isRestore = extractBooleanParameter("isRestore", false);
   opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
   opOptions.returnNew = extractBooleanParameter("returnNew", false);
+  opOptions.silent = extractBooleanParameter("silent", false);
 
   // find and load collection given by name or identifier
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
@@ -226,10 +228,10 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
-    builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+    builder.add(StaticStrings::KeyString, VPackValue(key));
     if (ifRid != 0) {
       options.ignoreRevs = false;
-      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(ifRid)));
+      builder.add(StaticStrings::RevString, VPackValue(std::to_string(ifRid)));
     }
   }
   VPackSlice search = builder.slice();
@@ -379,6 +381,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
   opOptions.returnNew = extractBooleanParameter("returnNew", false);
   opOptions.returnOld = extractBooleanParameter("returnOld", false);
+  opOptions.silent = extractBooleanParameter("silent", false);
 
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuilder> builder(nullptr);
@@ -391,7 +394,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
                     "invalid revision number");
       return false;
     }
-    VPackSlice keyInBody = body.get(TRI_VOC_ATTRIBUTE_KEY);
+    VPackSlice keyInBody = body.get(StaticStrings::KeyString);
     if ((revision != 0 && TRI_ExtractRevisionId(body) != revision) ||
         keyInBody.isNone() ||
         (keyInBody.isString() && keyInBody.copyString() != key)) {
@@ -400,9 +403,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       {
         VPackObjectBuilder guard(builder.get());
         TRI_SanitizeObject(body, *builder);
-        builder->add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+        builder->add(StaticStrings::KeyString, VPackValue(key));
         if (revision != 0) {
-          builder->add(TRI_VOC_ATTRIBUTE_REV,
+          builder->add(StaticStrings::RevString,
                        VPackValue(std::to_string(revision)));
         }
       }
@@ -510,6 +513,7 @@ bool RestDocumentHandler::deleteDocument() {
   opOptions.returnOld = extractBooleanParameter("returnOld", false);
   opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);
   opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
+  opOptions.silent = extractBooleanParameter("silent", false);
 
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
 
@@ -520,10 +524,10 @@ bool RestDocumentHandler::deleteDocument() {
   if (suffix.size() == 2) {
     {
       VPackObjectBuilder guard(&builder);
-      builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+      builder.add(StaticStrings::KeyString, VPackValue(key));
       if (revision != 0) {
         opOptions.ignoreRevs = false;
-        builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revision)));
+        builder.add(StaticStrings::RevString, VPackValue(std::to_string(revision)));
       }
     }
     search = builder.slice();

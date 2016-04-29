@@ -499,7 +499,7 @@
           advancedTableContent.push(
             window.modalView.createSelectEntry(
               "new-collection-sync",
-              "Sync",
+              "Wait for sync",
               "",
               "Synchronize to disk before returning from a create or update of a document.",
               [{value: false, label: "No"}, {value: true, label: "Yes"}]

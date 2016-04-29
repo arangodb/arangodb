@@ -40,10 +40,7 @@
 (function () {
   var internal = require("internal");
 
-  // in the cluster the kickstarter will call boostrap-role.js
-  if (global.ArangoAgency.prefix() !== "") {
-    return true;
-  }
+  // in the cluster we run the startup scripts from elsewhere!
 
   // statistics can be turned off
   if (internal.enableStatistics && internal.threadNumber === 0) {

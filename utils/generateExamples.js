@@ -127,7 +127,7 @@ function main(argv) {
     serverArgs["javascript.app-path"] = fs.join(tmpDataDir, "apps");
     serverArgs["javascript.startup-directory"] = "js";
     serverArgs["log.file"] = fs.join(tmpDataDir, "log");
-    serverArgs["server.disable-authentication"] = "true";
+    serverArgs["server.authentication"] = "false";
     serverArgs["server.endpoint"] = serverEndpoint;
     serverArgs["server.threads"] = "3";
 

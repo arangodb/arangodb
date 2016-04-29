@@ -21,8 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Wal/Slot.h"
+#include "Slot.h"
 #include "Basics/hashes.h"
+#include "Wal/Marker.h"
 
 using namespace arangodb::wal;
 
@@ -56,8 +57,41 @@ std::string Slot::statusText() const {
   return "unknown";
 }
 
+/// @brief calculate the CRC and length values for the slot and
+/// store them in the marker
+void Slot::finalize(Marker const* marker) {
+  TRI_ASSERT(marker != nullptr);
+  uint32_t const size = marker->size();
+
+  TRI_ASSERT(_mem != nullptr);
+  TRI_ASSERT(size == _size);
+  TRI_ASSERT(size >= sizeof(TRI_df_marker_t));
+
+  TRI_df_marker_t* dfm = static_cast<TRI_df_marker_t*>(_mem);
+
+  // set type and tick
+  dfm->setTypeAndTick(marker->type(), _tick);
+
+  // set size
+  dfm->setSize(static_cast<TRI_voc_size_t>(size));
+
+  // calculate the crc
+  dfm->setCrc(0);
+  TRI_voc_crc_t crc = TRI_InitialCrc32();
+  crc = TRI_BlockCrc32(crc, static_cast<char const*>(_mem),
+                       static_cast<TRI_voc_size_t>(size));
+  dfm->setCrc(TRI_FinalCrc32(crc));
+
+  TRI_IF_FAILURE("WalSlotCrc") {
+    // intentionally corrupt the marker
+    LOG(WARN) << "intentionally writing corrupt marker into datafile";
+    dfm->setCrc(0xdeadbeef);
+  }
+}
+
 /// @brief calculate the CRC value for the source region (this will modify
 /// the source region) and copy the calculated marker data into the slot
+/// note that marker type has to be set already in the src 
 void Slot::fill(void* src, size_t size) {
   TRI_ASSERT(size == _size);
   TRI_ASSERT(src != nullptr);

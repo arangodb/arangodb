@@ -45,6 +45,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "RestServer/AffinityFeature.h"
+#include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -68,26 +69,13 @@
 using namespace arangodb;
 using namespace arangodb::wal;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Hooks for OS-Specific functions
-////////////////////////////////////////////////////////////////////////////////
-
-// YYY #warning TODO
 #if 0
 #ifdef _WIN32
-extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
-extern void TRI_StartService(int argc, char* argv[]);
-#else
-bool TRI_ParseMoreArgs(int argc, char* argv[]) { return false; }
-void TRI_StartService(int argc, char* argv[]) {}
+WindowsService WINDOWS_SERVICE;
 #endif
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an application server
-////////////////////////////////////////////////////////////////////////////////
-
-int main(int argc, char* argv[]) {
+static int runServer(int argc, char** argv) {
   ArangoGlobalContext context(argc, argv);
   context.installSegv();
   context.maskAllSignals();
@@ -99,6 +87,45 @@ int main(int argc, char* argv[]) {
       argv[0], "Usage: " + name + " [<options>]", "For more information use:");
 
   application_features::ApplicationServer server(options);
+
+#if 0
+#ifdef _WIN32
+  application_features::ProgressHandler reporter{
+      [](application_features::ServerState state) {
+        switch (_state) {
+          case ServerState::IN_WAIT:
+            WINDOWS_SERVICE.startupFinished();
+            break;
+          case ServerState::IN_STOP:
+            server.shutdownBegins();
+            break;
+          case ServerState::IN_COLLECT_OPTIONS:
+          case ServerState::IN_VALIDATE_OPTIONS:
+          case ServerState::IN_PREPARE:
+          case ServerState::IN_START:
+            WINDOWS_SERVICE.startupProgress();
+            break;
+          case ServerState::UNINITIALIZED:
+          case ServerState::STOPPED:
+            break;
+        }
+      },
+      [](application_features::ServerState state, std::string const& name) {
+        switch (_state) {
+          case ServerState::IN_COLLECT_OPTIONS:
+          case ServerState::IN_VALIDATE_OPTIONS:
+          case ServerState::IN_PREPARE:
+          case ServerState::IN_START:
+            WINDOWS_SERVICE.startupProgress();
+            break;
+          default:
+            break;
+        }
+      }};
+
+  server.addReporter(reporter);
+#endif
+#endif
 
   std::vector<std::string> nonServerFeatures = {
       "Action",     "Affinity",   "Agency",
@@ -112,6 +139,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new ActionFeature(&server));
   server.addFeature(new AffinityFeature(&server));
   server.addFeature(new AgencyFeature(&server));
+  server.addFeature(new BootstrapFeature(&server));
   server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new ClusterFeature(&server));
   server.addFeature(new ConfigFeature(&server, name));
@@ -175,35 +203,12 @@ int main(int argc, char* argv[]) {
   return context.exit(ret);
 }
 
-// YYY #warning TODO
+int main(int argc, char* argv[]) {
 #if 0
-
-  // windows only
-  bool const startAsService = TRI_ParseMoreArgs(argc, argv);
-
-  // initialize sub-systems
-  if (startAsService) {
-    TRI_StartService(argc, argv);
-  } else {
-    ArangoInstance = new ArangoServer(argc, argv);
-    res = ArangoInstance->start();
-  }
-
-  if (ArangoInstance != nullptr) {
-    try {
-      delete ArangoInstance;
-    } catch (...) {
-      // caught an error during shutdown
-      res = EXIT_FAILURE;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      std::cerr << "Caught an exception during shutdown" << std::endl;
+#ifdef _WIN32
+  WINDOWS_SERVICE.serviceStart(argc, argv, runServer);
 #endif
-    }
-
-    ArangoInstance = nullptr;
-  }
-
-  // shutdown sub-systems
-  return context.exit(ret);
 #endif
+
+  return runServer(argc, argv);
+}

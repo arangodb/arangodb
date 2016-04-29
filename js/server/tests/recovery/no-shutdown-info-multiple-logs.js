@@ -45,6 +45,7 @@ function runSetup () {
     collections: {
       write: [ "UnitTestsRecovery" ]
     },
+    waitForSync: true,
     action: function () {
       var db = require("@arangodb").db, i;
       var c = db._collection("UnitTestsRecovery");

@@ -48,10 +48,12 @@ function runSetup () {
 
       var i, c = db._collection("UnitTestsRecovery");
       for (i = 0; i < 100000; ++i) {
-        c.save({ _key: "test" + i, value1: "test" + i, value2: i }, true); // wait for sync
+        c.save({ _key: "test" + i, value1: "test" + i, value2: i });
       }
       for (i = 0; i < 100000; i += 2) {
-        c.remove("test" + i, true);
+        c.remove("test" + i, { 
+          waitForSync: (i === 100000 - 2)
+        });
       }
     }
   });

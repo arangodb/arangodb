@@ -3,7 +3,7 @@ set -e
 
 TAG=1
 
-if [ "$1" == "--no-tag" ];  then
+if [ "$1" == "--no-commit" ];  then
   TAG=0
   shift
 fi
@@ -32,9 +32,9 @@ VERSION_MINOR=`echo $VERSION | awk -F. '{print $2}'`
 VERSION_REVISION=`echo $VERSION | awk -F. '{print $3}'`
 
 cat CMakeLists.txt \
-  | sed -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR      \"$VERSION_MAJOR\")" \
-  | sed -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR      \"$VERSION_MINOR\")" \
-  | sed -e "s~set(ARANGODB_VERSION_REVISION.*~set(ARANGODB_VERSION_REVISION   \"$VERSION_REVISION\")" \
+  | sed -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR      \"$VERSION_MAJOR\")~" \
+  | sed -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR      \"$VERSION_MINOR\")~" \
+  | sed -e "s~set(ARANGODB_VERSION_REVISION.*~set(ARANGODB_VERSION_REVISION   \"$VERSION_REVISION\")~" \
   > CMakeLists.txt.tmp
 
 mv CMakeLists.txt.tmp CMakeLists.txt
@@ -42,18 +42,22 @@ mv CMakeLists.txt.tmp CMakeLists.txt
 CMAKE_CONFIGURE="-DUSE_MAINTAINER_MODE=ON"
 
 if [ `uname` == "Darwin" ];  then
-  CMAKE_CONFIGURE="${CMAKE_CONFIGURE} -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
+  CMAKE_CONFIGURE="${CMAKE_CONFIGURE} -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11"
 fi
 
+if test 0 = 1;  then
+echo "COMPILING"
 rm -rf build && mkdir build
-
-./scripts/jsint.sh
 
 (
   cd build
   cmake .. ${CMAKE_CONFIGURE}
   make -j 8
 )
+fi
+
+echo "LINTING"
+./utils/jslint.sh
 
 git add -f \
   README \
@@ -67,21 +71,22 @@ git add -f \
   js/common/bootstrap/errors.js \
   CMakeLists.txt
 
-(
-  cd build
-  make swagger
-)
+echo "SWAGGER"
+./utils/generateSwagger.sh
 
-./scripts/generateExamples
+echo "EXAMPLES"
+./utils/generateExamples.sh
 
+echo "GRUNT"
 (
   cd js/apps/system/_admin/aardvark/APP
   npm install --only=dev
-  npm run grunt
+  grunt deploy
 )
 
 git add -f Documentation/Examples/*.generated
 
+echo "DOCUMENTATION"
 cd Documentation/Books; make
 
 case "$TAG" in
@@ -94,6 +99,8 @@ case "$TAG" in
 esac
 
 if [ "$TAG" == "1" ];  then
+  echo "COMMIT"
+
   git commit -m "release version $VERSION" -a
   git push
 

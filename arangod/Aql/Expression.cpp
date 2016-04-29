@@ -638,7 +638,7 @@ AqlValue Expression::executeSimpleExpressionArray(
                                               startPos, vars, regs, localMustDestroy, false);
 
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(trx, builder);
+    result.toVelocyPack(trx, builder, false);
   }
 
   builder.close();
@@ -677,7 +677,7 @@ AqlValue Expression::executeSimpleExpressionObject(
     AqlValue result = executeSimpleExpression(member, trx, argv,
                                               startPos, vars, regs, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(trx, builder);
+    result.toVelocyPack(trx, builder, false);
   }
 
   builder.close();
@@ -1231,7 +1231,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
     AqlValueGuard guard(item, localMustDestroy);
 
     AqlValueMaterializer materializer(trx);
-    setVariable(variable, materializer.slice(item));
+    setVariable(variable, materializer.slice(item, false));
 
     bool takeItem = true;
 
@@ -1256,7 +1256,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
       AqlValue sub =
           executeSimpleExpression(projectionNode, trx, argv,
                                   startPos, vars, regs, localMustDestroy, false);
-      sub.toVelocyPack(trx, builder);
+      sub.toVelocyPack(trx, builder, false);
       if (localMustDestroy) { sub.destroy(); }
     }
 

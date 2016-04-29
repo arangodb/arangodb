@@ -7,6 +7,7 @@
     <title>ArangoDB Web Interface</title>
     <meta name="description" content="ArangoDB Admin Web Interface">
     <meta name="author" content="Heiko Kernbach, Michael Hackstein">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="css/style.css" rel="stylesheet">
     <link href="css/sass.css" rel="stylesheet">
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
@@ -1380,7 +1381,6 @@ if (list.length > 0) {
             <th class="collectionTh">Type:</th>
             <th class="">
               <select id="newIndexType">
-                <option value="Cap">Cap Constraint</option>
                 <option value="Geo">Geo Index</option>
                 <option value="Hash">Hash Index</option>
                 <option value="Fulltext">Fulltext Index</option>
@@ -1390,32 +1390,6 @@ if (list.length > 0) {
             <th class="" style="width: 18px"/>
           </tr>
         </table>
-        <div id="newIndexTypeCap" class="newIndexClass">
-          <table>
-            <tr>
-              <th class="collectionTh">Size:</th>
-              <th><input type="text" id="newCapSize" value=""/></th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="The maximal number of documents for the collection.">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-            <tr>
-              <th class="collectionTh">Bytesize:</th>
-              <th><input type="text" id="newCapByteSize" value=""/></th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="The maximal size of the active document data in the collection. (min = 16384)">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-          </table>
-        </div>
         <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
           <table>
             <tr>
@@ -3352,8 +3326,8 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="libs.js?version=1461674146144"></script>
-<script src="app.js?version=1461674146144"></script>
+<script src="libs.js?version=1461926768548"></script>
+<script src="app.js?version=1461926768548"></script>
 
   </body>
 </html>

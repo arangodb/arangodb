@@ -33,6 +33,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 
 #include <velocypack/AttributeTranslator.h>
+#include <velocypack/velocypack-common.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
@@ -116,17 +117,73 @@ arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
 }
 
 
-bool VelocyPackHelper::AttributeSorter::operator()(std::string const& l,
-                                                   std::string const& r) const {
+bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,
+                                                       std::string const& r) const {
+  // use UTF-8-based comparison of attribute names
   return TRI_compare_utf8(l.c_str(), l.size(), r.c_str(), r.size()) < 0;
+}
+
+bool VelocyPackHelper::AttributeSorterBinary::operator()(std::string const& l,
+                                                         std::string const& r) const {
+  // use binary comparison of attribute names
+  size_t cmpLength = (std::min)(l.size(), r.size());
+  int res = memcmp(l.c_str(), r.c_str(), cmpLength);
+  if (res < 0) {
+    return true;
+  }
+  if (res == 0) {
+    return l.size() < r.size();
+  }
+  return false;
 }
 
 size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
   return slice.normalizedHash();
 };
 
+size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) const {
+  auto const h = slice.head();
+  VPackValueLength l;
+  if (h == 0xbf) {
+    // long UTF-8 String
+    l = static_cast<VPackValueLength>(
+        1 + 8 + velocypack::readInteger<VPackValueLength>(slice.begin() + 1, 8));
+  } else {
+    l = static_cast<VPackValueLength>(1 + h - 0x40);
+  }
+  return velocypack::fasthash64(slice.start(), velocypack::checkOverflow(l),
+                                0xdeadbeef);
+};
+
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
   return VelocyPackHelper::compare(lhs, rhs, false) == 0;
+};
+
+bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
+  auto const lh = lhs.head();
+  VPackValueLength size;
+  if (lh == 0xbf) {
+    // long UTF-8 String
+    size = static_cast<VPackValueLength>(
+        1 + 8 + velocypack::readInteger<VPackValueLength>(lhs.begin() + 1, 8));
+  } else {
+    size = static_cast<VPackValueLength>(1 + lh - 0x40);
+  }
+
+  auto const rh = rhs.head();
+  if (rh == 0xbf) {
+    // long UTF-8 String
+    if (size !=static_cast<VPackValueLength>(
+        1 + 8 + velocypack::readInteger<VPackValueLength>(rhs.begin() + 1, 8))) {
+      return false;
+    }
+  } else {
+    if (size != static_cast<VPackValueLength>(1 + rh - 0x40)) {
+      return false;
+    }
+  }
+  return (memcmp(lhs.start(), rhs.start(),
+                 arangodb::velocypack::checkOverflow(size)) == 0);
 };
 
 static int TypeWeight(VPackSlice const& slice) {
@@ -241,6 +298,28 @@ std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string sub-element, or throws if <name> does not exist
+/// or it is not a string
+////////////////////////////////////////////////////////////////////////////////
+
+std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
+                                                     std::string const& name) {
+  TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    std::string msg =
+        "The attribute '" + name + "' was not found.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+  }
+  VPackSlice const sub = slice.get(name);
+  if (!sub.isString()) {
+    std::string msg =
+        "The attribute '" + name + "' is not a string.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+  }
+  return sub.copyString();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string value, or the default value if it is not a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -260,6 +339,29 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
 
 std::string VelocyPackHelper::getStringValue(VPackSlice slice,
                                              char const* name,
+                                             std::string const& defaultValue) {
+  if (slice.isExternal()) {
+    slice = VPackSlice(slice.getExternal());
+  }
+  TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    return defaultValue;
+  }
+  VPackSlice const sub = slice.get(name);
+  if (!sub.isString()) {
+    return defaultValue;
+  }
+  return sub.copyString();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string sub-element, or the default value if it does not
+/// exist
+/// or it is not a string
+////////////////////////////////////////////////////////////////////////////////
+
+std::string VelocyPackHelper::getStringValue(VPackSlice slice,
+                                             std::string const& name,
                                              std::string const& defaultValue) {
   if (slice.isExternal()) {
     slice = VPackSlice(slice.getExternal());
@@ -559,7 +661,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
       return 0;
     }
     case VPackValueType::Object: {
-      std::set<std::string, AttributeSorter> keys;
+      std::set<std::string, AttributeSorterUTF8> keys;
       VPackCollection::keys(lhs, keys);
       VPackCollection::keys(rhs, keys);
       for (auto const& key : keys) {
@@ -678,6 +780,27 @@ uint64_t VelocyPackHelper::hashByAttributes(
     }
   }
   return hash;
+}
+
+void VelocyPackHelper::SanitizeExternals(VPackSlice const input, VPackBuilder& output) {
+  if (input.isExternal()) {
+    output.add(input.resolveExternal());
+  } else if (input.isObject()) {
+    output.openObject();
+    for (auto const& it : VPackObjectIterator(input)) {
+      output.add(VPackValue(it.key.copyString()));
+      SanitizeExternals(it.value, output);
+    }
+    output.close();
+  } else if (input.isArray()) {
+    output.openArray();
+    for (auto const& it : VPackArrayIterator(input)) {
+      SanitizeExternals(it, output);
+    }
+    output.close();
+  } else {
+    output.add(input);
+  }
 }
 
 arangodb::LoggerStream& operator<< (arangodb::LoggerStream& logger,

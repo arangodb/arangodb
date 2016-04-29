@@ -11,5 +11,4 @@ There are special sections for
  - [skiplists](../IndexHandling/Skiplist.md)
  - [fulltext indexes](../IndexHandling/Fulltext.md) 
  - [geo-spatial indexes](../IndexHandling/Geo.md)
- - [cap constraints](../IndexHandling/Cap.md) 
 

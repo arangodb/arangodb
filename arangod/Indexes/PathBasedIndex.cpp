@@ -104,7 +104,7 @@ PathBasedIndex::~PathBasedIndex() {}
 int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
                                 TRI_doc_mptr_t const* document) {
   TRI_ASSERT(document != nullptr);
-  TRI_ASSERT(document->getDataPtr() != nullptr);
+  TRI_ASSERT(document->vpack() != nullptr);
 
   VPackSlice const slice(document->vpack());
 

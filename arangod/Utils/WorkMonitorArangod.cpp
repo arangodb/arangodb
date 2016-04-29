@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Aql/QueryList.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "HttpServer/HttpHandler.h"
 #include "Logger/Logger.h"
@@ -165,7 +166,7 @@ void WorkMonitor::sendWorkOverview(uint64_t taskId, std::string const& data) {
   auto response = std::make_unique<HttpResponse>(GeneralResponse::ResponseCode::OK,
                                                  GeneralRequest::MIN_COMPATIBILITY);
 
-  response->setContentType("application/json; charset=utf-8");
+  response->setContentType(StaticStrings::MimeTypeJson);
   TRI_AppendString2StringBuffer(response->body().stringBuffer(), data.c_str(),
                                 data.length());
 

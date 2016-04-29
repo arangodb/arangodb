@@ -89,8 +89,7 @@ VPackBuilder BindParameters::StripCollectionNames(VPackSlice const& keys,
     if (element.isString()) {
       VPackValueLength l;
       char const* s = element.getString(l);
-      char search = '/';
-      auto p = static_cast<char const*>(memchr(s, search, l));
+      auto p = static_cast<char const*>(memchr(s, '/', l));
       if (p != nullptr && strncmp(s, collectionName, p - s) == 0) {
         // key begins with collection name + '/', now strip it in place for
         // further comparisons

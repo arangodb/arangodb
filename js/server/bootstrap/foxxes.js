@@ -33,62 +33,60 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  var internal = require("internal");
-  var db = internal.db;
+  const internal = require('internal');
+  const db = internal.db;
   return {
     foxx: function () {
-      require("@arangodb/foxx/manager").initializeFoxx();
+      require('@arangodb/foxx/manager').initializeFoxx();
     },
     foxxes: function () {
-      var dbName = db._name();
+      const aql = require('@arangodb').aql;
+      const console = require('console');
+      const dbName = db._name();
+      const ttl = Number(internal.options()['server.session-timeout']) * 1000;
+      const now = Date.now();
 
       try {
-        db._useDatabase("_system");
-        var databases = db._listDatabases();
+        db._useDatabase('_system');
+        const databases = db._listDatabases();
 
         // loop over all databases
-        for (var i = 0;  i < databases.length;  ++i) {
-          db._useDatabase(databases[i]);
+        for (const database of databases) {
+          db._useDatabase(database);
           // and initialize Foxx applications
           try {
-            require("@arangodb/foxx/manager").initializeFoxx();
+            require('@arangodb/foxx/manager').initializeFoxx();
           }
           catch (e) {
-            require('console').error(e.stack);
+            console.errorLines(e.stack);
           }
 
           // initialize sessions, too
           try {
-            var query = "FOR s IN _sessions " + 
-                        "FOR u IN _users " +
-                        "FILTER s.uid == u._id " +
-                        "RETURN { sid: s._key, user: u.user }";
-
-            var cursor = db._query(query);
+            const cursor = db._query(aql`
+              FOR s IN _sessions
+              FOR u IN _users
+              FILTER s.uid == u._id
+              FILTER (s.lastAccess + ${ttl}) > ${now}
+              RETURN {sid: s._key, user: u.user}
+            `);
             while (cursor.hasNext()) {
-              var doc = cursor.next();
+              const doc = cursor.next();
               internal.createSid(doc.sid, doc.user);
             }
-          } 
-          catch (e) {
+          } catch (e) {
             // we are intentionally ignoring errors here.
             // they can be caused by the _sessions collection not
             // being present in the current database etc.
             // if this happens, no sessions will be entered into the
             // session cache at startup, which is tolerable
-            require('console').debug(e.stack);
+            console.debugLines(e.stack);
           }
         }
-      }
-      catch (e) {
+      } finally {
+        // the caller does not need to know we changed the db
         db._useDatabase(dbName);
-        throw e;
       }
-        
-      // return to _system database so the caller does not need to know we changed the db
-      db._useDatabase(dbName);
     }
   };
 }());
-
-

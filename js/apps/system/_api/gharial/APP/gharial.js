@@ -33,6 +33,7 @@ const errors = require('@arangodb').errors;
 const cluster = require('@arangodb/cluster');
 const Graph = require('@arangodb/general-graph');
 const createRouter = require('@arangodb/foxx/router');
+const actions = require('@arangodb/actions');
 
 const NOT_MODIFIED = statuses('not modified');
 const ACCEPTED = statuses('accepted');
@@ -46,6 +47,10 @@ router.use((req, res, next) => {
   try {
     next();
   } catch (e) {
+    if (e.isArangoError) {
+      const status = actions.arangoErrorToHttpCode(e.errorNum);
+      res.throw(status, e.errorMessage, {errorNum: e.errorNum, cause: e});
+    }
     if (e.statusCode === NOT_MODIFIED) {
       res.status(NOT_MODIFIED);
       return;
