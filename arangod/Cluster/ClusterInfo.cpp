@@ -1864,10 +1864,15 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   std::string const key =
       "Plan/Collections/" + databaseName + "/" + collectionID;
 
-  AgencyCommResult previous = ac.getValues(key, false);
-  previous.parse("", false);
-  auto it = previous._values.begin();
-  TRI_ASSERT(it != previous._values.end());
+  
+  AgencyCommResult res = ac.getValues2(key, false);
+
+  velocypack::Slice previous =
+    res._vpack->slice()[0]
+    .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
+    .get("Plan").get("Collections").get(databaseName).get(collectionID);
+
+  TRI_ASSERT(VPackObjectIterator(previous).size()>0);
 
   loadPlannedCollections();
   // It is possible that between the fetching of the planned collections
@@ -1892,7 +1897,6 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       if (c->empty()) {
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
       }
-
       indexes = c->getIndexes();
 
       if (!TRI_IsArrayJson(indexes)) {
@@ -1962,8 +1966,9 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     }
 
     auto tmp = arangodb::basics::JsonHelper::toVelocyPack(collectionJson);
+
     AgencyCommResult result =
-        ac.casValue(key, it->second._vpack->slice(), tmp->slice(), 0.0, 0.0);
+        ac.casValue(key, previous, tmp->slice(), 0.0, 0.0);
 
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
 
@@ -1979,7 +1984,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   TRI_ASSERT(numberOfShards > 0);
 
   // now wait for the index to disappear
-  AgencyCommResult res = ac.getValues("Current/Version", false);
+  res = ac.getValues("Current/Version", false);
   if (!res.successful()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
@@ -1990,16 +1995,24 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   while (TRI_microtime() <= endTime) {
     res.clear();
 
-    res = ac.getValues(where, true);
-    if (res.successful() && res.parse(where + "/", false)) {
-      if (res._values.size() == (size_t)numberOfShards) {
-        std::map<std::string, AgencyCommResultEntry>::iterator it;
+    res = ac.getValues2(where, true);
 
+    if (res.successful()) {
+
+      velocypack::Slice current =
+        res._vpack->slice()[0]
+        .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
+        .get("Current").get("Collections").get(databaseName).get(collectionID);
+
+      VPackObjectIterator shards(current);
+      
+      if (shards.size() == (size_t)numberOfShards) {
+        
         bool found = false;
-        for (it = res._values.begin(); it != res._values.end(); ++it) {
-          VPackSlice const slice = it->second._vpack->slice();
-          VPackSlice const indexes = slice.get("indexes");
-
+        for (auto const& shard : shards) {
+          
+          VPackSlice const indexes = shard.value.get("indexes");
+          
           if (indexes.isArray()) {
             for (auto const& v : VPackArrayIterator(indexes)) {
               if (v.isObject()) {
@@ -2010,21 +2023,21 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
                   break;
                 }
               }
-
+              
               if (found) {
                 break;
               }
             }
           }
         }
-
+        
         if (!found) {
           loadCurrentCollections();
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
       }
     }
-
+    
     res.clear();
     _agencyCallbackRegistry->awaitNextChange("Current/Version", interval);
   }
