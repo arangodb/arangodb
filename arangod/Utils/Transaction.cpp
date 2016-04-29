@@ -2022,19 +2022,16 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
       indexScan(collectionName, Transaction::CursorType::ALL, IndexHandle(),
                 {}, skip, limit, 1000, false);
 
-  auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
-  while (cursor->hasMore()) {
-    cursor->getMore(result);
+  if (cursor->failed()) {
+    return OperationResult(cursor->code);
+  }
 
-    if (result->failed()) {
-      return OperationResult(result->code);
-    }
-  
-    VPackSlice docs = result->slice();
-    VPackArrayIterator it(docs);
-    while (it.valid()) {
-      resultBuilder.add(it.value());
-      it.next();
+  std::vector<TRI_doc_mptr_t*> result;
+  result.reserve(1000);
+  while (cursor->hasMore()) {
+    cursor->getMoreMptr(result, 1000);
+    for (auto const& mptr : result) {
+      resultBuilder.add(VPackValue(mptr->vpack(), VPackValueType::External));
     }
   }
 
