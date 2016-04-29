@@ -699,13 +699,9 @@ void Transaction::buildDocumentIdentity(TRI_document_collection_t* document,
     builder.add("_oldRev", oldRid);
   }
   if (oldMptr != nullptr) {
-    // builder.add("old", VPackSlice(oldMptr->vpack()));
-    // TODO: add externals later.
     builder.add("old", VPackValue(oldMptr->vpack(), VPackValueType::External));
   }
   if (newMptr != nullptr) {
-    // builder.add("new", VPackSlice(newMptr->vpack()));
-    // TODO: add externals later.
     builder.add("new", VPackValue(newMptr->vpack(), VPackValueType::External));
   }
   builder.close();

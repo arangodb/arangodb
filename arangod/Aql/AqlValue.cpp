@@ -740,7 +740,6 @@ void AqlValue::destroy() {
 
 /// @brief return the slice from the value
 VPackSlice AqlValue::slice() const {
-  // TODO: optionally resolve externals
   switch (type()) {
     case VPACK_DOCUMENT: 
     case VPACK_POINTER: {
