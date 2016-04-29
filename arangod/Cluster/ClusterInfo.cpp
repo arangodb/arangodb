@@ -1525,7 +1525,7 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    VPackSlice const slice = collections.value();
+    VPackSlice const slice = col;
     if (slice.isNone()) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
