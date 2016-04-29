@@ -10,6 +10,18 @@
       Backbone.history.start();
       window.App.handleResize();
     });
+
+    //create only this one global event listener
+    $(document).click(function(e) {
+      e.stopPropagation();
+
+      //hide user info dropdown if out of focus
+      if (!$(e.target).hasClass('subBarDropdown') && !$(e.target).hasClass('dropdown-header') && !$(e.target).hasClass('dropdown-footer') && !$(e.target).hasClass('toggle')) {
+        if ($('#userInfo').is(':visible')) {
+          $('.subBarDropdown').hide();
+        }
+      }
+    });
   }
 
 }());
