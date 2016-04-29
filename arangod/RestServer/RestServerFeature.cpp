@@ -97,6 +97,7 @@ RestServerFeature::RestServerFeature(
   startsAfter("Database");
   startsAfter("Upgrade");
   startsAfter("CheckVersion");
+  startsAfter("FoxxQueues");
 }
 
 void RestServerFeature::collectOptions(
@@ -198,9 +199,7 @@ void RestServerFeature::start() {
 
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
-  auto vocbase = DatabaseFeature::DATABASE->vocbase();
-  V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
-  _httpOptions._vocbase = vocbase;
+  _httpOptions._vocbase = DatabaseFeature::DATABASE->vocbase();
 
   _handlerFactory.reset(new HttpHandlerFactory(
       _authenticationRealm, _defaultApiCompatibility, _allowMethodOverride,
@@ -228,9 +227,6 @@ void RestServerFeature::start() {
               << (_authenticationUnixSockets ? "on" : "off");
 #endif
   }
-
-  LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
-            << ") is ready for business. Have fun!";
 }
 
 void RestServerFeature::stop() {

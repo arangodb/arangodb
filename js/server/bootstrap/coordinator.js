@@ -35,24 +35,31 @@
 (function () {
   var internal = require("internal");
   var console = require("console");
-  return function () {
-    // statistics can be turned off
-    if (internal.enableStatistics) {
-      require("@arangodb/statistics").startup();
-    }
 
-    // load all foxxes
+  // statistics can be turned off
+  if (internal.enableStatistics && internal.threadNumber === 0) {
+    require("@arangodb/statistics").startup();
+  }
+
+  // load all foxxes
+  if (internal.threadNumber === 0) {
     internal.loadStartup("server/bootstrap/foxxes.js").foxxes();
+  }
 
-    // autoload all modules and reload routing information in all threads
-    internal.executeGlobalContextFunction("bootstrapCoordinator");
+  // autoload all modules and reload routing information in all threads
+  internal.loadStartup('server/bootstrap/autoload.js').startup();
+  internal.loadStartup('server/bootstrap/routing.js').startup();
 
-    // start the queue manager once
+  // start the queue manager once
+  if (internal.threadNumber === 0) {
     require('@arangodb/foxx/queues/manager').run();
+  }
 
+  if (internal.threadNumber === 0) {
     console.info("bootstraped coordinator %s", global.ArangoServerState.id());
-    return true;
-  };
+  }
+
+  return true;
 }());
 
 

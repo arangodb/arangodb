@@ -731,7 +731,7 @@ static AqlValue MergeParameters(arangodb::aql::Query* query,
   return AqlValue(builder);
 }
 
-/// @brief Transforms an unordered_map<VertexId> to AQL VelocyPack values
+/// @brief Transforms an std::vector<VertexId> to AQL VelocyPack values
 static AqlValue VertexIdsToAqlValueVPack(arangodb::aql::Query* query,
                                          arangodb::AqlTransaction* trx,
                                          std::vector<std::string> const& ids,
@@ -753,6 +753,32 @@ static AqlValue VertexIdsToAqlValueVPack(arangodb::aql::Query* query,
 
   return AqlValue(builder.get());
 }
+
+/// @brief Transforms an std::vector<VPackSlice> to AQL VelocyPack values
+static AqlValue VertexIdsToAqlValueVPack(arangodb::aql::Query* query,
+                                         arangodb::AqlTransaction* trx,
+                                         std::vector<VPackSlice> const& ids,
+                                         bool includeData = false) {
+  TransactionBuilderLeaser builder(trx);
+  builder->openArray();
+  if (includeData) {
+    for (auto& it : ids) {
+      // THROWS ERRORS if the Document was not found
+      std::string colName;
+      // TODO
+      GetDocumentByIdentifier(trx, colName, it.copyString(), false, *builder.get());
+    }
+  } else {
+    for (auto& it : ids) {
+      builder->add(it);
+    }
+  }
+  builder->close();
+
+  return AqlValue(builder.get());
+}
+
+
 
 /// @brief Load geoindex for collection name
 static arangodb::Index* getGeoIndex(arangodb::AqlTransaction* trx,
@@ -1999,9 +2025,9 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
                                     "'%s'", collectionName.c_str());
     }
 
-    opts.start = vertexId;
+    opts.setStart(vertexId);
   } else {
-    opts.start = vertexId;
+    opts.setStart(vertexId);
   }
 
   AqlValue direction = ExtractFunctionParameterValue(trx, parameters, 3);
@@ -2088,8 +2114,11 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  std::vector<std::string> neighbors;
-  TRI_RunNeighborsSearch(edgeCollectionInfos, opts, neighbors);
+  std::unordered_set<VPackSlice,
+                     arangodb::basics::VelocyPackHelper::VPackStringHash,
+                     arangodb::basics::VelocyPackHelper::VPackStringEqual> visited;
+  std::vector<VPackSlice> neighbors;
+  TRI_RunNeighborsSearch(edgeCollectionInfos, opts, visited, neighbors);
 
   return VertexIdsToAqlValueVPack(query, trx, neighbors, includeData);
 }
