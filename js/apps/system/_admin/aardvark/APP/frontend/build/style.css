@@ -2219,7 +2219,7 @@ div.queryline .fa.fa-search:hover {
 div.queryline input, input.search-input, .modal-body .select2-choices input, .modal-body input,
 .modal-body select,
 .modal-body textarea, .login-window .login-input, .inputEditorWrapper .bindParamEditorWrapper table td input,
-.inputEditorWrapper .aqlEditorWrapper table td input, .newIndexClass table input,
+.inputEditorWrapper .aqlEditorWrapper table td input, .jsoneditor .search .frame input, .newIndexClass table input,
 .newIndexClass table select {
   -moz-border-radius: 4px;
   -webkit-border-radius: 4px;
@@ -2234,7 +2234,7 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
   div.queryline input:focus, input.search-input:focus, .modal-body input:focus,
   .modal-body select:focus,
   .modal-body textarea:focus, .login-window .login-input:focus, .inputEditorWrapper .bindParamEditorWrapper table td input:focus,
-  .inputEditorWrapper .aqlEditorWrapper table td input:focus, .newIndexClass table input:focus,
+  .inputEditorWrapper .aqlEditorWrapper table td input:focus, .jsoneditor .search .frame input:focus, .newIndexClass table input:focus,
   .newIndexClass table select:focus {
     border-color: #2ecc71;
     box-shadow: none;
@@ -2375,6 +2375,24 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
   width: 100%; }
   .navlogo .small {
     display: none; }
+  .navlogo .version {
+    bottom: 33px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    font-weight: 100;
+    left: 0;
+    padding-bottom: 10px;
+    position: absolute;
+    text-align: center;
+    text-transform: uppercase;
+    width: 100%; }
+    .navlogo .version .out-of-date {
+      color: #f1c40f;
+      font-weight: 400; }
+      .navlogo .version .out-of-date:hover {
+        cursor: pointer; }
+    .navlogo .version .up-to-date {
+      color: #2ecc71; }
 
 .navmenu {
   clear: both; }
@@ -5511,8 +5529,9 @@ input.search-input {
     font-size: 12pt;
     margin-left: -20px;
     opacity: .5;
-    position: relative;
-    top: -3px; }
+    position: absolute;
+    right: 7px;
+    top: 9px; }
     .search-field .fa-search:hover {
       cursor: pointer;
       opacity: 1; }
@@ -6029,8 +6048,24 @@ div.headerBar {
 #noty_bottom_layout_container li {
   border: 0 !important; }
 
+.noty_type_error .arango_message {
+  top: 2px; }
+
+.noty_bar .noty_buttons {
+  background-color: transparent !important;
+  border: 0 !important;
+  bottom: 0;
+  height: 1px;
+  margin-bottom: 30px !important;
+  margin-top: -35px !important;
+  position: relative;
+  right: -23px; }
+  .noty_bar .noty_buttons button {
+    margin-bottom: 2px;
+    margin-right: -1px; }
+
 .noty_bar .arango_message {
-  font-weight: 500 !important; }
+  font-weight: 400 !important; }
   .noty_bar .arango_message div {
     float: right;
     width: 20px; }
@@ -7122,12 +7157,14 @@ div.headerBar {
   .jsoneditor .search .frame {
     border: 0 !important;
     margin: 3px !important; }
+    .jsoneditor .search .frame .refresh {
+      background-position: -96px -73px;
+      height: 22px;
+      width: 25px; }
     .jsoneditor .search .frame input {
-      border: 1px solid #c2c2c2 !important;
-      border-radius: 3px;
-      margin-left: 5px;
-      margin-right: 5px;
-      margin-top: -2px; }
+      margin-left: 15px;
+      margin-right: 15px;
+      margin-top: 0; }
   .jsoneditor .search .results {
     color: #fff !important;
     margin-top: 3px !important; }
@@ -7136,7 +7173,6 @@ div.headerBar {
   margin-top: 10px; }
 
 .document-editor {
-  height: 500px;
   margin-top: -10px;
   width: 100%; }
 
@@ -7774,6 +7810,8 @@ input.gv-radio-button {
     display: block;
     height: auto;
     width: 28px; }
+  .navlogo .version {
+    display: none; }
   .navbar,
   .navmenu,
   .primary,
@@ -8352,10 +8390,13 @@ main {
 .centralContent .modal-body {
   border: 1px solid rgba(64, 74, 83, 0.2);
   color: #000;
-  max-height: none; }
-  .centralContent .modal-body .arango-table tr {
+  max-height: none;
+  padding: 0; }
+  .centralContent .modal-body .arango-table tr,
+  .centralContent .modal-body table tr {
     height: 40px; }
-    .centralContent .modal-body .arango-table tr th {
+    .centralContent .modal-body .arango-table tr th,
+    .centralContent .modal-body table tr th {
       padding-left: 10px; }
   .centralContent .modal-body .figuresHeader {
     background-color: #404a53;
