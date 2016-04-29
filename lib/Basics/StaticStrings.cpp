@@ -47,7 +47,7 @@ std::string const StaticStrings::Allow("allow");
 std::string const StaticStrings::Close("Close");
 std::string const StaticStrings::Connection("connection");
 std::string const StaticStrings::ContentTypeHeader("content-type");
-std::string const StaticStrings::KeepAlive("Close");
+std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::Location("location");
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 
