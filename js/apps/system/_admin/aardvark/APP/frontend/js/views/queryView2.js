@@ -1167,8 +1167,6 @@
       var self = this;
 
       var queryData = this.readQueryData();
-      console.log(queryData);
-      console.log(self.bindParamTableObj);
 
       if (queryData) {
         sentQueryEditor.setValue(self.aqlEditor.getValue());
