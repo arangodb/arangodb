@@ -56,6 +56,8 @@ class Slice {
   // it can easily be used to traverse larger VPack values.
 
   friend class Builder;
+  friend class ArrayIterator;
+  friend class ObjectIterator;
 
   uint8_t const* _start;
 
@@ -733,7 +735,7 @@ class Slice {
 
   Slice getFromCompactObject(std::string const& attribute) const;
 
-  ValueLength findDataOffset(uint8_t head) const {
+  ValueLength findDataOffset(uint8_t head) const throw() {
     // Must be called for a nonempty array or object at start():
     VELOCYPACK_ASSERT(head <= 0x12);
     unsigned int fsm = FirstSubMap[head];
