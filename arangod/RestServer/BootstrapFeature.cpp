@@ -74,7 +74,7 @@ static void raceForClusterBootstrap() {
             << "raceForClusterBootstrap: bootstrap already done";
         return;
       }
-      LOG_TOPIC(TRACE, Logger::STARTUP) 
+      LOG_TOPIC(INFO, Logger::STARTUP) 
           << "raceForClusterBootstrap: somebody else does the bootstrap";
       sleep(1);
       continue;
@@ -85,7 +85,8 @@ static void raceForClusterBootstrap() {
     b.add(VPackValue(arangodb::ServerState::instance()->getId()));
     result = agency.casValue("Bootstrap", b.slice(), false, 300, 15);
     if (!result.successful()) {
-      LOG_TOPIC(INFO, Logger::STARTUP) << "raceForClusterBootstrap: lost race";
+      LOG_TOPIC(INFO, Logger::STARTUP) 
+          << "raceForClusterBootstrap: lost race, somebody else will bootstrap";
       // Cannot get foot into the door, try again later:
       sleep(1);
       continue;
