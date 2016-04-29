@@ -706,6 +706,22 @@ class Slice {
 
     throw Exception(Exception::InternalError);
   }
+  
+  ValueLength findDataOffset(uint8_t head) const throw() {
+    // Must be called for a nonempty array or object at start():
+    VELOCYPACK_ASSERT(head <= 0x12);
+    unsigned int fsm = FirstSubMap[head];
+    if (fsm <= 2 && _start[2] != 0) {
+      return 2;
+    }
+    if (fsm <= 3 && _start[3] != 0) {
+      return 3;
+    }
+    if (fsm <= 5 && _start[5] != 0) {
+      return 5;
+    }
+    return 9;
+  }
 
   Slice makeKey() const;
 
@@ -734,22 +750,6 @@ class Slice {
   Slice translateUnchecked() const;
 
   Slice getFromCompactObject(std::string const& attribute) const;
-
-  ValueLength findDataOffset(uint8_t head) const throw() {
-    // Must be called for a nonempty array or object at start():
-    VELOCYPACK_ASSERT(head <= 0x12);
-    unsigned int fsm = FirstSubMap[head];
-    if (fsm <= 2 && _start[2] != 0) {
-      return 2;
-    }
-    if (fsm <= 3 && _start[3] != 0) {
-      return 3;
-    }
-    if (fsm <= 5 && _start[5] != 0) {
-      return 5;
-    }
-    return 9;
-  }
 
   // get the offset for the nth member from an Array type
   ValueLength getNthOffset(ValueLength index) const;

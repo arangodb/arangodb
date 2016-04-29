@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionKeys.h"
+#include "Basics/StaticStrings.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -141,7 +142,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
     VPackSlice l(reinterpret_cast<char const*>(lhs));
     VPackSlice r(reinterpret_cast<char const*>(rhs));
 
-    return (l.get(TRI_VOC_ATTRIBUTE_KEY).copyString() < r.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+    return (l.get(StaticStrings::KeyString).copyString() < r.get(StaticStrings::KeyString).copyString());
   });
 }
 
@@ -170,13 +171,13 @@ std::tuple<std::string, std::string, uint64_t> CollectionKeys::hashChunk(
 
     // we can get away with the fast hash function here, as key values are 
     // restricted to strings
-    hash ^= current.get(TRI_VOC_ATTRIBUTE_KEY).hash();
-    hash ^= current.get(TRI_VOC_ATTRIBUTE_REV).hash();
+    hash ^= current.get(StaticStrings::KeyString).hash();
+    hash ^= current.get(StaticStrings::RevString).hash();
   }
 
   return std::make_tuple(
-    first.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), 
-    last.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), 
+    first.get(StaticStrings::KeyString).copyString(), 
+    last.get(StaticStrings::KeyString).copyString(), 
     hash);
 }
 
@@ -202,8 +203,8 @@ void CollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk,
     TRI_ASSERT(current.isObject());
 
     result.openArray();
-    result.add(current.get(TRI_VOC_ATTRIBUTE_KEY));
-    result.add(current.get(TRI_VOC_ATTRIBUTE_REV));
+    result.add(current.get(StaticStrings::KeyString));
+    result.add(current.get(StaticStrings::RevString));
     result.close();
   }
 }
