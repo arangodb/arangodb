@@ -135,7 +135,7 @@
           $('.createModalDialog .modal-footer button').first().focus();
         }
         else if (direction === 'right') {
-          $('..createModalDialog .modal-footer button').last().focus();
+          $('.createModalDialog .modal-footer button').last().focus();
         }
       }
       else if (hasFocus === true) {
@@ -413,7 +413,7 @@
                 $(focus[0]).focus();
               }
           }
-        }, 800);
+        }, 400);
       }
 
     },

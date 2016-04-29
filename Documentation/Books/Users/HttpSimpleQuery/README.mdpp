@@ -53,12 +53,6 @@ dispose the server-side cursor afterwards.
 @startDocuBlock JSA_put_api_simple_update_by_example
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_first
-
-<!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_last
-
-<!-- js/actions/api-simple.js -->
 @startDocuBlock JSA_put_api_simple_range
 
 <!-- js/actions/api-simple.js -->

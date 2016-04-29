@@ -729,6 +729,13 @@ AQLGenerator.prototype.next = function() {
   return this.cursor.next();
 };
 
+AQLGenerator.prototype[Symbol.iterator] = function* () {
+  this._createCursor();
+  for (const item of this.cursor) {
+    yield item;
+  }
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Deprecated block

@@ -21,16 +21,16 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
 #include "RestAgencyHandler.h"
-
-#include "Agency/Agent.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Agency/Agent.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 
 using namespace arangodb;
 
@@ -74,8 +74,7 @@ void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
     std::string url = Endpoint::uriForm(
       _agent->config().endpoints.at(leaderId)) + _request->requestPath();
     createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
-    static std::string const location = "location";
-    _response->setHeaderNC(location, url);
+    _response->setHeaderNC(StaticStrings::Location, url);
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,

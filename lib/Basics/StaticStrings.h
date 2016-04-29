@@ -28,7 +28,11 @@
 namespace arangodb {
 class StaticStrings {
   StaticStrings() = delete;
+
  public:
+  // constants
+  static std::string const N1800;
+
   // system attribute names
   static std::string const IdString;
   static std::string const KeyString;
@@ -37,8 +41,21 @@ class StaticStrings {
   static std::string const ToString;
 
   // HTTP headers
-  static std::string const AcceptHeader;
+  static std::string const Accept;
+  static std::string const AccessControlAllowCredentials;
+  static std::string const AccessControlAllowHeaders;
+  static std::string const AccessControlAllowMethods;
+  static std::string const AccessControlAllowOrigin;
+  static std::string const AccessControlExposeHeaders;
+  static std::string const AccessControlMaxAge;
+  static std::string const AccessControlRequestHeaders;
+  static std::string const Allow;
+  static std::string const Close;
+  static std::string const Connection;
   static std::string const ContentTypeHeader;
+  static std::string const KeepAlive;
+  static std::string const Location;
+  static std::string const WwwAuthenticate;
 
   // mime types
   static std::string const MimeTypeVPack;
