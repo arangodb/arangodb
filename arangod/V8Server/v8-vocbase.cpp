@@ -2175,30 +2175,6 @@ static void JS_QueryShortestPath(
 
 static v8::Handle<v8::Value> VertexIdsToV8(v8::Isolate* isolate,
                                            ExplicitTransaction* trx,
-                                           std::vector<std::string> const& ids,
-                                           bool includeData = false) {
-  v8::EscapableHandleScope scope(isolate);
-  uint32_t const vn = static_cast<uint32_t>(ids.size());
-  v8::Handle<v8::Array> vertices =
-      v8::Array::New(isolate, static_cast<int>(vn));
-
-  uint32_t j = 0;
-  if (includeData) {
-    for (auto& it : ids) {
-      vertices->Set(j, VertexIdToData(isolate, trx, it));
-      ++j;
-    }
-  } else {
-    for (auto& it : ids) {
-      vertices->Set(j, TRI_V8_STD_STRING(it));
-      ++j;
-    }
-  }
-  return scope.Escape<v8::Value>(vertices);
-}
-
-static v8::Handle<v8::Value> VertexIdsToV8(v8::Isolate* isolate,
-                                           ExplicitTransaction* trx,
                                            std::vector<VPackSlice> const& ids,
                                            bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);

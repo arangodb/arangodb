@@ -284,6 +284,9 @@ class VelocyPackHelper {
   static inline arangodb::velocypack::Slice IllegalValue() {
     return arangodb::velocypack::Slice::illegalSlice();
   }
+
+  static void SanitizeExternals(arangodb::velocypack::Slice const,
+                                arangodb::velocypack::Builder&);
 };
 }
 }
