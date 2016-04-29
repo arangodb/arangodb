@@ -314,15 +314,16 @@ void HeartbeatThread::runCoordinator() {
     result.clear();
 
   
-    result = _agency.getValues("Sync/UserVersion", false);
+    result = _agency.getValues2("Sync/UserVersion", false);
     if (result.successful()) {
-      result.parse("", false);
-      std::map<std::string, AgencyCommResultEntry>::iterator it =
-          result._values.begin();
-      if (it != result._values.end()) {
+
+      velocypack::Slice slice =
+        result._vpack->slice()[0].get(AgencyComm::prefixStripped())
+        .get("Sync").get("UserVersion");
+
+      if (slice.isNumber()) {
         // there is a UserVersion
-        uint64_t userVersion = arangodb::basics::VelocyPackHelper::stringUInt64(
-            it->second._vpack->slice());
+        uint64_t userVersion = slice.getUInt();
         if (userVersion != oldUserVersion) {
           // reload user cache for all databases
           std::vector<DatabaseID> dbs =

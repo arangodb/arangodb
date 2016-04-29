@@ -366,8 +366,7 @@ exports.reload = function () {
         break;
       }
       try {
-        done = ArangoAgency.cas("Sync/UserVersion",UserVersion,
-                                (parseInt(UserVersion,10)+1).toString());
+        done = ArangoAgency.cas("Sync/UserVersion",UserVersion, UserVersion+1);
       }
       catch (err2) {
         break;

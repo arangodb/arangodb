@@ -431,6 +431,7 @@ std::string const AgencyComm::AGENCY_URL_PREFIX = "_api/agency";
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::_globalPrefix = "";
+std::string AgencyComm::_globalPrefixStripped = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for the global endpoints
@@ -619,7 +620,7 @@ bool AgencyComm::tryInitializeStructure() {
       VPackObjectBuilder c(&builder);
       builder.add("LatestID", VPackValue("1"));
       addEmptyVPackObject("Problems", builder);
-      builder.add("UserVersion", VPackValue("1"));
+      builder.add("UserVersion", VPackValue(1));
       addEmptyVPackObject("ServerStates", builder);
       builder.add("HeartbeatIntervalMs", VPackValue("10000"));
       addEmptyVPackObject("Commands", builder);
@@ -992,7 +993,8 @@ std::string AgencyComm::getEndpointsString() {
 bool AgencyComm::setPrefix(std::string const& prefix) {
   // agency prefix must not be changed
   _globalPrefix = prefix;
-
+  _globalPrefixStripped = prefix;
+  
   // make sure prefix starts with a forward slash
   if (prefix[0] != '/') {
     _globalPrefix = '/' + _globalPrefix;
@@ -1014,6 +1016,7 @@ bool AgencyComm::setPrefix(std::string const& prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::prefix() { return _globalPrefix; }
+std::string AgencyComm::prefixStripped() { return _globalPrefixStripped; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a timestamp
@@ -1252,6 +1255,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
           }
         }
       } else if (node.isArray()) {
+        LOG(ERR) << node.toJson();
         LOG(ERR) << "Oops...TODO array unexpected";
       } else {
         builder.add("value", node);
