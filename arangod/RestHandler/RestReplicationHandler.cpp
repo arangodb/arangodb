@@ -1502,6 +1502,7 @@ int RestReplicationHandler::processRestoreCollection(
 
         // instead, truncate them
         SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
+        trx.addHint(TRI_TRANSACTION_HINT_RECOVERY, false); // to turn off waitForSync!
 
         res = trx.begin();
         if (res != TRI_ERROR_NO_ERROR) {
@@ -1933,6 +1934,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
     options.silent = true;
     options.ignoreRevs = true;
     options.isRestore = true;
+    options.waitForSync = false;
 
     try {
       OperationResult opRes = trx.insert(collectionName, slice, options);
@@ -1957,6 +1959,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
       OperationOptions options;
       options.silent = true;
       options.ignoreRevs = true;
+      options.waitForSync = false;
       OperationResult opRes = trx.remove(collectionName, old, options);
 
       if (!opRes.successful() &&
@@ -2129,6 +2132,7 @@ int RestReplicationHandler::processRestoreData(
     CollectionNameResolver const& resolver, TRI_voc_cid_t cid, bool useRevision,
     bool force, std::string& errorMsg) {
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), cid, TRI_TRANSACTION_WRITE);
+  trx.addHint(TRI_TRANSACTION_HINT_RECOVERY, false); // to turn off waitForSync!
 
   int res = trx.begin();
 
