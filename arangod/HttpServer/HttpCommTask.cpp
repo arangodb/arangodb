@@ -395,6 +395,7 @@ bool HttpCommTask::processRead() {
           auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
           buffer->appendText(
               TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
+          buffer->ensureNullTerminated();
 
           _writeBuffers.push_back(buffer.get());
           buffer.release();
@@ -578,6 +579,7 @@ void HttpCommTask::sendChunk(StringBuffer* buffer) {
 void HttpCommTask::finishedChunked() {
   auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, 6, true);
   buffer->appendText(TRI_CHAR_LENGTH_PAIR("0\r\n\r\n"));
+  buffer->ensureNullTerminated();
 
   _writeBuffers.push_back(buffer.get());
   buffer.release();
@@ -646,7 +648,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   // reserve a buffer with some spare capacity
   auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE,
-                                               responseBodyLength + 128);
+                                               responseBodyLength + 128, false);
 
   // write header
   response->writeHeader(buffer.get());
@@ -665,13 +667,15 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     }
   }
 
+  buffer->ensureNullTerminated();
+
   _writeBuffers.push_back(buffer.get());
   auto b = buffer.release();
 
   if (!b->empty()) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
         << "\"http-request-response\",\"" << (void*)this << "\",\""
-        << (StringUtils::escapeUnicode(std::string(b->c_str(), b->length())))
+        << StringUtils::escapeUnicode(std::string(b->c_str(), b->length()))
         << "\"";
   }
 
