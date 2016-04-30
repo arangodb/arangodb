@@ -43,7 +43,8 @@ using namespace arangodb::rest;
 
 size_t const HttpCommTask::MaximalHeaderSize = 1 * 1024 * 1024;       //   1 MB
 size_t const HttpCommTask::MaximalBodySize = 512 * 1024 * 1024;       // 512 MB
-size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 GB
+size_t const HttpCommTask::MaximalPipelineSize = 512 * 1024 * 1024;   // 512 MB
+size_t const HttpCommTask::RunCompactEvery = 500;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
@@ -930,8 +931,6 @@ void HttpCommTask::clearRequest() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::resetState(bool close) {
-  size_t const COMPACT_EVERY = 500;
-
   if (close) {
     clearRequest();
 
@@ -946,7 +945,7 @@ void HttpCommTask::resetState(bool close) {
 
     bool compact = false;
 
-    if (_sinceCompactification > COMPACT_EVERY) {
+    if (_sinceCompactification > RunCompactEvery) {
       compact = true;
     } else if (_readBuffer->length() > MaximalPipelineSize) {
       compact = true;
@@ -959,6 +958,12 @@ void HttpCommTask::resetState(bool close) {
       _readPosition = 0;
     } else {
       _readPosition = _bodyPosition + _bodyLength;
+
+      if (_readPosition == _readBuffer->length()) {
+        _sinceCompactification = 0;
+        _readPosition = 0;
+        _readBuffer->reset();
+      }
     }
 
     _bodyPosition = 0;
