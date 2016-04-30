@@ -87,6 +87,8 @@ TRI_doc_mptr_t* PrimaryIndexIterator::next() {
       return nullptr;
     }
 
+    // TODO: can we use an ArrayIterator with linear access here?
+    // at() will recalculate the array length etc. on every call
     auto result = _index->lookup(_trx, slice.at(_position++));
 
     if (result != nullptr) {

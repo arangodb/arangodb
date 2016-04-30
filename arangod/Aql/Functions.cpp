@@ -513,15 +513,15 @@ static void RequestEdges(VPackSlice const& vertexSlice,
           TRI_ASSERT(edge.hasKey(StaticStrings::ToString));
           switch (direction) {
             case TRI_EDGE_OUT:
-              target = edge.get(StaticStrings::ToString).copyString();
+              target = Transaction::extractToFromDocument(edge).copyString();
               break;
             case TRI_EDGE_IN:
-              target = edge.get(StaticStrings::FromString).copyString();
+              target = Transaction::extractFromFromDocument(edge).copyString();
               break;
             case TRI_EDGE_ANY:
-              target = edge.get(StaticStrings::ToString).copyString();
+              target = Transaction::extractToFromDocument(edge).copyString();
               if (target == vertexId) {
-                target = edge.get(StaticStrings::FromString).copyString();
+                target = Transaction::extractFromFromDocument(edge).copyString();
               }
               break;
           }

@@ -595,7 +595,7 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
 /// @brief extract the _key attribute from a slice
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Transaction::extractKey(VPackSlice const slice) {
+std::string Transaction::extractKeyPart(VPackSlice const slice) {
   // extract _key
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
@@ -608,7 +608,7 @@ std::string Transaction::extractKey(VPackSlice const slice) {
     std::string key = slice.copyString();
     size_t pos = key.find('/');
     if (pos != std::string::npos) {
-      key = key.substr(pos+1);
+      key = key.substr(pos + 1);
     }
     return key;
   } 
@@ -675,7 +675,8 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief quick access to the _key attribute in a database document
-/// requires _key to be the first attribute in the document
+/// the document must have at least two attributes, and _key is supposed to
+/// be the first one
 //////////////////////////////////////////////////////////////////////////////
 
 VPackSlice Transaction::extractKeyFromDocument(VPackSlice const& slice) {
@@ -690,12 +691,20 @@ VPackSlice Transaction::extractKeyFromDocument(VPackSlice const& slice) {
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
 
   if (*p == basics::VelocyPackHelper::KeyAttribute) {
-    return VPackSlice(p + 1);
+    // the + 1 is required so that we can skip over the attribute name
+    // and point to the attribute value 
+    return VPackSlice(p + 1); 
   }
   // we actually should not get here. however, if for some reason we do,
   // we simply fall back to the regular lookup method
   return slice.get(StaticStrings::KeyString); 
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief quick access to the _id attribute in a database document
+/// the document must have at least three attributes, and _id is supposed to
+/// appear directly behind the _key attribute
+//////////////////////////////////////////////////////////////////////////////
 
 VPackSlice Transaction::extractIdFromDocument(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
@@ -703,50 +712,81 @@ VPackSlice Transaction::extractIdFromDocument(VPackSlice const& slice) {
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   if (*p == basics::VelocyPackHelper::KeyAttribute) {
-    // _key
+    // skip over attribute name
+    ++p;
+    // skip over attribute value
     p += VPackSlice(p).byteSize();
+
     if (*p == basics::VelocyPackHelper::IdAttribute) {
-      LOG(ERR) << "fast access to _id";
+      // the + 1 is required so that we can skip over the attribute name
+      // and point to the attribute value 
       return VPackSlice(p + 1);
     }
   }
-  LOG(ERR) << "slow access to _id";
   return slice.get(StaticStrings::IdString); 
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief quick access to the _from attribute in a database document
+/// the document must have at least five attributes: _key, _id, _from, _to
+/// and _rev (in this order)
+//////////////////////////////////////////////////////////////////////////////
+
 VPackSlice Transaction::extractFromFromDocument(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
-  TRI_ASSERT(slice.length() >= 5); // must have at least _key, _id, _from, _to and _rev
+  // this method must only be called on edges
+  // this means we must have at least the attributes  _key, _id, _from, _to and _rev
+  TRI_ASSERT(slice.length() >= 5); 
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   VPackValueLength count = 0;
 
   while (*p <= basics::VelocyPackHelper::FromAttribute && ++count <= 3) {
     if (*p == basics::VelocyPackHelper::FromAttribute) {
-      LOG(ERR) << "fast access to _from";
+      // the + 1 is required so that we can skip over the attribute name
+      // and point to the attribute value 
       return VPackSlice(p + 1);
     }
+    // skip over the attribute name
+    ++p;
+    // skip over the attribute value
     p += VPackSlice(p).byteSize();
   }
-  LOG(ERR) << "slow access to _from";
+
+  // we actually should not get here. however, if for some reason we do,
+  // we simply fall back to the regular lookup method
   return slice.get(StaticStrings::FromString); 
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief quick access to the _to attribute in a database document
+/// the document must have at least five attributes: _key, _id, _from, _to
+/// and _rev (in this order)
+//////////////////////////////////////////////////////////////////////////////
+
 VPackSlice Transaction::extractToFromDocument(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
-  TRI_ASSERT(slice.length() >= 5); // must have at least _key, _id, _from, _to and _rev
+  // this method must only be called on edges
+  // this means we must have at least the attributes  _key, _id, _from, _to and _rev
+  TRI_ASSERT(slice.length() >= 5); 
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   VPackValueLength count = 0;
 
   while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 4) {
     if (*p == basics::VelocyPackHelper::ToAttribute) {
-      LOG(ERR) << "quick access to _to";
+      // the + 1 is required so that we can skip over the attribute name
+      // and point to the attribute value 
       return VPackSlice(p + 1);
     }
+    // skip over the attribute name
+    ++p;
+    // skip over the attribute value
     p += VPackSlice(p).byteSize();
   }
-  LOG(ERR) << "slow access to _to";
+  
+  // we actually should not get here. however, if for some reason we do,
+  // we simply fall back to the regular lookup method
   return slice.get(StaticStrings::ToString); 
 }
 
@@ -1101,7 +1141,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
   auto resultBody = std::make_shared<VPackBuilder>();
 
   if (!value.isArray()) {
-    std::string key(Transaction::extractKey(value));
+    std::string key(Transaction::extractKeyPart(value));
     if (key.empty()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
@@ -1143,7 +1183,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   auto workOnOneDocument = [&](VPackSlice const value, bool isMultiple) -> int {
     TIMER_START(TRANSACTION_DOCUMENT_EXTRACT);
 
-    std::string key(Transaction::extractKey(value));
+    std::string key(Transaction::extractKeyPart(value));
     if (key.empty()) {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }

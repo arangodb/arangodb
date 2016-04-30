@@ -271,7 +271,7 @@ class Transaction {
   /// @brief extract the _key attribute from a slice
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::string extractKey(VPackSlice const);
+  static std::string extractKeyPart(VPackSlice const);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the _id attribute from a slice, and convert it into a 
@@ -283,10 +283,35 @@ class Transaction {
   static std::string extractIdString(CollectionNameResolver const*, 
                                      VPackSlice const&, VPackSlice const&);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief quick access to the _key attribute in a database document
+  /// the document must have at least two attributes, and _key is supposed to
+  /// be the first one
+  //////////////////////////////////////////////////////////////////////////////
+
   static VPackSlice extractKeyFromDocument(VPackSlice const&);
-  VPackSlice extractIdFromDocument(VPackSlice const&);
-  VPackSlice extractFromFromDocument(VPackSlice const&);
-  VPackSlice extractToFromDocument(VPackSlice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief quick access to the _id attribute in a database document
+  /// the document must have at least three attributes, and _id is supposed to
+  /// appear directly behind the _key attribute
+  
+  static VPackSlice extractIdFromDocument(VPackSlice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief quick access to the _from attribute in a database document
+  /// the document must have at least five attributes: _key, _id, _from, _to
+  /// and _rev (in this order)
+  
+  static VPackSlice extractFromFromDocument(VPackSlice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief quick access to the _to attribute in a database document
+  /// the document must have at least five attributes: _key, _id, _from, _to
+  /// and _rev (in this order)
+  //////////////////////////////////////////////////////////////////////////////
+
+  static VPackSlice extractToFromDocument(VPackSlice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document

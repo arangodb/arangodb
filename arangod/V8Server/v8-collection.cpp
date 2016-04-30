@@ -2144,7 +2144,7 @@ static void JS_InsertVocbaseCol(
   TRI_GET_GLOBALS();
 
   if (argLength < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("insert(<data>x, [, <options>i])");
+    TRI_V8_THROW_EXCEPTION_USAGE("insert(<data>, [, <options>])");
   }
 
   bool oldEdgeSignature = false;
@@ -2199,9 +2199,9 @@ static void JS_InsertVocbaseCol(
   VPackBuilder builder(&vpackOptions);
 
   auto doOneDocument = [&](v8::Handle<v8::Value> obj) -> void {
-  TIMER_START(JS_INSERT_V8_TO_VPACK2);
+    TIMER_START(JS_INSERT_V8_TO_VPACK2);
     int res = TRI_V8ToVPack(isolate, builder, obj, true);
-  TIMER_STOP(JS_INSERT_V8_TO_VPACK2);
+    TIMER_STOP(JS_INSERT_V8_TO_VPACK2);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);

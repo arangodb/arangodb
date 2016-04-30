@@ -4155,7 +4155,8 @@ int TRI_document_collection_t::newObjectForInsert(
   TRI_voc_tick_t newRev = 0;
   builder.openObject();
   
-  // add system attributes first 
+  // add system attributes first, in this order:
+  // _key, _id, _from, _to, _rev 
 
   // _key
   VPackSlice s = value.get(StaticStrings::KeyString);
@@ -4243,7 +4244,8 @@ void TRI_document_collection_t::newObjectForReplace(
 
   builder.openObject();
 
-  // add system attributes first
+  // add system attributes first, in this order:
+  // _key, _id, _from, _to, _rev
   
   // _key
   VPackSlice s = oldValue.get(StaticStrings::KeyString);
@@ -4332,7 +4334,8 @@ void TRI_document_collection_t::mergeObjectsForUpdate(
     }
   }
 
-  // add system attributes first
+  // add system attributes first, in this order:
+  // _key, _id, _from, _to, _rev
 
   // _key
   b.add(StaticStrings::KeyString, keySlice);
