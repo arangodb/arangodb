@@ -1480,7 +1480,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
       _lastErrorMessage = "Unknown error";
     }
 
-    _lastHttpReturnCode = (int)GeneralResponse::ResponseCode::SERVER_ERROR;
+    _lastHttpReturnCode = static_cast<int>(GeneralResponse::ResponseCode::SERVER_ERROR);
 
     v8::Local<v8::Object> result = v8::Object::New(isolate);
     result->ForceSet(TRI_V8_ASCII_STRING("error"),
@@ -1488,7 +1488,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
     result->ForceSet(
         TRI_V8_ASCII_STRING("code"),
         v8::Integer::New(isolate,
-                         (int)GeneralResponse::ResponseCode::SERVER_ERROR));
+                         static_cast<int>(GeneralResponse::ResponseCode::SERVER_ERROR)));
 
     int errorNumber = 0;
 
@@ -1528,6 +1528,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
     isolate->GetCurrentContext()->Global();
 
     if (_httpResult->isJson()) {
+      // TODO: check if we can use the VPack parser here...
       return scope.Escape<v8::Value>(
           TRI_FromJsonString(isolate, sb.c_str(), nullptr));
     }
