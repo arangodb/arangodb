@@ -1340,7 +1340,6 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   }
 
   VPackBuilder resultBuilder;
-
   TRI_voc_tick_t maxTick = 0;
 
   auto workForOneDocument = [&](VPackSlice const value) -> int {
@@ -1407,7 +1406,8 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   }
   
   TIMER_STOP(TRANSACTION_INSERT_WORK_FOR_ONE);
-  
+ 
+  // wait for operation(s) to be synced to disk here 
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0) {
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(maxTick);
   }
@@ -1689,6 +1689,7 @@ OperationResult Transaction::modifyLocal(
   }
 
   VPackBuilder resultBuilder;  // building the complete result
+  TRI_voc_tick_t maxTick = 0;
 
   auto workForOneDocument = [&](VPackSlice const newVal, bool isBabies) -> int {
     if (!newVal.isObject()) {
@@ -1697,15 +1698,20 @@ OperationResult Transaction::modifyLocal(
     TRI_doc_mptr_t mptr;
     VPackSlice actualRevision;
     TRI_doc_mptr_t previous;
+    TRI_voc_tick_t resultMarkerTick = 0;
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-      res = document->replace(this, newVal, &mptr, options,
+      res = document->replace(this, newVal, &mptr, options, resultMarkerTick, 
           !isLocked(document, TRI_TRANSACTION_WRITE), actualRevision,
           previous);
     } else {
-      res = document->update(this, newVal, &mptr, options,
+      res = document->update(this, newVal, &mptr, options, resultMarkerTick,
           !isLocked(document, TRI_TRANSACTION_WRITE), actualRevision,
           previous);
+    }
+    
+    if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
+      maxTick = resultMarkerTick;
     }
 
     if (res == TRI_ERROR_ARANGO_CONFLICT) {
@@ -1751,6 +1757,11 @@ OperationResult Transaction::modifyLocal(
     res = TRI_ERROR_NO_ERROR;
   } else {
     res = workForOneDocument(newValue, false);
+  }
+  
+  // wait for operation(s) to be synced to disk here 
+  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0) {
+    arangodb::wal::LogfileManager::instance()->slots()->waitForTick(maxTick);
   }
 
   if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
@@ -1934,6 +1945,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   }
 
   VPackBuilder resultBuilder;
+  TRI_voc_tick_t maxTick = 0;
 
   auto workOnOneDocument = [&](VPackSlice value, bool isBabies) -> int {
     VPackSlice actualRevision;
@@ -1959,9 +1971,15 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }
 
-    int res = document->remove(this, value, options,
+    TRI_voc_tick_t resultMarkerTick = 0;
+
+    int res = document->remove(this, value, options, resultMarkerTick,
                                !isLocked(document, TRI_TRANSACTION_WRITE),
                                actualRevision, previous);
+    
+    if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
+      maxTick = resultMarkerTick;
+    }
     
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_CONFLICT && 
@@ -1998,6 +2016,11 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     res = TRI_ERROR_NO_ERROR;
   } else {
     res = workOnOneDocument(value, false);
+  }
+ 
+  // wait for operation(s) to be synced to disk here 
+  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0) {
+    arangodb::wal::LogfileManager::instance()->slots()->waitForTick(maxTick);
   }
 
   if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
@@ -2223,11 +2246,13 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
 
   options.ignoreRevs = true;
 
+  TRI_voc_tick_t resultMarkerTick = 0;
+
   auto callback = [&](TRI_doc_mptr_t const* mptr) {
     VPackSlice actualRevision;
     TRI_doc_mptr_t previous;
-    int res = document->remove(this, VPackSlice(mptr->vpack()), options, false,
-                               actualRevision, previous);
+    int res = document->remove(this, VPackSlice(mptr->vpack()), options, 
+                               resultMarkerTick, false, actualRevision, previous);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
