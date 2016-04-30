@@ -18,5 +18,8 @@ app-path = @LOCALSTATEDIR@/lib/arangodb-apps
 script = @PKGDATADIR@/js/server/arango-dfdb.js
 v8-contexts = 1
 
+[foxx]
+queues = false
+
 [log]
 level = info
