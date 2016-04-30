@@ -33,7 +33,6 @@ using namespace arangodb::aql;
 AttributeAccessor::AttributeAccessor(
     std::vector<std::string> const& attributeParts, Variable const* variable)
     : _attributeParts(attributeParts),
-      _combinedName(),
       _variable(variable) {
 
   TRI_ASSERT(_variable != nullptr);
@@ -59,7 +58,13 @@ AqlValue AttributeAccessor::get(arangodb::AqlTransaction* trx,
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
     if ((*it)->id == _variable->id) {
       // get the AQL value
-      return argv->getValueReference(startPos, regs[i]).get(trx, _attributeParts, mustDestroy, true);
+      if (_attributeParts.size() == 1) {
+        // use optimized version for single attribute (e.g. variable.attr)
+        return argv->getValueReference(startPos, regs[i]).get(trx, _attributeParts[0], mustDestroy, true);
+      } else {
+        // use general version for multiple attributes (e.g. variable.attr.subattr)
+        return argv->getValueReference(startPos, regs[i]).get(trx, _attributeParts, mustDestroy, true);
+      }
     }
     // fall-through intentional
   }

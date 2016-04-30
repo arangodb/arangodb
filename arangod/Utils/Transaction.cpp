@@ -673,47 +673,81 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
   return std::string(&buffer[0], len + 1 + keyLength);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief quick access to the _key attribute in a database document
+/// requires _key to be the first attribute in the document
+//////////////////////////////////////////////////////////////////////////////
+
 VPackSlice Transaction::extractKeyFromDocument(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
+  // a regular document must have at least the three attributes 
+  // _key, _id and _rev (in this order). _key must be the first attribute
+  // however this method may also be called for remove markers, which only
+  // have _key and _rev. therefore the only assertion that we can make
+  // here is that the document at least has two attributes 
+  TRI_ASSERT(slice.length() >= 2); 
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
 
-  if (*p == 0x31) {
-    return VPackSlice(p);
+  if (*p == basics::VelocyPackHelper::KeyAttribute) {
+    return VPackSlice(p + 1);
   }
+  // we actually should not get here. however, if for some reason we do,
+  // we simply fall back to the regular lookup method
   return slice.get(StaticStrings::KeyString); 
+}
+
+VPackSlice Transaction::extractIdFromDocument(VPackSlice const& slice) {
+  TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.length() >= 3); // must have at least _key, _id and _rev
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+  if (*p == basics::VelocyPackHelper::KeyAttribute) {
+    // _key
+    p += VPackSlice(p).byteSize();
+    if (*p == basics::VelocyPackHelper::IdAttribute) {
+      LOG(ERR) << "fast access to _id";
+      return VPackSlice(p + 1);
+    }
+  }
+  LOG(ERR) << "slow access to _id";
+  return slice.get(StaticStrings::IdString); 
 }
 
 VPackSlice Transaction::extractFromFromDocument(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.length() >= 5); // must have at least _key, _id, _from, _to and _rev
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
-  VPackValueLength l = slice.length();
   VPackValueLength count = 0;
 
-  while (*p <= 0x35 && count++ < l) {
-    if (*p == 0x35) {
-      return VPackSlice(p);
+  while (*p <= basics::VelocyPackHelper::FromAttribute && ++count <= 3) {
+    if (*p == basics::VelocyPackHelper::FromAttribute) {
+      LOG(ERR) << "fast access to _from";
+      return VPackSlice(p + 1);
     }
     p += VPackSlice(p).byteSize();
   }
+  LOG(ERR) << "slow access to _from";
   return slice.get(StaticStrings::FromString); 
 }
 
 VPackSlice Transaction::extractToFromDocument(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.length() >= 5); // must have at least _key, _id, _from, _to and _rev
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
-  VPackValueLength l = slice.length();
   VPackValueLength count = 0;
 
-  while (*p <= 0x34 && count++ < l) {
-    if (*p == 0x34) {
-      return VPackSlice(p);
+  while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 4) {
+    if (*p == basics::VelocyPackHelper::ToAttribute) {
+      LOG(ERR) << "quick access to _to";
+      return VPackSlice(p + 1);
     }
     p += VPackSlice(p).byteSize();
   }
-  return slice.get(StaticStrings::FromString); 
+  LOG(ERR) << "slow access to _to";
+  return slice.get(StaticStrings::ToString); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1870,7 +1904,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
       key = value.copyString();
       size_t pos = key.find('/');
       if (pos != std::string::npos) {
-        key = key.substr(pos+1);
+        key = key.substr(pos + 1);
         builder = std::make_shared<VPackBuilder>();
         builder->add(VPackValue(key));
         value = builder->slice();

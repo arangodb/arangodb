@@ -786,12 +786,11 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
   arangodb::Transaction* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
-  VPackSlice const keySlice = slice.get(StaticStrings::KeyString);
-  std::string const key(keySlice.copyString());
+  VPackSlice const keySlice = Transaction::extractKeyFromDocument(slice);
   TRI_voc_rid_t const rid = std::stoull(slice.get(StaticStrings::RevString).copyString());
  
   SetRevision(document, rid, false);
-  document->_keyGenerator->track(key);
+  document->_keyGenerator->track(keySlice.copyString());
 
   ++state->_documents;
  
@@ -890,12 +889,11 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
   arangodb::Transaction* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
-  VPackSlice const keySlice = slice.get(StaticStrings::KeyString);
-  std::string const key(keySlice.copyString());
+  VPackSlice const keySlice = Transaction::extractKeyFromDocument(slice);
   TRI_voc_rid_t const rid = std::stoull(slice.get(StaticStrings::RevString).copyString());
  
   document->setLastRevision(rid, false);
-  document->_keyGenerator->track(key);
+  document->_keyGenerator->track(keySlice.copyString());
 
   ++state->_deletions;
 
@@ -3322,7 +3320,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     TRI_ASSERT(slice.isObject());
     // we can get away with the fast hash function here, as key values are 
     // restricted to strings
-    hash = slice.get(StaticStrings::KeyString).hash();
+    hash = Transaction::extractKeyFromDocument(slice).hash();
     newSlice = slice;
   }
 
@@ -4101,8 +4099,7 @@ int TRI_document_collection_t::deletePrimaryIndex(
   TRI_IF_FAILURE("DeletePrimaryIndex") { return TRI_ERROR_DEBUG; }
 
   auto found = primaryIndex()->removeKey(
-      trx,
-      VPackSlice(header->vpack()).get(StaticStrings::KeyString));
+      trx, Transaction::extractKeyFromDocument(VPackSlice(header->vpack())));
 
   if (found == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -4424,6 +4421,7 @@ void TRI_document_collection_t::newObjectForRemove(
     std::string const& rev,
     VPackBuilder& builder) {
 
+  // create an object consisting of _key and _rev (in this order)
   builder.openObject();
   if (oldValue.isString()) {
     builder.add(StaticStrings::KeyString, oldValue);

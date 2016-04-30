@@ -384,7 +384,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.silent = extractBooleanParameter("silent", false);
 
   // extract the revision, if single document variant and header given:
-  std::shared_ptr<VPackBuilder> builder(nullptr);
+  std::shared_ptr<VPackBuilder> builder;
   if (!isArrayCase) {
     TRI_voc_rid_t revision = 0;
     bool isValidRevision;

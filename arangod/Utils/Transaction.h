@@ -283,7 +283,8 @@ class Transaction {
   static std::string extractIdString(CollectionNameResolver const*, 
                                      VPackSlice const&, VPackSlice const&);
 
-  VPackSlice extractKeyFromDocument(VPackSlice const&);
+  static VPackSlice extractKeyFromDocument(VPackSlice const&);
+  VPackSlice extractIdFromDocument(VPackSlice const&);
   VPackSlice extractFromFromDocument(VPackSlice const&);
   VPackSlice extractToFromDocument(VPackSlice const&);
 
