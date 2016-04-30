@@ -34229,7 +34229,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     editUser : function(e) {
 
       if ($(e.currentTarget).find('a').attr('id') === 'createUser') {
-        console.log($(e.currentTarget).find('a').attr('id'));
         return;
       }
 

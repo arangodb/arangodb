@@ -495,9 +495,12 @@ def start_docublock(cargo, r=Regexen()):
     global currentDocuBlock
     (fp, last) = cargo
     try:
-        currentDocuBlock = last.split(' ')[2].rstrip()
+        if last[0] == '/':
+            currentDocuBlock = last.split(' ')[2].rstrip()
+        else:
+            currentDocuBlock = last.split(' ')[1].rstrip()
     except Exception as x:
-        print >> sys.stderr, "failed to fetch docublock in '" + last + "'"
+        print >> sys.stderr, "failed to fetch docublock in '" + last + "': " + str(x)
         raise
 
     return generic_handler(cargo, r, 'start_docublock')
