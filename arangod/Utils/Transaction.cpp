@@ -616,6 +616,31 @@ std::string Transaction::extractKeyPart(VPackSlice const slice) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief creates an id string from a custom _id value and the _key string
+//////////////////////////////////////////////////////////////////////////////
+        
+std::string Transaction::makeIdFromCustom(CollectionNameResolver const* resolver,
+                                          VPackSlice const& id, 
+                                          VPackSlice const& key) {
+  TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
+  TRI_ASSERT(key.isString());
+
+  uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
+  // create a buffer big enough for collection name + _key
+  char buffer[TRI_COL_NAME_LENGTH + TRI_VOC_KEY_MAX_LENGTH + 2];
+  size_t len = resolver->getCollectionNameCluster(&buffer[0], cid);
+  buffer[len] = '/';
+
+  VPackValueLength keyLength;
+  char const* p = key.getString(keyLength);
+  if (p == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid _key value");
+  }
+  memcpy(&buffer[len + 1], p, keyLength);
+  return std::string(&buffer[0], len + 1 + keyLength);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _id attribute from a slice, and convert it into a 
 /// string
 //////////////////////////////////////////////////////////////////////////////
@@ -632,11 +657,33 @@ std::string Transaction::extractIdString(VPackSlice const slice) {
 std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
                                          VPackSlice const& slice,
                                          VPackSlice const& base) {
-  VPackSlice id = slice;
+  VPackSlice id;
+   
   if (slice.isObject()) {
     // extract id attribute from object
+    uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+    if (*p == basics::VelocyPackHelper::KeyAttribute) {
+      // skip over attribute name
+      ++p;
+      VPackSlice key = VPackSlice(p);
+      // skip over attribute value
+      p += key.byteSize();
+      
+      if (*p == basics::VelocyPackHelper::IdAttribute) {
+        id = VPackSlice(p + 1);
+        // we should be pointing to a custom value now
+        TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
+ 
+        return makeIdFromCustom(resolver, id, key);
+      }
+    }
+
+    // in case the quick access above did not work out, use the slow path... 
     id = slice.get(StaticStrings::IdString);
+  } else {
+    id = slice;
   }
+  
   if (id.isString()) {
     // already a string...
     return id.copyString();
@@ -657,20 +704,8 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
   if (!key.isString()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
-  
-  uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
-  char buffer[512];  // This is enough for collection name + _key
-  size_t len = resolver->getCollectionNameCluster(&buffer[0], cid);
-  buffer[len] = '/';
-
-  VPackValueLength keyLength;
-  char const* p = key.getString(keyLength);
-  if (p == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid _key value");
-  }
-  memcpy(&buffer[len + 1], p, keyLength);
-  return std::string(&buffer[0], len + 1 + keyLength);
+        
+  return makeIdFromCustom(resolver, id, key);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -698,32 +733,6 @@ VPackSlice Transaction::extractKeyFromDocument(VPackSlice const& slice) {
   // we actually should not get here. however, if for some reason we do,
   // we simply fall back to the regular lookup method
   return slice.get(StaticStrings::KeyString); 
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief quick access to the _id attribute in a database document
-/// the document must have at least three attributes, and _id is supposed to
-/// appear directly behind the _key attribute
-//////////////////////////////////////////////////////////////////////////////
-
-VPackSlice Transaction::extractIdFromDocument(VPackSlice const& slice) {
-  TRI_ASSERT(slice.isObject());
-  TRI_ASSERT(slice.length() >= 3); // must have at least _key, _id and _rev
-
-  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
-  if (*p == basics::VelocyPackHelper::KeyAttribute) {
-    // skip over attribute name
-    ++p;
-    // skip over attribute value
-    p += VPackSlice(p).byteSize();
-
-    if (*p == basics::VelocyPackHelper::IdAttribute) {
-      // the + 1 is required so that we can skip over the attribute name
-      // and point to the attribute value 
-      return VPackSlice(p + 1);
-    }
-  }
-  return slice.get(StaticStrings::IdString); 
 }
 
 //////////////////////////////////////////////////////////////////////////////

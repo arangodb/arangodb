@@ -292,16 +292,10 @@ class Transaction {
   static VPackSlice extractKeyFromDocument(VPackSlice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief quick access to the _id attribute in a database document
-  /// the document must have at least three attributes, and _id is supposed to
-  /// appear directly behind the _key attribute
-  
-  static VPackSlice extractIdFromDocument(VPackSlice const&);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief quick access to the _from attribute in a database document
   /// the document must have at least five attributes: _key, _id, _from, _to
   /// and _rev (in this order)
+  //////////////////////////////////////////////////////////////////////////////
   
   static VPackSlice extractFromFromDocument(VPackSlice const&);
 
@@ -554,6 +548,14 @@ class Transaction {
       std::string const&);
 
  private:
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief creates an id string from a custom _id value and the _key string
+  //////////////////////////////////////////////////////////////////////////////
+        
+  static std::string makeIdFromCustom(CollectionNameResolver const* resolver,
+                                      VPackSlice const& idPart, 
+                                      VPackSlice const& keyPart);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build a VPack object with _id, _key and _rev and possibly
