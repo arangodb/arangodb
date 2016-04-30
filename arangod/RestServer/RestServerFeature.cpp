@@ -158,7 +158,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
     // if no databases was specified in the request, use system database name
     // as a fallback
     request->setDatabaseName(StaticStrings::SystemDatabase);
-    StaticStrings::SystemDatabase.c_str();
+    p = StaticStrings::SystemDatabase.c_str();
   } else {
     p = dbName.c_str();
   }
