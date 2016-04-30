@@ -163,7 +163,7 @@ bool RestDocumentHandler::createDocument() {
       errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
     }
     errorBuilder.close();
-    _response->setHeader("X-Arango-Error-Codes", errorBuilder.slice().toJson());
+    _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.slice().toJson());
   }
   return true;
 }
@@ -470,7 +470,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
     }
     errorBuilder.close();
-    _response->setHeader("X-Arango-Error-Codes", errorBuilder.slice().toJson());
+    _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.slice().toJson());
   }
 
   return true;

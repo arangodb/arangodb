@@ -27,7 +27,6 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/Dictionary.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json.h"
 #include "Endpoint/ConnectionInfo.h"

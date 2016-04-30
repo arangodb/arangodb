@@ -84,7 +84,7 @@ static inline void AppendChar(TRI_string_buffer_t* self, char chr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline size_t Remaining(TRI_string_buffer_t* self) {
-  return (size_t)(self->_len - (size_t)(self->_current - self->_buffer));
+  return self->_len - static_cast<size_t>(self->_current - self->_buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,13 +92,9 @@ static inline size_t Remaining(TRI_string_buffer_t* self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int Reserve(TRI_string_buffer_t* self, size_t size) {
-  if (size < 1) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
   if (size > Remaining(self)) {
     ptrdiff_t off = self->_current - self->_buffer;
-    size_t len = (size_t)(1.2 * (self->_len + size));
+    size_t len = static_cast<size_t>(1.25 * (self->_len + size));
     TRI_ASSERT(len > 0);
 
     char* ptr = static_cast<char*>(
@@ -112,7 +108,9 @@ static int Reserve(TRI_string_buffer_t* self, size_t size) {
     self->_len = len;
     self->_current = self->_buffer + off;
 
-    memset(self->_current, 0, Remaining(self) + 1);
+    if (self->_initializeMemory) {
+      memset(self->_current, 0, Remaining(self) + 1);
+    }
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -439,11 +437,13 @@ TRI_string_buffer_t* TRI_CreateSizedStringBuffer(TRI_memory_zone_t* zone,
 /// @warning You must call initialize before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitStringBuffer(TRI_string_buffer_t* self, TRI_memory_zone_t* zone) {
+void TRI_InitStringBuffer(TRI_string_buffer_t* self, TRI_memory_zone_t* zone,
+                          bool initializeMemory) {
   self->_memoryZone = zone;
   self->_buffer = nullptr;
   self->_current = nullptr;
   self->_len = 0;
+  self->_initializeMemory = initializeMemory;
 
   Reserve(self, 120);
 }
@@ -455,13 +455,17 @@ void TRI_InitStringBuffer(TRI_string_buffer_t* self, TRI_memory_zone_t* zone) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitSizedStringBuffer(TRI_string_buffer_t* self,
-                               TRI_memory_zone_t* zone, size_t const length) {
+                               TRI_memory_zone_t* zone, size_t const length,
+                               bool initializeMemory) {
   self->_memoryZone = zone;
   self->_buffer = nullptr;
   self->_current = nullptr;
   self->_len = 0;
+  self->_initializeMemory = initializeMemory;
 
-  Reserve(self, length);
+  if (length > 0) { 
+    Reserve(self, length);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -592,7 +596,10 @@ int TRI_DeflateStringBuffer(TRI_string_buffer_t* self, size_t bufferSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ReserveStringBuffer(TRI_string_buffer_t* self, size_t const length) {
-  return Reserve(self, length);
+  if (length > 0) {
+    return Reserve(self, length);
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1492,7 +1492,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
                      GeneralResponse::ResponseCode::CREATED);
           if (replicationWorked) {
             bool found;
-            requests[i].result.answer->header("x-arango-error-codes", found);
+            requests[i].result.answer->header(StaticStrings::ErrorCodes, found);
             replicationWorked = !found;
           }
           if (!replicationWorked) {
@@ -1843,7 +1843,7 @@ OperationResult Transaction::modifyLocal(
                    GeneralResponse::ResponseCode::OK);
         if (replicationWorked) {
           bool found;
-          requests[i].result.answer->header("x-arango-error-codes", found);
+          requests[i].result.answer->header(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
         }
         if (!replicationWorked) {
@@ -2100,7 +2100,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
                    GeneralResponse::ResponseCode::OK);
         if (replicationWorked) {
           bool found;
-          requests[i].result.answer->header("x-arango-error-codes", found);
+          requests[i].result.answer->header(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
         }
         if (!replicationWorked) {

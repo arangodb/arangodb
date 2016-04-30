@@ -227,7 +227,7 @@ static void ObjectToMap(v8::Isolate* isolate,
     v8::Local<v8::Array> const props = v8Headers->GetPropertyNames();
 
     for (uint32_t i = 0; i < props->Length(); i++) {
-      v8::Local<v8::Value> key = props->Get(v8::Integer::New(isolate, i));
+      v8::Local<v8::Value> key = props->Get(i);
       myMap.emplace(TRI_ObjectToString(key),
                     TRI_ObjectToString(v8Headers->Get(key)));
     }
@@ -550,13 +550,13 @@ static void ClientConnection_httpDeleteAny(
     ObjectToMap(isolate, headerFields, args[1]);
   }
 
-  std::string body;
   if (args.Length() > 2) {
     TRI_Utf8ValueNFC bodyUtf(TRI_UNKNOWN_MEM_ZONE, args[2]);
-    body = *bodyUtf;
+    std::string body = *bodyUtf;
+    TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw, body));
   }
 
-  TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw, body));
+  TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw, std::string()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

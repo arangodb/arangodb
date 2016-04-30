@@ -958,7 +958,7 @@ AqlValue Functions::ToString(arangodb::aql::Query* query,
                              VPackFunctionParameters const& parameters) {
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24, false);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
 
   AppendAsString(trx, adapter, value);
@@ -1128,7 +1128,7 @@ AqlValue Functions::Nth(arangodb::aql::Query* query,
 AqlValue Functions::Concat(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters) {
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24, false);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
 
   size_t const n = parameters.size();
@@ -1175,7 +1175,7 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
                          VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "LIKE", 2, 3);
   bool const caseInsensitive = GetBooleanParameter(trx, parameters, 2, false);
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24, false);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
 
   // build pattern from parameter #1
@@ -2278,7 +2278,7 @@ AqlValue Functions::Zip(arangodb::aql::Query* query,
     builder->openObject();
 
     // Buffer will temporarily hold the keys
-    arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+    arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24, false);
     arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
     for (VPackValueLength i = 0; i < n; ++i) {
       buffer.reset();

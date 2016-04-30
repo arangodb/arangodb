@@ -278,13 +278,13 @@ bool HttpCommTask::processRead() {
 
       // keep track of the original value of the "origin" request header (if
       // any), we need this value to handle CORS requests
-      _origin = _request->header("origin");
+      _origin = _request->header(StaticStrings::Origin);
 
       if (!_origin.empty()) {
         // check for Access-Control-Allow-Credentials header
         bool found;
         std::string const& allowCredentials =
-            _request->header("access-control-allow-credentials", found);
+            _request->header(StaticStrings::AccessControlAllowCredentials, found);
 
         if (found) {
           _denyCredentials = !StringUtils::boolean(allowCredentials);
@@ -387,7 +387,7 @@ bool HttpCommTask::processRead() {
       // check for a 100-continue
       if (_readRequestBody) {
         bool found;
-        std::string const& expect = _request->header("expect", found);
+        std::string const& expect = _request->header(StaticStrings::Expect, found);
 
         if (found && StringUtils::trim(expect) == "100-continue") {
           LOG(TRACE) << "received a 100-continue request";
@@ -458,7 +458,7 @@ bool HttpCommTask::processRead() {
   // .............................................................................
 
   std::string connectionType =
-      StringUtils::tolower(_request->header("connection"));
+      StringUtils::tolower(_request->header(StaticStrings::Connection));
 
   if (connectionType == "close") {
     // client has sent an explicit "Connection: Close" header. we should close
@@ -540,11 +540,11 @@ bool HttpCommTask::processRead() {
     HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED,
                           compatibility);
     if (sendWwwAuthenticateHeader()) {
-      static std::string const realm =
+      std::string realm =
           "basic realm=\"" +
           _server->handlerFactory()->authenticationRealm(_request) + "\"";
 
-      response.setHeaderNC(StaticStrings::WwwAuthenticate, realm);
+      response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
     }
 
     clearRequest();
@@ -576,7 +576,7 @@ void HttpCommTask::sendChunk(StringBuffer* buffer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::finishedChunked() {
-  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, 6);
+  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, 6, true);
   buffer->appendText(TRI_CHAR_LENGTH_PAIR("0\r\n\r\n"));
 
   _writeBuffers.push_back(buffer.get());
@@ -609,12 +609,8 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     // access-control-allow-origin header now
     LOG(TRACE) << "handling CORS response";
 
-    static std::string const exposedHeaders =
-        "etag, content-encoding, content-length, location, "
-        "server, x-arango-errors, x-arango-async-id";
-
     response->setHeaderNC(StaticStrings::AccessControlExposeHeaders,
-                          exposedHeaders);
+                          StaticStrings::ExposedCorsHeaders);
 
     // send back original value of "Origin" header
     response->setHeaderNC(StaticStrings::AccessControlAllowOrigin, _origin);
@@ -776,12 +772,9 @@ void HttpCommTask::fillWriteBuffer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::processCorsOptions(uint32_t compatibility) {
-  static std::string const allowedMethods =
-      "DELETE, GET, HEAD, PATCH, POST, PUT";
-
   HttpResponse response(GeneralResponse::ResponseCode::OK, compatibility);
 
-  response.setHeaderNC(StaticStrings::Allow, allowedMethods);
+  response.setHeaderNC(StaticStrings::Allow, StaticStrings::CorsMethods);
 
   if (!_origin.empty()) {
     LOG(TRACE) << "got CORS preflight request";
@@ -790,8 +783,7 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
 
     // send back which HTTP methods are allowed for the resource
     // we'll allow all
-    response.setHeaderNC(StaticStrings::AccessControlAllowMethods,
-                         allowedMethods);
+    response.setHeaderNC(StaticStrings::AccessControlAllowMethods, StaticStrings::CorsMethods);
 
     if (!allowHeaders.empty()) {
       // allow all extra headers the client requested
@@ -821,7 +813,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   // check for deflate
   bool found;
   std::string const& acceptEncoding =
-      _request->header("accept-encoding", found);
+      _request->header(StaticStrings::AcceptEncoding, found);
 
   if (found) {
     if (acceptEncoding.find("deflate") != std::string::npos) {
@@ -837,7 +829,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
       << "\"";
 
   // check for an async request
-  std::string const& asyncExecution = _request->header("x-arango-async", found);
+  std::string const& asyncExecution = _request->header(StaticStrings::Async, found);
 
   // create handler, this will take over the request
   WorkItem::uptr<HttpHandler> handler(
@@ -856,7 +848,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   }
 
   if (_request != nullptr) {
-    std::string body = _request->body();
+    std::string const& body = _request->body();
 
     if (!body.empty()) {
       LOG_TOPIC(DEBUG, Logger::REQUESTS)
@@ -892,8 +884,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
 
       if (jobId > 0) {
         // return the job id we just created
-        static std::string const xArango = "x-arango-async-id";
-        response.setHeaderNC(xArango, StringUtils::itoa(jobId));
+        response.setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
 
       handleResponse(&response);
@@ -980,7 +971,7 @@ void HttpCommTask::resetState(bool close) {
 
 bool HttpCommTask::sendWwwAuthenticateHeader() const {
   bool found;
-  _request->header("x-omit-www-authenticate", found);
+  _request->header(StaticStrings::OmitWwwAuthenticate, found);
 
   return !found;
 }

@@ -86,7 +86,7 @@ class CollectionNameResolver {
     }
     if (name[0] >= '0' && name[0] <= '9') {
       // name is a numeric id
-      TRI_voc_cid_t cid = (TRI_voc_cid_t)arangodb::basics::StringUtils::uint64(name);
+      TRI_voc_cid_t cid = static_cast<TRI_voc_cid_t>(arangodb::basics::StringUtils::uint64(name));
       // Now validate the cid
       TRI_col_type_t type = getCollectionTypeCluster(getCollectionNameCluster(cid));
       if (type == TRI_COL_TYPE_UNKNOWN) {
@@ -226,10 +226,11 @@ class CollectionNameResolver {
     }
 
     std::string name = localNameLookup(cid);
-    _resolvedIds.emplace(cid, name);
+    size_t s = name.size();
 
-    memcpy(buffer, name.c_str(), name.size());
-    return name.size();
+    memcpy(buffer, name.c_str(), s);
+    _resolvedIds.emplace(cid, std::move(name));
+    return s;
   }
 
   //////////////////////////////////////////////////////////////////////////////

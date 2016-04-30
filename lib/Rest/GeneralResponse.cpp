@@ -29,6 +29,8 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+static std::string const EMPTY_STR = "";
+
 std::string GeneralResponse::responseString(ResponseCode code) {
   switch (code) {
     //  Informational 1xx
@@ -418,8 +420,6 @@ GeneralResponse::GeneralResponse(ResponseCode responseCode,
     : _responseCode(responseCode), _apiCompatibility(compatibility) {}
 
 std::string const& GeneralResponse::header(std::string const& key) const {
-  static std::string const EMPTY_STR = "";
-
   std::string k = StringUtils::tolower(key);
   auto it = _headers.find(k);
 
@@ -432,8 +432,6 @@ std::string const& GeneralResponse::header(std::string const& key) const {
 
 std::string const& GeneralResponse::header(std::string const& key,
                                            bool& found) const {
-  static std::string const EMPTY_STR = "";
-
   std::string k = StringUtils::tolower(key);
   auto it = _headers.find(k);
 
@@ -448,14 +446,17 @@ std::string const& GeneralResponse::header(std::string const& key,
 
 void GeneralResponse::setHeader(std::string const& key,
                                 std::string const& value) {
-  std::string k = StringUtils::tolower(key);
-
-  _headers[k] = value;
+  _headers[StringUtils::tolower(key)] = value;
 }
 
 void GeneralResponse::setHeaderNC(std::string const& key,
                                   std::string const& value) {
   _headers[key] = value;
+}
+
+void GeneralResponse::setHeaderNC(std::string const& key,
+                                  std::string&& value) {
+  _headers[key] = std::move(value);
 }
 
 #if 0

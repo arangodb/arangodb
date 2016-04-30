@@ -245,11 +245,11 @@ void RestVocbaseBaseHandler::generate20x(
   VPackSlice slice = result.slice();
   TRI_ASSERT(slice.isObject() || slice.isArray());
   if (slice.isObject()) {
-    _response->setHeaderNC("etag", "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
+    _response->setHeaderNC(StaticStrings::Etag, "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
     // pre 1.4 location headers withdrawn for >= 3.0
     std::string escapedHandle(assembleDocumentId(
         collectionName, slice.get(StaticStrings::KeyString).copyString(), true));
-    _response->setHeaderNC("location",
+    _response->setHeaderNC(StaticStrings::Location,
                          std::string("/_db/" + _request->databaseName() +
                                      DOCUMENT_PATH + "/" + escapedHandle));
   }
@@ -286,7 +286,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 
   if (slice.isObject()) {  // single document case
     std::string const rev = VelocyPackHelper::getStringValue(slice, StaticStrings::KeyString, "");
-    _response->setHeaderNC("etag", "\"" + rev + "\"");
+    _response->setHeaderNC(StaticStrings::Etag, "\"" + rev + "\"");
   }
   VPackBuilder builder;
   {
@@ -332,12 +332,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
-  std::string const&& rev = StringUtils::itoa(rid);
-
   createResponse(GeneralResponse::ResponseCode::NOT_MODIFIED);
-
-  static std::string const etag = "etag";
-  _response->setHeaderNC(etag, "\"" + rev + "\"");
+  _response->setHeaderNC(StaticStrings::Etag, "\"" + StringUtils::itoa(rid) + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,7 +352,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   // and generate a response
   createResponse(GeneralResponse::ResponseCode::OK);
   if (!rev.empty()) {
-    _response->setHeaderNC("etag", "\"" + rev + "\"");
+    _response->setHeaderNC(StaticStrings::Etag, "\"" + rev + "\"");
   }
 
   if (generateBody) {
@@ -370,7 +366,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
 
       // TODO can we optimize this?
       // Just dump some where else to find real length
-      StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE);
+      StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
       // convert object to string
       VPackStringBufferAdapter buffer(tmp.stringBuffer());
 
@@ -682,7 +678,7 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
 std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     VPackOptions const* options, bool& success) {
   bool found;
-  std::string const& contentType = _request->header(StaticStrings::MimeTypeVPack, found);
+  std::string const& contentType = _request->header(StaticStrings::ContentTypeHeader, found);
 
   try {
     success = true;

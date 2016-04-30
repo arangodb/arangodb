@@ -583,7 +583,7 @@ void SimpleHttpClient::setRequest(
     _writeBuffer.appendText(body, bodyLength);
   }
 
-  LOG(TRACE) << "Request: " << _writeBuffer.c_str();
+  LOG(TRACE) << "Request: " << std::string(_writeBuffer.c_str(), _writeBuffer.length());
 
   if (_state == DEAD) {
     _connection->resetNumConnectRetries();
@@ -757,6 +757,7 @@ void SimpleHttpClient::processBody() {
     // _result->getContentLength() <= _readBuffer.length()-_readBufferOffset
     _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
                                   _result->getContentLength());
+    _result->getBody().ensureNullTerminated();
   }
 
   _readBufferOffset += _result->getContentLength();
@@ -864,9 +865,11 @@ void SimpleHttpClient::processChunkedBody() {
 
     if (_result->isDeflated()) {
       _readBuffer.inflate(_result->getBody(), 16384, _readBufferOffset);
+      _result->getBody().ensureNullTerminated();
     } else {
       _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
                                     (size_t)_nextChunkedSize);
+      _result->getBody().ensureNullTerminated();
     }
 
     _readBufferOffset += (size_t)_nextChunkedSize + 2;

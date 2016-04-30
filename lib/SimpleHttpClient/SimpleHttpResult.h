@@ -206,7 +206,7 @@ class SimpleHttpResult {
   /// @brief get all header fields
   //////////////////////////////////////////////////////////////////////////////
 
-  std::map<std::string, std::string> const& getHeaderFields() const {
+  std::unordered_map<std::string, std::string> const& getHeaderFields() const {
     return _headerFields;
   }
 
@@ -240,7 +240,7 @@ class SimpleHttpResult {
   enum resultTypes _requestResultType;
 
   // header fields
-  std::map<std::string, std::string> _headerFields;
+  std::unordered_map<std::string, std::string> _headerFields;
 };
 }
 }

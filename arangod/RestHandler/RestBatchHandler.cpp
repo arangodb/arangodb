@@ -23,6 +23,7 @@
 
 #include "RestBatchHandler.h"
 
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "HttpServer/HttpHandlerFactory.h"
@@ -68,11 +69,11 @@ HttpHandler::status_t RestBatchHandler::execute() {
   size_t errors = 0;
 
   // get authorization header. we will inject this into the subparts
-  std::string const& authorization = _request->header("authorization");
+  std::string const& authorization = _request->header(StaticStrings::Authorization);
 
   // create the response
   createResponse(GeneralResponse::ResponseCode::OK);
-  _response->setContentType(_request->header("content-type"));
+  _response->setContentType(_request->header(StaticStrings::ContentTypeHeader));
 
   // setup some auxiliary structures to parse the multipart message
   std::string const& bodyStr = _request->body();
@@ -81,7 +82,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
 
   SearchHelper helper;
   helper.message = &message;
-  helper.searchStart = (char*)message.messageStart;
+  helper.searchStart = message.messageStart;
 
   // iterate over all parts of the multipart message
   while (true) {
@@ -156,7 +157,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
 
     if (!authorization.empty()) {
       // inject Authorization header of multipart message into part message
-      request->setHeader("authorization", authorization);
+      request->setHeader(StaticStrings::Authorization, authorization);
     }
 
     HttpHandler* handler = _server->createHandler(request);
@@ -292,7 +293,7 @@ bool RestBatchHandler::getBoundaryBody(std::string* result) {
 bool RestBatchHandler::getBoundaryHeader(std::string* result) {
   // extract content type
   std::string const contentType =
-      StringUtils::trim(_request->header("content-type"));
+      StringUtils::trim(_request->header(StaticStrings::ContentTypeHeader));
 
   // content type is expect to contain a boundary like this:
   // "Content-Type: multipart/form-data; boundary=<boundary goes here>"
@@ -363,7 +364,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
   }
 
   // search for boundary
-  char* found = strstr(helper->searchStart, helper->message->boundary);
+  char const* found = strstr(helper->searchStart, helper->message->boundary);
 
   if (found == nullptr) {
     // not contained. this is an error
@@ -412,7 +413,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
     // try Windows linebreak first
     breakLength = 2;
 
-    char* eol = strstr(found, "\r\n");
+    char const* eol = strstr(found, "\r\n");
 
     if (eol == nullptr) {
       breakLength = 1;
@@ -422,7 +423,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
         break;
       }
     } else {
-      char* eol2 = strchr(found, '\n');
+      char const* eol2 = strchr(found, '\n');
 
       if (eol2 != nullptr && eol2 < eol) {
         breakLength = 1;
@@ -435,7 +436,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
     }
 
     // split key/value of header
-    char* colon = (char*)memchr(found, (int)':', eol - found);
+    char const* colon = static_cast<char const*>(memchr(found, (int)':', eol - found));
 
     if (nullptr == colon) {
       // invalid header, not containing ':'
@@ -500,7 +501,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
 
   helper->foundLength = found - helper->foundStart;
 
-  char* p = found + helper->message->boundaryLength;
+  char const* p = found + helper->message->boundaryLength;
 
   if (p + 2 > searchEnd) {
     // end of boundary is outside the buffer
