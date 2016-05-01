@@ -115,10 +115,10 @@ static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
         << "\"http-request-timing\",\""
 	<< statistics->_id << "\","
 	<< (statistics->_async ? "async" : "sync")
-        << ",total(us)," << totalTime
-        << ",io," << ioTime
-        << ",qeue," << queueTime
-        << ",request," << requestTime
+        << ",total(us)," << Logger::FIXED(totalTime)
+        << ",io," << Logger::FIXED(ioTime)
+        << ",queue," << Logger::FIXED(queueTime)
+        << ",request," << Logger::FIXED(requestTime)
         << ",received," << statistics->_receivedBytes
         << ",sent," << statistics->_sentBytes;
 #endif

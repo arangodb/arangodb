@@ -57,7 +57,7 @@ class LoggerStream {
 
   LoggerStream& operator<<(Logger::RANGE range);
 
-  LoggerStream& operator<<(Logger::DURATION duration);
+  LoggerStream& operator<<(Logger::FIXED duration);
 
   LoggerStream& operator<<(Logger::LINE line) {
     _line = line._line;

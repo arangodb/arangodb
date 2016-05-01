@@ -1736,7 +1736,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
   }
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::DURATION(TRI_microtime() - start)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
       << " s, fill-indexes-document-collection { collection: "
       << document->_vocbase->_name << "/" << document->_info.name()
       << " }, indexes: " << (n - 1);
@@ -1828,7 +1828,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
     // iterate over all markers of the collection
     res = IterateMarkersCollection(&trx, collection);
 
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -1852,7 +1852,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   }
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::DURATION(TRI_microtime() - start)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
       << " s, open-document-collection { collection: " << vocbase->_name << "/"
       << document->_info.name() << " }";
 
@@ -1977,7 +1977,7 @@ static int FillIndexBatch(arangodb::Transaction* trx,
   }
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::DURATION(TRI_microtime() - start)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
       << " s, fill-index-batch { collection: " << document->_vocbase->_name
       << "/" << document->_info.name() << " }, " << idx->context()
       << ", threads: " << indexPool->numThreads()
@@ -2041,7 +2041,7 @@ static int FillIndexSequential(arangodb::Transaction* trx,
   }
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::DURATION(TRI_microtime() - start)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
       << " s, fill-index-sequential { collection: " << document->_vocbase->_name
       << "/" << document->_info.name() << " }, " << idx->context()
       << ", buckets: " << document->_info.indexBuckets();

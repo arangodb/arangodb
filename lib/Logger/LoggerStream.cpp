@@ -47,10 +47,10 @@ LoggerStream& LoggerStream::operator<<(Logger::RANGE range) {
   return *this;
 }
 
-LoggerStream& LoggerStream::operator<<(Logger::DURATION duration) {
+LoggerStream& LoggerStream::operator<<(Logger::FIXED value) {
   std::ostringstream tmp;
-  tmp << std::setprecision(duration._precision) << std::fixed
-      << duration._duration;
+  tmp << std::setprecision(value._precision) << std::fixed
+      << value._value;
   _out << tmp.str();
   return *this;
 }

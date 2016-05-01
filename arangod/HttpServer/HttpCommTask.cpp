@@ -695,7 +695,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
       << HttpRequest::translateVersion(_httpVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
       << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
-      << "\"," << Logger::DURATION(totalTime, 6);
+      << "\"," << Logger::FIXED(totalTime, 6);
 
   // start output
   fillWriteBuffer();
