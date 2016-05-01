@@ -72,6 +72,7 @@ function addIndexOptions (body, parameters) {
 function ArangoCollection (database, data) {
   this._database = database;
   this._dbName = database._name();
+  this._dbPrefix = '/_db/' + encodeURIComponent(database._name());
 
   if (typeof data === "string") {
     this._id = null;
@@ -143,11 +144,11 @@ ArangoCollection.prototype._prefixurl = function (url) {
   }
 
   if (url[0] === '/') {
-    return '/_db/' + encodeURIComponent(this._dbName) + url;
+    return this._dbPrefix + url;
   }
-  return '/_db/' + encodeURIComponent(this._dbName) + '/' + url;
+  return this._dbPrefix + '/' + url;
 };
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the base url for collection usage
 ////////////////////////////////////////////////////////////////////////////////
@@ -948,7 +949,6 @@ ArangoCollection.prototype.insert = function (from, to, data, options) {
   if (type === ArangoCollection.TYPE_DOCUMENT || data === undefined) {
     data = from;
     options = to;
-    url = "/_api/document/" + encodeURIComponent(this.name());
   }
   else if (type === ArangoCollection.TYPE_EDGE) {
     if (typeof data === 'object' && Array.isArray(data)) {
@@ -974,15 +974,24 @@ ArangoCollection.prototype.insert = function (from, to, data, options) {
 
     data._from = from;
     data._to = to;
-
-    url = "/_api/document/" + encodeURIComponent(this.name());
   }
+    
+  url = this._dbPrefix + "/_api/document/" + encodeURIComponent(this.name());
 
   if (options === undefined) {
     options = {};
   }
-  url = this._appendSyncParameter(url, options.waitForSync);
-  url = this._appendBoolParameter(url, "returnNew", options.returnNew);
+
+  // the following parameters are optional, so we only append them if necessary
+  if (options.waitForSync) {
+    url = this._appendSyncParameter(url, options.waitForSync);
+  }
+  if (options.returnNew) {
+    url = this._appendBoolParameter(url, "returnNew", options.returnNew);
+  }
+  if (options.silent) {
+    url = this._appendBoolParameter(url, "silent", options.silent);
+  }
 
   if (data === undefined || typeof data !== 'object') {
     throw new ArangoError({
@@ -992,8 +1001,7 @@ ArangoCollection.prototype.insert = function (from, to, data, options) {
   }
 
   var requestResult = this._database._connection.POST(
-    this._prefixurl(url),
-    JSON.stringify(data)
+    url, JSON.stringify(data)
   );
 
   arangosh.checkRequestResult(requestResult);
@@ -1049,8 +1057,8 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   }
 
   var url;
-
   var body = "";
+
   if (Array.isArray(id)) {
     url = this._documentcollectionurl();
     body = JSON.stringify(id);
@@ -1069,7 +1077,13 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   }
 
   url = this._appendBoolParameter(url, "ignoreRevs", ignoreRevs);
-  url = this._appendBoolParameter(url, "returnOld", options.returnOld);
+  // the following parameters are optional, so we only append them if necessary
+  if (options.returnOld) {
+    url = this._appendBoolParameter(url, "returnOld", options.returnOld);
+  }
+  if (options.silent) {
+    url = this._appendBoolParameter(url, "silent", options.silent);
+  }
 
   if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.DELETE(url, {}, body);
@@ -1089,7 +1103,6 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 
   return options.silent ? true :requestResult;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document in the collection
@@ -1205,10 +1218,20 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     url = this._documenturl(id);
   }
 
-  url = this._appendSyncParameter(url, waitForSync);
   url = this._appendBoolParameter(url, "ignoreRevs", ignoreRevs);
-  url = this._appendBoolParameter(url, "returnOld", options.returnOld);
-  url = this._appendBoolParameter(url, "returnNew", options.returnNew);
+  // the following parameters are optional, so we only append them if necessary
+  if (waitForSync) {
+    url = this._appendSyncParameter(url, waitForSync);
+  }
+  if (options.returnOld) {
+    url = this._appendBoolParameter(url, "returnOld", options.returnOld);
+  }
+  if (options.returnNew) {
+    url = this._appendBoolParameter(url, "returnNew", options.returnNew);
+  }
+  if (options.silent) {
+    url = this._appendBoolParameter(url, "silent", options.silent);
+  }
 
   if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.PUT(url, JSON.stringify(data));
@@ -1314,10 +1337,20 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     url = this._documenturl(id) + params;
   }
 
-  url = this._appendSyncParameter(url, waitForSync);
   url = this._appendBoolParameter(url, "ignoreRevs", ignoreRevs);
-  url = this._appendBoolParameter(url, "returnOld", options.returnOld);
-  url = this._appendBoolParameter(url, "returnNew", options.returnNew);
+  // the following parameters are optional, so we only append them if necessary
+  if (waitForSync) {
+    url = this._appendSyncParameter(url, waitForSync);
+  }
+  if (options.returnOld) {
+    url = this._appendBoolParameter(url, "returnOld", options.returnOld);
+  }
+  if (options.returnNew) {
+    url = this._appendBoolParameter(url, "returnNew", options.returnNew);
+  }
+  if (options.silent) {
+    url = this._appendBoolParameter(url, "silent", options.silent);
+  }
 
   if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.PATCH(url, JSON.stringify(data));
