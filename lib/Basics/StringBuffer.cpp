@@ -679,7 +679,11 @@ void TRI_ClearStringBuffer(TRI_string_buffer_t* self) {
     }
 
     self->_current = self->_buffer;
-    memset(self->_buffer, 0, self->_len + 1);
+    if (self->_initializeMemory) {
+      memset(self->_buffer, 0, self->_len + 1);
+    } else {
+      *self->_current = '\0';
+    }
   }
 }
 
