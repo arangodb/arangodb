@@ -34,6 +34,10 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+#ifdef USE_DEV_TIMERS
+thread_local TRI_request_statistics_t* TRI_request_statistics_t::STATS = nullptr;
+#endif
+
 static size_t const QUEUE_SIZE = 1000;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,8 +79,15 @@ static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
     TRI_MethodRequestsStatistics[(int)statistics->_requestType].incCounter();
 
     // check that the request was completely received and transmitted
-    if (statistics->_readStart != 0.0 && statistics->_writeEnd != 0.0) {
-      double totalTime = statistics->_writeEnd - statistics->_readStart;
+    if (statistics->_readStart != 0.0 && (statistics->_async || statistics->_writeEnd != 0.0)) {
+      double totalTime;
+      
+      if (statistics->_async) {
+	totalTime = statistics->_requestEnd - statistics->_readStart;
+      } else {
+	totalTime = statistics->_writeEnd - statistics->_readStart;
+      }
+      
       TRI_TotalTimeDistributionStatistics->addFigure(totalTime);
 
       double requestTime = statistics->_requestEnd - statistics->_requestStart;
@@ -98,6 +109,19 @@ static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
       TRI_BytesSentDistributionStatistics->addFigure(statistics->_sentBytes);
       TRI_BytesReceivedDistributionStatistics->addFigure(
           statistics->_receivedBytes);
+
+#ifdef USE_DEV_TIMERS
+      LOG_TOPIC(INFO, Logger::REQUESTS)
+        << "\"http-request-timing\",\""
+	<< statistics->_id << "\","
+	<< (statistics->_async ? "async" : "sync")
+        << ",total(us)," << totalTime
+        << ",io," << ioTime
+        << ",qeue," << queueTime
+        << ",request," << requestTime
+        << ",received," << statistics->_receivedBytes
+        << ",sent," << statistics->_sentBytes;
+#endif
     }
   }
 
@@ -276,8 +300,8 @@ void TRI_FillConnectionStatistics(
     StatisticsCounter& asyncRequests, StatisticsDistribution& connectionTime) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
-    for (int i = 0; i < ((int)arangodb::GeneralRequest::RequestType::ILLEGAL) + 1;
-         ++i) {
+    for (int i = 0;
+         i < ((int)arangodb::GeneralRequest::RequestType::ILLEGAL) + 1; ++i) {
       methodRequests.emplace_back(StatisticsCounter());
     }
     return;
@@ -326,7 +350,8 @@ static void StatisticsQueueWorker(void* data) {
   uint64_t const MaxSleepTime = 250 * 1000;
   int nothingHappened = 0;
 
-  while (!Shutdown.load(std::memory_order_relaxed) && StatisticsFeature::enabled()) {
+  while (!Shutdown.load(std::memory_order_relaxed) &&
+         StatisticsFeature::enabled()) {
     size_t count = ProcessAllRequestStatistics();
 
     if (count == 0) {
@@ -334,6 +359,7 @@ static void StatisticsQueueWorker(void* data) {
         // increase sleep time every 30 seconds
         nothingHappened = 0;
         sleepTime += 50 * 1000;
+
         if (sleepTime > MaxSleepTime) {
           sleepTime = MaxSleepTime;
         }
@@ -356,16 +382,22 @@ static void StatisticsQueueWorker(void* data) {
 
   delete TRI_ConnectionTimeDistributionStatistics;
   TRI_ConnectionTimeDistributionStatistics = nullptr;
+
   delete TRI_TotalTimeDistributionStatistics;
   TRI_TotalTimeDistributionStatistics = nullptr;
+
   delete TRI_RequestTimeDistributionStatistics;
   TRI_RequestTimeDistributionStatistics = nullptr;
+
   delete TRI_QueueTimeDistributionStatistics;
   TRI_QueueTimeDistributionStatistics = nullptr;
+
   delete TRI_IoTimeDistributionStatistics;
   TRI_IoTimeDistributionStatistics = nullptr;
+
   delete TRI_BytesSentDistributionStatistics;
   TRI_BytesSentDistributionStatistics = nullptr;
+
   delete TRI_BytesReceivedDistributionStatistics;
   TRI_BytesReceivedDistributionStatistics = nullptr;
 
@@ -486,12 +518,6 @@ StatisticsDistribution* TRI_BytesReceivedDistributionStatistics;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_server_statistics_t TRI_ServerStatistics;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the current wallclock time
-////////////////////////////////////////////////////////////////////////////////
-
-double TRI_StatisticsTime() { return TRI_microtime(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module init function

@@ -200,7 +200,8 @@ void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
 /// @brief create a job for asynchronous execution (using the dispatcher)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
+bool HttpServer::handleRequestAsync(HttpCommTask* task,
+				    WorkItem::uptr<HttpHandler>& handler,
                                     uint64_t* jobId) {
   // extract the coordinator flag
   bool found;
@@ -210,6 +211,7 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
   // execute the handler using the dispatcher
   std::unique_ptr<Job> job =
       std::make_unique<HttpServerJob>(this, handler, true);
+  task->RequestStatisticsAgent::transferTo(job.get());
 
   // register the job with the job manager
   if (jobId != nullptr) {
@@ -223,6 +225,7 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
   // could not add job to job queue
   if (res != TRI_ERROR_NO_ERROR) {
     job->requestStatisticsAgentSetExecuteError();
+    job->RequestStatisticsAgent::transferTo(task);
     LOG(WARN) << "unable to add job to the job queue: "
               << TRI_errno_string(res);
     // todo send info to async work manager?
@@ -249,6 +252,7 @@ bool HttpServer::handleRequest(HttpCommTask* task,
 
   // use a dispatcher queue, handler belongs to the job
   std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
+  task->RequestStatisticsAgent::transferTo(job.get());
 
   LOG(TRACE) << "HttpCommTask " << (void*)task << " created HttpServerJob "
              << (void*)job.get();
@@ -293,7 +297,9 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
 
 void HttpServer::handleRequestDirectly(HttpCommTask* task,
                                        HttpHandler* handler) {
+  task->RequestStatisticsAgent::transferTo(handler);
   HttpHandler::status_t status = handler->executeFull();
+  handler->RequestStatisticsAgent::transferTo(task);
 
   switch (status._status) {
     case HttpHandler::HANDLER_FAILED:
