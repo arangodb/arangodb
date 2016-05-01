@@ -87,7 +87,7 @@ class StatisticsAgent {
   /// @brief transfers statistics information to another agent
   //////////////////////////////////////////////////////////////////////////////
 
-  void transfer(StatisticsAgent* agent) {
+  void transferTo(StatisticsAgent* agent) {
     agent->replace(_statistics);
     _statistics = nullptr;
   }
@@ -96,7 +96,7 @@ class StatisticsAgent {
   /// @brief transfers statistics information
   //////////////////////////////////////////////////////////////////////////////
 
-  STAT* transfer() {
+  STAT* steal() {
     STAT* statistics = _statistics;
     _statistics = nullptr;
 

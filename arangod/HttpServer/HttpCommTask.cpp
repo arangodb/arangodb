@@ -84,14 +84,6 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
              << _connectionInfo.clientAddress << ", client port "
              << _connectionInfo.clientPort;
 
-  // release the statistics object we got from the socket task first
-  // this is required at the moment for proper statistics calculation
-  connectionStatisticsAgentSetHttp();
-  ConnectionStatisticsAgent::release();
-
-  // acquire a statistics entry and set the type to HTTP
-  ConnectionStatisticsAgent::acquire();
-  connectionStatisticsAgentSetStart();
   connectionStatisticsAgentSetHttp();
 }
 
@@ -145,10 +137,21 @@ bool HttpCommTask::processRead() {
 
   // still trying to read the header fields
   if (!_readRequestBody) {
+    char const* ptr = _readBuffer->c_str() + _readPosition;
+    char const* etr = _readBuffer->end();
+
+    if (ptr == etr) {
+      return false;
+    }
+
     // starting a new request
     if (_newRequest) {
       // acquire a new statistics entry for the request
       RequestStatisticsAgent::acquire();
+
+#if USE_DEV_TIMERS
+      RequestStatisticsAgent::_statistics->_id = (void*) this;
+#endif
 
       _newRequest = false;
       _startPosition = _readPosition;
@@ -161,8 +164,7 @@ bool HttpCommTask::processRead() {
       _sinceCompactification++;
     }
 
-    char const* ptr = _readBuffer->c_str() + _readPosition;
-    char const* end = _readBuffer->end() - 3;
+    char const* end = etr - 3;
 
     // read buffer contents are way to small. we can exit here directly
     if (ptr >= end) {
@@ -684,7 +686,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   double const totalTime = RequestStatisticsAgent::elapsedSinceReadStart();
 
-  _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
+  _writeBuffersStats.push_back(RequestStatisticsAgent::steal());
 
   LOG_TOPIC(INFO, Logger::REQUESTS)
       << "\"http-request-end\",\"" << (void*)this << "\",\""
@@ -865,7 +867,6 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
 
   // clear request object
   _request = nullptr;
-  RequestStatisticsAgent::transfer(handler.get());
 
   // async execution
   bool ok = false;
@@ -876,10 +877,10 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
 
     if (asyncExecution == "store") {
       // persist the responses
-      ok = _server->handleRequestAsync(handler, &jobId);
+      ok = _server->handleRequestAsync(this, handler, &jobId);
     } else {
       // don't persist the responses
-      ok = _server->handleRequestAsync(handler, nullptr);
+      ok = _server->handleRequestAsync(this, handler, nullptr);
     }
 
     if (ok) {
@@ -1022,7 +1023,7 @@ bool HttpCommTask::handleEvent(EventToken token, EventType events) {
 void HttpCommTask::signalTask(TaskData* data) {
   // data response
   if (data->_type == TaskData::TASK_DATA_RESPONSE) {
-    data->transfer(this);
+    data->RequestStatisticsAgent::transferTo(this);
     handleResponse(data->_response.get());
     processRead();
   }
