@@ -222,7 +222,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
   }
 
   TRI_vocbase_col_t* collection =
-      TRI_FindCollectionByNameOrCreateVocBase(_vocbase, name.c_str(), type);
+      TRI_FindCollectionByNameOrCreateVocBase(_vocbase, name, type);
 
   if (collection == nullptr) {
     generateTransactionError(name, TRI_errno(), "");

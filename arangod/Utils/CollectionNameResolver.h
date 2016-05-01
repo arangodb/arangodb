@@ -151,7 +151,7 @@ class CollectionNameResolver {
     }
 
     TRI_vocbase_col_t const* collection =
-        TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+        TRI_LookupCollectionByNameVocBase(_vocbase, name);
 
     if (collection != nullptr) {
       _resolvedNames.emplace(name, collection);

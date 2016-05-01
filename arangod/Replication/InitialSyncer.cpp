@@ -1716,7 +1716,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
       if (col == nullptr && !masterName.empty()) {
         // not found, try name next
-        col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName.c_str());
+        col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName);
       }
 
       if (col != nullptr) {
@@ -1785,7 +1785,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
       if (col == nullptr && !masterName.empty()) {
         // not found, try name next
-        col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName.c_str());
+        col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName);
       }
 
       if (col != nullptr) {
@@ -1823,7 +1823,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
     if (col == nullptr && !masterName.empty()) {
       // not found, try name next
-      col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName.c_str());
+      col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName);
     }
 
     if (col == nullptr) {

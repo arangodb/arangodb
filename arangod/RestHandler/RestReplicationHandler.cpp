@@ -900,7 +900,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
   if (found) {
     TRI_vocbase_col_t* c =
-        TRI_LookupCollectionByNameVocBase(_vocbase, value6.c_str());
+        TRI_LookupCollectionByNameVocBase(_vocbase, value6);
 
     if (c == nullptr) {
       generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -1489,7 +1489,7 @@ int RestReplicationHandler::processRestoreCollection(
 
   if (col == nullptr) {
     // not found, try name next
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, name);
   }
 
   // drop an existing collection if it exists
@@ -2498,7 +2498,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
   }
 
   TRI_vocbase_col_t* c =
-      TRI_LookupCollectionByNameVocBase(_vocbase, collection.c_str());
+      TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
   if (c == nullptr) {
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -2869,7 +2869,7 @@ void RestReplicationHandler::handleCommandDump() {
   }
 
   TRI_vocbase_col_t* c =
-      TRI_LookupCollectionByNameVocBase(_vocbase, collection.c_str());
+      TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
   if (c == nullptr) {
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -3545,7 +3545,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, shard.copyString().c_str());
+  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, shard.copyString());
   if (col == nullptr) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                   "did not find collection");

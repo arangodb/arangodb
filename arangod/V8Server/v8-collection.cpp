@@ -2036,12 +2036,10 @@ static TRI_vocbase_col_t* GetCollectionFromArgument(
   // number
   if (val->IsNumber() || val->IsNumberObject()) {
     uint64_t cid = TRI_ObjectToUInt64(val, true);
-
     return TRI_LookupCollectionByIdVocBase(vocbase, cid);
   }
 
-  std::string const name = TRI_ObjectToString(val);
-  return TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+  return TRI_LookupCollectionByNameVocBase(vocbase, TRI_ObjectToString(val));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
