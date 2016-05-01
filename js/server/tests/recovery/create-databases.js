@@ -31,7 +31,6 @@ var db = require("@arangodb").db;
 var internal = require("internal");
 var jsunity = require("jsunity");
 
-
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
