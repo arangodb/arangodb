@@ -782,7 +782,7 @@ uint64_t VelocyPackHelper::hashByAttributes(
     for (auto const& attr : attributes) {
       VPackSlice sub = slice.get(attr).resolveExternal();
       if (sub.isNone()) {
-        if (attr == "_key" && !key.empty()) {
+        if (attr == StaticStrings::KeyString && !key.empty()) {
           VPackBuilder temporaryBuilder;
           temporaryBuilder.add(VPackValue(key));
           hash = temporaryBuilder.slice().normalizedHash(hash);
