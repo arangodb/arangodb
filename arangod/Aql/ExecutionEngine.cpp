@@ -504,7 +504,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                         collection->vocbase->_name) +
                           "/_api/aql/instantiate");
 
-    auto headers = std::make_unique<std::map<std::string, std::string>>();
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     (*headers)["X-Arango-Nolock"] = shardId;  // Prevent locking
     auto res = cc->asyncRequest("", coordTransactionID, "shard:" + shardId,
                                 arangodb::GeneralRequest::RequestType::POST,
@@ -914,7 +914,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
               "/_db/" +
               arangodb::basics::StringUtils::urlEncode(vocbase->_name) +
               "/_api/aql/lock/" + queryId);
-          std::map<std::string, std::string> headers;
+          std::unordered_map<std::string, std::string> headers;
           auto res =
               cc->syncRequest("", coordTransactionID, "shard:" + shardId,
                               arangodb::GeneralRequest::RequestType::PUT,
@@ -952,7 +952,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
                 "/_db/" +
                 arangodb::basics::StringUtils::urlEncode(vocbase->_name) +
                 "/_api/aql/shutdown/" + queryId);
-            std::map<std::string, std::string> headers;
+            std::unordered_map<std::string, std::string> headers;
             auto res =
                 cc->syncRequest("", coordTransactionID, "shard:" + shardId,
                                 arangodb::GeneralRequest::RequestType::PUT,

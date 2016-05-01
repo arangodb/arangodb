@@ -1943,7 +1943,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   client.keepConnectionOnDestruction(true);
 
   // set up headers
-  std::map<std::string, std::string> headers;
+  std::unordered_map<std::string, std::string> headers;
   if (method == arangodb::GeneralRequest::RequestType::POST) {
     // the agency needs this content-type for the body
     headers["content-type"] = "application/json";

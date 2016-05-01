@@ -121,7 +121,7 @@ class SimpleHttpClient {
 
   SimpleHttpResult* retryRequest(GeneralRequest::RequestType,
                                  std::string const&, char const*, size_t,
-                                 std::map<std::string, std::string> const&);
+                                 std::unordered_map<std::string, std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make an http request, creating a new HttpResult object
@@ -152,7 +152,7 @@ class SimpleHttpClient {
 
   SimpleHttpResult* request(GeneralRequest::RequestType,
                             std::string const&, char const*, size_t,
-                            std::map<std::string, std::string> const&);
+                            std::unordered_map<std::string, std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets username and password
@@ -252,7 +252,7 @@ class SimpleHttpClient {
 
   SimpleHttpResult* doRequest(GeneralRequest::RequestType,
                               std::string const&, char const*, size_t,
-                              std::map<std::string, std::string> const&);
+                              std::unordered_map<std::string, std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the connection
@@ -298,7 +298,7 @@ class SimpleHttpClient {
   void setRequest(GeneralRequest::RequestType method,
                   std::string const& location, char const* body,
                   size_t bodyLength,
-                  std::map<std::string, std::string> const& headerFields);
+                  std::unordered_map<std::string, std::string> const& headerFields);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief process (a part of) the http header, the data is
@@ -433,7 +433,7 @@ class SimpleHttpClient {
   bool _supportDeflate;
 
   // empty map, used for headers
-  static std::map<std::string, std::string> const NO_HEADERS;
+  static std::unordered_map<std::string, std::string> const NO_HEADERS;
 };
 }
 }

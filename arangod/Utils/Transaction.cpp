@@ -1144,7 +1144,7 @@ OperationResult Transaction::document(std::string const& collectionName,
 OperationResult Transaction::documentCoordinator(std::string const& collectionName,
                                                  VPackSlice const value,
                                                  OperationOptions& options) {
-  auto headers = std::make_unique<std::map<std::string, std::string>>();
+  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
@@ -1554,7 +1554,7 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
                                                VPackSlice const newValue,
                                                OperationOptions& options) {
 
-  auto headers = std::make_unique<std::map<std::string, std::string>>();
+  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
@@ -1627,7 +1627,7 @@ OperationResult Transaction::replace(std::string const& collectionName,
 OperationResult Transaction::replaceCoordinator(std::string const& collectionName,
                                                 VPackSlice const newValue,
                                                 OperationOptions& options) {
-  auto headers = std::make_unique<std::map<std::string, std::string>>();
+  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();

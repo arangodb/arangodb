@@ -71,36 +71,36 @@ class V8ClientConnection {
 
   v8::Handle<v8::Value> getData(
       v8::Isolate* isolate, std::string const& location,
-      std::map<std::string, std::string> const& headerFields, bool raw);
+      std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> headData(
       v8::Isolate* isolate, std::string const& location,
-      std::map<std::string, std::string> const& headerFields, bool raw);
+      std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> deleteData(
       v8::Isolate* isolate, std::string const& location,
-      std::map<std::string, std::string> const& headerFields, bool raw,
+      std::unordered_map<std::string, std::string> const& headerFields, bool raw,
       std::string const& body);
 
   v8::Handle<v8::Value> optionsData(
       v8::Isolate* isolate, std::string const& location,
       std::string const& body,
-      std::map<std::string, std::string> const& headerFields, bool raw);
+      std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> postData(
       v8::Isolate* isolate, std::string const& location,
       std::string const& body,
-      std::map<std::string, std::string> const& headerFields, bool raw = false);
+      std::unordered_map<std::string, std::string> const& headerFields, bool raw = false);
 
   v8::Handle<v8::Value> putData(
       v8::Isolate* isolate, std::string const& location,
       std::string const& body,
-      std::map<std::string, std::string> const& headerFields, bool raw);
+      std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> patchData(
       v8::Isolate* isolate, std::string const& location,
       std::string const& body,
-      std::map<std::string, std::string> const& headerFields, bool raw);
+      std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context,
                   ClientFeature*);
@@ -114,12 +114,12 @@ class V8ClientConnection {
   v8::Handle<v8::Value> requestData(
       v8::Isolate* isolate, GeneralRequest::RequestType method,
       std::string const& location, std::string const& body,
-      std::map<std::string, std::string> const& headerFields);
+      std::unordered_map<std::string, std::string> const& headerFields);
 
   v8::Handle<v8::Value> requestDataRaw(
       v8::Isolate* isolate, GeneralRequest::RequestType method,
       std::string const& location, std::string const& body,
-      std::map<std::string, std::string> const& headerFields);
+      std::unordered_map<std::string, std::string> const& headerFields);
 
   v8::Handle<v8::Value> handleResult(v8::Isolate* isolate);
 

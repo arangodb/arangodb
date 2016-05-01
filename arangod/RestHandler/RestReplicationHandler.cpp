@@ -747,9 +747,9 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
   std::string const& dbname = _request->databaseName();
 
-  auto headers = std::make_shared<std::map<std::string, std::string>>(
+  auto headers = std::make_shared<std::unordered_map<std::string, std::string>>(
       arangodb::getForwardableRequestHeaders(_request));
-  std::map<std::string, std::string> values = _request->values();
+  std::unordered_map<std::string, std::string> values = _request->values();
   std::string params;
   for (auto const& i : values) {
     if (i.first != "DBserver") {
@@ -2352,7 +2352,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
         errorMsg = "cannot find shard";
         res = TRI_ERROR_INTERNAL;
       } else {
-        auto headers = std::make_unique<std::map<std::string, std::string>>();
+        auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
         size_t j = it->second;
         auto body = std::make_shared<std::string const>(bufs[j]->c_str(),
                                                         bufs[j]->length());

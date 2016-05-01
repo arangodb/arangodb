@@ -436,7 +436,7 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief extra request headers
   //////////////////////////////////////////////////////////////////////////////
 
-  std::map<std::string, std::string> _headers;
+  std::unordered_map<std::string, std::string> _headers;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief database name

@@ -118,7 +118,7 @@ class GeneralResponse {
   // returned.
   std::string const& header(std::string const& field) const;
   std::string const& header(std::string const&, bool& found) const;
-  std::map<std::string, std::string> headers() const { return _headers; }
+  std::unordered_map<std::string, std::string> headers() const { return _headers; }
 
   void setHeader(std::string const& key, std::string const& value);
 
@@ -133,7 +133,7 @@ class GeneralResponse {
  protected:
   ResponseCode _responseCode;
   uint32_t const _apiCompatibility;
-  std::map<std::string, std::string> _headers;
+  std::unordered_map<std::string, std::string> _headers;
 };
 }
 

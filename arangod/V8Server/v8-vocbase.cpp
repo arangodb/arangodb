@@ -2819,7 +2819,7 @@ static void ListDatabasesCoordinator(
         ServerID sid = DBServers[0];
         ClusterComm* cc = ClusterComm::instance();
 
-        std::map<std::string, std::string> headers;
+        std::unordered_map<std::string, std::string> headers;
         headers["Authentication"] = TRI_ObjectToString(args[2]);
         auto res = cc->syncRequest(
             "", 0, "server:" + sid, arangodb::GeneralRequest::RequestType::GET,

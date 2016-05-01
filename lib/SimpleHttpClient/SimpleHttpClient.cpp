@@ -41,7 +41,7 @@ namespace httpclient {
 /// @brief empty map, used for headers
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, std::string> const SimpleHttpClient::NO_HEADERS;
+std::unordered_map<std::string, std::string> const SimpleHttpClient::NO_HEADERS;
 
 // -----------------------------------------------------------------------------
 // constructors and destructors
@@ -156,7 +156,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
 SimpleHttpResult* SimpleHttpClient::retryRequest(
     GeneralRequest::RequestType method, std::string const& location,
     char const* body, size_t bodyLength,
-    std::map<std::string, std::string> const& headers) {
+    std::unordered_map<std::string, std::string> const& headers) {
   SimpleHttpResult* result = nullptr;
   size_t tries = 0;
 
@@ -210,7 +210,7 @@ SimpleHttpResult* SimpleHttpClient::request(
 SimpleHttpResult* SimpleHttpClient::request(
     GeneralRequest::RequestType method, std::string const& location,
     char const* body, size_t bodyLength,
-    std::map<std::string, std::string> const& headers) {
+    std::unordered_map<std::string, std::string> const& headers) {
   return doRequest(method, location, body, bodyLength, headers);
 }
 
@@ -221,7 +221,7 @@ SimpleHttpResult* SimpleHttpClient::request(
 SimpleHttpResult* SimpleHttpClient::doRequest(
     GeneralRequest::RequestType method, std::string const& location,
     char const* body, size_t bodyLength,
-    std::map<std::string, std::string> const& headers) {
+    std::unordered_map<std::string, std::string> const& headers) {
   // ensure connection has not yet been invalidated
   TRI_ASSERT(_connection != nullptr);
 
@@ -490,7 +490,7 @@ SimpleHttpResult* SimpleHttpClient::getResult() {
 void SimpleHttpClient::setRequest(
     GeneralRequest::RequestType method, std::string const& location,
     char const* body, size_t bodyLength,
-    std::map<std::string, std::string> const& headers) {
+    std::unordered_map<std::string, std::string> const& headers) {
   // clear read-buffer (no pipeling!)
   _readBufferOffset = 0;
   _readBuffer.reset();
