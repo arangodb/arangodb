@@ -504,8 +504,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                         collection->vocbase->_name) +
                           "/_api/aql/instantiate");
 
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
+    auto headers = std::make_unique<std::map<std::string, std::string>>();
     (*headers)["X-Arango-Nolock"] = shardId;  // Prevent locking
     auto res = cc->asyncRequest("", coordTransactionID, "shard:" + shardId,
                                 arangodb::GeneralRequest::RequestType::POST,

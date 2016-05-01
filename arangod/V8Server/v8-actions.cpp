@@ -1280,8 +1280,7 @@ static bool clusterSendToAllServers(
 
   DBServers = ci->getCurrentDBServers();
   for (auto const& sid : DBServers) {
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
+    auto headers = std::make_unique<std::map<std::string, std::string>>();
     cc->asyncRequest("", coordTransactionID, "server:" + sid, method, url,
                      reqBodyString, headers, nullptr, 3600.0);
   }

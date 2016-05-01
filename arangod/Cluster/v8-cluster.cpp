@@ -1766,8 +1766,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string destination;
   std::string path;
   auto body = std::make_shared<std::string>();
-  std::unique_ptr<std::map<std::string, std::string>> headerFields(
-      new std::map<std::string, std::string>());
+  auto headerFields = std::make_unique<std::map<std::string, std::string>>();
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
@@ -1829,8 +1828,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string destination;
   std::string path;
   std::string body;
-  std::unique_ptr<std::map<std::string, std::string>> headerFields(
-      new std::map<std::string, std::string>());
+  auto headerFields = std::make_unique<std::map<std::string, std::string>>();
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
