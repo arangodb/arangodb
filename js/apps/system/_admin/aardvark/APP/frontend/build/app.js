@@ -27851,6 +27851,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click li": "switchTab",
       "click .arangodbLogo": "selectMenuItem",
       "mouseenter .dropdown > *": "showDropdown",
+      'click .shortcut-icons p' : 'showShortcutModal',
       "mouseleave .dropdown": "hideDropdown"
     },
 
@@ -27884,6 +27885,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       Backbone.history.on("all", function () {
         self.selectMenuItem();
       });
+    },
+
+    showShortcutModal: function() {
+      arangoHelper.hotkeysFunctions.showHotkeysModal();
     },
 
     handleSelectDatabase: function () {
