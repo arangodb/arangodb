@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestShardHandler.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 #include "Dispatcher/Dispatcher.h"
@@ -39,7 +40,7 @@ bool RestShardHandler::isDirect() const { return true; }
 
 arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
   bool found;
-  std::string const& _coordinator = _request->header("x-arango-coordinator", found);
+  std::string const& _coordinator = _request->header(StaticStrings::Coordinator, found);
 
   if (!found) {
     generateError(arangodb::GeneralResponse::ResponseCode::BAD,

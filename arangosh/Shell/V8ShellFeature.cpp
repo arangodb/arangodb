@@ -230,7 +230,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
         if (!v8connection->lastErrorMessage().empty()) {
           std::ostringstream is2;
 
-          is2 << "Error message '" << v8connection->lastErrorMessage() << "'";
+          is2 << "Error message: '" << v8connection->lastErrorMessage() << "'";
 
           _console->printErrorLine(is2.str());
         }

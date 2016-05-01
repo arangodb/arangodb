@@ -41,7 +41,6 @@ class HttpResponse : public GeneralResponse {
  public:
   bool isHeadResponse() const { return _isHeadResponse; }
   bool isChunked() const { return _isChunked; }
-  size_t contentLength();
 
  public:
   using GeneralResponse::setHeader;

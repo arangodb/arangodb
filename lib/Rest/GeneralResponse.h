@@ -26,6 +26,8 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/StaticStrings.h"
+
 namespace arangodb {
 class GeneralResponse {
   GeneralResponse() = delete;
@@ -108,7 +110,7 @@ class GeneralResponse {
   }
 
   void setContentType(std::string const& contentType) {
-    _headers["content-type"] = contentType;
+    _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
   }
 
   // Returns the value of a header field with given name. If no header field
@@ -116,11 +118,13 @@ class GeneralResponse {
   // returned.
   std::string const& header(std::string const& field) const;
   std::string const& header(std::string const&, bool& found) const;
-  void setHeader(std::string const& key, std::string const& value);
   std::map<std::string, std::string> headers() const { return _headers; }
+
+  void setHeader(std::string const& key, std::string const& value);
 
   // the header field name must already be trimmed and lower-cased
   void setHeaderNC(std::string const& key, std::string const& value);
+  void setHeaderNC(std::string const& key, std::string&& value);
 
  private:
   // checks for special headers

@@ -54,9 +54,6 @@ class AttributeAccessor {
   /// @brief the attribute names vector (e.g. [ "a", "b", "c" ] for a.b.c)
   std::vector<std::string> const _attributeParts;
 
-  /// @brief full attribute name (e.g. "a.b.c")
-  std::string _combinedName;
-
   /// @brief the accessed variable
   Variable const* _variable;
 

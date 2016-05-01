@@ -163,7 +163,7 @@ bool RestDocumentHandler::createDocument() {
       errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
     }
     errorBuilder.close();
-    _response->setHeader("X-Arango-Error-Codes", errorBuilder.slice().toJson());
+    _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.slice().toJson());
   }
   return true;
 }
@@ -384,7 +384,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.silent = extractBooleanParameter("silent", false);
 
   // extract the revision, if single document variant and header given:
-  std::shared_ptr<VPackBuilder> builder(nullptr);
+  std::shared_ptr<VPackBuilder> builder;
   if (!isArrayCase) {
     TRI_voc_rid_t revision = 0;
     bool isValidRevision;
@@ -470,7 +470,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
     }
     errorBuilder.close();
-    _response->setHeader("X-Arango-Error-Codes", errorBuilder.slice().toJson());
+    _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.slice().toJson());
   }
 
   return true;

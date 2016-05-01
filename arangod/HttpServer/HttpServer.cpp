@@ -204,7 +204,7 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
                                     uint64_t* jobId) {
   // extract the coordinator flag
   bool found;
-  std::string const& hdrStr = handler->getRequest()->header("x-arango-coordinator", found);
+  std::string const& hdrStr = handler->getRequest()->header(StaticStrings::Coordinator, found);
   char const* hdr = found ? hdrStr.c_str() : nullptr;
 
   // execute the handler using the dispatcher

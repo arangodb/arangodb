@@ -245,19 +245,7 @@ TRI_memory_zone_t* TRI_CORE_MEM_ZONE = &TriCoreMemZone;
 /// @brief unknown memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
 TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the unknown memory zone
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-TRI_memory_zone_t* TRI_UnknownMemZoneZ(char const* file, int line) {
-  return &TriUnknownMemZone;
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief system memory allocation
@@ -306,9 +294,9 @@ void* TRI_Allocate(TRI_memory_zone_t* zone, uint64_t n, bool set) {
 
     if (CoreReserve == nullptr) {
       fprintf(stderr,
-              "FATAL: failed to allocate %llu bytes for memory zone "
-              "%d" ZONE_DEBUG_LOCATION ", giving up!\n",
-              (unsigned long long)n, (int)zone->_zid ZONE_DEBUG_PARAMS);
+              "FATAL: failed to allocate %llu bytes for core mem zone "
+              ZONE_DEBUG_LOCATION ", giving up!\n",
+              (unsigned long long)n ZONE_DEBUG_PARAMS);
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
@@ -317,9 +305,9 @@ void* TRI_Allocate(TRI_memory_zone_t* zone, uint64_t n, bool set) {
 
     fprintf(
         stderr,
-        "failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION
+        "failed to allocate %llu bytes for core mem zone" ZONE_DEBUG_LOCATION
         ", retrying!\n",
-        (unsigned long long)n, (int)zone->_zid ZONE_DEBUG_PARAMS);
+        (unsigned long long)n ZONE_DEBUG_PARAMS);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return TRI_AllocateZ(zone, n, set, file, line);
@@ -376,9 +364,9 @@ void* TRI_Reallocate(TRI_memory_zone_t* zone, void* m, uint64_t n) {
 
     if (CoreReserve == nullptr) {
       fprintf(stderr,
-              "FATAL: failed to re-allocate %llu bytes for memory zone "
-              "%d" ZONE_DEBUG_LOCATION ", giving up!\n",
-              (unsigned long long)n, zone->_zid ZONE_DEBUG_PARAMS);
+              "FATAL: failed to re-allocate %llu bytes for core mem zone "
+              ZONE_DEBUG_LOCATION ", giving up!\n",
+              (unsigned long long)n ZONE_DEBUG_PARAMS);
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
@@ -386,9 +374,9 @@ void* TRI_Reallocate(TRI_memory_zone_t* zone, void* m, uint64_t n) {
     CoreReserve = nullptr;
 
     fprintf(stderr,
-            "failed to re-allocate %llu bytes for memory zone "
-            "%d" ZONE_DEBUG_LOCATION ", retrying!\n",
-            (unsigned long long)n, (int)zone->_zid ZONE_DEBUG_PARAMS);
+            "failed to re-allocate %llu bytes for core mem zone "
+            ZONE_DEBUG_LOCATION ", retrying!\n",
+            (unsigned long long)n ZONE_DEBUG_PARAMS);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return TRI_ReallocateZ(zone, m, n, file, line);
@@ -469,11 +457,9 @@ void TRI_InitializeMemory() {
   if (CoreInitialized == 0) {
     static size_t const ReserveSize = 1024 * 1024 * 10;
 
-    TriCoreMemZone._zid = 0;
     TriCoreMemZone._failed = false;
     TriCoreMemZone._failable = false;
 
-    TriUnknownMemZone._zid = 1;
     TriUnknownMemZone._failed = false;
     TriUnknownMemZone._failable = true;
 

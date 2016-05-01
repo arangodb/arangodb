@@ -38,14 +38,14 @@ HttpResponse::HttpResponse(ResponseCode code, uint32_t compatibility)
     : GeneralResponse(code, compatibility),
       _isHeadResponse(false),
       _isChunked(false),
-      _body(TRI_UNKNOWN_MEM_ZONE),
+      _body(TRI_UNKNOWN_MEM_ZONE, false),
       _bodySize(0) {
   if (!HIDE_PRODUCT_HEADER) {
-    _headers["server"] = "ArangoDB";
+    _headers[StaticStrings::Server] = "ArangoDB";
   }
 
-  _headers["connection"] = "Keep-Alive";
-  _headers["content-type"] = "text/plain; charset=utf-8";
+  _headers[StaticStrings::Connection] = StaticStrings::KeepAlive;
+  _headers[StaticStrings::ContentTypeHeader] = StaticStrings::MimeTypeText;
 }
 
 void HttpResponse::setCookie(std::string const& name, std::string const& value,
@@ -239,10 +239,10 @@ void HttpResponse::writeHeader(StringBuffer* output) {
 void HttpResponse::checkHeader(std::string const& key,
                                std::string const& value) {
   if (key[0] == 't' && key == "transfer-encoding") {
-      if (TRI_CaseEqualString(value.c_str(), "chunked")) {
-        _isChunked = true;
-      } else {
-        _isChunked = false;
-      }
+    if (TRI_CaseEqualString(value.c_str(), "chunked")) {
+      _isChunked = true;
+    } else {
+      _isChunked = false;
     }
+  }
 }
