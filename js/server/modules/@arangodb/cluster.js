@@ -354,7 +354,7 @@ function getLocalCollections () {
 /// @brief create databases if they exist in the plan but not locally
 ////////////////////////////////////////////////////////////////////////////////
 
-function createLocalDatabases (plannedDatabases, writeLocked) {
+function createLocalDatabases (plannedDatabases, currentDatabases, writeLocked) {
   var ourselves = global.ArangoServerState.id();
   var createDatabaseAgency = function (payload) {
     global.ArangoAgency.set("Current/Databases/" + payload.name + "/" + ourselves,
@@ -374,7 +374,7 @@ function createLocalDatabases (plannedDatabases, writeLocked) {
       payload.error = false;
       payload.errorNum = 0;
       payload.errorMessage = "no error";
-
+      
       if (! localDatabases.hasOwnProperty(name)) {
         // must create database
 
@@ -393,10 +393,16 @@ function createLocalDatabases (plannedDatabases, writeLocked) {
           payload.errorNum = err.errorNum;
           payload.errorMessage = err.errorMessage;
         }
+        writeLocked({ part: "Current" },
+                    createDatabaseAgency,
+                    [ payload ]);
+      } else if (typeof currentDatabases[name] != 'object' || !currentDatabases[name].hasOwnProperty(ourselves)) {
+        // mop: ok during cluster startup we have this buggy situation where a dbserver
+        // has a database but has not yet announced it to the agency :S
+        writeLocked({ part: "Current" },
+                    createDatabaseAgency,
+                    [ payload ]);
       }
-      writeLocked({ part: "Current" },
-                  createDatabaseAgency,
-                  [ payload ]);
     }
   }
 }
@@ -506,8 +512,9 @@ function cleanupCurrentDatabases (writeLocked) {
 
 function handleDatabaseChanges (plan, current, writeLocked) {
   var plannedDatabases = getByPrefix(plan, "Plan/Databases/");
+  var currentDatabases = getByPrefix(plan, "Current/Databases/");
 
-  createLocalDatabases(plannedDatabases, writeLocked);
+  createLocalDatabases(plannedDatabases, currentDatabases, writeLocked);
   dropLocalDatabases(plannedDatabases, writeLocked);
   cleanupCurrentDatabases(writeLocked);
 }
