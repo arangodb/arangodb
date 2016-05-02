@@ -5,6 +5,8 @@
 # and overwrites the original .a 
 # takes one argument: the directory to spider the .a files.
 
-for lib in `find $1 -name '*.a'`; \
-    do ar -t ${lib} | xargs ar rvs ${lib}.new && mv -v ${lib}.new ${lib}; \
+for lib in `find $1 -name '*.a'`; do
+    (for file in `ar -t ${lib}`; do 
+        find -name ${file}
+    done) |ar rvs ${lib}.new ${FN} ||exit 1
 done
