@@ -494,7 +494,7 @@ void AqlItemBlock::toVelocyPack(arangodb::AqlTransaction* trx,
           auto it = table.find(a);
 
           if (it == table.end()) {
-            a.toVelocyPack(trx, raw);
+            a.toVelocyPack(trx, raw, false);
             data.add(VPackValue(1));
             table.emplace(a, pos++);
           } else {

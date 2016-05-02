@@ -23,10 +23,13 @@
 
 #include "v8-vpack.h"
 #include "Basics/Exceptions.h"
+#include "Basics/VelocyPackHelper.h"
 #include "V8/v8-utils.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief empty attribute name
 static std::string const NoAttribute("");
@@ -62,22 +65,56 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
   if (object.IsEmpty()) {
     return v8::Undefined(isolate);
   }
+  
+  TRI_GET_GLOBALS();
 
-  VPackObjectIterator it(slice);
+  VPackObjectIterator it(slice, true);
   while (it.valid()) {
-    v8::Handle<v8::Value> val =
-        TRI_VPackToV8(isolate, it.value(), options, &slice);
-    if (!val.IsEmpty()) {
-      arangodb::velocypack::ValueLength l;
-      VPackSlice k = it.key(false);
-      if (k.isString()) {
-        char const* p = k.getString(l);
-        object->ForceSet(TRI_V8_PAIR_STRING(p, l), val);
-      } else {
-        char const* p = k.translate().getString(l);
-        object->ForceSet(TRI_V8_ASCII_PAIR_STRING(p, l), val);
+    arangodb::velocypack::ValueLength l;
+    VPackSlice k = it.key(false);
+
+    if (k.isString()) {
+      // regular attribute
+      char const* p = k.getString(l);
+      object->ForceSet(TRI_V8_PAIR_STRING(p, l), TRI_VPackToV8(isolate, it.value(), options, &slice));
+    } else {
+      // optimized code path for translated system attributes
+      VPackSlice v = VPackSlice(k.begin() + 1);
+
+      uint8_t which = static_cast<uint8_t>(k.getUInt()) + VelocyPackHelper::AttributeBase;
+      switch (which) {
+        case VelocyPackHelper::KeyAttribute: { 
+          char const* p = v.getString(l);
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_KeyKey), TRI_V8_ASCII_PAIR_STRING(p, l));
+          break;
+        }
+        case VelocyPackHelper::RevAttribute: { 
+          char const* p = v.getString(l);
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_RevKey), TRI_V8_ASCII_PAIR_STRING(p, l));
+          break;
+        }
+        case VelocyPackHelper::IdAttribute: {
+          if (v.isString()) {
+            char const* p = v.getString(l);
+            object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_IdKey), TRI_V8_ASCII_PAIR_STRING(p, l));
+          } else {
+            object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_IdKey), TRI_VPackToV8(isolate, v, options, &slice));
+          }
+          break;
+        }
+        case VelocyPackHelper::FromAttribute: {
+          char const* p = v.getString(l);
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_FromKey), TRI_V8_ASCII_PAIR_STRING(p, l));
+          break;
+        }
+        case VelocyPackHelper::ToAttribute: {
+          char const* p = v.getString(l);
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_ToKey), TRI_V8_ASCII_PAIR_STRING(p, l));
+          break;
+        }
       }
     }
+
     it.next();
   }
 
@@ -101,7 +138,7 @@ static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
   }
 
   uint32_t j = 0;
-  VPackArrayIterator it(slice);
+  VPackArrayIterator it(slice, true);
 
   while (it.valid()) {
     v8::Handle<v8::Value> val =

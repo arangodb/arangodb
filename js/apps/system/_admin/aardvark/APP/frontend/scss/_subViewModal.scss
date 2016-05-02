@@ -49,8 +49,10 @@
     border: 1px solid $c-bluegrey-border;
     color: $c-black;
     max-height: none;
+    padding: 0;
 
-    .arango-table {
+    .arango-table,
+    table {
       tr {
         height: 40px;
 

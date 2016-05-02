@@ -165,7 +165,8 @@ class HttpServer : protected TaskManager {
   /// @brief creates a job for asynchronous execution
   //////////////////////////////////////////////////////////////////////////////
 
-  bool handleRequestAsync(arangodb::WorkItem::uptr<HttpHandler>&,
+  bool handleRequestAsync(HttpCommTask*,
+			  arangodb::WorkItem::uptr<HttpHandler>&,
                           uint64_t* jobId);
 
   //////////////////////////////////////////////////////////////////////////////

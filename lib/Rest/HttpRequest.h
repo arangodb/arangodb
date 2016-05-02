@@ -64,7 +64,7 @@ class HttpRequest : public GeneralRequest {
 
   std::string const& cookieValue(std::string const& key) const;
   std::string const& cookieValue(std::string const& key, bool& found) const;
-  std::map<std::string, std::string> cookieValues() const { return _cookies; }
+  std::unordered_map<std::string, std::string> cookieValues() const { return _cookies; }
 
   std::string const& body() const;
   void setBody(char const* body, size_t length);
@@ -83,7 +83,7 @@ class HttpRequest : public GeneralRequest {
   void parseCookies(char const* buffer);
 
  private:
-  std::map<std::string, std::string> _cookies;
+  std::unordered_map<std::string, std::string> _cookies;
   int64_t _contentLength;
   char* _header;
   std::string _body;

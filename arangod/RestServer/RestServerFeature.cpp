@@ -151,20 +151,23 @@ void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
                                                 TRI_server_t* server) {
   // get database name from request
-  std::string dbName = request->databaseName();
+  std::string const& dbName = request->databaseName();
 
+  char const* p;
   if (dbName.empty()) {
     // if no databases was specified in the request, use system database name
     // as a fallback
-    dbName = TRI_VOC_SYSTEM_DATABASE;
-    request->setDatabaseName(dbName);
+    request->setDatabaseName(StaticStrings::SystemDatabase);
+    p = StaticStrings::SystemDatabase.c_str();
+  } else {
+    p = dbName.c_str();
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    return TRI_UseCoordinatorDatabaseServer(server, dbName.c_str());
+    return TRI_UseCoordinatorDatabaseServer(server, p);
   }
 
-  return TRI_UseDatabaseServer(server, dbName.c_str());
+  return TRI_UseDatabaseServer(server, p);
 }
 
 static bool SetRequestContext(HttpRequest* request, void* data) {

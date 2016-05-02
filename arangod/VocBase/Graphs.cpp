@@ -51,7 +51,7 @@ arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
   VPackBuilder b;
   {
     VPackObjectBuilder guard(&b);
-    b.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(name));
+    b.add(StaticStrings::KeyString, VPackValue(name));
   }
 
   // Default options are enough here

@@ -53,10 +53,10 @@ struct MultipartMessage {
 
 struct SearchHelper {
   MultipartMessage* message;
-  char* searchStart;
-  char* foundStart;
+  char const* searchStart;
+  char const* foundStart;
   size_t foundLength;
-  char* contentId;
+  char const* contentId;
   size_t contentIdLength;
   bool containsMore;
 };

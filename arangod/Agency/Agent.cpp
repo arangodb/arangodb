@@ -249,8 +249,7 @@ append_entries_t Agent::sendAppendEntriesRPC (arangodb::consensus::id_t follower
        << unconfirmed[0].term << "&leaderCommit=" << _lastCommitIndex;
 
   // Headers
-        std::unique_ptr<std::map<std::string, std::string>> headerFields =
-          std::make_unique<std::map<std::string, std::string> >();
+  auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
 
   // Body
   Builder builder;

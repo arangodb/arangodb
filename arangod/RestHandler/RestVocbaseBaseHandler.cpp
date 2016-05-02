@@ -222,7 +222,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
   }
 
   TRI_vocbase_col_t* collection =
-      TRI_FindCollectionByNameOrCreateVocBase(_vocbase, name.c_str(), type);
+      TRI_FindCollectionByNameOrCreateVocBase(_vocbase, name, type);
 
   if (collection == nullptr) {
     generateTransactionError(name, TRI_errno(), "");
@@ -245,11 +245,11 @@ void RestVocbaseBaseHandler::generate20x(
   VPackSlice slice = result.slice();
   TRI_ASSERT(slice.isObject() || slice.isArray());
   if (slice.isObject()) {
-    _response->setHeaderNC("etag", "\"" + slice.get(Transaction::RevString).copyString() + "\"");
+    _response->setHeaderNC(StaticStrings::Etag, "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
     // pre 1.4 location headers withdrawn for >= 3.0
     std::string escapedHandle(assembleDocumentId(
-        collectionName, slice.get(Transaction::KeyString).copyString(), true));
-    _response->setHeaderNC("location",
+        collectionName, slice.get(StaticStrings::KeyString).copyString(), true));
+    _response->setHeaderNC(StaticStrings::Location,
                          std::string("/_db/" + _request->databaseName() +
                                      DOCUMENT_PATH + "/" + escapedHandle));
   }
@@ -285,8 +285,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   createResponse(GeneralResponse::ResponseCode::PRECONDITION_FAILED);
 
   if (slice.isObject()) {  // single document case
-    std::string const rev = VelocyPackHelper::getStringValue(slice, Transaction::KeyString, "");
-    _response->setHeaderNC("etag", "\"" + rev + "\"");
+    std::string const rev = VelocyPackHelper::getStringValue(slice, StaticStrings::KeyString, "");
+    _response->setHeaderNC(StaticStrings::Etag, "\"" + rev + "\"");
   }
   VPackBuilder builder;
   {
@@ -298,9 +298,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     builder.add("errorNum", VPackValue(TRI_ERROR_ARANGO_CONFLICT));
     builder.add("errorMessage", VPackValue("precondition failed"));
     if (slice.isObject()) {
-      builder.add(Transaction::IdString, slice.get(Transaction::IdString));
-      builder.add(Transaction::KeyString, slice.get(Transaction::KeyString));
-      builder.add(Transaction::RevString, slice.get(Transaction::RevString));
+      builder.add(StaticStrings::IdString, slice.get(StaticStrings::IdString));
+      builder.add(StaticStrings::KeyString, slice.get(StaticStrings::KeyString));
+      builder.add(StaticStrings::RevString, slice.get(StaticStrings::RevString));
     } else {
       builder.add("result", slice);
     }
@@ -319,9 +319,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(Transaction::IdString, VPackValue(assembleDocumentId(collectionName, key, false)));
-  builder.add(Transaction::KeyString, VPackValue(std::to_string(rev)));
-  builder.add(Transaction::RevString, VPackValue(key));
+  builder.add(StaticStrings::IdString, VPackValue(assembleDocumentId(collectionName, key, false)));
+  builder.add(StaticStrings::KeyString, VPackValue(std::to_string(rev)));
+  builder.add(StaticStrings::RevString, VPackValue(key));
   builder.close();
 
   generatePreconditionFailed(builder.slice());
@@ -332,12 +332,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
-  std::string const&& rev = StringUtils::itoa(rid);
-
   createResponse(GeneralResponse::ResponseCode::NOT_MODIFIED);
-
-  static std::string const etag = "etag";
-  _response->setHeaderNC(etag, "\"" + rev + "\"");
+  _response->setHeaderNC(StaticStrings::Etag, "\"" + StringUtils::itoa(rid) + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -350,13 +346,13 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   VPackSlice document = input.resolveExternal();
   std::string rev;
   if (document.isObject()) {
-    rev = VelocyPackHelper::getStringValue(document, Transaction::RevString, "");
+    rev = VelocyPackHelper::getStringValue(document, StaticStrings::RevString, "");
   }
 
   // and generate a response
   createResponse(GeneralResponse::ResponseCode::OK);
   if (!rev.empty()) {
-    _response->setHeaderNC("etag", "\"" + rev + "\"");
+    _response->setHeaderNC(StaticStrings::Etag, "\"" + rev + "\"");
   }
 
   if (generateBody) {
@@ -370,7 +366,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
 
       // TODO can we optimize this?
       // Just dump some where else to find real length
-      StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE);
+      StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
       // convert object to string
       VPackStringBufferAdapter buffer(tmp.stringBuffer());
 
@@ -682,7 +678,7 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
 std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     VPackOptions const* options, bool& success) {
   bool found;
-  std::string const& contentType = _request->header(StaticStrings::MimeTypeVPack, found);
+  std::string const& contentType = _request->header(StaticStrings::ContentTypeHeader, found);
 
   try {
     success = true;

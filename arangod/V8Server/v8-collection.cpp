@@ -27,6 +27,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
@@ -545,6 +546,9 @@ static void DocumentVocbase(
 
   VPackSlice search = builder.slice();
   TRI_ASSERT(search.isObject());
+  
+  OperationOptions options;
+  options.ignoreRevs = false;
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   TRI_TRANSACTION_READ);
@@ -556,9 +560,6 @@ static void DocumentVocbase(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  // No options here
-  OperationOptions options;
-  options.ignoreRevs = false;
   OperationResult opResult = trx.document(collectionName, search, options);
 
   res = trx.finish(opResult.code);
@@ -1656,31 +1657,18 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   }
 
   // Find collection and vocbase
-  std::string collectionName;
   TRI_vocbase_col_t const* col =
       TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
   TRI_vocbase_t* vocbase = col->vocbase();
-  collectionName = col->name();
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
   
-  // Now start the transaction:
-  SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
-  if (!args[0]->IsArray()) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
-  }
+  std::string collectionName = col->name();
 
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
 
   VPackBuilder updateBuilder;
 
@@ -1703,7 +1691,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     if (!newVal->IsObject() || newVal->IsArray()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
+
     int res = V8ToVPackNoKeyRevId(isolate, updateBuilder, newVal);
+
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -1734,6 +1724,22 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   }
 
   VPackSlice const update = updateBuilder.slice();
+
+
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  
+  // Now start the transaction:
+  SingleCollectionTransaction trx(transactionContext, collectionName,
+                                  TRI_TRANSACTION_WRITE);
+  if (!args[0]->IsArray()) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
 
   OperationResult opResult;
   if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
@@ -2030,12 +2036,10 @@ static TRI_vocbase_col_t* GetCollectionFromArgument(
   // number
   if (val->IsNumber() || val->IsNumberObject()) {
     uint64_t cid = TRI_ObjectToUInt64(val, true);
-
     return TRI_LookupCollectionByIdVocBase(vocbase, cid);
   }
 
-  std::string const name = TRI_ObjectToString(val);
-  return TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+  return TRI_LookupCollectionByNameVocBase(vocbase, TRI_ObjectToString(val));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2143,7 +2147,7 @@ static void JS_InsertVocbaseCol(
   TRI_GET_GLOBALS();
 
   if (argLength < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("insert(<data>x, [, <options>i])");
+    TRI_V8_THROW_EXCEPTION_USAGE("insert(<data>, [, <options>])");
   }
 
   bool oldEdgeSignature = false;
@@ -2198,9 +2202,9 @@ static void JS_InsertVocbaseCol(
   VPackBuilder builder(&vpackOptions);
 
   auto doOneDocument = [&](v8::Handle<v8::Value> obj) -> void {
-  TIMER_START(JS_INSERT_V8_TO_VPACK2);
+    TIMER_START(JS_INSERT_V8_TO_VPACK2);
     int res = TRI_V8ToVPack(isolate, builder, obj, true);
-  TIMER_STOP(JS_INSERT_V8_TO_VPACK2);
+    TIMER_STOP(JS_INSERT_V8_TO_VPACK2);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -2212,13 +2216,13 @@ static void JS_InsertVocbaseCol(
       if (tmpId.empty()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
-      builder.add(Transaction::FromString, VPackValue(tmpId));
+      builder.add(StaticStrings::FromString, VPackValue(tmpId));
 
       tmpId = ExtractIdString(isolate, args[1]);
       if (tmpId.empty()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
-      builder.add(Transaction::ToString, VPackValue(tmpId));
+      builder.add(StaticStrings::ToString, VPackValue(tmpId));
     }
 
     builder.close();

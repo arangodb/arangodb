@@ -22,8 +22,7 @@ void NotifierThread::scheduleNotification(const std::string& endpoint) {
     _cv.signal();
   };
   
-  std::unique_ptr<std::map<std::string, std::string>> headerFields =
-    std::make_unique<std::map<std::string, std::string> >();
+  auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
   
   while (true) { 
     auto res = arangodb::ClusterComm::instance()->asyncRequest(

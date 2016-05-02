@@ -1831,8 +1831,8 @@ function indexNotFound (req, res, collection, index, headers) {
 }
 
 function arangoErrorToHttpCode(num) {
-  if (num === 0) {
-    num = arangodb.ERROR_INTERNAL;
+  if (!num) {
+    return exports.HTTP_SERVER_ERROR;
   }
 
   switch (num) {
@@ -1926,7 +1926,8 @@ function resultException (req, res, err, headers, verbose) {
       }
     }
 
-    code = arangoErrorToHttpCode(err.errorNum);
+    num = err.errorNum || arangodb.ERROR_INTERNAL;
+    code = arangoErrorToHttpCode(num);
   }
   else if (err instanceof TypeError) {
     num = arangodb.ERROR_TYPE_ERROR;

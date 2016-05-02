@@ -58,12 +58,14 @@ HttpHandler::~HttpHandler() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the queue name
+/// @brief returns the queue id
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t HttpHandler::queue() const {
+#if 0
+  // feature currently disabled because it is neither documented nor used
   bool found;
-  std::string const& queue = _request->header("x-arango-queue", found);
+  std::string const& queue = _request->header(StaticStrings::Queue, found);
 
   if (found) {
     uint32_t n = StringUtils::uint32(queue);
@@ -74,7 +76,7 @@ size_t HttpHandler::queue() const {
 
     return n + (Dispatcher::SYSTEM_QUEUE_SIZE - 1);
   }
-
+#endif
   return Dispatcher::STANDARD_QUEUE;
 }
 
@@ -134,6 +136,10 @@ HttpHandler::status_t HttpHandler::executeFull() {
 
   requestStatisticsAgentSetRequestStart();
 
+#ifdef USE_DEV_TIMERS
+  TRI_request_statistics_t::STATS = _statistics;
+#endif
+  
   try {
     prepareExecute();
 
@@ -185,6 +191,10 @@ HttpHandler::status_t HttpHandler::executeFull() {
 
   requestStatisticsAgentSetRequestEnd();
 
+#ifdef USE_DEV_TIMERS
+  TRI_request_statistics_t::STATS = nullptr;
+#endif
+  
   return status;
 }
 
@@ -232,10 +242,8 @@ HttpResponse* HttpHandler::stealResponse() {
 
 void HttpHandler::createResponse(GeneralResponse::ResponseCode code) {
   // avoid having multiple responses. this would be a memleak
-  if (_response != nullptr) {
-    delete _response;
-    _response = nullptr;
-  }
+  delete _response;
+  _response = nullptr;
 
   int32_t apiCompatibility;
 

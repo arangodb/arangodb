@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SimpleHttpResult.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 
 #include <velocypack/Parser.h>
@@ -45,8 +46,11 @@ SimpleHttpResult::SimpleHttpResult()
       _hasContentLength(false),
       _chunked(false),
       _deflated(false),
-      _resultBody(TRI_UNKNOWN_MEM_ZONE),
-      _requestResultType(UNKNOWN) {}
+      _resultBody(TRI_UNKNOWN_MEM_ZONE, false),
+      _requestResultType(UNKNOWN) {
+  
+  _resultBody.ensureNullTerminated();
+}
 
 SimpleHttpResult::~SimpleHttpResult() {}
 
@@ -65,6 +69,7 @@ void SimpleHttpResult::clear() {
   _requestResultType = UNKNOWN;
   _headerFields.clear();
   _resultBody.clear();
+  _resultBody.ensureNullTerminated();
 }
 
 StringBuffer& SimpleHttpResult::getBody() { return _resultBody; }
@@ -197,13 +202,7 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
     }
   }
 
-  auto result =
-      _headerFields.emplace(keyString, std::string(value, valueLength));
-
-  if (!result.second) {
-    // header already present
-    _headerFields[keyString] = std::string(value, valueLength);
-  }
+  _headerFields[std::move(keyString)] = std::string(value, valueLength);
 }
 
 std::string SimpleHttpResult::getHeaderField(std::string const& name,
@@ -224,7 +223,7 @@ bool SimpleHttpResult::hasHeaderField(std::string const& name) const {
 }
 
 bool SimpleHttpResult::isJson() const {
-  auto const& find = _headerFields.find("content-type");
+  auto const& find = _headerFields.find(StaticStrings::ContentTypeHeader);
 
   if (find == _headerFields.end()) {
     return false;

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8Traverser.h"
+#include "Basics/StaticStrings.h"
 #include "Indexes/EdgeIndex.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
@@ -93,7 +94,7 @@ static OperationResult FetchDocumentById(arangodb::Transaction* trx,
   trx->addCollectionAtRuntime(col);
   builder.clear();
   builder.openObject();
-  builder.add(VPackValue(Transaction::KeyString));
+  builder.add(VPackValue(StaticStrings::KeyString));
   builder.add(VPackValue(id.substr(pos + 1)));
   builder.close();
 
@@ -134,16 +135,16 @@ struct BasicExpander {
         edgeCursor->getMoreMptr(_cursor, UINT64_MAX);
         for (auto const& mptr : _cursor) {
           VPackSlice edge(mptr->vpack());
-          VPackSlice from = edge.get(Transaction::FromString);
+          VPackSlice from = Transaction::extractFromFromDocument(edge);
           if (from == v) {
-            VPackSlice to = edge.get(Transaction::ToString);
+            VPackSlice to = Transaction::extractToFromDocument(edge);
             if (to != v) {
-              res_edges.emplace_back(std::move(edge));
-              neighbors.emplace_back(std::move(to));
+              res_edges.emplace_back(edge);
+              neighbors.emplace_back(to);
             }
           } else {
-            res_edges.emplace_back(std::move(edge));
-            neighbors.emplace_back(std::move(from));
+            res_edges.emplace_back(edge);
+            neighbors.emplace_back(from);
           }
 
         }
@@ -284,8 +285,8 @@ class MultiCollectionEdgeExpander {
           if (!_isAllowed(edge)) {
             continue;
           }
-          VPackSlice from = edge.get(Transaction::FromString);
-          VPackSlice to = edge.get(Transaction::ToString);
+          VPackSlice from = Transaction::extractFromFromDocument(edge);
+          VPackSlice to = Transaction::extractToFromDocument(edge);
           double currentWeight = edgeCollection->weightEdge(edge);
           if (from == source) {
             inserter(from, to, currentWeight, edge);
@@ -350,13 +351,13 @@ class SimpleEdgeExpander {
       }
       VPackSlice edges = opRes->slice();
       for (auto const& edge : VPackArrayIterator(edges)) {
-        VPackSlice const from = edge.get(Transaction::FromString);
-        VPackSlice const to = edge.get(Transaction::ToString);
+        VPackSlice const from = Transaction::extractFromFromDocument(edge);
+        VPackSlice const to = Transaction::extractToFromDocument(edge);
         double currentWeight = _edgeCollection->weightEdge(edge);
         if (from == source) {
-          inserter(std::move(from), std::move(to), currentWeight, edge);
+          inserter(from, to, currentWeight, edge);
         } else {
-          inserter(std::move(to), std::move(from), currentWeight, edge);
+          inserter(to, from, currentWeight, edge);
         }
       }
     }
@@ -557,7 +558,7 @@ bool NeighborsOptions::matchesVertex(std::string const& id) const {
   std::string key = id.substr(pos + 1);
   VPackBuilder tmp;
   tmp.openObject();
-  tmp.add(Transaction::KeyString, VPackValue(key));
+  tmp.add(StaticStrings::KeyString, VPackValue(key));
   tmp.close();
   OperationOptions opOpts;
   OperationResult opRes = _trx->document(col, tmp.slice(), opOpts);
@@ -632,7 +633,7 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
 
     tmpBuilder.clear();
     tmpBuilder.openObject();
-    tmpBuilder.add(Transaction::KeyString, VPackValue(key));
+    tmpBuilder.add(StaticStrings::KeyString, VPackValue(key));
     tmpBuilder.close();
     OperationOptions opOpts;
     OperationResult opRes = opts.trx()->document(col, tmpBuilder.slice(), opOpts);
@@ -723,7 +724,7 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*> const& collectionI
         for (auto const& mptr : cursor) {
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
-            VPackSlice v = edge.get(Transaction::FromString);
+            VPackSlice v = Transaction::extractFromFromDocument(edge);
             if (visited.find(v) != visited.end()) {
               // We have already visited this vertex
               continue;
@@ -736,7 +737,7 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*> const& collectionI
             if (depth < opts.maxDepth) {
               nextDepth.emplace_back(v);
             }
-            visited.emplace(std::move(v));
+            visited.emplace(v);
           }
         }
       }
@@ -774,7 +775,7 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*> const& collection
         for (auto const& mptr : cursor) {
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
-            VPackSlice v = edge.get(Transaction::ToString);
+            VPackSlice v = Transaction::extractToFromDocument(edge);
             if (visited.find(v) != visited.end()) {
               // We have already visited this vertex
               continue;
@@ -826,7 +827,7 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*> const& collectionInfos
         for (auto const& mptr : cursor) {
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
-            VPackSlice v = edge.get(Transaction::ToString);
+            VPackSlice v = Transaction::extractToFromDocument(edge);
             if (visited.find(v) == visited.end()) {
               if (depth >= opts.minDepth) {
                 if (opts.matchesVertex(v)) {
@@ -839,7 +840,7 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*> const& collectionInfos
               visited.emplace(std::move(v));
               continue;
             }
-            v = edge.get(Transaction::FromString);
+            v = Transaction::extractFromFromDocument(edge);
             if (visited.find(v) == visited.end()) {
               if (depth >= opts.minDepth) {
                 if (opts.matchesVertex(v)) {
@@ -849,7 +850,7 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*> const& collectionInfos
               if (depth < opts.maxDepth) {
                 nextDepth.emplace_back(v);
               }
-              visited.emplace(std::move(v));
+              visited.emplace(v);
             }
           }
         }
@@ -1018,9 +1019,11 @@ void DepthFirstTraverser::_defInternalFunctions() {
     TRI_ASSERT(it != _edges.end());
     VPackSlice v(it->second->data());
     // NOTE: We assume that we only have valid edges.
-    result = v.get(Transaction::FromString).copyString();
+    result = Transaction::extractFromFromDocument(v).copyString();
+    // result = v.get(StaticStrings::FromString).copyString();
     if (result == vertex) {
-      result = v.get(Transaction::ToString).copyString();
+      result = Transaction::extractToFromDocument(v).copyString();
+      // result = v.get(StaticStrings::ToString).copyString();
     }
     return true;
   };

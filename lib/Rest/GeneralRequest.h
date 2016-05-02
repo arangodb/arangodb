@@ -27,7 +27,6 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/Dictionary.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -150,18 +149,18 @@ class GeneralRequest {
   // The key must be lowercase.
   std::string const& header(std::string const& key) const;
   std::string const& header(std::string const& key, bool& found) const;
-  std::map<std::string, std::string> const& headers() const { return _headers; }
+  std::unordered_map<std::string, std::string> const& headers() const { return _headers; }
   void setHeader(std::string const& key, std::string const& value) {
     _headers[key] = value;
   }
 
   std::string const& value(std::string const& key) const;
   std::string const& value(std::string const& key, bool& found) const;
-  std::map<std::string, std::string> values() const {
+  std::unordered_map<std::string, std::string> values() const {
     return _values;
   }
 
-  std::map<std::string, std::vector<std::string>> arrayValues() const {
+  std::unordered_map<std::string, std::vector<std::string>> arrayValues() const {
     return _arrayValues;
   }
   void setArrayValue(std::string const& key, std::string const& value);
@@ -191,9 +190,9 @@ class GeneralRequest {
   std::string _requestPath;
   std::string _prefix;
   std::vector<std::string> _suffix;
-  std::map<std::string, std::string> _headers;
-  std::map<std::string, std::string> _values;
-  std::map<std::string, std::vector<std::string>> _arrayValues;
+  std::unordered_map<std::string, std::string> _headers;
+  std::unordered_map<std::string, std::string> _values;
+  std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
 };
 }
 

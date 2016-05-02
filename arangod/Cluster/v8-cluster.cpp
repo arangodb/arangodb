@@ -1511,7 +1511,7 @@ static void PrepareClusterCommRequest(
     v8::FunctionCallbackInfo<v8::Value> const& args,
     arangodb::GeneralRequest::RequestType& reqType, std::string& destination,
     std::string& path, std::string& body,
-    std::map<std::string, std::string>& headerFields,
+    std::unordered_map<std::string, std::string>& headerFields,
     ClientTransactionID& clientTransactionID,
     CoordTransactionID& coordTransactionID, double& timeout,
     bool& singleRequest) {
@@ -1712,12 +1712,11 @@ static void Return_PrepareClusterCommResultForJS(
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("RECEIVED"));
       TRI_ASSERT(res.answer != nullptr);
-      std::map<std::string, std::string> headers = res.answer->headers();
+      std::unordered_map<std::string, std::string> headers = res.answer->headers();
       headers["content-length"] =
           StringUtils::itoa(res.answer->contentLength());
-      std::map<std::string, std::string>::iterator i;
-      for (i = headers.begin(); i != headers.end(); ++i) {
-        h->Set(TRI_V8_STD_STRING(i->first), TRI_V8_STD_STRING(i->second));
+      for (auto& it : headers) {
+        h->Set(TRI_V8_STD_STRING(it.first), TRI_V8_STD_STRING(it.second));
       }
       r->Set(TRI_V8_ASCII_STRING("headers"), h);
 
@@ -1766,8 +1765,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string destination;
   std::string path;
   auto body = std::make_shared<std::string>();
-  std::unique_ptr<std::map<std::string, std::string>> headerFields(
-      new std::map<std::string, std::string>());
+  auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
@@ -1829,8 +1827,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string destination;
   std::string path;
   std::string body;
-  std::unique_ptr<std::map<std::string, std::string>> headerFields(
-      new std::map<std::string, std::string>());
+  auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;

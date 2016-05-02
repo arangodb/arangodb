@@ -720,7 +720,7 @@ char* TRI_normalize_utf16_to_NFC(TRI_memory_zone_t* zone, uint16_t const* utf16,
   // normalize UChar (UTF-16)
   UChar* utf16Dest;
   bool mustFree;
-  char buffer[64];
+  char buffer[512];
 
   if (inLength < sizeof(buffer) / sizeof(UChar)) {
     // use a static buffer

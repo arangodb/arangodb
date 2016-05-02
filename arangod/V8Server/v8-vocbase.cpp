@@ -41,6 +41,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/Timers.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
@@ -558,7 +559,7 @@ static void JS_WaitCollectorWal(
   std::string const name = TRI_ObjectToString(args[0]);
 
   TRI_vocbase_col_t* col =
-      TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+      TRI_LookupCollectionByNameVocBase(vocbase, name);
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1709,7 +1710,7 @@ static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(Transaction::KeyString, VPackValue(parts[1]));
+  builder.add(StaticStrings::KeyString, VPackValue(parts[1]));
   builder.close();
 
   OperationResult opRes = trx->document(parts[0], builder.slice(), options);
@@ -2175,30 +2176,6 @@ static void JS_QueryShortestPath(
 
 static v8::Handle<v8::Value> VertexIdsToV8(v8::Isolate* isolate,
                                            ExplicitTransaction* trx,
-                                           std::vector<std::string> const& ids,
-                                           bool includeData = false) {
-  v8::EscapableHandleScope scope(isolate);
-  uint32_t const vn = static_cast<uint32_t>(ids.size());
-  v8::Handle<v8::Array> vertices =
-      v8::Array::New(isolate, static_cast<int>(vn));
-
-  uint32_t j = 0;
-  if (includeData) {
-    for (auto& it : ids) {
-      vertices->Set(j, VertexIdToData(isolate, trx, it));
-      ++j;
-    }
-  } else {
-    for (auto& it : ids) {
-      vertices->Set(j, TRI_V8_STD_STRING(it));
-      ++j;
-    }
-  }
-  return scope.Escape<v8::Value>(vertices);
-}
-
-static v8::Handle<v8::Value> VertexIdsToV8(v8::Isolate* isolate,
-                                           ExplicitTransaction* trx,
                                            std::vector<VPackSlice> const& ids,
                                            bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);
@@ -2644,7 +2621,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       }
     }
   } else {
-    collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
+    collection = TRI_LookupCollectionByNameVocBase(vocbase, std::string(key));
   }
 
   if (collection == nullptr) {
@@ -2842,7 +2819,7 @@ static void ListDatabasesCoordinator(
         ServerID sid = DBServers[0];
         ClusterComm* cc = ClusterComm::instance();
 
-        std::map<std::string, std::string> headers;
+        std::unordered_map<std::string, std::string> headers;
         headers["Authentication"] = TRI_ObjectToString(args[2]);
         auto res = cc->syncRequest(
             "", 0, "server:" + sid, arangodb::GeneralRequest::RequestType::GET,

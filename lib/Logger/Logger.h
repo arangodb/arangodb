@@ -142,10 +142,10 @@ class Logger {
   static LogTopic V8;
 
  public:
-  struct DURATION {
-    explicit DURATION(double duration, int precision = 6)
-        : _duration(duration), _precision(precision){};
-    double _duration;
+  struct FIXED {
+    explicit FIXED(double value, int precision = 6)
+        : _value(value), _precision(precision){};
+    double _value;
     int _precision;
   };
 

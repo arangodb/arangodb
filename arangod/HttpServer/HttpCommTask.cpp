@@ -43,7 +43,8 @@ using namespace arangodb::rest;
 
 size_t const HttpCommTask::MaximalHeaderSize = 1 * 1024 * 1024;       //   1 MB
 size_t const HttpCommTask::MaximalBodySize = 512 * 1024 * 1024;       // 512 MB
-size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 GB
+size_t const HttpCommTask::MaximalPipelineSize = 512 * 1024 * 1024;   // 512 MB
+size_t const HttpCommTask::RunCompactEvery = 500;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
@@ -83,14 +84,6 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
              << _connectionInfo.clientAddress << ", client port "
              << _connectionInfo.clientPort;
 
-  // release the statistics object we got from the socket task first
-  // this is required at the moment for proper statistics calculation
-  connectionStatisticsAgentSetHttp();
-  ConnectionStatisticsAgent::release();
-
-  // acquire a statistics entry and set the type to HTTP
-  ConnectionStatisticsAgent::acquire();
-  connectionStatisticsAgentSetStart();
   connectionStatisticsAgentSetHttp();
 }
 
@@ -144,10 +137,21 @@ bool HttpCommTask::processRead() {
 
   // still trying to read the header fields
   if (!_readRequestBody) {
+    char const* ptr = _readBuffer->c_str() + _readPosition;
+    char const* etr = _readBuffer->end();
+
+    if (ptr == etr) {
+      return false;
+    }
+
     // starting a new request
     if (_newRequest) {
       // acquire a new statistics entry for the request
       RequestStatisticsAgent::acquire();
+
+#if USE_DEV_TIMERS
+      RequestStatisticsAgent::_statistics->_id = (void*) this;
+#endif
 
       _newRequest = false;
       _startPosition = _readPosition;
@@ -160,8 +164,7 @@ bool HttpCommTask::processRead() {
       _sinceCompactification++;
     }
 
-    char const* ptr = _readBuffer->c_str() + _readPosition;
-    char const* end = _readBuffer->end() - 3;
+    char const* end = etr - 3;
 
     // read buffer contents are way to small. we can exit here directly
     if (ptr >= end) {
@@ -277,13 +280,13 @@ bool HttpCommTask::processRead() {
 
       // keep track of the original value of the "origin" request header (if
       // any), we need this value to handle CORS requests
-      _origin = _request->header("origin");
+      _origin = _request->header(StaticStrings::Origin);
 
       if (!_origin.empty()) {
         // check for Access-Control-Allow-Credentials header
         bool found;
         std::string const& allowCredentials =
-            _request->header("access-control-allow-credentials", found);
+            _request->header(StaticStrings::AccessControlAllowCredentials, found);
 
         if (found) {
           _denyCredentials = !StringUtils::boolean(allowCredentials);
@@ -386,7 +389,7 @@ bool HttpCommTask::processRead() {
       // check for a 100-continue
       if (_readRequestBody) {
         bool found;
-        std::string const& expect = _request->header("expect", found);
+        std::string const& expect = _request->header(StaticStrings::Expect, found);
 
         if (found && StringUtils::trim(expect) == "100-continue") {
           LOG(TRACE) << "received a 100-continue request";
@@ -394,6 +397,7 @@ bool HttpCommTask::processRead() {
           auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
           buffer->appendText(
               TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
+          buffer->ensureNullTerminated();
 
           _writeBuffers.push_back(buffer.get());
           buffer.release();
@@ -457,7 +461,7 @@ bool HttpCommTask::processRead() {
   // .............................................................................
 
   std::string connectionType =
-      StringUtils::tolower(_request->header("connection"));
+      StringUtils::tolower(_request->header(StaticStrings::Connection));
 
   if (connectionType == "close") {
     // client has sent an explicit "Connection: Close" header. we should close
@@ -539,11 +543,11 @@ bool HttpCommTask::processRead() {
     HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED,
                           compatibility);
     if (sendWwwAuthenticateHeader()) {
-      static std::string const realm =
+      std::string realm =
           "basic realm=\"" +
           _server->handlerFactory()->authenticationRealm(_request) + "\"";
 
-      response.setHeaderNC(StaticStrings::WwwAuthenticate, realm);
+      response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
     }
 
     clearRequest();
@@ -575,8 +579,9 @@ void HttpCommTask::sendChunk(StringBuffer* buffer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::finishedChunked() {
-  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, 6);
+  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, 6, true);
   buffer->appendText(TRI_CHAR_LENGTH_PAIR("0\r\n\r\n"));
+  buffer->ensureNullTerminated();
 
   _writeBuffers.push_back(buffer.get());
   buffer.release();
@@ -608,12 +613,8 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     // access-control-allow-origin header now
     LOG(TRACE) << "handling CORS response";
 
-    static std::string const exposedHeaders =
-        "etag, content-encoding, content-length, location, "
-        "server, x-arango-errors, x-arango-async-id";
-
     response->setHeaderNC(StaticStrings::AccessControlExposeHeaders,
-                          exposedHeaders);
+                          StaticStrings::ExposedCorsHeaders);
 
     // send back original value of "Origin" header
     response->setHeaderNC(StaticStrings::AccessControlAllowOrigin, _origin);
@@ -649,7 +650,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   // reserve a buffer with some spare capacity
   auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE,
-                                               responseBodyLength + 128);
+                                               responseBodyLength + 128, false);
 
   // write header
   response->writeHeader(buffer.get());
@@ -668,13 +669,15 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     }
   }
 
+  buffer->ensureNullTerminated();
+
   _writeBuffers.push_back(buffer.get());
   auto b = buffer.release();
 
   if (!b->empty()) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
         << "\"http-request-response\",\"" << (void*)this << "\",\""
-        << (StringUtils::escapeUnicode(std::string(b->c_str(), b->length())))
+        << StringUtils::escapeUnicode(std::string(b->c_str(), b->length()))
         << "\"";
   }
 
@@ -683,7 +686,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   double const totalTime = RequestStatisticsAgent::elapsedSinceReadStart();
 
-  _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
+  _writeBuffersStats.push_back(RequestStatisticsAgent::steal());
 
   LOG_TOPIC(INFO, Logger::REQUESTS)
       << "\"http-request-end\",\"" << (void*)this << "\",\""
@@ -692,7 +695,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
       << HttpRequest::translateVersion(_httpVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
       << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
-      << "\"," << Logger::DURATION(totalTime, 6);
+      << "\"," << Logger::FIXED(totalTime, 6);
 
   // start output
   fillWriteBuffer();
@@ -775,12 +778,9 @@ void HttpCommTask::fillWriteBuffer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::processCorsOptions(uint32_t compatibility) {
-  static std::string const allowedMethods =
-      "DELETE, GET, HEAD, PATCH, POST, PUT";
-
   HttpResponse response(GeneralResponse::ResponseCode::OK, compatibility);
 
-  response.setHeaderNC(StaticStrings::Allow, allowedMethods);
+  response.setHeaderNC(StaticStrings::Allow, StaticStrings::CorsMethods);
 
   if (!_origin.empty()) {
     LOG(TRACE) << "got CORS preflight request";
@@ -789,8 +789,7 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
 
     // send back which HTTP methods are allowed for the resource
     // we'll allow all
-    response.setHeaderNC(StaticStrings::AccessControlAllowMethods,
-                         allowedMethods);
+    response.setHeaderNC(StaticStrings::AccessControlAllowMethods, StaticStrings::CorsMethods);
 
     if (!allowHeaders.empty()) {
       // allow all extra headers the client requested
@@ -820,7 +819,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   // check for deflate
   bool found;
   std::string const& acceptEncoding =
-      _request->header("accept-encoding", found);
+      _request->header(StaticStrings::AcceptEncoding, found);
 
   if (found) {
     if (acceptEncoding.find("deflate") != std::string::npos) {
@@ -836,7 +835,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
       << "\"";
 
   // check for an async request
-  std::string const& asyncExecution = _request->header("x-arango-async", found);
+  std::string const& asyncExecution = _request->header(StaticStrings::Async, found);
 
   // create handler, this will take over the request
   WorkItem::uptr<HttpHandler> handler(
@@ -855,7 +854,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   }
 
   if (_request != nullptr) {
-    std::string body = _request->body();
+    std::string const& body = _request->body();
 
     if (!body.empty()) {
       LOG_TOPIC(DEBUG, Logger::REQUESTS)
@@ -868,7 +867,6 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
 
   // clear request object
   _request = nullptr;
-  RequestStatisticsAgent::transfer(handler.get());
 
   // async execution
   bool ok = false;
@@ -879,10 +877,10 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
 
     if (asyncExecution == "store") {
       // persist the responses
-      ok = _server->handleRequestAsync(handler, &jobId);
+      ok = _server->handleRequestAsync(this, handler, &jobId);
     } else {
       // don't persist the responses
-      ok = _server->handleRequestAsync(handler, nullptr);
+      ok = _server->handleRequestAsync(this, handler, nullptr);
     }
 
     if (ok) {
@@ -891,8 +889,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
 
       if (jobId > 0) {
         // return the job id we just created
-        static std::string const xArango = "x-arango-async-id";
-        response.setHeaderNC(xArango, StringUtils::itoa(jobId));
+        response.setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
 
       handleResponse(&response);
@@ -930,8 +927,6 @@ void HttpCommTask::clearRequest() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::resetState(bool close) {
-  size_t const COMPACT_EVERY = 500;
-
   if (close) {
     clearRequest();
 
@@ -946,7 +941,7 @@ void HttpCommTask::resetState(bool close) {
 
     bool compact = false;
 
-    if (_sinceCompactification > COMPACT_EVERY) {
+    if (_sinceCompactification > RunCompactEvery) {
       compact = true;
     } else if (_readBuffer->length() > MaximalPipelineSize) {
       compact = true;
@@ -959,6 +954,12 @@ void HttpCommTask::resetState(bool close) {
       _readPosition = 0;
     } else {
       _readPosition = _bodyPosition + _bodyLength;
+
+      if (_readPosition == _readBuffer->length()) {
+        _sinceCompactification = 0;
+        _readPosition = 0;
+        _readBuffer->reset();
+      }
     }
 
     _bodyPosition = 0;
@@ -975,7 +976,7 @@ void HttpCommTask::resetState(bool close) {
 
 bool HttpCommTask::sendWwwAuthenticateHeader() const {
   bool found;
-  _request->header("x-omit-www-authenticate", found);
+  _request->header(StaticStrings::OmitWwwAuthenticate, found);
 
   return !found;
 }
@@ -1022,7 +1023,7 @@ bool HttpCommTask::handleEvent(EventToken token, EventType events) {
 void HttpCommTask::signalTask(TaskData* data) {
   // data response
   if (data->_type == TaskData::TASK_DATA_RESPONSE) {
-    data->transfer(this);
+    data->RequestStatisticsAgent::transferTo(this);
     handleResponse(data->_response.get());
     processRead();
   }

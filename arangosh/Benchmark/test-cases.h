@@ -1530,7 +1530,7 @@ struct AqlV8Test : public BenchmarkOperation {
 
 static bool DeleteCollection(SimpleHttpClient* client,
                              std::string const& name) {
-  std::map<std::string, std::string> headerFields;
+  std::unordered_map<std::string, std::string> headerFields;
   SimpleHttpResult* result = nullptr;
 
   result = client->request(GeneralRequest::RequestType::DELETE_REQ,
@@ -1556,7 +1556,7 @@ static bool DeleteCollection(SimpleHttpClient* client,
 
 static bool CreateCollection(SimpleHttpClient* client, std::string const& name,
                              int const type) {
-  std::map<std::string, std::string> headerFields;
+  std::unordered_map<std::string, std::string> headerFields;
   SimpleHttpResult* result = nullptr;
 
   std::string payload =
@@ -1585,7 +1585,7 @@ static bool CreateCollection(SimpleHttpClient* client, std::string const& name,
 
 static bool CreateIndex(SimpleHttpClient* client, std::string const& name,
                         std::string const& type, std::string const& fields) {
-  std::map<std::string, std::string> headerFields;
+  std::unordered_map<std::string, std::string> headerFields;
   SimpleHttpResult* result = nullptr;
 
   std::string payload =
@@ -1615,7 +1615,7 @@ static bool CreateIndex(SimpleHttpClient* client, std::string const& name,
 static bool CreateDocument(SimpleHttpClient* client,
                            std::string const& collection,
                            std::string const& payload) {
-  std::map<std::string, std::string> headerFields;
+  std::unordered_map<std::string, std::string> headerFields;
   SimpleHttpResult* result = nullptr;
 
   result = client->request(GeneralRequest::RequestType::POST,

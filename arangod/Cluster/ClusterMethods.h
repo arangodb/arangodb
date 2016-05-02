@@ -51,7 +51,7 @@ struct OperationOptions;
 /// @brief creates a copy of all HTTP headers to forward
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, std::string> getForwardableRequestHeaders(
+std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
     arangodb::HttpRequest* request);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +120,7 @@ int deleteDocumentOnCoordinator(
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const slice, OperationOptions const& options,
-    std::unique_ptr<std::map<std::string, std::string>>& headers,
+    std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
@@ -158,7 +158,7 @@ int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     arangodb::velocypack::Slice const& slice,
     OperationOptions const& options, bool isPatch,
-    std::unique_ptr<std::map<std::string, std::string>>& headers,
+    std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);

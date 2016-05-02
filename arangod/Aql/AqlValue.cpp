@@ -57,7 +57,7 @@ uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
     case DOCVEC:
     case RANGE: { 
       VPackBuilder builder;
-      toVelocyPack(trx, builder);
+      toVelocyPack(trx, builder, false);
       // we must use the slow hash function here, because a value may have 
       // different representations in case its an array/object/number
       return builder.slice().normalizedHash();
@@ -532,7 +532,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
     TRI_ASSERT(left > 0);
 
     // iterate over all the object's attributes
-    for (auto const& it : VPackObjectIterator(s)) {
+    for (auto const& it : VPackObjectIterator(s, false)) {
       // check if we need to render this attribute
       auto it2 = attributes.find(it.key.copyString());
 
@@ -605,14 +605,18 @@ v8::Handle<v8::Value> AqlValue::toV8(
 
 /// @brief materializes a value into the builder
 void AqlValue::toVelocyPack(AqlTransaction* trx, 
-                            arangodb::velocypack::Builder& builder) const {
+                            arangodb::velocypack::Builder& builder,
+                            bool resolveExternals) const {
   switch (type()) {
     case VPACK_DOCUMENT: 
     case VPACK_POINTER: 
     case VPACK_INLINE: 
     case VPACK_EXTERNAL: {
-      // TODO: optionally resolve externals
-      builder.add(slice());
+      if (resolveExternals) {
+        arangodb::basics::VelocyPackHelper::SanitizeExternals(slice(), builder);
+      } else {
+        builder.add(slice());
+      }
       break;
     }
     case DOCVEC: {
@@ -620,8 +624,7 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
       for (auto const& it : *_data.docvec) {
         size_t const n = it->size();
         for (size_t i = 0; i < n; ++i) {
-          // TODO: optionally resolve externals
-          it->getValueReference(i, 0).toVelocyPack(trx, builder);
+          it->getValueReference(i, 0).toVelocyPack(trx, builder, resolveExternals);
         }
       }
       builder.close();
@@ -631,7 +634,6 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
       builder.openArray();
       size_t const n = _data.range->size();
       for (size_t i = 0; i < n; ++i) {
-        // TODO: optionally resolve externals
         builder.add(VPackValue(_data.range->at(i)));
       }
       builder.close();
@@ -641,7 +643,7 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
 }
 
 /// @brief materializes a value into the builder
-AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
+AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied, bool resolveExternals) const {
   switch (type()) {
     case VPACK_DOCUMENT: 
     case VPACK_POINTER: 
@@ -653,8 +655,7 @@ AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
     case DOCVEC: 
     case RANGE: {
       VPackBuilder builder;
-      // TODO: optionally resolve externals
-      toVelocyPack(trx, builder);
+      toVelocyPack(trx, builder, resolveExternals);
       hasCopied = true;
       return AqlValue(builder);
     }
@@ -792,7 +793,7 @@ AqlValue AqlValue::CreateFromBlocks(
       // only enumerate the registers that are left
       for (auto const& reg : registers) {
         builder.add(VPackValue(variableNames[reg]));
-        current->getValueReference(i, reg).toVelocyPack(trx, builder);
+        current->getValueReference(i, reg).toVelocyPack(trx, builder, false);
       }
 
       builder.close();
@@ -813,7 +814,7 @@ AqlValue AqlValue::CreateFromBlocks(
 
   for (auto const& current : src) {
     for (size_t i = 0; i < current->size(); ++i) {
-      current->getValueReference(i, expressionRegister).toVelocyPack(trx, builder);
+      current->getValueReference(i, expressionRegister).toVelocyPack(trx, builder, false);
     }
   }
 
@@ -834,10 +835,10 @@ int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
     if (leftType == RANGE || rightType == RANGE || leftType == DOCVEC || rightType == DOCVEC) {
       // range|docvec against x
       VPackBuilder leftBuilder;
-      left.toVelocyPack(trx, leftBuilder);
+      left.toVelocyPack(trx, leftBuilder, false);
 
       VPackBuilder rightBuilder;
-      right.toVelocyPack(trx, rightBuilder);
+      right.toVelocyPack(trx, rightBuilder, false);
     
       return arangodb::basics::VelocyPackHelper::compare(leftBuilder.slice(), rightBuilder.slice(), compareUtf8, options);
     }

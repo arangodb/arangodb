@@ -13,6 +13,7 @@
       "click li": "switchTab",
       "click .arangodbLogo": "selectMenuItem",
       "mouseenter .dropdown > *": "showDropdown",
+      'click .shortcut-icons p' : 'showShortcutModal',
       "mouseleave .dropdown": "hideDropdown"
     },
 
@@ -46,6 +47,10 @@
       Backbone.history.on("all", function () {
         self.selectMenuItem();
       });
+    },
+
+    showShortcutModal: function() {
+      arangoHelper.hotkeysFunctions.showHotkeysModal();
     },
 
     handleSelectDatabase: function () {

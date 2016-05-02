@@ -39,9 +39,13 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
+ 
+  // database and collection names 
+  static std::string const SystemDatabase;
 
   // HTTP headers
   static std::string const Accept;
+  static std::string const AcceptEncoding;
   static std::string const AccessControlAllowCredentials;
   static std::string const AccessControlAllowHeaders;
   static std::string const AccessControlAllowMethods;
@@ -50,16 +54,30 @@ class StaticStrings {
   static std::string const AccessControlMaxAge;
   static std::string const AccessControlRequestHeaders;
   static std::string const Allow;
+  static std::string const Async;
+  static std::string const AsyncId;
+  static std::string const Authorization;
   static std::string const Close;
   static std::string const Connection;
   static std::string const ContentTypeHeader;
+  static std::string const Coordinator;
+  static std::string const CorsMethods;
+  static std::string const ErrorCodes;
+  static std::string const Etag;
+  static std::string const Expect;
+  static std::string const ExposedCorsHeaders;
   static std::string const KeepAlive;
   static std::string const Location;
+  static std::string const OmitWwwAuthenticate;
+  static std::string const Origin;
+  static std::string const Queue;
+  static std::string const Server;
   static std::string const WwwAuthenticate;
 
   // mime types
-  static std::string const MimeTypeVPack;
   static std::string const MimeTypeJson;
+  static std::string const MimeTypeText;
+  static std::string const MimeTypeVPack;
 };
 }
 

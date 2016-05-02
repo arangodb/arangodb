@@ -107,7 +107,7 @@ void IndexBlock::executeExpressions() {
     AstNode* evaluatedNode = nullptr;
     
     AqlValueMaterializer materializer(_trx); 
-    VPackSlice slice = materializer.slice(a);
+    VPackSlice slice = materializer.slice(a, false);
     evaluatedNode = ast->nodeFromVPack(slice, true);
 
     _condition->getMember(toReplace->orMember)
