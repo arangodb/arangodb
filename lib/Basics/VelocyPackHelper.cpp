@@ -32,6 +32,7 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
+#include "Basics/xxhash.h"
 
 #include <velocypack/AttributeTranslator.h>
 #include <velocypack/velocypack-common.h>
@@ -40,6 +41,10 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+extern "C" {
+  unsigned long long XXH64 (const void* input, size_t length, unsigned long long seed);
+}
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
@@ -161,16 +166,15 @@ size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
 
 size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) const {
   auto const h = slice.head();
-  VPackValueLength l;
+  size_t l;
   if (h == 0xbf) {
     // long UTF-8 String
-    l = static_cast<VPackValueLength>(
+    l = static_cast<size_t>(
         1 + 8 + velocypack::readInteger<VPackValueLength>(slice.begin() + 1, 8));
   } else {
-    l = static_cast<VPackValueLength>(1 + h - 0x40);
+    l = static_cast<size_t>(1 + h - 0x40);
   }
-  return velocypack::fasthash64(slice.start(), velocypack::checkOverflow(l),
-                                0xdeadbeef);
+  return XXH64(slice.start(), l, 0xdeadbeef);
 };
 
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
@@ -200,8 +204,7 @@ bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs, VPack
       return false;
     }
   }
-  return (memcmp(lhs.start(), rhs.start(),
-                 arangodb::velocypack::checkOverflow(size)) == 0);
+  return (memcmp(lhs.start(), rhs.start(), static_cast<size_t>(size)) == 0);
 };
 
 static int TypeWeight(VPackSlice const& slice) {

@@ -27,12 +27,12 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackDumper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 
-#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
@@ -176,9 +176,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      arangodb::basics::VPackStringBufferAdapter bufferAdapter(
-          _response->body().stringBuffer());
-      VPackDumper dumper(&bufferAdapter, queryResult.context->getVPackOptions());
+      arangodb::basics::VelocyPackDumper dumper(&(_response->body()), queryResult.context->getVPackOptions());
       dumper.dump(result.slice());
       return;
     }

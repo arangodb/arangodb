@@ -640,7 +640,11 @@ class Slice {
         }
 
         VELOCYPACK_ASSERT(h <= 0x12);
-        return readInteger<ValueLength>(_start + 1, WidthMap[h]);
+        if (h <= 0x14) {
+          return readInteger<ValueLength>(_start + 1, WidthMap[h]);
+        }
+        // fallthrough to exception
+        break;
       }
 
       case ValueType::String: {

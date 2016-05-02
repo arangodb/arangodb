@@ -48,7 +48,7 @@ class ArrayIterator {
       throw Exception(Exception::InvalidValueType, "Expecting Array slice");
     }
       
-    if (slice.length() > 0) {
+    if (_size > 0) {
       auto h = slice.head();
       if (h == 0x13) {
         _current = slice.at(0).start();
@@ -162,7 +162,7 @@ class ObjectIterator {
       throw Exception(Exception::InvalidValueType, "Expecting Object slice");
     }
 
-    if (slice.length() > 0) {
+    if (_size > 0) {
       auto h = slice.head();
       if (h == 0x14) {
         _current = slice.keyAt(0, false).start();
