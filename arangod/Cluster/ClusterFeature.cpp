@@ -371,8 +371,6 @@ void ClusterFeature::start() {
       std::map<std::string, AgencyCommResultEntry>::const_iterator it =
           result._values.begin();
 
-      LOG(INFO) << result._body;
-
       if (it != result._values.end()) {
         LOG(INFO) << (*it).second._vpack->slice().toJson();
 

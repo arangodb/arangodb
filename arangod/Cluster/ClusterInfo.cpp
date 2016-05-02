@@ -412,7 +412,6 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
 std::vector<DatabaseID> ClusterInfo::listDatabases(bool reload) {
   std::vector<DatabaseID> result;
 
-  
   if (reload || !_plannedDatabasesProt.isValid ||
       !_currentDatabasesProt.isValid || !_DBServersProt.isValid) {
     loadPlannedDatabases();
@@ -449,7 +448,6 @@ std::vector<DatabaseID> ClusterInfo::listDatabases(bool reload) {
       ++it;
     }
   }
-
   return result;
 }
 
@@ -502,7 +500,7 @@ void ClusterInfo::loadPlannedDatabases() {
       result._vpack->slice()[0]
       .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
       .get("Plan").get("Databases");
-    
+
     decltype(_plannedDatabases) newDatabases;
 
     for (auto const& database : VPackObjectIterator(databases)) {
@@ -593,11 +591,12 @@ void ClusterInfo::loadCurrentDatabases() {
       result._vpack->slice()[0]
       .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
       .get("Current").get("Databases");
-    
+
+
     decltype(_currentDatabases) newDatabases;
 
     for (auto const& dbase : VPackObjectIterator(databases)) {
-      
+
       std::string const database = dbase.key.copyString();
 
       // _currentDatabases is
@@ -612,10 +611,11 @@ void ClusterInfo::loadCurrentDatabases() {
 
       // TODO: _plannedDatabases need to be moved to velocypack
       // Than this can be merged to swap
-      TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson(
-        dbase.value);
-      
-      (*it2).second.insert(std::make_pair(database, json));
+      for (auto const& server : VPackObjectIterator(dbase.value)) {
+        TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson(
+          server.value);
+        (*it2).second.insert(std::make_pair(server.key.copyString(), json));
+      }
 
     }
 
@@ -998,7 +998,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
                                            VPackSlice const& slice,
                                            std::string& errorMsg,
                                            double timeout) {
-  
+
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1041,20 +1041,34 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
 
   std::string where = "Current/Databases/" + name;
   while (TRI_microtime() <= endTime) {
+
+    std::cout << __LINE__ << name << std::endl;
+    
     res.clear();
 
     res = ac.getValues(where, true);
-    if (res.successful() && res.parse(where + "/", false)) {
-      if (res._values.size() == DBServers.size()) {
+
+    if (res.successful()) {// && res.parse(where + "/", false)) {
+
+      VPackSlice adbservers =
+        res._vpack->slice()[0]
+        .get(AgencyComm::prefixStripped()).get("Current")
+        .get("Databases").get(name);
+      
+      VPackObjectIterator dbs(adbservers);
+      
+      if (dbs.size() == DBServers.size()) {
         std::map<std::string, AgencyCommResultEntry>::iterator it;
         std::string tmpMsg = "";
         bool tmpHaveError = false;
-        for (it = res._values.begin(); it != res._values.end(); ++it) {
-          VPackSlice slice = (*it).second._vpack->slice();
+        //for (it = res._values.begin(); it != res._values.end(); ++it) {
+        for (auto const& dbserver : dbs) {
+          VPackSlice slice = dbserver.value;
+          
           if (arangodb::basics::VelocyPackHelper::getBooleanValue(
-                  slice, "error", false)) {
+                slice, "error", false)) {
             tmpHaveError = true;
-            tmpMsg += " DBServer:" + it->first + ":";
+            tmpMsg += " DBServer:" + dbserver.key.copyString() + ":";
             tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(
                 slice, "errorMessage", "");
             if (slice.hasKey("errorNum")) {
@@ -1090,6 +1104,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
       DBServers = getCurrentDBServers();
       count = 0;
     }
+
   }
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
