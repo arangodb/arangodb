@@ -1,8 +1,9 @@
 # JSHint, A Static Code Analysis Tool for JavaScript
 
-\[ [Use it online](http://jshint.com/) • [About](http://jshint.com/about/) •
+\[ [Use it online](http://jshint.com/) •
 [Docs](http://jshint.com/docs/) • [FAQ](http://jshint.com/docs/faq) •
-[Install](http://jshint.com/install/) • [Hack](http://jshint.com/hack/) •
+[Install](http://jshint.com/install/) •
+[Contribute](http://jshint.com/contribute/) •
 [Blog](http://jshint.com/blog/) • [Twitter](https://twitter.com/jshint/) \]
 
 [![NPM version](https://img.shields.io/npm/v/jshint.svg?style=flat)](https://www.npmjs.com/package/jshint)
@@ -12,10 +13,33 @@
 [![devDependency Status](https://img.shields.io/david/dev/jshint/jshint.svg?style=flat)](https://david-dm.org/jshint/jshint#info=devDependencies)
 [![Coverage Status](https://img.shields.io/coveralls/jshint/jshint.svg?style=flat)](https://coveralls.io/r/jshint/jshint?branch=master)
 
-JSHint is a community-driven tool to detect errors and potential problems
-in JavaScript code. It is very flexible so you can easily adjust it to your
-particular coding guidelines and the environment you expect your code to
-execute in.
+JSHint is a community-driven tool to detect errors and potential problems in
+JavaScript code and to enforce your team's coding conventions. It is very
+flexible so you can easily adjust it to your particular coding guidelines and
+the environment you expect your code to execute in. JSHint is open source and
+will always stay this way.
+
+## Our goal
+
+The goal of this project is to help JavaScript developers write complex programs
+without worrying about typos and language gotchas.
+
+Any code base eventually becomes huge at some point, and simple mistakes—that
+would not show themselves when written—can become show stoppers and waste
+hours of debugging. And this is when static code analysis tools come into play
+and help developers to spot such problems. JSHint scans a program written in
+JavaScript and reports about commonly made mistakes and potential bugs. The
+potential problem could be a syntax error, a bug due to implicit type
+conversion, a leaking variable or something else.
+
+Only 15% of all programs linted on [jshint.com](http://jshint.com) pass the
+JSHint checks. In all other cases, JSHint finds some red flags that could've
+been bugs or potential problems.
+
+Please note, that while static code analysis tools can spot many different kind
+of mistakes, it can't detect if your program is correct, fast or has memory
+leaks. You should always combine tools like JSHint with unit and functional
+tests as well as with code reviews.
 
 ## Reporting a bug
 
@@ -31,25 +55,56 @@ JSHint including but not limited to:
 Before reporting a bug look around to see if there are any open or closed tickets
 that cover your issue. And remember the wisdom: pull request > bug report > tweet.
 
-## Issue Priority
+## Who uses JSHint?
 
-- *P1:* Something is throwing exceptions; broken JSHint backward compatibility.
-- *P2:* Something is not being parsed correctly.
-- *P3:* Features that the core team will work on once P2s and P1s are done.
-- *P4:* Patches welcome; The request is good, but low priority.
+Engineers from these companies and projects use JSHint:
 
+* [Mozilla](https://www.mozilla.org/)
+* [Wikipedia](https://wikipedia.org/)
+* [Facebook](https://facebook.com/)
+* [Twitter](https://twitter.com/)
+* [Bootstrap](http://getbootstrap.com/)
+* [Disqus](https://disqus.com/)
+* [Medium](https://medium.com/)
+* [Yahoo!](https://yahoo.com/)
+* [SmugMug](http://smugmug.com/)
+* [jQuery](http://jquery.com/)
+* [PDF.js](http://mozilla.github.io/pdf.js)
+* [Coursera](http://coursera.com/)
+* [Adobe Brackets](http://brackets.io/)
+* [Apache Cordova](http://cordova.io/)
+* [RedHat](http://redhat.com/)
+* [SoundCloud](http://soundcloud.com/)
+* [Nodejitsu](http://nodejitsu.com/)
+* [Yelp](https://yelp.com/)
+* [Voxer](http://voxer.com/)
+* [EnyoJS](http://enyojs.com/)
+* [QuickenLoans](http://quickenloans.com/)
+* [oDesk](http://www.odesk.com/)
+* [Cloud9](http://c9.io/)
+* [CodeClimate](https://codeclimate.com/)
+* [Pandoo TEK](http://pandootek.com/)
+* [Zendesk](http://zendesk.com/)
+* [Apache CouchDB](http://couchdb.apache.org/)
+
+And many more!
 
 ## License
 
-JSHint is distributed under the MIT License. One file and one file only
-(src/stable/jshint.js) is distributed under the slightly modified MIT License.
+Most files are published using [the standard MIT Expat
+license](https://www.gnu.org/licenses/license-list.html#Expat). One file,
+however, is provided under a slightly modified version of that license. The
+so-called [JSON license](https://www.gnu.org/licenses/license-list.html#JSON)
+is a non-free license, and unfortunately, we can't change it due to historical
+reasons. This license is included as an in-line within the file it concerns.
 
 ## The JSHint Team
 
-JSHint is maintained by [Rick Waldron](https://github.com/rwaldron/), [Caitlin
-Potter](https://github.com/caitp/), [Mike
-Sherov](https://github.com/mikesherov/), and [Mike
-Pennisi](https://github.com/jugglinmike/).
+JSHint is currently maintained by [Rick Waldron](https://github.com/rwaldron/),
+[Caitlin Potter](https://github.com/caitp/), [Mike
+Sherov](https://github.com/mikesherov/), [Mike
+Pennisi](https://github.com/jugglinmike/), and [Luke
+Page](https://github.com/lukeapage).
 
 ## Thank you!
 

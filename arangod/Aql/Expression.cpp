@@ -1306,24 +1306,19 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
 
   mustDestroy = false;
 
-  if (lhs.isObject() || rhs.isObject()) {
-    TRI_ASSERT(!mustDestroy);
-    return AqlValue(VelocyPackHelper::NullValue());
-  }
-
   bool failed = false;
-  double const l = lhs.toDouble(failed);
+  double l = lhs.toDouble(failed);
 
   if (failed) {
     TRI_ASSERT(!mustDestroy);
-    return AqlValue(VelocyPackHelper::NullValue());
+    l = 0.0;
   }
 
-  double const r = rhs.toDouble(failed);
+  double r = rhs.toDouble(failed);
 
   if (failed) {
     TRI_ASSERT(!mustDestroy);
-    return AqlValue(VelocyPackHelper::NullValue());
+    r = 0.0;
   }
 
   if (r == 0.0 &&
@@ -1331,11 +1326,9 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
        node->type == NODE_TYPE_OPERATOR_BINARY_MOD)) {
     TRI_ASSERT(!mustDestroy);
     RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-    return AqlValue(VelocyPackHelper::NullValue());
+    return AqlValue(VelocyPackHelper::ZeroValue());
   }
 
-  VPackBuilder builder;
-  mustDestroy = true; // builder = dynamic data
   double result;
 
   switch (node->type) {
@@ -1356,16 +1349,17 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
       break;
     default:
       mustDestroy = false;
-      return AqlValue(VelocyPackHelper::NullValue());
+      return AqlValue(VelocyPackHelper::ZeroValue());
   }
       
   if (std::isnan(result) || !std::isfinite(result) || result == HUGE_VAL || result == -HUGE_VAL) {
     // convert NaN, +inf & -inf to 0
     mustDestroy = false;
-    builder.add(VPackValue(0.0));
-    return AqlValue(builder); 
+    return AqlValue(VelocyPackHelper::ZeroValue());
   }
 
+  VPackBuilder builder;
+  mustDestroy = true; // builder = dynamic data
   builder.add(VPackValue(result));
   return AqlValue(builder);
 }

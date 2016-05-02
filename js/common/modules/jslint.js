@@ -55,7 +55,6 @@ function RunTest(path, options) {
   }
 
   var result = {};
-  content = content.replace("/*jslint", "/*xxxxxx");
   result["passed"] = JSHINT(content, Object.assign({}, jshintrc, options));
 
   if (JSHINT.errors) {
@@ -88,17 +87,14 @@ function RunCommandLineTests(options) {
             continue;
           }
 
-          var position = file + ":" + err.line + ", " + err.character;
-          var reason = err.reason;
-
-          console.error("jslint: %s : %s", position, reason);
+          console.error(`jslint: ${file}:${err.line},${err.character} ${err.reason} (${err.code})`);
         }
       } else {
-        console.info("jslint: %s passed", file);
+        console.log(`jslint: ${file} passed`);
       }
     } catch (err) {
-      print("cannot run test file '" + file + "': " + err);
-      print(err.stack);
+      console.log(`cannot run test file "${file}": ${err}`);
+      console.log(err.stack);
       result = false;
     }
   }

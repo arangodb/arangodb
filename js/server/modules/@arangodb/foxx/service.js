@@ -486,7 +486,7 @@ function createDependencies(definitions, options) {
           return null;
         }
         const FoxxManager = require('@arangodb/foxx/manager');
-        return FoxxManager.requireApp('/' + mount.replace(/(^\/+|\/+$)/, ''));
+        return FoxxManager.requireService('/' + mount.replace(/(^\/+|\/+$)/, ''));
       }
     });
   });
