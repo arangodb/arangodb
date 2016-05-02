@@ -1112,6 +1112,54 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
   }
 }
 
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return one  document from a collection, fast path
+///        If everything went well the result will contain the found document
+///        (as an external on single_server)  and this function will return TRI_ERROR_NO_ERROR.
+///        If there was an error the code is returned and it is guaranteed
+///        that result remains unmodified.
+///        Does not care for revision handling!
+//////////////////////////////////////////////////////////////////////////////
+
+int Transaction::documentFastPath(std::string const& collectionName,
+                                  VPackSlice const value,
+                                  VPackBuilder& result) {
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+  if (!value.isObject()) {
+    // must provide a document object
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  if (ServerState::isCoordinator(_serverRole)) {
+    OperationOptions options; // use default configuration
+    OperationResult opRes = documentCoordinator(collectionName, value, options);
+    if (opRes.failed()) {
+      return opRes.code;
+    }
+    result.add(opRes.slice());
+  }
+
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+
+  orderDitch(cid); // will throw when it fails
+
+  std::string key(Transaction::extractKeyPart(value));
+  if (key.empty()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+
+  TRI_doc_mptr_t mptr;
+  int res = document->read(this, key, &mptr, !isLocked(document, TRI_TRANSACTION_READ));
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+  TRI_ASSERT(mptr.vpack() != nullptr);
+  result.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
+  return TRI_ERROR_NO_ERROR;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return one or multiple documents from a collection
 //////////////////////////////////////////////////////////////////////////////
