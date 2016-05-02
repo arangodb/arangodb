@@ -23,6 +23,7 @@
 
 #include "HttpHandlerFactory.h"
 
+#include "Cluster/ServerState.h"
 #include "HttpServer/HttpHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
@@ -157,12 +158,21 @@ HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
 HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
   static std::string const ROOT_PATH = "/";
 
-  if (MaintenanceMode) {
+  std::string const& path = request->requestPath();
+
+  // In the bootstrap phase, we would like that coordinators answer the 
+  // following to endpoints, but not yet others:
+  if (MaintenanceMode &&
+      (!ServerState::instance()->isCoordinator() ||
+       (path != "/_api/shard-comm" && 
+        path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+        path.find("/_api/aql") == std::string::npos))) { 
+    LOG(DEBUG) << "Maintenance mode: refused path: "
+               << path;
     return new MaintenanceHandler(request);
   }
 
   std::unordered_map<std::string, create_fptr> const& ii = _constructors;
-  std::string const& path = request->requestPath();
   std::string const* modifiedPath = &path;
   std::string prefix;
 

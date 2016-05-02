@@ -26,6 +26,7 @@
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "HttpServer/HttpHandlerFactory.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -141,6 +142,8 @@ void BootstrapFeature::start() {
     V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
   }
 
+  // Start service properly:
+  arangodb::rest::HttpHandlerFactory::setMaintenance(false);
   LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
 }

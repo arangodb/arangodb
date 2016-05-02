@@ -215,9 +215,6 @@ void RestServerFeature::start() {
     server->startListening();
   }
 
-  // disabled maintenance mode
-  HttpHandlerFactory::setMaintenance(false);
-
   LOG(INFO) << "Authentication is turned " << (_authentication ? "on" : "off");
 
   if (_authentication) {

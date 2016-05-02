@@ -1,0 +1,19 @@
+!CHAPTER Documents
+
+This is an introduction to ArangoDB's interface for working with
+documents from the JavaScript shell *arangosh* or in JavaScript code in
+the server. For other languages see the corresponding language API.
+
+We begin with a
+
+  - [section on the basic approach](DocumentAddress.md)
+
+before we proceed with
+
+  - [the detailed API description for collection objects](DocumentMethods.md)
+
+and then
+
+  - [the detailed API description for database objects](DatabaseMethods.md)
+
+

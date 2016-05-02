@@ -26,6 +26,26 @@ body {
   .centralRow {
     position: relative;
   }
+
+  .loadingScreen {
+    background-color: $c-white;
+    bottom: 0;
+    left: 0;
+    padding-top: 100px;
+    position: absolute;
+    right: 0;
+    top: 102px;
+    z-index: 100;
+
+    span {
+      display: inline-block;
+      margin-top: 10px;
+      text-align: center;
+      width: 100%;
+    }
+
+    i {
+      width: 100%;
+    }
+  }
 }
-
-
