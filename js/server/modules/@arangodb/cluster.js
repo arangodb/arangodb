@@ -393,11 +393,10 @@ function createLocalDatabases (plannedDatabases, writeLocked) {
           payload.errorNum = err.errorNum;
           payload.errorMessage = err.errorMessage;
         }
+        writeLocked({ part: "Current" },
+                    createDatabaseAgency,
+                    [ payload ]);
       }
-
-      writeLocked({ part: "Current" },
-                  createDatabaseAgency,
-                  [ payload ]);
     }
   }
 }
@@ -1453,7 +1452,6 @@ var handlePlanChange = function () {
     console.error("error stack: %s", err.stack);
     console.error("plan change handling failed");
   }
-
   return versions;
 };
 
