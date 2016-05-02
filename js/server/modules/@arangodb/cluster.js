@@ -396,7 +396,7 @@ function createLocalDatabases (plannedDatabases, currentDatabases, writeLocked) 
         writeLocked({ part: "Current" },
                     createDatabaseAgency,
                     [ payload ]);
-      } else if (typeof currentDatabases[name] != 'object' || !currentDatabases[name].hasOwnProperty(ourselves)) {
+      } else if (typeof currentDatabases[name] !== 'object' || !currentDatabases[name].hasOwnProperty(ourselves)) {
         // mop: ok during cluster startup we have this buggy situation where a dbserver
         // has a database but has not yet announced it to the agency :S
         writeLocked({ part: "Current" },
