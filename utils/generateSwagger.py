@@ -1010,7 +1010,12 @@ def example_arangosh_run(cargo, r=Regexen()):
     exampleHeader = brTrim(operation['x-examples'][currentExample]).strip()
 
     # new examples code TODO should include for each example own object in json file
-    examplefile = open(os.path.join(os.path.dirname(__file__), '../Documentation/Examples/' + parameters(last) + '.generated'))
+    fn = os.path.join(os.path.dirname(__file__), '../Examples/' + parameters(last) + '.generated')
+    try:
+        examplefile = open(fn)
+    except:
+        print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
+        raise
     operation['x-examples'][currentExample]= '<details><summary>Example: ' + exampleHeader.strip('\n ') + '</summary><br><br><pre><code class="json">'
 
     for line in examplefile.readlines():
@@ -1225,15 +1230,25 @@ files = {}
 #  "structure" : [ "js/actions/api-structure.js" ],
 
 for chapter in os.listdir(topdir):
+    if not os.path.isdir(os.path.join(topdir, chapter)) or chapter[0] == ".":
+        continue
     files[chapter] = []
-    for oneFile in os.listdir(topdir + "/" + chapter):
-        files[chapter].append(topdir + "/" + chapter + '/' + oneFile)
+    curPath = os.path.join(topdir, chapter)
+    for oneFile in os.listdir(curPath):
+        curPath2 = os.path.join(curPath, oneFile)
+        if os.path.isfile(curPath2) and oneFile[0] != "." and oneFile.endswith(".md"):
+            files[chapter].append(os.path.join(topdir, chapter, oneFile))
 
 for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
     currentTag = name
     for fn in filenames:
+        thisfn = fn
         infile = open(fn)
-        getOneApi(infile, name + " - " + ', '.join(filenames))
+        try:
+            getOneApi(infile, name + " - " + ', '.join(filenames))
+        except Exception as x:
+            print >> sys.stderr, "\nwhile parsing file: '%s' error: %s" % (thisfn, x)
+            raise
         infile.close()
         currentDocuBlock = None
         lastDocuBlock = None
