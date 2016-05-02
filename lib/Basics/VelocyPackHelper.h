@@ -267,6 +267,10 @@ class VelocyPackHelper {
     }
     return arangodb::velocypack::Slice::falseSlice();
   }
+  
+  static inline arangodb::velocypack::Slice ZeroValue() {
+    return arangodb::velocypack::Slice::zeroSlice();
+  }
 
   static inline arangodb::velocypack::Slice EmptyArrayValue() {
     return arangodb::velocypack::Slice::emptyArraySlice();

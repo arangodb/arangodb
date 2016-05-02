@@ -112,17 +112,17 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual([ 0 ], getQueryResults("RETURN +null"));
       assertEqual([ 1 ], getQueryResults("RETURN +true"));
       assertEqual([ 0 ], getQueryResults("RETURN +false"));
-      assertEqual([ null ], getQueryResults("RETURN +\"value\""));
+      assertEqual([ 0 ], getQueryResults("RETURN +\"value\""));
       assertEqual([ 1 ], getQueryResults("RETURN +\"1\""));
       assertEqual([ -3 ], getQueryResults("RETURN +\"-3\""));
       assertEqual([ -3.4 ], getQueryResults("RETURN +\"-3.4\""));
       assertEqual([ 0 ], getQueryResults("RETURN +[ ]"));
       assertEqual([ 0 ], getQueryResults("RETURN +[ 0 ]"));
       assertEqual([ -34 ], getQueryResults("RETURN +[ -34 ]"));
-      assertEqual([ null ], getQueryResults("RETURN +[ 1, 2 ]"));
-      assertEqual([ null ], getQueryResults("RETURN +[ \"abc\" ]"));
+      assertEqual([ 0 ], getQueryResults("RETURN +[ 1, 2 ]"));
+      assertEqual([ 0 ], getQueryResults("RETURN +[ \"abc\" ]"));
       assertEqual([ 3 ], getQueryResults("RETURN +[ \"3\" ]"));
-      assertEqual([ null ], getQueryResults("RETURN +{ }"));
+      assertEqual([ 0 ], getQueryResults("RETURN +{ }"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,17 +183,17 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual([ 0 ], getQueryResults("RETURN -null"));
       assertEqual([ -1 ], getQueryResults("RETURN -true"));
       assertEqual([ 0 ], getQueryResults("RETURN -false"));
-      assertEqual([ null ], getQueryResults("RETURN -\"value\""));
+      assertEqual([ 0 ], getQueryResults("RETURN -\"value\""));
       assertEqual([ -1 ], getQueryResults("RETURN -\"1\""));
       assertEqual([ 3 ], getQueryResults("RETURN -\"-3\""));
       assertEqual([ 3.5 ], getQueryResults("RETURN -\"-3.5\""));
       assertEqual([ 0 ], getQueryResults("RETURN -[ ]"));
       assertEqual([ 0 ], getQueryResults("RETURN -[ 0 ]"));
       assertEqual([ 34 ], getQueryResults("RETURN -[ -34 ]"));
-      assertEqual([ null ], getQueryResults("RETURN -[ 1, 2 ]"));
-      assertEqual([ null ], getQueryResults("RETURN -[ \"abc\" ]"));
+      assertEqual([ 0 ], getQueryResults("RETURN -[ 1, 2 ]"));
+      assertEqual([ 0 ], getQueryResults("RETURN -[ \"abc\" ]"));
       assertEqual([ -3 ], getQueryResults("RETURN -[ \"3\" ]"));
-      assertEqual([ null ], getQueryResults("RETURN -{ }"));
+      assertEqual([ 0 ], getQueryResults("RETURN -{ }"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -310,7 +310,7 @@ function ahuacatlArithmeticTestSuite () {
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "[ 0 ]")));
         assertEqual([ 5 ], getQueryResults(buildQuery(i, "1", "[ 4 ]")));
         assertEqual([ -3 ], getQueryResults(buildQuery(i, "1", "[ -4 ]")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "{ }")));
+        assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "{ }")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "null", "1")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "false", "1")));
         assertEqual([ 2 ], getQueryResults(buildQuery(i, "true", "1")));
@@ -321,8 +321,8 @@ function ahuacatlArithmeticTestSuite () {
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "[ 0 ]", "1")));
         assertEqual([ 5 ], getQueryResults(buildQuery(i, "[ 4 ]", "1")));
         assertEqual([ -3 ], getQueryResults(buildQuery(i, "[ -4 ]", "1")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "{ }", "1")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "\"a\"", "\"b\"")));
+        assertEqual([ 1 ], getQueryResults(buildQuery(i, "{ }", "1")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"a\"", "\"b\"")));
         assertEqual([ 3 ], getQueryResults(buildQuery(i, "\"1\"", "\"2\"")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "\"\"")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "\"\"", "1")));
@@ -391,12 +391,12 @@ function ahuacatlArithmeticTestSuite () {
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "\"0\"")));
         assertEqual([ -41 ], getQueryResults(buildQuery(i, "1", "\"42\"")));
         assertEqual([ 18 ], getQueryResults(buildQuery(i, "1", "\"-17\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "\"abc\"")));
+        assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "\"abc\"")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "[ ]")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "[ 0 ]")));
         assertEqual([ -3 ], getQueryResults(buildQuery(i, "1", "[ 4 ]")));
         assertEqual([ 5 ], getQueryResults(buildQuery(i, "1", "[ -4 ]")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "{ }")));
+        assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "{ }")));
         assertEqual([ -1 ], getQueryResults(buildQuery(i, "null", "1")));
         assertEqual([ -1 ], getQueryResults(buildQuery(i, "false", "1")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "true", "1")));
@@ -404,19 +404,19 @@ function ahuacatlArithmeticTestSuite () {
         assertEqual([ -1 ], getQueryResults(buildQuery(i, "\"0\"", "\"1\"")));
         assertEqual([ 22 ], getQueryResults(buildQuery(i, "\"23\"", "1")));
         assertEqual([ -10 ], getQueryResults(buildQuery(i, "\"-9\"", "1")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "\"abc\"", "1")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "\"abc\"")));
+        assertEqual([ -1 ], getQueryResults(buildQuery(i, "\"abc\"", "1")));
+        assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "\"abc\"")));
         assertEqual([ -1 ], getQueryResults(buildQuery(i, "[ ]", "1")));
         assertEqual([ -1 ], getQueryResults(buildQuery(i, "[ 0 ]", "1")));
         assertEqual([ 3 ], getQueryResults(buildQuery(i, "[ 4 ]", "1")));
         assertEqual([ 3 ], getQueryResults(buildQuery(i, "[ \"4\" ]", "1")));
         assertEqual([ -8 ], getQueryResults(buildQuery(i, "[ \"4\" ]", "\"12\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "[ \"4\" ]", "\"abc\"")));
+        assertEqual([ 4 ], getQueryResults(buildQuery(i, "[ \"4\" ]", "\"abc\"")));
 
         assertEqual([ -5 ], getQueryResults(buildQuery(i, "[ -4 ]", "1")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "{ }", "1")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "{ }", "\"1\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "\"a\"", "\"b\"")));
+        assertEqual([ -1 ], getQueryResults(buildQuery(i, "{ }", "1")));
+        assertEqual([ -1 ], getQueryResults(buildQuery(i, "{ }", "\"1\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"a\"", "\"b\"")));
       }
     },
 
@@ -538,14 +538,14 @@ function ahuacatlArithmeticTestSuite () {
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "[ 0 ]")));
         assertEqual([ 4 ], getQueryResults(buildQuery(i, "1", "[ 4 ]")));
         assertEqual([ -4 ], getQueryResults(buildQuery(i, "1", "[ -4 ]")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "{ }")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "{ }")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "null", "1")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "false", "1")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "true", "1")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"0\"", "1")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"0\"", "\"1\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "\"abc\"", "2")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "2", "\"abc\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"abc\"", "2")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "2", "\"abc\"")));
         assertEqual([ 23 ], getQueryResults(buildQuery(i, "\"23\"", "1")));
         assertEqual([ -9 ], getQueryResults(buildQuery(i, "\"-9\"", "1")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ ]", "1")));
@@ -554,8 +554,7 @@ function ahuacatlArithmeticTestSuite () {
         assertEqual([ -4 ], getQueryResults(buildQuery(i, "[ -4 ]", "1")));
         assertEqual([ 36 ], getQueryResults(buildQuery(i, "\"3\"", "12")));
         assertEqual([ 36 ], getQueryResults(buildQuery(i, "\"3\"", "\"12\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "{ }", "1")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "{ }", "1")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "{ }", "1")));
       }
     },
 
@@ -679,22 +678,22 @@ function ahuacatlArithmeticTestSuite () {
         }
       };
       for (var i = 0; i < 2; ++i) {
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "(1 - 1)")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "0")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1","0.0")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "(1 / 0)")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "null")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "false")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "(1 - 1)")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "0")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1","0.0")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "(1 / 0)")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "null")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "false")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "true")));
         assertEqual([ 37 ], getQueryResults(buildQuery(i, "37", "true")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "\"0\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "\"0\"")));
         assertEqual([ 0.25 ], getQueryResults(buildQuery(i, "1", "\"4\"")));
         assertEqual([ -2 ], getQueryResults(buildQuery(i, "34", "\"-17\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "[ ]")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "[ 0 ]")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "[ ]")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "[ 0 ]")));
         assertEqual([ 0.25 ], getQueryResults(buildQuery(i, "1", "[ 4 ]")));
         assertEqual([ -0.25 ], getQueryResults(buildQuery(i, "1", "[ -4 ]")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "{ }")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "{ }")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "null", "1")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "false", "1")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "true", "1")));
@@ -702,21 +701,21 @@ function ahuacatlArithmeticTestSuite () {
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"0\"", "\"1\"")));
         assertEqual([ 23 ], getQueryResults(buildQuery(i, "\"23\"", "1")));
         assertEqual([ -9 ], getQueryResults(buildQuery(i, "\"-9\"", "1")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "\"abc\"", "\"abc\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "\"abc\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"abc\"", "\"abc\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "\"abc\"")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ ]", "1")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ 0 ]", "1")));
         assertEqual([ 4 ], getQueryResults(buildQuery(i, "[ 4 ]", "1")));
         assertEqual([ -4 ], getQueryResults(buildQuery(i, "[ -4 ]", "1")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "[ -4, -3 ]", "1")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "[ \"abc\" ]", "1")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ -4, -3 ]", "1")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ \"abc\" ]", "1")));
         assertEqual([ 2 ], getQueryResults(buildQuery(i, "[ \"2\" ]", "1")));
         assertEqual([ 3 ], getQueryResults(buildQuery(i, "[ \"12\" ]", "4")));
         assertEqual([ 3 ], getQueryResults(buildQuery(i, "\"12\"", "4")));
         assertEqual([ 3 ], getQueryResults(buildQuery(i, "\"12\"", "\"4\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "{ }", "1")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "{ }", "\"1\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "0")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "{ }", "1")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "{ }", "\"1\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "0")));
       }
     },
 
@@ -736,27 +735,27 @@ function ahuacatlArithmeticTestSuite () {
         }
       };
       for (var i = 0; i < 2; ++i) {
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "(1 - 1)")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "0")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "0.0")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "(1 / 0)")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "null")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "false")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "(1 - 1)")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "0")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "0.0")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "(1 / 0)")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "null")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "false")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "true")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "37", "true")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "\"0\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "\"0\"")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "\"4\"")));
         assertEqual([ 3 ], getQueryResults(buildQuery(i, "7", "\"4\"")));
         assertEqual([ 3 ], getQueryResults(buildQuery(i, "7", "\"-4\"")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "34", "\"-17\"")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "35", "\"17\"")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "35", "\"-17\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "[ ]")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "[ 0 ]")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "[ ]")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "[ 0 ]")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "13", "[ 4 ]")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "[ -4 ]")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "13", "[ -4 ]")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "{ }")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "{ }")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "null", "1")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "false", "1")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "true", "1")));
@@ -777,11 +776,11 @@ function ahuacatlArithmeticTestSuite () {
         assertEqual([ 4 ], getQueryResults(buildQuery(i, "4", "\"5\"")));
         assertEqual([ 5 ], getQueryResults(buildQuery(i, "\"12\"", "7")));
         assertEqual([ 5 ], getQueryResults(buildQuery(i, "\"12\"", "\"7\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "\"abc\"", "2")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "\"abc\"", "\"abc\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "2", "\"abc\"")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "{ }", "1")));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "4", "0")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"abc\"", "2")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"abc\"", "\"abc\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "2", "\"abc\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "{ }", "1")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "4", "0")));
       }
     },
 
