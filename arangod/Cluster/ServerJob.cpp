@@ -127,10 +127,8 @@ ServerJobResult ServerJob::execute() {
         isolate, isolate->GetCurrentContext(), content, file, false);
     
     if (tryCatch.HasCaught()) {
-      if (tryCatch.CanContinue()) {
-        TRI_LogV8Exception(isolate, &tryCatch);
-        return result;
-      }
+      TRI_LogV8Exception(isolate, &tryCatch);
+      return result;
     }
 
     if (res->IsObject()) {
@@ -138,7 +136,6 @@ ServerJobResult ServerJob::execute() {
 
       v8::Handle<v8::Array> names = o->GetOwnPropertyNames();
       uint32_t const n = names->Length();
-
       
       for (uint32_t i = 0; i < n; ++i) {
         v8::Handle<v8::Value> key = names->Get(i);
