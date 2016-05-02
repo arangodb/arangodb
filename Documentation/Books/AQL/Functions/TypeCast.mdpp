@@ -11,7 +11,7 @@ In an AQL query, type casts are performed only upon request and not implicitly.
 This helps avoiding unexpected results. All type casts have to be performed by
 invoking a type cast function. AQL offers several type cast functions for this
 task. Each of the these functions takes an operand of any data type and returns
-a result value of type corresponding to the function name (e.g. *TO_NUMBER()*
+a result value of type corresponding to the function name (e.g. `TO_NUMBER()`
 will return a numeric value):
 
 - *TO_BOOL(value)*: Takes an input *value* of any type and converts it

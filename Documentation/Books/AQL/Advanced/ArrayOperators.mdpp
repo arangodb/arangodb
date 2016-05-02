@@ -118,6 +118,8 @@ The above will return:
 In order to collapse (or flatten) results in nested arrays, AQL provides the <i>[\*\*]</i> 
 operator. It works similar to the <i>[\*]</i> operator, but additionally collapses nested
 arrays. How many levels are collapsed is determined by the amount of <i>\*</i> characters used.
+<i>[\*\*]</i> collapses one level of nesting - `FLATTEN(array)` or `FLATTEN(array, 1)` - 
+<i>[\*\*\*]</i> two levels - `FLATTEN(array, 2)` - and so on.
 
 For example, the following query produces an array of friend names per user:
 
@@ -147,7 +149,7 @@ As we have multiple users, the overall result is a nested array:
 ```
 
 If the goal is to get rid of the nested array, we can apply the <i>[\*\*]</i> operator on the 
-result. Simplying appending <i>[\*\*]</i> to the query won't help, because *u.friends*
+result. Simply appending <i>[\*\*]</i> to the query won't help, because *u.friends*
 is not a nested (multi-dimensional) array, but a simple (one-dimensional) array. Still, 
 the <i>[\*\*]</i> can be used if it has access to a multi-dimensional nested result.
 
