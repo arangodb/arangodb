@@ -24,11 +24,18 @@
         </div>
 
         <div class="resizecontainer contentWrapper">
+
+          <div id="loadingScreen" class="loadingScreen" style="display: none">
+            <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i>
+            <span class="sr-only">Loading...</span>
+          </div>
+
           <div id="content" class="centralContent"></div>
 
           <footer class="footer">
             <div id="footerBar"></div>
           </footer>
+
         </div>
 
       </div>

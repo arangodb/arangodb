@@ -1726,6 +1726,10 @@ if (typeof SYS_OPTIONS !== 'undefined') {
   delete global.SYS_OPTIONS;
 }
 
+exports.propertyKeys = (obj) => Object.keys(obj).filter((key) => {
+  return (key.charAt(0) !== '_' && key.charAt(0) !== '$');
+});
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print
