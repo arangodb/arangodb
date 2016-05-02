@@ -1427,7 +1427,7 @@ var handlePlanChange = function () {
       global.ArangoAgency.increaseVersion(lockInfo.part + "/Version");
       
       let version = global.ArangoAgency.get(lockInfo.part + "/Version");
-      versions[lockInfo.part.toLowerCase()] = version[lockInfo.part + "/Version"];
+      versions[lockInfo.part.toLowerCase()] = version.arango[lockInfo.part].Version;
       
       global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
     }
