@@ -393,10 +393,10 @@ function createLocalDatabases (plannedDatabases, writeLocked) {
           payload.errorNum = err.errorNum;
           payload.errorMessage = err.errorMessage;
         }
-        writeLocked({ part: "Current" },
-                    createDatabaseAgency,
-                    [ payload ]);
       }
+      writeLocked({ part: "Current" },
+                  createDatabaseAgency,
+                  [ payload ]);
     }
   }
 }
