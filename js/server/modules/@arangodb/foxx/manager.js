@@ -35,6 +35,7 @@ const fs = require('fs');
 const joi = require('joi');
 const util = require('util');
 const semver = require('semver');
+const il = require('@arangodb/util').inline;
 const utils = require('@arangodb/foxx/manager-utils');
 const store = require('@arangodb/foxx/store');
 const FoxxService = require('@arangodb/foxx/service');
@@ -304,6 +305,13 @@ function checkManifest(filename, manifest) {
       console.error(message);
     }
   });
+
+  if (!manifest.engines && manifest.engine) {
+    console.warn(il`
+        Found unexpected "engine" field in manifest "${filename}" for service "${manifest.name}".
+        Did you mean "engines"?
+    `);
+  }
 
   if (manifest.engines && manifest.engines.arangodb) {
     if (semver.gtr('3.0.0', manifest.engines.arangodb)) {
