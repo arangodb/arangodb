@@ -187,9 +187,9 @@ module.exports = class FoxxService {
       basePath: this.main.context.baseUrl,
       paths: paths,
       info: {
-        title: this.name,
+        title: this.manifest.name,
         description: this.manifest.description,
-        version: this.version,
+        version: this.manifest.version,
         license: {
           name: this.manifest.license
         }
