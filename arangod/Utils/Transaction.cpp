@@ -645,7 +645,7 @@ std::string Transaction::makeIdFromCustom(CollectionNameResolver const* resolver
 /// string
 //////////////////////////////////////////////////////////////////////////////
 
-std::string Transaction::extractIdString(VPackSlice const slice) {
+std::string Transaction::extractIdString(VPackSlice slice) {
   return extractIdString(resolver(), slice, VPackSlice());
 }
 
@@ -655,9 +655,13 @@ std::string Transaction::extractIdString(VPackSlice const slice) {
 //////////////////////////////////////////////////////////////////////////////
 
 std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
-                                         VPackSlice const& slice,
+                                         VPackSlice slice,
                                          VPackSlice const& base) {
   VPackSlice id;
+
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
    
   if (slice.isObject()) {
     // extract id attribute from object
@@ -699,6 +703,8 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
     key = slice.get(StaticStrings::KeyString);
   } else if (base.isObject()) {
     key = base.get(StaticStrings::KeyString);
+  } else if (base.isExternal()) {
+    key = base.resolveExternal().get(StaticStrings::KeyString);
   }
 
   if (!key.isString()) {

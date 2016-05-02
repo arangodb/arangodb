@@ -1478,7 +1478,11 @@ AqlValue Functions::Values(arangodb::aql::Query* query,
       // skip attribute
       continue;
     }
-    builder->add(entry.value);
+    if (entry.value.isCustom()) {
+      builder->add(VPackValue(trx->extractIdString(slice)));
+    } else {
+      builder->add(entry.value);
+    }
   }
   builder->close();
 

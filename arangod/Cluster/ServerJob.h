@@ -34,6 +34,21 @@
 namespace arangodb {
 class HeartbeatThread;
 
+struct ServerJobResult {
+  bool success;
+  uint64_t planVersion;
+  uint64_t currentVersion;
+
+  ServerJobResult() : success(false), planVersion(0), currentVersion(0) {
+  }
+
+  ServerJobResult(const ServerJobResult& other)
+    : success(other.success),
+    planVersion(other.planVersion),
+    currentVersion(other.currentVersion) {
+    }
+};
+
 class ServerJob : public arangodb::rest::Job {
   ServerJob(ServerJob const&) = delete;
   ServerJob& operator=(ServerJob const&) = delete;
@@ -73,7 +88,7 @@ class ServerJob : public arangodb::rest::Job {
   /// @brief execute job
   //////////////////////////////////////////////////////////////////////////////
 
-  bool execute();
+  ServerJobResult execute();
 
  private:
   //////////////////////////////////////////////////////////////////////////////
