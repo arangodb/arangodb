@@ -128,6 +128,7 @@ build-book:
 	  done; \
 	fi
 	cd ppbooks/$(NAME); if ! test -L SUMMARY.md; then ln -s ../../$(NAME)/SUMMARY.md . ; fi
+	cd ppbooks/$(NAME); if ! test -f HEADER.html ; then cp ../../$(NAME)/HEADER.html . ; fi
 	cd ppbooks/$(NAME); if ! test -f book.json ; then cp ../../$(NAME)/book.json . ; fi
 	cd ppbooks/$(NAME); cp -a ../../$(NAME)/styles/* styles/
 	WD=`pwd`; \
@@ -140,23 +141,24 @@ build-book:
 	python ../Scripts/generateMdFiles.py $(NAME) ppbooks/ ../../js/apps/system/_admin/aardvark/APP/api-docs.json $(FILTER)
 
 	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' styles/header.js
+	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' HEADER.html
 	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' README.md
 	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' book.json
 
 	test -d books/$(NAME) || mkdir -p books/$(NAME)
 
-	make check-summary
-	make book-check-leftover-docublocks
-	make book-check-restheader-leftovers
-	make book-check-mdpp-leftovers
-	make ppbook-check-html-link
-	make ppbook-check-directory-link
+	#make check-summary
+	#make book-check-leftover-docublocks
+	#make book-check-restheader-leftovers
+	#make book-check-mdpp-leftovers
+	#make ppbook-check-html-link
+	#make ppbook-check-directory-link
 
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	python ../Scripts/deprecated.py
 
-	make book-check-markdown-leftovers
+	#make book-check-markdown-leftovers
 
 clean-book:
 	@rm -rvf books/$(NAME)
@@ -231,7 +233,7 @@ check-docublocks:
 	fi
 
 clean-intermediate:
-	make clean-book-intermediate NAME=Users FILTER=$(FILTER)
+	make clean-book-intermediate NAME=$(NAME) FILTER=$(FILTER)
 
 
 clean: clean-intermediate
@@ -243,6 +245,13 @@ clean: clean-intermediate
 build-books-keep-md:
 	@test -d books || mkdir books
 	python ../Scripts/codeBlockReader.py
-	make build-book NAME=Users
+	make build-book NAME=$(NAME)
 
-build-books: clean-intermediate build-books-keep-md check-docublocks
+build-books:
+	make clean-intermediate NAME=Users
+	make clean-intermediate NAME=AQL
+	make clean-intermediate NAME=HTTP
+	make build-books-keep-md NAME=Users
+	make build-books-keep-md NAME=AQL
+	make build-books-keep-md NAME=HTTP
+	make check-docublocks
