@@ -713,6 +713,7 @@
       STATE_STRING_BACKTICK = 7;
 
       query += " ";
+      var self = this;
       var start;
       var state = STATE_NORMAL;
       var n = query.length;
@@ -795,6 +796,15 @@
             break;
         }
       }
+
+      var match;
+      _.each(bindParams, function(v, k) {
+        match = v.match(self.bindParamRegExp);
+
+        if (match) {
+          bindParams[k] = match[1];
+        }
+      });
 
       return {
         query: query,

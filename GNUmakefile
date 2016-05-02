@@ -304,8 +304,7 @@ winXX-build:
 packXX:
 	./Installation/file-copy-js.sh . Build$(BITS)
 
-	cd Build$(BITS) && cp -a bin/RelWithDebInfo bin/Release
-	cd Build$(BITS) && cpack -G NSIS -D "BUILD_TYPE=RelWithDebInfo"
-	cd Build$(BITS) && cpack -G ZIP -D "BUILD_TARGET=RelWithDebInfo"
+	cd Build$(BITS) && cpack -G NSIS -C $(BUILD_TARGET)
+	cd Build$(BITS) && cpack -G ZIP  -C $(BUILD_TARGET)
 
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
