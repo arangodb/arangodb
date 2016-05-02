@@ -28,10 +28,13 @@
       "keyup #spotlight .typeahead" : "listenKey"
     },
 
+    aqlKeywordsArray: [],
+    aqlBuiltinFunctionsArray: [],
+
     aqlKeywords: 
       "for|return|filter|sort|limit|let|collect|asc|desc|in|into|" + 
       "insert|update|remove|replace|upsert|options|with|and|or|not|" + 
-      "distinct|graph|outbound|inbound|any|all|none|aggregate",
+      "distinct|graph|outbound|inbound|any|all|none|aggregate|like|count",
 
     aqlBuiltinFunctions: 
 "to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|" +
@@ -106,8 +109,19 @@
     },
 
     stringToArray: function() {
-      this.aqlKeywordsArray = this.aqlKeywords.split('|');
-      this.aqlBuiltinFunctionsArray = this.aqlBuiltinFunctions.split('|');
+      var self = this;
+
+      _.each(this.aqlKeywords.split('|'), function(value) {
+        self.aqlKeywordsArray.push(value.toUpperCase());
+      });
+      _.each(this.aqlBuiltinFunctions.split('|'), function(value) {
+        self.aqlBuiltinFunctionsArray.push(value.toUpperCase());
+      });
+
+      //special case for keywords
+      self.aqlKeywordsArray.push(true);
+      self.aqlKeywordsArray.push(false);
+      self.aqlKeywordsArray.push(null);
     },
 
     show: function(callbackSuccess, callbackCancel, type) {

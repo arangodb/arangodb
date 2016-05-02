@@ -17,8 +17,9 @@ input.search-input {
     font-size: 12pt;
     margin-left: -20px;
     opacity: .5;
-    position: relative;
-    top: -3px;
+    position: absolute;
+    right: 7px;
+    top: 9px;
 
     &:hover {
       cursor: pointer;

@@ -287,6 +287,8 @@ struct TRI_df_marker_t {
 
 };
 
+static_assert(sizeof(TRI_df_marker_t) == 16, "invalid size for TRI_df_marker_t");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile header marker
 ///

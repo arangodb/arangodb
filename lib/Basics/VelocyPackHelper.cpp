@@ -25,12 +25,13 @@
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "Basics/files.h"
-#include "Basics/hashes.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/files.h"
+#include "Basics/hashes.h"
+#include "Basics/tri-strings.h"
 
 #include <velocypack/AttributeTranslator.h>
 #include <velocypack/velocypack-common.h>
@@ -80,11 +81,11 @@ void VelocyPackHelper::initialize() {
   Translator.reset(new VPackAttributeTranslator);
 
   // these attribute names will be translated into short integer values
-  Translator->add("_key", 1);  // TRI_VOC_ATTRIBUTE_KEY
-  Translator->add("_rev", 2);  // TRI_VOC_ATTRIBUTE_REV
-  Translator->add("_id", 3);   // TRI_VOC_ATTRIBUTE_ID
-  Translator->add("_from", 4); // TRI_VOC_ATTRIBUTE_FROM
-  Translator->add("_to", 5);   // TRI_VOC_ATTRIBUTE_TO
+  Translator->add(StaticStrings::KeyString, KeyAttribute - AttributeBase); 
+  Translator->add(StaticStrings::RevString, RevAttribute - AttributeBase);
+  Translator->add(StaticStrings::IdString, IdAttribute - AttributeBase); 
+  Translator->add(StaticStrings::FromString, FromAttribute - AttributeBase);
+  Translator->add(StaticStrings::ToString, ToAttribute - AttributeBase);
 
   Translator->seal();
 
@@ -92,9 +93,26 @@ void VelocyPackHelper::initialize() {
   VPackOptions::Defaults.attributeTranslator = Translator.get();
   // VPackOptions::Defaults.unsupportedTypeBehavior = VPackOptions::ConvertUnsupportedType;
 
+  // run quick selfs test with the attribute translator
+  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::KeyString)).getUInt() == KeyAttribute - AttributeBase);
+  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::RevString)).getUInt() == RevAttribute - AttributeBase);
+  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::IdString)).getUInt() == IdAttribute - AttributeBase);
+  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::FromString)).getUInt() == FromAttribute - AttributeBase); 
+  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::ToString)).getUInt() == ToAttribute - AttributeBase);
+  
+  TRI_ASSERT(VPackSlice(Translator->translate(KeyAttribute - AttributeBase)).copyString() == StaticStrings::KeyString); 
+  TRI_ASSERT(VPackSlice(Translator->translate(RevAttribute - AttributeBase)).copyString() == StaticStrings::RevString); 
+  TRI_ASSERT(VPackSlice(Translator->translate(IdAttribute - AttributeBase)).copyString() == StaticStrings::IdString); 
+  TRI_ASSERT(VPackSlice(Translator->translate(FromAttribute - AttributeBase)).copyString() == StaticStrings::FromString); 
+  TRI_ASSERT(VPackSlice(Translator->translate(ToAttribute - AttributeBase)).copyString() == StaticStrings::ToString); 
+
   // initialize exclude handler for system attributes
   ExcludeHandler.reset(new SystemAttributeExcludeHandler);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn off assembler optimizations in vpack
+////////////////////////////////////////////////////////////////////////////////
 
 void VelocyPackHelper::disableAssemblerFunctions() {
   arangodb::velocypack::disableAssemblerFunctions();
@@ -764,7 +782,7 @@ uint64_t VelocyPackHelper::hashByAttributes(
     for (auto const& attr : attributes) {
       VPackSlice sub = slice.get(attr).resolveExternal();
       if (sub.isNone()) {
-        if (attr == "_key" && !key.empty()) {
+        if (attr == StaticStrings::KeyString && !key.empty()) {
           VPackBuilder temporaryBuilder;
           temporaryBuilder.add(VPackValue(key));
           hash = temporaryBuilder.slice().normalizedHash(hash);

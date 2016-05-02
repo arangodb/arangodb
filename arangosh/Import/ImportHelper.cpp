@@ -619,7 +619,7 @@ void ImportHelper::sendCsvBuffer() {
     return;
   }
 
-  std::map<std::string, std::string> headerFields;
+  std::unordered_map<std::string, std::string> headerFields;
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
                   StringUtils::urlEncode(_onDuplicateAction));
@@ -663,7 +663,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
     url += "&toPrefix=" + StringUtils::urlEncode(_toCollectionPrefix);
   }
 
-  std::map<std::string, std::string> headerFields;
+  std::unordered_map<std::string, std::string> headerFields;
   std::unique_ptr<SimpleHttpResult> result(_client->request(
       GeneralRequest::RequestType::POST, url, str, len, headerFields));
 

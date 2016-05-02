@@ -131,15 +131,19 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       !options->processingResult().touched(_section + ".password")) {
     usleep(10 * 1000);
 
-    ConsoleFeature* console =
-        ApplicationServer::getFeature<ConsoleFeature>("Console");
+    try {
+      ConsoleFeature* console =
+          ApplicationServer::getFeature<ConsoleFeature>("Console");
 
-    if (console->isEnabled()) {
-      _password = console->readPassword("Please specify a password: ");
-    } else {
-      std::cout << "Please specify a password: " << std::flush;
-      std::getline(std::cin, _password);
+      if (console->isEnabled()) {
+        _password = console->readPassword("Please specify a password: ");
+        return;
+      }
+    } catch (...) {
     }
+
+    std::cout << "Please specify a password: " << std::flush;
+    std::getline(std::cin, _password);
   }
 }
 

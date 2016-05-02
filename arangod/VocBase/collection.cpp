@@ -1497,7 +1497,7 @@ TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
     }
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "[timer] " << Logger::DURATION(TRI_microtime() - start)
+        << "[timer] " << Logger::FIXED(TRI_microtime() - start)
         << " s, open-collection { collection: " << vocbase->_name << "/"
         << collection->_info.name() << " }";
 

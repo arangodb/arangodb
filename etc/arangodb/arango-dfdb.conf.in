@@ -9,6 +9,7 @@ directory= @LOCALSTATEDIR@/lib/arangodb
 [server]
 rest-server = false
 authenication = false
+statistics = false
 # set number of threads to 1 so we don't have concurrency
 threads = 1
 
@@ -17,6 +18,9 @@ startup-directory = @PKGDATADIR@/js
 app-path = @LOCALSTATEDIR@/lib/arangodb-apps
 script = @PKGDATADIR@/js/server/arango-dfdb.js
 v8-contexts = 1
+
+[foxx]
+queues = false
 
 [log]
 level = info

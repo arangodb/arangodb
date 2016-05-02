@@ -72,42 +72,6 @@ HttpHandlerFactory::HttpHandlerFactory(std::string const& authenticationRealm,
       _notFound(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a handler factory
-////////////////////////////////////////////////////////////////////////////////
-
-HttpHandlerFactory::HttpHandlerFactory(HttpHandlerFactory const& that)
-    : _authenticationRealm(that._authenticationRealm),
-      _minCompatibility(that._minCompatibility),
-      _allowMethodOverride(that._allowMethodOverride),
-      _setContext(that._setContext),
-      _setContextData(that._setContextData),
-      _constructors(that._constructors),
-      _datas(that._datas),
-      _prefixes(that._prefixes),
-      _notFound(that._notFound) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copies a handler factory
-////////////////////////////////////////////////////////////////////////////////
-
-HttpHandlerFactory& HttpHandlerFactory::operator=(
-    HttpHandlerFactory const& that) {
-  if (this != &that) {
-    _authenticationRealm = that._authenticationRealm;
-    _minCompatibility = that._minCompatibility;
-    _allowMethodOverride = that._allowMethodOverride;
-    _setContext = that._setContext;
-    _setContextData = that._setContextData;
-    _constructors = that._constructors;
-    _datas = that._datas;
-    _prefixes = that._prefixes;
-    _notFound = that._notFound;
-  }
-
-  return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a handler factory
 ////////////////////////////////////////////////////////////////////////////////
 

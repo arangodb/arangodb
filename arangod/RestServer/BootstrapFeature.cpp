@@ -112,7 +112,7 @@ static void raceForClusterBootstrap() {
 
     b.clear();
     b.add(VPackValue("done"));
-    result = agency.setValue("Bootstrap", b.slice(), 15);
+    result = agency.setValue("Bootstrap", b.slice(), 0);
     if (result.successful()) {
       return;
     }

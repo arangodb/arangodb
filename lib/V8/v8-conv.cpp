@@ -496,12 +496,11 @@ std::string TRI_ObjectToString(v8::Handle<v8::Value> const value) {
 
 int64_t TRI_ObjectToInt64(v8::Handle<v8::Value> const value) {
   if (value->IsNumber()) {
-    return (int64_t)value->ToNumber()->Value();
+    return static_cast<int64_t>(value->ToNumber()->Value());
   }
 
   if (value->IsNumberObject()) {
-    v8::Handle<v8::NumberObject> no = v8::Handle<v8::NumberObject>::Cast(value);
-    return (int64_t)no->NumberValue();
+    return static_cast<int64_t>(v8::Handle<v8::NumberObject>::Cast(value)->NumberValue());
   }
 
   return 0;
@@ -512,14 +511,13 @@ int64_t TRI_ObjectToInt64(v8::Handle<v8::Value> const value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_ObjectToUInt64(v8::Handle<v8::Value> const value,
-                            bool const allowStringConversion) {
+                            bool allowStringConversion) {
   if (value->IsNumber()) {
-    return (uint64_t)value->ToNumber()->Value();
+    return static_cast<uint64_t>(value->ToNumber()->Value());
   }
 
   if (value->IsNumberObject()) {
-    v8::Handle<v8::NumberObject> no = v8::Handle<v8::NumberObject>::Cast(value);
-    return (uint64_t)no->NumberValue();
+    return static_cast<uint64_t>(v8::Handle<v8::NumberObject>::Cast(value)->NumberValue());
   }
 
   if (allowStringConversion && value->IsString()) {
@@ -540,8 +538,7 @@ double TRI_ObjectToDouble(v8::Handle<v8::Value> const value) {
   }
 
   if (value->IsNumberObject()) {
-    v8::Handle<v8::NumberObject> no = v8::Handle<v8::NumberObject>::Cast(value);
-    return no->NumberValue();
+    return v8::Handle<v8::NumberObject>::Cast(value)->NumberValue();
   }
 
   return 0.0;
@@ -559,8 +556,7 @@ double TRI_ObjectToDouble(v8::Handle<v8::Value> const value, bool& error) {
   }
 
   if (value->IsNumberObject()) {
-    v8::Handle<v8::NumberObject> no = v8::Handle<v8::NumberObject>::Cast(value);
-    return no->NumberValue();
+    return v8::Handle<v8::NumberObject>::Cast(value)->NumberValue();
   }
 
   error = true;
@@ -575,10 +571,10 @@ double TRI_ObjectToDouble(v8::Handle<v8::Value> const value, bool& error) {
 bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const value) {
   if (value->IsBoolean()) {
     return value->ToBoolean()->Value();
-  } else if (value->IsBooleanObject()) {
-    v8::Handle<v8::BooleanObject> bo =
-        v8::Handle<v8::BooleanObject>::Cast(value);
-    return bo->BooleanValue();
+  } 
+
+  if (value->IsBooleanObject()) {
+    return v8::Handle<v8::BooleanObject>::Cast(value)->BooleanValue();
   }
 
   return false;

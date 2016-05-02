@@ -75,11 +75,10 @@ class v8_action_t : public TRI_action_t {
   void createCallback(v8::Isolate* isolate, v8::Handle<v8::Function> callback) {
     WRITE_LOCKER(writeLocker, _callbacksLock);
 
-    std::map<v8::Isolate*, v8::Persistent<v8::Function>>::iterator i =
-        _callbacks.find(isolate);
+    auto it = _callbacks.find(isolate);
 
-    if (i != _callbacks.end()) {
-      i->second.Reset();
+    if (it != _callbacks.end()) {
+      it->second.Reset();
     }
 
     _callbacks[isolate].Reset(isolate, callback);
@@ -119,10 +118,9 @@ class v8_action_t : public TRI_action_t {
     READ_LOCKER(readLocker, _callbacksLock);
 
     {
-      std::map<v8::Isolate*, v8::Persistent<v8::Function>>::iterator i =
-          _callbacks.find(context->_isolate);
+      auto it = _callbacks.find(context->_isolate);
 
-      if (i == _callbacks.end()) {
+      if (it == _callbacks.end()) {
         LOG(WARN) << "no callback function for JavaScript action '" << _url
                   << "'";
 
@@ -151,7 +149,7 @@ class v8_action_t : public TRI_action_t {
       }
       v8::HandleScope scope(context->_isolate);
       auto localFunction =
-          v8::Local<v8::Function>::New(context->_isolate, i->second);
+          v8::Local<v8::Function>::New(context->_isolate, it->second);
 
       try {
         result = ExecuteActionVocbase(vocbase, context->_isolate, this,
@@ -395,13 +393,12 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New(isolate);
 
-  std::map<std::string, std::string> headers = request->headers();
+  auto headers = request->headers();
   headers["content-length"] = StringUtils::itoa(request->contentLength());
-  std::map<std::string, std::string>::const_iterator iter = headers.begin();
 
-  for (; iter != headers.end(); ++iter) {
-    headerFields->ForceSet(TRI_V8_STD_STRING(iter->first),
-                           TRI_V8_STD_STRING(iter->second));
+  for (auto const& it : headers) {
+    headerFields->ForceSet(TRI_V8_STD_STRING(it.first),
+                           TRI_V8_STD_STRING(it.second));
   }
 
   TRI_GET_GLOBAL_STRING(HeadersKey);
@@ -456,19 +453,14 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
   // copy request parameter
   v8::Handle<v8::Object> valuesObject = v8::Object::New(isolate);
-  std::map<std::string, std::string> values = request->values();
 
-  for (std::map<std::string, std::string>::iterator i = values.begin();
-       i != values.end(); ++i) {
-    valuesObject->ForceSet(TRI_V8_STD_STRING(i->first),
-                           TRI_V8_STD_STRING(i->second));
+  for (auto& it : request->values()) {
+    valuesObject->ForceSet(TRI_V8_STD_STRING(it.first),
+                           TRI_V8_STD_STRING(it.second));
   }
 
   // copy request array parameter (a[]=1&a[]=2&...)
-  std::map<std::string, std::vector<std::string>> arrayValues =
-      request->arrayValues();
-
-  for (auto& arrayValue : arrayValues) {
+  for (auto& arrayValue : request->arrayValues()) {
     std::string const& k = arrayValue.first;
     std::vector<std::string> const& v = arrayValue.second;
 
@@ -488,12 +480,9 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   // copy cookies
   v8::Handle<v8::Object> cookiesObject = v8::Object::New(isolate);
 
-  std::map<std::string, std::string> const& cookies = request->cookieValues();
-  iter = cookies.begin();
-
-  for (; iter != cookies.end(); ++iter) {
-    cookiesObject->ForceSet(TRI_V8_STD_STRING(iter->first),
-                            TRI_V8_STD_STRING(iter->second));
+  for (auto& it : request->cookieValues()) {
+    cookiesObject->ForceSet(TRI_V8_STD_STRING(it.first),
+                            TRI_V8_STD_STRING(it.second));
   }
 
   TRI_GET_GLOBAL_STRING(CookiesKey);
@@ -1280,8 +1269,7 @@ static bool clusterSendToAllServers(
 
   DBServers = ci->getCurrentDBServers();
   for (auto const& sid : DBServers) {
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest("", coordTransactionID, "server:" + sid, method, url,
                      reqBodyString, headers, nullptr, 3600.0);
   }

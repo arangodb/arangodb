@@ -149,7 +149,7 @@ int ModificationBlock::extractKey(AqlValue const& value,
                                   std::string& key) {
   if (value.isObject()) {
     bool mustDestroy;
-    AqlValue sub = value.get(_trx, TRI_VOC_ATTRIBUTE_KEY, mustDestroy, false);
+    AqlValue sub = value.get(_trx, StaticStrings::KeyString, mustDestroy, false);
     AqlValueGuard guard(sub, mustDestroy);
 
     if (sub.isString()) {
@@ -294,7 +294,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // no error. we expect to have a key
         // create a slice for the key
         keyBuilder.openObject();
-        keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+        keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
         keyBuilder.close();
       } else {
         // We have an error, handle it
@@ -562,7 +562,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
         if (hasKeyVariable) {
           keyBuilder.clear();
           keyBuilder.openObject();
-          keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+          keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
           keyBuilder.close();
 
           VPackBuilder tmp = VPackCollection::merge(
@@ -739,7 +739,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
          
             keyBuilder.clear();
             keyBuilder.openObject();
-            keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+            keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
             keyBuilder.close();
             if (isMultiple) {
               VPackBuilder tmp = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
@@ -960,7 +960,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
         if (hasKeyVariable) {
           keyBuilder.clear();
           keyBuilder.openObject();
-          keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+          keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
           keyBuilder.close();
           VPackBuilder tmp = VPackCollection::merge(
               a.slice(), keyBuilder.slice(), false, false);

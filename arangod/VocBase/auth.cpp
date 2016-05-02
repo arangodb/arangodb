@@ -23,9 +23,10 @@
 
 #include "auth.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/hashes.h"
+#include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Rest/SslInterface.h"
 #include "Utils/SingleCollectionTransaction.h"

@@ -42,14 +42,19 @@ class ArrayIterator {
  public:
   ArrayIterator() = delete;
 
-  ArrayIterator(Slice const& slice)
+  ArrayIterator(Slice const& slice, bool allowRandomIteration = false)
       : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr) {
     if (slice.type() != ValueType::Array) {
       throw Exception(Exception::InvalidValueType, "Expecting Array slice");
     }
-
-    if (slice.head() == 0x13 && slice.length() > 0) {
-      _current = slice.at(0).start();
+      
+    if (slice.length() > 0) {
+      auto h = slice.head();
+      if (h == 0x13) {
+        _current = slice.at(0).start();
+      } else if (allowRandomIteration) {
+        _current = slice.begin() + slice.findDataOffset(h);
+      }
     }
   }
 
@@ -151,14 +156,19 @@ class ObjectIterator {
 
   ObjectIterator() = delete;
 
-  ObjectIterator(Slice const& slice)
+  ObjectIterator(Slice const& slice, bool allowRandomIteration = false)
       : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr) {
     if (slice.type() != ValueType::Object) {
       throw Exception(Exception::InvalidValueType, "Expecting Object slice");
     }
 
-    if (slice.head() == 0x14 && slice.length() > 0) {
-      _current = slice.keyAt(0, false).start();
+    if (slice.length() > 0) {
+      auto h = slice.head();
+      if (h == 0x14) {
+        _current = slice.keyAt(0, false).start();
+      } else if (allowRandomIteration) {
+        _current = slice.begin() + slice.findDataOffset(h);
+      }
     }
   }
 

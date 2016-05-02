@@ -287,6 +287,19 @@ class VelocyPackHelper {
 
   static void SanitizeExternals(arangodb::velocypack::Slice const,
                                 arangodb::velocypack::Builder&);
+
+  static uint8_t const KeyAttribute = 0x31;
+  static uint8_t const RevAttribute = 0x32;
+  static uint8_t const IdAttribute = 0x33;
+  static uint8_t const FromAttribute = 0x34;
+  static uint8_t const ToAttribute = 0x35;
+
+  static uint8_t const AttributeBase = 0x30;
+
+  static_assert(KeyAttribute < RevAttribute, "invalid value for _key attribute");
+  static_assert(RevAttribute < IdAttribute, "invalid value for _rev attribute");
+  static_assert(IdAttribute < FromAttribute, "invalid value for _id attribute");
+  static_assert(FromAttribute < ToAttribute, "invalid value for _from attribute");
 };
 }
 }

@@ -231,7 +231,7 @@ ClusterCommResult const ClusterComm::asyncRequest(
     CoordTransactionID const coordTransactionID, std::string const& destination,
     arangodb::GeneralRequest::RequestType reqtype,
     std::string const& path, std::shared_ptr<std::string const> body,
-    std::unique_ptr<std::map<std::string, std::string>>& headerFields,
+    std::unique_ptr<std::unordered_map<std::string, std::string>>& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
     bool singleRequest) {
 
@@ -358,9 +358,9 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     CoordTransactionID const coordTransactionID, std::string const& destination,
     arangodb::GeneralRequest::RequestType reqtype,
     std::string const& path, std::string const& body,
-    std::map<std::string, std::string> const& headerFields,
+    std::unordered_map<std::string, std::string> const& headerFields,
     ClusterCommTimeout timeout) {
-  std::map<std::string, std::string> headersCopy(headerFields);
+  std::unordered_map<std::string, std::string> headersCopy(headerFields);
 
   auto res = std::make_unique<ClusterCommResult>();
   res->clientTransactionID = clientTransactionID;
@@ -812,7 +812,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
     return;
   }
 
-  std::map<std::string, std::string> headers = responseToSend->headers();
+  std::unordered_map<std::string, std::string> headers = responseToSend->headers();
   headers["X-Arango-Coordinator"] = coordinatorHeader;
   headers["X-Arango-Response-Code"] =
       responseToSend->responseString(responseToSend->responseCode());
@@ -1068,7 +1068,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         if (!requests[i].done && now >= dueTime[i]) {
           if (requests[i].headerFields.get() == nullptr) {
             requests[i].headerFields 
-                = std::make_unique<std::map<std::string, std::string>>();
+                = std::make_unique<std::unordered_map<std::string, std::string>>();
           }
           LOG_TOPIC(TRACE, logTopic)
               << "ClusterComm::performRequests: sending request to "

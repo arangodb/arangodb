@@ -111,7 +111,6 @@
             callback(true, data);
           }
       });
-      callback();
     },
 
     deleteIndex: function (id, callback) {
