@@ -32,18 +32,5 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shallow copies properties
-////////////////////////////////////////////////////////////////////////////////
-
-Object.defineProperty(Object.prototype, '_shallowCopy', {
-  get() {
-    return require('internal').propertyKeys(this).reduce((previous, key) => {
-      previous[key] = this[key];
-      return previous;
-    }, {});
-  }
-});
-
 }());
 

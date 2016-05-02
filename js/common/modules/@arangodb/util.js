@@ -85,3 +85,20 @@ exports.inline = function (strs) {
   }
   return str.replace(/\s*\n\s*/g, ' ').replace(/(^\s|\s$)/g, '');
 };
+
+exports.propertyKeys = function (obj) {
+  return Object.keys(obj).filter((key) => (
+    key.charAt(0) !== '_' && key.charAt(0) !== '$'
+  ));
+};
+
+exports.shallowCopy = function (src) {
+  const dest = {};
+  if (src === undefined || src === null) {
+    return dest;
+  }
+  for (const key of exports.propertyKeys(src)) {
+    dest[key] = src[key];
+  }
+  return dest;
+};
