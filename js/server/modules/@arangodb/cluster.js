@@ -394,10 +394,10 @@ function createLocalDatabases (plannedDatabases, writeLocked) {
           payload.errorNum = err.errorNum;
           payload.errorMessage = err.errorMessage;
         }
-        writeLocked({ part: "Current" },
-                    createDatabaseAgency,
-                    [ payload ]);
       }
+      writeLocked({ part: "Current" },
+                  createDatabaseAgency,
+                  [ payload ]);
     }
   }
 }
@@ -1427,7 +1427,7 @@ var handlePlanChange = function () {
       global.ArangoAgency.increaseVersion(lockInfo.part + "/Version");
       
       let version = global.ArangoAgency.get(lockInfo.part + "/Version");
-      versions[lockInfo.part.toLowerCase()] = version[lockInfo.part + "/Version"];
+      versions[lockInfo.part.toLowerCase()] = version.arango[lockInfo.part].Version;
       
       global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
     }
@@ -1441,8 +1441,8 @@ var handlePlanChange = function () {
     var plan    = global.ArangoAgency.get("Plan", true).arango.Plan;
     var current = global.ArangoAgency.get("Current", true).arango.Current;
 
-    versions.plan = plan.arango.Plan.Version;
-    versions.current = current.arango.Current.Version;
+    versions.plan = plan.Version;
+    versions.current = current.Version;
 
     handleChanges(plan, current, writeLocked);
 

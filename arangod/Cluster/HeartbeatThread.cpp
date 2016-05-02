@@ -182,13 +182,13 @@ void HeartbeatThread::runDBServer() {
   auto currentAgencyCallback = std::make_shared<AgencyCallback>(
       _agency, "Current/Version", updateCurrent, true);
   
-  registered = false;
+  registered = true;
   while (!registered) {
-    registered = _agencyCallbackRegistry->registerCallback(currentAgencyCallback);
-    if (!registered) {
-      LOG(ERR) << "Couldn't register current change in agency!";
-      sleep(1);
-    }
+    //registered = _agencyCallbackRegistry->registerCallback(currentAgencyCallback);
+    //if (!registered) {
+    //  LOG(ERR) << "Couldn't register current change in agency!";
+    //  sleep(1);
+   // }
   }
   
   while (!isStopping()) {
@@ -237,7 +237,7 @@ void HeartbeatThread::runDBServer() {
       if (!wasNotified) {
         LOG(TRACE) << "Lock reached timeout";
         planAgencyCallback->refetchAndUpdate();
-        currentAgencyCallback->refetchAndUpdate();
+        //currentAgencyCallback->refetchAndUpdate();
       } else {
         // mop: a plan change returned successfully...
         // recheck and redispatch in case our desired versions increased
@@ -249,7 +249,7 @@ void HeartbeatThread::runDBServer() {
   }
 
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
-  _agencyCallbackRegistry->unregisterCallback(currentAgencyCallback);
+  //_agencyCallbackRegistry->unregisterCallback(currentAgencyCallback);
   int count = 0;
   while (++count < 3000) {
     bool isInPlanChange;
