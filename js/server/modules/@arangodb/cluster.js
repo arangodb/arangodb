@@ -1441,8 +1441,8 @@ var handlePlanChange = function () {
     var plan    = global.ArangoAgency.get("Plan", true).arango.Plan;
     var current = global.ArangoAgency.get("Current", true).arango.Current;
 
-    versions.plan = plan.arango.Plan.Version;
-    versions.current = current.arango.Current.Version;
+    versions.plan = plan.Version;
+    versions.current = current.Version;
 
     handleChanges(plan, current, writeLocked);
 
