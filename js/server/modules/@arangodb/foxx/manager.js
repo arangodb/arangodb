@@ -1,4 +1,3 @@
-/*jshint esnext: true */
 /*global ArangoServerState, ArangoClusterInfo, ArangoClusterComm */
 'use strict';
 
@@ -35,6 +34,7 @@ const fs = require('fs');
 const joi = require('joi');
 const util = require('util');
 const semver = require('semver');
+const dd = require('dedent');
 const il = require('@arangodb/util').inline;
 const utils = require('@arangodb/foxx/manager-utils');
 const store = require('@arangodb/foxx/store');
@@ -93,7 +93,7 @@ const manifestSchema = {
   ),
 
   lib: joi.string().default('.'),
-  main: joi.string().optional(),
+  main: joi.string().default('index.js'),
 
   configuration: (
     joi.object().optional()
@@ -124,6 +124,17 @@ const manifestSchema = {
         required: joi.boolean().default(true)
       })
     ))
+  ),
+
+  provides: (
+    joi.alternatives().try(
+      joi.string().optional(),
+      joi.array().optional()
+      .items(joi.string().required()),
+      joi.object().optional()
+      .pattern(RE_EMPTY, joi.forbidden())
+      .pattern(RE_NOT_EMPTY, joi.string().required())
+    )
   ),
 
   files: (
@@ -215,7 +226,10 @@ function lookupService(mount) {
     }
     throw new ArangoError({
       errorNum: errors.ERROR_APP_NOT_FOUND.code,
-      errorMessage: 'Service not found at: ' + mount
+      errorMessage: dd`
+        ${errors.ERROR_APP_NOT_FOUND.message}
+        Service not found at "${mount}".
+      `
     });
   }
   return serviceCache[dbname][mount];
@@ -288,86 +302,136 @@ function checkMountedSystemService(dbname) {
 
 function checkManifest(filename, inputManifest, mount) {
   const serverVersion = plainServerVersion();
-  const validationErrors = [];
+  const errors = [];
+  const warnings = [];
+  const notices = [];
+  const manifest = {};
   let legacy = false;
 
   Object.keys(manifestSchema).forEach(function (key) {
-    let schema = manifestSchema[key];
-    let value = manifest[key];
-    let result = joi.validate(value, schema);
-    if (result.value !== undefined) {
+    const schema = manifestSchema[key];
+    const value = inputManifest[key];
+    const result = joi.validate(value, schema);
+    if (result.error) {
+      const error = result.error.message.replace(/^"value"/, `Field "${key}"`);
+      errors.push(`${error} (was "${util.format(value)}").`);
+    } else {
       manifest[key] = result.value;
     }
-    if (result.error) {
-      let error = result.error.message.replace(/^"value"/, `"${key}"`);
-      let message = `Manifest "${mount}": attribute ${error} (was "${util.format(value)}").`;
-      validationErrors.push(message);
-      console.error(message);
-    }
   });
-
-  if (!manifest.engines && manifest.engine) {
-    console.warn(il`
-        Found unexpected "engine" field in manifest "${filename}" for service "${mount}".
-        Did you mean "engines"?
-    `);
-  }
 
   if (manifest.engines && manifest.engines.arangodb) {
     if (semver.gtr('3.0.0', manifest.engines.arangodb)) {
       legacy = true;
-      console.warn(
-        `Manifest "${filename}" for service "${mount}":`
-        + ` Service expects version ${manifest.engines.arangodb}`
-        + ` and will run in legacy compatibility mode.`
-      );
+      notices.push(il`
+        Service expects version ${manifest.engines.arangodb}
+        and will run in legacy compatibility mode.
+      `);
     } else if (!semver.satisfies(serverVersion, manifest.engines.arangodb)) {
-      console.warn(
-        `Manifest "${filename}" for service "${mount}":`
-        + ` ArangoDB version ${serverVersion} probably not compatible`
-        + ` with expected version ${manifest.engines.arangodb}.`
-      );
+      warnings.push(il`
+        ArangoDB version ${serverVersion} probably not compatible
+        with expected version ${manifest.engines.arangodb}.
+      `);
     }
   }
 
-  Object.keys(manifest).forEach(function (key) {
-    if (!manifestSchema[key] && (!legacy || legacyManifestFields.indexOf(key) === -1)) {
-      console.warn(`Manifest "${filename}" for service "${mount}": unknown attribute "${key}"`);
+  for (const key of Object.keys(inputManifest)) {
+    if (manifestSchema[key]) {
+      continue;
     }
-  });
+    manifest[key] = inputManifest[key];
+    if (key === 'engine' && !inputManifest.engines) {
+      warnings.push('Unknown field "engine". Did you mean "engines"?');
+    } else if (!legacy || legacyManifestFields.indexOf(key) === -1) {
+      warnings.push(`Unknown field "${key}".`);
+    }
+  }
 
-  if (validationErrors.length) {
+  if (manifest.version && !semver.valid(manifest.version)) {
+    warnings.push(`Not a valid version: "${manifest.verison}"`);
+  }
+
+  if (manifest.provides) {
+    if (typeof manifest.provides === 'string') {
+      manifest.provides = [manifest.provides];
+    }
+    if (Array.isArray(manifest.provides)) {
+      const provides = manifest.provides;
+      manifest.provides = {};
+      for (const provided of provides) {
+        const tokens = provided.split(':');
+        manifest.provides[tokens[0]] = tokens[1] || '*';
+      }
+    }
+    for (const name of Object.keys(manifest.provides)) {
+      const version = manifest.provides[name];
+      if (!semver.valid(version)) {
+        errors.push(`Provided "${name}" invalid version: "${version}".`);
+      }
+    }
+  }
+
+  if (manifest.dependencies) {
+    for (const key of Object.keys(manifest.dependencies)) {
+      if (typeof manifest.dependencies[key] === 'string') {
+        const tokens = manifest.dependencies[key].split(':');
+        manifest.dependencies[key] = {
+          name: tokens[0] || '*',
+          version: tokens[1] || '*',
+          required: true
+        };
+      }
+      const version = manifest.dependencies[key].version;
+      if (!semver.validRange(version)) {
+        errors.push(`Dependency "${key}" invalid version: "${version}".`);
+      }
+    }
+  }
+
+  if (notices.length) {
+    console.infoLines(dd`
+      Manifest for service at "${mount}":
+      ${notices.join('\n')}
+    `);
+  }
+
+  if (warnings.length) {
+    console.warnLines(dd`
+      Manifest for service at "${mount}":
+      ${warnings.join('\n')}
+    `);
+  }
+
+  if (errors.length) {
+    console.errorLines(dd`
+      Manifest for service at "${mount}":
+      ${errors.join('\n')}
+    `);
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-      errorMessage: validationErrors.join('\n')
+      errorMessage: dd`
+        ${errors.ERROR_INVALID_APPLICATION_MANIFEST.message}
+        Manifest for service at "${mount}":
+        ${errors.join('\n')}
+      `
     });
-  } else {
-    if (manifest.dependencies) {
-      Object.keys(manifest.dependencies).forEach(function (key) {
-        const dependency = manifest.dependencies[key];
-        if (typeof dependency === 'string') {
-          const tokens = dependency.split(':');
-          manifest.dependencies[key] = {
-            name: tokens[0] || '*',
-            version: tokens[1] || '*',
-            required: true
-          };
-        }
-      });
-    }
+  }
 
-    if (legacy && manifest.defaultDocument === undefined) {
+  if (legacy) {
+    if (manifest.defaultDocument === undefined) {
       manifest.defaultDocument = 'index.html';
     }
 
     if (typeof manifest.controllers === 'string') {
       manifest.controllers = {'/': manifest.controllers};
     }
-
-    if (typeof manifest.tests === 'string') {
-      manifest.tests = [manifest.tests];
-    }
   }
+
+  if (typeof manifest.tests === 'string') {
+    manifest.tests = [manifest.tests];
+  }
+
+  return manifest;
 }
 
 
@@ -378,34 +442,37 @@ function checkManifest(filename, inputManifest, mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function validateManifestFile(filename, mount) {
-  var mf, msg;
+  let mf;
   if (!fs.exists(filename)) {
-    msg = `Cannot find manifest file "${filename}"`;
-    throwFileNotFound(msg);
+    throwFileNotFound(`Cannot find manifest file "${filename}"`);
   }
   try {
     mf = JSON.parse(fs.read(filename));
   } catch (e) {
-    const error = new ArangoError({
-      errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
-      errorMessage: errors.ERROR_MALFORMED_MANIFEST_FILE.message
-      + '\nFile: ' + filename
-      + '\nCause: ' + e.stack
-    });
-    error.cause = e;
-    throw error;
+    throw Object.assign(
+      new ArangoError({
+        errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
+        errorMessage: dd`
+          ${errors.ERROR_MALFORMED_MANIFEST_FILE.message}
+          File: ${filename}
+          Cause: ${e.stack}
+        `
+      }), {cause: e}
+    );
   }
   try {
-    checkManifest(filename, mf);
+    mf = checkManifest(filename, mf, mount);
   } catch (e) {
-    const error = new ArangoError({
-      errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-      errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
-      + '\nFile: ' + filename
-      + '\nCause: ' + e.stack
-    });
-    error.cause = e;
-    throw error;
+    throw Object.assign(
+      new ArangoError({
+        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+        errorMessage: dd`
+          ${errors.ERROR_INVALID_APPLICATION_MANIFEST.message}
+          File: ${filename}
+          Cause: ${e.stack}
+        `
+      }), {cause: e}
+    );
   }
   return mf;
 }
@@ -559,10 +626,6 @@ function uploadToPeerCoordinators(serviceInfo, coordinators) {
 function installServiceFromGenerator(targetPath, options) {
   var invalidOptions = [];
   // Set default values:
-  options.name = options.name || 'MyService';
-  options.author = options.author || 'Author';
-  options.description = options.description || '';
-  options.license = options.license || 'Apache 2';
   options.documentCollections = options.documentCollections || [];
   options.edgeCollections = options.edgeCollections || [];
   if (typeof options.name !== 'string') {
@@ -586,8 +649,10 @@ function installServiceFromGenerator(targetPath, options) {
   if (invalidOptions.length > 0) {
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_FOXX_OPTIONS.code,
-      errorMessage: errors.ERROR_INVALID_FOXX_OPTIONS.message
-      + '\nOptions: ' + JSON.stringify(invalidOptions, undefined, 2)
+      errorMessage: dd`
+        ${errors.ERROR_INVALID_FOXX_OPTIONS.message}
+        Options: ${JSON.stringify(invalidOptions, undefined, 2)}
+      `
     });
   }
   var cfg = generator.generate(options);
