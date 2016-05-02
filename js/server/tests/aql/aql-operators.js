@@ -590,8 +590,8 @@ function ahuacatlOperatorsTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testCastNumber: function() {
-      assertEqual(null, aql.AQL_TO_NUMBER(undefined));
-      assertEqual(null, aql.AQL_TO_NUMBER(NaN));
+      assertEqual(0, aql.AQL_TO_NUMBER(undefined));
+      assertEqual(0, aql.AQL_TO_NUMBER(NaN));
 
       var values = [
         {ex: 0, val: null},
@@ -660,10 +660,12 @@ function ahuacatlOperatorsTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testCastString: function() {
-      assertEqual('null', aql.AQL_TO_STRING(undefined));
-      assertEqual('null', aql.AQL_TO_STRING(NaN));
+      assertEqual('', aql.AQL_TO_STRING(undefined));
+      assertEqual('', aql.AQL_TO_STRING(NaN));
+      assertEqual('', aql.AQL_TO_STRING(null));
+      assertEqual('', aql.AQL_TO_STRING(1 / 0));
       var values = [
-        {ex: "null", val: null},
+        {ex: "", val: null},
         {ex: "false", val: false},
         {ex: "true", val: true},
         {ex: "1", val: 1},
@@ -699,6 +701,8 @@ function ahuacatlOperatorsTestSuite () {
         var q = `RETURN TO_STRING(${v.val})`;
         assertEqual(v.ex, db._query(q).next(), q);
         q = `RETURN NOOPT(TO_STRING(${v.val}))`;
+        assertEqual(v.ex, db._query(q).next(), q);
+        q = `RETURN NOOPT(V8(TO_STRING(${v.val})))`;
         assertEqual(v.ex, db._query(q).next(), q);
       });
     },
@@ -3500,14 +3504,14 @@ function ahuacatlOperatorsTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testUnaryPlusUndefined: function() {
-      assertEqual(null, aql.UNARY_PLUS(undefined));
+      assertEqual(0, aql.UNARY_PLUS(undefined));
       assertEqual(0, aql.UNARY_PLUS(null));
-      assertEqual(null, aql.UNARY_PLUS(NaN));
+      assertEqual(0, aql.UNARY_PLUS(NaN));
       assertEqual(0, aql.UNARY_PLUS(false));
       assertEqual(1, aql.UNARY_PLUS(true));
       assertEqual(0, aql.UNARY_PLUS(' '));
-      assertEqual(null, aql.UNARY_PLUS('abc'));
-      assertEqual(null, aql.UNARY_PLUS('1abc'));
+      assertEqual(0, aql.UNARY_PLUS('abc'));
+      assertEqual(0, aql.UNARY_PLUS('1abc'));
       assertEqual(0, aql.UNARY_PLUS(''));
       assertEqual(-1, aql.UNARY_PLUS('-1'));
       assertEqual(0, aql.UNARY_PLUS('0'));
@@ -3517,7 +3521,7 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(0, aql.UNARY_PLUS([ 0 ]));
       assertEqual(1, aql.UNARY_PLUS([ 1 ]));
       assertEqual(17, aql.UNARY_PLUS([ 17 ]));
-      assertEqual(null, aql.UNARY_PLUS({ 'a' : 1 }));
+      assertEqual(0, aql.UNARY_PLUS({ 'a' : 1 }));
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -3540,14 +3544,14 @@ function ahuacatlOperatorsTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testUnaryMinusUndefined: function() {
-      assertEqual(null, aql.UNARY_MINUS(undefined));
+      assertEqual(0, aql.UNARY_MINUS(undefined));
       assertEqual(0, aql.UNARY_MINUS(null));
       assertEqual(0, aql.UNARY_MINUS(false));
       assertEqual(-1, aql.UNARY_MINUS(true));
       assertEqual(0, aql.UNARY_MINUS(''));
       assertEqual(0, aql.UNARY_MINUS(' '));
-      assertEqual(null, aql.UNARY_MINUS('abc'));
-      assertEqual(null, aql.UNARY_MINUS('1abc'));
+      assertEqual(0, aql.UNARY_MINUS('abc'));
+      assertEqual(0, aql.UNARY_MINUS('1abc'));
       assertEqual(1, aql.UNARY_MINUS('-1'));
       assertEqual(0, aql.UNARY_MINUS('0'));
       assertEqual(-1, aql.UNARY_MINUS('1'));
@@ -3557,9 +3561,9 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(0, aql.UNARY_MINUS([ 0 ]));
       assertEqual(-1, aql.UNARY_MINUS([ 1 ]));
       assertEqual(23, aql.UNARY_MINUS([ -23 ]));
-      assertEqual(null, aql.UNARY_MINUS([ 1, 2 ]));
-      assertEqual(null, aql.UNARY_MINUS({ 'a' : 1 }));
-      assertEqual(null, aql.UNARY_MINUS(NaN));
+      assertEqual(0, aql.UNARY_MINUS([ 1, 2 ]));
+      assertEqual(0, aql.UNARY_MINUS({ 'a' : 1 }));
+      assertEqual(0, aql.UNARY_MINUS(NaN));
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -3583,40 +3587,40 @@ function ahuacatlOperatorsTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testArithmeticPlusUndefined: function() {
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, null));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, false));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, true));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, 0));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, 1));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, 2));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, -1));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, ''));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, '0'));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, ' '));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, 'a'));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, [ ]));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, [ 1 ]));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, { }));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, { 'a' : 0 }));
-      assertEqual(null, aql.ARITHMETIC_PLUS(undefined, NaN));
-      assertEqual(null, aql.ARITHMETIC_PLUS(null, undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS(false, undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS(true, undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS(0, undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS(1, undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS(2, undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS(-1, undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS('', undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS('0', undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS(' ', undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS('a', undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS([ ], undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS([ 1 ], undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS({ }, undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS({ 'a' : 0 }, undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS(NaN, undefined));
-      assertEqual(null, aql.ARITHMETIC_PLUS(1, NaN));
+      assertEqual(0, aql.ARITHMETIC_PLUS(undefined, undefined));
+      assertEqual(0, aql.ARITHMETIC_PLUS(undefined, null));
+      assertEqual(0, aql.ARITHMETIC_PLUS(undefined, false));
+      assertEqual(1, aql.ARITHMETIC_PLUS(undefined, true));
+      assertEqual(0, aql.ARITHMETIC_PLUS(undefined, 0));
+      assertEqual(1, aql.ARITHMETIC_PLUS(undefined, 1));
+      assertEqual(2, aql.ARITHMETIC_PLUS(undefined, 2));
+      assertEqual(-1, aql.ARITHMETIC_PLUS(undefined, -1));
+      assertEqual(0, aql.ARITHMETIC_PLUS(undefined, ''));
+      assertEqual(0, aql.ARITHMETIC_PLUS(undefined, '0'));
+      assertEqual(0, aql.ARITHMETIC_PLUS(undefined, ' '));
+      assertEqual(0, aql.ARITHMETIC_PLUS(undefined, 'a'));
+      assertEqual(0, aql.ARITHMETIC_PLUS(undefined, [ ]));
+      assertEqual(1, aql.ARITHMETIC_PLUS(undefined, [ 1 ]));
+      assertEqual(0, aql.ARITHMETIC_PLUS(undefined, { }));
+      assertEqual(0, aql.ARITHMETIC_PLUS(undefined, { 'a' : 0 }));
+      assertEqual(0, aql.ARITHMETIC_PLUS(undefined, NaN));
+      assertEqual(0, aql.ARITHMETIC_PLUS(null, undefined));
+      assertEqual(0, aql.ARITHMETIC_PLUS(false, undefined));
+      assertEqual(1, aql.ARITHMETIC_PLUS(true, undefined));
+      assertEqual(0, aql.ARITHMETIC_PLUS(0, undefined));
+      assertEqual(1, aql.ARITHMETIC_PLUS(1, undefined));
+      assertEqual(2, aql.ARITHMETIC_PLUS(2, undefined));
+      assertEqual(-1, aql.ARITHMETIC_PLUS(-1, undefined));
+      assertEqual(0, aql.ARITHMETIC_PLUS('', undefined));
+      assertEqual(0, aql.ARITHMETIC_PLUS('0', undefined));
+      assertEqual(0, aql.ARITHMETIC_PLUS(' ', undefined));
+      assertEqual(0, aql.ARITHMETIC_PLUS('a', undefined));
+      assertEqual(0, aql.ARITHMETIC_PLUS([ ], undefined));
+      assertEqual(1, aql.ARITHMETIC_PLUS([ 1 ], undefined));
+      assertEqual(0, aql.ARITHMETIC_PLUS({ }, undefined));
+      assertEqual(0, aql.ARITHMETIC_PLUS({ 'a' : 0 }, undefined));
+      assertEqual(0, aql.ARITHMETIC_PLUS(NaN, undefined));
+      assertEqual(1, aql.ARITHMETIC_PLUS(1, NaN));
       assertEqual(1, aql.ARITHMETIC_PLUS(1, null));
       assertEqual(1, aql.ARITHMETIC_PLUS(1, false));
       assertEqual(2, aql.ARITHMETIC_PLUS(1, true));
@@ -3624,12 +3628,12 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(1, aql.ARITHMETIC_PLUS(1, ' '));
       assertEqual(1, aql.ARITHMETIC_PLUS(1, '0'));
       assertEqual(2, aql.ARITHMETIC_PLUS(1, '1'));
-      assertEqual(null, aql.ARITHMETIC_PLUS(1, 'a'));
+      assertEqual(1, aql.ARITHMETIC_PLUS(1, 'a'));
       assertEqual(1, aql.ARITHMETIC_PLUS(1, [ ]));
       assertEqual(1, aql.ARITHMETIC_PLUS(1, [ 0 ]));
-      assertEqual(null, aql.ARITHMETIC_PLUS(1, { }));
-      assertEqual(null, aql.ARITHMETIC_PLUS(1, { 'a' : 0 }));
-      assertEqual(null, aql.ARITHMETIC_PLUS(NaN, 1));
+      assertEqual(1, aql.ARITHMETIC_PLUS(1, { }));
+      assertEqual(1, aql.ARITHMETIC_PLUS(1, { 'a' : 0 }));
+      assertEqual(1, aql.ARITHMETIC_PLUS(NaN, 1));
       assertEqual(1, aql.ARITHMETIC_PLUS(null, 1));
       assertEqual(1, aql.ARITHMETIC_PLUS(false, 1));
       assertEqual(2, aql.ARITHMETIC_PLUS(true, 1));
@@ -3637,16 +3641,16 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(1, aql.ARITHMETIC_PLUS(' ', 1));
       assertEqual(1, aql.ARITHMETIC_PLUS('0', 1));
       assertEqual(2, aql.ARITHMETIC_PLUS('1', 1));
-      assertEqual(null, aql.ARITHMETIC_PLUS('a', 1));
+      assertEqual(1, aql.ARITHMETIC_PLUS('a', 1));
       assertEqual(1, aql.ARITHMETIC_PLUS([ ], 1));
       assertEqual(1, aql.ARITHMETIC_PLUS([ 0 ], 1));
       assertEqual(4, aql.ARITHMETIC_PLUS([ 3 ], 1));
-      assertEqual(null, aql.ARITHMETIC_PLUS({ }, 1));
-      assertEqual(null, aql.ARITHMETIC_PLUS({ 'a' : 0 }, 1));
+      assertEqual(1, aql.ARITHMETIC_PLUS({ }, 1));
+      assertEqual(1, aql.ARITHMETIC_PLUS({ 'a' : 0 }, 1));
       assertEqual(0, aql.ARITHMETIC_PLUS('0', '0'));
       assertEqual(8, aql.ARITHMETIC_PLUS('4', '4'));
       assertEqual(0, aql.ARITHMETIC_PLUS('4', '-4'));
-      assertEqual(null, aql.ARITHMETIC_PLUS(1.3e308 * 10, 1.3e308 * 10));
+      assertEqual(0, aql.ARITHMETIC_PLUS(1.3e308 * 10, 1.3e308 * 10));
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -3675,40 +3679,40 @@ function ahuacatlOperatorsTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testArithmeticMinusUndefined: function() {
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, null));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, false));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, true));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, 0));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, 1));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, 2));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, -1));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, ''));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, '0'));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, ' '));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, 'a'));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, [ ]));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, [ 1 ]));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, { }));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, { 'a' : 0 }));
-      assertEqual(null, aql.ARITHMETIC_MINUS(undefined, NaN));
-      assertEqual(null, aql.ARITHMETIC_MINUS(null, undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS(false, undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS(true, undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS(0, undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS(1, undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS(2, undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS(-1, undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS('', undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS('0', undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS(' ', undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS('a', undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS([ ], undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS([ 1 ], undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS({ }, undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS({ 'a' : 0 }, undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS(NaN, undefined));
-      assertEqual(null, aql.ARITHMETIC_MINUS(1, NaN));
+      assertEqual(0, aql.ARITHMETIC_MINUS(undefined, undefined));
+      assertEqual(0, aql.ARITHMETIC_MINUS(undefined, null));
+      assertEqual(0, aql.ARITHMETIC_MINUS(undefined, false));
+      assertEqual(-1, aql.ARITHMETIC_MINUS(undefined, true));
+      assertEqual(0, aql.ARITHMETIC_MINUS(undefined, 0));
+      assertEqual(-1, aql.ARITHMETIC_MINUS(undefined, 1));
+      assertEqual(-2, aql.ARITHMETIC_MINUS(undefined, 2));
+      assertEqual(1, aql.ARITHMETIC_MINUS(undefined, -1));
+      assertEqual(0, aql.ARITHMETIC_MINUS(undefined, ''));
+      assertEqual(0, aql.ARITHMETIC_MINUS(undefined, '0'));
+      assertEqual(0, aql.ARITHMETIC_MINUS(undefined, ' '));
+      assertEqual(0, aql.ARITHMETIC_MINUS(undefined, 'a'));
+      assertEqual(0, aql.ARITHMETIC_MINUS(undefined, [ ]));
+      assertEqual(-1, aql.ARITHMETIC_MINUS(undefined, [ 1 ]));
+      assertEqual(0, aql.ARITHMETIC_MINUS(undefined, { }));
+      assertEqual(0, aql.ARITHMETIC_MINUS(undefined, { 'a' : 0 }));
+      assertEqual(0, aql.ARITHMETIC_MINUS(undefined, NaN));
+      assertEqual(0, aql.ARITHMETIC_MINUS(null, undefined));
+      assertEqual(0, aql.ARITHMETIC_MINUS(false, undefined));
+      assertEqual(1, aql.ARITHMETIC_MINUS(true, undefined));
+      assertEqual(0, aql.ARITHMETIC_MINUS(0, undefined));
+      assertEqual(1, aql.ARITHMETIC_MINUS(1, undefined));
+      assertEqual(2, aql.ARITHMETIC_MINUS(2, undefined));
+      assertEqual(-1, aql.ARITHMETIC_MINUS(-1, undefined));
+      assertEqual(0, aql.ARITHMETIC_MINUS('', undefined));
+      assertEqual(0, aql.ARITHMETIC_MINUS('0', undefined));
+      assertEqual(0, aql.ARITHMETIC_MINUS(' ', undefined));
+      assertEqual(0, aql.ARITHMETIC_MINUS('a', undefined));
+      assertEqual(0, aql.ARITHMETIC_MINUS([ ], undefined));
+      assertEqual(1, aql.ARITHMETIC_MINUS([ 1 ], undefined));
+      assertEqual(0, aql.ARITHMETIC_MINUS({ }, undefined));
+      assertEqual(0, aql.ARITHMETIC_MINUS({ 'a' : 0 }, undefined));
+      assertEqual(0, aql.ARITHMETIC_MINUS(NaN, undefined));
+      assertEqual(1, aql.ARITHMETIC_MINUS(1, NaN));
       assertEqual(1, aql.ARITHMETIC_MINUS(1, null));
       assertEqual(1, aql.ARITHMETIC_MINUS(1, false));
       assertEqual(0, aql.ARITHMETIC_MINUS(1, true));
@@ -3716,12 +3720,12 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(1, aql.ARITHMETIC_MINUS(1, ' '));
       assertEqual(1, aql.ARITHMETIC_MINUS(1, '0'));
       assertEqual(0, aql.ARITHMETIC_MINUS(1, '1'));
-      assertEqual(null, aql.ARITHMETIC_MINUS(1, 'a'));
+      assertEqual(1, aql.ARITHMETIC_MINUS(1, 'a'));
       assertEqual(1, aql.ARITHMETIC_MINUS(1, [ ]));
       assertEqual(1, aql.ARITHMETIC_MINUS(1, [ 0 ]));
-      assertEqual(null, aql.ARITHMETIC_MINUS(1, { }));
-      assertEqual(null, aql.ARITHMETIC_MINUS(1, { 'a' : 0 }));
-      assertEqual(null, aql.ARITHMETIC_MINUS(NaN, 1));
+      assertEqual(1, aql.ARITHMETIC_MINUS(1, { }));
+      assertEqual(1, aql.ARITHMETIC_MINUS(1, { 'a' : 0 }));
+      assertEqual(-1, aql.ARITHMETIC_MINUS(NaN, 1));
       assertEqual(-1, aql.ARITHMETIC_MINUS(null, 1));
       assertEqual(-1, aql.ARITHMETIC_MINUS(false, 1));
       assertEqual(0, aql.ARITHMETIC_MINUS(true, 1));
@@ -3729,13 +3733,13 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(-1, aql.ARITHMETIC_MINUS(' ', 1));
       assertEqual(-1, aql.ARITHMETIC_MINUS('0', 1));
       assertEqual(0, aql.ARITHMETIC_MINUS('1', 1));
-      assertEqual(null, aql.ARITHMETIC_MINUS('a', 1));
+      assertEqual(-1, aql.ARITHMETIC_MINUS('a', 1));
       assertEqual(-1, aql.ARITHMETIC_MINUS([ ], 1));
       assertEqual(-1, aql.ARITHMETIC_MINUS([ 0 ], 1));
-      assertEqual(null, aql.ARITHMETIC_MINUS({ }, 1));
-      assertEqual(null, aql.ARITHMETIC_MINUS({ 'a' : 0 }, 1));
+      assertEqual(-1, aql.ARITHMETIC_MINUS({ }, 1));
+      assertEqual(-1, aql.ARITHMETIC_MINUS({ 'a' : 0 }, 1));
       assertEqual(0, aql.ARITHMETIC_MINUS('0', '0'));
-      assertEqual(null, aql.ARITHMETIC_MINUS(-1.3e308 * 10, 1.3e308 * 10));
+      assertEqual(0, aql.ARITHMETIC_MINUS(-1.3e308 * 10, 1.3e308 * 10));
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -3768,40 +3772,40 @@ function ahuacatlOperatorsTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testArithmeticTimesUndefined: function() {
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, null));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, false));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, true));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, 0));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, 1));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, 2));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, -1));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, ''));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, '0'));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, ' '));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, 'a'));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, [ ]));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, [ 1 ]));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, { }));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, { 'a' : 0 }));
-      assertEqual(null, aql.ARITHMETIC_TIMES(undefined, NaN));
-      assertEqual(null, aql.ARITHMETIC_TIMES(null, undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES(false, undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES(true, undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES(0, undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES(1, undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES(2, undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES(-1, undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES('', undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES('0', undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES(' ', undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES('a', undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES([ ], undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES([ 1 ], undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES({ }, undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES({ 'a' : 0 }, undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES(NaN, undefined));
-      assertEqual(null, aql.ARITHMETIC_TIMES(1, NaN));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, null));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, false));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, true));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, 0));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, 1));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, 2));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, -1));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, ''));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, '0'));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, ' '));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, 'a'));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, [ ]));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, [ 1 ]));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, { }));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, { 'a' : 0 }));
+      assertEqual(0, aql.ARITHMETIC_TIMES(undefined, NaN));
+      assertEqual(0, aql.ARITHMETIC_TIMES(null, undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES(false, undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES(true, undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES(0, undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES(1, undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES(2, undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES(-1, undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES('', undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES('0', undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES(' ', undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES('a', undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES([ ], undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES([ 1 ], undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES({ }, undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES({ 'a' : 0 }, undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES(NaN, undefined));
+      assertEqual(0, aql.ARITHMETIC_TIMES(1, NaN));
       assertEqual(0, aql.ARITHMETIC_TIMES(1, null));
       assertEqual(0, aql.ARITHMETIC_TIMES(1, false));
       assertEqual(1, aql.ARITHMETIC_TIMES(1, true));
@@ -3810,13 +3814,13 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(0, aql.ARITHMETIC_TIMES(1, ' '));
       assertEqual(0, aql.ARITHMETIC_TIMES(1, '0'));
       assertEqual(1, aql.ARITHMETIC_TIMES(1, '1'));
-      assertEqual(null, aql.ARITHMETIC_TIMES(1, 'a'));
+      assertEqual(0, aql.ARITHMETIC_TIMES(1, 'a'));
       assertEqual(0, aql.ARITHMETIC_TIMES(1, [ ]));
       assertEqual(0, aql.ARITHMETIC_TIMES(1, [ 0 ]));
       assertEqual(2, aql.ARITHMETIC_TIMES(1, [ 2 ]));
-      assertEqual(null, aql.ARITHMETIC_TIMES(1, { }));
-      assertEqual(null, aql.ARITHMETIC_TIMES(1, { 'a' : 0 }));
-      assertEqual(null, aql.ARITHMETIC_TIMES(NaN, 1));
+      assertEqual(0, aql.ARITHMETIC_TIMES(1, { }));
+      assertEqual(0, aql.ARITHMETIC_TIMES(1, { 'a' : 0 }));
+      assertEqual(0, aql.ARITHMETIC_TIMES(NaN, 1));
       assertEqual(0, aql.ARITHMETIC_TIMES(null, 1));
       assertEqual(0, aql.ARITHMETIC_TIMES(false, 1));
       assertEqual(1, aql.ARITHMETIC_TIMES(true, 1));
@@ -3825,14 +3829,14 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(0, aql.ARITHMETIC_TIMES(' ', 1));
       assertEqual(0, aql.ARITHMETIC_TIMES('0', 1));
       assertEqual(1, aql.ARITHMETIC_TIMES('1', 1));
-      assertEqual(null, aql.ARITHMETIC_TIMES('a', 1));
+      assertEqual(0, aql.ARITHMETIC_TIMES('a', 1));
       assertEqual(0, aql.ARITHMETIC_TIMES([ ], 1));
       assertEqual(0, aql.ARITHMETIC_TIMES([ 0 ], 1));
-      assertEqual(null, aql.ARITHMETIC_TIMES({ }, 1));
-      assertEqual(null, aql.ARITHMETIC_TIMES({ 'a' : 0 }, 1));
-      assertEqual(null, aql.ARITHMETIC_TIMES(1.3e190, 1.3e190));
-      assertEqual(null, aql.ARITHMETIC_TIMES(1.3e307, 1.3e307));
-      assertEqual(null, aql.ARITHMETIC_TIMES(1.3e308 * 10, 1.3e308 * 10));
+      assertEqual(0, aql.ARITHMETIC_TIMES({ }, 1));
+      assertEqual(0, aql.ARITHMETIC_TIMES({ 'a' : 0 }, 1));
+      assertEqual(0, aql.ARITHMETIC_TIMES(1.3e190, 1.3e190));
+      assertEqual(0, aql.ARITHMETIC_TIMES(1.3e307, 1.3e307));
+      assertEqual(0, aql.ARITHMETIC_TIMES(1.3e308 * 10, 1.3e308 * 10));
       assertEqual(0, aql.ARITHMETIC_TIMES('0', '0'));
     },
 
@@ -3870,56 +3874,56 @@ function ahuacatlOperatorsTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testArithmeticDivideUndefined: function() {
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, null));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, false));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, true));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, 0));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, 1));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, 2));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, -1));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, ''));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, '0'));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, ' '));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, 'a'));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, [ ]));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, [ 1 ]));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, { }));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, { 'a' : 0 }));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, NaN));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(null, undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(false, undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(true, undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(0, undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(2, undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(-1, undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE('', undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE('0', undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(' ', undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE('a', undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE([ ], undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE([ 1 ], undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE({ }, undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE({ 'a' : 0 }, undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(NaN, undefined));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, NaN));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, null));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, false));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, null));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, false));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, true));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, 0));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, 1));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, 2));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, -1));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, ''));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, '0'));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, ' '));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, 'a'));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, [ ]));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, [ 1 ]));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, { }));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, { 'a' : 0 }));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(undefined, NaN));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(null, undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(false, undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(true, undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(0, undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(2, undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(-1, undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE('', undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE('0', undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(' ', undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE('a', undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE([ ], undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE([ 1 ], undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE({ }, undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE({ 'a' : 0 }, undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(NaN, undefined));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, NaN));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, null));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, false));
       assertEqual(1, aql.ARITHMETIC_DIVIDE(1, true));
       assertEqual(2, aql.ARITHMETIC_DIVIDE(2, true));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, ''));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, ' '));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, '0'));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, ''));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, ' '));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, '0'));
       assertEqual(1, aql.ARITHMETIC_DIVIDE(1, '1'));
       assertEqual(2, aql.ARITHMETIC_DIVIDE(2, '1'));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, 'a'));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, [ ]));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, [ 0 ]));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, 'a'));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, [ ]));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, [ 0 ]));
       assertEqual(0.5, aql.ARITHMETIC_DIVIDE(1, [ 2 ]));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, { }));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, { 'a' : 0 }));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(NaN, 1));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, { }));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, { 'a' : 0 }));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(NaN, 1));
       assertEqual(0, aql.ARITHMETIC_DIVIDE(null, 1));
       assertEqual(0, aql.ARITHMETIC_DIVIDE(false, 1));
       assertEqual(1, aql.ARITHMETIC_DIVIDE(true, 1));
@@ -3927,17 +3931,17 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(0, aql.ARITHMETIC_DIVIDE(' ', 1));
       assertEqual(0, aql.ARITHMETIC_DIVIDE('0', 1));
       assertEqual(1, aql.ARITHMETIC_DIVIDE('1', 1));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE('a', 1));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE('a', 1));
       assertEqual(0, aql.ARITHMETIC_DIVIDE([ ], 1));
       assertEqual(0, aql.ARITHMETIC_DIVIDE([ 0 ], 1));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE({ }, 1));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE({ 'a' : 0 }, 1));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(1, 0));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(100, 0));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(-1, 0));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(-100, 0));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE(0, 0));
-      assertEqual(null, aql.ARITHMETIC_DIVIDE('0', '0'));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE({ }, 1));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE({ 'a' : 0 }, 1));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(1, 0));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(100, 0));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(-1, 0));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(-100, 0));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE(0, 0));
+      assertEqual(0, aql.ARITHMETIC_DIVIDE('0', '0'));
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -3989,55 +3993,55 @@ function ahuacatlOperatorsTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testArithmeticModulusUndefined: function() {
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, null));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, false));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, true));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, 0));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, 1));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, 2));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, -1));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, ''));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, '0'));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, ' '));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, 'a'));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, [ ]));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, [ 1 ]));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, { }));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, { 'a' : 0 }));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, NaN));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(null, undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(false, undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(true, undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(0, undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(2, undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(-1, undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS('', undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS('0', undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(' ', undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS('a', undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS([ ], undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS([ 1 ], undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS({ }, undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS({ 'a' : 0 }, undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(NaN, undefined));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, NaN));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, null));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, false));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, null));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, false));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, true));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, 0));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, 1));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, 2));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, -1));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, ''));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, '0'));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, ' '));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, 'a'));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, [ ]));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, [ 1 ]));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, { }));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, { 'a' : 0 }));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(undefined, NaN));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(null, undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(false, undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(true, undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(0, undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(2, undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(-1, undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS('', undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS('0', undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(' ', undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS('a', undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS([ ], undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS([ 1 ], undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS({ }, undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS({ 'a' : 0 }, undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(NaN, undefined));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, NaN));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, null));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, false));
       assertEqual(0, aql.ARITHMETIC_MODULUS(1, true));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, ''));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, ' '));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, '0'));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, ''));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, ' '));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, '0'));
       assertEqual(0, aql.ARITHMETIC_MODULUS(1, '1'));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, 'a'));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, [ ]));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, [ 0 ]));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, 'a'));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, [ ]));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, [ 0 ]));
       assertEqual(0, aql.ARITHMETIC_MODULUS(1, [ 1 ]));
       assertEqual(1, aql.ARITHMETIC_MODULUS(4, [ 3 ]));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, { }));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, { 'a' : 0 }));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(NaN, 1));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, { }));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, { 'a' : 0 }));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(NaN, 1));
       assertEqual(0, aql.ARITHMETIC_MODULUS(null, 1));
       assertEqual(0, aql.ARITHMETIC_MODULUS(false, 1));
       assertEqual(0, aql.ARITHMETIC_MODULUS(true, 1));
@@ -4045,16 +4049,16 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(0, aql.ARITHMETIC_MODULUS(' ', 1));
       assertEqual(0, aql.ARITHMETIC_MODULUS('0', 1));
       assertEqual(0, aql.ARITHMETIC_MODULUS('1', 1));
-      assertEqual(null, aql.ARITHMETIC_MODULUS('a', 1));
+      assertEqual(0, aql.ARITHMETIC_MODULUS('a', 1));
       assertEqual(0, aql.ARITHMETIC_MODULUS([ ], 1));
       assertEqual(0, aql.ARITHMETIC_MODULUS([ 0 ], 1));
-      assertEqual(null, aql.ARITHMETIC_MODULUS({ }, 1));
-      assertEqual(null, aql.ARITHMETIC_MODULUS({ 'a' : 0 }, 1));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(1, 0));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(100, 0));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(-1, 0));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(-100, 0));
-      assertEqual(null, aql.ARITHMETIC_MODULUS(0, 0));
+      assertEqual(0, aql.ARITHMETIC_MODULUS({ }, 1));
+      assertEqual(0, aql.ARITHMETIC_MODULUS({ 'a' : 0 }, 1));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(1, 0));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(100, 0));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(-1, 0));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(-100, 0));
+      assertEqual(0, aql.ARITHMETIC_MODULUS(0, 0));
     },
 
     ////////////////////////////////////////////////////////////////////////////////

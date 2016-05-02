@@ -1483,7 +1483,7 @@ AstNode* AstNode::castToNumber(Ast* ast) {
     // fall-through intentional
   }
 
-  return ast->createNodeValueNull();
+  return ast->createNodeValueInt(0);
 }
 
 /// @brief convert the node's value to a string value

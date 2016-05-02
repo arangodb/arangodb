@@ -30,11 +30,25 @@
 #include "Basics/Mutex.h"
 #include "Cluster/AgencyComm.h"
 #include "Logger/Logger.h"
+#include "Cluster/ServerJob.h"
 
 struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
+struct AgencyVersions {
+  uint64_t plan;
+  uint64_t current;
+  
+  AgencyVersions(uint64_t _plan, uint64_t _current) : plan(_plan), current(_plan) {}
+
+  AgencyVersions(const ServerJobResult& result)
+    : plan(result.planVersion),
+    current(result.currentVersion) {
+  }
+};
+
 class AgencyCallbackRegistry;
 
 class HeartbeatThread : public Thread {
@@ -69,7 +83,7 @@ class HeartbeatThread : public Thread {
   /// if the job was finished successfully and false otherwise
   //////////////////////////////////////////////////////////////////////////////
 
-  void removeDispatchedJob(bool success);
+  void removeDispatchedJob(ServerJobResult);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the thread has run at least once.
@@ -133,6 +147,13 @@ class HeartbeatThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   bool fetchUsers(TRI_vocbase_t*);
+  
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief bring the db server in sync with the desired state
+  //////////////////////////////////////////////////////////////////////////////
+  
+  bool syncDBServerStatusQuo();
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -203,10 +224,10 @@ class HeartbeatThread : public Thread {
   uint64_t _lastSuccessfulVersion;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief currently dispatched version
+  /// @brief currently dispatching
   //////////////////////////////////////////////////////////////////////////////
 
-  uint64_t _dispatchedVersion;
+  bool _isDispatchingChange;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current plan version
@@ -226,6 +247,16 @@ class HeartbeatThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   static volatile sig_atomic_t HasRunOnce;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief keeps track of the currently installed versions
+  //////////////////////////////////////////////////////////////////////////////
+  AgencyVersions _currentVersions;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief keeps track of the currently desired versions
+  //////////////////////////////////////////////////////////////////////////////
+  AgencyVersions _desiredVersions;
 
   bool _wasNotified;
 };

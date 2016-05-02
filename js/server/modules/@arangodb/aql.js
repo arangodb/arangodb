@@ -36,7 +36,6 @@ var isCoordinator = require("@arangodb/cluster").isCoordinator();
 var underscore = require("lodash");
 var graphModule = require("@arangodb/general-graph");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cache for compiled regexes
 ////////////////////////////////////////////////////////////////////////////////
@@ -1047,7 +1046,7 @@ function NUMERIC_VALUE (value) {
   'use strict';
 
   if (isNaN(value) || ! isFinite(value)) {
-    return null;
+    return 0;
   }
 
   return value;
@@ -2032,9 +2031,6 @@ function UNARY_PLUS (value) {
   'use strict';
 
   value = AQL_TO_NUMBER(value);
-  if (value === null) {
-    return null;
-  } 
   return AQL_TO_NUMBER(+ value);
 }
 
@@ -2046,10 +2042,6 @@ function UNARY_MINUS (value) {
   'use strict';
 
   value = AQL_TO_NUMBER(value);
-  if (value === null) {
-    return null;
-  }
-
   return AQL_TO_NUMBER(- value);
 }
 
@@ -2061,15 +2053,7 @@ function ARITHMETIC_PLUS (lhs, rhs) {
   'use strict';
 
   lhs = AQL_TO_NUMBER(lhs);
-  if (lhs === null) {
-    return null;
-  }
-
   rhs = AQL_TO_NUMBER(rhs);
-  if (rhs === null) {
-    return null;
-  }
-
   return AQL_TO_NUMBER(lhs + rhs);
 }
 
@@ -2081,15 +2065,7 @@ function ARITHMETIC_MINUS (lhs, rhs) {
   'use strict';
   
   lhs = AQL_TO_NUMBER(lhs);
-  if (lhs === null) {
-    return null;
-  }
-
   rhs = AQL_TO_NUMBER(rhs);
-  if (rhs === null) {
-    return null;
-  }
-
   return AQL_TO_NUMBER(lhs - rhs);
 }
 
@@ -2101,15 +2077,7 @@ function ARITHMETIC_TIMES (lhs, rhs) {
   'use strict';
   
   lhs = AQL_TO_NUMBER(lhs);
-  if (lhs === null) {
-    return null;
-  }
-
   rhs = AQL_TO_NUMBER(rhs);
-  if (rhs === null) {
-    return null;
-  }
-
   return AQL_TO_NUMBER(lhs * rhs);
 }
 
@@ -2121,14 +2089,10 @@ function ARITHMETIC_DIVIDE (lhs, rhs) {
   'use strict';
 
   lhs = AQL_TO_NUMBER(lhs);
-  if (lhs === null) {
-    return null;
-  }
-
   rhs = AQL_TO_NUMBER(rhs);
   if (rhs === 0 || rhs === null) {
     WARN(null, INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
-    return null;
+    return 0;
   }
 
   return AQL_TO_NUMBER(lhs / rhs);
@@ -2142,19 +2106,14 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
   'use strict';
 
   lhs = AQL_TO_NUMBER(lhs);
-  if (lhs === null) {
-    return null;
-  }
-
   rhs = AQL_TO_NUMBER(rhs);
   if (rhs === 0 || rhs === null) {
     WARN(null, INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
-    return null;
+    return 0;
   }
 
   return AQL_TO_NUMBER(lhs % rhs);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform string concatenation
@@ -2269,7 +2228,7 @@ function AQL_UPPER (value) {
 function AQL_SUBSTRING (value, offset, count) {
   'use strict';
 
-  if (count !== undefined) {
+  if (TYPEWEIGHT(count) !== TYPEWEIGHT_NULL) {
     count = AQL_TO_NUMBER(count);
   }
 
@@ -2421,7 +2380,7 @@ function AQL_SPLIT (value, separator, limit) {
     return [ AQL_TO_STRING(value) ];
   }
 
-  if (limit === null || limit === undefined) {
+  if (TYPEWEIGHT(limit) === TYPEWEIGHT_NULL) {
     limit = undefined;
   }
   else {
@@ -2516,7 +2475,7 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
     return value;
   }
   
-  if (limit === null || limit === undefined) {
+  if (TYPEWEIGHT(limit) === TYPEWEIGHT_NULL) {
     limit = undefined;
   }
   else {
@@ -2573,7 +2532,7 @@ function AQL_RANDOM_TOKEN (length) {
     THROW("RANDOM_TOKEN", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANDOM_TOKEN");
   }
 
-  return INTERNAL.genRandomAlphaNumbers(AQL_TO_NUMBER(length));
+  return INTERNAL.genRandomAlphaNumbers(length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2583,7 +2542,7 @@ function AQL_RANDOM_TOKEN (length) {
 function AQL_FIND_FIRST (value, search, start, end) {
   'use strict';
 
-  if (start !== undefined && start !== null) {
+  if (TYPEWEIGHT(start) !== TYPEWEIGHT_NULL) {
     start = AQL_TO_NUMBER(start);
     if (start < 0) {
       return -1;
@@ -2593,7 +2552,7 @@ function AQL_FIND_FIRST (value, search, start, end) {
     start = 0;
   }
 
-  if (end !== undefined && end !== null) {
+  if (TYPEWEIGHT(end) !== TYPEWEIGHT_NULL) {
     end = AQL_TO_NUMBER(end);
     if (end < start || end < 0) {
       return -1;
@@ -2617,14 +2576,14 @@ function AQL_FIND_FIRST (value, search, start, end) {
 function AQL_FIND_LAST (value, search, start, end) {
   'use strict';
 
-  if (start !== undefined && start !== null) {
+  if (TYPEWEIGHT(start) !== TYPEWEIGHT_NULL) {
     start = AQL_TO_NUMBER(start);
   }
   else {
     start = undefined;
   }
 
-  if (end !== undefined && end !== null) {
+  if (TYPEWEIGHT(end) !== TYPEWEIGHT_NULL) {
     end = AQL_TO_NUMBER(end);
     if (end < start || end < 0) {
       return -1;
@@ -2686,17 +2645,10 @@ function AQL_TO_BOOL (value) {
 function AQL_TO_NUMBER (value) {
   'use strict';
 
-  if (value === undefined) {
-    return null;
-  }
-  if (value === null) {
-    return 0;
-  }
-
   switch (TYPEWEIGHT(value)) {
     case TYPEWEIGHT_NULL:
       // this covers Infinity and NaN
-      return null;
+      return 0;
     case TYPEWEIGHT_BOOL:
       return (value ? 1 : 0);
     case TYPEWEIGHT_NUMBER:
@@ -2713,7 +2665,7 @@ function AQL_TO_NUMBER (value) {
       }
       // fallthrough intentional
   }
-  return null;
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2727,7 +2679,7 @@ function AQL_TO_STRING (value) {
 
   switch (TYPEWEIGHT(value)) {
     case TYPEWEIGHT_NULL:
-      return 'null';
+      return '';
     case TYPEWEIGHT_BOOL:
       return (value ? 'true' : 'false');
     case TYPEWEIGHT_STRING:
@@ -2871,7 +2823,6 @@ function AQL_IS_DATESTRING (value) {
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief integer closest to value, not greater than value
 ////////////////////////////////////////////////////////////////////////////////
@@ -2941,7 +2892,6 @@ function AQL_POW (base, exp) {
 
   return NUMERIC_VALUE(Math.pow(AQL_TO_NUMBER(base), AQL_TO_NUMBER(exp)));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the length of a list, document or string
@@ -3536,7 +3486,9 @@ function AQL_SLICE (value, from, to, nonNegative) {
   }
 
   from = AQL_TO_NUMBER(from);
-  to   = AQL_TO_NUMBER(to);
+  if (TYPEWEIGHT(to) !== TYPEWEIGHT_NULL) {
+    to = AQL_TO_NUMBER(to);
+  }
 
   if (nonNegative && (from < 0 || to < 0)) {
     return [ ];
@@ -4059,7 +4011,7 @@ function AQL_STDDEV_POPULATION (values) {
 function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
   'use strict';
 
-  if (limit === null || limit === undefined) {
+  if (TYPEWEIGHT(limit) === TYPEWEIGHT_NULL) {
     // use default value
     limit = 100;
   }

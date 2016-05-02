@@ -852,7 +852,7 @@ function ahuacatlTypesFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testToNumber4 : function () {
-      var expected = [ null ];
+      var expected = [ 0 ];
       var actual = getQueryResults("RETURN TO_NUMBER([ -1, 1 ])");
       assertEqual(expected, actual);
     },
@@ -862,7 +862,7 @@ function ahuacatlTypesFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testToNumber5 : function () {
-      var expected = [ null ];
+      var expected = [ 0 ];
       var actual = getQueryResults("RETURN TO_NUMBER({ })");
       assertEqual(expected, actual);
     },
@@ -872,7 +872,7 @@ function ahuacatlTypesFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testToNumber6 : function () {
-      var expected = [ null ];
+      var expected = [ 0 ];
       var actual = getQueryResults("RETURN TO_NUMBER({ \"2\" : \"3\" })");
       assertEqual(expected, actual);
     },
@@ -932,7 +932,7 @@ function ahuacatlTypesFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testToNumber12 : function () {
-      var expected = [ null ];
+      var expected = [ 0 ];
       var actual = getQueryResults("RETURN TO_NUMBER(\"3553.4er6\")");
       assertEqual(expected, actual);
     },
@@ -942,7 +942,7 @@ function ahuacatlTypesFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testToNumber13 : function () {
-      var expected = [ null ];
+      var expected = [ 0 ];
       var actual = getQueryResults("RETURN TO_NUMBER(\"-wert324\")");
       assertEqual(expected, actual);
     },
