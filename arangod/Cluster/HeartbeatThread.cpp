@@ -630,6 +630,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::syncDBServerStatusQuo() {
+  bool shouldUpdate = false;
   {
     MUTEX_LOCKER(mutexLocker, _statusLock);
     // mop: only dispatch one at a time
@@ -644,9 +645,10 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
       LOG(DEBUG) << "Current version " << _currentVersions.current << " is lower than desired version " << _desiredVersions.current;
       _isDispatchingChange = true;
     }
+    shouldUpdate = _isDispatchingChange;
   }
 
-  if (_isDispatchingChange) {
+  if (shouldUpdate) {
     LOG(TRACE) << "Dispatching Sync";
     // schedule a job for the change
     std::unique_ptr<arangodb::rest::Job> job(new ServerJob(this));
