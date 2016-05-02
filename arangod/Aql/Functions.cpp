@@ -600,8 +600,6 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
                                     std::string const& identifier,
                                     bool ignoreError,
                                     VPackBuilder& result) {
-  OperationOptions options;
-  OperationResult opRes;
   TransactionBuilderLeaser searchBuilder(trx);
 
   searchBuilder->openObject();
@@ -628,24 +626,21 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
     }
   }
 
-  // TODO Operation Result is very expensive find a faster alternative
+  int res = TRI_ERROR_NO_ERROR;
   try {
-    opRes = trx->document(collectionName, searchBuilder->slice(), options);
+    res = trx->documentFastPath(collectionName, searchBuilder->slice(), result);
   } catch (arangodb::basics::Exception const&) {
     if (ignoreError) {
       return;
     }
     throw;
   }
-
-  if (opRes.failed()) {
+  if (res != TRI_ERROR_NO_ERROR) {
     if (ignoreError) {
       return;
     }
-    THROW_ARANGO_EXCEPTION(opRes.code);
+    THROW_ARANGO_EXCEPTION(res);
   }
-
-  result.add(opRes.slice());
 }
 
 /// @brief Helper function to merge given parameters
