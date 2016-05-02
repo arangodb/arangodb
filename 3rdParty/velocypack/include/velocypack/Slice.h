@@ -42,11 +42,16 @@
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
 
+#ifndef VELOCYPACK_HASH
+// forward for XXH64 function declared elsewhere
+extern "C" unsigned long long XXH64(void const*, size_t, unsigned long long);
+
+#define VELOCYPACK_HASH(mem, size, seed) XXH64(mem, size, seed)
+
+#endif
+
 namespace arangodb {
 namespace velocypack {
-
-// forward for fasthash64 function declared elsewhere
-uint64_t fasthash64(void const*, size_t, uint64_t);
 
 class SliceScope;
 
@@ -140,13 +145,19 @@ class Slice {
 
   // hashes the binary representation of a value
   inline uint64_t hash(uint64_t seed = 0xdeadbeef) const {
-    return fasthash64(start(), checkOverflow(byteSize()), seed);
+    return VELOCYPACK_HASH(start(), checkOverflow(byteSize()), seed);
   }
 
   // hashes the value, normalizing different representations of
   // arrays, objects and numbers. this function may produce different
   // hash values than the binary hash() function
   uint64_t normalizedHash(uint64_t seed = 0xdeadbeef) const;
+
+  // hashes the binary representation of a String slice. No check
+  // is done if the Slice value is actually of type String
+  inline uint64_t hashString(uint64_t seed = 0xdeadbeef) const throw() {
+    return VELOCYPACK_HASH(start(), stringSliceLength(), seed);
+  }
 
   // check if slice is of the specified type
   inline bool isType(ValueType t) const throw() { return TypeMap[*_start] == t; }
@@ -763,6 +774,19 @@ class Slice {
   std::string hexType() const;
   
  private:
+  // get the total byte size for a String slice, including the head byte
+  // not check is done if the type of the slice is actually String 
+  ValueLength stringSliceLength() const throw() {
+    // check if the type has a fixed length first
+    auto const h = head();
+    if (h == 0xbf) {
+      // long UTF-8 String
+      return static_cast<ValueLength>(
+        1 + 8 + readInteger<ValueLength>(_start + 1, 8));
+    }
+    return static_cast<ValueLength>(1 + h - 0x40);
+  }
+
   // return the value for a UInt object, without checks
   // returns 0 for invalid values/types
   uint64_t getUIntUnchecked() const;

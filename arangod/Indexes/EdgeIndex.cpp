@@ -54,7 +54,7 @@ static uint64_t HashElementKey(void*, VPackSlice const* key) {
   }
   // we can get away with the fast hash function here, as edge
   // index values are restricted to strings
-  return key->hash(hash);
+  return key->hashString(hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +76,7 @@ static uint64_t HashElementEdgeFrom(void*, TRI_doc_mptr_t const* mptr,
     TRI_ASSERT(tmp.isString());
     // we can get away with the fast hash function here, as edge
     // index values are restricted to strings
-    hash = tmp.hash(hash);
+    hash = tmp.hashString(hash);
   }
   return hash;
 }
@@ -100,7 +100,7 @@ static uint64_t HashElementEdgeTo(void*, TRI_doc_mptr_t const* mptr,
     TRI_ASSERT(tmp.isString());
     // we can get away with the fast hash function here, as edge
     // index values are restricted to strings
-    hash = tmp.hash(hash);
+    hash = tmp.hashString(hash);
   }
   return hash;
 }
@@ -185,19 +185,12 @@ static bool IsEqualElementEdgeToByKey(void*,
 }
 
 TRI_doc_mptr_t* EdgeIndexIterator::next() {
-  while (true) {
-    if (_position >= static_cast<size_t>(_keys.length())) {
-      // we're at the end of the lookup values
-      return nullptr;
-    }
-
+  while (_iterator.valid()) {
     if (_buffer.empty()) {
       // We start a new lookup
       _posInBuffer = 0;
 
-      // TODO: can we use an ArrayIterator with linear access here?
-      // at() will recalculate the object length etc. on every call
-      VPackSlice tmp = _keys.at(_position);
+      VPackSlice tmp = _iterator.value();
       if (tmp.isObject()) {
         tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
       }
@@ -218,22 +211,18 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
     }
 
     // found no result. now go to next lookup value in _keys
-    ++_position;
+    _iterator.next();
   }
+
+  return nullptr;
 }
 
 void EdgeIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& buffer, size_t limit) {
   size_t atMost = _batchSize > limit ? limit : _batchSize;
 
-  while (true) {
-    if (_position >= static_cast<size_t>(_keys.length())) {
-      // we're at the end of the lookup values
-      buffer.clear();
-      return;
-    }
-
+  while (_iterator.valid()) {
     if (buffer.empty()) {
-      VPackSlice tmp = _keys.at(_position);
+      VPackSlice tmp = _iterator.value();
       if (tmp.isObject()) {
         tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
       }
@@ -250,20 +239,19 @@ void EdgeIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& buffer, size_t 
     if (!buffer.empty()) {
       // found something
       return;
-      //return buffer.at(_posInBuffer++);
     }
 
     // found no result. now go to next lookup value in _keys
-    ++_position;
+    _iterator.next();
   }
+
+  buffer.clear();
 }
 
-
-
 void EdgeIndexIterator::reset() {
-  _position = 0;
   _posInBuffer = 0;
   _buffer.clear();
+  _iterator.reset(true);
 }
 
 TRI_doc_mptr_t* AnyDirectionEdgeIndexIterator::next() {

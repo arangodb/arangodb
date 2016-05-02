@@ -203,6 +203,16 @@ struct AqlValue final {
   /// @brief get the (array) element at position 
   AqlValue at(int64_t position, bool& mustDestroy, bool copy) const;
   
+  /// @brief get the _key attribute from an object/document
+  AqlValue getKeyAttribute(arangodb::AqlTransaction* trx,
+                           bool& mustDestroy, bool copy) const;
+  /// @brief get the _from attribute from an object/document
+  AqlValue getFromAttribute(arangodb::AqlTransaction* trx,
+                            bool& mustDestroy, bool copy) const;
+  /// @brief get the _to attribute from an object/document
+  AqlValue getToAttribute(arangodb::AqlTransaction* trx,
+                          bool& mustDestroy, bool copy) const;
+  
   /// @brief get the (object) element by name(s)
   AqlValue get(arangodb::AqlTransaction* trx,
                std::string const& name, bool& mustDestroy, bool copy) const;

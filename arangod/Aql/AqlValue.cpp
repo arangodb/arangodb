@@ -230,6 +230,117 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy,
   // default is to return null
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
+
+/// @brief get the _key attribute from an object/document
+AqlValue AqlValue::getKeyAttribute(arangodb::AqlTransaction* trx,
+                                   bool& mustDestroy, bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_DOCUMENT_PART: 
+    case VPACK_INLINE:
+      doCopy = false; 
+      // fall-through intentional
+    case VPACK_MANAGED: {
+      VPackSlice s(slice());
+      if (s.isObject()) {
+        VPackSlice found = Transaction::extractKeyFromDocument(s);
+        if (!found.isNone()) {
+          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+            mustDestroy = true;
+            return AqlValue(found);
+          }
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
+        }
+      }
+      // fall-through intentional
+      break;
+    }
+    case DOCVEC: 
+    case RANGE: {
+      // will return null
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
+/// @brief get the _from attribute from an object/document
+AqlValue AqlValue::getFromAttribute(arangodb::AqlTransaction* trx,
+                                    bool& mustDestroy, bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_DOCUMENT_PART: 
+    case VPACK_INLINE:
+      doCopy = false; 
+      // fall-through intentional
+    case VPACK_MANAGED: {
+      VPackSlice s(slice());
+      if (s.isObject()) {
+        VPackSlice found = Transaction::extractFromFromDocument(s);
+        if (!found.isNone()) {
+          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+            mustDestroy = true;
+            return AqlValue(found);
+          }
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
+        }
+      }
+      // fall-through intentional
+      break;
+    }
+    case DOCVEC: 
+    case RANGE: {
+      // will return null
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
+/// @brief get the _to attribute from an object/document
+AqlValue AqlValue::getToAttribute(arangodb::AqlTransaction* trx,
+                                  bool& mustDestroy, bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_DOCUMENT_PART: 
+    case VPACK_INLINE:
+      doCopy = false; 
+      // fall-through intentional
+    case VPACK_MANAGED: {
+      VPackSlice s(slice());
+      if (s.isObject()) {
+        VPackSlice found = Transaction::extractToFromDocument(s);
+        if (!found.isNone()) {
+          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+            mustDestroy = true;
+            return AqlValue(found);
+          }
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
+        }
+      }
+      // fall-through intentional
+      break;
+    }
+    case DOCVEC: 
+    case RANGE: {
+      // will return null
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
   
 /// @brief get the (object) element by name
 AqlValue AqlValue::get(arangodb::AqlTransaction* trx,

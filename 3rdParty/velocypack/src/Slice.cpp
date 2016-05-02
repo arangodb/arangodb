@@ -417,12 +417,12 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
   if (isNumber()) {
     // upcast integer values to double
     double v = getNumericValue<double>();
-    value = fasthash64(&v, sizeof(v), seed);
+    value = VELOCYPACK_HASH(&v, sizeof(v), seed);
   } else if (isArray()) {
     // normalize arrays by hashing array length and iterating
     // over all array members
     uint64_t const n = length() ^ 0xba5bedf00d;
-    value = fasthash64(&n, sizeof(n), seed);
+    value = VELOCYPACK_HASH(&n, sizeof(n), seed);
     for (auto const& it : ArrayIterator(*this)) {
       value ^= it.normalizedHash(value);
     }
@@ -430,7 +430,7 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
     // normalize objects by hashing object length and iterating
     // over all object members
     uint64_t const n = length() ^ 0xf00ba44ba5;
-    uint64_t seed2 = fasthash64(&n, sizeof(n), seed);
+    uint64_t seed2 = VELOCYPACK_HASH(&n, sizeof(n), seed);
     value = seed2;
     for (auto const& it : ObjectIterator(*this)) {
       value ^= it.key.normalizedHash(seed2);

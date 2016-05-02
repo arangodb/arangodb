@@ -110,7 +110,7 @@ static bool IsEqualKeyElementHash(
 TRI_doc_mptr_t* HashIndexIterator::next() {
   while (true) {
     if (_posInBuffer >= _buffer.size()) {
-      if (_position >= _numLookups) {
+      if (!_iterator.valid()) {
         // we're at the end of the lookup values
         return nullptr;
       }
@@ -120,7 +120,8 @@ TRI_doc_mptr_t* HashIndexIterator::next() {
       _posInBuffer = 0;
 
       int res = TRI_ERROR_NO_ERROR;
-      _index->lookup(_trx, _searchKeys.at(_position++), _buffer);
+      _index->lookup(_trx, _iterator.value(), _buffer);
+      _iterator.next();
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -136,8 +137,8 @@ TRI_doc_mptr_t* HashIndexIterator::next() {
 
 void HashIndexIterator::reset() {
   _buffer.clear();
-  _position = 0;
   _posInBuffer = 0;
+  _iterator.reset(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

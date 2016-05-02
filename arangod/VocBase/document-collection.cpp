@@ -3320,7 +3320,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     TRI_ASSERT(slice.isObject());
     // we can get away with the fast hash function here, as key values are 
     // restricted to strings
-    hash = Transaction::extractKeyFromDocument(slice).hash();
+    hash = Transaction::extractKeyFromDocument(slice).hashString();
     newSlice = slice;
   }
 
@@ -4190,7 +4190,7 @@ int TRI_document_collection_t::newObjectForInsert(
   }
   // we can get away with the fast hash function here, as key values are 
   // restricted to strings
-  hash = s.hash();
+  hash = s.hashString();
 
   // _from and _to
   if (isEdgeCollection) {

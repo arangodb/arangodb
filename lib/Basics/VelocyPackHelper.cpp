@@ -32,7 +32,6 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
-#include "Basics/xxhash.h"
 
 #include <velocypack/AttributeTranslator.h>
 #include <velocypack/velocypack-common.h>
@@ -164,47 +163,34 @@ size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
   return slice.normalizedHash();
 };
 
-size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) const {
-  auto const h = slice.head();
-  size_t l;
-  if (h == 0xbf) {
-    // long UTF-8 String
-    l = static_cast<size_t>(
-        1 + 8 + velocypack::readInteger<VPackValueLength>(slice.begin() + 1, 8));
-  } else {
-    l = static_cast<size_t>(1 + h - 0x40);
-  }
-  return XXH64(slice.start(), l, 0xdeadbeef);
+size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) const noexcept {
+  return slice.hashString();
 };
 
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
   return VelocyPackHelper::compare(lhs, rhs, false) == 0;
 };
 
-bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
+bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const noexcept {
   auto const lh = lhs.head();
+  auto const rh = rhs.head();
+
+  if (lh != rh) {
+    return false;
+  }
+
   VPackValueLength size;
   if (lh == 0xbf) {
     // long UTF-8 String
-    size = static_cast<VPackValueLength>(
-        1 + 8 + velocypack::readInteger<VPackValueLength>(lhs.begin() + 1, 8));
-  } else {
-    size = static_cast<VPackValueLength>(1 + lh - 0x40);
-  }
-
-  auto const rh = rhs.head();
-  if (rh == 0xbf) {
-    // long UTF-8 String
-    if (size !=static_cast<VPackValueLength>(
-        1 + 8 + velocypack::readInteger<VPackValueLength>(rhs.begin() + 1, 8))) {
+    size = static_cast<VPackValueLength>(velocypack::readInteger<VPackValueLength>(lhs.begin() + 1, 8));
+    if (size !=static_cast<VPackValueLength>(velocypack::readInteger<VPackValueLength>(rhs.begin() + 1, 8))) {
       return false;
     }
-  } else {
-    if (size != static_cast<VPackValueLength>(1 + rh - 0x40)) {
-      return false;
-    }
-  }
-  return (memcmp(lhs.start(), rhs.start(), static_cast<size_t>(size)) == 0);
+    return (memcmp(lhs.start() + 1 + 8, rhs.start() + 1 + 8, static_cast<size_t>(size)) == 0);
+  } 
+    
+  size = static_cast<VPackValueLength>(lh - 0x40);
+  return (memcmp(lhs.start() + 1, rhs.start() + 1, static_cast<size_t>(size)) == 0);
 };
 
 static int TypeWeight(VPackSlice const& slice) {

@@ -138,6 +138,19 @@ class ArrayIterator {
   inline bool isFirst() const throw() { return (_position == 0); }
 
   inline bool isLast() const throw() { return (_position + 1 >= _size); }
+    
+  inline void reset(bool allowRandomIteration) {
+    _position = 0;
+    _current = nullptr;
+    if (_size > 0) {
+      auto h = _slice.head();
+      if (h == 0x13) {
+        _current = _slice.at(0).start();
+      } else if (allowRandomIteration) {
+        _current = _slice.begin() + _slice.findDataOffset(h);
+      }
+    }
+  }
 
  private:
   Slice _slice;
