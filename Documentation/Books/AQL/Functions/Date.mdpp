@@ -184,7 +184,7 @@ DATE_ADD(DATE_ADD("2016-02", "month", 1), -1, "day") // last day of February (29
 
   The string must be prefixed by a `P`. A separating `T` is only required if
   `H`, `M` and/or `S` are specified. You only need to specify the needed pairs
-  of amounts and time intervals.
+  of letters and numbers.
 
   Examples:
 
@@ -345,8 +345,8 @@ FOR user IN users
   - %: ignored
 
   `%yyyy` does not enforce a length of 4 for years before 0 and past 9999.
-  The same format as for `%yyyyyy` will used instead. `%yy` preserves the
-  sign for negative years and thus returns 3 characters in total.
+  The same format as for `%yyyyyy` will be used instead. `%yy` preserves the
+  sign for negative years and may thus return 3 characters in total.
   
   Single `%` characters will be ignored. Use `%%` for a literal `%`. To resolve
   ambiguities like in `%mmonth` (unpadded month number + the string "month")
@@ -411,5 +411,8 @@ special treatment of positive years too, if negative years are used (e.g.
 `+002015-05-15` and `-000753-01-01`). This is rarely used however, and AQL does
 not use the 7-character version for years between 0 and 9999 in ISO strings.
 Keep in mind that they can't be properly compared to dates outside that range.
+Sorting of negative dates does not result in a meaningful order, with years longer
+ago last, but months, days and the time components in otherwise correct order.
+
 Leap seconds are ignored, just as they are in JavaScript as per
 [ECMAScript Language Specifications](http://www.ecma-international.org/ecma-262/5.1/#sec-15.9.1.1).

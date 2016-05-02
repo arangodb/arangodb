@@ -42,7 +42,7 @@ outer scopes. Not using the `var` keyword for own variables may cause side
 effects when executing the function.
 
 Here is an example that may modify outer scope variables `i` and `name`,
-making the function **not** side effects-free:
+making the function **not** side-effect free:
 
 ```js
 function (values) {
@@ -93,9 +93,9 @@ to undefined behavior and should be avoided.
 
 !SECTION Enforcing strict mode
 
-By default, any user function code will not be executed in *strict mode* or 
-*strong mode*. In order to make a user function being run in strict 
-mode, use `use strict` explicitly inside the user function, e.g.:
+By default, any user function code will be executed in *sloppy mode*, not
+*strict* or *strong mode*. In order to make a user function being run in strict
+mode, use `"use strict"` explicitly inside the user function, e.g.:
 
 ```js
 function (values) {
@@ -116,10 +116,13 @@ Any violation of the strict mode will trigger a runtime error.
 !SECTION Miscellaneous
 
 Internally, user functions are stored in a system collection named
-*_aqlfunctions*  of the selected database. 
-Documents in this collection should not be accessed directly, but 
-only via the dedicated interfaces.
-Also system collection are excluded from dumps created with 
-[arangodump](../HttpBulkImports/Arangodump.md). To include AQL user 
-functions in a dump, the dump should be started with the 
+*_aqlfunctions* of the selected database. The functions will be exclusively
+available for queries in that particular database.
+
+Documents in the *_aqlfunctions* collection (or any other system collection)
+should not be accessed directly, but only via the dedicated interfaces.
+
+Keep in mind that system collections are excluded from dumps created with
+[arangodump](../HttpBulkImports/Arangodump.md) by default. To include AQL user
+functions in a dump, the dump needs to be started with the
 option *--include-system-collections true*.

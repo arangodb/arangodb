@@ -106,14 +106,14 @@ will require time proportional to the number of cached items that need to be inv
 
 There may be workloads in which enabling the query cache will lead to a performance
 degradation. It is not recommended to turn the query cache on in workloads that only
-modify data, or that modify data more often than read it. Turning on the query cache
+modify data, or that modify data more often than reading it. Turning on the query cache
 will also provide no benefit if queries are very diverse and do not repeat often.
 In read-only or read-mostly workloads, the query cache will be beneficial if the same
 queries are repeated lots of times.
 
 In general, the query cache will provide the biggest improvements for queries with
-small result sets that take long to calculate. If a query's results are very big and
-most of the query time is spent in copying the result from the cache to the client,
+small result sets that take long to calculate. If query results are very big and
+most of the query time is spent on copying the result from the cache to the client,
 then the cache will not provide much benefit.
 
 
@@ -180,7 +180,7 @@ this attribute to check if a specific query was served from the cache or not.
 !SECTION Restrictions
 
 Query results that are returned from the query cache do not contain any execution statistics,
-meaning their *extra.stats* attribute will not be present. Additionally query results returned
+meaning their *extra.stats* attribute will not be present. Additionally, query results returned
 from the cache will not contain profile information even if the *profile* option was set to
 true when invoking the query.
 

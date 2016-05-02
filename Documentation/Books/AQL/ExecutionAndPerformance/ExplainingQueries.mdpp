@@ -9,7 +9,7 @@ return the execution plan and some information about what optimizations could be
 the query. The query will not be executed.
 
 Explaining a query can be achieved by calling the [HTTP REST API](../HttpAqlQuery/README.md).
-A query can also be explained from the ArangoShell using `ArangoStatement`s `explain` method.
+A query can also be explained from the ArangoShell using `ArangoStatement`'s `explain` method.
 
 By default, the query optimizer will return what it considers to be the *optimal plan*. The
 optimal plan will be returned in the `plan` attribute of the result. If `explain` is
