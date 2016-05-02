@@ -2113,6 +2113,12 @@ textarea,
 .dropdownImport.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus {
   cursor: pointer; }
 
+.arangoToolbar span.clickable:hover {
+  -moz-transition: all .2s ease-in;
+  -o-transition: all .2s ease-in;
+  -webkit-transition: all .2s ease-in;
+  transition: all .2s ease-in; }
+
 .subnavmenu .infoEntry:hover .info {
   -webkit-touch-callout: none;
   -khtml-user-select: none;
@@ -6282,6 +6288,13 @@ div.headerBar {
   .arangoToolbar span {
     font-weight: 100;
     margin-left: 10px; }
+    .arangoToolbar span.clickable {
+      cursor: pointer;
+      margin-left: 0;
+      opacity: .5;
+      top: 1px; }
+      .arangoToolbar span.clickable:hover {
+        opacity: 1; }
   .arangoToolbar i {
     font-size: 11pt;
     font-style: normal; }

@@ -148,6 +148,7 @@
     },
 
     allHotkeys: {
+      /*
       global: {
         name: "Site wide",
         content: [{
@@ -158,6 +159,7 @@
           letter: "k"
         }]
       },
+      */
       jsoneditor: {
         name: "AQL editor",
         content: [{

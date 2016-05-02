@@ -373,6 +373,7 @@ class ConnectionStatisticsAgent
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_http = true;
+        TRI_HttpConnectionsStatistics.incCounter();
       }
     }
   }

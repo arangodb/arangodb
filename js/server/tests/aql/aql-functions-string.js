@@ -1,5 +1,6 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*jshint globalstrict:false, strict:false, maxlen:5000 */
 /*global assertEqual, assertTrue */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, functions
 ///
@@ -1403,8 +1404,6 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "d41d8cd98f00b204e9800998ecf8427e" ], getQueryResults("RETURN NOOPT(MD5(null))")); 
       assertEqual([ "35dba5d75538a9bbe0b4da4422759a0e" ], getQueryResults("RETURN NOOPT(MD5('[1]'))")); 
       assertEqual([ "1441a7909c087dbbe7ce59881b9df8b9" ], getQueryResults("RETURN NOOPT(MD5({ }))")); 
-
-      /*jshint maxlen: 5000 */
       assertEqual([ "c7cb8c1df686c0219d540849efe3bce3" ], getQueryResults("RETURN NOOPT(MD5('[1,2,4,7,11,16,22,29,37,46,56,67,79,92,106,121,137,154,172,191,211,232,254,277,301,326,352,379,407,436,466,497,529,562,596,631,667,704,742,781,821,862,904,947,991,1036,1082,1129,1177,1226,1276,1327,1379,1432,1486,1541,1597,1654,1712,1771,1831,1892,1954,2017,2081,2146,2212,2279,2347,2416,2486,2557,2629,2702,2776,2851,2927,3004,3082,3161,3241,3322,3404,3487,3571,3656,3742,3829,3917,4006,4096,4187,4279,4372,4466,4561,4657,4754,4852,4951]'))"));
     },
 
@@ -1431,8 +1430,6 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "2be88ca4242c76e8253ac62474851065032d6833" ], getQueryResults("RETURN NOOPT(SHA1('null'))")); 
       assertEqual([ "f629ae44b7b3dcfed444d363e626edf411ec69a8" ], getQueryResults("RETURN NOOPT(SHA1('[1]'))")); 
       assertEqual([ "c1d44ff03aff1372856c281854f454e2e1d15b7c" ], getQueryResults("RETURN NOOPT(SHA1('[object Object]'))")); 
-
-      /*jshint maxlen: 5000 */
       assertEqual([ "888227c44807b86059eb36f9fe0fc602a9b16fab" ], getQueryResults("RETURN NOOPT(SHA1('[1,2,4,7,11,16,22,29,37,46,56,67,79,92,106,121,137,154,172,191,211,232,254,277,301,326,352,379,407,436,466,497,529,562,596,631,667,704,742,781,821,862,904,947,991,1036,1082,1129,1177,1226,1276,1327,1379,1432,1486,1541,1597,1654,1712,1771,1831,1892,1954,2017,2081,2146,2212,2279,2347,2416,2486,2557,2629,2702,2776,2851,2927,3004,3082,3161,3241,3322,3404,3487,3571,3656,3742,3829,3917,4006,4096,4187,4279,4372,4466,4561,4657,4754,4852,4951]'))"));
     },
 
