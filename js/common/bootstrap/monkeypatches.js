@@ -39,7 +39,7 @@
 Object.defineProperty(Object.prototype, '_shallowCopy', {
   get() {
     var self = this;
-    return Object.prototype.propertyKeys.reduce(function (previous, key) {
+    return this.propertyKeys.reduce(function (previous, key) {
       previous[key] = self[key];
       return previous;
     }, {});
