@@ -117,7 +117,7 @@ function createBrokenServiceRoute(service, err) {
 /// @brief computes the routes and exports of an service
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.routeApp = function (service, throwOnErrors) {
+exports.routeService = function (service, throwOnErrors) {
   if (service.needsConfiguration()) {
     return {
       exports: service.main.exports,

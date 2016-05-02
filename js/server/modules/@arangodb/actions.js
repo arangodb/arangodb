@@ -1009,7 +1009,7 @@ function foxxRouting (req, res, options, next) {
   var mount = options.mount;
 
   try {
-    var app = foxxManager.lookupApp(mount);
+    var app = foxxManager.lookupService(mount);
     var devel = app.isDevelopment;
 
     if (devel || ! options.hasOwnProperty('routing')) {
@@ -1017,7 +1017,7 @@ function foxxRouting (req, res, options, next) {
 
       if (devel) {
         foxxManager.rescanFoxx(mount); // TODO can move this to somewhere else?
-        app = foxxManager.lookupApp(mount);
+        app = foxxManager.lookupService(mount);
       }
 
       if (app.isBroken) {

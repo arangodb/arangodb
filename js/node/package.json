@@ -15,7 +15,7 @@
     "joi": "6.10.1",
     "joi-to-json-schema": "2.0.5",
     "js-yaml": "3.4.6",
-    "jshint": "2.8.0",
+    "jshint": "2.9.2",
     "lodash": "3.10.1",
     "marked": "0.3.5",
     "media-typer": "0.3.0",

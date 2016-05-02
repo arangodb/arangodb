@@ -34,7 +34,7 @@ exports.queues = require('@arangodb/foxx/queues');
 const manager = require('@arangodb/foxx/manager');
 
 exports.getExports = function (path) {
-  return manager.requireApp('/' + path.replace(/(^\/+|\/+$)/, ''));
+  return manager.requireService('/' + path.replace(/(^\/+|\/+$)/, ''));
 };
 
 exports.requireApp = function (path) {
