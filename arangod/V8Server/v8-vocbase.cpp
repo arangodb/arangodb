@@ -1703,17 +1703,15 @@ static void JS_ThrowCollectionNotLoaded(
 static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
                                             Transaction* trx,
                                             std::string const& vertexId) {
-  OperationOptions options;
   size_t pos = vertexId.find('/');
   TRI_ASSERT(pos != std::string::npos); // All are internal _id attributes
 
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(vertexId.substr(pos + 1)));
-  builder.close();
+  TransactionBuilderLeaser builder(trx);
+  builder->openObject();
+  builder->add(StaticStrings::KeyString, VPackValue(vertexId.substr(pos + 1)));
+  builder->close();
 
-  // TODO Operation Result is very expensive find a faster alternative
-  OperationResult opRes = trx->document(vertexId.substr(0, pos), builder.slice(), options);
+  OperationResult opRes = trx->document(vertexId.substr(0, pos), builder->slice(), options);
 
   if (opRes.failed()) {
     v8::EscapableHandleScope scope(isolate);
