@@ -1711,6 +1711,7 @@ static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
   builder->add(StaticStrings::KeyString, VPackValue(vertexId.substr(pos + 1)));
   builder->close();
 
+  OperationOptions options;
   OperationResult opRes = trx->document(vertexId.substr(0, pos), builder->slice(), options);
 
   if (opRes.failed()) {

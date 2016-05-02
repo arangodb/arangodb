@@ -76,34 +76,33 @@ VPackSlice ShortestPathOptions::getEnd() const {
 ///        On all other cases this function throws.
 ////////////////////////////////////////////////////////////////////////////////
 
-static OperationResult FetchDocumentById(arangodb::Transaction* trx,
-                                         std::string const& id,
-                                         VPackBuilder& builder,
-                                         OperationOptions& options) {
+static int FetchDocumentById(arangodb::Transaction* trx,
+                             std::string const& id,
+                             VPackBuilder& builder,
+                             VPackBuilder& result) {
   size_t pos = id.find('/');
   if (pos == std::string::npos) {
     TRI_ASSERT(false);
-    return OperationResult(TRI_ERROR_INTERNAL);
+    return TRI_ERROR_INTERNAL;
   }
   if (id.find('/', pos + 1) != std::string::npos) {
     TRI_ASSERT(false);
-    return OperationResult(TRI_ERROR_INTERNAL);
+    return TRI_ERROR_INTERNAL;
   }
 
   std::string col = id.substr(0, pos);
   trx->addCollectionAtRuntime(col);
   builder.clear();
   builder.openObject();
-  builder.add(VPackValue(StaticStrings::KeyString));
-  builder.add(VPackValue(id.substr(pos + 1)));
+  builder.add(StaticStrings::KeyString, VPackValue(id.substr(pos + 1)));
   builder.close();
 
-  OperationResult opRes = trx->document(col, builder.slice(), options);
-  // TODO Operation Result is very expensive find a faster alternative
-  if (opRes.failed() && opRes.code != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-    THROW_ARANGO_EXCEPTION(opRes.code);
+  int res = trx->documentFastPath(col, builder.slice(), result);
+
+  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    THROW_ARANGO_EXCEPTION(res);
   }
-  return opRes;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -556,16 +555,17 @@ bool NeighborsOptions::matchesVertex(std::string const& id) const {
     }
   }
   std::string key = id.substr(pos + 1);
-  VPackBuilder tmp;
-  tmp.openObject();
-  tmp.add(StaticStrings::KeyString, VPackValue(key));
-  tmp.close();
-  OperationOptions opOpts;
-  OperationResult opRes = _trx->document(col, tmp.slice(), opOpts);
-  if (opRes.failed()) {
+  TransactionBuilderLeaser tmp(_trx);
+  tmp->openObject();
+  tmp->add(StaticStrings::KeyString, VPackValue(key));
+  tmp->close();
+
+  TransactionBuilderLeaser result(_trx);
+  int res = _trx->documentFastPath(col, tmp->slice(), *(result.get()));
+  if (res != TRI_ERROR_NO_ERROR) {
     return false;
   }
-  return BasicOptions::matchesVertex(col, key, opRes.slice());
+  return BasicOptions::matchesVertex(col, key, result->slice());
 }
 
 
@@ -892,16 +892,10 @@ void TRI_RunNeighborsSearch(std::vector<EdgeCollectionInfo*> const& collectionIn
 void SingleServerTraversalPath::getDocumentByIdentifier(Transaction* trx,
                                                         std::string const& identifier,
                                                         VPackBuilder& result) {
-  // TODO Check if we can get away with using ONLY VPackSlices referencing externals instead of std::string.
-  // I am afaid that they may run out of scope.
-  OperationOptions options;
-  OperationResult opRes = FetchDocumentById(trx, identifier, _searchBuilder, options);
-
-  if (opRes.failed()) {
-    THROW_ARANGO_EXCEPTION(opRes.code);
+  int res = FetchDocumentById(trx, identifier, _searchBuilder, result);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
   }
-
-  result.add(opRes.slice());
 }
 
 void SingleServerTraversalPath::pathToVelocyPack(Transaction* trx,
@@ -997,17 +991,17 @@ std::shared_ptr<VPackBuffer<uint8_t>> DepthFirstTraverser::fetchVertexData(
     std::string const& id) {
   auto it = _vertices.find(id);
   if (it == _vertices.end()) {
-    OperationResult opRes =
-        FetchDocumentById(_trx, id, _builder, _operationOptions);
+    VPackBuilder tmp;
+    int res = FetchDocumentById(_trx, id, _builder, tmp);
     ++_readDocuments;
-    if (opRes.failed()) {
-      TRI_ASSERT(opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-      VPackBuilder tmp;
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_ASSERT(res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       tmp.add(VPackValue(VPackValueType::Null));
       return tmp.steal();
     }
-    _vertices.emplace(id, opRes.buffer);
-    return opRes.buffer;
+    auto shared_buffer = tmp.steal();
+    _vertices.emplace(id, shared_buffer);
+    return shared_buffer;
   }
   return it->second;
 }
@@ -1046,14 +1040,15 @@ void DepthFirstTraverser::setStartVertex(std::string const& v) {
         if (!exp->isEdgeAccess) {
           if (fetchVertex) {
             fetchVertex = false;
-            OperationResult result = FetchDocumentById(_trx, v, _builder, _operationOptions);
+            VPackBuilder tmp;
+            int result = FetchDocumentById(_trx, v, _builder, tmp);
             ++_readDocuments;
-            if (result.failed()) {
+            if (result != TRI_ERROR_NO_ERROR) {
               // Vertex does not exist
               _done = true;
               return;
             }
-            vertex = result.buffer;
+            vertex = tmp.steal();
             _vertices.emplace(v, vertex);
           }
           if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
