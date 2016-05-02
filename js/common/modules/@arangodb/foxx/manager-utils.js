@@ -430,7 +430,7 @@ function validateMount(mount, internal) {
 /// @brief validate an app name and fail if it is invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-function validateAppName (name) {
+function validateServiceName (name) {
   if (typeof name === 'string' && name.length > 0) {
     return;
   }
@@ -446,7 +446,7 @@ function validateAppName (name) {
 /// @brief get the app mounted at this mount point
 ////////////////////////////////////////////////////////////////////////////////
 
-function mountedApp (mount) {
+function mountedService (mount) {
   return getStorage().firstExample({mount: mount});
 }
 
@@ -454,7 +454,7 @@ function mountedApp (mount) {
 /// @brief Update the app mounted at this mountpoint with the new app
 ////////////////////////////////////////////////////////////////////////////////
 
-function updateApp (mount, update) {
+function updateService (mount, update) {
   return getStorage().updateByExample({mount: mount}, update);
 }
 
@@ -505,8 +505,8 @@ var zipDirectory = function(directory) {
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.mountedApp = mountedApp;
-exports.updateApp = updateApp;
+exports.mountedService = mountedService;
+exports.updateService = updateService;
 exports.getReadableName = getReadableName;
 exports.list = list;
 exports.listJson = listJson;
@@ -516,7 +516,7 @@ exports.buildGithubUrl = buildGithubUrl;
 exports.repackZipFile = repackZipFile;
 exports.processDirectory = processDirectory;
 exports.processGithubRepository = processGithubRepository;
-exports.validateAppName = validateAppName;
+exports.validateServiceName = validateServiceName;
 exports.validateMount = validateMount;
 exports.parameterTypes = parameterTypes;
 exports.zipDirectory = zipDirectory;
