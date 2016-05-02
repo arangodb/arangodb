@@ -364,7 +364,7 @@ FOR user IN users
   
 ```js
 DATE_FORMAT(DATE_NOW(), "%q/%yyyy") // quarter and year (e.g. "3/2015")
-DATE_FORMAT(DATE_NOW(), "%dd.%mm.%yyyy %hh:%ii:%ss.%fff") // e.g. "18.09.2015 15:30:49.374"
+DATE_FORMAT(DATE_NOW(), "%dd.%mm.%yyyy %hh:%ii:%ss,%fff") // e.g. "18.09.2015 15:30:49,374"
 DATE_FORMAT("1969", "Summer of '%yy") // "Summer of '69"
 DATE_FORMAT("2016", "%%l = %l") // "%l = 1" (2016 is a leap year)
 DATE_FORMAT("2016-03-01", "%xxx%") // "063", trailing % ignored

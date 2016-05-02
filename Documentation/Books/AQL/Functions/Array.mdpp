@@ -14,7 +14,7 @@ AQL supports the following functions to operate on array values:
 
   *Examples*
   
-      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ])
+      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ])
 
     will produce:
 
@@ -22,58 +22,11 @@ AQL supports the following functions to operate on array values:
 
     To fully flatten the array, use a *depth* of 2:
       
-      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ], 2)
+      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ], 2)
 
     This will produce:
       
       [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
-
-- *MIN(array)*: Returns the smallest element of *array*. *null* values
-  are ignored. If the array is empty or only *null* values are contained in the array, the
-  function will return *null*.
-
-- *MAX(array)*: Returns the greatest element of *array*. *null* values
-  are ignored. If the array is empty or only *null* values are contained in the array, the
-  function will return *null*.
-
-- *AVERAGE(array)*: Returns the average (arithmetic mean) of the values in *array*. 
-  This requires the elements in *array* to be numbers. *null* values are ignored. 
-  If the array is empty or only *null* values are contained in the array, the function 
-  will return *null*.
-
-- *SUM(array)*: Returns the sum of the values in *array*. This
-  requires the elements in *array* to be numbers. *null* values are ignored. 
-
-- *MEDIAN(array)*: Returns the median value of the values in *array*. This 
-  requires the elements in *array* to be numbers. *null* values are ignored. If the 
-  array is empty or only *null* values are contained in the array, the function will return 
-  *null*.
-
-- *PERCENTILE(array, n, method)*: Returns the *n*th percentile of the values in *array*. 
-  This requires the elements in *array* to be numbers. *null* values are ignored. *n* must
-  be between 0 (excluded) and 100 (included). *method* can be *rank* or *interpolation*.
-  The function will return null if the array is empty or only *null* values are contained 
-  in it or the percentile cannot be calculated.
-
-- *VARIANCE_POPULATION(array)*: Returns the population variance of the values in 
-  *array*. This requires the elements in *array* to be numbers. *null* values 
-  are ignored. If the array is empty or only *null* values are contained in the array, 
-  the function will return *null*.
-
-- *VARIANCE_SAMPLE(array)*: Returns the sample variance of the values in 
-  *array*. This requires the elements in *array* to be numbers. *null* values 
-  are ignored. If the array is empty or only *null* values are contained in the array, 
-  the function will return *null*.
-
-- *STDDEV_POPULATION(array)*: Returns the population standard deviation of the 
-  values in *array*. This requires the elements in *array* to be numbers. *null* 
-  values are ignored. If the array is empty or only *null* values are contained in the array, 
-  the function will return *null*.
-
-- *STDDEV_SAMPLE(array)*: Returns the sample standard deviation of the values in 
-  *array*. This requires the elements in *array* to be numbers. *null* values 
-  are ignored. If the array is empty or only *null* values are contained in the array, 
-  the function will return *null*.
 
 - *REVERSE(array)*: Returns the elements in *array* in reversed order.
 
@@ -255,6 +208,13 @@ AQL supports the following functions to operate on array values:
       REMOVE_NTH([ "a", "b", "c", "d", "e" ], -2)
 
 
-Apart from these functions, AQL also offers several language constructs: 
+Also see the [numeric functions](NumericFunctions.md) for more functions that work on
+number arrays. Apart from that, AQL also offers several language constructs:
+
 - [array operators](ArrayOperators.md) for array expansion and contraction, 
-- operations for array manipulations like [FOR](../AqlOperations/For.md), [SORT](../AqlOperations/Sort.md), [LIMIT](../AqlOperations/Limit.md), [COLLECT](../AqlOperations/Collect.md). 
+- [array comparison operators](Operators.md#array-comparison-operators) to compare
+  each element in an array to a value or the elements of another array,
+- operations for array manipulations like [FOR](../Operations/For.md),
+  [SORT](../Operations/Sort.md), [LIMIT](../Operations/Limit.md),
+  as well as grouping with [COLLECT](../Operations/Collect.md),
+  which also offers efficient aggregation.
