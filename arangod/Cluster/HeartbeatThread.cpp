@@ -116,7 +116,7 @@ void HeartbeatThread::runDBServer() {
   std::function<bool(VPackSlice const& result)> updatePlan = [&](
       VPackSlice const& result) {
     if (!result.isNumber()) {
-      LOG(ERR) << "Version is not a number! " << result.toJson();
+      LOG(ERR) << "Plan Version is not a number! " << result.toJson();
       return false;
     }
     uint64_t version = result.getNumber<uint64_t>();
@@ -126,6 +126,32 @@ void HeartbeatThread::runDBServer() {
       MUTEX_LOCKER(mutexLocker, _statusLock);
       if (version > _desiredVersions.plan) {
         _desiredVersions.plan = version;
+        LOG(DEBUG) << "Desired Current Version is now " << _desiredVersions.plan;
+        doSync = true;
+      }
+    }
+
+    if (doSync) {
+      syncDBServerStatusQuo();
+    }
+
+    return true;
+  };
+  
+  std::function<bool(VPackSlice const& result)> updateCurrent = [&](
+      VPackSlice const& result) {
+    if (!result.isNumber()) {
+      LOG(ERR) << "Current Version is not a number! " << result.toJson();
+      return false;
+    }
+    uint64_t version = result.getNumber<uint64_t>();
+    
+    bool doSync = false;
+    {
+      MUTEX_LOCKER(mutexLocker, _statusLock);
+      if (version > _desiredVersions.current) {
+        _desiredVersions.current = version;
+        LOG(DEBUG) << "Desired Current Version is now " << _desiredVersions.current;
         doSync = true;
       }
     }
@@ -137,14 +163,26 @@ void HeartbeatThread::runDBServer() {
     return true;
   };
 
-  auto agencyCallback = std::make_shared<AgencyCallback>(
+  auto planAgencyCallback = std::make_shared<AgencyCallback>(
       _agency, "Plan/Version", updatePlan, true);
-
+  
   bool registered = false;
   while (!registered) {
-    registered = _agencyCallbackRegistry->registerCallback(agencyCallback);
+    registered = _agencyCallbackRegistry->registerCallback(planAgencyCallback);
     if (!registered) {
       LOG(ERR) << "Couldn't register plan change in agency!";
+      sleep(1);
+    }
+  }
+  
+  auto currentAgencyCallback = std::make_shared<AgencyCallback>(
+      _agency, "Current/Version", updateCurrent, true);
+  
+  registered = false;
+  while (!registered) {
+    registered = _agencyCallbackRegistry->registerCallback(currentAgencyCallback);
+    if (!registered) {
+      LOG(ERR) << "Couldn't register current change in agency!";
       sleep(1);
     }
   }
@@ -193,7 +231,8 @@ void HeartbeatThread::runDBServer() {
 
       if (!wasNotified) {
         LOG(TRACE) << "Lock reached timeout";
-        agencyCallback->refetchAndUpdate();
+        planAgencyCallback->refetchAndUpdate();
+        currentAgencyCallback->refetchAndUpdate();
       } else {
         // mop: a plan change returned successfully...
         // recheck and redispatch in case our desired versions increased
@@ -204,7 +243,8 @@ void HeartbeatThread::runDBServer() {
     } while (remain > 0);
   }
 
-  _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+  _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
+  _agencyCallbackRegistry->unregisterCallback(currentAgencyCallback);
   int count = 0;
   while (++count < 3000) {
     bool isInPlanChange;
@@ -590,6 +630,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::syncDBServerStatusQuo() {
+  bool shouldUpdate = false;
   {
     MUTEX_LOCKER(mutexLocker, _statusLock);
     // mop: only dispatch one at a time
@@ -601,12 +642,13 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
       LOG(DEBUG) << "Plan version " << _currentVersions.plan << " is lower than desired version " << _desiredVersions.plan;
       _isDispatchingChange = true;
     } else if (_desiredVersions.current > _currentVersions.current) {
-      LOG(DEBUG) << "Current version " << _currentVersions.plan << " is lower than desired version " << _desiredVersions.plan;
+      LOG(DEBUG) << "Current version " << _currentVersions.current << " is lower than desired version " << _desiredVersions.current;
       _isDispatchingChange = true;
     }
+    shouldUpdate = _isDispatchingChange;
   }
 
-  if (_isDispatchingChange) {
+  if (shouldUpdate) {
     LOG(TRACE) << "Dispatching Sync";
     // schedule a job for the change
     std::unique_ptr<arangodb::rest::Job> job(new ServerJob(this));
