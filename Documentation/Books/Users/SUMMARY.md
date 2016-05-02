@@ -16,7 +16,7 @@
   * [Using the Web Interface](GettingStarted/WebInterface.md)
   * [Your first queries](GettingStarted/AqlQueries.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
-  * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md)
+  #* [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md)
 #
 * [Scalability](Scalability/README.md)
   * [Joins](Scalability/Joins.md)
@@ -71,7 +71,7 @@
   * [Working with Edges](Graphs/Edges/README.md)
 #
 # Will be replaced by new FOTF docs
-* [Foxx microservices](Foxx/README.md)
+* [Foxx Microservices](Foxx/README.md)
   * [In a nutshell](Foxx/Nutshell/README.md)
   * [Install](Foxx/Install/README.md)
     * [Github](Foxx/Install/Github.md)
@@ -120,6 +120,7 @@
   * [Arangodump](Administration/Arangodump.md)
   * [Arangorestore](Administration/Arangorestore.md)
   * [Upgrading](Administration/Upgrading/README.md)
+    * [Upgrading to 3.0](Administration/Upgrading/Upgrading30.md)
     * [Upgrading to 2.8](Administration/Upgrading/Upgrading28.md)
     * [Upgrading to 2.6](Administration/Upgrading/Upgrading26.md)
     * [Upgrading to 2.5](Administration/Upgrading/Upgrading25.md)
@@ -167,6 +168,7 @@
   * [Whats New in 2.2](ReleaseNotes/NewFeatures22.md)
   * [Whats New in 2.1](ReleaseNotes/NewFeatures21.md)
   # Place next to Upgrading instead?
+  * [Incompatible changes in 3.0](ReleaseNotes/UpgradingChanges30.md)
   * [Incompatible changes in 2.8](ReleaseNotes/UpgradingChanges28.md)
   * [Incompatible changes in 2.7](ReleaseNotes/UpgradingChanges27.md)
   * [Incompatible changes in 2.6](ReleaseNotes/UpgradingChanges26.md)
