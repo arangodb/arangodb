@@ -52,6 +52,18 @@
     @extend %toolbarspan;
     font-weight: 100;
     margin-left: 10px;
+
+    &.clickable {
+      cursor: pointer;
+      margin-left: 0;
+      opacity: .5;
+      top: 1px;
+
+      &:hover {
+        @extend %animated;
+        opacity: 1;
+      }
+    }
   }
 
   i {

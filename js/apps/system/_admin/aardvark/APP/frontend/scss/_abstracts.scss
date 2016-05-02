@@ -25,6 +25,13 @@
   cursor: pointer;
 }
 
+%animated {
+  -moz-transition: all .2s ease-in;
+  -o-transition: all .2s ease-in;
+  -webkit-transition: all .2s ease-in;
+  transition: all .2s ease-in;
+}
+
 %noselect {
   -webkit-touch-callout: none;
   -khtml-user-select: none;
