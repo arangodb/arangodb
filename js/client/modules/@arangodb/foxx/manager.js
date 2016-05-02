@@ -114,7 +114,7 @@ var cmdUsage = function () {
   var fm = "foxx-manager";
 
   printf("Example usage:\n");
-  printf(" %s install <app-info> <mount-point> option1=value1\n", fm);
+  printf(" %s install <service-info> <mount-point> option1=value1\n", fm);
   printf(" %s uninstall <mount-point>\n\n", fm);
 
   printf("Further help:\n");
@@ -131,31 +131,31 @@ var help = function () {
 
   /*jshint maxlen: 200 */
   var commands = {
-    "available"       : "lists all Foxx applications available in the local repository",
+    "available"       : "lists all Foxx services available in the local repository",
     "configuration"   : "request the configuration information for the given mountpoint",
     "configure"       : "sets the configuration for the given mountpoint",
     "updateDeps"      : "links the dependencies in manifest to a mountpoint",
     "dependencies"    : "request the dependencies information for the given mountpoint",
     "development"     : "activates development mode for the given mountpoint",
     "help"            : "shows this help",
-    "info"            : "displays information about a Foxx application",
-    "install"         : "installs a foxx application identified by the given information to the given mountpoint",
+    "info"            : "displays information about a Foxx service",
+    "install"         : "installs a foxx service identified by the given information to the given mountpoint",
     "installed"       : "alias for the 'list' command",
-    "list"            : "lists all installed Foxx applications",
+    "list"            : "lists all installed Foxx services",
     "production"      : "activates production mode for the given mountpoint",
-    "replace"         : ["replaces an installed Foxx application",
-                         "WARNING: this action will remove application data if the application implements teardown!" ],
-    "run"             : "runs the given script of a foxx app mounted at the given mountpoint",
+    "replace"         : ["replaces an installed Foxx service",
+                         "WARNING: this action will remove service data if the service implements teardown!" ],
+    "run"             : "runs the given script of a foxx service mounted at the given mountpoint",
     "search"          : "searches the local foxx-apps repository",
     "set-dependencies": "sets the dependencies for the given mountpoint",
     "setup"           : "executes the setup script",
     "teardown"        : [ "executes the teardown script",
-                           "WARNING: this action will remove application data if the application implements teardown!" ],
-    "tests"           : "runs the tests of a foxx application mounted at the given mountpoint",
-    "uninstall"       : ["uninstalls a Foxx application and calls its teardown method",
-                       "WARNING: this will remove all data and code of the application!" ],
+                           "WARNING: this action will remove service data if the service implements teardown!" ],
+    "tests"           : "runs the tests of a foxx service mounted at the given mountpoint",
+    "uninstall"       : ["uninstalls a Foxx service and calls its teardown method",
+                       "WARNING: this will remove all data and code of the service!" ],
     "update"          : "updates the local foxx-apps repository with data from the central foxx-apps repository",
-    "upgrade"         : ["upgrades an installed Foxx application",
+    "upgrade"         : ["upgrades an installed Foxx service",
                          "Note: this action will not call setup or teardown" ]
   };
 
@@ -186,7 +186,7 @@ var help = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief runs a script on a Foxx application
+/// @brief runs a script on a Foxx service
 ///
 /// Input:
 /// * name: the name of the script
@@ -212,24 +212,24 @@ var runScript = function(mount, name, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Zips and copies a local app to the server.
+/// @brief Zips and copies a local service to the server.
 ////////////////////////////////////////////////////////////////////////////////
 
-var moveAppToServer = function(appInfo) {
-  if (! fs.exists(appInfo)) {
-    throwFileNotFound("Cannot find file: " + appInfo + ".");
+var moveAppToServer = function(serviceInfo) {
+  if (! fs.exists(serviceInfo)) {
+    throwFileNotFound("Cannot find file: " + serviceInfo + ".");
   }
   var filePath;
   var shouldDelete = false;
-  if (fs.isDirectory(appInfo)) {
-    filePath = utils.zipDirectory(appInfo);
+  if (fs.isDirectory(serviceInfo)) {
+    filePath = utils.zipDirectory(serviceInfo);
     shouldDelete = true;
   }
-  if (fs.isFile(appInfo)) {
-    filePath = appInfo;
+  if (fs.isFile(serviceInfo)) {
+    filePath = serviceInfo;
   }
   if (!filePath) {
-    throwBadParameter("Invalid file: " + appInfo + ". Has to be a direcotry or zip archive");
+    throwBadParameter("Invalid file: " + serviceInfo + ". Has to be a direcotry or zip archive");
   }
   var response = arango.SEND_FILE("/_api/upload", filePath);
   if (shouldDelete) {
@@ -251,25 +251,25 @@ var moveAppToServer = function(appInfo) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Installs a new foxx application on the given mount point.
+/// @brief Installs a new foxx service on the given mount point.
 ///
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var install = function(appInfo, mount, options) {
+var install = function(serviceInfo, mount, options) {
   checkParameter(
-    "install(<appInfo>, <mount>, [<options>])",
+    "install(<serviceInfo>, <mount>, [<options>])",
     [ [ "Install information", "string" ],
       [ "Mount path", "string" ] ],
-    [ appInfo, mount ] );
+    [ serviceInfo, mount ] );
 
   utils.validateMount(mount);
-  if (fs.exists(appInfo)) {
-    appInfo = moveAppToServer(appInfo);
+  if (fs.exists(serviceInfo)) {
+    serviceInfo = moveAppToServer(serviceInfo);
   }
   var res;
   var req = {
-    appInfo: appInfo,
+    appInfo: serviceInfo,
     mount: mount,
     options: options
   };
@@ -284,7 +284,7 @@ var install = function(appInfo, mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Uninstalls the foxx application on the given mount point.
+/// @brief Uninstalls the foxx service on the given mount point.
 ///
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
@@ -310,25 +310,25 @@ var uninstall = function(mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Replaces a foxx application on the given mount point by an other one.
+/// @brief Replaces a foxx service on the given mount point by an other one.
 ///
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var replace = function(appInfo, mount, options) {
+var replace = function(serviceInfo, mount, options) {
   checkParameter(
-    "replace(<appInfo>, <mount>, [<options>])",
+    "replace(<serviceInfo>, <mount>, [<options>])",
     [ [ "Install information", "string" ],
       [ "Mount path", "string" ] ],
-    [ appInfo, mount ] );
+    [ serviceInfo, mount ] );
 
   utils.validateMount(mount);
-  if (fs.exists(appInfo)) {
-    appInfo = moveAppToServer(appInfo);
+  if (fs.exists(serviceInfo)) {
+    serviceInfo = moveAppToServer(serviceInfo);
   }
   var res;
   var req = {
-    appInfo: appInfo,
+    appInfo: serviceInfo,
     mount: mount,
     options: options
   };
@@ -343,24 +343,24 @@ var replace = function(appInfo, mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Upgrade a foxx application on the given mount point by a new one.
+/// @brief Upgrade a foxx service on the given mount point by a new one.
 ///
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var upgrade = function(appInfo, mount, options) {
+var upgrade = function(serviceInfo, mount, options) {
   checkParameter(
-    "upgrade(<appInfo>, <mount>, [<options>])",
+    "upgrade(<serviceInfo>, <mount>, [<options>])",
     [ [ "Install information", "string" ],
       [ "Mount path", "string" ] ],
-    [ appInfo, mount ] );
+    [ serviceInfo, mount ] );
   utils.validateMount(mount);
-  if (fs.exists(appInfo)) {
-    appInfo = moveAppToServer(appInfo);
+  if (fs.exists(serviceInfo)) {
+    serviceInfo = moveAppToServer(serviceInfo);
   }
   var res;
   var req = {
-    appInfo: appInfo,
+    appInfo: serviceInfo,
     mount: mount,
     options: options
   };
@@ -375,7 +375,7 @@ var upgrade = function(appInfo, mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Activate the development mode for the application on the given mount point.
+/// @brief Activate the development mode for the service on the given mount point.
 ////////////////////////////////////////////////////////////////////////////////
 
 var development = function(mount) {
@@ -399,7 +399,7 @@ var development = function(mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Activate the production mode for the application on the given mount point.
+/// @brief Activate the production mode for the service on the given mount point.
 ////////////////////////////////////////////////////////////////////////////////
 
 var production = function(mount) {
@@ -423,7 +423,7 @@ var production = function(mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Configure the app at the mountpoint
+/// @brief Configure the service at the mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 var configure = function(mount, options) {
@@ -446,7 +446,7 @@ var configure = function(mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the configuration for the app at the given mountpoint
+/// @brief Get the configuration for the service at the given mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 var configuration = function(mount) {
@@ -463,7 +463,7 @@ var configuration = function(mount) {
   return res;
 };
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Link Dependencies to the installed mountpoint the app at the mountpoint
+/// @brief Link Dependencies to the installed mountpoint the service at the mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 var updateDeps = function(mount, options) {
@@ -485,7 +485,7 @@ var updateDeps = function(mount, options) {
   };
 };
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Configure the dependencies of the app at the mountpoint
+/// @brief Configure the dependencies of the service at the mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 var setDependencies = function(mount, options) {
@@ -508,7 +508,7 @@ var setDependencies = function(mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the dependencies of the app at the given mountpoint
+/// @brief Get the dependencies of the service at the given mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 var dependencies = function(mount) {
@@ -526,7 +526,7 @@ var dependencies = function(mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run a Foxx application's tests
+/// @brief run a Foxx service's tests
 ////////////////////////////////////////////////////////////////////////////////
 
 var tests = function (mount, options) {
@@ -585,7 +585,7 @@ var run = function (args) {
       case "install":
         options = extractOptions(args);
         res = install(args[1], args[2], options);
-        printf("Application %s version %s installed successfully at mount point %s\n",
+        printf("Service %s version %s installed successfully at mount point %s\n",
              res.name,
              res.version,
              res.mount);
@@ -594,7 +594,7 @@ var run = function (args) {
       case "replace":
         options = extractOptions(args);
         res = replace(args[1], args[2], options);
-        printf("Application %s version %s replaced successfully at mount point %s\n",
+        printf("Service %s version %s replaced successfully at mount point %s\n",
            res.name,
            res.version,
            res.mount);
@@ -602,7 +602,7 @@ var run = function (args) {
       case "upgrade":
         options = extractOptions(args);
         res = upgrade(args[1], args[2], options);
-        printf("Application %s version %s upgraded successfully at mount point %s\n",
+        printf("Service %s version %s upgraded successfully at mount point %s\n",
            res.name,
            res.version,
            res.mount);
@@ -611,7 +611,7 @@ var run = function (args) {
         options = extractOptions(args).configuration || {};
         res = uninstall(args[1], options);
 
-        printf("Application %s version %s uninstalled successfully from mount point %s\n",
+        printf("Service %s version %s uninstalled successfully from mount point %s\n",
            res.name,
            res.version,
            res.mount);
@@ -650,14 +650,14 @@ var run = function (args) {
         break;
       case "development":
         res = development(args[1]);
-        printf("Activated development mode for Application %s version %s on mount point %s\n",
+        printf("Activated development mode for Service %s version %s on mount point %s\n",
            res.name,
            res.version,
            res.mount);
         break;
       case "production":
         res = production(args[1]);
-        printf("Activated production mode for Application %s version %s on mount point %s\n",
+        printf("Activated production mode for Service %s version %s on mount point %s\n",
            res.name,
            res.version,
            res.mount);
@@ -665,7 +665,7 @@ var run = function (args) {
       case "configure":
         options = extractOptions(args).configuration || {};
         res = configure(args[1], options);
-        printf("Reconfigured Application %s version %s on mount point %s\n",
+        printf("Reconfigured Service %s version %s on mount point %s\n",
            res.name,
            res.version,
            res.mount);
@@ -677,7 +677,7 @@ var run = function (args) {
       case "updateDeps":
         options = extractOptions(args).configuration || {};
         res = updateDeps(args[1], options);
-        printf("Reconfigured Application %s version %s on mount point %s\n",
+        printf("Reconfigured Service %s version %s on mount point %s\n",
            res.name,
            res.version,
            res.mount);
@@ -685,7 +685,7 @@ var run = function (args) {
       case "set-dependencies":
         options = extractOptions(args).configuration || {};
         res = setDependencies(args[1], options);
-        printf("Reconfigured dependencies of Application %s version %s on mount point %s\n",
+        printf("Reconfigured dependencies of Service %s version %s on mount point %s\n",
            res.name,
            res.version,
            res.mount);
@@ -733,7 +733,7 @@ exports.help = help;
 /// @brief Exports from foxx utils module.
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.mountedApp = utils.mountedApp;
+exports.mountedService = utils.mountedService;
 exports.list = utils.list;
 exports.listJson = utils.listJson;
 exports.listDevelopment = utils.listDevelopment;

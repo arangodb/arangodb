@@ -390,22 +390,6 @@ Slice Slice::translateUnchecked() const {
   return Slice();
 }
 
-// check if two Slices are equal on the binary level
-bool Slice::equals(Slice const& other) const {
-  if (head() != other.head()) {
-    return false;
-  }
-
-  ValueLength const size = byteSize();
-
-  if (size != other.byteSize()) {
-    return false;
-  }
-
-  return (memcmp(start(), other.start(),
-                 arangodb::velocypack::checkOverflow(size)) == 0);
-}
-
 std::string Slice::toJson(Options const* options) const {
   std::string buffer;
   StringSink sink(&buffer);

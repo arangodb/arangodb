@@ -732,7 +732,21 @@ class Slice {
   bool isEqualString(std::string const& attribute) const;
 
   // check if two Slices are equal on the binary level
-  bool equals(Slice const& other) const;
+  bool equals(Slice const& other) const {
+    if (head() != other.head()) {
+      return false;
+    }
+
+    ValueLength const size = byteSize();
+
+    if (size != other.byteSize()) {
+      return false;
+    }
+
+    return (memcmp(start(), other.start(),
+                  arangodb::velocypack::checkOverflow(size)) == 0);
+  }
+  
   bool operator==(Slice const& other) const { return equals(other); }
   bool operator!=(Slice const& other) const { return !equals(other); }
 

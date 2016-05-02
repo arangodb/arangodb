@@ -1,4 +1,4 @@
-/*jshint loopfunc: false */
+/*jshint -W083 */
 /*eslint no-loop-func: false */
 /*global describe, it, beforeEach, afterEach */
 'use strict';
