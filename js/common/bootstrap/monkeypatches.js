@@ -37,20 +37,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 Object.defineProperty(Object.prototype, '_shallowCopy', {
-  set(value) {
-    if (this === Object.prototype) {
-      throw new TypeError(`Can not override Object.prototype._shallowCopy!`);
-    }
-    Object.defineProperty(this, '_shallowCopy', {
-      configurable: true,
-      enumerable: true,
-      writable: true,
-      value
-    });
-  },
   get() {
     var self = this;
-    return Object.prototype.propertyKeys.reduce(function (previous, key) {
+    return this.propertyKeys.reduce(function (previous, key) {
       previous[key] = self[key];
       return previous;
     }, {});
@@ -66,18 +55,7 @@ Object.defineProperty(Object.prototype, 'propertyKeys', {
     return Object.keys(this).filter(function (key) {
       return (key.charAt(0) !== '_' && key.charAt(0) !== '$');
     });
-  },
-  set(value) {
-    if (this === Object.prototype) {
-      throw new TypeError(`Can not override Object.prototype.propertyKeys!`);
-    }
-    Object.defineProperty(this, 'propertyKeys', {
-      configurable: true,
-      enumerable: true,
-      writable: true,
-      value
-    });
-  },
+  }
 });
 
 
