@@ -209,6 +209,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/vector.cpp
   Basics/voc-errors.cpp
   Basics/voc-mimetypes.cpp
+  Basics/xxhash.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
