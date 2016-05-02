@@ -1,0 +1,13 @@
+!CHAPTER HTTP Interface for Documents
+
+In this chapter we describe the REST API of ArangoDB for documents.
+We begin with a 
+
+  - [section on the basic approach](AddressAndEtag.md)
+
+before we proceed with
+
+  - [the detailed API description](WorkingWithDocuments.md),
+
+which has all the gory details.
+

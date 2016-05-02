@@ -278,10 +278,10 @@ class Transaction {
   /// string
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string extractIdString(VPackSlice const);
+  std::string extractIdString(VPackSlice);
 
   static std::string extractIdString(CollectionNameResolver const*, 
-                                     VPackSlice const&, VPackSlice const&);
+                                     VPackSlice, VPackSlice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief quick access to the _key attribute in a database document

@@ -24,6 +24,7 @@
 #ifndef ARANGODB_BASICS_VELOCY_PACK_HELPER_H
 #define ARANGODB_BASICS_VELOCY_PACK_HELPER_H 1
 
+#include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
 #include "Logger/Logger.h"
 
@@ -266,6 +267,10 @@ class VelocyPackHelper {
       return arangodb::velocypack::Slice::trueSlice();
     }
     return arangodb::velocypack::Slice::falseSlice();
+  }
+  
+  static inline arangodb::velocypack::Slice ZeroValue() {
+    return arangodb::velocypack::Slice::zeroSlice();
   }
 
   static inline arangodb::velocypack::Slice EmptyArrayValue() {

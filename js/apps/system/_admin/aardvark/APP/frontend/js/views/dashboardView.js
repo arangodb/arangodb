@@ -336,18 +336,29 @@
         }
       });
 
-      //sort for library
-      opts.file.sort(function(a,b){
-        return new Date(b[0]) - new Date(a[0]);
-      });
+      if (opts.file === undefined) {
+        $('#loadingScreen span').text('Statistics not ready yet. Waiting.');
+        $('#loadingScreen').show();
+        $('#content').hide();
+      }
+      else {
+        $('#content').show();
+        $('#loadingScreen').hide();
 
-      g.updateOptions(opts);
-			
-			//clean up history
-			if (this.history[this.server].hasOwnProperty(figure)) {
-				this.cleanupHistory(figure);
-			}
+        //sort for library
+        opts.file.sort(function(a,b){
+          return new Date(b[0]) - new Date(a[0]);
+        });
 
+        g.updateOptions(opts);
+        
+        //clean up history
+        if (this.history[this.server].hasOwnProperty(figure)) {
+          this.cleanupHistory(figure);
+        }
+      }
+      $(window).trigger('resize');
+      this.resize();
     },
 
     mergeDygraphHistory: function (newData, i) {

@@ -9,23 +9,18 @@
 /// @RESTURLPARAM{document-handle,string,required}
 /// The handle of the document.
 ///
-/// @RESTQUERYPARAMETERS
-///
-/// @RESTQUERYPARAM{rev,string,optional}
-/// You can conditionally fetch a document based on a target revision id by
-/// using the *rev* query parameter.
-///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-None-Match,string,optional}
 /// If the "If-None-Match" header is given, then it must contain exactly one
-/// etag. If the current document revision is different to the specified etag,
+/// ETag. If the current document revision is not equal to the specified ETag,
 /// an *HTTP 200* response is returned. If the current document revision is
-/// identical to the specified etag, then an *HTTP 304* is returned.
+/// identical to the specified ETag, then an *HTTP 304* is returned.
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
-/// You can conditionally fetch a document based on a target revision id by
-/// using the *if-match* HTTP header.
+/// If the "If-Match" header is given, then it must contain exactly one
+/// ETag. The document is returned, if it has the same revision as the
+/// given ETag. Otherwise a *HTTP 412* is returned.
 ///
 /// @RESTDESCRIPTION
 /// Like *GET*, but only returns the header fields and not the body. You
@@ -39,15 +34,15 @@
 ///
 /// @RESTRETURNCODE{304}
 /// is returned if the "If-None-Match" header is given and the document has
-/// same version
-///*
+/// the same version
+///
 /// @RESTRETURNCODE{404}
 /// is returned if the document or collection was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or *rev* is given and the found
+/// is returned if an "If-Match" header is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the *etag* header.
+/// document's current revision in the *ETag* header.
 ///
 /// @EXAMPLES
 ///

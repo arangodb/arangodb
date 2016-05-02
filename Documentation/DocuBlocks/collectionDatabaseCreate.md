@@ -26,7 +26,7 @@ to the [naming conventions](../NamingConventions/README.md).
   only. API implementors may be required to create system collections in
   very special occasions, but normally a regular collection will do.
 
-* *isVolatile* (optional, default is *false*): If *true then the
+* *isVolatile* (optional, default is *false*): If *true* then the
   collection data is kept in-memory only and not made persistent. Unloading
   the collection will cause the collection data to be discarded. Stopping
   or re-starting the server will also cause full loss of data in the

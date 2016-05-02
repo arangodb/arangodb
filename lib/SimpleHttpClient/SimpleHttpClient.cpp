@@ -41,7 +41,7 @@ namespace httpclient {
 /// @brief empty map, used for headers
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, std::string> const SimpleHttpClient::NO_HEADERS;
+std::unordered_map<std::string, std::string> const SimpleHttpClient::NO_HEADERS {};
 
 // -----------------------------------------------------------------------------
 // constructors and destructors

@@ -81,6 +81,9 @@ class Slice {
   // creates a slice of type Boolean with true value
   static Slice trueSlice() { return Slice("\x1a"); }
   
+  // creates a slice of type Smallint(0)
+  static Slice zeroSlice() { return Slice("\x30"); }
+  
   // creates a slice of type Array, empty
   static Slice emptyArraySlice() { return Slice("\x01"); }
   
@@ -729,7 +732,21 @@ class Slice {
   bool isEqualString(std::string const& attribute) const;
 
   // check if two Slices are equal on the binary level
-  bool equals(Slice const& other) const;
+  bool equals(Slice const& other) const {
+    if (head() != other.head()) {
+      return false;
+    }
+
+    ValueLength const size = byteSize();
+
+    if (size != other.byteSize()) {
+      return false;
+    }
+
+    return (memcmp(start(), other.start(),
+                  arangodb::velocypack::checkOverflow(size)) == 0);
+  }
+  
   bool operator==(Slice const& other) const { return equals(other); }
   bool operator!=(Slice const& other) const { return !equals(other); }
 

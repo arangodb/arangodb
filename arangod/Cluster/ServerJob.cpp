@@ -68,8 +68,7 @@ void ServerJob::work() {
 
   _heartbeat->setReady();
 
-  bool result;
-
+  ServerJobResult result;
   {
     // only one plan change at a time
     MUTEX_LOCKER(mutexLocker, ExecutorLock);
@@ -91,7 +90,7 @@ void ServerJob::cleanup(DispatcherQueue* queue) {
 /// @brief execute job
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ServerJob::execute() {
+ServerJobResult ServerJob::execute() {
   // default to system database
 
   DatabaseFeature* database = 
@@ -99,9 +98,9 @@ bool ServerJob::execute() {
 
   TRI_vocbase_t* const vocbase = database->vocbase();
 
+  ServerJobResult result;
   if (vocbase == nullptr) {
-    // database is gone
-    return false;
+    return result;
   }
 
   TRI_UseVocBase(vocbase);
@@ -110,10 +109,9 @@ bool ServerJob::execute() {
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true);
 
   if (context == nullptr) {
-    return false;
+    return result;
   }
 
-  bool ok = true;
   auto isolate = context->_isolate;
 
   try {
@@ -123,13 +121,38 @@ bool ServerJob::execute() {
     auto file = TRI_V8_ASCII_STRING("handle-plan-change");
     auto content =
         TRI_V8_ASCII_STRING("require('@arangodb/cluster').handlePlanChange();");
+    
+    v8::TryCatch tryCatch;
     v8::Handle<v8::Value> res = TRI_ExecuteJavaScriptString(
         isolate, isolate->GetCurrentContext(), content, file, false);
-    if (res->IsBoolean() && res->IsTrue()) {
-      LOG(ERR) << "An error occurred whilst executing the handlePlanChange in "
-                  "JavaScript.";
-      ok = false;  // The heartbeat thread will notice this!
+    
+    if (tryCatch.HasCaught()) {
+      TRI_LogV8Exception(isolate, &tryCatch);
+      return result;
     }
+
+    if (res->IsObject()) {
+      v8::Handle<v8::Object> o = res->ToObject();
+
+      v8::Handle<v8::Array> names = o->GetOwnPropertyNames();
+      uint32_t const n = names->Length();
+      
+      for (uint32_t i = 0; i < n; ++i) {
+        v8::Handle<v8::Value> key = names->Get(i);
+        v8::String::Utf8Value str(key);
+
+        v8::Handle<v8::Value> value = o->Get(key);
+        
+        if (value->IsNumber()) {
+          if (strcmp(*str, "plan") == 0) {
+            result.planVersion = static_cast<uint64_t>(value->ToUint32()->Value());
+          } else if (strcmp(*str, "current") == 0) {
+            result.currentVersion = static_cast<uint64_t>(value->ToUint32()->Value());
+          }
+        }
+      }
+    }
+    result.success = true;
     // invalidate our local cache, even if an error occurred
     ClusterInfo::instance()->flush();
   } catch (...) {
@@ -137,5 +160,5 @@ bool ServerJob::execute() {
 
   V8DealerFeature::DEALER->exitContext(context);
 
-  return ok;
+  return result;
 }

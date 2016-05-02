@@ -21,7 +21,7 @@ See [collection documentation](../Documents/DocumentMethods.md)
   var examples = require("@arangodb/graph-examples/example-graph.js");
   var graph = examples.loadGraph("social");
   graph.relation.save("female/alice", "female/diana", {type: "knows", _key: "aliceAndDiana"});
-  graph.relation.update("relation/aliceAndDiana", {type: "quarrelled", _key: "aliceAndDiana"});
+  graph.relation.update("relation/aliceAndDiana", {type: "quarreled", _key: "aliceAndDiana"});
 ~ examples.dropGraph("social");
 @END_EXAMPLE_ARANGOSH_OUTPUT
 

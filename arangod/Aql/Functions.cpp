@@ -64,7 +64,7 @@ thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
 /// @brief convert a number value into an AqlValue
 static AqlValue NumberValue(arangodb::AqlTransaction* trx, double value) {
   if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(arangodb::basics::VelocyPackHelper::ZeroValue());
   }
   
   TransactionBuilderLeaser builder(trx);
@@ -325,7 +325,7 @@ static void ExtractKeys(std::unordered_set<std::string>& names,
 static void AppendAsString(arangodb::basics::VPackStringBufferAdapter& buffer,
                            VPackSlice const& slice) {
   if (slice.isNull()) {
-    buffer.append("null", 4);
+    // null is the empty string
     return;
   }
 
@@ -932,7 +932,7 @@ AqlValue Functions::ToNumber(arangodb::aql::Query* query,
   double value = a.toDouble(failed);
 
   if (failed) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(arangodb::basics::VelocyPackHelper::ZeroValue());
   }
   
   TransactionBuilderLeaser builder(trx);
@@ -1466,7 +1466,11 @@ AqlValue Functions::Values(arangodb::aql::Query* query,
       // skip attribute
       continue;
     }
-    builder->add(entry.value);
+    if (entry.value.isCustom()) {
+      builder->add(VPackValue(trx->extractIdString(slice)));
+    } else {
+      builder->add(entry.value);
+    }
   }
   builder->close();
 

@@ -35,7 +35,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 #ifdef USE_DEV_TIMERS
-thread_local TRI_request_statistics_t* TRI_request_statistics_t::STATS = nullptr;
+thread_local TRI_request_statistics_t* TRI_request_statistics_t::STATS =
+    nullptr;
 #endif
 
 static size_t const QUEUE_SIZE = 1000;
@@ -79,15 +80,16 @@ static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
     TRI_MethodRequestsStatistics[(int)statistics->_requestType].incCounter();
 
     // check that the request was completely received and transmitted
-    if (statistics->_readStart != 0.0 && (statistics->_async || statistics->_writeEnd != 0.0)) {
+    if (statistics->_readStart != 0.0 &&
+        (statistics->_async || statistics->_writeEnd != 0.0)) {
       double totalTime;
-      
+
       if (statistics->_async) {
-	totalTime = statistics->_requestEnd - statistics->_readStart;
+        totalTime = statistics->_requestEnd - statistics->_readStart;
       } else {
-	totalTime = statistics->_writeEnd - statistics->_readStart;
+        totalTime = statistics->_writeEnd - statistics->_readStart;
       }
-      
+
       TRI_TotalTimeDistributionStatistics->addFigure(totalTime);
 
       double requestTime = statistics->_requestEnd - statistics->_requestStart;
@@ -112,15 +114,12 @@ static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
 
 #ifdef USE_DEV_TIMERS
       LOG_TOPIC(INFO, Logger::REQUESTS)
-        << "\"http-request-timing\",\""
-	<< statistics->_id << "\","
-	<< (statistics->_async ? "async" : "sync")
-        << ",total(us)," << Logger::FIXED(totalTime)
-        << ",io," << Logger::FIXED(ioTime)
-        << ",queue," << Logger::FIXED(queueTime)
-        << ",request," << Logger::FIXED(requestTime)
-        << ",received," << statistics->_receivedBytes
-        << ",sent," << statistics->_sentBytes;
+          << "\"http-request-timing\",\"" << statistics->_id << "\","
+          << (statistics->_async ? "async" : "sync") << ",total(us),"
+          << Logger::FIXED(totalTime) << ",io," << Logger::FIXED(ioTime)
+          << ",queue," << Logger::FIXED(queueTime) << ",request,"
+          << Logger::FIXED(requestTime) << ",received,"
+          << statistics->_receivedBytes << ",sent," << statistics->_sentBytes;
 #endif
     }
   }
@@ -265,16 +264,12 @@ void TRI_ReleaseConnectionStatistics(TRI_connection_statistics_t* statistics) {
     MUTEX_LOCKER(mutexLocker, ConnectionDataLock);
 
     if (statistics->_http) {
-      if (statistics->_connStart != 0.0) {
-        if (statistics->_connEnd == 0.0) {
-          TRI_HttpConnectionsStatistics.incCounter();
-        } else {
-          TRI_HttpConnectionsStatistics.decCounter();
+      TRI_HttpConnectionsStatistics.decCounter();
+    }
 
-          double totalTime = statistics->_connEnd - statistics->_connStart;
-          TRI_ConnectionTimeDistributionStatistics->addFigure(totalTime);
-        }
-      }
+    if (statistics->_connStart != 0.0 && statistics->_connEnd != 0.0) {
+      double totalTime = statistics->_connEnd - statistics->_connStart;
+      TRI_ConnectionTimeDistributionStatistics->addFigure(totalTime);
     }
   }
 
