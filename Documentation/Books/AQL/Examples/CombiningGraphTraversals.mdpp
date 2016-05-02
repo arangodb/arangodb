@@ -63,7 +63,7 @@ Alternatively we could use a `LET` statement with a subquery to group the traver
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock COMBINING_GRAPH_03_combine_let
 
-Finaly we clean up again:
+Finally, we clean up again:
 
     @startDocuBlockInline COMBINING_GRAPH_04_cleanup
     @EXAMPLE_ARANGOSH_OUTPUT{COMBINING_GRAPH_04_cleanup}
