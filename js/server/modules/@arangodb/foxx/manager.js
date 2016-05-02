@@ -94,7 +94,7 @@ const manifestSchema = {
   ),
 
   lib: joi.string().default('.'),
-  main: joi.string().default('index.js'),
+  main: joi.string().optional(),
 
   configuration: (
     joi.object().optional()
