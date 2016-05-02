@@ -25,12 +25,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/fpconv.h"
 #include "Logger/Logger.h"
-//#include "Basics/StringUtils.h"
-//#include "Basics/Utf8Helper.h"
-//#include "Basics/VPackStringBufferAdapter.h"
-//#include "Basics/files.h"
-//#include "Basics/hashes.h"
-//#include "Basics/tri-strings.h"
 
 #include <velocypack/velocypack-common.h>
 #include <velocypack/AttributeTranslator.h>
@@ -386,7 +380,9 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
         throw VPackException(VPackException::NeedCustomTypeHandler);
       } else {
         std::string v = options->customTypeHandler->toString(*slice, nullptr, *base);
+        _buffer->appendChar('"');
         dumpString(v.c_str(), v.size());
+        _buffer->appendChar('"');
       }
       break;
     }
