@@ -1398,52 +1398,53 @@ var handlePlanChange = function () {
   if (! isCluster() || isCoordinator() || ! global.ArangoServerState.initialized()) {
     return;
   }
-
+  
   let versions = {
     plan: 0,
-    current: 0,
+    current: 0
+  };
+    
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an action under a write-lock
+  ////////////////////////////////////////////////////////////////////////////////
+
+  function writeLocked (lockInfo, cb, args) {
+    var timeout = lockInfo.timeout;
+    if (timeout === undefined) {
+      timeout = 60;
+    }
+
+    var ttl = lockInfo.ttl;
+    if (ttl === undefined) {
+      ttl = 120;
+    }
+    if (require("internal").coverage || require("internal").valgrind) {
+      ttl *= 10;
+      timeout *= 10;
+    }
+
+    global.ArangoAgency.lockWrite(lockInfo.part, ttl, timeout);
+
+    try {
+      cb.apply(null, args);
+      global.ArangoAgency.increaseVersion(lockInfo.part + "/Version");
+      global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
+      
+      let version = global.ArangoAgency.get(lockInfo.part + "/Version");
+      versions[lockInfo.part.toLowerCase()] = version[lockInfo.part + "/Version"];
+    }
+    catch (err) {
+      global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
+      throw err;
+    }
   }
+
   try {
     var plan    = global.ArangoAgency.get("Plan", true);
     var current = global.ArangoAgency.get("Current", true);
 
     versions.plan = plan['Plan/Version'];
     versions.current = current['Current/Version'];
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief execute an action under a write-lock
-    ////////////////////////////////////////////////////////////////////////////////
-
-    function writeLocked (lockInfo, cb, args) {
-      var timeout = lockInfo.timeout;
-      if (timeout === undefined) {
-        timeout = 60;
-      }
-
-      var ttl = lockInfo.ttl;
-      if (ttl === undefined) {
-        ttl = 120;
-      }
-      if (require("internal").coverage || require("internal").valgrind) {
-        ttl *= 10;
-        timeout *= 10;
-      }
-
-      global.ArangoAgency.lockWrite(lockInfo.part, ttl, timeout);
-
-      try {
-        cb.apply(null, args);
-        global.ArangoAgency.increaseVersion(lockInfo.part + "/Version");
-        global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
-        
-        let version = global.ArangoAgency.get(lockInfo.part + "/Version");
-        versions[lockInfo.part.toLowerCase()] = version[lockInfo.part + "/Version"];
-      }
-      catch (err) {
-        global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
-        throw err;
-      }
-    }
 
     handleChanges(plan, current, writeLocked);
     console.info("plan change handling successful");

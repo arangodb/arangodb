@@ -81,6 +81,9 @@ class Slice {
   // creates a slice of type Boolean with true value
   static Slice trueSlice() { return Slice("\x1a"); }
   
+  // creates a slice of type Smallint(0)
+  static Slice zeroSlice() { return Slice("\x30"); }
+  
   // creates a slice of type Array, empty
   static Slice emptyArraySlice() { return Slice("\x01"); }
   
