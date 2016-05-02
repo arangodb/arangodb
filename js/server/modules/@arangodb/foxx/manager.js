@@ -69,8 +69,8 @@ const legacyManifestFields = [
 ];
 
 const manifestSchema = {
-  name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).required(),
-  version: joi.string().required(),
+  name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).optional(),
+  version: joi.string().optional(),
   engines: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -286,7 +286,7 @@ function checkMountedSystemService(dbname) {
 /// this implements issue #590: Manifest Lint
 ////////////////////////////////////////////////////////////////////////////////
 
-function checkManifest(filename, manifest) {
+function checkManifest(filename, inputManifest, mount) {
   const serverVersion = plainServerVersion();
   const validationErrors = [];
   let legacy = false;
@@ -300,7 +300,7 @@ function checkManifest(filename, manifest) {
     }
     if (result.error) {
       let error = result.error.message.replace(/^"value"/, `"${key}"`);
-      let message = `Manifest "${filename}": attribute ${error} (was "${util.format(value)}").`;
+      let message = `Manifest "${mount}": attribute ${error} (was "${util.format(value)}").`;
       validationErrors.push(message);
       console.error(message);
     }
@@ -308,7 +308,7 @@ function checkManifest(filename, manifest) {
 
   if (!manifest.engines && manifest.engine) {
     console.warn(il`
-        Found unexpected "engine" field in manifest "${filename}" for service "${manifest.name}".
+        Found unexpected "engine" field in manifest "${filename}" for service "${mount}".
         Did you mean "engines"?
     `);
   }
@@ -317,13 +317,13 @@ function checkManifest(filename, manifest) {
     if (semver.gtr('3.0.0', manifest.engines.arangodb)) {
       legacy = true;
       console.warn(
-        `Manifest "${filename}" for service "${manifest.name}":`
+        `Manifest "${filename}" for service "${mount}":`
         + ` Service expects version ${manifest.engines.arangodb}`
         + ` and will run in legacy compatibility mode.`
       );
     } else if (!semver.satisfies(serverVersion, manifest.engines.arangodb)) {
       console.warn(
-        `Manifest "${filename}" for service "${manifest.name}":`
+        `Manifest "${filename}" for service "${mount}":`
         + ` ArangoDB version ${serverVersion} probably not compatible`
         + ` with expected version ${manifest.engines.arangodb}.`
       );
@@ -332,7 +332,7 @@ function checkManifest(filename, manifest) {
 
   Object.keys(manifest).forEach(function (key) {
     if (!manifestSchema[key] && (!legacy || legacyManifestFields.indexOf(key) === -1)) {
-      console.warn(`Manifest "${filename}" for service "${manifest.name}": unknown attribute "${key}"`);
+      console.warn(`Manifest "${filename}" for service "${mount}": unknown attribute "${key}"`);
     }
   });
 
@@ -377,7 +377,7 @@ function checkManifest(filename, manifest) {
 /// All errors are handled including file not found. Returns undefined if manifest is invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-function validateManifestFile(filename) {
+function validateManifestFile(filename, mount) {
   var mf, msg;
   if (!fs.exists(filename)) {
     msg = `Cannot find manifest file "${filename}"`;
@@ -479,7 +479,7 @@ function executeScript(scriptName, service, argv) {
 /// @brief returns a valid service config for validation purposes
 ////////////////////////////////////////////////////////////////////////////////
 
-function fakeServiceConfig(path) {
+function fakeServiceConfig(path, mount) {
   var file = fs.join(path, 'manifest.json');
   return {
     id: '__internal',
@@ -487,7 +487,7 @@ function fakeServiceConfig(path) {
     path: path,
     options: {},
     mount: '/internal',
-    manifest: validateManifestFile(file),
+    manifest: validateManifestFile(file, mount),
     isSystem: false,
     isDevelopment: false
   };
@@ -507,7 +507,7 @@ function serviceConfig(mount, options, activateDevelopment) {
     path: path,
     options: options || {},
     mount: mount,
-    manifest: validateManifestFile(file),
+    manifest: validateManifestFile(file, mount),
     isSystem: isSystemMount(mount),
     isDevelopment: activateDevelopment || false
   };
@@ -938,11 +938,11 @@ function _buildServiceInPath(serviceInfo, path, options) {
 /// Does not check parameters and throws errors.
 ////////////////////////////////////////////////////////////////////////////////
 
-function _validateService(serviceInfo) {
+function _validateService(serviceInfo, mount) {
   var tempPath = fs.getTempFile('apps', false);
   try {
     _buildServiceInPath(serviceInfo, tempPath, {});
-    var tmp = new FoxxService(fakeServiceConfig(tempPath));
+    var tmp = new FoxxService(fakeServiceConfig(tempPath, mount));
     if (!tmp.needsConfiguration()) {
       routeAndExportService(tmp, true);
     }
@@ -1188,7 +1188,7 @@ function replace(serviceInfo, mount, options) {
       [ 'Mount path', 'string' ] ],
     [ serviceInfo, mount ] );
   utils.validateMount(mount);
-  _validateService(serviceInfo);
+  _validateService(serviceInfo, mount);
   options = options || {};
   let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(serviceInfo);
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
@@ -1255,7 +1255,7 @@ function upgrade(serviceInfo, mount, options) {
       [ 'Mount path', 'string' ] ],
     [ serviceInfo, mount ] );
   utils.validateMount(mount);
-  _validateService(serviceInfo);
+  _validateService(serviceInfo, mount);
   options = options || {};
   let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(serviceInfo);
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {

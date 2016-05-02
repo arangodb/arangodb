@@ -261,7 +261,7 @@ module.exports = class FoxxService {
   }
 
   _PRINT(context) {
-    context.output += `[FoxxService "${this.name}" (${this.version}) on ${this.mount}]`;
+    context.output += `[FoxxService at "${this.mount}"]`;
   }
 
   toJSON() {
@@ -402,19 +402,13 @@ module.exports = class FoxxService {
 
     if (this.legacy) {
       this.main.context.foxxFilename = this.main.context.fileName;
+      this.main.context.version = this.version = this.manifest.version;
+      this.main.context.name = this.name = this.manifest.name;
     }
   }
 
   get exports() {
     return this.main.exports;
-  }
-
-  get name() {
-    return this.manifest.name;
-  }
-
-  get version() {
-    return this.manifest.version;
   }
 
   get isSystem() {

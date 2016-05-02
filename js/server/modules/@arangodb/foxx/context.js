@@ -127,14 +127,6 @@ module.exports = class FoxxContext {
     return this.service.mount;
   }
 
-  get name() {
-    return this.service.name;
-  }
-
-  get version() {
-    return this.service.version;
-  }
-
   get manifest() {
     return this.service.manifest;
   }
