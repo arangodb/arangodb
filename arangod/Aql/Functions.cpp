@@ -484,9 +484,9 @@ static void RequestEdges(VPackSlice const& vertexSlice,
     return;
   }
 
-  VPackBuilder searchValueBuilder;
-  EdgeIndex::buildSearchValue(direction, vertexId, searchValueBuilder);
-  VPackSlice search = searchValueBuilder.slice();
+  TransactionBuilderLeaser searchValueBuilder(trx);
+  EdgeIndex::buildSearchValue(direction, vertexId, *(searchValueBuilder.get()));
+  VPackSlice search = searchValueBuilder->slice();
   std::shared_ptr<OperationCursor> cursor = trx->indexScan(
       collectionName, arangodb::Transaction::CursorType::INDEX, indexId,
       search, 0, UINT64_MAX, 1000, false);
@@ -530,25 +530,24 @@ static void RequestEdges(VPackSlice const& vertexSlice,
             // somehow invalid
             continue;
           }
-          std::vector<std::string> split = arangodb::basics::StringUtils::split(target, "/");
-          TRI_ASSERT(split.size() == 2);
-          // We have to make sure the transaction know this collection!
-          trx->addCollectionAtRuntime(split[0]);
-          VPackBuilder vertexSearch;
-          vertexSearch.openObject();
-          vertexSearch.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(split[1]));
-          vertexSearch.close();
-          OperationOptions opts;
-          OperationResult vertexResult = trx->document(split[0], vertexSearch.slice(), opts);
-          if (vertexResult.failed()) {
-            if (vertexResult.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-              // This is okay
-              result.add("vertex", VPackValue(VPackValueType::Null));
+          size_t pos = target.find("/");
+          TRI_ASSERT(pos != std::string::npos);
+          std::string collection = target.substr(0, pos);
+          std::string key = target.substr(pos + 1);
+
+          searchValueBuilder->clear();
+          searchValueBuilder->openObject();
+          searchValueBuilder->add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+          searchValueBuilder->close();
+          result.add(VPackValue("vertex"));
+          int res = trx->documentFastPath(collection, searchValueBuilder->slice(), result);
+          if (res != TRI_ERROR_NO_ERROR) {
+            if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+              // Not found is ok. Is equal to NULL
+              result.add(VPackValue(VPackValueType::Null));
             } else {
-              THROW_ARANGO_EXCEPTION(vertexResult.code);
+              THROW_ARANGO_EXCEPTION(res);
             }
-          } else {
-            result.add("vertex", vertexResult.slice().resolveExternal());
           }
         }
       }
