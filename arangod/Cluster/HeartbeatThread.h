@@ -43,7 +43,7 @@ struct AgencyVersions {
   
   AgencyVersions(uint64_t _plan, uint64_t _current) : plan(_plan), current(_plan) {}
 
-  AgencyVersions(const ServerJobResult& result)
+  explicit AgencyVersions(const ServerJobResult& result)
     : plan(result.planVersion),
     current(result.currentVersion) {
   }

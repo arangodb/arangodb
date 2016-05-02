@@ -48,7 +48,11 @@ struct TRI_request_statistics_t {
         _async(false),
         _tooLarge(false),
         _executeError(false),
-        _ignore(false) {}
+        _ignore(false) {
+#ifdef USE_DEV_TIMERS
+    _id = nullptr;
+#endif
+  }
 
   void reset() {
     _readStart = 0.0;
