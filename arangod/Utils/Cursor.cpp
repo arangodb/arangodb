@@ -127,8 +127,8 @@ void VelocyPackCursor::dump(arangodb::basics::StringBuffer& buffer) {
   size_t num = n;
   if (num == 0) {
     num = 1;
-  } else if (num >= 50000) {
-    num = 50000;
+  } else if (num >= 10000) {
+    num = 10000;
   }
   int res = buffer.reserve(num * 48);
 
@@ -155,7 +155,7 @@ void VelocyPackCursor::dump(arangodb::basics::StringBuffer& buffer) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      dumper.dump(row);
+      dumper.dumpValue(row);
     }
   } catch (arangodb::basics::Exception const& ex) {
     THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
@@ -184,7 +184,7 @@ void VelocyPackCursor::dump(arangodb::basics::StringBuffer& buffer) {
 
   if (extraSlice.isObject()) {
     buffer.appendText(",\"extra\":");
-    dumper.dump(extraSlice);
+    dumper.dumpValue(extraSlice);
   }
 
   buffer.appendText(",\"cached\":");

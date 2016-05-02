@@ -191,8 +191,6 @@ int TRI_ReplaceStringStringBuffer(TRI_string_buffer_t*, char const*, size_t);
 
 int TRI_AppendCharStringBuffer(TRI_string_buffer_t* self, char chr);
 
-void TRI_AppendCharUnsafeStringBuffer(TRI_string_buffer_t* self, char chr);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,11 +205,24 @@ int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str,
                                   size_t len);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends characters but url-encode the string
+/// @brief appends characters but does not check buffer bounds
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendUrlEncodedStringStringBuffer(TRI_string_buffer_t* self,
-                                           char const* str);
+static inline void TRI_AppendCharUnsafeStringBuffer(TRI_string_buffer_t* self, char chr) {
+  *self->_current++ = chr;
+}
+
+static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, char const* str) {
+  size_t len = strlen(str);
+  memcpy(self->_current, str, len);
+  self->_current += len;
+}
+
+static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, char const* str,
+                                                      size_t len) {
+  memcpy(self->_current, str, len);
+  self->_current += len;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters but json-encode the null-terminated string
@@ -767,17 +778,6 @@ class StringBuffer {
     return *this;
   }
   
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief appends character - does not reserve extra space
-  /// it's the caller's responsibility to ensure there is enough free space
-  /// in the buffer
-  //////////////////////////////////////////////////////////////////////////////
-  
-  StringBuffer& appendCharUnsafe(char chr) {
-    TRI_AppendCharUnsafeStringBuffer(&_buffer, chr);
-    return *this;
-  }
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief appends as json-encoded
   //////////////////////////////////////////////////////////////////////////////

@@ -787,7 +787,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
   VPackSlice const keySlice = Transaction::extractKeyFromDocument(slice);
-  TRI_voc_rid_t const rid = std::stoull(slice.get(StaticStrings::RevString).copyString());
+  TRI_voc_rid_t const rid = StringUtils::uint64(slice.get(StaticStrings::RevString).copyString());
  
   SetRevision(document, rid, false);
   document->_keyGenerator->track(keySlice.copyString());
@@ -890,7 +890,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
   VPackSlice const keySlice = Transaction::extractKeyFromDocument(slice);
-  TRI_voc_rid_t const rid = std::stoull(slice.get(StaticStrings::RevString).copyString());
+  TRI_voc_rid_t const rid = StringUtils::uint64(slice.get(StaticStrings::RevString).copyString());
  
   document->setLastRevision(rid, false);
   document->_keyGenerator->track(keySlice.copyString());
