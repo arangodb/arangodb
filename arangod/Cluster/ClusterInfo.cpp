@@ -1043,29 +1043,25 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   std::string where = "Current/Databases/" + name;
   while (TRI_microtime() <= endTime) {
 
-    std::cout << __LINE__ << name << std::endl;
-    
     res.clear();
 
-    res = ac.getValues(where, true);
-
-    if (res.successful()) {// && res.parse(where + "/", false)) {
-
+    res = ac.getValues2(where, true);
       VPackSlice adbservers =
         res._vpack->slice()[0]
         .get(AgencyComm::prefixStripped()).get("Current")
         .get("Databases").get(name);
-      
+
+    if (res.successful() && !adbservers.isNone()) {
+
       VPackObjectIterator dbs(adbservers);
       
       if (dbs.size() == DBServers.size()) {
         std::map<std::string, AgencyCommResultEntry>::iterator it;
         std::string tmpMsg = "";
         bool tmpHaveError = false;
-        //for (it = res._values.begin(); it != res._values.end(); ++it) {
+
         for (auto const& dbserver : dbs) {
           VPackSlice slice = dbserver.value;
-          
           if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                 slice, "error", false)) {
             tmpHaveError = true;
@@ -1085,6 +1081,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         }
         if (tmpHaveError) {
           errorMsg = "Error in creation of database:" + tmpMsg;
+          std::cout << errorMsg << std::endl;
           return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE;
         }
         loadCurrentDatabases();  // update our cache

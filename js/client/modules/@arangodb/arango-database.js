@@ -896,11 +896,14 @@ ArangoDatabase.prototype._createDatabase = function (name, options, users) {
     users: users || [ ]
   };
 
+  require("internal").print(JSON.stringify(data));
   var requestResult = this._connection.POST("/_api/database", JSON.stringify(data));
 
+  require("internal").print(JSON.stringify(data));
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);
   }
+  require("internal").print(requestResult);
 
   arangosh.checkRequestResult(requestResult);
 
