@@ -99,7 +99,7 @@ static OperationResult FetchDocumentById(arangodb::Transaction* trx,
   builder.close();
 
   OperationResult opRes = trx->document(col, builder.slice(), options);
-
+  // TODO Operation Result is very expensive find a faster alternative
   if (opRes.failed() && opRes.code != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     THROW_ARANGO_EXCEPTION(opRes.code);
   }

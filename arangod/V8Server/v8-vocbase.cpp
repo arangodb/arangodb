@@ -1704,16 +1704,16 @@ static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
                                             Transaction* trx,
                                             std::string const& vertexId) {
   OperationOptions options;
-  std::vector<std::string> parts =
-      arangodb::basics::StringUtils::split(vertexId, "/");
-  TRI_ASSERT(parts.size() == 2);  // All internal _id attributes
+  size_t pos = vertexId.find('/');
+  TRI_ASSERT(pos != std::string::npos); // All are internal _id attributes
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(parts[1]));
+  builder.add(StaticStrings::KeyString, VPackValue(vertexId.substr(pos + 1)));
   builder.close();
 
-  OperationResult opRes = trx->document(parts[0], builder.slice(), options);
+  // TODO Operation Result is very expensive find a faster alternative
+  OperationResult opRes = trx->document(vertexId.substr(0, pos), builder.slice(), options);
 
   if (opRes.failed()) {
     v8::EscapableHandleScope scope(isolate);

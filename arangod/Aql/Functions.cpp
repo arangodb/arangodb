@@ -607,34 +607,28 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
   searchBuilder->openObject();
   searchBuilder->add(VPackValue(StaticStrings::KeyString));
 
-  std::vector<std::string> parts =
-      arangodb::basics::StringUtils::split(identifier, "/");
-
-  if (parts.size() == 1) {
+  size_t pos = identifier.find('/');
+  if (pos == std::string::npos) {
     searchBuilder->add(VPackValue(identifier));
     searchBuilder->close();
-  } else if (parts.size() == 2) {
+  } else {
     if (collectionName.empty()) {
-      searchBuilder->add(VPackValue(parts[1]));
+      searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
       searchBuilder->close();
-      collectionName = parts[0];
-    } else if (parts[0] != collectionName) {
+      collectionName = identifier.substr(0, pos);
+    } else if (identifier.substr(0, pos) != collectionName) {
       // Reqesting an _id that cannot be stored in this collection
       if (ignoreError) {
         return;
       }
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     } else {
-      searchBuilder->add(VPackValue(parts[1]));
+      searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
       searchBuilder->close();
     }
-  } else {
-    if (ignoreError) {
-      return;
-    }
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
+  // TODO Operation Result is very expensive find a faster alternative
   try {
     opRes = trx->document(collectionName, searchBuilder->slice(), options);
   } catch (arangodb::basics::Exception const&) {
