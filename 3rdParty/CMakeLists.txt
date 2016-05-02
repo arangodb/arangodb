@@ -26,7 +26,7 @@ option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
 if (USE_PRECOMPILED_V8)
   set(V8_VERSION
-    "V8-5.0.71.39"
+    "V8-4.9.391"
     CACHE INTERNAL
     "${PROJECT_NAME}: Version"
     FORCE
