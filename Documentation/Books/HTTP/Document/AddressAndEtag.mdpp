@@ -19,17 +19,17 @@ Here is an example document:
 {
   "_id" : "myusers/3456789",
   "_key" : "3456789",
-  "_rev" : "3456789",
-  "firstName" : "Hugo",
-  "lastName" : "Schlonz",
+  "_rev" : "14253647",
+  "firstName" : "John",
+  "lastName" : "Doe",
   "address" : {
-    "street" : "Street of Happiness",
-    "city" : "Heretown"
+    "street" : "Road To Nowhere 1",
+    "city" : "Gotham"
   },
   "hobbies" : [
-    "swimming",
-    "biking",
-    "programming"
+    {name: "swimming", howFavorite: 10},
+    {name: "biking", howFavorite: 6},
+    {name: "programming", howFavorite: 4}
   ]
 }
 ```

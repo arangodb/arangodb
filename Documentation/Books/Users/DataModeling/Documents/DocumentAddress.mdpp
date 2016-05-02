@@ -13,21 +13,21 @@ Any transaction only ever sees a single revision of a document.
 For example:
 
 ```js
-{ 
-  "firstName" : "Hugo", 
-  "lastName" : "Schlonz", 
-  "address" : { 
-    "city" : "Hier", 
-    "street" : "Strasse 1" 
-  }, 
-  "hobbies" : [ 
-    "swimming", 
-    "biking", 
-    "programming" 
-  ], 
-  "_id" : "demo/schlonz", 
-  "_rev" : "13728680", 
-  "_key" : "schlonz" 
+{
+  "_id" : "myusers/3456789",
+  "_key" : "3456789",
+  "_rev" : "14253647",
+  "firstName" : "John",
+  "lastName" : "Doe",
+  "address" : {
+    "street" : "Road To Nowhere 1",
+    "city" : "Gotham"
+  },
+  "hobbies" : [
+    {name: "swimming", howFavorite: 10},
+    {name: "biking", howFavorite: 6},
+    {name: "programming", howFavorite: 4}
+  ]
 }
 ```
 
