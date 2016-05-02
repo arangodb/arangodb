@@ -48,65 +48,67 @@ void VelocyPackDumper::handleUnsupportedType(VPackSlice const* slice) {
 }
   
 void VelocyPackDumper::appendUInt(uint64_t v) {
+  _buffer->reserve(21);
+
   if (10000000000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 10000000000000000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 10000000000000000000ULL) % 10);
   }
   if (1000000000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 1000000000000000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 1000000000000000000ULL) % 10);
   }
   if (100000000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 100000000000000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 100000000000000000ULL) % 10);
   }
   if (10000000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 10000000000000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 10000000000000000ULL) % 10);
   }
   if (1000000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 1000000000000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 1000000000000000ULL) % 10);
   }
   if (100000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 100000000000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 100000000000000ULL) % 10);
   }
   if (10000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 10000000000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 10000000000000ULL) % 10);
   }
   if (1000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 1000000000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 1000000000000ULL) % 10);
   }
   if (100000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 100000000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 100000000000ULL) % 10);
   }
   if (10000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 10000000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 10000000000ULL) % 10);
   }
   if (1000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 1000000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 1000000000ULL) % 10);
   }
   if (100000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 100000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 100000000ULL) % 10);
   }
   if (10000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 10000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 10000000ULL) % 10);
   }
   if (1000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 1000000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 1000000ULL) % 10);
   }
   if (100000ULL <= v) {
-    _buffer->appendChar('0' + (v / 100000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 100000ULL) % 10);
   }
   if (10000ULL <= v) {
-    _buffer->appendChar('0' + (v / 10000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 10000ULL) % 10);
   }
   if (1000ULL <= v) {
-    _buffer->appendChar('0' + (v / 1000ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 1000ULL) % 10);
   }
   if (100ULL <= v) {
-    _buffer->appendChar('0' + (v / 100ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 100ULL) % 10);
   }
   if (10ULL <= v) {
-    _buffer->appendChar('0' + (v / 10ULL) % 10);
+    _buffer->appendCharUnsafe('0' + (v / 10ULL) % 10);
   }
 
-  _buffer->appendChar('0' + (v % 10));
+  _buffer->appendCharUnsafe('0' + (v % 10));
 }
 
 void VelocyPackDumper::appendDouble(double v) {
@@ -126,74 +128,78 @@ void VelocyPackDumper::dumpInteger(VPackSlice const* slice) {
       _buffer->appendText("-9223372036854775808", 20);
       return;
     }
+  
+    _buffer->reserve(21);
     if (v < 0) {
-      _buffer->appendChar('-');
+      _buffer->appendCharUnsafe('-');
       v = -v;
     }
 
     if (1000000000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 1000000000000000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 1000000000000000000LL) % 10);
     }
     if (100000000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 100000000000000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 100000000000000000LL) % 10);
     }
     if (10000000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 10000000000000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 10000000000000000LL) % 10);
     }
     if (1000000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 1000000000000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 1000000000000000LL) % 10);
     }
     if (100000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 100000000000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 100000000000000LL) % 10);
     }
     if (10000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 10000000000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 10000000000000LL) % 10);
     }
     if (1000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 1000000000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 1000000000000LL) % 10);
     }
     if (100000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 100000000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 100000000000LL) % 10);
     }
     if (10000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 10000000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 10000000000LL) % 10);
     }
     if (1000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 1000000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 1000000000LL) % 10);
     }
     if (100000000LL <= v) {
-      _buffer->appendChar('0' + (v / 100000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 100000000LL) % 10);
     }
     if (10000000LL <= v) {
-      _buffer->appendChar('0' + (v / 10000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 10000000LL) % 10);
     }
     if (1000000LL <= v) {
-      _buffer->appendChar('0' + (v / 1000000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 1000000LL) % 10);
     }
     if (100000LL <= v) {
-      _buffer->appendChar('0' + (v / 100000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 100000LL) % 10);
     }
     if (10000LL <= v) {
-      _buffer->appendChar('0' + (v / 10000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 10000LL) % 10);
     }
     if (1000LL <= v) {
-      _buffer->appendChar('0' + (v / 1000LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 1000LL) % 10);
     }
     if (100LL <= v) {
-      _buffer->appendChar('0' + (v / 100LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 100LL) % 10);
     }
     if (10LL <= v) {
-      _buffer->appendChar('0' + (v / 10LL) % 10);
+      _buffer->appendCharUnsafe('0' + (v / 10LL) % 10);
     }
 
-    _buffer->appendChar('0' + (v % 10));
+    _buffer->appendCharUnsafe('0' + (v % 10));
   } else if (slice->isType(VPackValueType::SmallInt)) {
+    _buffer->reserve(2);
+
     int64_t v = slice->getSmallInt();
     if (v < 0) {
-      _buffer->appendChar('-');
+      _buffer->appendCharUnsafe('-');
       v = -v;
     }
-    _buffer->appendChar('0' + static_cast<char>(v));
+    _buffer->appendCharUnsafe('0' + static_cast<char>(v));
   }
 }
 
@@ -362,7 +368,7 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
     case VPackValueType::String: {
       VPackValueLength len;
       char const* p = slice->getString(len);
-      _buffer->reserve(2 + len);
+      _buffer->reserve(2 + len + 10); // reserve some overhead for escape sequences
       _buffer->appendChar('"');
       dumpString(p, len);
       _buffer->appendChar('"');

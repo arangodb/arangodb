@@ -191,6 +191,8 @@ int TRI_ReplaceStringStringBuffer(TRI_string_buffer_t*, char const*, size_t);
 
 int TRI_AppendCharStringBuffer(TRI_string_buffer_t* self, char chr);
 
+void TRI_AppendCharUnsafeStringBuffer(TRI_string_buffer_t* self, char chr);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters
 ////////////////////////////////////////////////////////////////////////////////
@@ -762,6 +764,17 @@ class StringBuffer {
 
   StringBuffer& appendChar(char chr) {
     TRI_AppendCharStringBuffer(&_buffer, chr);
+    return *this;
+  }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief appends character - does not reserve extra space
+  /// it's the caller's responsibility to ensure there is enough free space
+  /// in the buffer
+  //////////////////////////////////////////////////////////////////////////////
+  
+  StringBuffer& appendCharUnsafe(char chr) {
+    TRI_AppendCharUnsafeStringBuffer(&_buffer, chr);
     return *this;
   }
 
