@@ -12,10 +12,32 @@
   }
 }
 
+.noty_type_error {
+  .arango_message {
+    top: 2px;
+  }
+}
+
 .noty_bar {
 
+  .noty_buttons {
+    background-color: rgba(0, 0, 0, 0) !important;
+    border: 0 !important;
+    bottom: 0;
+    height: 1px;
+    margin-bottom: 30px !important;
+    margin-top: -35px !important;
+    position: relative;
+    right: -23px;
+
+    button {
+      margin-bottom: 2px;
+      margin-right: -1px;
+    }
+  }
+
   .arango_message {
-    font-weight: 500 !important;
+    font-weight: 400 !important;
 
     div {
       float: right;

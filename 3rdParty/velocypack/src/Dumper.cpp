@@ -309,7 +309,7 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
     }
 
     case ValueType::Array: {
-      ArrayIterator it(*slice);
+      ArrayIterator it(*slice, true);
       _sink->push_back('[');
       if (options->prettyPrint) {
         _sink->push_back('\n');
@@ -382,17 +382,6 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
       break;
     }
 
-    case ValueType::UTCDate: {
-      handleUnsupportedType(slice);
-      break;
-    }
-
-    case ValueType::External: {
-      Slice const external(slice->getExternal());
-      dumpValue(&external, base);
-      break;
-    }
-
     case ValueType::Int:
     case ValueType::UInt:
     case ValueType::SmallInt: {
@@ -409,7 +398,14 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
       _sink->push_back('"');
       break;
     }
+    
+    case ValueType::External: {
+      Slice const external(slice->getExternal());
+      dumpValue(&external, base);
+      break;
+    }
 
+    case ValueType::UTCDate: 
     case ValueType::None: 
     case ValueType::Binary: 
     case ValueType::Illegal:

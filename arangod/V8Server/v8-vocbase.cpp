@@ -559,7 +559,7 @@ static void JS_WaitCollectorWal(
   std::string const name = TRI_ObjectToString(args[0]);
 
   TRI_vocbase_col_t* col =
-      TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+      TRI_LookupCollectionByNameVocBase(vocbase, name);
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -2621,7 +2621,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       }
     }
   } else {
-    collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
+    collection = TRI_LookupCollectionByNameVocBase(vocbase, std::string(key));
   }
 
   if (collection == nullptr) {
@@ -2819,7 +2819,7 @@ static void ListDatabasesCoordinator(
         ServerID sid = DBServers[0];
         ClusterComm* cc = ClusterComm::instance();
 
-        std::map<std::string, std::string> headers;
+        std::unordered_map<std::string, std::string> headers;
         headers["Authentication"] = TRI_ObjectToString(args[2]);
         auto res = cc->syncRequest(
             "", 0, "server:" + sid, arangodb::GeneralRequest::RequestType::GET,

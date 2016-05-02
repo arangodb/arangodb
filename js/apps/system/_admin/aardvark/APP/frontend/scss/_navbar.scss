@@ -26,7 +26,6 @@ $navbar-size: 150px;
     width: $navbar-size;
   }
 
-
   > .resizecontainer {
     background-color: $c-white;
   }
@@ -83,6 +82,31 @@ $navbar-size: 150px;
         background-color: $c-black;
         color: $c-bar-bg;
       }
+    }
+  }
+
+  .shortcut {
+    bottom: 31px;
+    left: 13px;
+    position: absolute;
+
+    i {
+      background-color: rgba(0, 0, 0, 0);
+      border-radius: 20px;
+      color: $c-white;
+      padding: {
+        bottom: 6px;
+        left: 4px;
+        right: 0;
+        top: 5px;
+      };
+      width: 20px;
+    }
+
+    i:hover {
+      background-color: $c-positive;
+      color: $c-white;
+      cursor: pointer;
     }
   }
 
@@ -152,6 +176,32 @@ $navbar-size: 150px;
 
   .small {
     display: none;
+  }
+
+  .version {
+    bottom: 33px;
+    color: rgba(255, 255, 255, .7);
+    font-size: 11px;
+    font-weight: 100;
+    left: 0;
+    padding-bottom: 10px;
+    position: absolute;
+    text-align: center;
+    text-transform: uppercase;
+    width: 100%;
+
+    .out-of-date {
+      color: $c-warning;
+      font-weight: 400;
+
+      &:hover {
+        cursor: pointer;
+      }
+    }
+
+    .up-to-date {
+      color: $c-positive;
+    }
   }
 }
 

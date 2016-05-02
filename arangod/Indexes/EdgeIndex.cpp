@@ -72,8 +72,7 @@ static uint64_t HashElementEdgeFrom(void*, TRI_doc_mptr_t const* mptr,
     hash = fasthash64(&hash, sizeof(hash), 0x56781234);
   } else {
     // Is identical to HashElementKey
-    VPackSlice tmp(mptr->vpack());
-    tmp = tmp.get(StaticStrings::FromString);
+    VPackSlice tmp = Transaction::extractFromFromDocument(VPackSlice(mptr->vpack()));
     TRI_ASSERT(tmp.isString());
     // we can get away with the fast hash function here, as edge
     // index values are restricted to strings
@@ -97,9 +96,7 @@ static uint64_t HashElementEdgeTo(void*, TRI_doc_mptr_t const* mptr,
     hash = fasthash64(&hash, sizeof(hash), 0x56781234);
   } else {
     // Is identical to HashElementKey
-    VPackSlice tmp(mptr->vpack());
-    TRI_ASSERT(tmp.isObject());
-    tmp = tmp.get(StaticStrings::ToString);
+    VPackSlice tmp = Transaction::extractToFromDocument(VPackSlice(mptr->vpack()));
     TRI_ASSERT(tmp.isString());
     // we can get away with the fast hash function here, as edge
     // index values are restricted to strings
@@ -119,10 +116,9 @@ static bool IsEqualKeyEdgeFrom(void*, VPackSlice const* left,
 
   // left is a key
   // right is an element, that is a master pointer
-  VPackSlice tmp(right->vpack());
-  tmp = tmp.get(StaticStrings::FromString);
+  VPackSlice tmp = Transaction::extractFromFromDocument(VPackSlice(right->vpack()));
   TRI_ASSERT(tmp.isString());
-  return *left == tmp;
+  return (*left).equals(tmp);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,10 +132,9 @@ static bool IsEqualKeyEdgeTo(void*, VPackSlice const* left,
 
   // left is a key
   // right is an element, that is a master pointer
-  VPackSlice tmp(right->vpack());
-  tmp = tmp.get(StaticStrings::ToString);
+  VPackSlice tmp = Transaction::extractToFromDocument(VPackSlice(right->vpack()));
   TRI_ASSERT(tmp.isString());
-  return *left == tmp;
+  return (*left).equals(tmp);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,14 +156,13 @@ static bool IsEqualElementEdgeFromByKey(void*,
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
 
-  VPackSlice lSlice(left->vpack());
-  lSlice = lSlice.get(StaticStrings::FromString);
+  VPackSlice lSlice = Transaction::extractFromFromDocument(VPackSlice(left->vpack()));
   TRI_ASSERT(lSlice.isString());
 
-  VPackSlice rSlice(right->vpack());
-  rSlice = rSlice.get(StaticStrings::FromString);
+  VPackSlice rSlice = Transaction::extractFromFromDocument(VPackSlice(right->vpack()));
   TRI_ASSERT(rSlice.isString());
-  return lSlice == rSlice;
+
+  return lSlice.equals(rSlice);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,14 +175,13 @@ static bool IsEqualElementEdgeToByKey(void*,
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
 
-  VPackSlice lSlice(left->vpack());
-  lSlice = lSlice.get(StaticStrings::ToString);
+  VPackSlice lSlice = Transaction::extractToFromDocument(VPackSlice(left->vpack()));
   TRI_ASSERT(lSlice.isString());
-
-  VPackSlice rSlice(right->vpack());
-  rSlice = rSlice.get(StaticStrings::ToString);
+  
+  VPackSlice rSlice = Transaction::extractToFromDocument(VPackSlice(right->vpack()));
   TRI_ASSERT(rSlice.isString());
-  return lSlice == rSlice;
+
+  return lSlice.equals(rSlice);
 }
 
 TRI_doc_mptr_t* EdgeIndexIterator::next() {
@@ -202,6 +195,8 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
       // We start a new lookup
       _posInBuffer = 0;
 
+      // TODO: can we use an ArrayIterator with linear access here?
+      // at() will recalculate the object length etc. on every call
       VPackSlice tmp = _keys.at(_position);
       if (tmp.isObject()) {
         tmp = tmp.get(TRI_SLICE_KEY_EQUAL);

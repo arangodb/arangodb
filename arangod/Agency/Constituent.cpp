@@ -305,8 +305,7 @@ void Constituent::callElection() {
   // Ask everyone for their vote
   for (arangodb::consensus::id_t i = 0; i < config().endpoints.size(); ++i) {
     if (i != _id && endpoint(i) != "") {
-      std::unique_ptr<std::map<std::string, std::string>> headerFields =
-          std::make_unique<std::map<std::string, std::string>>();
+      auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
       results[i] = arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, config().endpoints[i], GeneralRequest::RequestType::GET,
           path.str(), std::make_shared<std::string>(body), headerFields,

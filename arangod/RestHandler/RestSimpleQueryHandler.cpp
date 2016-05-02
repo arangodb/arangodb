@@ -90,7 +90,7 @@ void RestSimpleQueryHandler::allDocuments() {
 
     if (!collectionName.empty()) {
       auto const* col =
-          TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
+          TRI_LookupCollectionByNameVocBase(_vocbase, collectionName);
 
       if (col != nullptr && collectionName.compare(col->_name) != 0) {
         // user has probably passed in a numeric collection id.

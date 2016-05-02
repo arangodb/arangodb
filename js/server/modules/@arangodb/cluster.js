@@ -298,37 +298,6 @@ function getIndexMap (shard) {
   return indexes;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an action under a write-lock
-////////////////////////////////////////////////////////////////////////////////
-
-function writeLocked (lockInfo, cb, args) {
-  var timeout = lockInfo.timeout;
-  if (timeout === undefined) {
-    timeout = 60;
-  }
-
-  var ttl = lockInfo.ttl;
-  if (ttl === undefined) {
-    ttl = 120;
-  }
-  if (require("internal").coverage || require("internal").valgrind) {
-    ttl *= 10;
-    timeout *= 10;
-  }
-
-  global.ArangoAgency.lockWrite(lockInfo.part, ttl, timeout);
-
-  try {
-    cb.apply(null, args);
-    global.ArangoAgency.increaseVersion(lockInfo.part + "/Version");
-    global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
-  }
-  catch (err) {
-    global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
-    throw err;
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a hash with the local databases
@@ -385,7 +354,7 @@ function getLocalCollections () {
 /// @brief create databases if they exist in the plan but not locally
 ////////////////////////////////////////////////////////////////////////////////
 
-function createLocalDatabases (plannedDatabases) {
+function createLocalDatabases (plannedDatabases, writeLocked) {
 
   var ourselves = global.ArangoServerState.id();
   var createDatabaseAgency = function (payload) {
@@ -425,11 +394,10 @@ function createLocalDatabases (plannedDatabases) {
           payload.errorNum = err.errorNum;
           payload.errorMessage = err.errorMessage;
         }
+        writeLocked({ part: "Current" },
+                    createDatabaseAgency,
+                    [ payload ]);
       }
-      
-      writeLocked({ part: "Current" },
-                  createDatabaseAgency,
-                  [ payload ]);
     }
   }
 }
@@ -438,7 +406,7 @@ function createLocalDatabases (plannedDatabases) {
 /// @brief drop databases if they do exist locally but not in the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-function dropLocalDatabases (plannedDatabases) {
+function dropLocalDatabases (plannedDatabases, writeLocked) {
   var ourselves = global.ArangoServerState.id();
 
   var dropDatabaseAgency = function (payload) {
@@ -494,7 +462,7 @@ function dropLocalDatabases (plannedDatabases) {
 /// @brief clean up what's in Current/Databases for ourselves
 ////////////////////////////////////////////////////////////////////////////////
 
-function cleanupCurrentDatabases () {
+function cleanupCurrentDatabases (writeLocked) {
   var ourselves = global.ArangoServerState.id();
 
   var dropDatabaseAgency = function (payload) {
@@ -537,19 +505,19 @@ function cleanupCurrentDatabases () {
 /// @brief handle database changes
 ////////////////////////////////////////////////////////////////////////////////
 
-function handleDatabaseChanges (plan) {
+function handleDatabaseChanges (plan, current, writeLocked) {
   var plannedDatabases = plan.Databases;
 
-  createLocalDatabases(plannedDatabases);
-  dropLocalDatabases(plannedDatabases);
-  cleanupCurrentDatabases();
+  createLocalDatabases(plannedDatabases, writeLocked);
+  dropLocalDatabases(plannedDatabases, writeLocked);
+  cleanupCurrentDatabases(writeLocked);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create collections if they exist in the plan but not locally
 ////////////////////////////////////////////////////////////////////////////////
 
-function createLocalCollections (plannedCollections, planVersion, takeOverResponsibility) {
+function createLocalCollections (plannedCollections, planVersion, takeOverResponsibility, writeLocked) {
   var ourselves = global.ArangoServerState.id();
   
   var createCollectionAgency = function (database, shard, collInfo, error) {
@@ -831,7 +799,7 @@ function createLocalCollections (plannedCollections, planVersion, takeOverRespon
 /// @brief drop collections if they exist locally but not in the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-function dropLocalCollections (plannedCollections) {
+function dropLocalCollections (plannedCollections, writeLocked) {
   var ourselves = global.ArangoServerState.id();
 
   var dropCollectionAgency = function (database, shardID, id) {
@@ -902,7 +870,7 @@ function dropLocalCollections (plannedCollections) {
 /// @brief clean up what's in Current/Collections for ourselves
 ////////////////////////////////////////////////////////////////////////////////
 
-function cleanupCurrentCollections (plannedCollections) {
+function cleanupCurrentCollections (plannedCollections, writeLocked) {
   var ourselves = global.ArangoServerState.id();
 
   var dropCollectionAgency = function (database, collection, shardID) {
@@ -1105,16 +1073,15 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
 /// @brief handle collection changes
 ////////////////////////////////////////////////////////////////////////////////
 
-function handleCollectionChanges (plan, takeOverResponsibility) {
-//  var plannedCollections = getByPrefix3d(plan, "Plan/Collections/");
+function handleCollectionChanges (plan, takeOverResponsibility, writeLocked) {
   var plannedCollections = plan.Collections;
 
   var ok = true;
 
   try {
-    createLocalCollections(plannedCollections, plan.Version, takeOverResponsibility);
-    dropLocalCollections(plannedCollections);
-    cleanupCurrentCollections(plannedCollections);
+    createLocalCollections(plannedCollections, plan.Version, takeOverResponsibility, writeLocked);
+    dropLocalCollections(plannedCollections, writeLocked);
+    cleanupCurrentCollections(plannedCollections, writeLocked);
     synchronizeLocalFollowerCollections(plannedCollections);
   }
   catch (err) {
@@ -1138,8 +1105,8 @@ function setupReplication () {
   var i;
   var ok = true;
   for (i = 0; i < dbs.length; i++) {
+    var database = dbs[i];
     try {
-      var database = dbs[i];
       console.debug("Checking replication of database "+database);
       db._useDatabase(database);
 
@@ -1213,7 +1180,7 @@ function primaryToSecondary () {
 /// @brief change handling trampoline function
 ////////////////////////////////////////////////////////////////////////////////
 
-function handleChanges (plan, current) {
+function handleChanges (plan, current, writeLocked) {
   var changed = false;
   var role = ArangoServerState.role();
   if (role === "PRIMARY" || role === "SECONDARY") {
@@ -1259,12 +1226,12 @@ function handleChanges (plan, current) {
     }
   }
 
-  handleDatabaseChanges(plan, current);
+  handleDatabaseChanges(plan, current, writeLocked);
   var success;
   if (role === "PRIMARY" || role === "COORDINATOR") {
     // Note: This is only ever called for DBservers (primary and secondary),
     // we keep the coordinator case here just in case...
-    success = handleCollectionChanges(plan, changed);
+    success = handleCollectionChanges(plan, changed, writeLocked);
   }
   else {
     success = setupReplication();
@@ -1428,17 +1395,64 @@ var handlePlanChange = function () {
   if (! isCluster() || isCoordinator() || ! global.ArangoServerState.initialized()) {
     return;
   }
+  
+  let versions = {
+    plan: 0,
+    current: 0
+  };
+    
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an action under a write-lock
+  ////////////////////////////////////////////////////////////////////////////////
+
+  function writeLocked (lockInfo, cb, args) {
+    var timeout = lockInfo.timeout;
+    if (timeout === undefined) {
+      timeout = 60;
+    }
+
+    var ttl = lockInfo.ttl;
+    if (ttl === undefined) {
+      ttl = 120;
+    }
+    if (require("internal").coverage || require("internal").valgrind) {
+      ttl *= 10;
+      timeout *= 10;
+    }
+
+    global.ArangoAgency.lockWrite(lockInfo.part, ttl, timeout);
+
+    try {
+      cb.apply(null, args);
+      global.ArangoAgency.increaseVersion(lockInfo.part + "/Version");
+      
+      let version = global.ArangoAgency.get(lockInfo.part + "/Version");
+      versions[lockInfo.part.toLowerCase()] = version[lockInfo.part + "/Version"];
+      
+      global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
+    }
+    catch (err) {
+      global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
+      throw err;
+    }
+  }
 
   try {
     var plan    = global.ArangoAgency.get("Plan", true).arango.Plan;
     var current = global.ArangoAgency.get("Current", true).arango.Current;
-    handleChanges(plan, current);
+
+    versions.plan = plan.arango.Plan.Version;
+    versions.current = current.arango.Current.Version;
+
+    handleChanges(plan, current, writeLocked);
+
     console.info("plan change handling successful");
   } catch (err) {
     console.error("error details: %s", JSON.stringify(err));
     console.error("error stack: %s", err.stack);
     console.error("plan change handling failed");
   }
+  return versions;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

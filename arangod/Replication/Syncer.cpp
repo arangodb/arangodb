@@ -445,7 +445,7 @@ int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
 
   if (col == nullptr) {
     // try looking up the collection by name then
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, name);
   }
 
   if (col != nullptr && static_cast<TRI_col_type_t>(col->_type) == static_cast<TRI_col_type_t>(type)) {
@@ -487,7 +487,7 @@ int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
   if (col == nullptr) {
     std::string cname = getCName(slice);
     if (!cname.empty()) {
-      col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
+      col = TRI_LookupCollectionByNameVocBase(_vocbase, cname);
     }
   }
 

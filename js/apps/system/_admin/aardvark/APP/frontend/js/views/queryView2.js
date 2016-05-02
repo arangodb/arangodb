@@ -21,6 +21,17 @@
     customQueries: [],
     queries: [],
 
+    state: {
+      lastQuery: {
+        query: undefined,
+        bindParam: undefined
+      }
+    },
+
+    settings: {
+      aqlWidth: undefined
+    },
+
     currentQuery: {},
     initDone: false,
 
@@ -78,7 +89,7 @@
     },
 
     clearQuery: function() {
-      this.aqlEditor.setValue('');
+      this.aqlEditor.setValue('', 1);
     },
 
     toggleBindParams: function() {
@@ -90,7 +101,7 @@
         if ($('#switchTypes').text() === 'JSON') {
           $('#switchTypes').text('Table');
           this.updateQueryTable();
-          this.bindParamAceEditor.setValue(JSON.stringify(this.bindParamTableObj, null, "\t"));
+          this.bindParamAceEditor.setValue(JSON.stringify(this.bindParamTableObj, null, "\t"), 1);
           this.deselect(this.bindParamAceEditor);
         }
         else {
@@ -208,16 +219,27 @@
           $('#bindParamEditor').show();
           $('#switchTypes').text('JSON');
           $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
-          this.queryPreview.setValue("No query selected.");
+          this.queryPreview.setValue("No query selected.", 1);
           this.deselect(this.queryPreview);
-          
-          this.resize();
         }
         else {
-          $('.aqlEditorWrapper').first().width($(window).width() * 0.66);
-          this.resize();
+          if (this.settings.aqlWidth === undefined) {
+            $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
+          }
+          else {
+            $('.aqlEditorWrapper').first().width(this.settings.aqlWidth);
+          }
         }
       }
+      else {
+        if (this.settings.aqlWidth === undefined) {
+          $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
+        }
+        else {
+          $('.aqlEditorWrapper').first().width(this.settings.aqlWidth);
+        }
+      }
+      this.resize();
 
       var divs = [
         "aqlEditor", "queryTable", "previewWrapper", "querySpotlight",
@@ -236,7 +258,7 @@
       $(e.currentTarget).addClass('selected');
 
       var name = this.getQueryNameFromTable(e);
-      this.queryPreview.setValue(this.getCustomQueryValueByName(name));
+      this.queryPreview.setValue(this.getCustomQueryValueByName(name), 1);
       this.deselect(this.queryPreview);
     },
 
@@ -288,16 +310,37 @@
     },
 
     selectQueryFromTable: function(e, toggle) {
-      var name = this.getQueryNameFromTable(e);
+      var name = this.getQueryNameFromTable(e),
+      self = this;
 
       if (toggle === undefined) {
         this.toggleQueries();
       }
 
-      this.aqlEditor.setValue(this.getCustomQueryValueByName(name));
+      //backup the last query
+      this.state.lastQuery.query = this.aqlEditor.getValue();
+      this.state.lastQuery.bindParam = this.bindParamTableObj;
+
+      this.aqlEditor.setValue(this.getCustomQueryValueByName(name), 1);
       this.fillBindParamTable(this.getCustomQueryParameterByName(name));
       this.updateBindParams();
-      this.deselect(this.aqlEditor);
+
+      //render a button to revert back to last query
+      $('#lastQuery').remove();
+      $('#queryContent .arangoToolbarTop .pull-left')
+        .append('<span id="lastQuery" class="clickable">Previous Query</span>');
+
+        $('#lastQuery').hide().fadeIn(500)
+        .on('click', function() {
+          self.aqlEditor.setValue(self.state.lastQuery.query, 1);
+          self.fillBindParamTable(self.state.lastQuery.bindParam);
+          self.updateBindParams();
+
+          $('#lastQuery').fadeOut(500, function () {
+            $(this).remove();
+          });
+        }
+      );
     },
 
     deleteAQL: function (name) {
@@ -382,7 +425,7 @@
       outputEditor.setOption("vScrollBarAlwaysVisible", true);
       this.setEditorAutoHeight(outputEditor);
 
-      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj));
+      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj), 1);
       sentBindParamEditor.setOption("vScrollBarAlwaysVisible", true);
       sentBindParamEditor.getSession().setMode("ace/mode/json");
       sentBindParamEditor.setReadOnly(true);
@@ -393,7 +436,7 @@
     },
 
     fillExplain: function(outputEditor, sentQueryEditor, counter) {
-      sentQueryEditor.setValue(this.aqlEditor.getValue());
+      sentQueryEditor.setValue(this.aqlEditor.getValue(), 1);
 
       var self = this,
       queryData = this.readQueryData();
@@ -418,10 +461,10 @@
           success: function (data) {
             if (data.msg.includes('errorMessage')) {
               self.removeOutputEditor(counter);
-              arangoHelper.arangoError("Explain error", data.msg);
+              arangoHelper.arangoError("Explain", data.msg);
             }
             else {
-              outputEditor.setValue(data.msg);
+              outputEditor.setValue(data.msg, 1);
               self.deselect(outputEditor);
               $.noty.clearQueue();
               $.noty.closeAll();
@@ -432,10 +475,10 @@
           error: function (data) {
             try {
               var temp = JSON.parse(data.responseText);
-              arangoHelper.arangoError("Explain error", temp.errorMessage);
+              arangoHelper.arangoError("Explain", temp.errorMessage);
             }
             catch (e) {
-              arangoHelper.arangoError("Explain error", "ERROR");
+              arangoHelper.arangoError("Explain", "ERROR");
             }
             self.handleResult(counter);
             self.removeOutputEditor(counter);
@@ -459,7 +502,11 @@
       self = this;
 
       if (queryObject !== null && queryObject !== undefined && queryObject !== "") {
-        this.aqlEditor.setValue(queryObject.query);
+        this.aqlEditor.setValue(queryObject.query, 1);
+
+        //reset undo history for initial text value
+        this.aqlEditor.getSession().setUndoManager(new ace.UndoManager());
+
         if (queryObject.parameter !== '' || queryObject !== undefined) {
           try {
             // then fill values into input boxes
@@ -534,6 +581,12 @@
       this.$el.html(this.template.render({}));
 
       this.afterRender();
+
+      if (!this.initDone) {
+        //init aql editor width
+        this.settings.aqlWidth = $('.aqlEditorWrapper').width(); 
+      }
+
       this.initDone = true;
       this.renderBindParamTable(true);
     },
@@ -545,7 +598,7 @@
       this.fillSelectBoxes();
       this.makeResizeable();
       this.initQueryImport();
-      self.getCachedQueryAfterRender();
+      this.getCachedQueryAfterRender();
 
       //set height of editor wrapper
       $('.inputEditorWrapper').height($(window).height() / 10 * 5 + 25);
@@ -599,7 +652,7 @@
         $('#arangoBindParamTable thead').css('width', $('#bindParamEditor').width());
         $('#arangoBindParamTable thead th').css('width', $('#bindParamEditor').width() / 2);
         $('#arangoBindParamTable tr').css('width', $('#bindParamEditor').width());
-        $('#arangoBindParamTable tbody').css('height', $('#aqlEditor').height() - 18);
+        $('#arangoBindParamTable tbody').css('height', $('#aqlEditor').height() - 35);
         $('#arangoBindParamTable tbody').css('width', $('#bindParamEditor').width());
         $('#arangoBindParamTable tbody tr').css('width', $('#bindParamEditor').width());
         $('#arangoBindParamTable tbody td').css('width', $('#bindParamEditor').width() / 2);
@@ -609,7 +662,7 @@
         $('#arangoMyQueriesTable thead').css('width', $('#queryTable').width());
         $('#arangoMyQueriesTable thead th').css('width', $('#queryTable').width() / 2);
         $('#arangoMyQueriesTable tr').css('width', $('#queryTable').width());
-        $('#arangoMyQueriesTable tbody').css('height', $('#queryTable').height() - 18);
+        $('#arangoMyQueriesTable tbody').css('height', $('#queryTable').height() - 35);
         $('#arangoMyQueriesTable tbody').css('width', $('#queryTable').width());
         $('#arangoMyQueriesTable tbody td').css('width', $('#queryTable').width() / 2);
       }
@@ -621,6 +674,7 @@
       $(".aqlEditorWrapper").resizable({
         resize: function() {
           self.resizeFunction();
+          self.settings.aqlWidth = $('.aqlEditorWrapper').width();
         },
         handles: "e"
       });
@@ -709,6 +763,7 @@
       STATE_STRING_BACKTICK = 7;
 
       query += " ";
+      var self = this;
       var start;
       var state = STATE_NORMAL;
       var n = query.length;
@@ -783,7 +838,6 @@
             break;
           case STATE_BIND:
             if (!/^[@a-zA-Z0-9_]+$/.test(c)) {
-              //console.log("FOUND BIND PARAMETER: ", query.substring(start, i));
               bindParams.push(query.substring(start, i));
               state = STATE_NORMAL;
               start = undefined;
@@ -791,6 +845,15 @@
             break;
         }
       }
+
+      var match;
+      _.each(bindParams, function(v, k) {
+        match = v.match(self.bindParamRegExp);
+
+        if (match) {
+          bindParams[k] = match[1];
+        }
+      });
 
       return {
         query: query,
@@ -913,7 +976,7 @@
         if (self.initDone) {
           self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
         }
-        self.bindParamAceEditor.setValue(JSON.stringify(self.bindParamTableObj, null, "\t"));
+        self.bindParamAceEditor.setValue(JSON.stringify(self.bindParamTableObj, null, "\t"), 1);
         $('#aqlEditor .ace_text-input').focus();
 
         self.resize();
@@ -1221,7 +1284,7 @@
       outputEditor.setOption("vScrollBarAlwaysVisible", true);
       this.setEditorAutoHeight(outputEditor);
 
-      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj));
+      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj), 1);
       sentBindParamEditor.setOption("vScrollBarAlwaysVisible", true);
       sentBindParamEditor.getSession().setMode("ace/mode/json");
       sentBindParamEditor.setReadOnly(true);
@@ -1266,7 +1329,7 @@
       var queryData = this.readQueryData();
 
       if (queryData) {
-        sentQueryEditor.setValue(self.aqlEditor.getValue());
+        sentQueryEditor.setValue(self.aqlEditor.getValue(), 1);
 
         $.ajax({
           type: "POST",
@@ -1299,14 +1362,11 @@
       }
     },
 
-    handleResult: function(counter) {
+    handleResult: function() {
       window.progressView.hide();
       $('#removeResults').show();
 
-      //TODO animate not sure
-      //$('html,body').animate({
-      //  scrollTop: $('#outputEditorWrapper' + counter).offset().top - 120
-      //}, 500);
+      $(".centralRow").animate({ scrollTop: $('#queryContent').height() }, "fast");
     },
 
     setEditorAutoHeight: function (editor) {
@@ -1365,7 +1425,7 @@
 
         var aql = ace.edit("sentQueryEditor" + counter).getValue();
         var bindParam = JSON.parse(ace.edit("sentBindParamEditor" + counter).getValue());
-        self.aqlEditor.setValue(aql);
+        self.aqlEditor.setValue(aql, 1);
         self.deselect(self.aqlEditor);
         if (Object.keys(bindParam).length > 0) {
           self.bindParamTableObj = bindParam;
@@ -1375,11 +1435,12 @@
             self.renderBindParamTable();
           }
           else {
-            self.bindParamAceEditor.setValue(JSON.stringify(bindParam));
+            self.bindParamAceEditor.setValue(JSON.stringify(bindParam), 1);
             self.deselect(self.bindParamAceEditor);
           }
         }
-        $("html, body").animate({ scrollTop: 0 }, "fast");
+        $(".centralRow").animate({ scrollTop: 0 }, "fast");
+        self.resize();
       });
 
       this.execPending = false;
@@ -1395,7 +1456,7 @@
         if (warnings !== "") {
           warnings += "\r\n" + "Result:" + "\r\n\r\n";
         }
-        outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
+        outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2), 1);
         outputEditor.getSession().setScrollTop(0);
       };
 
@@ -1479,6 +1540,8 @@
             }
           },
           error: function (resp) {
+            var error;
+
             try {
 
               if (resp.statusText === 'Gone') {
@@ -1487,7 +1550,8 @@
                 return;
               }
 
-              var error = JSON.parse(resp.responseText);
+              error = JSON.parse(resp.responseText);
+              arangoHelper.arangoError("Query", error.errorMessage);
               if (error.errorMessage) {
                 if (error.errorMessage.match(/\d+:\d+/g) !== null) {
                   self.markPositionError(
@@ -1500,13 +1564,14 @@
                     error.errorMessage.match(/\(\w+\)/g)[0]
                   );
                 }
-                arangoHelper.arangoError("Query", error.errorMessage);
                 self.removeOutputEditor(counter);
               }
             }
             catch (e) {
-              arangoHelper.arangoError("Query", "Successfully aborted.");
-              console.log(e);
+              console.log(error);
+              if (error.code !== 400) {
+                arangoHelper.arangoError("Query", "Successfully aborted.");
+              }
               self.removeOutputEditor(counter);
             }
 

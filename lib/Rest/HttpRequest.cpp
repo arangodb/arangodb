@@ -63,9 +63,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
 }
 
 HttpRequest::~HttpRequest() {
-  if (_header != nullptr) {
-    delete[] _header;
-  }
+  delete[] _header;
 }
 
 int32_t HttpRequest::compatibility() {
@@ -506,8 +504,7 @@ void HttpRequest::setValues(char* buffer, char* end) {
         *(key - 2) = '\0';
         setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
       } else {
-        std::string keyStr(keyBegin, key - keyBegin);
-        _values[keyStr] = valueBegin;
+        _values[std::string(keyBegin, key - keyBegin)] = valueBegin;
       }
 
       keyBegin = key = buffer + 1;
@@ -566,8 +563,7 @@ void HttpRequest::setValues(char* buffer, char* end) {
       *(key - 2) = '\0';
       setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
     } else {
-      std::string keyStr(keyBegin, key - keyBegin);
-      _values[keyStr] = valueBegin;
+      _values[std::string(keyBegin, key - keyBegin)] = valueBegin;
     }
   }
 }

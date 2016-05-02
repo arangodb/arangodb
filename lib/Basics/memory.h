@@ -39,7 +39,6 @@ typedef uint32_t TRI_memory_zone_id_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_memory_zone_s {
-  TRI_memory_zone_id_t _zid;
   bool _failed;
   bool _failable;
 } TRI_memory_zone_t;
@@ -54,22 +53,14 @@ extern TRI_memory_zone_t* TRI_CORE_MEM_ZONE;
 /// @brief unknown memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_UNKNOWN_MEM_ZONE TRI_UnknownMemZoneZ(__FILE__, __LINE__)
-TRI_memory_zone_t* TRI_UnknownMemZoneZ(char const* file, int line);
-#else
 extern TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE;
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the memory zone for a zone id
 ////////////////////////////////////////////////////////////////////////////////
 
 inline TRI_memory_zone_t* TRI_MemoryZone(TRI_memory_zone_id_t zid) {
-  if (zid == 0) {
-    return TRI_CORE_MEM_ZONE;
-  }
-  return TRI_UNKNOWN_MEM_ZONE;
+  return (zid == 0 ? TRI_CORE_MEM_ZONE : TRI_UNKNOWN_MEM_ZONE); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,10 +68,7 @@ inline TRI_memory_zone_t* TRI_MemoryZone(TRI_memory_zone_id_t zid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 inline TRI_memory_zone_id_t TRI_MemoryZoneId(TRI_memory_zone_t const* zone) {
-  if (zone == TRI_CORE_MEM_ZONE) {
-    return TRI_CORE_MEM_ZONE->_zid;
-  }
-  return TRI_UNKNOWN_MEM_ZONE->_zid;
+  return (zone == TRI_CORE_MEM_ZONE ? 0 : 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,17 +149,6 @@ void TRI_SystemFree(void*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_WrappedReallocate(void*, long);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief align a pointer to 64 bytes by adding up to 63 bytes, this is
-/// to be in line with cache lines on most machines. Do not forget to
-/// allocate an additional 64 bytes and to free the original pointer,
-/// not the aligned one!
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void* TRI_Align64(void* p) {
-  return (void*)(((uintptr_t)p + 63) & (~((uintptr_t)63)));
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize memory subsystem

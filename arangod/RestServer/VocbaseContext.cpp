@@ -273,7 +273,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
     // no cookie found. fall-through to regular HTTP authentication
   }
 
-  std::string const& authStr = _request->header("authorization", found);
+  std::string const& authStr = _request->header(StaticStrings::Authorization, found);
 
   if (!found || !TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
     return GeneralResponse::ResponseCode::UNAUTHORIZED;

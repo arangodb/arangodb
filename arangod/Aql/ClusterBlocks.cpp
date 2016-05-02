@@ -1200,7 +1200,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
   // Later, we probably want to set these sensibly:
   ClientTransactionID const clientTransactionId = "AQL";
   CoordTransactionID const coordTransactionId = TRI_NewTickServer();  // 1;
-  std::map<std::string, std::string> headers;
+  std::unordered_map<std::string, std::string> headers;
   if (!_ownName.empty()) {
     headers.emplace("Shard-Id", _ownName);
   }

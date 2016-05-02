@@ -39,19 +39,6 @@ div.footer-center {
   color: $c-bar-bg;
   width: 10%;
 
-  i {
-    background-color: $c-white;
-    border: 1px solid rgba(104, 103, 102, .1);
-    border-radius: 20px;
-    margin-left: 1px;
-    padding: 6px 2px;
-    width: 20px;
-  }
-
-  i:hover {
-    background-color: $c-positive;
-    color: $c-white;
-  }
 
   p {
     padding-top: 5px;

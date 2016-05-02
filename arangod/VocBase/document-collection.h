@@ -196,22 +196,19 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int insert(arangodb::Transaction*, arangodb::velocypack::Slice const,
              TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool);
   int update(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
+             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
              VPackSlice&, TRI_doc_mptr_t&);
   int replace(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
+             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
              VPackSlice&, TRI_doc_mptr_t&);
   int remove(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             arangodb::OperationOptions&, bool, VPackSlice&, TRI_doc_mptr_t&);
+             arangodb::OperationOptions&, TRI_voc_tick_t&, bool, 
+             VPackSlice&, TRI_doc_mptr_t&);
 
   int rollbackOperation(arangodb::Transaction*, TRI_voc_document_operation_e, 
                         TRI_doc_mptr_t*, TRI_doc_mptr_t const*);
 
  private:
-  arangodb::wal::Marker* createVPackInsertMarker(
-      arangodb::Transaction*, arangodb::velocypack::Slice const);
-  arangodb::wal::Marker* createVPackRemoveMarker(
-      arangodb::Transaction*, arangodb::velocypack::Slice const);
   int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const,
                      TRI_doc_mptr_t*&);
   int checkRevision(arangodb::Transaction*, arangodb::velocypack::Slice const,

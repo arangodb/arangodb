@@ -59,10 +59,8 @@ static bool IsEqualKeyElement(void*, uint8_t const* key,
   if (hash != element->getHash()) {
     return false;
   }
-  
-  VPackSlice slice(key);
-  VPackSlice other(element->vpack());
-  return other.get(StaticStrings::KeyString).equals(slice);
+ 
+  return Transaction::extractKeyFromDocument(VPackSlice(element->vpack())).equals(VPackSlice(key)); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,10 +73,9 @@ static bool IsEqualElementElement(void*, TRI_doc_mptr_t const* left,
     return false;
   }
 
-  VPackSlice l(left->vpack());
-  VPackSlice r(right->vpack());
-
-  return l.get(StaticStrings::KeyString).equals(r.get(StaticStrings::KeyString));
+  VPackSlice l = Transaction::extractKeyFromDocument(VPackSlice(left->vpack()));
+  VPackSlice r = Transaction::extractKeyFromDocument(VPackSlice(right->vpack()));
+  return l.equals(r);
 }
 
 TRI_doc_mptr_t* PrimaryIndexIterator::next() {
@@ -90,6 +87,8 @@ TRI_doc_mptr_t* PrimaryIndexIterator::next() {
       return nullptr;
     }
 
+    // TODO: can we use an ArrayIterator with linear access here?
+    // at() will recalculate the array length etc. on every call
     auto result = _index->lookup(_trx, slice.at(_position++));
 
     if (result != nullptr) {

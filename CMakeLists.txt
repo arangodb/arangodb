@@ -28,7 +28,7 @@ option(VERBOSE OFF)
 option(USE_DEV_TIMERS OFF)
 
 if (USE_DEV_TIMERS)
-  add_definitions("-DUSE_DEV_TIMERS")
+  add_definitions("-DUSE_DEV_TIMERS=1")
 endif ()
 
 ################################################################################

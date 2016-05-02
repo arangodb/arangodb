@@ -49,7 +49,9 @@
         if (event.add) {
           var latestModel = this.collection.at(this.collection.length - 1),
           message = latestModel.get('title'),
-          time = 3000;
+          time = 3000,
+          closeWidth = ['click'],
+          buttons;
 
           if (latestModel.get('content')) {
             message = message + ": " + latestModel.get('content');
@@ -57,6 +59,12 @@
 
           if (latestModel.get('type') === 'error') {
             time = false;
+            closeWidth = ['button'];
+            buttons = [{
+              addClass: 'button-danger', text: 'Close', onClick: function($noty) {
+                $noty.close();
+              }
+            }];
           }
           $.noty.clearQueue();
           $.noty.closeAll();
@@ -73,11 +81,13 @@
             type: latestModel.get('type'),
             layout: 'bottom',
             timeout: time,
+            buttons: buttons,
             animation: {
               open: {height: 'show'},
               close: {height: 'hide'},
               easing: 'swing',
-              speed: 200
+              speed: 200,
+              closeWith: closeWidth
             }
           });
 

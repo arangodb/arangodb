@@ -65,6 +65,19 @@
       return window.App.naviView.activeSubMenu;
     },
 
+    parseError: function(title, err) {
+      var msg;
+
+      try {
+        msg = JSON.parse(err.responseText).errorMessage;
+      }
+      catch (e) {
+        msg = e;
+      }
+
+      this.arangoError(title, msg);
+    },
+
     setCheckboxStatus: function(id) {
       _.each($(id).find('ul').find('li'), function(element) {
          if (!$(element).hasClass("nav-header")) {
@@ -135,6 +148,7 @@
     },
 
     allHotkeys: {
+      /*
       global: {
         name: "Site wide",
         content: [{
@@ -145,6 +159,7 @@
           letter: "k"
         }]
       },
+      */
       jsoneditor: {
         name: "AQL editor",
         content: [{

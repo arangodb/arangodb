@@ -642,7 +642,7 @@ int InitialSyncer::handleCollectionDump(
     setProgress(progress);
 
     // use async mode for first batch
-    std::map<std::string, std::string> headers;
+    std::unordered_map<std::string, std::string> headers;
     if (batch == 1) {
       headers["X-Arango-Async"] = "store";
     }
@@ -840,7 +840,7 @@ int InitialSyncer::handleCollectionSync(
   // sending this request in a blocking fashion may require very long to
   // complete,
   // so we're sending the x-arango-async header here
-  std::map<std::string, std::string> headers;
+  std::unordered_map<std::string, std::string> headers;
   headers["X-Arango-Async"] = "store";
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
       GeneralRequest::RequestType::POST, url, nullptr, 0, headers));
@@ -1716,7 +1716,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
       if (col == nullptr && !masterName.empty()) {
         // not found, try name next
-        col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName.c_str());
+        col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName);
       }
 
       if (col != nullptr) {
@@ -1785,7 +1785,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
       if (col == nullptr && !masterName.empty()) {
         // not found, try name next
-        col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName.c_str());
+        col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName);
       }
 
       if (col != nullptr) {
@@ -1823,7 +1823,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
     if (col == nullptr && !masterName.empty()) {
       // not found, try name next
-      col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName.c_str());
+      col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName);
     }
 
     if (col == nullptr) {

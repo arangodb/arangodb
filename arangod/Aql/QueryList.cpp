@@ -162,7 +162,7 @@ void QueryList::remove(Query const* query, double now) {
           std::string q(queryString, length);
           q.append(originalLength > maxLength ? "..." : "");
 
-          LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::DURATION(now - entry->started);
+          LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::FIXED(now - entry->started);
 
           _slow.emplace_back(QueryEntryCopy(
               entry->query->id(),
