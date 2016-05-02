@@ -13,14 +13,13 @@
 ///
 /// @RESTHEADERPARAM{If-None-Match,string,optional}
 /// If the "If-None-Match" header is given, then it must contain exactly one
-/// etag. The document is returned, if it has a different revision than the
-/// given etag. Otherwise an *HTTP 304* is returned.
+/// ETag. The document is returned, if it has a different revision than the
+/// given ETag. Otherwise an *HTTP 304* is returned.
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
-/// etag. The document is returned, if it has the same revision as the
-/// given etag. Otherwise a *HTTP 412* is returned. As an alternative
-/// you can supply the etag in an attribute *rev* in the URL.
+/// ETag. The document is returned, if it has the same revision as the
+/// given ETag. Otherwise a *HTTP 412* is returned.
 ///
 /// @RESTDESCRIPTION
 /// Returns the document identified by *document-handle*. The returned
@@ -41,7 +40,7 @@
 /// is returned if the document or collection was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or *rev* is given and the found
+/// is returned if an "If-Match" header is given and the found
 /// document has a different version. The response will also contain the found
 /// document's current revision in the *_rev* attribute. Additionally, the
 /// attributes *_id* and *_key* will be returned.

@@ -13,7 +13,7 @@
 /// @RESTBODYPARAM{options,object,optional,put_api_simple_remove_by_example_opts}
 /// a json object which can contains following attributes:
 ///
-/// @RESTSTRUCT{waitForSync,put_api_simple_remove_by_example_opts,string,optional,string}
+/// @RESTSTRUCT{waitForSync,put_api_simple_remove_by_example_opts,boolean,optional,}
 /// if set to true, then all removal operations will
 /// instantly be synchronized to disk. If this is not specified, then the
 /// collection's default sync behavior will be applied.
