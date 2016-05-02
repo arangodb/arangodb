@@ -1,4 +1,4 @@
-/*jshint -W051:true */
+/*jshint -W051, -W020 */
 /*global global:true, window, require */
 'use strict';
 

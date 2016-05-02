@@ -1105,8 +1105,8 @@ function setupReplication () {
   var i;
   var ok = true;
   for (i = 0; i < dbs.length; i++) {
+    var database = dbs[i];
     try {
-      var database = dbs[i];
       console.debug("Checking replication of database "+database);
       db._useDatabase(database);
 

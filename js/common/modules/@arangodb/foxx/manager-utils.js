@@ -256,7 +256,7 @@ function processGithubRepository (source) {
       source.removeFile = true;
     }
     else {
-      var msg = "Could not download from repository '" + url + "'";
+      let msg = "Could not download from repository '" + url + "'";
       if (result.hasOwnProperty('message')) {
         msg += " message: " + result.message;
       }
@@ -264,7 +264,7 @@ function processGithubRepository (source) {
     }
   }
   catch (err) {
-    var msg = "Could not download from repository '" + url + "': " + String(err);
+    let msg = "Could not download from repository '" + url + "': " + String(err);
     if (err.hasOwnProperty('message')) {
       msg += " message: " + err.message;
     }
