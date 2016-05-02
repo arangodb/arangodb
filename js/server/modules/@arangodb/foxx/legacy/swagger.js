@@ -24,6 +24,7 @@
 
 var _ = require('lodash');
 var fs = require('fs');
+var joinPath = require('path').join;
 var internal = require('internal');
 var ArangoError = require('@arangodb').ArangoError;
 var errors = require('@arangodb').errors;
@@ -96,9 +97,9 @@ function swaggerPath(path, basePath) {
     return path;
   }
   if (!basePath) {
-    basePath = fs.join(internal.startupPath, 'server', 'assets', 'swagger');
+    basePath = joinPath(internal.startupPath, 'server', 'assets', 'swagger');
   }
-  return fs.safeJoin(basePath, path);
+  return joinPath(basePath, path);
 }
 
 function resolveFoxx(req, res, appPath) {

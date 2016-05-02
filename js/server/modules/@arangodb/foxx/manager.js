@@ -31,6 +31,7 @@
 
 const _ = require('lodash');
 const fs = require('fs');
+const joinPath = require('path').join;
 const joi = require('joi');
 const util = require('util');
 const semver = require('semver');
@@ -503,7 +504,7 @@ function computeRootServicePath(mount) {
 function transformMountToPath(mount) {
   var list = mount.split('/');
   list.push('APP');
-  return fs.join.apply(fs, list);
+  return joinPath(...list);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,7 +524,7 @@ function transformPathToMount(path) {
 function computeServicePath(mount) {
   var root = computeRootServicePath(mount);
   var mountPath = transformMountToPath(mount);
-  return fs.join(root, mountPath);
+  return joinPath(root, mountPath);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -547,7 +548,7 @@ function executeScript(scriptName, service, argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function fakeServiceConfig(path, mount) {
-  var file = fs.join(path, 'manifest.json');
+  var file = joinPath(path, 'manifest.json');
   return {
     id: '__internal',
     root: '',
@@ -568,7 +569,7 @@ function serviceConfig(mount, options, activateDevelopment) {
   var root = computeRootServicePath(mount);
   var path = transformMountToPath(mount);
 
-  var file = fs.join(root, path, 'manifest.json');
+  var file = joinPath(root, path, 'manifest.json');
    return {
     id: mount,
     path: path,
@@ -602,7 +603,7 @@ function uploadToPeerCoordinators(serviceInfo, coordinators) {
   let coordOptions = {
     coordTransactionID: ArangoClusterInfo.uniqid()
   };
-  let req = fs.readBuffer(fs.join(fs.getTempPath(), serviceInfo));
+  let req = fs.readBuffer(joinPath(fs.getTempPath(), serviceInfo));
   let httpOptions = {};
   let mapping = {};
   for (let i = 0; i < coordinators.length; ++i) {
@@ -716,7 +717,7 @@ function extractServiceToPath(archive, targetPath, noDelete) {
     mp = found.substr(0, found.length - mf.length - 1);
   }
 
-  fs.move(fs.join(tempFile, mp), targetPath);
+  fs.move(joinPath(tempFile, mp), targetPath);
 
   // .............................................................................
   // throw away temporary service folder
@@ -844,10 +845,10 @@ function readme(mount) {
   let service = lookupService(mount);
   let path, readmeText;
 
-  path = fs.join(service.root, service.path, 'README.md');
+  path = joinPath(service.root, service.path, 'README.md');
   readmeText = fs.exists(path) && fs.read(path);
   if (!readmeText) {
-    path = fs.join(service.root, service.path, 'README');
+    path = joinPath(service.root, service.path, 'README');
     readmeText = fs.exists(path) && fs.read(path);
   }
   return readmeText || null;
@@ -978,7 +979,7 @@ function _buildServiceInPath(serviceInfo, path, options) {
     } else if (utils.pathRegex.test(serviceInfo)) {
       installServiceFromLocal(serviceInfo, path);
     } else if (/^uploads[\/\\]tmp-/.test(serviceInfo)) {
-      serviceInfo = fs.join(fs.getTempPath(), serviceInfo);
+      serviceInfo = joinPath(fs.getTempPath(), serviceInfo);
       installServiceFromLocal(serviceInfo, path);
     } else {
       try {
