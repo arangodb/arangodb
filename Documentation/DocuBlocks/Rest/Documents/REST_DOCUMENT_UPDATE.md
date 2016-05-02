@@ -2,60 +2,86 @@
 /// @startDocuBlock REST_DOCUMENT_UPDATE
 /// @brief updates a document
 ///
-/// @RESTHEADER{PATCH /_api/document/{document-handle}, Patch document}
+/// @RESTHEADER{PATCH /_api/document/{document-handle},Update document}
 ///
 /// @RESTALLBODYPARAM{document,json,required}
-/// A JSON representation of the document update.
+/// A JSON representation of a document update as an object.
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// The handle of the document.
+/// This URL parameter must be a document handle.
 ///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{keepNull,boolean,optional}
-/// If the intention is to delete existing attributes with the patch command,
-/// the URL query parameter *keepNull* can be used with a value of *false*.
-/// This will modify the behavior of the patch command to remove any attributes
-/// from the existing document that are contained in the patch document with an
-/// attribute value of *null*.
+/// If the intention is to delete existing attributes with the patch
+/// command, the URL query parameter *keepNull* can be used with a value
+/// of *false*. This will modify the behavior of the patch command to
+/// remove any attributes from the existing document that are contained
+/// in the patch document with an attribute value of *null*.
 ///
 /// @RESTQUERYPARAM{mergeObjects,boolean,optional}
-/// Controls whether objects (not arrays) will be merged if present in both the
-/// existing and the patch document. If set to *false*, the value in the
-/// patch document will overwrite the existing document's value. If set to
-/// *true*, objects will be merged. The default is *true*.
+/// Controls whether objects (not arrays) will be merged if present in
+/// both the existing and the patch document. If set to *false*, the
+/// value in the patch document will overwrite the existing document's
+/// value. If set to *true*, objects will be merged. The default is
+/// *true*.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been synced to disk.
 ///
-/// @RESTQUERYPARAM{rev,string,optional}
-/// You can conditionally patch a document based on a target revision id by
-/// using the *rev* query parameter.
+/// @RESTQUERYPARAM{ignoreRevs,boolean,optional}
+/// By default, or if this is set to *true*, the *_rev* attributes in 
+/// the given document is ignored. If this is set to *false*, then
+/// the *_rev* attribute given in the body document is taken as a
+/// precondition. The document is only updated if the current revision
+/// is the one specified.
 ///
-/// @RESTQUERYPARAM{policy,string,optional}
-/// To control the update behavior in case there is a revision mismatch, you
-/// can use the *policy* parameter.
+/// @RESTQUERYPARAM{returnOld,boolean,optional}
+/// Return additionally the complete previous revision of the changed 
+/// document under the attribute *old* in the result.
+///
+/// @RESTQUERYPARAM{returnNew,boolean,optional}
+/// Return additionally the complete new document under the attribute *new*
+/// in the result.
 ///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
-/// You can conditionally patch a document based on a target revision id by
+/// You can conditionally update a document based on a target revision id by
 /// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
 /// Partially updates the document identified by *document-handle*.
-/// The body of the request must contain a JSON document with the attributes
-/// to patch (the patch document). All attributes from the patch document will
-/// be added to the existing document if they do not yet exist, and overwritten
-/// in the existing document if they do exist there.
+/// The body of the request must contain a JSON document with the
+/// attributes to patch (the patch document). All attributes from the
+/// patch document will be added to the existing document if they do not
+/// yet exist, and overwritten in the existing document if they do exist
+/// there.
 ///
 /// Setting an attribute value to *null* in the patch document will cause a
-/// value of *null* be saved for the attribute by default.
+/// value of *null* to be saved for the attribute by default.
+///
+/// If the *If-Match* header is specified and the revision of the
+/// document in the database is unequal to the given revision, the
+/// precondition is violated.
+///
+/// If *If-Match* is not given and *ignoreRevs* is *false* and there
+/// is a *_rev* attribute in the body and its value does not match
+/// the revision of the document in the database, the precondition is
+/// violated.
+///
+/// If a precondition is violated, an *HTTP 412* is returned.
+///
+/// If the document exists and can be updated, then an *HTTP 201* or
+/// an *HTTP 202* is returned (depending on *waitForSync*, see below),
+/// the *ETag* header field contains the new revision of the document
+/// and the *Location* header contains a complete URL under which the
+/// document can be queried.
 ///
 /// Optionally, the query parameter *waitForSync* can be used to force
-/// synchronization of the document update operation to disk even in case
+/// synchronization of the updated document operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
 /// Thus, the *waitForSync* query parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
@@ -65,47 +91,50 @@
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
-/// The body of the response contains a JSON object with the information about
-/// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the updated document, *_key* contains the key which 
-/// uniquely identifies a document in a given collection, and the attribute *_rev*
-/// contains the new document revision.
+/// The body of the response contains a JSON object with the information
+/// about the handle and the revision. The attribute *_id* contains the
+/// known *document-handle* of the updated document, *_key* contains the
+/// key which uniquely identifies a document in a given collection, and
+/// the attribute *_rev* contains the new document revision.
+///
+/// If the query parameter *returnOld* is *true*, then
+/// the complete previous revision of the document
+/// is returned under the *old* attribute in the result.
+///
+/// If the query parameter *returnNew* is *true*, then
+/// the complete new document is returned under
+/// the *new* attribute in the result.
 ///
 /// If the document does not exist, then a *HTTP 404* is returned and the
 /// body of the response contains an error document.
 ///
-/// You can conditionally update a document based on a target revision id by
-/// using either the *rev* query parameter or the *if-match* HTTP header.
-/// To control the update behavior in case there is a revision mismatch, you
-/// can use the *policy* parameter. This is the same as when replacing
-/// documents (see replacing documents for details).
-///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the document was created successfully and *waitForSync* was
-/// *true*.
+/// is returned if the document was updated successfully and
+/// *waitForSync* was *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was created successfully and *waitForSync* was
-/// *false*.
+/// is returned if the document was updated successfully and
+/// *waitForSync* was *false*.
 ///
 /// @RESTRETURNCODE{400}
-/// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// is returned if the body does not contain a valid JSON representation
+/// of a document. The response body contains
+/// an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection or the document was not found
+/// is returned if the collection or the document was not found.
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or *rev* is given and the found
-/// document has a different version. The response will also contain the found
-/// document's current revision in the *_rev* attribute. Additionally, the
-/// attributes *_id* and *_key* will be returned.
+/// is returned if the precondition was violated. The response will
+/// also contain the found documents' current revisions in the *_rev*
+/// attributes. Additionally, the attributes *_id* and *_key* will be
+/// returned.
 ///
 /// @EXAMPLES
 ///
-/// patches an existing document with new content.
+/// Patches an existing document with new content.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPatchDocument}
 ///     var cn = "products";
