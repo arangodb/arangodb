@@ -1287,6 +1287,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     ac, "Current/Collections/" + databaseName + "/"
     + collectionID, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
+  TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
   
   VPackBuilder builder;
   builder.add(json);
@@ -1326,7 +1327,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       break;
     }
   }
-  _agencyCallbackRegistry->unregisterCallback(agencyCallback);
   if (dbServerResult >= 0) {
     return dbServerResult;
   }
@@ -1385,6 +1385,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   auto agencyCallback = std::make_shared<AgencyCallback>(
       ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
+  TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
   
   {
     AgencyCommLocker locker("Plan", "WRITE");
@@ -1972,6 +1973,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   auto agencyCallback = std::make_shared<AgencyCallback>(
     ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
+  TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   loadPlannedCollections();
   // It is possible that between the fetching of the planned collections
