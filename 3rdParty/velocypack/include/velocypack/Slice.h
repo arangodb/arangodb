@@ -365,7 +365,8 @@ class Slice {
 
   // look for the specified attribute path inside an Object
   // returns a Slice(ValueType::None) if not found
-  Slice get(std::vector<std::string> const& attributes) const {
+  Slice get(std::vector<std::string> const& attributes, 
+            bool resolveExternals = false) const {
     size_t const n = attributes.size();
     if (n == 0) {
       throw Exception(Exception::InvalidAttributePath);
@@ -373,11 +374,18 @@ class Slice {
 
     // use ourselves as the starting point
     Slice last = Slice(start());
+    if (resolveExternals) {
+      last = last.resolveExternal();
+    }
     for (size_t i = 0; i < attributes.size(); ++i) {
       // fetch subattribute
       last = last.get(attributes[i]);
 
       // abort as early as possible
+      if (last.isExternal()) {
+        last = last.resolveExternal();
+      }
+
       if (last.isNone() || (i + 1 < n && !last.isObject())) {
         return Slice();
       }
@@ -444,10 +452,20 @@ class Slice {
   // returns the Slice managed by an External or the Slice itself if it's not
   // an External
   Slice resolveExternal() const {
-    if (isExternal()) {
+    if (*_start == 0x1d) {
       return Slice(extractValue<char const*>());
     }
     return *this;
+  }
+ 
+  // returns the Slice managed by an External or the Slice itself if it's not
+  // an External, recursive version
+  Slice resolveExternals() const {
+    char const* current = reinterpret_cast<char const*>(_start);
+    while (*current == 0x1d) {
+      current = Slice(current).extractValue<char const*>();
+    }
+    return Slice(current);
   }
 
   // translates an integer key into a string
