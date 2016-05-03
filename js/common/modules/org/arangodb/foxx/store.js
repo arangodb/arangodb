@@ -284,26 +284,31 @@ function extractMaxVersion(matchEngine, versionDoc) {
   let serverVersion = plainServerVersion();
   let versions = Object.keys(versionDoc);
   versions.sort(semver.compare).reverse();
+  let fallback;
 
   for (let version of versions) {
-    if (matchEngine) {
-      let info = versionDoc[version];
-
-      if (info.engines && info.engines.arangodb) {
-        if (semver.satisfies(serverVersion, info.engines.arangodb)) {
-          return version;
-        }
-      }
-      else if (matchEngine !== "match-engines") {
+    let info = versionDoc[version];
+    if (!info.engines || Object.keys(info.engines).length === 0) {
+      // No known compatibility requirements indicated: use as last resort
+      if (!matchEngine) {
         return version;
       }
+      if (!fallback) {
+        fallback = version;
+      }
+      continue;
     }
-    else {
+    let versionRange = info.engines.arangodb;
+    if (!versionRange || semver.outside(serverVersion, versionRange, '<')) {
+      // Explicitly backwards-incompatible with the server version: ignore
+      continue;
+    }
+    if (!matchEngine || semver.satisfies(serverVersion, versionRange)) {
       return version;
     }
   }
 
-  return undefined;
+  return fallback;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
