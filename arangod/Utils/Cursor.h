@@ -29,6 +29,8 @@
 #include "Aql/QueryResult.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Iterator.h>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -126,12 +128,9 @@ class VelocyPackCursor : public Cursor {
   void dump(arangodb::basics::StringBuffer&) override final;
 
  private:
-  void freeJson();
-
- private:
   TRI_vocbase_t* _vocbase;
   aql::QueryResult _result;
-  size_t const _size;
+  arangodb::velocypack::ArrayIterator _iterator;
   bool _cached;
 };
 

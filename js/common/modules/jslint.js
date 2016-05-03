@@ -93,8 +93,8 @@ function RunCommandLineTests(options) {
         console.log(`jslint: ${file} passed`);
       }
     } catch (err) {
-      console.log(`cannot run test file "${file}": ${err}`);
-      console.log(err.stack);
+      console.error(`cannot run test file "${file}": ${err}`);
+      console.error(err.stack);
       result = false;
     }
   }

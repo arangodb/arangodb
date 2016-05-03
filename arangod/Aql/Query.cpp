@@ -567,7 +567,11 @@ QueryResult Query::execute(QueryRegistry* registry) {
     }
 
     AqlItemBlock* value = nullptr;
-    auto resultBuilder = std::make_shared<VPackBuilder>();
+    VPackOptions options = VPackOptions::Defaults;
+    options.buildUnindexedArrays = true;
+    options.buildUnindexedObjects = true;
+
+    auto resultBuilder = std::make_shared<VPackBuilder>(&options);
     try {
       resultBuilder->openArray();
       // this is the RegisterId our results can be found in
@@ -728,8 +732,12 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     try {
       if (useQueryCache) {
+        VPackOptions options = VPackOptions::Defaults;
+        options.buildUnindexedArrays = true;
+        options.buildUnindexedObjects = true;
+
         // iterate over result, return it and store it in query cache
-        auto builder = std::make_shared<VPackBuilder>();
+        auto builder = std::make_shared<VPackBuilder>(&options);
         builder->openArray();
 
         uint32_t j = 0;

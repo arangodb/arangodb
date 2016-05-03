@@ -33,6 +33,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -59,16 +60,15 @@ class HashIndexIterator final : public IndexIterator {
       : _trx(trx),
         _index(index),
         _searchValues(searchValues.get()),
-        _position(0),
+        _searchKeys(_searchValues->slice()),
+        _iterator(_searchValues->slice(), true),
         _buffer(),
         _posInBuffer(0) {
-          searchValues.release(); // now we have ownership for searchValues
-          _searchKeys = _searchValues->slice();
-          _numLookups = static_cast<size_t>(_searchKeys.length());
-        }
 
-  ~HashIndexIterator() {
+    searchValues.release(); // now we have ownership for searchValues
   }
+
+  ~HashIndexIterator() = default;
 
   TRI_doc_mptr_t* next() override;
 
@@ -79,8 +79,7 @@ class HashIndexIterator final : public IndexIterator {
   HashIndex const* _index;
   std::unique_ptr<arangodb::velocypack::Builder> _searchValues;
   arangodb::velocypack::Slice _searchKeys;
-  size_t _position;
-  size_t _numLookups;
+  arangodb::velocypack::ArrayIterator _iterator;
   std::vector<TRI_doc_mptr_t*> _buffer;
   size_t _posInBuffer;
 };

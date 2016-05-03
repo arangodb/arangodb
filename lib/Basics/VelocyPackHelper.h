@@ -63,7 +63,7 @@ class VelocyPackHelper {
   };
 
   struct VPackStringHash {
-    size_t operator()(arangodb::velocypack::Slice const&) const;
+    size_t operator()(arangodb::velocypack::Slice const&) const noexcept;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +77,7 @@ class VelocyPackHelper {
 
   struct VPackStringEqual {
     bool operator()(arangodb::velocypack::Slice const&,
-                    arangodb::velocypack::Slice const&) const;
+                    arangodb::velocypack::Slice const&) const noexcept;
   };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -25,12 +25,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/fpconv.h"
 #include "Logger/Logger.h"
-//#include "Basics/StringUtils.h"
-//#include "Basics/Utf8Helper.h"
-//#include "Basics/VPackStringBufferAdapter.h"
-//#include "Basics/files.h"
-//#include "Basics/hashes.h"
-//#include "Basics/tri-strings.h"
 
 #include <velocypack/velocypack-common.h>
 #include <velocypack/AttributeTranslator.h>
@@ -42,11 +36,13 @@
 using namespace arangodb::basics;
   
 void VelocyPackDumper::handleUnsupportedType(VPackSlice const* slice) {
+  TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
+
   if (options->unsupportedTypeBehavior == VPackOptions::NullifyUnsupportedType) {
-    _buffer->appendText("null", 4);
+    TRI_AppendStringUnsafeStringBuffer(buffer, "null", 4);
     return;
   } else if (options->unsupportedTypeBehavior == VPackOptions::ConvertUnsupportedType) {
-    _buffer->appendText(std::string("\"(non-representable type ") + slice->typeName() + ")\"");
+    TRI_AppendStringUnsafeStringBuffer(buffer, "\"(non-representable type)\"");
     return;
   }
 
@@ -54,71 +50,88 @@ void VelocyPackDumper::handleUnsupportedType(VPackSlice const* slice) {
 }
   
 void VelocyPackDumper::appendUInt(uint64_t v) {
-  if (10000000000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 10000000000000000000ULL) % 10);
-  }
-  if (1000000000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 1000000000000000000ULL) % 10);
-  }
-  if (100000000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 100000000000000000ULL) % 10);
-  }
-  if (10000000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 10000000000000000ULL) % 10);
-  }
-  if (1000000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 1000000000000000ULL) % 10);
-  }
-  if (100000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 100000000000000ULL) % 10);
-  }
-  if (10000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 10000000000000ULL) % 10);
-  }
-  if (1000000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 1000000000000ULL) % 10);
-  }
-  if (100000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 100000000000ULL) % 10);
-  }
-  if (10000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 10000000000ULL) % 10);
-  }
-  if (1000000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 1000000000ULL) % 10);
-  }
-  if (100000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 100000000ULL) % 10);
-  }
-  if (10000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 10000000ULL) % 10);
-  }
-  if (1000000ULL <= v) {
-    _buffer->appendChar('0' + (v / 1000000ULL) % 10);
-  }
-  if (100000ULL <= v) {
-    _buffer->appendChar('0' + (v / 100000ULL) % 10);
-  }
-  if (10000ULL <= v) {
-    _buffer->appendChar('0' + (v / 10000ULL) % 10);
-  }
-  if (1000ULL <= v) {
-    _buffer->appendChar('0' + (v / 1000ULL) % 10);
-  }
-  if (100ULL <= v) {
-    _buffer->appendChar('0' + (v / 100ULL) % 10);
-  }
-  if (10ULL <= v) {
-    _buffer->appendChar('0' + (v / 10ULL) % 10);
+  TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
+    
+  int res = TRI_ReserveStringBuffer(buffer, 21);
+     
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
-  _buffer->appendChar('0' + (v % 10));
+  if (10000000000000000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10000000000000000000ULL) % 10);
+  }
+  if (1000000000000000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 1000000000000000000ULL) % 10);
+  }
+  if (100000000000000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 100000000000000000ULL) % 10);
+  }
+  if (10000000000000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10000000000000000ULL) % 10);
+  }
+  if (1000000000000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 1000000000000000ULL) % 10);
+  }
+  if (100000000000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 100000000000000ULL) % 10);
+  }
+  if (10000000000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10000000000000ULL) % 10);
+  }
+  if (1000000000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 1000000000000ULL) % 10);
+  }
+  if (100000000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 100000000000ULL) % 10);
+  }
+  if (10000000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10000000000ULL) % 10);
+  }
+  if (1000000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 1000000000ULL) % 10);
+  }
+  if (100000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 100000000ULL) % 10);
+  }
+  if (10000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10000000ULL) % 10);
+  }
+  if (1000000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 1000000ULL) % 10);
+  }
+  if (100000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 100000ULL) % 10);
+  }
+  if (10000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10000ULL) % 10);
+  }
+  if (1000ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 1000ULL) % 10);
+  }
+  if (100ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 100ULL) % 10);
+  }
+  if (10ULL <= v) {
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10ULL) % 10);
+  }
+
+  TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v % 10));
 }
 
 void VelocyPackDumper::appendDouble(double v) {
   char temp[24];
   int len = fpconv_dtoa(v, &temp[0]);
-  _buffer->appendText(&temp[0], static_cast<VPackValueLength>(len));
+  
+  TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
+    
+  int res = TRI_ReserveStringBuffer(buffer, static_cast<size_t>(len));
+     
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  TRI_AppendStringUnsafeStringBuffer(buffer, &temp[0], static_cast<size_t>(len));
 }
 
 void VelocyPackDumper::dumpInteger(VPackSlice const* slice) {
@@ -127,79 +140,96 @@ void VelocyPackDumper::dumpInteger(VPackSlice const* slice) {
 
     appendUInt(v);
   } else if (slice->isType(VPackValueType::Int)) {
+    TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
+    
+    int res = TRI_ReserveStringBuffer(buffer, 21);
+     
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
     int64_t v = slice->getInt();
     if (v == INT64_MIN) {
-      _buffer->appendText("-9223372036854775808", 20);
+      TRI_AppendStringUnsafeStringBuffer(buffer, "-9223372036854775808", 20);
       return;
     }
+  
     if (v < 0) {
-      _buffer->appendChar('-');
+      TRI_AppendCharUnsafeStringBuffer(buffer, '-');
       v = -v;
     }
 
     if (1000000000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 1000000000000000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 1000000000000000000LL) % 10);
     }
     if (100000000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 100000000000000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 100000000000000000LL) % 10);
     }
     if (10000000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 10000000000000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10000000000000000LL) % 10);
     }
     if (1000000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 1000000000000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 1000000000000000LL) % 10);
     }
     if (100000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 100000000000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 100000000000000LL) % 10);
     }
     if (10000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 10000000000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10000000000000LL) % 10);
     }
     if (1000000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 1000000000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 1000000000000LL) % 10);
     }
     if (100000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 100000000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 100000000000LL) % 10);
     }
     if (10000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 10000000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10000000000LL) % 10);
     }
     if (1000000000LL <= v) {
-      _buffer->appendChar('0' + (v / 1000000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 1000000000LL) % 10);
     }
     if (100000000LL <= v) {
-      _buffer->appendChar('0' + (v / 100000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 100000000LL) % 10);
     }
     if (10000000LL <= v) {
-      _buffer->appendChar('0' + (v / 10000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10000000LL) % 10);
     }
     if (1000000LL <= v) {
-      _buffer->appendChar('0' + (v / 1000000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 1000000LL) % 10);
     }
     if (100000LL <= v) {
-      _buffer->appendChar('0' + (v / 100000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 100000LL) % 10);
     }
     if (10000LL <= v) {
-      _buffer->appendChar('0' + (v / 10000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10000LL) % 10);
     }
     if (1000LL <= v) {
-      _buffer->appendChar('0' + (v / 1000LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 1000LL) % 10);
     }
     if (100LL <= v) {
-      _buffer->appendChar('0' + (v / 100LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 100LL) % 10);
     }
     if (10LL <= v) {
-      _buffer->appendChar('0' + (v / 10LL) % 10);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v / 10LL) % 10);
     }
 
-    _buffer->appendChar('0' + (v % 10));
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + (v % 10));
   } else if (slice->isType(VPackValueType::SmallInt)) {
+    TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
+    
+    int res = TRI_ReserveStringBuffer(buffer, 21);
+     
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
     int64_t v = slice->getSmallInt();
     if (v < 0) {
-      _buffer->appendChar('-');
+      TRI_AppendCharUnsafeStringBuffer(buffer, '-');
       v = -v;
     }
-    _buffer->appendChar('0' + static_cast<char>(v));
+    TRI_AppendCharUnsafeStringBuffer(buffer, '0' + static_cast<char>(v));
   }
 }
 
@@ -237,12 +267,30 @@ void VelocyPackDumper::dumpString(char const* src, VPackValueLength len) {
       0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
       0,    0,   0,   0};
 
-  _buffer->reserve(len);
+  TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
 
   uint8_t const* p = reinterpret_cast<uint8_t const*>(src);
   uint8_t const* e = p + len;
+
+  static size_t const maxCount = 16;
+  size_t count = maxCount;
+
   while (p < e) {
     uint8_t c = *p;
+
+    // don't check for buffer reallocation on every single character
+    if (count == maxCount) {
+      // maximum value that we can append in one go is 6 bytes
+      int res = TRI_ReserveStringBuffer(buffer, 6 * count);
+     
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      count = 0;
+    } else {
+      ++count;
+    }
+
 
     if ((c & 0x80) == 0) {
       // check for control characters
@@ -251,22 +299,22 @@ void VelocyPackDumper::dumpString(char const* src, VPackValueLength len) {
       if (esc) {
         if (c != '/' || options->escapeForwardSlashes) {
           // escape forward slashes only when requested
-          _buffer->appendChar('\\');
+          TRI_AppendCharUnsafeStringBuffer(buffer, '\\');
         }
-        _buffer->appendChar(static_cast<char>(esc));
+        TRI_AppendCharUnsafeStringBuffer(buffer, static_cast<char>(esc));
 
         if (esc == 'u') {
           uint16_t i1 = (((uint16_t)c) & 0xf0) >> 4;
           uint16_t i2 = (((uint16_t)c) & 0x0f);
 
-          _buffer->appendText("00", 2);
-          _buffer->appendChar(
+          TRI_AppendStringUnsafeStringBuffer(buffer, "00", 2);
+          TRI_AppendCharUnsafeStringBuffer(buffer,
               static_cast<char>((i1 < 10) ? ('0' + i1) : ('A' + i1 - 10)));
-          _buffer->appendChar(
+          TRI_AppendCharUnsafeStringBuffer(buffer,
               static_cast<char>((i2 < 10) ? ('0' + i2) : ('A' + i2 - 10)));
         }
       } else {
-        _buffer->appendChar(static_cast<char>(c));
+        TRI_AppendCharUnsafeStringBuffer(buffer, static_cast<char>(c));
       }
     } else if ((c & 0xe0) == 0xc0) {
       // two-byte sequence
@@ -274,7 +322,7 @@ void VelocyPackDumper::dumpString(char const* src, VPackValueLength len) {
         throw VPackException(VPackException::InvalidUtf8Sequence);
       }
 
-      _buffer->appendText(reinterpret_cast<char const*>(p), 2);
+      TRI_AppendStringUnsafeStringBuffer(buffer, reinterpret_cast<char const*>(p), 2);
       ++p;
     } else if ((c & 0xf0) == 0xe0) {
       // three-byte sequence
@@ -282,7 +330,7 @@ void VelocyPackDumper::dumpString(char const* src, VPackValueLength len) {
         throw VPackException(VPackException::InvalidUtf8Sequence);
       }
 
-      _buffer->appendText(reinterpret_cast<char const*>(p), 3);
+      TRI_AppendStringUnsafeStringBuffer(buffer, reinterpret_cast<char const*>(p), 3);
       p += 2;
     } else if ((c & 0xf8) == 0xf0) {
       // four-byte sequence
@@ -290,7 +338,7 @@ void VelocyPackDumper::dumpString(char const* src, VPackValueLength len) {
         throw VPackException(VPackException::InvalidUtf8Sequence);
       }
 
-      _buffer->appendText(reinterpret_cast<char const*>(p), 4);
+      TRI_AppendStringUnsafeStringBuffer(buffer, reinterpret_cast<char const*>(p), 4);
       p += 3;
     }
 
@@ -302,49 +350,68 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
   if (base == nullptr) {
     base = slice;
   }
+  
+  TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
+    
+  // alloc at least 16 bytes  
+  int res = TRI_ReserveStringBuffer(buffer, 16);
+     
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
   switch (slice->type()) {
     case VPackValueType::Null: {
-      _buffer->appendText("null", 4);
+      TRI_AppendStringUnsafeStringBuffer(buffer, "null", 4);
       break;
     }
 
     case VPackValueType::Bool: {
       if (slice->getBool()) {
-        _buffer->appendText("true", 4);
+        TRI_AppendStringUnsafeStringBuffer(buffer, "true", 4);
       } else {
-        _buffer->appendText("false", 5);
+        TRI_AppendStringUnsafeStringBuffer(buffer, "false", 5);
       }
       break;
     }
 
     case VPackValueType::Array: {
       VPackArrayIterator it(*slice, true);
-      _buffer->appendChar('[');
+      TRI_AppendCharUnsafeStringBuffer(buffer, '[');
       while (it.valid()) {
         if (!it.isFirst()) {
-          _buffer->appendChar(',');
+          if (TRI_AppendCharStringBuffer(buffer, ',') != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
         }
         dumpValue(it.value(), slice);
         it.next();
       }
-      _buffer->appendChar(']');
+      if (TRI_AppendCharStringBuffer(buffer, ']') != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
       break;
     }
 
     case VPackValueType::Object: {
-      VPackObjectIterator it(*slice);
-      _buffer->appendChar('{');
+      VPackObjectIterator it(*slice, true);
+      TRI_AppendCharUnsafeStringBuffer(buffer, '{');
       while (it.valid()) {
         if (!it.isFirst()) {
-          _buffer->appendChar(',');
+          if (TRI_AppendCharStringBuffer(buffer, ',') != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
         }
         dumpValue(it.key().makeKey(), slice);
-        _buffer->appendChar(':');
+        if (TRI_AppendCharStringBuffer(buffer, ':') != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
         dumpValue(it.value(), slice);
         it.next();
       }
-      _buffer->appendChar('}');
+      if (TRI_AppendCharStringBuffer(buffer, '}') != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
       break;
     }
 
@@ -368,10 +435,11 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
     case VPackValueType::String: {
       VPackValueLength len;
       char const* p = slice->getString(len);
-      _buffer->reserve(2 + len);
-      _buffer->appendChar('"');
+      TRI_AppendCharUnsafeStringBuffer(buffer, '"');
       dumpString(p, len);
-      _buffer->appendChar('"');
+      if (TRI_AppendCharStringBuffer(buffer, '"') != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
       break;
     }
     
@@ -385,8 +453,12 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
       if (options->customTypeHandler == nullptr) {
         throw VPackException(VPackException::NeedCustomTypeHandler);
       } else {
+        TRI_AppendCharUnsafeStringBuffer(buffer, '"');
         std::string v = options->customTypeHandler->toString(*slice, nullptr, *base);
         dumpString(v.c_str(), v.size());
+        if (TRI_AppendCharStringBuffer(buffer, '"') != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
       }
       break;
     }
