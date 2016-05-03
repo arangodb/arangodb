@@ -1451,8 +1451,8 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
 
     velocypack::Slice collection =
       res._vpack->slice()[0]
-      .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
-      .get("Plan").get("Collections").get(collectionID);
+      .get(AgencyComm::prefixStripped())
+      .get("Plan").get("Collections").get(databaseName).get(collectionID);
 
     VPackObjectIterator cols (collection);
     
@@ -1464,7 +1464,6 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
     if (collection.isNone()) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    
     VPackBuilder copy;
     try {
       VPackObjectBuilder b(&copy);
