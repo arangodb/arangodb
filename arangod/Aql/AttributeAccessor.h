@@ -50,6 +50,13 @@ class AttributeAccessor {
   void replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements);
 
  private:
+  enum AccessorType {
+    EXTRACT_KEY,
+    EXTRACT_FROM,
+    EXTRACT_TO,
+    EXTRACT_SINGLE,
+    EXTRACT_MULTI
+  };
 
   /// @brief the attribute names vector (e.g. [ "a", "b", "c" ] for a.b.c)
   std::vector<std::string> const _attributeParts;
@@ -57,6 +64,8 @@ class AttributeAccessor {
   /// @brief the accessed variable
   Variable const* _variable;
 
+  /// @brief type of the accessor
+  AccessorType _type;
 };
 
 }  // namespace arangodb::aql

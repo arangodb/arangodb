@@ -138,31 +138,6 @@ void HeartbeatThread::runDBServer() {
     return true;
   };
   
-  std::function<bool(VPackSlice const& result)> updateCurrent = [&](
-      VPackSlice const& result) {
-    if (!result.isNumber()) {
-      LOG(ERR) << "Current Version is not a number! " << result.toJson();
-      return false;
-    }
-    uint64_t version = result.getNumber<uint64_t>();
-    
-    bool doSync = false;
-    {
-      MUTEX_LOCKER(mutexLocker, _statusLock);
-      if (version > _desiredVersions.current) {
-        _desiredVersions.current = version;
-        LOG(DEBUG) << "Desired Current Version is now " << _desiredVersions.current;
-        doSync = true;
-      }
-    }
-
-    if (doSync) {
-      syncDBServerStatusQuo();
-    }
-
-    return true;
-  };
-
   auto planAgencyCallback = std::make_shared<AgencyCallback>(
       _agency, "Plan/Version", updatePlan, true);
   
@@ -171,18 +146,6 @@ void HeartbeatThread::runDBServer() {
     registered = _agencyCallbackRegistry->registerCallback(planAgencyCallback);
     if (!registered) {
       LOG(ERR) << "Couldn't register plan change in agency!";
-      sleep(1);
-    }
-  }
-  
-  auto currentAgencyCallback = std::make_shared<AgencyCallback>(
-      _agency, "Current/Version", updateCurrent, true);
-  
-  registered = false;
-  while (!registered) {
-    registered = _agencyCallbackRegistry->registerCallback(currentAgencyCallback);
-    if (!registered) {
-      LOG(ERR) << "Couldn't register current change in agency!";
       sleep(1);
     }
   }
@@ -232,7 +195,6 @@ void HeartbeatThread::runDBServer() {
       if (!wasNotified) {
         LOG(TRACE) << "Lock reached timeout";
         planAgencyCallback->refetchAndUpdate();
-        currentAgencyCallback->refetchAndUpdate();
       } else {
         // mop: a plan change returned successfully...
         // recheck and redispatch in case our desired versions increased
@@ -244,7 +206,6 @@ void HeartbeatThread::runDBServer() {
   }
 
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
-  _agencyCallbackRegistry->unregisterCallback(currentAgencyCallback);
   int count = 0;
   while (++count < 3000) {
     bool isInPlanChange;

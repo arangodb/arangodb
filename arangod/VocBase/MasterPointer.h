@@ -106,7 +106,7 @@ struct TRI_doc_mptr_t {
   inline void setVPack(void const* value) { _dataptr = value; }
 
   // return a pointer to the beginning of the Vpack  
-  inline uint8_t const* vpack() const throw() { 
+  inline uint8_t const* vpack() const noexcept { 
     TRI_ASSERT(_dataptr != nullptr);
     return reinterpret_cast<uint8_t const*>(_dataptr);
   }
@@ -117,7 +117,7 @@ struct TRI_doc_mptr_t {
   }
   
   // return a pointer to the beginning of the Vpack  
-  inline void const* dataptr() const throw() { 
+  inline void const* dataptr() const noexcept { 
     return _dataptr;
   }
   

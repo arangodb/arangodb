@@ -1217,7 +1217,7 @@ class PathEnumerator {
   }
 };
 
-template <typename VertexId, typename EdgeId>
+template <typename VertexId, typename EdgeId, typename HashFuncType, typename EqualFuncType>
 class ConstDistanceFinder {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -1251,10 +1251,10 @@ class ConstDistanceFinder {
     PathSnippet(VertexId& pred, EdgeId& path) : _pred(pred), _path(path) {}
   };
 
-  std::unordered_map<VertexId, PathSnippet*> _leftFound;
+  std::unordered_map<VertexId, PathSnippet*, HashFuncType, EqualFuncType> _leftFound;
   std::deque<VertexId> _leftClosure;
 
-  std::unordered_map<VertexId, PathSnippet*> _rightFound;
+  std::unordered_map<VertexId, PathSnippet*, HashFuncType, EqualFuncType> _rightFound;
   std::deque<VertexId> _rightClosure;
 
   ExpanderFunction _leftNeighborExpander;
@@ -1300,12 +1300,13 @@ class ConstDistanceFinder {
           _leftNeighborExpander(v, edges, neighbors);
           TRI_ASSERT(edges.size() == neighbors.size());
           for (size_t i = 0; i < neighbors.size(); ++i) {
-            VertexId n = neighbors.at(i);
+            VertexId const n = neighbors.at(i);
             if (_leftFound.find(n) == _leftFound.end()) {
-              _leftFound.emplace(n, new PathSnippet(v, edges.at(i)));
-              if (_rightFound.find(n) != _rightFound.end()) {
+              auto leftFoundIt = _leftFound.emplace(n, new PathSnippet(v, edges.at(i))).first;
+              auto rightFoundIt = _rightFound.find(n);
+              if (rightFoundIt != _rightFound.end()) {
                 res->vertices.emplace_back(n);
-                auto it = _leftFound.find(n);
+                auto it = leftFoundIt;
                 VertexId next;
                 while (it->second != nullptr) {
                   next = it->second->_pred;
@@ -1313,7 +1314,7 @@ class ConstDistanceFinder {
                   res->edges.push_front(it->second->_path);
                   it = _leftFound.find(next);
                 }
-                it = _rightFound.find(n);
+                it = rightFoundIt;
                 while (it->second != nullptr) {
                   next = it->second->_pred;
                   res->vertices.emplace_back(next);
@@ -1336,12 +1337,13 @@ class ConstDistanceFinder {
           _rightNeighborExpander(v, edges, neighbors);
           TRI_ASSERT(edges.size() == neighbors.size());
           for (size_t i = 0; i < neighbors.size(); ++i) {
-            VertexId n = neighbors.at(i);
+            VertexId const n = neighbors.at(i);
             if (_rightFound.find(n) == _rightFound.end()) {
-              _rightFound.emplace(n, new PathSnippet(v, edges.at(i)));
-              if (_leftFound.find(n) != _leftFound.end()) {
+              auto rightFoundIt = _rightFound.emplace(n, new PathSnippet(v, edges.at(i))).first;
+              auto leftFoundIt = _leftFound.find(n);
+              if (leftFoundIt != _leftFound.end()) {
                 res->vertices.emplace_back(n);
-                auto it = _leftFound.find(n);
+                auto it = leftFoundIt;
                 VertexId next;
                 while (it->second != nullptr) {
                   next = it->second->_pred;
@@ -1349,7 +1351,7 @@ class ConstDistanceFinder {
                   res->edges.push_front(it->second->_path);
                   it = _leftFound.find(next);
                 }
-                it = _rightFound.find(n);
+                it = rightFoundIt;
                 while (it->second != nullptr) {
                   next = it->second->_pred;
                   res->vertices.emplace_back(next);

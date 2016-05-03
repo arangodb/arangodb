@@ -11,6 +11,9 @@ For string processing, AQL offers the following functions:
 
       /* "foobarbaz" */
       CONCAT([ 'foo', 'bar', 'baz' ])
+      
+      /* "hello!" */
+      CONCAT([ 'he', ['ll'] ], 'o!')
 
 - *CONCAT_SEPARATOR(separator, value1, value2, ... valueN)*:
   Concatenate the strings passed as arguments *value1* to *valueN* using the
@@ -23,19 +26,24 @@ For string processing, AQL offers the following functions:
       /* "foo, bar, baz" */
       CONCAT_SEPARATOR(', ', [ 'foo', 'bar', 'baz' ])
 
-- *CHAR_LENGTH(value)*: Return the number of characters in *value*. This is
-  a synonym for *LENGTH(value)*
+      /* "1-2-3-4-5" */
+      CONCAT_SEPARATOR('-', [1, 2, 3, null], [4, null, 5])
 
-- *LOWER(value)*: Lower-case *value*
+- *CHAR_LENGTH(value)*: Return the number of characters in *value* (not byte length).
+  This is a synonym for *LENGTH(value)*.
 
-- *UPPER(value)*: Upper-case *value*
+- *LOWER(value)*: Convert upper-case letters in *value* to their lower-case
+  counterparts. All other characters are returned unchanged.
+
+- *UPPER(value)*: Convert lower-case letters in *value* to their upper-case
+  counterparts. All other characters are returned unchanged.
 
 - *SUBSTITUTE(value, search, replace, limit)*: Replaces search values in the string
   *value*. If *search* is a string, all occurrences of *search* will be replaced in
   *value*. If *search* is a list, each occurrence of a value contained in *search*
   will be replaced by the corresponding list item in *replace*. If *replace* has less
   list items than *search*, occurrences of unmapped *search* items will be replaced
-  by the empty string. The number of replacements can optionally be limited using the
+  by an empty string. The number of replacements can optionally be limited using the
   *limit* parameter. If the *limit* is reached, no further occurrences of the search
   values will be replaced.
 
@@ -43,7 +51,7 @@ For string processing, AQL offers the following functions:
       SUBSTITUTE("the quick brown foxx", "quick", "lazy")
 
       /* "the slow brown dog" */ 
-      SUBSTITUTE("the quick brown foxx", [ "quick", "foxx" ], [ "slow", "dog" ])       
+      SUBSTITUTE("the quick brown foxx", [ "quick", "foxx" ], [ "slow", "dog" ])
 
       /* "A VOID! brown " */ 
       SUBSTITUTE("the quick brown foxx", [ "the", "quick", "foxx" ], [ "A", "VOID!" ])
@@ -81,14 +89,14 @@ For string processing, AQL offers the following functions:
 
 - *TRIM(value, chars)*: Returns the string *value* with whitespace stripped 
   from the start and end. The optional *chars* parameter can be used to override the
-  characters that should be removed from the string. It defaults to `\r\n\t `
-  (i.e. `0x0d`, `0x0a`, `0x09` and `0x20`).
+  characters that should be removed from the string. It defaults to `\r\n \t`
+  (i.e. `0x0d`, `0x0a`, `0x20` and `0x09`).
 
       /* "foobar" */
-      TRIM("  foobar\t \r\n ")         
+      TRIM("  foobar\t \r\n ")
 
       /* "foo;bar;baz" */
-      TRIM(";foo;bar;baz, ", ",; ")     
+      TRIM(";foo;bar;baz, ", ",; ")
 
 - *LTRIM(value, chars)*: Returns the string *value* with whitespace stripped 
   from the start only. The optional *chars* parameter can be used to override the

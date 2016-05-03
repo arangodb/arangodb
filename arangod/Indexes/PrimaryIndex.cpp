@@ -41,11 +41,10 @@ using namespace arangodb;
 
 static inline uint64_t HashKey(void* userData, uint8_t const* key) {
   // can use fast hash-function here, as index values are restricted to strings
-  return VPackSlice(key).hash();
+  return VPackSlice(key).hashString();
 }
 
-static inline uint64_t HashElement(void*,
-                                   TRI_doc_mptr_t const* element) {
+static inline uint64_t HashElement(void*, TRI_doc_mptr_t const* element) {
   return element->getHash();
 }
 
@@ -79,17 +78,9 @@ static bool IsEqualElementElement(void*, TRI_doc_mptr_t const* left,
 }
 
 TRI_doc_mptr_t* PrimaryIndexIterator::next() {
-  VPackSlice slice = _keys->slice();
-
-  while (true) {
-    if (_position >= static_cast<size_t>(slice.length())) {
-      // we're at the end of the lookup values
-      return nullptr;
-    }
-
-    // TODO: can we use an ArrayIterator with linear access here?
-    // at() will recalculate the array length etc. on every call
-    auto result = _index->lookup(_trx, slice.at(_position++));
+  while (_iterator.valid()) {
+    auto result = _index->lookup(_trx, _iterator.value());
+    _iterator.next();
 
     if (result != nullptr) {
       // found a result
@@ -98,9 +89,11 @@ TRI_doc_mptr_t* PrimaryIndexIterator::next() {
 
     // found no result. now go to next lookup value in _keys
   }
+
+  return nullptr;
 }
 
-void PrimaryIndexIterator::reset() { _position = 0; }
+void PrimaryIndexIterator::reset() { _iterator.reset(true); }
 
 TRI_doc_mptr_t* AllIndexIterator::next() {
   if (_reverse) {
@@ -370,7 +363,7 @@ int PrimaryIndex::resize(arangodb::Transaction* trx, size_t targetSize) {
 uint64_t PrimaryIndex::calculateHash(arangodb::Transaction* trx,
                                      VPackSlice const& slice) {
   // can use fast hash-function here, as index values are restricted to strings
-  return slice.hash();
+  return slice.hashString();
 }
 
 uint64_t PrimaryIndex::calculateHash(arangodb::Transaction* trx,

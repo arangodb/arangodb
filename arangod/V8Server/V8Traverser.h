@@ -46,7 +46,9 @@ typedef arangodb::basics::PathFinder<arangodb::velocypack::Slice,
                                      double> ArangoDBPathFinder;
 
 typedef arangodb::basics::ConstDistanceFinder<arangodb::velocypack::Slice,
-                                              arangodb::velocypack::Slice>
+                                              arangodb::velocypack::Slice,
+                                              arangodb::basics::VelocyPackHelper::VPackStringHash, 
+                                              arangodb::basics::VelocyPackHelper::VPackStringEqual>
     ArangoDBConstDistancePathFinder;
 
 namespace arangodb {

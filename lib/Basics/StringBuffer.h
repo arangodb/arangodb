@@ -205,11 +205,24 @@ int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str,
                                   size_t len);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends characters but url-encode the string
+/// @brief appends characters but does not check buffer bounds
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendUrlEncodedStringStringBuffer(TRI_string_buffer_t* self,
-                                           char const* str);
+static inline void TRI_AppendCharUnsafeStringBuffer(TRI_string_buffer_t* self, char chr) {
+  *self->_current++ = chr;
+}
+
+static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, char const* str) {
+  size_t len = strlen(str);
+  memcpy(self->_current, str, len);
+  self->_current += len;
+}
+
+static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, char const* str,
+                                                      size_t len) {
+  memcpy(self->_current, str, len);
+  self->_current += len;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters but json-encode the null-terminated string
@@ -764,7 +777,7 @@ class StringBuffer {
     TRI_AppendCharStringBuffer(&_buffer, chr);
     return *this;
   }
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief appends as json-encoded
   //////////////////////////////////////////////////////////////////////////////

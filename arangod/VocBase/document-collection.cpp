@@ -787,7 +787,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
   VPackSlice const keySlice = Transaction::extractKeyFromDocument(slice);
-  TRI_voc_rid_t const rid = std::stoull(slice.get(StaticStrings::RevString).copyString());
+  TRI_voc_rid_t const rid = StringUtils::uint64(slice.get(StaticStrings::RevString).copyString());
  
   SetRevision(document, rid, false);
   document->_keyGenerator->track(keySlice.copyString());
@@ -890,7 +890,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
   VPackSlice const keySlice = Transaction::extractKeyFromDocument(slice);
-  TRI_voc_rid_t const rid = std::stoull(slice.get(StaticStrings::RevString).copyString());
+  TRI_voc_rid_t const rid = StringUtils::uint64(slice.get(StaticStrings::RevString).copyString());
  
   document->setLastRevision(rid, false);
   document->_keyGenerator->track(keySlice.copyString());
@@ -3320,7 +3320,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     TRI_ASSERT(slice.isObject());
     // we can get away with the fast hash function here, as key values are 
     // restricted to strings
-    hash = Transaction::extractKeyFromDocument(slice).hash();
+    hash = Transaction::extractKeyFromDocument(slice).hashString();
     newSlice = slice;
   }
 
@@ -4190,7 +4190,7 @@ int TRI_document_collection_t::newObjectForInsert(
   }
   // we can get away with the fast hash function here, as key values are 
   // restricted to strings
-  hash = s.hash();
+  hash = s.hashString();
 
   // _from and _to
   if (isEdgeCollection) {

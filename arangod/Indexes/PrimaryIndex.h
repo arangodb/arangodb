@@ -31,6 +31,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -43,7 +44,12 @@ class PrimaryIndexIterator final : public IndexIterator {
  public:
   PrimaryIndexIterator(arangodb::Transaction* trx, PrimaryIndex const* index,
                        std::unique_ptr<VPackBuilder>& keys)
-      : _trx(trx), _index(index), _keys(keys.get()), _position(0) {
+      : _trx(trx), 
+        _index(index), 
+        _keys(keys.get()), 
+        _iterator(_keys->slice(), true), 
+        _position(0) {
+
         keys.release(); // now we have ownership for _keys
         TRI_ASSERT(_keys->slice().isArray());
       }
@@ -58,6 +64,7 @@ class PrimaryIndexIterator final : public IndexIterator {
   arangodb::Transaction* _trx;
   PrimaryIndex const* _index;
   std::unique_ptr<VPackBuilder> _keys;
+  arangodb::velocypack::ArrayIterator _iterator;
   size_t _position;
 };
 

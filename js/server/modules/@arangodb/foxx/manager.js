@@ -94,7 +94,7 @@ const manifestSchema = {
   ),
 
   lib: joi.string().default('.'),
-  main: joi.string().default('index.js'),
+  main: joi.string().optional(),
 
   configuration: (
     joi.object().optional()
@@ -1061,7 +1061,9 @@ function _install(serviceInfo, mount, options, runSetup) {
           },
           action() {
             var definition = collection.firstExample({mount: mount});
-            collection.remove(definition._key);
+            if (definition !== null) {
+              collection.remove(definition._key);
+            }
           }
         });
       }

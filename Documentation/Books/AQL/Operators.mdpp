@@ -75,19 +75,24 @@ of an array operator is an array.
 Examples:
 
 ```
+[ 1, 2, 3 ] ALL IN [ 2, 3, 4 ]   // false
+[ 1, 2, 3 ] ALL IN [ 1, 2, 3 ]   // true
+[ 1, 2, 3 ] NONE IN [ 3 ]        // false
+[ 1, 2, 3 ] NONE IN [ 23, 42 ]   // true
+[ 1, 2, 3 ] ANY IN [ 4, 5, 6 ]   // false
+[ 1, 2, 3 ] ANY IN [ 1, 42 ]     // true
 [ 1, 2, 3 ] ANY == 2             // true
 [ 1, 2, 3 ] ANY == 4             // false
 [ 1, 2, 3 ] ANY > 0              // true
-[ 1, 2, 3 ] ANY IN [ 4, 5, 6 ]   // false
-[ 1, 2, 3 ] ANY IN [ 1, 42 ]     // true
-[ 1, 2, 3 ] ALL IN [ 2, 3, 4 ]   // false
-[ 1, 2, 3 ] ALL IN [ 1, 2, 3 ]   // true
-[ 1, 2, 3 ] ALL > 2              // false
-[ 1, 2, 3 ] ALL > 0              // true
-[ 1, 2, 3 ] NONE IN [ 3 ]        // false
-[ 1, 2, 3 ] NONE IN [ 23, 42 ]   // true
+[ 1, 2, 3 ] ANY <= 1             // true
 [ 1, 2, 3 ] NONE < 99            // false
 [ 1, 2, 3 ] NONE > 10            // true
+[ 1, 2, 3 ] ALL > 2              // false
+[ 1, 2, 3 ] ALL > 0              // true
+[ 1, 2, 3 ] ALL >= 3             // false
+["foo", "bar"] ALL != "moo"      // true
+["foo", "bar"] NONE == "bar"     // false
+["foo", "bar"] ANY == "foo"      // true
 ```
 
 !SUBSUBSECTION Logical operators
@@ -177,6 +182,12 @@ AQL supports the following arithmetic operators:
 
 The unary plus and unary minus are supported as well.
 
+For exponentiation, there is a [numeric function](Functions/Numeric.md#pow) `POW()`.
+
+For string concatenation, you must use the [string function](Functions/String.md#concat)
+`CONCAT()`. Combining two strings with a plus operator (`"foo" + "bar"`) will not work!
+Also see [Common Errors](CommonErrors.md)
+
 Some example arithmetic operations:
 
     1 + 1
@@ -189,7 +200,7 @@ Some example arithmetic operations:
 
 The arithmetic operators accept operands of any type. This behavior has changed in 
 ArangoDB 2.3. Passing non-numeric values to an arithmetic operator is now allow.
-Any-non numeric operands will be casted to numbers implicitly by the operator,
+Any non-numeric operands will be casted to numbers implicitly by the operator,
 without making the query abort. 
 
 The *conversion to a numeric value* works as follows:

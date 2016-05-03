@@ -38,26 +38,12 @@
 
 Object.defineProperty(Object.prototype, '_shallowCopy', {
   get() {
-    var self = this;
-    return this.propertyKeys.reduce(function (previous, key) {
-      previous[key] = self[key];
+    return require('internal').propertyKeys(this).reduce((previous, key) => {
+      previous[key] = this[key];
       return previous;
     }, {});
   }
 });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the property keys
-////////////////////////////////////////////////////////////////////////////////
-
-Object.defineProperty(Object.prototype, 'propertyKeys', {
-  get() {
-    return Object.keys(this).filter(function (key) {
-      return (key.charAt(0) !== '_' && key.charAt(0) !== '$');
-    });
-  }
-});
-
 
 }());
 

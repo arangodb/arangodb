@@ -51,35 +51,24 @@ class VelocyPackDumper {
   }
 
   ~VelocyPackDumper() = default;
-
-  void dump(velocypack::Slice const& slice) {
-    _buffer->reserve(slice.byteSize());
-    dumpValue(&slice);
+  
+  void dumpValue(velocypack::Slice const* slice, velocypack::Slice const* = nullptr);
+  
+  inline void dumpValue(velocypack::Slice const& slice, velocypack::Slice const* base = nullptr) {
+    dumpValue(&slice, base);
   }
 
-  void dump(velocypack::Slice const* slice) { dump(*slice); }
-
-  void append(velocypack::Slice const& slice) { dumpValue(&slice); }
-
-  void append(velocypack::Slice const* slice) { dumpValue(slice); }
-
+ private:
   void appendUInt(uint64_t);
 
   void appendDouble(double);
 
- private:
   void handleUnsupportedType(velocypack::Slice const* slice);
 
   void dumpInteger(velocypack::Slice const*);
 
   void dumpString(char const*, velocypack::ValueLength);
-
-  inline void dumpValue(velocypack::Slice const& slice, velocypack::Slice const* base = nullptr) {
-    dumpValue(&slice, base);
-  }
-
-  void dumpValue(velocypack::Slice const*, velocypack::Slice const* = nullptr);
-
+  
  public:
   velocypack::Options const* options;
 
