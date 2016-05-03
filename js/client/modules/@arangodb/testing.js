@@ -891,10 +891,6 @@ function executeValgrind(cmd, args, options, valgrindTest) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function executeAndWait(cmd, args, options, valgrindTest) {
-  if (options.extremeVerbosity) {
-    print("executeAndWait: cmd =", cmd, "args =", args);
-  }
-
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -920,7 +916,17 @@ function executeAndWait(cmd, args, options, valgrindTest) {
     cmd = options.valgrind;
   }
 
+  if (options.extremeVerbosity) {
+    print("executeAndWait: cmd =", cmd, "args =", args);
+  }
+
   const startTime = time();
+  if ((typeof(cmd) !== "string") || (cmd === 'true') || (cmd === 'false')) {
+    return {
+      status: false,
+      message: "true or false as binary name for test cmd =" + cmd + "args =" + args
+    };
+  }
   const res = executeExternalAndWait(cmd, args);
   const deltaTime = time() - startTime;
 
