@@ -471,7 +471,7 @@ function AgencySuite () {
       assertTrue(agency.remove("UnitTestsAgency/1", true));
 
       try {
-        agency.get("UnitTestsAgency/1", true).arango.UnitTestsAgency.1;
+        agency.get("UnitTestsAgency/1", true).arango.UnitTestsAgency["1"];
         fail();
       }
       catch (err) {

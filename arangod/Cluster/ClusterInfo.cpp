@@ -43,9 +43,6 @@
 #include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
 
-#warning iostream
-#include <iostream>
-
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
 // only...
@@ -496,7 +493,7 @@ void ClusterInfo::loadPlannedDatabases() {
   }
 
   if (result.successful()) {
-    
+
     velocypack::Slice databases =
       result._vpack->slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefixStripped(), "Plan", "Databases"}));
@@ -1050,7 +1047,6 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
       }
       if (tmpHaveError) {
         errorMsg = "Error in creation of database:" + tmpMsg;
-        std::cout << errorMsg << std::endl;
         dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE;
         return true;
       }
@@ -1628,13 +1624,6 @@ int ClusterInfo::ensureIndexCoordinator(
     .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
     .get("Plan").get("Collections").get(databaseName);
   velocypack::Slice collection = database.get(collectionID);
-
-#warning commented out
-  /*
-  if (it == previous._values.end()) {
-    LOG(INFO) << "Entry for collection in Plan does not exist!";
-    usePrevious = false;
-    }*/
 
   loadPlannedCollections();
   VPackBuilder newBuilder;
