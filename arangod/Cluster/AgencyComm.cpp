@@ -45,7 +45,6 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-#include <iostream>
 
 using namespace arangodb;
 
@@ -594,7 +593,6 @@ bool AgencyComm::tryConnect() {
   // unable to connect to any endpoint
   return false;
 }
-#include <iostream>
 //////////////////////////////////////////////////////////////////////////////
 /// @brief will try to initialize a new agency
 //////////////////////////////////////////////////////////////////////////////
@@ -1396,7 +1394,6 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
 /// @brief compares and swaps a single value in the backend
 /// the CAS condition is whether or not a previous value existed for the key
 ////////////////////////////////////////////////////////////////////////////////
-#include <iostream>
 AgencyCommResult AgencyComm::casValue(std::string const& key,
                                       arangodb::velocypack::Slice const& json,
                                       bool prevExist, double ttl,

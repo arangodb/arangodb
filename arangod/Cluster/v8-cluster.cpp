@@ -218,7 +218,6 @@ static void JS_IncreaseVersionAgency(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a value from the agency
 ////////////////////////////////////////////////////////////////////////////////
-#include <iostream>
 static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);

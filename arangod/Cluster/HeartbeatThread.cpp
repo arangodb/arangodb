@@ -41,7 +41,6 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 #include <functional>
-#include <iostream>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

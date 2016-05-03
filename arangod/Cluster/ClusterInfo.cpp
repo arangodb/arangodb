@@ -43,9 +43,6 @@
 #include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
 
-#warning iostream
-#include <iostream>
-
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
 // only...
@@ -1625,13 +1622,6 @@ int ClusterInfo::ensureIndexCoordinator(
     .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
     .get("Plan").get("Collections").get(databaseName);
   velocypack::Slice collection = database.get(collectionID);
-
-#warning commented out
-  /*
-  if (it == previous._values.end()) {
-    LOG(INFO) << "Entry for collection in Plan does not exist!";
-    usePrevious = false;
-    }*/
 
   loadPlannedCollections();
   VPackBuilder newBuilder;
