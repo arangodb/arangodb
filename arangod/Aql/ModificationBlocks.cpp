@@ -653,6 +653,16 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
 UpsertBlock::UpsertBlock(ExecutionEngine* engine, UpsertNode const* ep)
     : ModificationBlock(engine, ep) {}
 
+bool UpsertBlock::isShardKeyError(VPackSlice const slice) const {
+  TRI_ASSERT(_isDBServer);
+
+  if (_usesDefaultSharding) {
+    return false;
+  }
+
+  return slice.hasKey(StaticStrings::KeyString);
+}
+
 /// @brief the actual work horse for inserting data
 AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   size_t const count = countBlocksRows(blocks);
@@ -762,8 +772,12 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         AqlValue const& insertDoc = res->getValueReference(i, insertRegisterId);
         VPackSlice toInsert = insertDoc.slice();
         if (toInsert.isObject()) {
-          insertBuilder.add(toInsert);
-          insRows.emplace_back(dstRow);
+          if (_isDBServer && isShardKeyError(toInsert)) {
+            errorCode = TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
+          } else {
+            insertBuilder.add(toInsert);
+            insRows.emplace_back(dstRow);
+          }
         } else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
         }
