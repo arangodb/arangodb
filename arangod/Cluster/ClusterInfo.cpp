@@ -1284,14 +1284,13 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       , AgencyPrecondition::EMPTY, true
   );
 
-  AgencyTransaction transaction;
+  AgencyWriteTransaction transaction;
 
   transaction.operations.push_back(createCollection);
   transaction.operations.push_back(increaseVersion);
   transaction.preconditions.push_back(precondition);
   
-  AgencyCommResult res;
-  ac.sendTransactionWithFailover(res, transaction);
+  AgencyCommResult res = ac.sendTransactionWithFailover(transaction);
 
   if (!res.successful()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,

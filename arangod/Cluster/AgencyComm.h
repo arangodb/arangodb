@@ -165,14 +165,14 @@ struct AgencyPrecondition {
 
   AgencyPrecondition(std::string const& key, Type t, bool e);
 
-  AgencyPrecondition(std::string const& key, Type t, VPackSlice s);
+  AgencyPrecondition(std::string const& key, Type t, VPackSlice const s);
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
   std::string key;
   Type type;
   bool empty;
-  VPackSlice value;
+  VPackSlice const value;
 };
 
 struct AgencyOperation {
@@ -190,7 +190,7 @@ struct AgencyOperation {
   AgencyOperation(
       std::string const& key,
       AgencyValueOperationType opType,
-      VPackSlice value
+      VPackSlice const value
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -209,7 +209,17 @@ private:
   VPackSlice _value;
 };
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief AgencyTransaction base class
+//////////////////////////////////////////////////////////////////////////////
+
 struct AgencyTransaction {
+  virtual std::string toJson() const = 0;
+  virtual ~AgencyTransaction() {
+  }
+};
+
+struct AgencyWriteTransaction : public AgencyTransaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vector of preconditions
@@ -233,13 +243,13 @@ struct AgencyTransaction {
   /// @brief converts the transaction to json
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string toJson() const;
+  std::string toJson() const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shortcut to create a transaction with one operation
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit AgencyTransaction(AgencyOperation const& operation) {
+  explicit AgencyWriteTransaction(AgencyOperation const& operation) {
     operations.push_back(operation);
   }
   
@@ -248,14 +258,54 @@ struct AgencyTransaction {
   /// precondition
   //////////////////////////////////////////////////////////////////////////////
  
-  explicit AgencyTransaction(AgencyOperation const& operation,
-                             AgencyPrecondition const& precondition) {
+  explicit AgencyWriteTransaction(AgencyOperation const& operation,
+                                  AgencyPrecondition const& precondition) {
     operations.push_back(operation);
     preconditions.push_back(precondition);
   }
-  
-  explicit AgencyTransaction() {
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief default constructor
+//////////////////////////////////////////////////////////////////////////////
+
+  AgencyWriteTransaction() = default;
+
+};
+
+struct AgencyReadTransaction : public AgencyTransaction {
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief vector of operations
+//////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::string> keys;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief converts the transaction to velocypack
+//////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief converts the transaction to json
+//////////////////////////////////////////////////////////////////////////////
+
+  std::string toJson() const override final;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut to create a transaction with one operation
+//////////////////////////////////////////////////////////////////////////////
+
+  explicit AgencyReadTransaction(std::string const& key) {
+    keys.push_back(key);
   }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief default constructor
+//////////////////////////////////////////////////////////////////////////////
+
+  AgencyReadTransaction() = default;
+
 };
 
 struct AgencyCommResult {
@@ -619,9 +669,9 @@ class AgencyComm {
   /// @brief sends a transaction to the agency, handling failover
   //////////////////////////////////////////////////////////////////////////////
 
-  bool sendTransactionWithFailover(
-      AgencyCommResult&,
-      AgencyTransaction const&
+  AgencyCommResult  sendTransactionWithFailover(
+      AgencyTransaction const&,
+      double timeout = 0.0
   );
 
  private:
@@ -660,10 +710,9 @@ class AgencyComm {
   /// @brief sends a write HTTP request to the agency, handling failover
   //////////////////////////////////////////////////////////////////////////////
 
-  bool sendWithFailover(
+  AgencyCommResult sendWithFailover(
       arangodb::GeneralRequest::RequestType,
       double,
-      AgencyCommResult&,
       std::string const&,
       std::string const&,
       bool
@@ -673,9 +722,9 @@ class AgencyComm {
   /// @brief sends data to the URL
   //////////////////////////////////////////////////////////////////////////////
 
-  bool send(arangodb::httpclient::GeneralClientConnection*,
+  AgencyCommResult send(arangodb::httpclient::GeneralClientConnection*,
             arangodb::GeneralRequest::RequestType, double,
-            AgencyCommResult&, std::string const&, std::string const&);
+            std::string const&, std::string const&);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief tries to establish a communication channel
