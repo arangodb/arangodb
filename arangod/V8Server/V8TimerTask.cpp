@@ -83,6 +83,11 @@ bool V8TimerTask::handleTimeout() {
       new V8Job(_vocbase, "(function (params) { " + _command + " } )(params);",
                 _parameters, _allowUseDatabase));
 
+  if (DispatcherFeature::DISPATCHER == nullptr) {
+    LOG(WARN) << "could not add task " << _command << " to non existing queue";
+    return false;
+  }
+  
   int res = DispatcherFeature::DISPATCHER->addJob(job);
 
   if (res != TRI_ERROR_NO_ERROR) {

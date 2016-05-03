@@ -82,6 +82,11 @@ bool V8PeriodicTask::handlePeriod() {
       _vocbase, "(function (params) { " + _command + " } )(params);",
       _parameters, _allowUseDatabase));
 
+  if (DispatcherFeature::DISPATCHER == nullptr) {
+    LOG(WARN) << "could not add task " << _command << " to non existing queue";
+    return false;
+  }
+  
   DispatcherFeature::DISPATCHER->addJob(job);
 
   return true;
