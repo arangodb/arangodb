@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertTrue, fail */
+/*global assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
@@ -38,7 +38,7 @@ var db = require("@arangodb").db;
 function aqlVPackExternalsTestSuite () {
 
   const collName = "UnitTestsVPackExternals";
-  const edgeColl = "UnitTestsVPackEdges"
+  const edgeColl = "UnitTestsVPackEdges";
   const cleanUp = function () {
     db._drop(collName);
     db._drop(edgeColl);
