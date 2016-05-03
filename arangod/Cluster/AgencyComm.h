@@ -351,7 +351,7 @@ struct AgencyCommResult {
   //////////////////////////////////////////////////////////////////////////////
 
   bool parse(std::string const&, bool);
-  bool parse(std::string const&);
+  VPackSlice parse(std::string const&);
 
 
  public:

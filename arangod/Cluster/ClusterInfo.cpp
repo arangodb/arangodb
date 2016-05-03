@@ -493,11 +493,13 @@ void ClusterInfo::loadPlannedDatabases() {
   }
 
   if (result.successful()) {
-    
+
     velocypack::Slice databases =
       result._vpack->slice()[0]
       .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
       .get("Plan").get("Databases");
+
+    databases = result.parse(prefixPlannedDatabases);
 
     decltype(_plannedDatabases) newDatabases;
 
