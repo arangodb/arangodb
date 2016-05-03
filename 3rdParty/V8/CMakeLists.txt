@@ -464,6 +464,9 @@ if (WIN32)
   install(FILES ${ICU_DT}
     DESTINATION "share/arangodb/"
     RENAME ${ICU_DT_DEST})
+  install(FILES ${ICU_DT}
+    DESTINATION "bin/share/arangodb/"
+    RENAME ${ICU_DT_DEST})
 else()
   add_custom_target(nonthinV8
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../Installation/archive-de-thinner.sh ${V8_REL_TARGET_PATH}

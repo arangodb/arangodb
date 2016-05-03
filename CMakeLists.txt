@@ -647,19 +647,6 @@ add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
 
 include_directories(${ICU_INCLUDE_DIR})
 
-if (MSVC)
-  add_custom_target(
-    icudat1
-    ALL
-    COMMAND ${CMAKE_COMMAND} -E copy
-      "${PROJECT_SOURCE_DIR}/3rdParty/V8/V8-4.9.391/third_party/icu/source/data/in/icudtl.dat"
-      "${PROJECT_BINARY_DIR}/bin/share/arangodb/icudt54l.dat"
-    COMMAND ${CMAKE_COMMAND} -E copy
-      "${PROJECT_SOURCE_DIR}/3rdParty/V8/V8-4.9.391/third_party/icu/source/data/in/icudtl.dat"
-      "${PROJECT_SOURCE_DIR}/icudt54l.dat"
-  )
-endif ()
-
 ################################################################################
 ## LIBEV
 ################################################################################
