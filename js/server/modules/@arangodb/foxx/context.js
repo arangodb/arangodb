@@ -42,7 +42,7 @@ module.exports = class FoxxContext {
   }
 
   use(path, router, name) {
-    this.service.router.use(path, router, name);
+    return this.service.router.use(path, router, name);
   }
 
   registerType(type, def) {
@@ -85,15 +85,11 @@ module.exports = class FoxxContext {
   }
 
   fileName(filename) {
-    return fs.safeJoin(this.basePath, filename);
+    return path.join(this.basePath, filename);
   }
 
   file(filename, encoding) {
     return fs.readFileSync(this.fileName(filename), encoding);
-  }
-
-  path(name) {
-    return path.join(this.basePath, name);
   }
 
   collectionName(name) {
@@ -116,7 +112,7 @@ module.exports = class FoxxContext {
   }
 
   get baseUrl() {
-    return `/_db/${encodeURIComponent(internal.db._name())}/${this.service.mount.slice(1)}`;
+    return `/_db/${encodeURIComponent(internal.db._name())}${this.service.mount}`;
   }
 
   get collectionPrefix() {
@@ -125,14 +121,6 @@ module.exports = class FoxxContext {
 
   get mount() {
     return this.service.mount;
-  }
-
-  get name() {
-    return this.service.name;
-  }
-
-  get version() {
-    return this.service.version;
   }
 
   get manifest() {
@@ -145,10 +133,6 @@ module.exports = class FoxxContext {
 
   get isProduction() {
     return !this.isDevelopment;
-  }
-
-  get options() {
-    return this.service.options;
   }
 
   get configuration() {

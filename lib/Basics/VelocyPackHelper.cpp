@@ -25,19 +25,25 @@
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "Basics/files.h"
-#include "Basics/hashes.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/files.h"
+#include "Basics/hashes.h"
+#include "Basics/tri-strings.h"
 
 #include <velocypack/AttributeTranslator.h>
+#include <velocypack/velocypack-common.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+extern "C" {
+  unsigned long long XXH64 (const void* input, size_t length, unsigned long long seed);
+}
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
@@ -79,11 +85,11 @@ void VelocyPackHelper::initialize() {
   Translator.reset(new VPackAttributeTranslator);
 
   // these attribute names will be translated into short integer values
-  Translator->add("_key", 1);  // TRI_VOC_ATTRIBUTE_KEY
-  Translator->add("_rev", 2);  // TRI_VOC_ATTRIBUTE_REV
-  Translator->add("_id", 3);   // TRI_VOC_ATTRIBUTE_ID
-  Translator->add("_from", 4); // TRI_VOC_ATTRIBUTE_FROM
-  Translator->add("_to", 5);   // TRI_VOC_ATTRIBUTE_TO
+  Translator->add(StaticStrings::KeyString, KeyAttribute - AttributeBase); 
+  Translator->add(StaticStrings::RevString, RevAttribute - AttributeBase);
+  Translator->add(StaticStrings::IdString, IdAttribute - AttributeBase); 
+  Translator->add(StaticStrings::FromString, FromAttribute - AttributeBase);
+  Translator->add(StaticStrings::ToString, ToAttribute - AttributeBase);
 
   Translator->seal();
 
@@ -91,9 +97,26 @@ void VelocyPackHelper::initialize() {
   VPackOptions::Defaults.attributeTranslator = Translator.get();
   // VPackOptions::Defaults.unsupportedTypeBehavior = VPackOptions::ConvertUnsupportedType;
 
+  // run quick selfs test with the attribute translator
+  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::KeyString)).getUInt() == KeyAttribute - AttributeBase);
+  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::RevString)).getUInt() == RevAttribute - AttributeBase);
+  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::IdString)).getUInt() == IdAttribute - AttributeBase);
+  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::FromString)).getUInt() == FromAttribute - AttributeBase); 
+  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::ToString)).getUInt() == ToAttribute - AttributeBase);
+  
+  TRI_ASSERT(VPackSlice(Translator->translate(KeyAttribute - AttributeBase)).copyString() == StaticStrings::KeyString); 
+  TRI_ASSERT(VPackSlice(Translator->translate(RevAttribute - AttributeBase)).copyString() == StaticStrings::RevString); 
+  TRI_ASSERT(VPackSlice(Translator->translate(IdAttribute - AttributeBase)).copyString() == StaticStrings::IdString); 
+  TRI_ASSERT(VPackSlice(Translator->translate(FromAttribute - AttributeBase)).copyString() == StaticStrings::FromString); 
+  TRI_ASSERT(VPackSlice(Translator->translate(ToAttribute - AttributeBase)).copyString() == StaticStrings::ToString); 
+
   // initialize exclude handler for system attributes
   ExcludeHandler.reset(new SystemAttributeExcludeHandler);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn off assembler optimizations in vpack
+////////////////////////////////////////////////////////////////////////////////
 
 void VelocyPackHelper::disableAssemblerFunctions() {
   arangodb::velocypack::disableAssemblerFunctions();
@@ -140,8 +163,34 @@ size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
   return slice.normalizedHash();
 };
 
+size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) const noexcept {
+  return slice.hashString();
+};
+
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
   return VelocyPackHelper::compare(lhs, rhs, false) == 0;
+};
+
+bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const noexcept {
+  auto const lh = lhs.head();
+  auto const rh = rhs.head();
+
+  if (lh != rh) {
+    return false;
+  }
+
+  VPackValueLength size;
+  if (lh == 0xbf) {
+    // long UTF-8 String
+    size = static_cast<VPackValueLength>(velocypack::readInteger<VPackValueLength>(lhs.begin() + 1, 8));
+    if (size !=static_cast<VPackValueLength>(velocypack::readInteger<VPackValueLength>(rhs.begin() + 1, 8))) {
+      return false;
+    }
+    return (memcmp(lhs.start() + 1 + 8, rhs.start() + 1 + 8, static_cast<size_t>(size)) == 0);
+  } 
+    
+  size = static_cast<VPackValueLength>(lh - 0x40);
+  return (memcmp(lhs.start() + 1, rhs.start() + 1, static_cast<size_t>(size)) == 0);
 };
 
 static int TypeWeight(VPackSlice const& slice) {
@@ -722,7 +771,7 @@ uint64_t VelocyPackHelper::hashByAttributes(
     for (auto const& attr : attributes) {
       VPackSlice sub = slice.get(attr).resolveExternal();
       if (sub.isNone()) {
-        if (attr == "_key" && !key.empty()) {
+        if (attr == StaticStrings::KeyString && !key.empty()) {
           VPackBuilder temporaryBuilder;
           temporaryBuilder.add(VPackValue(key));
           hash = temporaryBuilder.slice().normalizedHash(hash);
@@ -738,6 +787,27 @@ uint64_t VelocyPackHelper::hashByAttributes(
     }
   }
   return hash;
+}
+
+void VelocyPackHelper::SanitizeExternals(VPackSlice const input, VPackBuilder& output) {
+  if (input.isExternal()) {
+    output.add(input.resolveExternal());
+  } else if (input.isObject()) {
+    output.openObject();
+    for (auto const& it : VPackObjectIterator(input)) {
+      output.add(VPackValue(it.key.copyString()));
+      SanitizeExternals(it.value, output);
+    }
+    output.close();
+  } else if (input.isArray()) {
+    output.openArray();
+    for (auto const& it : VPackArrayIterator(input)) {
+      SanitizeExternals(it, output);
+    }
+    output.close();
+  } else {
+    output.add(input);
+  }
 }
 
 arangodb::LoggerStream& operator<< (arangodb::LoggerStream& logger,

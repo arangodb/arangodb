@@ -25,6 +25,7 @@
 #define ARANGOD_VOC_BASE_MASTER_POINTER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/fasthash.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/voc-types.h"
@@ -105,7 +106,7 @@ struct TRI_doc_mptr_t {
   inline void setVPack(void const* value) { _dataptr = value; }
 
   // return a pointer to the beginning of the Vpack  
-  inline uint8_t const* vpack() const throw() { 
+  inline uint8_t const* vpack() const noexcept { 
     TRI_ASSERT(_dataptr != nullptr);
     return reinterpret_cast<uint8_t const*>(_dataptr);
   }
@@ -116,7 +117,7 @@ struct TRI_doc_mptr_t {
   }
   
   // return a pointer to the beginning of the Vpack  
-  inline void const* dataptr() const throw() { 
+  inline void const* dataptr() const noexcept { 
     return _dataptr;
   }
   
@@ -145,7 +146,7 @@ struct TRI_doc_mptr_t {
 
   // return the marker's revision id
   VPackSlice revisionIdAsSlice() const {
-    return VPackSlice(vpack()).get(TRI_VOC_ATTRIBUTE_REV);
+    return VPackSlice(vpack()).get(arangodb::StaticStrings::RevString);
   }
 
   // return the marker's revision id as string slice or None slice if not there

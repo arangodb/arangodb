@@ -33,6 +33,14 @@
 #include "Basics/json-utilities.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/Utf8Helper.h"
+
+#if _WIN32
+#include "Basics/win-utils.h"
+#define FIX_ICU_ENV     TRI_FixIcuDataEnv()
+#else
+#define FIX_ICU_ENV
+#endif
 
 static bool Initialized = false;
 
@@ -61,6 +69,18 @@ static bool Initialized = false;
   
 struct CJsonUtilitiesSetup {
   CJsonUtilitiesSetup () {
+    FIX_ICU_ENV;
+    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("")) {
+      std::string msg =
+        "cannot initialize ICU; please make sure ICU*dat is available; "
+        "the variable ICU_DATA='";
+      if (getenv("ICU_DATA") != nullptr) {
+        msg += getenv("ICU_DATA");
+      }
+      msg += "' should point the directory containing the ICU*dat file.";
+      BOOST_TEST_MESSAGE(msg);
+      BOOST_CHECK_EQUAL(false, true);
+    }
     BOOST_TEST_MESSAGE("setup json utilities test");
     if (!Initialized) {
       Initialized = true;
@@ -306,7 +326,7 @@ BOOST_AUTO_TEST_CASE (tst_json_hashattributes_mult2) {
   
   const char* v1[] = { "a", "b" };
   
-  uint64_t const h1 = 12539197276825819752ULL;
+  uint64_t const h1 = 18170770464635016704ULL;
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foo\", \"b\": \"bar\" }");
   BOOST_CHECK_EQUAL(h1, TRI_HashJsonByAttributes(json, v1, 2, true, error));
   FREE_JSON
@@ -316,31 +336,31 @@ BOOST_AUTO_TEST_CASE (tst_json_hashattributes_mult2) {
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"food\", \"b\": \"bar\" }");
-  BOOST_CHECK_EQUAL(16541519083655723759ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
+  BOOST_CHECK_EQUAL(9898865118744151582ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foo\", \"b\": \"baz\" }");
-  BOOST_CHECK_EQUAL(7656993273597287052ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
+  BOOST_CHECK_EQUAL(4146172384428429960ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"FOO\", \"b\": \"BAR\" }");
-  BOOST_CHECK_EQUAL(17704521675288781581ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
+  BOOST_CHECK_EQUAL(1969665727812990435ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foo\" }");
-  BOOST_CHECK_EQUAL(13052740859585980364ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
+  BOOST_CHECK_EQUAL(17850048730013513424ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"a\": \"foo\", \"b\": \"meow\" }");
-  BOOST_CHECK_EQUAL(5511414856106770809ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
+  BOOST_CHECK_EQUAL(828267433082628493ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"b\": \"bar\" }");
-  BOOST_CHECK_EQUAL(455614752263261981ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
+  BOOST_CHECK_EQUAL(8536899277477494659ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
   FREE_JSON
   
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "{ \"b\": \"bar\", \"a\": \"meow\" }");
-  BOOST_CHECK_EQUAL(1842251108617319700ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
+  BOOST_CHECK_EQUAL(6298354225815173479ULL, TRI_HashJsonByAttributes(json, v1, 2, true, error));
   FREE_JSON
 }
 

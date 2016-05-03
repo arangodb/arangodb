@@ -1,4 +1,3 @@
-/*jshint globalstrict: true */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +37,6 @@ var db = arangodb.db;
 var internal = require('internal');
 
 var throwFileNotFound = arangodb.throwFileNotFound;
-var throwDownloadError = arangodb.throwDownloadError;
 var errors = arangodb.errors;
 var ArangoError = arangodb.ArangoError;
 var mountRegEx = /^(\/[a-zA-Z0-9_\-%]+)+$/;
@@ -89,189 +87,6 @@ function buildGithubUrl (repository, version) {
     urlPrefix = 'https://github.com/';
   }
   return  urlPrefix + repository + '/archive/' + version + '.zip';
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the name and version from a manifest file
-////////////////////////////////////////////////////////////////////////////////
-
-function extractNameAndVersionManifest (source, filename) {
-  var manifest = JSON.parse(fs.read(filename));
-
-  source.name = manifest.name;
-  source.version = manifest.version;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief processes files in a directory
-////////////////////////////////////////////////////////////////////////////////
-
-function processDirectory (source) {
-  var location = source.location;
-
-  if (! fs.exists(location) || ! fs.isDirectory(location)) {
-    throwFileNotFound("'" + String(location) + "' is not a directory");
-  }
-
-  // .............................................................................
-  // extract name and version from manifest
-  // .............................................................................
-
-  extractNameAndVersionManifest(source, fs.join(location, "manifest.json"));
-
-  // .............................................................................
-  // extract name and version from manifest
-  // .............................................................................
-
-  var tree = fs.listTree(location);
-  var files = [];
-  var i;
-  var filename;
-
-  for (i = 0;  i < tree.length;  ++i) {
-    filename = fs.join(location, tree[i]);
-
-    if (fs.isFile(filename)) {
-      files.push(tree[i]);
-    }
-  }
-
-  if (files.length === 0) {
-    throwFileNotFound("Directory '" + String(location) + "' is empty");
-  }
-
-  var tempFile = fs.getTempFile("downloads", false);
-  source.filename = tempFile;
-  source.removeFile = true;
-
-  fs.zipFile(tempFile, location, files);
-  return tempFile;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the name and version from a zip
-////////////////////////////////////////////////////////////////////////////////
-
-function repackZipFile (source) {
-  var i;
-
-  var filename = source.filename;
-  var path = fs.getTempFile("zip", false);
-
-  fs.makeDirectory(path);
-  fs.unzipFile(filename, path, false, true);
-
-  // .............................................................................
-  // locate the manifest file
-  // .............................................................................
-
-  var tree = fs.listTree(path).sort(function(a,b) {
-    return a.length - b.length;
-  });
-  var found;
-  var mf = "manifest.json";
-  var re = /[\/\\\\]manifest\.json$/; // Windows!
-  var tf;
-
-  for (i = 0;  i < tree.length && found === undefined;  ++i) {
-    tf = tree[i];
-
-    if (re.test(tf) || tf === mf) {
-      found = tf;
-    }
-  }
-
-  if (found === undefined) {
-    throwFileNotFound("Cannot find manifest file in zip file '" + filename + "'");
-  }
-
-  var mp;
-
-  if (found === mf) {
-    mp = ".";
-  }
-  else {
-    mp = found.substr(0, found.length - mf.length - 1);
-  }
-
-  // .............................................................................
-  // throw away source file if necessary
-  // .............................................................................
-
-  if (source.removeFile && source.filename !== '') {
-    try {
-      fs.remove(source.filename);
-    }
-    catch (err1) {
-      arangodb.printf("Cannot remove temporary file '%s'\n", source.filename);
-    }
-  }
-
-  delete source.filename;
-  delete source.removeFile;
-
-  // .............................................................................
-  // repack the zip file
-  // .............................................................................
-
-  var newSource = { location: fs.join(path, mp) };
-
-  processDirectory(newSource);
-
-  source.name = newSource.name;
-  source.version = newSource.version;
-  source.filename = newSource.filename;
-  source.removeFile = newSource.removeFile;
-
-  // .............................................................................
-  // cleanup temporary paths
-  // .............................................................................
-
-  try {
-    fs.removeDirectoryRecursive(path);
-  }
-  catch (err2) {
-    arangodb.printf("Cannot remove temporary directory '%s'\n", path);
-  }
-}
-////////////////////////////////////////////////////////////////////////////////
-/// @brief processes files from a github repository
-////////////////////////////////////////////////////////////////////////////////
-
-function processGithubRepository (source) {
-  var url = buildGithubUrl(source.location, source.version);
-  var tempFile = fs.getTempFile("downloads", false);
-
-  try {
-    var result = internal.download(url, "", {
-      method: "get",
-      followRedirects: true,
-      timeout: 30
-    }, tempFile);
-
-    if (result.code >= 200 && result.code <= 299) {
-      source.filename = tempFile;
-      source.removeFile = true;
-    }
-    else {
-      var msg = "Could not download from repository '" + url + "'";
-      if (result.hasOwnProperty('message')) {
-        msg += " message: " + result.message;
-      }
-      throwDownloadError(msg);
-    }
-  }
-  catch (err) {
-    var msg = "Could not download from repository '" + url + "': " + String(err);
-    if (err.hasOwnProperty('message')) {
-      msg += " message: " + err.message;
-    }
-    throwDownloadError(msg);
-  }
-
-  repackZipFile(source);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -430,7 +245,7 @@ function validateMount(mount, internal) {
 /// @brief validate an app name and fail if it is invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-function validateAppName (name) {
+function validateServiceName (name) {
   if (typeof name === 'string' && name.length > 0) {
     return;
   }
@@ -446,7 +261,7 @@ function validateAppName (name) {
 /// @brief get the app mounted at this mount point
 ////////////////////////////////////////////////////////////////////////////////
 
-function mountedApp (mount) {
+function mountedService (mount) {
   return getStorage().firstExample({mount: mount});
 }
 
@@ -454,7 +269,7 @@ function mountedApp (mount) {
 /// @brief Update the app mounted at this mountpoint with the new app
 ////////////////////////////////////////////////////////////////////////////////
 
-function updateApp (mount, update) {
+function updateService (mount, update) {
   return getStorage().updateByExample({mount: mount}, update);
 }
 
@@ -505,18 +320,15 @@ var zipDirectory = function(directory) {
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.mountedApp = mountedApp;
-exports.updateApp = updateApp;
+exports.mountedService = mountedService;
+exports.updateService = updateService;
 exports.getReadableName = getReadableName;
 exports.list = list;
 exports.listJson = listJson;
 exports.listDevelopment = listDevelopment;
 exports.listDevelopmentJson = listDevelopmentJson;
 exports.buildGithubUrl = buildGithubUrl;
-exports.repackZipFile = repackZipFile;
-exports.processDirectory = processDirectory;
-exports.processGithubRepository = processGithubRepository;
-exports.validateAppName = validateAppName;
+exports.validateServiceName = validateServiceName;
 exports.validateMount = validateMount;
 exports.parameterTypes = parameterTypes;
 exports.zipDirectory = zipDirectory;

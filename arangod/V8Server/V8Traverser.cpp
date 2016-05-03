@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8Traverser.h"
+#include "Basics/StaticStrings.h"
 #include "Indexes/EdgeIndex.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
@@ -34,6 +35,9 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::traverser;
+
+using VPackStringHash = arangodb::basics::VelocyPackHelper::VPackStringHash;
+using VPackStringEqual = arangodb::basics::VelocyPackHelper::VPackStringEqual;
 
 ShortestPathOptions::ShortestPathOptions(arangodb::Transaction* trx)
     : BasicOptions(trx),
@@ -72,34 +76,33 @@ VPackSlice ShortestPathOptions::getEnd() const {
 ///        On all other cases this function throws.
 ////////////////////////////////////////////////////////////////////////////////
 
-static OperationResult FetchDocumentById(arangodb::Transaction* trx,
-                                         std::string const& id,
-                                         VPackBuilder& builder,
-                                         OperationOptions& options) {
+static int FetchDocumentById(arangodb::Transaction* trx,
+                             std::string const& id,
+                             VPackBuilder& builder,
+                             VPackBuilder& result) {
   size_t pos = id.find('/');
   if (pos == std::string::npos) {
     TRI_ASSERT(false);
-    return OperationResult(TRI_ERROR_INTERNAL);
+    return TRI_ERROR_INTERNAL;
   }
   if (id.find('/', pos + 1) != std::string::npos) {
     TRI_ASSERT(false);
-    return OperationResult(TRI_ERROR_INTERNAL);
+    return TRI_ERROR_INTERNAL;
   }
 
   std::string col = id.substr(0, pos);
   trx->addCollectionAtRuntime(col);
   builder.clear();
   builder.openObject();
-  builder.add(VPackValue(Transaction::KeyString));
-  builder.add(VPackValue(id.substr(pos + 1)));
+  builder.add(StaticStrings::KeyString, VPackValue(id.substr(pos + 1)));
   builder.close();
 
-  OperationResult opRes = trx->document(col, builder.slice(), options);
+  int res = trx->documentFastPath(col, builder.slice(), result);
 
-  if (opRes.failed() && opRes.code != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-    THROW_ARANGO_EXCEPTION(opRes.code);
+  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    THROW_ARANGO_EXCEPTION(res);
   }
-  return opRes;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,16 +134,16 @@ struct BasicExpander {
         edgeCursor->getMoreMptr(_cursor, UINT64_MAX);
         for (auto const& mptr : _cursor) {
           VPackSlice edge(mptr->vpack());
-          VPackSlice from = edge.get(Transaction::FromString);
+          VPackSlice from = Transaction::extractFromFromDocument(edge);
           if (from == v) {
-            VPackSlice to = edge.get(Transaction::ToString);
+            VPackSlice to = Transaction::extractToFromDocument(edge);
             if (to != v) {
-              res_edges.emplace_back(std::move(edge));
-              neighbors.emplace_back(std::move(to));
+              res_edges.emplace_back(edge);
+              neighbors.emplace_back(to);
             }
           } else {
-            res_edges.emplace_back(std::move(edge));
-            neighbors.emplace_back(std::move(from));
+            res_edges.emplace_back(edge);
+            neighbors.emplace_back(from);
           }
 
         }
@@ -281,8 +284,8 @@ class MultiCollectionEdgeExpander {
           if (!_isAllowed(edge)) {
             continue;
           }
-          VPackSlice from = edge.get(Transaction::FromString);
-          VPackSlice to = edge.get(Transaction::ToString);
+          VPackSlice from = Transaction::extractFromFromDocument(edge);
+          VPackSlice to = Transaction::extractToFromDocument(edge);
           double currentWeight = edgeCollection->weightEdge(edge);
           if (from == source) {
             inserter(from, to, currentWeight, edge);
@@ -347,13 +350,13 @@ class SimpleEdgeExpander {
       }
       VPackSlice edges = opRes->slice();
       for (auto const& edge : VPackArrayIterator(edges)) {
-        VPackSlice const from = edge.get(Transaction::FromString);
-        VPackSlice const to = edge.get(Transaction::ToString);
+        VPackSlice const from = Transaction::extractFromFromDocument(edge);
+        VPackSlice const to = Transaction::extractToFromDocument(edge);
         double currentWeight = _edgeCollection->weightEdge(edge);
         if (from == source) {
-          inserter(std::move(from), std::move(to), currentWeight, edge);
+          inserter(from, to, currentWeight, edge);
         } else {
-          inserter(std::move(to), std::move(from), currentWeight, edge);
+          inserter(to, from, currentWeight, edge);
         }
       }
     }
@@ -518,6 +521,15 @@ bool NeighborsOptions::matchesVertex(std::string const& collectionName,
 /// @brief Checks if a vertex matches to given examples. Also fetches the vertex.
 ////////////////////////////////////////////////////////////////////////////////
 
+bool NeighborsOptions::matchesVertex(VPackSlice const& id) const {
+  if (!useVertexFilter && _explicitCollections.empty()) {
+    // Nothing to do
+    return true;
+  }
+  // TODO Optimize
+  return matchesVertex(id.copyString());
+}
+
 bool NeighborsOptions::matchesVertex(std::string const& id) const {
   if (!useVertexFilter && _explicitCollections.empty()) {
     // Nothing to do
@@ -543,16 +555,17 @@ bool NeighborsOptions::matchesVertex(std::string const& id) const {
     }
   }
   std::string key = id.substr(pos + 1);
-  VPackBuilder tmp;
-  tmp.openObject();
-  tmp.add(Transaction::KeyString, VPackValue(key));
-  tmp.close();
-  OperationOptions opOpts;
-  OperationResult opRes = _trx->document(col, tmp.slice(), opOpts);
-  if (opRes.failed()) {
+  TransactionBuilderLeaser tmp(_trx);
+  tmp->openObject();
+  tmp->add(StaticStrings::KeyString, VPackValue(key));
+  tmp->close();
+
+  TransactionBuilderLeaser result(_trx);
+  int res = _trx->documentFastPath(col, tmp->slice(), *(result.get()));
+  if (res != TRI_ERROR_NO_ERROR) {
     return false;
   }
-  return BasicOptions::matchesVertex(col, key, opRes.slice());
+  return BasicOptions::matchesVertex(col, key, result->slice());
 }
 
 
@@ -566,6 +579,16 @@ bool NeighborsOptions::matchesVertex(std::string const& id) const {
 
 void NeighborsOptions::addCollectionRestriction(std::string const& collectionName) {
   _explicitCollections.emplace(collectionName);
+}
+
+void NeighborsOptions::setStart(std::string const& id) {
+  start = id;
+  startBuilder.clear();
+  startBuilder.add(VPackValue(id));
+}
+
+VPackSlice NeighborsOptions::getStart() const {
+  return startBuilder.slice();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -610,7 +633,7 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
 
     tmpBuilder.clear();
     tmpBuilder.openObject();
-    tmpBuilder.add(Transaction::KeyString, VPackValue(key));
+    tmpBuilder.add(StaticStrings::KeyString, VPackValue(key));
     tmpBuilder.close();
     OperationOptions opOpts;
     OperationResult opRes = opts.trx()->document(col, tmpBuilder.slice(), opOpts);
@@ -680,14 +703,14 @@ TRI_RunSimpleShortestPathSearch(
 /// @brief search for distinct inbound neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
-                             NeighborsOptions& opts,
-                             std::vector<std::string> const& startVertices,
-                             std::unordered_set<std::string>& visited,
-                             std::vector<std::string>& distinct,
+static void InboundNeighbors(std::vector<EdgeCollectionInfo*> const& collectionInfos,
+                             NeighborsOptions const& opts,
+                             std::vector<VPackSlice> const& startVertices,
+                             std::unordered_set<VPackSlice, VPackStringHash, VPackStringEqual>& visited,
+                             std::vector<VPackSlice>& distinct,
                              uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_IN;
-  std::vector<std::string> nextDepth;
+  std::vector<VPackSlice> nextDepth;
 
   std::vector<TRI_doc_mptr_t*> cursor;
   for (auto const& col : collectionInfos) {
@@ -701,22 +724,20 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
         for (auto const& mptr : cursor) {
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
-            VPackValueLength l;
-            char const* v = edge.get(Transaction::FromString).getString(l);
-            if (visited.find(std::string(v, l)) != visited.end()) {
+            VPackSlice v = Transaction::extractFromFromDocument(edge);
+            if (visited.find(v) != visited.end()) {
               // We have already visited this vertex
               continue;
             }
-            std::string tmp(v, l);
             if (depth >= opts.minDepth) {
-              if (opts.matchesVertex(tmp)) {
-                distinct.emplace_back(tmp);
+              if (opts.matchesVertex(v)) {
+                distinct.emplace_back(v);
               }
             }
             if (depth < opts.maxDepth) {
-              nextDepth.emplace_back(tmp);
+              nextDepth.emplace_back(v);
             }
-            visited.emplace(std::move(tmp));
+            visited.emplace(v);
           }
         }
       }
@@ -733,14 +754,14 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 /// @brief search for distinct outbound neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
-static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
-                              NeighborsOptions& opts,
-                              std::vector<std::string> const& startVertices,
-                              std::unordered_set<std::string>& visited,
-                              std::vector<std::string>& distinct,
+static void OutboundNeighbors(std::vector<EdgeCollectionInfo*> const& collectionInfos,
+                              NeighborsOptions const& opts,
+                              std::vector<VPackSlice> const& startVertices,
+                              std::unordered_set<VPackSlice, VPackStringHash, VPackStringEqual>& visited,
+                              std::vector<VPackSlice>& distinct,
                               uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
-  std::vector<std::string> nextDepth;
+  std::vector<VPackSlice> nextDepth;
   std::vector<TRI_doc_mptr_t*> cursor;
 
   for (auto const& col : collectionInfos) {
@@ -754,22 +775,20 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
         for (auto const& mptr : cursor) {
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
-            VPackValueLength l;
-            char const* v = edge.get(Transaction::ToString).getString(l);
-            if (visited.find(std::string(v, l)) != visited.end()) {
+            VPackSlice v = Transaction::extractToFromDocument(edge);
+            if (visited.find(v) != visited.end()) {
               // We have already visited this vertex
               continue;
             }
-            std::string tmp(v, l);
             if (depth >= opts.minDepth) {
-              if (opts.matchesVertex(tmp)) {
-                distinct.emplace_back(tmp);
+              if (opts.matchesVertex(v)) {
+                distinct.emplace_back(v);
               }
             }
             if (depth < opts.maxDepth) {
-              nextDepth.emplace_back(tmp);
+              nextDepth.emplace_back(v);
             }
-            visited.emplace(std::move(tmp));
+            visited.emplace(std::move(v));
           }
         }
       }
@@ -786,15 +805,15 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 /// @brief search for distinct in- and outbound neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
-                         NeighborsOptions& opts,
-                         std::vector<std::string> const& startVertices,
-                         std::unordered_set<std::string>& visited,
-                         std::vector<std::string>& distinct,
+static void AnyNeighbors(std::vector<EdgeCollectionInfo*> const& collectionInfos,
+                         NeighborsOptions const& opts,
+                         std::vector<VPackSlice> const& startVertices,
+                         std::unordered_set<VPackSlice, VPackStringHash, VPackStringEqual>& visited,
+                         std::vector<VPackSlice>& distinct,
                          uint64_t depth = 1) {
 
   TRI_edge_direction_e dir = TRI_EDGE_ANY;
-  std::vector<std::string> nextDepth;
+  std::vector<VPackSlice> nextDepth;
   std::vector<TRI_doc_mptr_t*> cursor;
 
   for (auto const& col : collectionInfos) {
@@ -808,33 +827,30 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
         for (auto const& mptr : cursor) {
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
-            VPackValueLength l;
-            char const* v = edge.get(Transaction::ToString).getString(l);
-            if (visited.find(std::string(v, l)) == visited.end()) {
-              std::string tmp(v, l);
+            VPackSlice v = Transaction::extractToFromDocument(edge);
+            if (visited.find(v) == visited.end()) {
               if (depth >= opts.minDepth) {
-                if (opts.matchesVertex(tmp)) {
-                  distinct.emplace_back(tmp);
+                if (opts.matchesVertex(v)) {
+                  distinct.emplace_back(v);
                 }
               }
               if (depth < opts.maxDepth) {
-                nextDepth.emplace_back(tmp);
+                nextDepth.emplace_back(v);
               }
-              visited.emplace(std::move(tmp));
+              visited.emplace(std::move(v));
               continue;
             }
-            v = edge.get(Transaction::FromString).getString(l);
-            if (visited.find(std::string(v, l)) == visited.end()) {
-              std::string tmp(v, l);
+            v = Transaction::extractFromFromDocument(edge);
+            if (visited.find(v) == visited.end()) {
               if (depth >= opts.minDepth) {
-                if (opts.matchesVertex(tmp)) {
-                  distinct.emplace_back(tmp);
+                if (opts.matchesVertex(v)) {
+                  distinct.emplace_back(v);
                 }
               }
               if (depth < opts.maxDepth) {
-                nextDepth.emplace_back(tmp);
+                nextDepth.emplace_back(v);
               }
-              visited.emplace(std::move(tmp));
+              visited.emplace(v);
             }
           }
         }
@@ -852,19 +868,13 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 /// @brief Execute a search for neighboring vertices
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RunNeighborsSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
-                            NeighborsOptions& opts,
-                            std::vector<std::string>& result) {
-  std::vector<std::string> startVertices;
-  std::unordered_set<std::string> visited;
-  startVertices.emplace_back(opts.start);
-  visited.emplace(opts.start);
-  if (!result.empty()) {
-    // We have a continuous search. Mark previous result as visited
-    for (auto const& r : result) {
-      visited.emplace(r);
-    }
-  }
+void TRI_RunNeighborsSearch(std::vector<EdgeCollectionInfo*> const& collectionInfos,
+                            NeighborsOptions const& opts,
+                            std::unordered_set<VPackSlice, VPackStringHash, VPackStringEqual>& visited,
+                            std::vector<VPackSlice>& result) {
+  std::vector<VPackSlice> startVertices;
+  startVertices.emplace_back(opts.getStart());
+  visited.emplace(opts.getStart());
 
   switch (opts.direction) {
     case TRI_EDGE_IN:
@@ -882,16 +892,10 @@ void TRI_RunNeighborsSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
 void SingleServerTraversalPath::getDocumentByIdentifier(Transaction* trx,
                                                         std::string const& identifier,
                                                         VPackBuilder& result) {
-  // TODO Check if we can get away with using ONLY VPackSlices referencing externals instead of std::string.
-  // I am afaid that they may run out of scope.
-  OperationOptions options;
-  OperationResult opRes = FetchDocumentById(trx, identifier, _searchBuilder, options);
-
-  if (opRes.failed()) {
-    THROW_ARANGO_EXCEPTION(opRes.code);
+  int res = FetchDocumentById(trx, identifier, _searchBuilder, result);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
   }
-
-  result.add(opRes.slice());
 }
 
 void SingleServerTraversalPath::pathToVelocyPack(Transaction* trx,
@@ -987,17 +991,17 @@ std::shared_ptr<VPackBuffer<uint8_t>> DepthFirstTraverser::fetchVertexData(
     std::string const& id) {
   auto it = _vertices.find(id);
   if (it == _vertices.end()) {
-    OperationResult opRes =
-        FetchDocumentById(_trx, id, _builder, _operationOptions);
+    VPackBuilder tmp;
+    int res = FetchDocumentById(_trx, id, _builder, tmp);
     ++_readDocuments;
-    if (opRes.failed()) {
-      TRI_ASSERT(opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-      VPackBuilder tmp;
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_ASSERT(res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       tmp.add(VPackValue(VPackValueType::Null));
       return tmp.steal();
     }
-    _vertices.emplace(id, opRes.buffer);
-    return opRes.buffer;
+    auto shared_buffer = tmp.steal();
+    _vertices.emplace(id, shared_buffer);
+    return shared_buffer;
   }
   return it->second;
 }
@@ -1009,9 +1013,11 @@ void DepthFirstTraverser::_defInternalFunctions() {
     TRI_ASSERT(it != _edges.end());
     VPackSlice v(it->second->data());
     // NOTE: We assume that we only have valid edges.
-    result = v.get(Transaction::FromString).copyString();
+    result = Transaction::extractFromFromDocument(v).copyString();
+    // result = v.get(StaticStrings::FromString).copyString();
     if (result == vertex) {
-      result = v.get(Transaction::ToString).copyString();
+      result = Transaction::extractToFromDocument(v).copyString();
+      // result = v.get(StaticStrings::ToString).copyString();
     }
     return true;
   };
@@ -1034,14 +1040,15 @@ void DepthFirstTraverser::setStartVertex(std::string const& v) {
         if (!exp->isEdgeAccess) {
           if (fetchVertex) {
             fetchVertex = false;
-            OperationResult result = FetchDocumentById(_trx, v, _builder, _operationOptions);
+            VPackBuilder tmp;
+            int result = FetchDocumentById(_trx, v, _builder, tmp);
             ++_readDocuments;
-            if (result.failed()) {
+            if (result != TRI_ERROR_NO_ERROR) {
               // Vertex does not exist
               _done = true;
               return;
             }
-            vertex = result.buffer;
+            vertex = tmp.steal();
             _vertices.emplace(v, vertex);
           }
           if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {

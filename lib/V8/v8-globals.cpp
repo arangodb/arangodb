@@ -93,7 +93,6 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       ShardIDKey(),
       SilentKey(),
       SingleRequestKey(),
-      SleepKey(),
       StatusKey(),
       SuffixKey(),
       TimeoutKey(),
@@ -102,7 +101,6 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       UrlKey(),
       UserKey(),
       ValueKey(),
-      VersionKey(),
       VersionKeyHidden(),
       WaitForSyncKey(),
 
@@ -111,6 +109,8 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       _IdKey(),
       _KeyKey(),
       _RevKey(),
+      _FromKey(),
+      _ToKey(),
 
       _currentRequest(),
       _currentResponse(),
@@ -183,7 +183,6 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   ShardIDKey.Reset(isolate, TRI_V8_ASCII_STRING("shardID"));
   SilentKey.Reset(isolate, TRI_V8_ASCII_STRING("silent"));
   SingleRequestKey.Reset(isolate, TRI_V8_ASCII_STRING("singleRequest"));
-  SleepKey.Reset(isolate, TRI_V8_ASCII_STRING("sleep"));
   StatusKey.Reset(isolate, TRI_V8_ASCII_STRING("status"));
   SuffixKey.Reset(isolate, TRI_V8_ASCII_STRING("suffix"));
   TimeoutKey.Reset(isolate, TRI_V8_ASCII_STRING("timeout"));
@@ -192,7 +191,6 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   UrlKey.Reset(isolate, TRI_V8_ASCII_STRING("url"));
   UserKey.Reset(isolate, TRI_V8_ASCII_STRING("user"));
   ValueKey.Reset(isolate, TRI_V8_ASCII_STRING("value"));
-  VersionKey.Reset(isolate, TRI_V8_ASCII_STRING("version"));
   VersionKeyHidden.Reset(isolate, TRI_V8_ASCII_STRING("*version"));
   WaitForSyncKey.Reset(isolate, TRI_V8_ASCII_STRING("waitForSync"));
 
@@ -201,6 +199,8 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   _IdKey.Reset(isolate, TRI_V8_ASCII_STRING("_id"));
   _KeyKey.Reset(isolate, TRI_V8_ASCII_STRING("_key"));
   _RevKey.Reset(isolate, TRI_V8_ASCII_STRING("_rev"));
+  _FromKey.Reset(isolate, TRI_V8_ASCII_STRING("_from"));
+  _ToKey.Reset(isolate, TRI_V8_ASCII_STRING("_to"));
 }
 
 TRI_v8_global_s::~TRI_v8_global_s() {}

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, unused : false */
-/*global assertNull, assertNotNull */
+/*global assertNull, assertNotNull, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -32,7 +32,6 @@ var db = require("@arangodb").db;
 var internal = require("internal");
 var jsunity = require("jsunity");
 
-
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
@@ -40,6 +39,7 @@ function runSetup () {
   internal.debugSetFailAt("CreateCollection::tempDirectory");
   try {
     db._create("UnitTestsRecovery1");
+    fail();
   }
   catch (err) {
   }
@@ -48,6 +48,7 @@ function runSetup () {
   internal.debugSetFailAt("CreateCollection::tempFile");
   try {
     db._create("UnitTestsRecovery2");
+    fail();
   }
   catch (err) {
   }
@@ -56,6 +57,7 @@ function runSetup () {
   internal.debugSetFailAt("CreateCollection::renameDirectory");
   try {
     db._create("UnitTestsRecovery3");
+    fail();
   }
   catch (err) {
   }

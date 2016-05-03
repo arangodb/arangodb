@@ -1,5 +1,6 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*jshint globalstrict:false, strict:false, maxlen:5000 */
 /*global assertEqual, assertTrue */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, functions
 ///
@@ -285,7 +286,7 @@ function ahuacatlStringFunctionsTestSuite () {
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "\"test\", \"test\", \"test\", \"test\"")); 
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
         assertEqual([ -1 ], getQueryResults(buildQuery(i, "\"test\", \"test2\", \"test3\""))); 
-        assertEqual([ true ], getQueryResults(buildQuery(i, "null, null"))); 
+        assertEqual([ false ], getQueryResults(buildQuery(i, "null, null"))); 
         assertEqual([ true ], getQueryResults(buildQuery(i, "4, 4"))); 
         assertEqual([ true ], getQueryResults(buildQuery(i, "{ }, { }"))); 
         assertEqual([ false ], getQueryResults(buildQuery(i, "[ ], [ ]"))); 
@@ -455,7 +456,8 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LEFT()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LEFT('foo')"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LEFT('foo', 2, 3)"); 
-      assertEqual([ "nu" ], getQueryResults("RETURN LEFT(null, 2)")); 
+      assertEqual([ "" ], getQueryResults("RETURN LEFT(null, 1)")); 
+      assertEqual([ "" ], getQueryResults("RETURN LEFT(null, 2)")); 
       assertEqual([ "tr" ], getQueryResults("RETURN LEFT(true, 2)")); 
       assertEqual([ "4" ], getQueryResults("RETURN LEFT(4, 2)")); 
       assertEqual([ "" ], getQueryResults("RETURN LEFT([ ], 2)")); 
@@ -487,7 +489,8 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RIGHT()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RIGHT('foo')"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RIGHT('foo', 2, 3)"); 
-      assertEqual([ "ll" ], getQueryResults("RETURN RIGHT(null, 2)")); 
+      assertEqual([ "" ], getQueryResults("RETURN RIGHT(null, 1)")); 
+      assertEqual([ "" ], getQueryResults("RETURN RIGHT(null, 2)")); 
       assertEqual([ "ue" ], getQueryResults("RETURN RIGHT(true, 2)")); 
       assertEqual([ "4" ], getQueryResults("RETURN RIGHT(4, 2)")); 
       assertEqual([ "" ], getQueryResults("RETURN RIGHT([ ], 2)")); 
@@ -666,7 +669,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RTRIM('foo', 2, 2)"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RTRIM()"); 
 
-      assertEqual([ "null" ], getQueryResults("RETURN TRIM(null)")); 
+      assertEqual([ "" ], getQueryResults("RETURN TRIM(null)")); 
       assertEqual([ "true" ], getQueryResults("RETURN TRIM(true)")); 
       assertEqual([ "4" ], getQueryResults("RETURN TRIM(4)")); 
       assertEqual([ "" ], getQueryResults("RETURN TRIM([ ])")); 
@@ -835,7 +838,8 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ -1 ], getQueryResults("RETURN FIND_FIRST(4, 'foo')")); 
       assertEqual([ -1 ], getQueryResults("RETURN FIND_FIRST([ ], 'foo')")); 
       assertEqual([ -1 ], getQueryResults("RETURN FIND_FIRST({ }, 'foo')")); 
-      assertEqual([ -1 ], getQueryResults("RETURN FIND_FIRST('foo', null)")); 
+      assertEqual([ 0 ], getQueryResults("RETURN FIND_FIRST('foo', null)")); 
+      assertEqual([ 0 ], getQueryResults("RETURN FIND_FIRST('foo', '')")); 
       assertEqual([ -1 ], getQueryResults("RETURN FIND_FIRST('foo', true)")); 
       assertEqual([ 0 ], getQueryResults("RETURN FIND_FIRST('foo', [ ])")); 
       assertEqual([ -1 ], getQueryResults("RETURN FIND_FIRST('foo', { })")); 
@@ -941,7 +945,8 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST(4, 'foo')")); 
       assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST([ ], 'foo')")); 
       assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST({ }, 'foo')")); 
-      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', null)")); 
+      assertEqual([ 3 ], getQueryResults("RETURN FIND_LAST('foo', null)")); 
+      assertEqual([ 3 ], getQueryResults("RETURN FIND_LAST('foo', '')")); 
       assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', true)")); 
       assertEqual([ 3 ], getQueryResults("RETURN FIND_LAST('foo', [ ])")); 
       assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', { })")); 
@@ -1094,7 +1099,7 @@ function ahuacatlStringFunctionsTestSuite () {
     testConcatSeparatorInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT_SEPARATOR()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\")"); 
-      assertEqual([ "yesnullyes" ], getQueryResults("RETURN CONCAT_SEPARATOR(null, \"yes\", \"yes\")"));
+      assertEqual([ "yesyes" ], getQueryResults("RETURN CONCAT_SEPARATOR(null, \"yes\", \"yes\")"));
       assertEqual([ "yestrueyes" ], getQueryResults("RETURN CONCAT_SEPARATOR(true, \"yes\", \"yes\")"));
       assertEqual([ "yes4yes" ], getQueryResults("RETURN CONCAT_SEPARATOR(4, \"yes\", \"yes\")"));
       assertEqual([ "yesyes" ], getQueryResults("RETURN CONCAT_SEPARATOR([ ], \"yes\", \"yes\")"));
@@ -1146,7 +1151,7 @@ function ahuacatlStringFunctionsTestSuite () {
     testCharLengthInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CHAR_LENGTH()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CHAR_LENGTH(\"yes\", \"yes\")"); 
-      assertEqual([ 4 ], getQueryResults("RETURN CHAR_LENGTH(null)"));
+      assertEqual([ 0 ], getQueryResults("RETURN CHAR_LENGTH(null)"));
       assertEqual([ 4 ], getQueryResults("RETURN CHAR_LENGTH(true)"));
       assertEqual([ 1 ], getQueryResults("RETURN CHAR_LENGTH(3)"));
       assertEqual([ 0 ], getQueryResults("RETURN CHAR_LENGTH([ ])"));
@@ -1190,7 +1195,7 @@ function ahuacatlStringFunctionsTestSuite () {
     testLowerInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LOWER()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LOWER(\"yes\", \"yes\")"); 
-      assertEqual([ "null" ], getQueryResults("RETURN LOWER(null)"));
+      assertEqual([ "" ], getQueryResults("RETURN LOWER(null)"));
       assertEqual([ "true" ], getQueryResults("RETURN LOWER(true)"));
       assertEqual([ "3" ], getQueryResults("RETURN LOWER(3)"));
       assertEqual([ "" ], getQueryResults("RETURN LOWER([])"));
@@ -1224,7 +1229,7 @@ function ahuacatlStringFunctionsTestSuite () {
     testUpperInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UPPER()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UPPER(\"yes\", \"yes\")"); 
-      assertEqual([ "NULL" ], getQueryResults("RETURN UPPER(null)"));
+      assertEqual([ "" ], getQueryResults("RETURN UPPER(null)"));
       assertEqual([ "TRUE" ], getQueryResults("RETURN UPPER(true)"));
       assertEqual([ "3" ], getQueryResults("RETURN UPPER(3)"));
       assertEqual([ "" ], getQueryResults("RETURN UPPER([])"));
@@ -1300,7 +1305,8 @@ function ahuacatlStringFunctionsTestSuite () {
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "\"yes\"")); 
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "\"yes\", 0, 2, \"yes\""));
-        assertEqual([ "null" ], getQueryResults(buildQuery(i, "null, 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "null, 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "null, 1")));
         assertEqual([ "true" ], getQueryResults(buildQuery(i, "true, 0")));
         assertEqual([ "3" ], getQueryResults(buildQuery(i, "3, 0")));
         assertEqual([ "" ], getQueryResults(buildQuery(i, "[ ], 0")));
@@ -1341,7 +1347,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "cfcd208495d565ef66e7dff9f98764da" ], getQueryResults("RETURN MD5(0)")); 
       assertEqual([ "c4ca4238a0b923820dcc509a6f75849b" ], getQueryResults("RETURN MD5(1)")); 
       assertEqual([ "6bb61e3b7bce0931da574d19d1d82c88" ], getQueryResults("RETURN MD5(-1)")); 
-      assertEqual([ "37a6259cc0c1dae299a7866489dff0bd" ], getQueryResults("RETURN MD5(null)")); 
+      assertEqual([ "d41d8cd98f00b204e9800998ecf8427e" ], getQueryResults("RETURN MD5(null)")); 
       assertEqual([ "35dba5d75538a9bbe0b4da4422759a0e" ], getQueryResults("RETURN MD5('[1]')")); 
       assertEqual([ "1441a7909c087dbbe7ce59881b9df8b9" ], getQueryResults("RETURN MD5({ })")); 
     },
@@ -1395,11 +1401,9 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "cfcd208495d565ef66e7dff9f98764da" ], getQueryResults("RETURN NOOPT(MD5(0))")); 
       assertEqual([ "c4ca4238a0b923820dcc509a6f75849b" ], getQueryResults("RETURN NOOPT(MD5(1))")); 
       assertEqual([ "6bb61e3b7bce0931da574d19d1d82c88" ], getQueryResults("RETURN NOOPT(MD5(-1))")); 
-      assertEqual([ "37a6259cc0c1dae299a7866489dff0bd" ], getQueryResults("RETURN NOOPT(MD5(null))")); 
+      assertEqual([ "d41d8cd98f00b204e9800998ecf8427e" ], getQueryResults("RETURN NOOPT(MD5(null))")); 
       assertEqual([ "35dba5d75538a9bbe0b4da4422759a0e" ], getQueryResults("RETURN NOOPT(MD5('[1]'))")); 
       assertEqual([ "1441a7909c087dbbe7ce59881b9df8b9" ], getQueryResults("RETURN NOOPT(MD5({ }))")); 
-
-      /*jshint maxlen: 5000 */
       assertEqual([ "c7cb8c1df686c0219d540849efe3bce3" ], getQueryResults("RETURN NOOPT(MD5('[1,2,4,7,11,16,22,29,37,46,56,67,79,92,106,121,137,154,172,191,211,232,254,277,301,326,352,379,407,436,466,497,529,562,596,631,667,704,742,781,821,862,904,947,991,1036,1082,1129,1177,1226,1276,1327,1379,1432,1486,1541,1597,1654,1712,1771,1831,1892,1954,2017,2081,2146,2212,2279,2347,2416,2486,2557,2629,2702,2776,2851,2927,3004,3082,3161,3241,3322,3404,3487,3571,3656,3742,3829,3917,4006,4096,4187,4279,4372,4466,4561,4657,4754,4852,4951]'))"));
     },
 
@@ -1426,8 +1430,6 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "2be88ca4242c76e8253ac62474851065032d6833" ], getQueryResults("RETURN NOOPT(SHA1('null'))")); 
       assertEqual([ "f629ae44b7b3dcfed444d363e626edf411ec69a8" ], getQueryResults("RETURN NOOPT(SHA1('[1]'))")); 
       assertEqual([ "c1d44ff03aff1372856c281854f454e2e1d15b7c" ], getQueryResults("RETURN NOOPT(SHA1('[object Object]'))")); 
-
-      /*jshint maxlen: 5000 */
       assertEqual([ "888227c44807b86059eb36f9fe0fc602a9b16fab" ], getQueryResults("RETURN NOOPT(SHA1('[1,2,4,7,11,16,22,29,37,46,56,67,79,92,106,121,137,154,172,191,211,232,254,277,301,326,352,379,407,436,466,497,529,562,596,631,667,704,742,781,821,862,904,947,991,1036,1082,1129,1177,1226,1276,1327,1379,1432,1486,1541,1597,1654,1712,1771,1831,1892,1954,2017,2081,2146,2212,2279,2347,2416,2486,2557,2629,2702,2776,2851,2927,3004,3082,3161,3241,3322,3404,3487,3571,3656,3742,3829,3917,4006,4096,4187,4279,4372,4466,4561,4657,4754,4852,4951]'))"));
     },
 

@@ -27,12 +27,11 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackDumper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 
-#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
@@ -153,11 +152,29 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       // result is smaller than batchSize and will be returned directly. no need
       // to create a cursor
 
-      VPackBuilder result;
+      VPackOptions options = VPackOptions::Defaults;
+      options.buildUnindexedArrays = true;
+      options.buildUnindexedObjects = true;
+  
+      // conservatively allocate a few bytes per value to be returned
+      int res;
+      if (n >= 10000) {
+        res = _response->body().reserve(128 * 1024);
+      } else if (n >= 1000) {
+        res = _response->body().reserve(64 * 1024);
+      } else {
+        res = _response->body().reserve(n * 48);
+      }
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+
+      VPackBuilder result(&options);
       try {
         VPackObjectBuilder b(&result);
         result.add(VPackValue("result"));
-        result.add(qResult);
+        result.add(VPackValue(qResult.begin(), VPackValueType::External));
         result.add("hasMore", VPackValue(false));
         if (arangodb::basics::VelocyPackHelper::getBooleanValue(opts, "count",
                                                                 false)) {
@@ -176,10 +193,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      arangodb::basics::VPackStringBufferAdapter bufferAdapter(
-          _response->body().stringBuffer());
-      VPackDumper dumper(&bufferAdapter, queryResult.context->getVPackOptions());
-      dumper.dump(result.slice());
+      arangodb::basics::VelocyPackDumper dumper(&(_response->body()), queryResult.context->getVPackOptions());
+      dumper.dumpValue(result.slice());
       return;
     }
 

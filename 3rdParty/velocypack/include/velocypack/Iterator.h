@@ -42,14 +42,19 @@ class ArrayIterator {
  public:
   ArrayIterator() = delete;
 
-  ArrayIterator(Slice const& slice)
+  ArrayIterator(Slice const& slice, bool allowRandomIteration = false)
       : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr) {
     if (slice.type() != ValueType::Array) {
       throw Exception(Exception::InvalidValueType, "Expecting Array slice");
     }
-
-    if (slice.head() == 0x13 && slice.length() > 0) {
-      _current = slice.at(0).start();
+      
+    if (_size > 0) {
+      auto h = slice.head();
+      if (h == 0x13) {
+        _current = slice.at(0).start();
+      } else if (allowRandomIteration) {
+        _current = slice.begin() + slice.findDataOffset(h);
+      }
     }
   }
 
@@ -133,6 +138,19 @@ class ArrayIterator {
   inline bool isFirst() const throw() { return (_position == 0); }
 
   inline bool isLast() const throw() { return (_position + 1 >= _size); }
+    
+  inline void reset(bool allowRandomIteration) {
+    _position = 0;
+    _current = nullptr;
+    if (_size > 0) {
+      auto h = _slice.head();
+      if (h == 0x13) {
+        _current = _slice.at(0).start();
+      } else if (allowRandomIteration) {
+        _current = _slice.begin() + _slice.findDataOffset(h);
+      }
+    }
+  }
 
  private:
   Slice _slice;
@@ -151,14 +169,19 @@ class ObjectIterator {
 
   ObjectIterator() = delete;
 
-  ObjectIterator(Slice const& slice)
+  ObjectIterator(Slice const& slice, bool allowRandomIteration = false)
       : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr) {
     if (slice.type() != ValueType::Object) {
       throw Exception(Exception::InvalidValueType, "Expecting Object slice");
     }
 
-    if (slice.head() == 0x14 && slice.length() > 0) {
-      _current = slice.keyAt(0, false).start();
+    if (_size > 0) {
+      auto h = slice.head();
+      if (h == 0x14) {
+        _current = slice.keyAt(0, false).start();
+      } else if (allowRandomIteration) {
+        _current = slice.begin() + slice.findDataOffset(h);
+      }
     }
   }
 
@@ -206,7 +229,7 @@ class ObjectIterator {
       Slice key = Slice(_current);
       return ObjectPair(key, Slice(_current + key.byteSize()));
     }
-    return ObjectPair(_slice.keyAt(_position), _slice.valueAt(_position));
+    return ObjectPair(_slice.getNthKey(_position, true), _slice.getNthValue(_position));
   }
 
   ObjectIterator begin() { return ObjectIterator(_slice); }
@@ -234,7 +257,7 @@ class ObjectIterator {
     if (_current != nullptr) {
       return Slice(_current);
     }
-    return _slice.keyAt(_position, translate);
+    return _slice.getNthKey(_position, translate);
   }
 
   inline Slice value() const {
@@ -245,7 +268,7 @@ class ObjectIterator {
       Slice key = Slice(_current);
       return Slice(_current + key.byteSize());
     }
-    return _slice.valueAt(_position);
+    return _slice.getNthValue(_position);
   }
 
   inline bool next() throw() {

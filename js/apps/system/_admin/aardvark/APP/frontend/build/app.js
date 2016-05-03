@@ -10416,6 +10416,19 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       return window.App.naviView.activeSubMenu;
     },
 
+    parseError: function(title, err) {
+      var msg;
+
+      try {
+        msg = JSON.parse(err.responseText).errorMessage;
+      }
+      catch (e) {
+        msg = e;
+      }
+
+      this.arangoError(title, msg);
+    },
+
     setCheckboxStatus: function(id) {
       _.each($(id).find('ul').find('li'), function(element) {
          if (!$(element).hasClass("nav-header")) {
@@ -10486,6 +10499,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     },
 
     allHotkeys: {
+      /*
       global: {
         name: "Site wide",
         content: [{
@@ -10496,6 +10510,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
           letter: "k"
         }]
       },
+      */
       jsoneditor: {
         name: "AQL editor",
         content: [{
@@ -16955,7 +16970,6 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
             callback(true, data);
           }
       });
-      callback();
     },
 
     deleteIndex: function (id, callback) {
@@ -23720,6 +23734,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     docid: 0,
 
     customView: false,
+    defaultMode: 'tree',
 
     template: templateEngine.createTemplate("documentView.ejs"),
 
@@ -23730,13 +23745,22 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #document-from" : "navigateToDocument",
       "click #document-to" : "navigateToDocument",
       "keydown #documentEditor .ace_editor" : "keyPress",
-      "keyup .jsoneditor .search input" : "checkSearchBox"
+      "keyup .jsoneditor .search input" : "checkSearchBox",
+      "click .jsoneditor .modes" : "storeMode"
     },
 
     checkSearchBox: function(e) {
       if ($(e.currentTarget).val() === '') {
         this.editor.expandAll();
       }
+    },
+
+    storeMode: function() {
+      var self = this;
+
+      $('.type-modes').on('click', function(elem) {
+        self.defaultMode = $(elem.currentTarget).text().toLowerCase();
+      });
     },
 
     keyPress: function(e) {
@@ -23904,6 +23928,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         iconlib: "fontawesome4"
       };
       this.editor = new JSONEditor(container, options);
+      this.editor.setMode(this.defaultMode);
 
       return this;
     },
@@ -25841,10 +25866,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       $('#tab-content-create-graph #' + id).addClass('active');
 
       if (id === 'exampleGraphs') {
-        $('#modal-dialog .modal-footer button').css("display", "none");
+        $('#modal-dialog .modal-footer .button-success').css("display", "none");
       }
       else {
-        $('#modal-dialog .modal-footer button').css("display", "block");
+        $('#modal-dialog .modal-footer .button-success').css("display", "initial");
       }
     },
 
@@ -26776,6 +26801,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         };
         break;
       }
+
       var callback = function(error, msg){
         if (error) {
           if (msg) {
@@ -26786,10 +26812,14 @@ window.ArangoUsers = Backbone.Collection.extend({
             arangoHelper.arangoError("Document error", "Could not create index.");
           }
         }
+        //toggle back
         self.toggleNewIndexView();
+
+        //rerender
+        self.render();
       };
 
-      self.model.createIndex(postParameter, callback);
+      this.model.createIndex(postParameter, callback);
     },
 
     bindIndexEvents: function() {
@@ -26802,6 +26832,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         $('#cancelIndex').unbind('click');
         $('#cancelIndex').bind('click', function() {
           self.toggleNewIndexView();
+          self.render();
         });
 
         $('#createIndex').unbind('click');
@@ -27822,6 +27853,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click li": "switchTab",
       "click .arangodbLogo": "selectMenuItem",
       "mouseenter .dropdown > *": "showDropdown",
+      'click .shortcut-icons p' : 'showShortcutModal',
       "mouseleave .dropdown": "hideDropdown"
     },
 
@@ -27855,6 +27887,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       Backbone.history.on("all", function () {
         self.selectMenuItem();
       });
+    },
+
+    showShortcutModal: function() {
+      arangoHelper.hotkeysFunctions.showHotkeysModal();
     },
 
     handleSelectDatabase: function () {
@@ -28466,7 +28502,9 @@ window.ArangoUsers = Backbone.Collection.extend({
         if (event.add) {
           var latestModel = this.collection.at(this.collection.length - 1),
           message = latestModel.get('title'),
-          time = 3000;
+          time = 3000,
+          closeWidth = ['click'],
+          buttons;
 
           if (latestModel.get('content')) {
             message = message + ": " + latestModel.get('content');
@@ -28474,6 +28512,12 @@ window.ArangoUsers = Backbone.Collection.extend({
 
           if (latestModel.get('type') === 'error') {
             time = false;
+            closeWidth = ['button'];
+            buttons = [{
+              addClass: 'button-danger', text: 'Close', onClick: function($noty) {
+                $noty.close();
+              }
+            }];
           }
           $.noty.clearQueue();
           $.noty.closeAll();
@@ -28490,11 +28534,13 @@ window.ArangoUsers = Backbone.Collection.extend({
             type: latestModel.get('type'),
             layout: 'bottom',
             timeout: time,
+            buttons: buttons,
             animation: {
               open: {height: 'show'},
               close: {height: 'hide'},
               easing: 'swing',
-              speed: 200
+              speed: 200,
+              closeWith: closeWidth
             }
           });
 
@@ -30090,6 +30136,17 @@ window.ArangoUsers = Backbone.Collection.extend({
     customQueries: [],
     queries: [],
 
+    state: {
+      lastQuery: {
+        query: undefined,
+        bindParam: undefined
+      }
+    },
+
+    settings: {
+      aqlWidth: undefined
+    },
+
     currentQuery: {},
     initDone: false,
 
@@ -30147,7 +30204,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     clearQuery: function() {
-      this.aqlEditor.setValue('');
+      this.aqlEditor.setValue('', 1);
     },
 
     toggleBindParams: function() {
@@ -30159,7 +30216,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         if ($('#switchTypes').text() === 'JSON') {
           $('#switchTypes').text('Table');
           this.updateQueryTable();
-          this.bindParamAceEditor.setValue(JSON.stringify(this.bindParamTableObj, null, "\t"));
+          this.bindParamAceEditor.setValue(JSON.stringify(this.bindParamTableObj, null, "\t"), 1);
           this.deselect(this.bindParamAceEditor);
         }
         else {
@@ -30277,16 +30334,27 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('#bindParamEditor').show();
           $('#switchTypes').text('JSON');
           $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
-          this.queryPreview.setValue("No query selected.");
+          this.queryPreview.setValue("No query selected.", 1);
           this.deselect(this.queryPreview);
-          
-          this.resize();
         }
         else {
-          $('.aqlEditorWrapper').first().width($(window).width() * 0.66);
-          this.resize();
+          if (this.settings.aqlWidth === undefined) {
+            $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
+          }
+          else {
+            $('.aqlEditorWrapper').first().width(this.settings.aqlWidth);
+          }
         }
       }
+      else {
+        if (this.settings.aqlWidth === undefined) {
+          $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
+        }
+        else {
+          $('.aqlEditorWrapper').first().width(this.settings.aqlWidth);
+        }
+      }
+      this.resize();
 
       var divs = [
         "aqlEditor", "queryTable", "previewWrapper", "querySpotlight",
@@ -30305,7 +30373,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       $(e.currentTarget).addClass('selected');
 
       var name = this.getQueryNameFromTable(e);
-      this.queryPreview.setValue(this.getCustomQueryValueByName(name));
+      this.queryPreview.setValue(this.getCustomQueryValueByName(name), 1);
       this.deselect(this.queryPreview);
     },
 
@@ -30357,16 +30425,37 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     selectQueryFromTable: function(e, toggle) {
-      var name = this.getQueryNameFromTable(e);
+      var name = this.getQueryNameFromTable(e),
+      self = this;
 
       if (toggle === undefined) {
         this.toggleQueries();
       }
 
-      this.aqlEditor.setValue(this.getCustomQueryValueByName(name));
+      //backup the last query
+      this.state.lastQuery.query = this.aqlEditor.getValue();
+      this.state.lastQuery.bindParam = this.bindParamTableObj;
+
+      this.aqlEditor.setValue(this.getCustomQueryValueByName(name), 1);
       this.fillBindParamTable(this.getCustomQueryParameterByName(name));
       this.updateBindParams();
-      this.deselect(this.aqlEditor);
+
+      //render a button to revert back to last query
+      $('#lastQuery').remove();
+      $('#queryContent .arangoToolbarTop .pull-left')
+        .append('<span id="lastQuery" class="clickable">Previous Query</span>');
+
+        $('#lastQuery').hide().fadeIn(500)
+        .on('click', function() {
+          self.aqlEditor.setValue(self.state.lastQuery.query, 1);
+          self.fillBindParamTable(self.state.lastQuery.bindParam);
+          self.updateBindParams();
+
+          $('#lastQuery').fadeOut(500, function () {
+            $(this).remove();
+          });
+        }
+      );
     },
 
     deleteAQL: function (name) {
@@ -30451,7 +30540,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       outputEditor.setOption("vScrollBarAlwaysVisible", true);
       this.setEditorAutoHeight(outputEditor);
 
-      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj));
+      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj), 1);
       sentBindParamEditor.setOption("vScrollBarAlwaysVisible", true);
       sentBindParamEditor.getSession().setMode("ace/mode/json");
       sentBindParamEditor.setReadOnly(true);
@@ -30462,7 +30551,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     fillExplain: function(outputEditor, sentQueryEditor, counter) {
-      sentQueryEditor.setValue(this.aqlEditor.getValue());
+      sentQueryEditor.setValue(this.aqlEditor.getValue(), 1);
 
       var self = this,
       queryData = this.readQueryData();
@@ -30487,10 +30576,10 @@ window.ArangoUsers = Backbone.Collection.extend({
           success: function (data) {
             if (data.msg.includes('errorMessage')) {
               self.removeOutputEditor(counter);
-              arangoHelper.arangoError("Explain error", data.msg);
+              arangoHelper.arangoError("Explain", data.msg);
             }
             else {
-              outputEditor.setValue(data.msg);
+              outputEditor.setValue(data.msg, 1);
               self.deselect(outputEditor);
               $.noty.clearQueue();
               $.noty.closeAll();
@@ -30501,10 +30590,10 @@ window.ArangoUsers = Backbone.Collection.extend({
           error: function (data) {
             try {
               var temp = JSON.parse(data.responseText);
-              arangoHelper.arangoError("Explain error", temp.errorMessage);
+              arangoHelper.arangoError("Explain", temp.errorMessage);
             }
             catch (e) {
-              arangoHelper.arangoError("Explain error", "ERROR");
+              arangoHelper.arangoError("Explain", "ERROR");
             }
             self.handleResult(counter);
             self.removeOutputEditor(counter);
@@ -30528,14 +30617,28 @@ window.ArangoUsers = Backbone.Collection.extend({
       self = this;
 
       if (queryObject !== null && queryObject !== undefined && queryObject !== "") {
+        this.aqlEditor.setValue(queryObject.query, 1);
+
+        //reset undo history for initial text value
+        this.aqlEditor.getSession().setUndoManager(new ace.UndoManager());
+
         if (queryObject.parameter !== '' || queryObject !== undefined) {
           try {
+            // then fill values into input boxes
             self.bindParamTableObj = JSON.parse(queryObject.parameter);
+
+            var key;
+            _.each($('#arangoBindParamTable input'), function(element) {
+              key = $(element).attr('name');
+              $(element).val(self.bindParamTableObj[key]);
+            });
+
+            //resave cached query
+            self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
           }
           catch (ignore) {
           }
         }
-        this.aqlEditor.setValue(queryObject.query);
       }
     },
 
@@ -30593,6 +30696,12 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.$el.html(this.template.render({}));
 
       this.afterRender();
+
+      if (!this.initDone) {
+        //init aql editor width
+        this.settings.aqlWidth = $('.aqlEditorWrapper').width(); 
+      }
+
       this.initDone = true;
       this.renderBindParamTable(true);
     },
@@ -30601,10 +30710,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       var self = this;
       this.initAce();
       this.initTables();
-      this.getCachedQueryAfterRender();
       this.fillSelectBoxes();
       this.makeResizeable();
       this.initQueryImport();
+      this.getCachedQueryAfterRender();
 
       //set height of editor wrapper
       $('.inputEditorWrapper').height($(window).height() / 10 * 5 + 25);
@@ -30658,7 +30767,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         $('#arangoBindParamTable thead').css('width', $('#bindParamEditor').width());
         $('#arangoBindParamTable thead th').css('width', $('#bindParamEditor').width() / 2);
         $('#arangoBindParamTable tr').css('width', $('#bindParamEditor').width());
-        $('#arangoBindParamTable tbody').css('height', $('#aqlEditor').height() - 18);
+        $('#arangoBindParamTable tbody').css('height', $('#aqlEditor').height() - 35);
         $('#arangoBindParamTable tbody').css('width', $('#bindParamEditor').width());
         $('#arangoBindParamTable tbody tr').css('width', $('#bindParamEditor').width());
         $('#arangoBindParamTable tbody td').css('width', $('#bindParamEditor').width() / 2);
@@ -30668,7 +30777,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         $('#arangoMyQueriesTable thead').css('width', $('#queryTable').width());
         $('#arangoMyQueriesTable thead th').css('width', $('#queryTable').width() / 2);
         $('#arangoMyQueriesTable tr').css('width', $('#queryTable').width());
-        $('#arangoMyQueriesTable tbody').css('height', $('#queryTable').height() - 18);
+        $('#arangoMyQueriesTable tbody').css('height', $('#queryTable').height() - 35);
         $('#arangoMyQueriesTable tbody').css('width', $('#queryTable').width());
         $('#arangoMyQueriesTable tbody td').css('width', $('#queryTable').width() / 2);
       }
@@ -30680,6 +30789,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       $(".aqlEditorWrapper").resizable({
         resize: function() {
           self.resizeFunction();
+          self.settings.aqlWidth = $('.aqlEditorWrapper').width();
         },
         handles: "e"
       });
@@ -30768,6 +30878,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       STATE_STRING_BACKTICK = 7;
 
       query += " ";
+      var self = this;
       var start;
       var state = STATE_NORMAL;
       var n = query.length;
@@ -30842,7 +30953,6 @@ window.ArangoUsers = Backbone.Collection.extend({
             break;
           case STATE_BIND:
             if (!/^[@a-zA-Z0-9_]+$/.test(c)) {
-              //console.log("FOUND BIND PARAMETER: ", query.substring(start, i));
               bindParams.push(query.substring(start, i));
               state = STATE_NORMAL;
               start = undefined;
@@ -30850,6 +30960,15 @@ window.ArangoUsers = Backbone.Collection.extend({
             break;
         }
       }
+
+      var match;
+      _.each(bindParams, function(v, k) {
+        match = v.match(self.bindParamRegExp);
+
+        if (match) {
+          bindParams[k] = match[1];
+        }
+      });
 
       return {
         query: query,
@@ -30865,10 +30984,8 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       var newObject = {};
       _.each(foundBindParams, function(word) {
-        var match = word.match(self.bindParamRegExp);
-        if (match) {
-          word = match[1];
-          newObject[word] = '';
+        if (self.bindParamTableObj[word]) {
+          newObject[word] = self.bindParamTableObj[word];
         }
         else {
           newObject[word] = '';
@@ -30956,7 +31073,15 @@ window.ArangoUsers = Backbone.Collection.extend({
           self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
         }
         catch (e) {
-          self.allowParamToggle = false;
+          if (self.bindParamAceEditor.getValue() === '') {
+            _.each(self.bindParamTableObj, function(v, k) {
+              self.bindParamTableObj[k] = '';
+            });
+            self.allowParamToggle = true;
+          }
+          else {
+            self.allowParamToggle = false;
+          }
         }
       });
 
@@ -30966,7 +31091,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         if (self.initDone) {
           self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
         }
-        self.bindParamAceEditor.setValue(JSON.stringify(self.bindParamTableObj, null, "\t"));
+        self.bindParamAceEditor.setValue(JSON.stringify(self.bindParamTableObj, null, "\t"), 1);
         $('#aqlEditor .ace_text-input').focus();
 
         self.resize();
@@ -31274,7 +31399,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       outputEditor.setOption("vScrollBarAlwaysVisible", true);
       this.setEditorAutoHeight(outputEditor);
 
-      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj));
+      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj), 1);
       sentBindParamEditor.setOption("vScrollBarAlwaysVisible", true);
       sentBindParamEditor.getSession().setMode("ace/mode/json");
       sentBindParamEditor.setReadOnly(true);
@@ -31319,7 +31444,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       var queryData = this.readQueryData();
 
       if (queryData) {
-        sentQueryEditor.setValue(self.aqlEditor.getValue());
+        sentQueryEditor.setValue(self.aqlEditor.getValue(), 1);
 
         $.ajax({
           type: "POST",
@@ -31352,14 +31477,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
     },
 
-    handleResult: function(counter) {
+    handleResult: function() {
       window.progressView.hide();
       $('#removeResults').show();
 
-      //TODO animate not sure
-      //$('html,body').animate({
-      //  scrollTop: $('#outputEditorWrapper' + counter).offset().top - 120
-      //}, 500);
+      $(".centralRow").animate({ scrollTop: $('#queryContent').height() }, "fast");
     },
 
     setEditorAutoHeight: function (editor) {
@@ -31418,7 +31540,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         var aql = ace.edit("sentQueryEditor" + counter).getValue();
         var bindParam = JSON.parse(ace.edit("sentBindParamEditor" + counter).getValue());
-        self.aqlEditor.setValue(aql);
+        self.aqlEditor.setValue(aql, 1);
         self.deselect(self.aqlEditor);
         if (Object.keys(bindParam).length > 0) {
           self.bindParamTableObj = bindParam;
@@ -31428,11 +31550,12 @@ window.ArangoUsers = Backbone.Collection.extend({
             self.renderBindParamTable();
           }
           else {
-            self.bindParamAceEditor.setValue(JSON.stringify(bindParam));
+            self.bindParamAceEditor.setValue(JSON.stringify(bindParam), 1);
             self.deselect(self.bindParamAceEditor);
           }
         }
-        $("html, body").animate({ scrollTop: 0 }, "fast");
+        $(".centralRow").animate({ scrollTop: 0 }, "fast");
+        self.resize();
       });
 
       this.execPending = false;
@@ -31448,7 +31571,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         if (warnings !== "") {
           warnings += "\r\n" + "Result:" + "\r\n\r\n";
         }
-        outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
+        outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2), 1);
         outputEditor.getSession().setScrollTop(0);
       };
 
@@ -31532,6 +31655,8 @@ window.ArangoUsers = Backbone.Collection.extend({
             }
           },
           error: function (resp) {
+            var error;
+
             try {
 
               if (resp.statusText === 'Gone') {
@@ -31540,7 +31665,8 @@ window.ArangoUsers = Backbone.Collection.extend({
                 return;
               }
 
-              var error = JSON.parse(resp.responseText);
+              error = JSON.parse(resp.responseText);
+              arangoHelper.arangoError("Query", error.errorMessage);
               if (error.errorMessage) {
                 if (error.errorMessage.match(/\d+:\d+/g) !== null) {
                   self.markPositionError(
@@ -31553,13 +31679,14 @@ window.ArangoUsers = Backbone.Collection.extend({
                     error.errorMessage.match(/\(\w+\)/g)[0]
                   );
                 }
-                arangoHelper.arangoError("Query", error.errorMessage);
                 self.removeOutputEditor(counter);
               }
             }
             catch (e) {
-              arangoHelper.arangoError("Query", "Successfully aborted.");
-              console.log(e);
+              console.log(error);
+              if (error.code !== 400) {
+                arangoHelper.arangoError("Query", "Successfully aborted.");
+              }
               self.removeOutputEditor(counter);
             }
 
@@ -32805,10 +32932,13 @@ window.ArangoUsers = Backbone.Collection.extend({
       "keyup #spotlight .typeahead" : "listenKey"
     },
 
+    aqlKeywordsArray: [],
+    aqlBuiltinFunctionsArray: [],
+
     aqlKeywords: 
       "for|return|filter|sort|limit|let|collect|asc|desc|in|into|" + 
       "insert|update|remove|replace|upsert|options|with|and|or|not|" + 
-      "distinct|graph|outbound|inbound|any|all|none|aggregate",
+      "distinct|graph|outbound|inbound|any|all|none|aggregate|like|count",
 
     aqlBuiltinFunctions: 
 "to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|" +
@@ -32883,8 +33013,19 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     stringToArray: function() {
-      this.aqlKeywordsArray = this.aqlKeywords.split('|');
-      this.aqlBuiltinFunctionsArray = this.aqlBuiltinFunctions.split('|');
+      var self = this;
+
+      _.each(this.aqlKeywords.split('|'), function(value) {
+        self.aqlKeywordsArray.push(value.toUpperCase());
+      });
+      _.each(this.aqlBuiltinFunctions.split('|'), function(value) {
+        self.aqlBuiltinFunctionsArray.push(value.toUpperCase());
+      });
+
+      //special case for keywords
+      self.aqlKeywordsArray.push(true);
+      self.aqlKeywordsArray.push(false);
+      self.aqlKeywordsArray.push(null);
     },
 
     show: function(callbackSuccess, callbackCancel, type) {
@@ -34182,10 +34323,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.collection.create(options, {
         wait:true,
         error: function(data, err) {
-          //Fix this. Function not available
-          //self.handleError(err.status, err.statusText, name);
+          arangoHelper.parseError("User", err, data);
         },
-        success: function(data) {
+        success: function() {
           self.updateUserManagement();
           window.modalView.hide();
         }
@@ -35508,7 +35648,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 }());
 
 /*jshint unused: false */
-/*global $, window, _*/
+/*global $, window, navigator, _*/
 (function() {
   "use strict";
 
@@ -35519,6 +35659,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     });
   };
 
+  
   var isVersionCheckEnabled = function(cb) {
     $.ajax({
       type: "GET",
@@ -35533,10 +35674,10 @@ window.ArangoUsers = Backbone.Collection.extend({
 
   var showInterface = function(currentVersion, json) {
     var buttons = [];
-    buttons.push(window.modalView.createNotificationButton("Don't ask again", function() {
+    /*buttons.push(window.modalView.createNotificationButton("Don't ask again", function() {
       disableVersionCheck();
       window.modalView.hide();
-    }));
+    }));*/
     buttons.push(window.modalView.createSuccessButton("Download Page", function() {
       window.open('https://www.arangodb.com/download','_blank');
       window.modalView.hide();
@@ -35558,6 +35699,88 @@ window.ArangoUsers = Backbone.Collection.extend({
     );
   };
 
+  var getInformation = function() {
+    var nVer = navigator.appVersion;
+    var nAgt = navigator.userAgent;
+    var browserName  = navigator.appName;
+    var fullVersion  = '' + parseFloat(navigator.appVersion); 
+    var majorVersion = parseInt(navigator.appVersion,10);
+    var nameOffset,verOffset,ix;
+
+    if ((verOffset=nAgt.indexOf("Opera")) !== -1) {
+      browserName = "Opera";
+      fullVersion = nAgt.substring(verOffset + 6);
+      if ((verOffset=nAgt.indexOf("Version")) !== -1) { 
+        fullVersion = nAgt.substring(verOffset + 8);
+      }
+    }
+    else if ((verOffset=nAgt.indexOf("MSIE")) !== -1) {
+      browserName = "Microsoft Internet Explorer";
+      fullVersion = nAgt.substring(verOffset + 5);
+    }
+    else if ((verOffset=nAgt.indexOf("Chrome")) !== -1) {
+      browserName = "Chrome";
+      fullVersion = nAgt.substring(verOffset + 7);
+    }
+    else if ((verOffset=nAgt.indexOf("Safari")) !== -1) {
+      browserName = "Safari";
+      fullVersion = nAgt.substring(verOffset + 7);
+      if ((verOffset=nAgt.indexOf("Version")) !== -1) {
+        fullVersion = nAgt.substring(verOffset + 8);
+      }
+    }
+    else if ((verOffset=nAgt.indexOf("Firefox")) !== -1) {
+      browserName = "Firefox";
+      fullVersion = nAgt.substring(verOffset + 8);
+    }
+    else if ((nameOffset=nAgt.lastIndexOf(' ') + 1) < (verOffset=nAgt.lastIndexOf('/'))) {
+      browserName = nAgt.substring(nameOffset, verOffset);
+      fullVersion = nAgt.substring(verOffset + 1);
+      if (browserName.toLowerCase() === browserName.toUpperCase()) {
+        browserName = navigator.appName;
+      }
+    }
+    if ((ix=fullVersion.indexOf(";")) !== -1) {
+      fullVersion=fullVersion.substring(0, ix);
+    }
+    if ((ix=fullVersion.indexOf(" ")) !== -1) {
+      fullVersion=fullVersion.substring(0, ix);
+    }
+
+    majorVersion = parseInt('' + fullVersion, 10);
+
+    if (isNaN(majorVersion)) {
+      fullVersion  = '' + parseFloat(navigator.appVersion); 
+      majorVersion = parseInt(navigator.appVersion, 10);
+    }
+
+    return {
+      browserName: browserName,
+      fullVersion: fullVersion,
+      majorVersion: majorVersion,
+      appName: navigator.appName,
+      userAgent: navigator.userAgent
+    };
+  };
+
+  var getOS = function() {
+    var OSName = "Unknown OS";
+    if (navigator.appVersion.indexOf("Win") !== -1) {
+      OSName="Windows";
+    }
+    if (navigator.appVersion.indexOf("Mac") !== -1) {
+      OSName="MacOS";
+    }
+    if (navigator.appVersion.indexOf("X11") !== -1) {
+      OSName="UNIX";
+    }
+    if (navigator.appVersion.indexOf("Linux") !== -1) {
+      OSName="Linux";
+    }
+
+    return OSName;
+  };
+
   window.checkVersion = function() {
     // this checks for version updates
     $.ajax({
@@ -35570,15 +35793,30 @@ window.ArangoUsers = Backbone.Collection.extend({
       success: function(data) {
         var currentVersion =
         window.versionHelper.fromString(data.version);
+        $('.navbar #currentVersion').text(data.version.substr(0,3));
+
         window.parseVersions = function (json) {
           if (_.isEmpty(json)) {
+            $('#currentVersion').addClass('up-to-date');
             return; // no new version.
           }
-          if (/-devel$/.test(data.version)) {
-            return; // ignore version in devel
-          }
-          isVersionCheckEnabled(showInterface.bind(window, currentVersion, json));
+          $('#currentVersion').addClass('out-of-date');
+          $('#currentVersion').click(function() {
+            showInterface(currentVersion, json);
+          });
+          //isVersionCheckEnabled(showInterface.bind(window, currentVersion, json));
         };
+
+        //TODO: append to url below
+        /*
+        var browserInfo = getInformation();
+        console.log(browserInfo);
+        console.log(encodeURIComponent(JSON.stringify(browserInfo)));
+
+        var osInfo = getOS();
+        console.log(osInfo);
+        */
+
         $.ajax({
           type: "GET",
           async: true,
@@ -35604,6 +35842,21 @@ window.ArangoUsers = Backbone.Collection.extend({
       window.App = new window.Router();
       Backbone.history.start();
       window.App.handleResize();
+    });
+
+    //create only this one global event listener
+    $(document).click(function(e) {
+      e.stopPropagation();
+
+      //hide user info dropdown if out of focus
+      if (!$(e.target).hasClass('subBarDropdown')
+          && !$(e.target).hasClass('dropdown-header')
+          && !$(e.target).hasClass('dropdown-footer')
+          && !$(e.target).hasClass('toggle')) {
+        if ($('#userInfo').is(':visible')) {
+          $('.subBarDropdown').hide();
+        }
+      }
     });
   }
 

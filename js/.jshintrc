@@ -5,7 +5,6 @@
   "esnext": true,
   "forin": true,
   "freeze": true,
-  "globalstrict": true,
   "immed": true,
   "indent": 2,
   "laxbreak": true,

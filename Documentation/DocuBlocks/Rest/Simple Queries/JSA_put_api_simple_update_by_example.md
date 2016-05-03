@@ -17,7 +17,7 @@
 /// @RESTBODYPARAM{options,object,optional,put_api_simple_update_by_example_options}
 /// a json object which can contains following attributes:
 ///
-/// @RESTSTRUCT{keepNull,put_api_simple_update_by_example_options,string,optional,string}
+/// @RESTSTRUCT{keepNull,put_api_simple_update_by_example_options,boolean,optional,}
 /// This parameter can be used to modify the behavior when
 /// handling *null* values. Normally, *null* values are stored in the
 /// database. By setting the *keepNull* parameter to *false*, this

@@ -193,7 +193,7 @@ router.get('/', function (req, res) {
 
 foxxRouter.get('/thumbnail', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
-  const service = FoxxManager.lookupApp(mount);
+  const service = FoxxManager.lookupService(mount);
   res.sendFile(service.thumbnail || DEFAULT_THUMBNAIL);
 })
 .summary('Get the thumbnail of a Foxx')
@@ -288,10 +288,11 @@ foxxRouter.patch('/devel', function (req, res) {
 
 foxxRouter.get('/download/zip', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
-  const service = FoxxManager.lookupApp(mount);
+  const service = FoxxManager.lookupService(mount);
   const dir = fs.join(fs.makeAbsolute(service.root), service.path);
   const zipPath = fmUtils.zipDirectory(dir);
-  res.download(zipPath, `${service.name}@${service.version}.zip.`);
+  const name = mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
+  res.download(zipPath, `${name}.zip`);
 })
 .summary('Download a service as zip archive')
 .description(dd`

@@ -20,6 +20,7 @@
     docid: 0,
 
     customView: false,
+    defaultMode: 'tree',
 
     template: templateEngine.createTemplate("documentView.ejs"),
 
@@ -30,13 +31,22 @@
       "click #document-from" : "navigateToDocument",
       "click #document-to" : "navigateToDocument",
       "keydown #documentEditor .ace_editor" : "keyPress",
-      "keyup .jsoneditor .search input" : "checkSearchBox"
+      "keyup .jsoneditor .search input" : "checkSearchBox",
+      "click .jsoneditor .modes" : "storeMode"
     },
 
     checkSearchBox: function(e) {
       if ($(e.currentTarget).val() === '') {
         this.editor.expandAll();
       }
+    },
+
+    storeMode: function() {
+      var self = this;
+
+      $('.type-modes').on('click', function(elem) {
+        self.defaultMode = $(elem.currentTarget).text().toLowerCase();
+      });
     },
 
     keyPress: function(e) {
@@ -204,6 +214,7 @@
         iconlib: "fontawesome4"
       };
       this.editor = new JSONEditor(container, options);
+      this.editor.setMode(this.defaultMode);
 
       return this;
     },

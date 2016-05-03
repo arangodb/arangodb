@@ -45,6 +45,17 @@ const APP_PATH = internal.appPath ? path.resolve(internal.appPath) : undefined;
 const STARTUP_PATH = internal.startupPath ? path.resolve(internal.startupPath) : undefined;
 const DEV_APP_PATH = internal.devAppPath ? path.resolve(internal.devAppPath) : undefined;
 
+const LEGACY_ALIASES = [
+  ['@arangodb/foxx/authentication', '@arangodb/foxx/legacy/authentication'],
+  ['@arangodb/foxx/controller', '@arangodb/foxx/legacy/controller'],
+  ['@arangodb/foxx/model', '@arangodb/foxx/legacy/model'],
+  ['@arangodb/foxx/query', '@arangodb/foxx/legacy/query'],
+  ['@arangodb/foxx/repository', '@arangodb/foxx/legacy/repository'],
+  ['@arangodb/foxx/schema', '@arangodb/foxx/legacy/schema'],
+  ['@arangodb/foxx/sessions', '@arangodb/foxx/legacy/sessions'],
+  ['@arangodb/foxx/template_middleware', '@arangodb/foxx/legacy/template_middleware'],
+  ['@arangodb/foxx', '@arangodb/foxx/legacy']
+];
 
 module.exports = class FoxxService {
   constructor(data) {
@@ -97,8 +108,8 @@ module.exports = class FoxxService {
     this.legacy = range ? semver.gtr('3.0.0', range) : false;
     if (this.legacy) {
       console.debugLines(dd`
-        Running "${this.mount}" in 2.x compatibility mode.
-        Requested version ${range} is lower than 3.0.0.
+        Service "${this.mount}" is running in legacy compatibility mode.
+        Requested version "${range}" is lower than "3.0.0".
       `);
     }
 
@@ -176,9 +187,9 @@ module.exports = class FoxxService {
       basePath: this.main.context.baseUrl,
       paths: paths,
       info: {
-        title: this.name,
+        title: this.manifest.name,
         description: this.manifest.description,
-        version: this.version,
+        version: this.manifest.version,
         license: {
           name: this.manifest.license
         }
@@ -222,9 +233,9 @@ module.exports = class FoxxService {
               res.headers.allow = error.methods.join(', ');
             }
             if (service.isDevelopment) {
-              let err = error.cause || error;
+              const err = error.cause || error;
               body.exception = String(err);
-              body.stacktrace = err.stack;
+              body.stacktrace = err.stack.replace(/\n+$/, '').split('\n');
             }
             if (error.extra) {
               Object.keys(error.extra).forEach(function (key) {
@@ -261,7 +272,7 @@ module.exports = class FoxxService {
   }
 
   _PRINT(context) {
-    context.output += `[FoxxService "${this.name}" (${this.version}) on ${this.mount}]`;
+    context.output += `[FoxxService at "${this.mount}"]`;
   }
 
   toJSON() {
@@ -380,17 +391,7 @@ module.exports = class FoxxService {
     this.main.filename = path.resolve(moduleRoot, '.foxx');
     this.main[$_MODULE_ROOT] = moduleRoot;
     this.main[$_MODULE_CONTEXT].console = foxxConsole;
-    this.main.require.aliases = new Map(this.legacy ? [
-      ['@arangodb/foxx/authentication', '@arangodb/foxx/legacy/authentication'],
-      ['@arangodb/foxx/controller', '@arangodb/foxx/legacy/controller'],
-      ['@arangodb/foxx/model', '@arangodb/foxx/legacy/model'],
-      ['@arangodb/foxx/query', '@arangodb/foxx/legacy/query'],
-      ['@arangodb/foxx/repository', '@arangodb/foxx/legacy/repository'],
-      ['@arangodb/foxx/schema', '@arangodb/foxx/legacy/schema'],
-      ['@arangodb/foxx/sessions', '@arangodb/foxx/legacy/sessions'],
-      ['@arangodb/foxx/template_middleware', '@arangodb/foxx/legacy/template_middleware'],
-      ['@arangodb/foxx', '@arangodb/foxx/legacy']
-    ] : []);
+    this.main.require.aliases = new Map(this.legacy ? LEGACY_ALIASES : []);
     this.main.require.cache = this.requireCache;
     this.main.context = new FoxxContext(this);
     this.router = new Router();
@@ -401,20 +402,20 @@ module.exports = class FoxxService {
     };
 
     if (this.legacy) {
+      this.main.context.path = this.main.context.fileName;
+      this.main.context.fileName = (filename) => fs.safeJoin(this.basePath, filename);
       this.main.context.foxxFilename = this.main.context.fileName;
+      this.main.context.version = this.version = this.manifest.version;
+      this.main.context.name = this.name = this.manifest.name;
+      this.main.context.options = this.options;
+      this.main.context.use = undefined;
+      this.main.context.apiDocumentation = undefined;
+      this.main.context.registerType = undefined;
     }
   }
 
   get exports() {
     return this.main.exports;
-  }
-
-  get name() {
-    return this.manifest.name;
-  }
-
-  get version() {
-    return this.manifest.version;
   }
 
   get isSystem() {
@@ -464,19 +465,19 @@ module.exports = class FoxxService {
 
 function createConfiguration(definitions) {
   const config = {};
-  Object.keys(definitions).forEach(function (name) {
+  for (const name of Object.keys(definitions)) {
     const def = definitions[name];
     if (def.default !== undefined) {
       config[name] = def.default;
     }
-  });
+  }
   return config;
 }
 
 
 function createDependencies(definitions, options) {
   const deps = {};
-  Object.keys(definitions).forEach(function (name) {
+  for (const name of Object.keys(definitions)) {
     Object.defineProperty(deps, name, {
       configurable: true,
       enumerable: true,
@@ -486,9 +487,9 @@ function createDependencies(definitions, options) {
           return null;
         }
         const FoxxManager = require('@arangodb/foxx/manager');
-        return FoxxManager.requireApp('/' + mount.replace(/(^\/+|\/+$)/, ''));
+        return FoxxManager.requireService('/' + mount.replace(/(^\/+|\/+$)/, ''));
       }
     });
-  });
+  }
   return deps;
 }

@@ -41,6 +41,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/Timers.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
@@ -558,7 +559,7 @@ static void JS_WaitCollectorWal(
   std::string const name = TRI_ObjectToString(args[0]);
 
   TRI_vocbase_col_t* col =
-      TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+      TRI_LookupCollectionByNameVocBase(vocbase, name);
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1702,17 +1703,16 @@ static void JS_ThrowCollectionNotLoaded(
 static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
                                             Transaction* trx,
                                             std::string const& vertexId) {
+  size_t pos = vertexId.find('/');
+  TRI_ASSERT(pos != std::string::npos); // All are internal _id attributes
+
+  TransactionBuilderLeaser builder(trx);
+  builder->openObject();
+  builder->add(StaticStrings::KeyString, VPackValue(vertexId.substr(pos + 1)));
+  builder->close();
+
   OperationOptions options;
-  std::vector<std::string> parts =
-      arangodb::basics::StringUtils::split(vertexId, "/");
-  TRI_ASSERT(parts.size() == 2);  // All internal _id attributes
-
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(Transaction::KeyString, VPackValue(parts[1]));
-  builder.close();
-
-  OperationResult opRes = trx->document(parts[0], builder.slice(), options);
+  OperationResult opRes = trx->document(vertexId.substr(0, pos), builder->slice(), options);
 
   if (opRes.failed()) {
     v8::EscapableHandleScope scope(isolate);
@@ -2175,7 +2175,7 @@ static void JS_QueryShortestPath(
 
 static v8::Handle<v8::Value> VertexIdsToV8(v8::Isolate* isolate,
                                            ExplicitTransaction* trx,
-                                           std::vector<std::string> const& ids,
+                                           std::vector<VPackSlice> const& ids,
                                            bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);
   uint32_t const vn = static_cast<uint32_t>(ids.size());
@@ -2185,17 +2185,18 @@ static v8::Handle<v8::Value> VertexIdsToV8(v8::Isolate* isolate,
   uint32_t j = 0;
   if (includeData) {
     for (auto& it : ids) {
-      vertices->Set(j, VertexIdToData(isolate, trx, it));
+      vertices->Set(j, VertexIdToData(isolate, trx, it.copyString()));
       ++j;
     }
   } else {
     for (auto& it : ids) {
-      vertices->Set(j, TRI_V8_STD_STRING(it));
+      vertices->Set(j, TRI_V8_STD_STRING(it.copyString()));
       ++j;
     }
   }
   return scope.Escape<v8::Value>(vertices);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Executes a Neighbors computation
@@ -2387,11 +2388,14 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::vector<std::string> neighbors;
+  std::vector<VPackSlice> neighbors;
+  std::unordered_set<VPackSlice,
+                     arangodb::basics::VelocyPackHelper::VPackStringHash,
+                     arangodb::basics::VelocyPackHelper::VPackStringEqual> visited;
   for (auto const& startVertex : startVertices) {
-    opts.start = startVertex;
+    opts.setStart(startVertex);
     try {
-      TRI_RunNeighborsSearch(edgeCollectionInfos, opts, neighbors);
+      TRI_RunNeighborsSearch(edgeCollectionInfos, opts, visited, neighbors);
     } catch (Exception& e) {
       trx->finish(e.code());
       TRI_V8_THROW_EXCEPTION(e.code());
@@ -2616,7 +2620,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       }
     }
   } else {
-    collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
+    collection = TRI_LookupCollectionByNameVocBase(vocbase, std::string(key));
   }
 
   if (collection == nullptr) {
@@ -2814,7 +2818,7 @@ static void ListDatabasesCoordinator(
         ServerID sid = DBServers[0];
         ClusterComm* cc = ClusterComm::instance();
 
-        std::map<std::string, std::string> headers;
+        std::unordered_map<std::string, std::string> headers;
         headers["Authentication"] = TRI_ObjectToString(args[2]);
         auto res = cc->syncRequest(
             "", 0, "server:" + sid, arangodb::GeneralRequest::RequestType::GET,

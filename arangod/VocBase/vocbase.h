@@ -488,22 +488,22 @@ std::string TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t*, const TRI_voc_cid_t
 /// @brief looks up a (document) collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase(TRI_vocbase_t*,
-                                                     char const*);
+TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase(TRI_vocbase_t* vocbase,
+                                                     std::string const& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase(TRI_vocbase_t*,
-                                                   TRI_voc_cid_t);
+TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase(TRI_vocbase_t* vocbase,
+                                                   TRI_voc_cid_t cid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a collection by name or creates it
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
-    TRI_vocbase_t*, char const*, const TRI_col_type_t);
+    TRI_vocbase_t* vocbase, std::string const& name, TRI_col_type_t type);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new (document) collection from parameter set
@@ -648,5 +648,6 @@ VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder);
+void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder);
   
 #endif

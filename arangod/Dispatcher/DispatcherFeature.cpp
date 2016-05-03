@@ -89,6 +89,8 @@ void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
       } else {
         _nrStandardThreads = n - 2;
       }
+    } else {
+      _nrStandardThreads = 1;
     }
   }
     

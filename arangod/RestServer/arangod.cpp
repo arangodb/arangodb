@@ -45,6 +45,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "RestServer/AffinityFeature.h"
+#include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -138,6 +139,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new ActionFeature(&server));
   server.addFeature(new AffinityFeature(&server));
   server.addFeature(new AgencyFeature(&server));
+  server.addFeature(new BootstrapFeature(&server));
   server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new ClusterFeature(&server));
   server.addFeature(new ConfigFeature(&server, name));

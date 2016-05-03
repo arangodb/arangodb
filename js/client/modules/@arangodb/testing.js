@@ -1267,8 +1267,9 @@ function startInstanceCluster(instanceInfo, protocol, options,
 
   startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator', coordinatorArgs));
 
-  let coordinatorUrl = instanceInfo.url;
-  let response;
+  //disabled because not in use (jslint)
+  //let coordinatorUrl = instanceInfo.url;
+  //let response;
   let httpOptions = makeAuthorizationHeaders(options);
   httpOptions.method = 'POST';
   httpOptions.returnBodyOnError = true;
@@ -1292,25 +1293,6 @@ function startInstanceCluster(instanceInfo, protocol, options,
       wait(0.5, false);
     }
   });
-
-  response = download(coordinatorUrl + '/_admin/cluster/bootstrapDbServers', '{"isRelaunch":false}', httpOptions);
-
-  while (response.code !== 200) {
-    console.log('bootstrap dbservers failed', response);
-    wait(1);
-  }
-
-  httpOptions.timeout = 3600;
-  response = download(coordinatorUrl + '/_admin/cluster/upgradeClusterDatabase', '{"isRelaunch":false}', httpOptions);
-  if (response.code !== 200) {
-    console.log(response);
-    throw new Error('Upgrading DB failed');
-  }
-
-  response = download(coordinatorUrl + '/_admin/cluster/bootstrapCoordinator', '{"isRelaunch":false}', httpOptions);
-  if (response.code !== 200) {
-    throw new Error('bootstraping coordinator failed');
-  }
 
   arango.reconnect(endpoint, "_system", 'root', '');
 
@@ -2372,24 +2354,46 @@ testFuncs.authentication_parameters = function(options) {
 /// @brief TEST: boost
 ////////////////////////////////////////////////////////////////////////////////
 
+function locateBoostTest(name) {
+  var file = fs.join(UNITTESTS_DIR,name);
+  if (platform.substr(0, 3) === 'win') {
+    file += ".exe";
+  }
+  
+  if (!fs.exists(file)) {
+    return "";
+  }
+  return file;
+}
+
 testFuncs.boost = function(options) {
   const args = ["--show_progress"];
 
   let results = {};
 
   if (!options.skipBoost) {
-    const run = fs.join(UNITTESTS_DIR, "basics_suite");
+    const run = locateBoostTest("basics_suite");
 
-    if (fs.exists(run)) {
+    if (run !== "") {
       results.basics = executeAndWait(run, args, options, "basics");
+    }
+    else {
+      results.basics = {
+        status: false,
+        message: "binary 'basics_suite' not found"};
     }
   }
 
   if (!options.skipGeo) {
-    const run = fs.join(UNITTESTS_DIR, "geo_suite");
+    const run = locateBoostTest("geo_suite");
 
-    if (fs.exists(run)) {
+    if (run !== "") {
       results.geo_suite = executeAndWait(run, args, options, "geo_suite");
+    }
+    else {
+      results.geo_suite = {
+        status: false,
+        message: "binary 'geo_suite' not found"};
     }
   }
 

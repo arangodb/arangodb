@@ -607,7 +607,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         // check if other collection exist with target name
         TRI_vocbase_col_t* other =
-            TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+            TRI_LookupCollectionByNameVocBase(vocbase, name);
 
         if (other != nullptr) {
           TRI_voc_cid_t otherCid = other->_cid;
@@ -779,7 +779,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         if (nameSlice.isString()) {
           name = nameSlice.copyString();
-          collection = TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+          collection = TRI_LookupCollectionByNameVocBase(vocbase, name);
 
           if (collection != nullptr) {  
             TRI_voc_cid_t otherCid = collection->_cid;

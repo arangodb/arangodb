@@ -31,6 +31,9 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+
 namespace arangodb {
 
 class EdgeIndexIterator final : public IndexIterator {
@@ -52,7 +55,7 @@ class EdgeIndexIterator final : public IndexIterator {
         _index(index),
         _searchValues(searchValues),
         _keys(_searchValues.slice()),
-        _position(0),
+        _iterator(_keys, true),
         _posInBuffer(0),
         _batchSize(1000) {}
 
@@ -63,7 +66,7 @@ class EdgeIndexIterator final : public IndexIterator {
         _index(index),
         _searchValues(arangodb::velocypack::Builder::clone(searchValues)),
         _keys(_searchValues.slice()),
-        _position(0),
+        _iterator(_keys, true),
         _posInBuffer(0),
         _batchSize(1000) {}
 
@@ -72,7 +75,7 @@ class EdgeIndexIterator final : public IndexIterator {
   TRI_EdgeIndexHash_t const* _index;
   arangodb::velocypack::Builder const _searchValues;
   arangodb::velocypack::Slice const _keys;
-  size_t _position;
+  arangodb::velocypack::ArrayIterator _iterator;
   std::vector<TRI_doc_mptr_t*> _buffer;
   size_t _posInBuffer;
   size_t _batchSize;

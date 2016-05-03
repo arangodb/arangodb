@@ -436,7 +436,7 @@ inline int64_t int64_check(char const* value, size_t size) {
 
 uint64_t uint64(std::string const& str);
 
-inline int64_t uint64(char const* value, size_t size) {
+inline uint64_t uint64(char const* value, size_t size) {
   return StringUtils::uint64(std::string(value, size));
 }
 

@@ -609,7 +609,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // options
   // ------------------------------------------------------------------------
 
-  std::map<std::string, std::string> headerFields;
+  std::unordered_map<std::string, std::string> headerFields;
   double timeout = 10.0;
   bool returnBodyAsBuffer = false;
   bool followRedirects = true;

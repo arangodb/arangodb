@@ -1,0 +1,73 @@
+!CHAPTER Numeric functions
+
+AQL offers some numeric functions for calculations. The following functions are
+supported:
+
+- *FLOOR(value)*: Returns the integer closest but not greater to *value*
+
+- *CEIL(value)*: Returns the integer closest but not less than *value*
+
+- *ROUND(value)*: Returns the integer closest to *value*
+
+  Rounding towards zero, also known as `trunc()`in C/C++, can be achieved with
+  a combination of the [ternary operator](../Operators.md#ternary-operator),
+  `CEIL()` and `FLOOR()`:
+  
+  ```
+  LET rounded = value >= 0 ? FLOOR(value) : CEIL(value)
+  ```
+
+- *ABS(value)*: Returns the absolute part of *value*
+
+- *SQRT(value)*: Returns the square root of *value*
+
+- *POW(base, exp)*: Returns the *base* to the exponent *exp*
+
+- *RAND()*: Returns a pseudo-random number between 0 and 1
+
+- *MIN(array)*: Returns the smallest element of *array*. *null* values
+  are ignored. If the array is empty or only *null* values are contained in the array, the
+  function will return *null*.
+
+- *MAX(array)*: Returns the greatest element of *array*. *null* values
+  are ignored. If the array is empty or only *null* values are contained in the array, the
+  function will return *null*.
+
+- *AVERAGE(array)*: Returns the average (arithmetic mean) of the values in *array*. 
+  This requires the elements in *array* to be numbers. *null* values are ignored. 
+  If the array is empty or only *null* values are contained in the array, the function 
+  will return *null*.
+
+- *SUM(array)*: Returns the sum of the values in *array*. This
+  requires the elements in *array* to be numbers. *null* values are ignored. 
+
+- *MEDIAN(array)*: Returns the median value of the values in *array*. This 
+  requires the elements in *array* to be numbers. *null* values are ignored. If the 
+  array is empty or only *null* values are contained in the array, the function will return 
+  *null*.
+
+- *PERCENTILE(array, n, method)*: Returns the *n*th percentile of the values in *array*. 
+  This requires the elements in *array* to be numbers. *null* values are ignored. *n* must
+  be between 0 (excluded) and 100 (included). *method* can be *rank* or *interpolation*.
+  The function will return null if the array is empty or only *null* values are contained 
+  in it or the percentile cannot be calculated.
+
+- *VARIANCE_POPULATION(array)*: Returns the population variance of the values in 
+  *array*. This requires the elements in *array* to be numbers. *null* values 
+  are ignored. If the array is empty or only *null* values are contained in the array, 
+  the function will return *null*.
+
+- *VARIANCE_SAMPLE(array)*: Returns the sample variance of the values in 
+  *array*. This requires the elements in *array* to be numbers. *null* values 
+  are ignored. If the array is empty or only *null* values are contained in the array, 
+  the function will return *null*.
+
+- *STDDEV_POPULATION(array)*: Returns the population standard deviation of the 
+  values in *array*. This requires the elements in *array* to be numbers. *null* 
+  values are ignored. If the array is empty or only *null* values are contained in the array, 
+  the function will return *null*.
+
+- *STDDEV_SAMPLE(array)*: Returns the sample standard deviation of the values in 
+  *array*. This requires the elements in *array* to be numbers. *null* values 
+  are ignored. If the array is empty or only *null* values are contained in the array, 
+  the function will return *null*.

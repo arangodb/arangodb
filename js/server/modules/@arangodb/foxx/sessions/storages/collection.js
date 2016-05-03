@@ -36,9 +36,9 @@ module.exports = function collectionStorage(cfg) {
   if (!cfg) {
     cfg = {};
   }
-  const autoUpdate = Boolean(cfg.autoUpdate);
+  const autoUpdate = Boolean(cfg.autoUpdate !== false);
   const pruneExpired = Boolean(cfg.pruneExpired);
-  const ttl = (cfg.ttl || 60) * 60 * 1000;
+  const ttl = (cfg.ttl || 60 * 60) * 1000;
   const collection = (
     typeof cfg.collection === 'string'
     ? db._collection(cfg.collection)

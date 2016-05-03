@@ -24,6 +24,7 @@
 #include "AttributeAccessor.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Variable.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/AqlTransaction.h"
 
@@ -33,10 +34,23 @@ using namespace arangodb::aql;
 AttributeAccessor::AttributeAccessor(
     std::vector<std::string> const& attributeParts, Variable const* variable)
     : _attributeParts(attributeParts),
-      _combinedName(),
-      _variable(variable) {
+      _variable(variable),
+      _type(EXTRACT_MULTI) {
 
   TRI_ASSERT(_variable != nullptr);
+
+  // determine accessor type
+  if (_attributeParts.size() == 1) {
+    if (attributeParts[0] == StaticStrings::KeyString) {
+      _type = EXTRACT_KEY;
+    } else if (attributeParts[0] == StaticStrings::FromString) {
+      _type = EXTRACT_FROM;
+    } else if (attributeParts[0] == StaticStrings::ToString) {
+      _type = EXTRACT_TO;
+    } else {
+      _type = EXTRACT_SINGLE;
+    }
+  }
 }
   
 /// @brief replace the variable in the accessor
@@ -59,7 +73,20 @@ AqlValue AttributeAccessor::get(arangodb::AqlTransaction* trx,
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
     if ((*it)->id == _variable->id) {
       // get the AQL value
-      return argv->getValueReference(startPos, regs[i]).get(trx, _attributeParts, mustDestroy, true);
+      switch (_type) {
+        case EXTRACT_KEY:
+          return argv->getValueReference(startPos, regs[i]).getKeyAttribute(trx, mustDestroy, true);
+        case EXTRACT_FROM:
+          return argv->getValueReference(startPos, regs[i]).getFromAttribute(trx, mustDestroy, true);
+        case EXTRACT_TO:
+          return argv->getValueReference(startPos, regs[i]).getToAttribute(trx, mustDestroy, true);
+        case EXTRACT_SINGLE:
+          // use optimized version for single attribute (e.g. variable.attr)
+          return argv->getValueReference(startPos, regs[i]).get(trx, _attributeParts[0], mustDestroy, true);
+        case EXTRACT_MULTI:
+          // use general version for multiple attributes (e.g. variable.attr.subattr)
+          return argv->getValueReference(startPos, regs[i]).get(trx, _attributeParts, mustDestroy, true);
+      }
     }
     // fall-through intentional
   }

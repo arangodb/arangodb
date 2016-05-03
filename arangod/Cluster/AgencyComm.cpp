@@ -699,12 +699,13 @@ bool AgencyComm::tryInitializeStructure() {
     }
     builder.add("InitDone", VPackValue(true));
   } catch (...) {
-    LOG(WARN) << "Couldn't create initializing structure";
+    LOG_TOPIC(ERR, Logger::STARTUP) << "Couldn't create initializing structure";
     return false;
   }
 
   try {
-    LOG(TRACE) << "Initializing agency with " << builder.toJson();
+    LOG_TOPIC(TRACE, Logger::STARTUP) 
+        << "Initializing agency with " << builder.toJson();
 
     AgencyCommResult result;
     AgencyOperation initOperation("", AgencyValueOperationType::SET, builder.slice());
@@ -740,7 +741,8 @@ bool AgencyComm::shouldInitializeStructure() {
       result.httpCode() ==
           (int)arangodb::GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
     // somebody else has or is initializing the agency
-    LOG(TRACE) << "someone else is initializing the agency";
+    LOG_TOPIC(TRACE, Logger::STARTUP) 
+        << "someone else is initializing the agency";
     return false;
   }
   
@@ -752,19 +754,21 @@ bool AgencyComm::shouldInitializeStructure() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::ensureStructureInitialized() {
-  LOG(TRACE) << "Checking if agency is initialized";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "Checking if agency is initialized";
 
   while (true) {
     while (shouldInitializeStructure()) {
-      LOG(TRACE) << "Agency is fresh. Needs initial structure.";
+      LOG_TOPIC(TRACE, Logger::STARTUP) 
+          << "Agency is fresh. Needs initial structure.";
       // mop: we initialized it .. great success
       if (tryInitializeStructure()) {
-        LOG(TRACE) << "Done initializing agency";
+        LOG_TOPIC(TRACE, Logger::STARTUP) << "Successfully initialized agency";
         break;
       } 
 
-      LOG(WARN) << "Initializing agency failed. We'll try again soon";
-      // mop: somebody else is initializing it right now...wait a bit and retry
+      LOG_TOPIC(WARN, Logger::STARTUP) 
+          << "Initializing agency failed. We'll try again soon";
+      // We should really have exclusive access, here, this is strange!
       sleep(1);
     }
     
@@ -780,14 +784,15 @@ bool AgencyComm::ensureStructureInitialized() {
 
         if (value->slice().isBoolean() && value->slice().getBoolean()) {
           // expecting a value of "true"
-          LOG(TRACE) << "Found an initialized agency";
+          LOG_TOPIC(TRACE, Logger::STARTUP) << "Found an initialized agency";
           return true;
         }
         // fallthrough to sleeping
       }
     }
           
-    LOG(TRACE) << "Waiting for agency to get initialized";
+    LOG_TOPIC(TRACE, Logger::STARTUP) 
+        << "Waiting for agency to get initialized";
 
     sleep(1);
   } // next attempt
@@ -1943,7 +1948,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   client.keepConnectionOnDestruction(true);
 
   // set up headers
-  std::map<std::string, std::string> headers;
+  std::unordered_map<std::string, std::string> headers;
   if (method == arangodb::GeneralRequest::RequestType::POST) {
     // the agency needs this content-type for the body
     headers["content-type"] = "application/json";

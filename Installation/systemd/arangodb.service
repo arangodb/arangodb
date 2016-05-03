@@ -1,3 +1,17 @@
+# This file is part of package arangodb.
+#
+# Description:
+#
+#  Used to start ArangoDB
+#
+#  A universal open-source database with a flexible data model 
+#  for documents, graphs, and key-values. Build high 
+#  performance applications using a convenient sql-like query 
+#  language or JavaScript extensions.
+#
+#  http://www.arangodb.org
+#
+
 [Unit]
 Description=arango database server
 After=sysinit.target sockets.target timers.target paths.target slices.target network.target syslog.target

@@ -1,7 +1,7 @@
 {
   "name": "Implicit close tags",
   "options": {},
-  "html": "<ol><li class=test><div><table style=width:100%><tr><td colspan=2><h3>Heading</h3><tr><td><div>Div</div><td><div>Div2</div></table></div><li><div><h3>Heading 2</h3></div></li></ol><p>Para<h4>Heading 4</h4>",
+  "html": "<ol><li class=test><div><table style=width:100%><tr><th>TH<td colspan=2><h3>Heading</h3><tr><td><div>Div</div><td><div>Div2</div></table></div><li><div><h3>Heading 2</h3></div></li></ol><p>Para<h4>Heading 4</h4>",
   "expected": [
     { "event": "opentagname", "data": [ "ol" ] },
     { "event": "opentag", "data": [ "ol", {} ] },
@@ -15,6 +15,10 @@
     { "event": "opentag", "data": [ "table", { "style": "width:100%" } ] },
     { "event": "opentagname", "data": [ "tr" ] },
     { "event": "opentag", "data": [ "tr", {} ] },
+    { "event": "opentagname", "data": [ "th" ] },
+    { "event": "opentag", "data": [ "th", {} ] },
+    { "event": "text", "data": [ "TH" ] },
+    { "event": "closetag", "data": [ "th" ] },
     { "event": "opentagname", "data": [ "td" ] },
     { "event": "attribute", "data": [ "colspan", "2" ] },
     { "event": "opentag", "data": [ "td", { "colspan": "2" } ] },

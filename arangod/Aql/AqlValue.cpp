@@ -40,16 +40,15 @@ using namespace arangodb::aql;
 /// @brief construct a document
 AqlValue::AqlValue(TRI_doc_mptr_t const* mptr) {
   _data.pointer = mptr->vpack();
-  setType(AqlValueType::VPACK_DOCUMENT);
+  setType(AqlValueType::VPACK_SLICE_POINTER);
 }
 
 /// @brief hashes the value
 uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
   switch (type()) {
-    case VPACK_DOCUMENT:  
-    case VPACK_POINTER:  
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE: 
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       // we must use the slow hash function here, because a value may have 
       // different representations in case its an array/object/number
       return slice().normalizedHash();
@@ -57,7 +56,7 @@ uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
     case DOCVEC:
     case RANGE: { 
       VPackBuilder builder;
-      toVelocyPack(trx, builder);
+      toVelocyPack(trx, builder, false);
       // we must use the slow hash function here, because a value may have 
       // different representations in case its an array/object/number
       return builder.slice().normalizedHash();
@@ -91,7 +90,7 @@ bool AqlValue::isNull(bool emptyIsNull) const {
 /// @brief whether or not the value is a boolean value
 bool AqlValue::isBoolean() const {
   AqlValueType t = type();
-  if (t == VPACK_DOCUMENT || t == DOCVEC || t == RANGE) {
+  if (t == DOCVEC || t == RANGE) {
     return false;
   }
   return slice().isBoolean();
@@ -137,10 +136,9 @@ bool AqlValue::isArray() const {
 /// @brief get the (array) length (note: this treats ranges as arrays, too!)
 size_t AqlValue::length() const {
   switch (type()) {
-    case VPACK_DOCUMENT: 
-    case VPACK_POINTER: 
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       return slice().length();
     }
     case DOCVEC: {
@@ -159,12 +157,11 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy,
                       bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
-    case VPACK_DOCUMENT: 
-    case VPACK_POINTER: 
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
       doCopy = false; 
       // fall-through intentional
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isArray()) {
         int64_t const n = static_cast<int64_t>(s.length());
@@ -230,6 +227,114 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy,
   // default is to return null
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
+
+/// @brief get the _key attribute from an object/document
+AqlValue AqlValue::getKeyAttribute(arangodb::AqlTransaction* trx,
+                                   bool& mustDestroy, bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_SLICE_POINTER:
+    case VPACK_INLINE:
+      doCopy = false; 
+      // fall-through intentional
+    case VPACK_MANAGED: {
+      VPackSlice s(slice());
+      if (s.isObject()) {
+        VPackSlice found = Transaction::extractKeyFromDocument(s);
+        if (!found.isNone()) {
+          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+            mustDestroy = true;
+            return AqlValue(found);
+          }
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
+        }
+      }
+      // fall-through intentional
+      break;
+    }
+    case DOCVEC: 
+    case RANGE: {
+      // will return null
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
+/// @brief get the _from attribute from an object/document
+AqlValue AqlValue::getFromAttribute(arangodb::AqlTransaction* trx,
+                                    bool& mustDestroy, bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_SLICE_POINTER:
+    case VPACK_INLINE:
+      doCopy = false; 
+      // fall-through intentional
+    case VPACK_MANAGED: {
+      VPackSlice s(slice());
+      if (s.isObject()) {
+        VPackSlice found = Transaction::extractFromFromDocument(s);
+        if (!found.isNone()) {
+          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+            mustDestroy = true;
+            return AqlValue(found);
+          }
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
+        }
+      }
+      // fall-through intentional
+      break;
+    }
+    case DOCVEC: 
+    case RANGE: {
+      // will return null
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
+/// @brief get the _to attribute from an object/document
+AqlValue AqlValue::getToAttribute(arangodb::AqlTransaction* trx,
+                                  bool& mustDestroy, bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_SLICE_POINTER:
+    case VPACK_INLINE:
+      doCopy = false; 
+      // fall-through intentional
+    case VPACK_MANAGED: {
+      VPackSlice s(slice());
+      if (s.isObject()) {
+        VPackSlice found = Transaction::extractToFromDocument(s);
+        if (!found.isNone()) {
+          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+            mustDestroy = true;
+            return AqlValue(found);
+          }
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
+        }
+      }
+      // fall-through intentional
+      break;
+    }
+    case DOCVEC: 
+    case RANGE: {
+      // will return null
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
   
 /// @brief get the (object) element by name
 AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
@@ -237,15 +342,14 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
                        bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
-    case VPACK_DOCUMENT: 
-    case VPACK_POINTER: 
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
       doCopy = false; 
       // fall-through intentional
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found(s.get(name));
+        VPackSlice found(s.resolveExternal().get(name));
         if (found.isCustom()) { 
           // _id needs special treatment
           mustDestroy = true;
@@ -280,15 +384,14 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
                        bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
-    case VPACK_DOCUMENT: 
-    case VPACK_POINTER: 
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
       doCopy = false; 
       // fall-through intentional
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found(s.get(names));
+        VPackSlice found(s.resolveExternal().get(names, true));
         if (found.isCustom()) { 
           // _id needs special treatment
           mustDestroy = true;
@@ -321,11 +424,10 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
 bool AqlValue::hasKey(arangodb::AqlTransaction* trx,
                       std::string const& name) const {
   switch (type()) {
-    case VPACK_DOCUMENT: 
-    case VPACK_POINTER: 
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_EXTERNAL: {
-      VPackSlice s(slice());
+    case VPACK_MANAGED: {
+      VPackSlice s(slice().resolveExternal());
       return (s.isObject() && s.hasKey(name));
     }
     case DOCVEC: 
@@ -347,10 +449,9 @@ double AqlValue::toDouble() const {
 double AqlValue::toDouble(bool& failed) const {
   failed = false;
   switch (type()) {
-    case VPACK_DOCUMENT: 
-    case VPACK_POINTER: 
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isNull()) {
         return 0.0;
@@ -415,10 +516,9 @@ double AqlValue::toDouble(bool& failed) const {
 /// @brief get the numeric value of an AqlValue
 int64_t AqlValue::toInt64() const {
   switch (type()) {
-    case VPACK_DOCUMENT: 
-    case VPACK_POINTER: 
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isNumber()) {
         return s.getNumber<int64_t>();
@@ -468,10 +568,9 @@ int64_t AqlValue::toInt64() const {
 /// @brief whether or not the contained value evaluates to true
 bool AqlValue::toBoolean() const {
   switch (type()) {
-    case VPACK_DOCUMENT: 
-    case VPACK_POINTER: 
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isBoolean()) {
         return s.getBoolean();
@@ -532,7 +631,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
     TRI_ASSERT(left > 0);
 
     // iterate over all the object's attributes
-    for (auto const& it : VPackObjectIterator(s)) {
+    for (auto const& it : VPackObjectIterator(s, false)) {
       // check if we need to render this attribute
       auto it2 = attributes.find(it.key.copyString());
 
@@ -563,10 +662,9 @@ v8::Handle<v8::Value> AqlValue::toV8(
     v8::Isolate* isolate, arangodb::AqlTransaction* trx) const {
   
   switch (type()) {
-    case VPACK_DOCUMENT:
-    case VPACK_POINTER:
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       VPackOptions* options = trx->transactionContext()->getVPackOptions();
       return TRI_VPackToV8(isolate, slice(), options);
     }
@@ -605,14 +703,17 @@ v8::Handle<v8::Value> AqlValue::toV8(
 
 /// @brief materializes a value into the builder
 void AqlValue::toVelocyPack(AqlTransaction* trx, 
-                            arangodb::velocypack::Builder& builder) const {
+                            arangodb::velocypack::Builder& builder,
+                            bool resolveExternals) const {
   switch (type()) {
-    case VPACK_DOCUMENT: 
-    case VPACK_POINTER: 
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE: 
-    case VPACK_EXTERNAL: {
-      // TODO: optionally resolve externals
-      builder.add(slice());
+    case VPACK_MANAGED: {
+      if (resolveExternals) {
+        arangodb::basics::VelocyPackHelper::SanitizeExternals(slice(), builder);
+      } else {
+        builder.add(slice());
+      }
       break;
     }
     case DOCVEC: {
@@ -620,8 +721,7 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
       for (auto const& it : *_data.docvec) {
         size_t const n = it->size();
         for (size_t i = 0; i < n; ++i) {
-          // TODO: optionally resolve externals
-          it->getValueReference(i, 0).toVelocyPack(trx, builder);
+          it->getValueReference(i, 0).toVelocyPack(trx, builder, resolveExternals);
         }
       }
       builder.close();
@@ -631,7 +731,6 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
       builder.openArray();
       size_t const n = _data.range->size();
       for (size_t i = 0; i < n; ++i) {
-        // TODO: optionally resolve externals
         builder.add(VPackValue(_data.range->at(i)));
       }
       builder.close();
@@ -641,20 +740,18 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
 }
 
 /// @brief materializes a value into the builder
-AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
+AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied, bool resolveExternals) const {
   switch (type()) {
-    case VPACK_DOCUMENT: 
-    case VPACK_POINTER: 
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE: 
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       hasCopied = false;
       return *this;
     }
     case DOCVEC: 
     case RANGE: {
       VPackBuilder builder;
-      // TODO: optionally resolve externals
-      toVelocyPack(trx, builder);
+      toVelocyPack(trx, builder, resolveExternals);
       hasCopied = true;
       return AqlValue(builder);
     }
@@ -668,15 +765,14 @@ AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
 /// @brief clone a value
 AqlValue AqlValue::clone() const {
   switch (type()) {
-    case VPACK_DOCUMENT: 
-    case VPACK_POINTER: {
+    case VPACK_SLICE_POINTER: {
       return AqlValue(_data.pointer);
     }
     case VPACK_INLINE: {
       // copy internal data
       return AqlValue(slice());
     }
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       // copy buffer
       VPackValueLength length = _data.buffer->size();
       auto buffer = new VPackBuffer<uint8_t>(length);
@@ -711,13 +807,12 @@ AqlValue AqlValue::clone() const {
 /// @brief destroy the value's internals
 void AqlValue::destroy() {
   switch (type()) { 
-    case VPACK_DOCUMENT:
-    case VPACK_POINTER:
+    case VPACK_SLICE_POINTER: 
     case VPACK_INLINE: {
       // nothing to do
       break;
     }
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       delete _data.buffer;
       erase(); // to prevent duplicate deletion
       break;
@@ -739,10 +834,8 @@ void AqlValue::destroy() {
 
 /// @brief return the slice from the value
 VPackSlice AqlValue::slice() const {
-  // TODO: optionally resolve externals
   switch (type()) {
-    case VPACK_DOCUMENT: 
-    case VPACK_POINTER: {
+    case VPACK_SLICE_POINTER: {
       return VPackSlice(_data.pointer);
     }
     case VPACK_INLINE: {
@@ -752,7 +845,7 @@ VPackSlice AqlValue::slice() const {
       }
       return s;
     }
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       VPackSlice s(_data.buffer->data());
       if (s.isExternal()) {
         s = VPackSlice(s.getExternal());
@@ -792,7 +885,7 @@ AqlValue AqlValue::CreateFromBlocks(
       // only enumerate the registers that are left
       for (auto const& reg : registers) {
         builder.add(VPackValue(variableNames[reg]));
-        current->getValueReference(i, reg).toVelocyPack(trx, builder);
+        current->getValueReference(i, reg).toVelocyPack(trx, builder, false);
       }
 
       builder.close();
@@ -813,7 +906,7 @@ AqlValue AqlValue::CreateFromBlocks(
 
   for (auto const& current : src) {
     for (size_t i = 0; i < current->size(); ++i) {
-      current->getValueReference(i, expressionRegister).toVelocyPack(trx, builder);
+      current->getValueReference(i, expressionRegister).toVelocyPack(trx, builder, false);
     }
   }
 
@@ -834,10 +927,10 @@ int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
     if (leftType == RANGE || rightType == RANGE || leftType == DOCVEC || rightType == DOCVEC) {
       // range|docvec against x
       VPackBuilder leftBuilder;
-      left.toVelocyPack(trx, leftBuilder);
+      left.toVelocyPack(trx, leftBuilder, false);
 
       VPackBuilder rightBuilder;
-      right.toVelocyPack(trx, rightBuilder);
+      right.toVelocyPack(trx, rightBuilder, false);
     
       return arangodb::basics::VelocyPackHelper::compare(leftBuilder.slice(), rightBuilder.slice(), compareUtf8, options);
     }
@@ -847,10 +940,9 @@ int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
   // if we get here, types are equal or can be treated as being equal
 
   switch (leftType) {
-    case VPACK_DOCUMENT:
-    case VPACK_POINTER:
+    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_EXTERNAL: {
+    case VPACK_MANAGED: {
       return arangodb::basics::VelocyPackHelper::compare(left.slice(), right.slice(), compareUtf8, options);
     }
     case DOCVEC: {

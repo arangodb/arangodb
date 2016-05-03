@@ -212,11 +212,11 @@ void GeneralRequest::addSuffix(std::string const& part) {
   char* utf8_nfc = TRI_normalize_utf8_to_NFC(
       TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
 
-  if (utf8_nfc) {
+  if (utf8_nfc != nullptr) {
     _suffix.emplace_back(utf8_nfc);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8_nfc);
   } else {
-    _suffix.emplace_back(decoded);
+    _suffix.emplace_back(std::move(decoded));
   }
 }
 

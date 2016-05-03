@@ -29,6 +29,8 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+static std::string const EMPTY_STR = "";
+
 std::string GeneralResponse::responseString(ResponseCode code) {
   switch (code) {
     //  Informational 1xx
@@ -418,8 +420,6 @@ GeneralResponse::GeneralResponse(ResponseCode responseCode,
     : _responseCode(responseCode), _apiCompatibility(compatibility) {}
 
 std::string const& GeneralResponse::header(std::string const& key) const {
-  static std::string const EMPTY_STR = "";
-
   std::string k = StringUtils::tolower(key);
   auto it = _headers.find(k);
 
@@ -432,8 +432,6 @@ std::string const& GeneralResponse::header(std::string const& key) const {
 
 std::string const& GeneralResponse::header(std::string const& key,
                                            bool& found) const {
-  static std::string const EMPTY_STR = "";
-
   std::string k = StringUtils::tolower(key);
   auto it = _headers.find(k);
 
@@ -448,9 +446,7 @@ std::string const& GeneralResponse::header(std::string const& key,
 
 void GeneralResponse::setHeader(std::string const& key,
                                 std::string const& value) {
-  std::string k = StringUtils::tolower(key);
-
-  _headers[k] = value;
+  _headers[StringUtils::tolower(key)] = value;
 }
 
 void GeneralResponse::setHeaderNC(std::string const& key,
@@ -458,315 +454,8 @@ void GeneralResponse::setHeaderNC(std::string const& key,
   _headers[key] = value;
 }
 
-#if 0
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the content length
-////////////////////////////////////////////////////////////////////////////////
-
-size_t HttpResponse::contentLength() {
-  if (_isHeadResponse) {
-    return _bodySize;
-  }
-
-  Dictionary<char const*>::KeyValue const* kv =
-      _headers.lookup(TRI_CHAR_LENGTH_PAIR("content-length"));
-
-  if (kv == nullptr) {
-    return 0;
-  }
-
-  return StringUtils::uint32(kv->_value);
+void GeneralResponse::setHeaderNC(std::string const& key,
+                                  std::string&& value) {
+  _headers[key] = std::move(value);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a header field
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a header field
-////////////////////////////////////////////////////////////////////////////////
-
-std::string HttpResponse::header(char const* key, size_t keyLength) const {
-  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
-
-  if (kv == nullptr) {
-    return "";
-  }
-  return kv->_value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a header field
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a header field
-////////////////////////////////////////////////////////////////////////////////
-
-std::string HttpResponse::header(char const* key, size_t keyLength,
-                                 bool& found) const {
-  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
-
-  if (kv == nullptr) {
-    found = false;
-    return "";
-  }
-  found = true;
-  return kv->_value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all header fields
-////////////////////////////////////////////////////////////////////////////////
-
-std::map<std::string, std::string> HttpResponse::headers() const {
-  basics::Dictionary<char const*>::KeyValue const* begin;
-  basics::Dictionary<char const*>::KeyValue const* end;
-
-  std::map<std::string, std::string> result;
-
-  for (_headers.range(begin, end); begin < end; ++begin) {
-    char const* key = begin->_key;
-
-    if (key == nullptr) {
-      continue;
-    }
-
-    result[key] = begin->_value;
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a header field
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpResponse::setHeader(char const* key, size_t keyLength,
-                             std::string const& value) {
-  if (value.empty()) {
-    _headers.erase(key);
-  } else {
-    char const* v = StringUtils::duplicate(value);
-
-    if (v != nullptr) {
-      _headers.insert(key, keyLength, v);
-      checkHeader(key, v);
-
-      _freeables.emplace_back(v);
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a header field
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpResponse::setHeader(char const* key, size_t keyLength,
-                             char const* value) {
-  if (*value == '\0') {
-    _headers.erase(key);
-  } else {
-    _headers.insert(key, keyLength, value);
-    checkHeader(key, value);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a header field
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpResponse::setHeader(std::string const& key, std::string const& value) {
-  std::string lk = StringUtils::tolower(key);
-
-  if (value.empty()) {
-    _headers.erase(lk.c_str());
-  } else {
-    StringUtils::trimInPlace(lk);
-
-    char const* k = StringUtils::duplicate(lk);
-    char const* v = StringUtils::duplicate(value);
-
-    _headers.insert(k, lk.size(), v);
-    checkHeader(k, v);
-
-    _freeables.push_back(k);
-    _freeables.push_back(v);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets many header fields
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpResponse::setHeaders(std::string const& headers, bool includeLine0) {
-  // make a copy we can change, this buffer will be deleted in the destructor
-  char* headerBuffer = new char[headers.size() + 1];
-  memcpy(headerBuffer, headers.c_str(), headers.size() + 1);
-
-  _freeables.push_back(headerBuffer);
-
-  // check for '\n' (we check for '\r' later)
-  int lineNum = includeLine0 ? 0 : 1;
-
-  char* start = headerBuffer;
-  char* end = headerBuffer + headers.size();
-  char* end1 = start;
-
-  for (; end1 < end && *end1 != '\n'; ++end1) {
-  }
-
-  while (start < end) {
-    char* end2 = end1;
-
-    if (start < end2 && end2[-1] == '\r') {
-      --end2;
-    }
-
-    // the current line is [start, end2)
-    if (start < end2) {
-      // now split line at the first spaces
-      char* end3 = start;
-
-      for (; end3 < end2 && *end3 != ' ' && *end3 != ':'; ++end3) {
-        *end3 = ::tolower(*end3);
-      }
-
-      // the current token is [start, end3) and all in lower case
-      if (lineNum == 0) {
-        // the start should be HTTP/1.1 followed by blanks followed by the
-        // result code
-        if (start + 8 <= end3 && memcmp(start, "http/1.1", 8) == 0) {
-          char* start2 = end3;
-
-          for (; start2 < end2 && (*start2 == ' ' || *start2 == ':');
-               ++start2) {
-          }
-
-          if (start2 < end2) {
-            *end2 = '\0';
-
-            _code = static_cast<HttpResponseCode>(::atoi(start2));
-          } else {
-            _code = NOT_IMPLEMENTED;
-          }
-        } else {
-          _code = NOT_IMPLEMENTED;
-        }
-      }
-
-      // normal header field, key is [start, end3) and the value is [start2,
-      // end4)
-      else {
-        for (; end3 < end2 && *end3 != ':'; ++end3) {
-          *end3 = ::tolower(*end3);
-        }
-
-        *end3 = '\0';
-
-        if (end3 < end2) {
-          char* start2 = end3 + 1;
-
-          for (; start2 < end2 && *start2 == ' '; ++start2) {
-          }
-
-          char* end4 = end2;
-
-          for (; start2 < end4 && *(end4 - 1) == ' '; --end4) {
-          }
-
-          *end4 = '\0';
-
-          _headers.insert(start, end3 - start, start2);
-        } else {
-          _headers.insert(start, end3 - start, end3);
-        }
-      }
-    }
-
-    start = end1 + 1;
-
-    for (end1 = start; end1 < end && *end1 != '\n'; ++end1) {
-    }
-
-    lineNum++;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a cookie
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief swaps data
-////////////////////////////////////////////////////////////////////////////////
-
-HttpResponse* HttpResponse::swap() {
-  HttpResponse* response = new HttpResponse(_code, _apiCompatibility);
-
-  response->_headers.swap(&_headers);
-  response->_body.swap(&_body);
-  response->_freeables.swap(_freeables);
-
-  bool isHeadResponse = response->_isHeadResponse;
-  response->_isHeadResponse = _isHeadResponse;
-  _isHeadResponse = isHeadResponse;
-
-  size_t bodySize = response->_bodySize;
-  response->_bodySize = _bodySize;
-  _bodySize = bodySize;
-
-  return response;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes the header
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the size of the body
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the body
-////////////////////////////////////////////////////////////////////////////////
-
-StringBuffer& HttpResponse::body() { return _body; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief indicates a head response
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deflates the response body
-///
-/// the body must already be set. deflate is then run on the existing body
-////////////////////////////////////////////////////////////////////////////////
-
-int HttpResponse::deflate(size_t bufferSize) {
-  int res = _body.deflate(bufferSize);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  setHeader(TRI_CHAR_LENGTH_PAIR("content-encoding"), "deflate");
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks for special headers
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpResponse::checkHeader(char const* key, char const* value) {
-  if (key[0] == 't' && strcmp(key, "transfer-encoding") == 0) {
-    if (TRI_CaseEqualString(value, "chunked")) {
-      _isChunked = true;
-    } else {
-      _isChunked = false;
-    }
-  }
-}
-
-#endif

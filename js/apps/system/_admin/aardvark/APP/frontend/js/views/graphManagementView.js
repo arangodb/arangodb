@@ -37,10 +37,10 @@
       $('#tab-content-create-graph #' + id).addClass('active');
 
       if (id === 'exampleGraphs') {
-        $('#modal-dialog .modal-footer button').css("display", "none");
+        $('#modal-dialog .modal-footer .button-success').css("display", "none");
       }
       else {
-        $('#modal-dialog .modal-footer button').css("display", "block");
+        $('#modal-dialog .modal-footer .button-success').css("display", "initial");
       }
     },
 

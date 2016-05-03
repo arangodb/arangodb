@@ -473,14 +473,6 @@ void Optimizer::setupRules() {
   registerRule("move-calculations-down", moveCalculationsDownRule,
                moveCalculationsDownRule_pass9, true);
 
-// fuse calculations
-#if 0
-  registerRule("fuse-calculations",
-               fuseCalculationsRule,
-               fuseCalculationsRule_pass9,
-               true);
-#endif
-
   // patch update statements
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                patchUpdateStatementsRule_pass9, true);

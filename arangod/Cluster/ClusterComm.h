@@ -167,7 +167,7 @@ struct ClusterCommOperation {
   GeneralRequest::RequestType reqtype;
   std::string path;
   std::shared_ptr<std::string const> body;
-  std::unique_ptr<std::map<std::string, std::string>> headerFields;
+  std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
   std::shared_ptr<ClusterCommCallback> callback;
   ClusterCommTimeout endTime;
 };
@@ -188,7 +188,7 @@ struct ClusterCommRequest {
   GeneralRequest::RequestType                         requestType;
   std::string                                         path;
   std::shared_ptr<std::string const>                  body;
-  std::unique_ptr<std::map<std::string, std::string>> headerFields;
+  std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
   ClusterCommResult                                   result;
   bool                                                done;
 
@@ -203,7 +203,7 @@ struct ClusterCommRequest {
   {
   }
 
-  void setHeaders(std::unique_ptr<std::map<std::string, std::string>>& headers) {
+  void setHeaders(std::unique_ptr<std::unordered_map<std::string, std::string>>& headers) {
     headerFields = std::move(headers);
   }
 };
@@ -285,7 +285,7 @@ class ClusterComm {
       std::string const& destination,
       GeneralRequest::RequestType reqtype, std::string const& path,
       std::shared_ptr<std::string const> body,
-      std::unique_ptr<std::map<std::string, std::string>>& headerFields,
+      std::unique_ptr<std::unordered_map<std::string, std::string>>& headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
       bool singleRequest = false);
 
@@ -299,7 +299,7 @@ class ClusterComm {
       std::string const& destination,
       GeneralRequest::RequestType reqtype, std::string const& path,
       std::string const& body,
-      std::map<std::string, std::string> const& headerFields,
+      std::unordered_map<std::string, std::string> const& headerFields,
       ClusterCommTimeout timeout);
 
   //////////////////////////////////////////////////////////////////////////////

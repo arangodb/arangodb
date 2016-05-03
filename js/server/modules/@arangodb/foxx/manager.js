@@ -1,9 +1,8 @@
-/*jshint esnext: true */
 /*global ArangoServerState, ArangoClusterInfo, ArangoClusterComm */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Foxx application manager
+/// @brief Foxx service manager
 ///
 /// @file
 ///
@@ -32,14 +31,17 @@
 
 const _ = require('lodash');
 const fs = require('fs');
+const joinPath = require('path').join;
 const joi = require('joi');
 const util = require('util');
 const semver = require('semver');
+const dd = require('dedent');
+const il = require('@arangodb/util').inline;
 const utils = require('@arangodb/foxx/manager-utils');
 const store = require('@arangodb/foxx/store');
 const FoxxService = require('@arangodb/foxx/service');
 const generator = require('@arangodb/foxx/generator');
-const routeAndExportApp = require('@arangodb/foxx/routing').routeApp;
+const routeAndExportService = require('@arangodb/foxx/routing').routeService;
 const formatUrl = require('url').format;
 const parseUrl = require('url').parse;
 const arangodb = require('@arangodb');
@@ -68,21 +70,11 @@ const legacyManifestFields = [
 ];
 
 const manifestSchema = {
-  name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).required(),
-  version: joi.string().required(),
-  engines: (
-    joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.string().required())
-  ),
-
-  license: joi.string().optional(),
-  description: joi.string().allow('').default(''),
+  // FoxxStore metadata
+  name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).optional(),
+  version: joi.string().optional(),
   keywords: joi.array().optional(),
-  thumbnail: joi.string().optional(),
-  author: joi.string().allow('').default(''),
-  contributors: joi.array().optional(),
-  defaultDocument: joi.string().allow('').optional(),
+  license: joi.string().optional(),
   repository: (
     joi.object().optional()
     .keys({
@@ -91,9 +83,29 @@ const manifestSchema = {
     })
   ),
 
+  // Additional web interface metadata
+  author: joi.string().allow('').default(''),
+  contributors: joi.array().optional(),
+  description: joi.string().allow('').default(''),
+  thumbnail: joi.string().optional(),
+
+  // Compatibility
+  engines: (
+    joi.object().optional()
+    .pattern(RE_EMPTY, joi.forbidden())
+    .pattern(RE_NOT_EMPTY, joi.string().required())
+  ),
+
+  // Index redirect
+  defaultDocument: joi.string().allow('').optional(),
+
+  // JS path
   lib: joi.string().default('.'),
+
+  // Entrypoint
   main: joi.string().optional(),
 
+  // Config
   configuration: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -111,6 +123,7 @@ const manifestSchema = {
     ))
   ),
 
+  // Dependencies supported
   dependencies: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -125,6 +138,19 @@ const manifestSchema = {
     ))
   ),
 
+  // Dependencies provided
+  provides: (
+    joi.alternatives().try(
+      joi.string().optional(),
+      joi.array().optional()
+      .items(joi.string().required()),
+      joi.object().optional()
+      .pattern(RE_EMPTY, joi.forbidden())
+      .pattern(RE_NOT_EMPTY, joi.string().required())
+    )
+  ),
+
+  // Bundled assets
   files: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -139,12 +165,15 @@ const manifestSchema = {
     ))
   ),
 
+  // Scripts/queue jobs
   scripts: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
     .pattern(RE_NOT_EMPTY, joi.string().required())
     .default(Object, 'empty scripts object')
   ),
+
+  // Foxx tests path
   tests: (
     joi.alternatives()
     .try(
@@ -159,7 +188,7 @@ const manifestSchema = {
 };
 
 
-var appCache = {};
+var serviceCache = {};
 var usedSystemMountPoints = [
   '/_admin/aardvark', // Admin interface.
   '/_api/gharial' // General_Graph API.
@@ -167,10 +196,10 @@ var usedSystemMountPoints = [
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Searches through a tree of files and returns true for all app roots
+/// @brief Searches through a tree of files and returns true for all service roots
 ////////////////////////////////////////////////////////////////////////////////
 
-function filterAppRoots(folder) {
+function filterServiceRoots(folder) {
   return /[\\\/]APP$/i.test(folder) && !/(APP[\\\/])(.*)APP$/i.test(folder);
 }
 
@@ -185,39 +214,42 @@ function reloadRouting() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Resets the app cache
+/// @brief Resets the service cache
 ////////////////////////////////////////////////////////////////////////////////
 
 function resetCache() {
-  _.each(appCache, function (cache) {
-    _.each(cache, function (app) {
-      app.main.loaded = false;
+  _.each(serviceCache, (cache) => {
+    _.each(cache, (service) => {
+      service.main.loaded = false;
     });
   });
-  appCache = {};
+  serviceCache = {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup app in cache
-/// Returns either the app or undefined if it is not cached.
+/// @brief lookup service in cache
+/// Returns either the service or undefined if it is not cached.
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupApp(mount) {
+function lookupService(mount) {
   var dbname = arangodb.db._name();
-  if (!appCache.hasOwnProperty(dbname) || Object.keys(appCache[dbname]).length === 0) {
+  if (!serviceCache.hasOwnProperty(dbname) || Object.keys(serviceCache[dbname]).length === 0) {
     refillCaches(dbname);
   }
-  if (!appCache[dbname].hasOwnProperty(mount)) {
+  if (!serviceCache[dbname].hasOwnProperty(mount)) {
     refillCaches(dbname);
-    if (appCache[dbname].hasOwnProperty(mount)) {
-      return appCache[dbname][mount];
+    if (serviceCache[dbname].hasOwnProperty(mount)) {
+      return serviceCache[dbname][mount];
     }
     throw new ArangoError({
       errorNum: errors.ERROR_APP_NOT_FOUND.code,
-      errorMessage: 'App not found at: ' + mount
+      errorMessage: dd`
+        ${errors.ERROR_APP_NOT_FOUND.message}
+        Service not found at "${mount}".
+      `
     });
   }
-  return appCache[dbname][mount];
+  return serviceCache[dbname][mount];
 }
 
 
@@ -227,8 +259,8 @@ function lookupApp(mount) {
 
 function refillCaches(dbname) {
   var cache = {};
-  _.each(appCache[dbname], function (app) {
-    app.main.loaded = false;
+  _.each(serviceCache[dbname], (service) => {
+    service.main.loaded = false;
   });
 
   var cursor = utils.getStorage().all();
@@ -236,13 +268,13 @@ function refillCaches(dbname) {
 
   while (cursor.hasNext()) {
     var config = cursor.next();
-    var app = new FoxxService(Object.assign({}, config));
-    var mount = app.mount;
-    cache[mount] = app;
+    var service = new FoxxService(Object.assign({}, config));
+    var mount = service.mount;
+    cache[mount] = service;
     routes.push(mount);
   }
 
-  appCache[dbname] = cache;
+  serviceCache[dbname] = cache;
   return routes;
 }
 
@@ -251,8 +283,8 @@ function refillCaches(dbname) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function routes(mount) {
-  var app = lookupApp(mount);
-  return routeAndExportApp(app, false).routes;
+  var service = lookupService(mount);
+  return routeAndExportService(service, false).routes;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,22 +292,22 @@ function routes(mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ensureRouted(mount) {
-  var app = lookupApp(mount);
-  return routeAndExportApp(app, false);
+  var service = lookupService(mount);
+  return routeAndExportService(service, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Makes sure all system apps are mounted.
+/// @brief Makes sure all system services are mounted.
 ////////////////////////////////////////////////////////////////////////////////
 
-function checkMountedSystemApps(dbname) {
+function checkMountedSystemService(dbname) {
   var i, mount;
   //var collection = utils.getStorage();
   for (i = 0; i < usedSystemMountPoints.length; ++i) {
     mount = usedSystemMountPoints[i];
-    delete appCache[dbname][mount];
+    delete serviceCache[dbname][mount];
     _scanFoxx(mount, {replace: true});
-    executeAppScript('setup', lookupApp(mount));
+    executeScript('setup', lookupService(mount));
   }
 }
 
@@ -285,81 +317,138 @@ function checkMountedSystemApps(dbname) {
 /// this implements issue #590: Manifest Lint
 ////////////////////////////////////////////////////////////////////////////////
 
-function checkManifest(filename, manifest) {
+function checkManifest(filename, inputManifest, mount) {
   const serverVersion = plainServerVersion();
-  const validationErrors = [];
+  const errors = [];
+  const warnings = [];
+  const notices = [];
+  const manifest = {};
   let legacy = false;
 
   Object.keys(manifestSchema).forEach(function (key) {
-    let schema = manifestSchema[key];
-    let value = manifest[key];
-    let result = joi.validate(value, schema);
-    if (result.value !== undefined) {
-      manifest[key] = result.value;
-    }
+    const schema = manifestSchema[key];
+    const value = inputManifest[key];
+    const result = joi.validate(value, schema);
     if (result.error) {
-      let error = result.error.message.replace(/^"value"/, `"${key}"`);
-      let message = `Manifest "${filename}": attribute ${error} (was "${util.format(value)}").`;
-      validationErrors.push(message);
-      console.error(message);
+      const error = result.error.message.replace(/^"value"/, `Field "${key}"`);
+      errors.push(`${error} (was "${util.format(value)}").`);
+    } else {
+      manifest[key] = result.value;
     }
   });
 
   if (manifest.engines && manifest.engines.arangodb) {
     if (semver.gtr('3.0.0', manifest.engines.arangodb)) {
       legacy = true;
-      console.warn(
-        `Manifest "${filename}" for app "${manifest.name}":`
-        + ` Service expects version ${manifest.engines.arangodb}`
-        + ` and will run in legacy compatibility mode.`
-      );
+      notices.push(il`
+        Service expects version ${manifest.engines.arangodb}
+        and will run in legacy compatibility mode.
+      `);
     } else if (!semver.satisfies(serverVersion, manifest.engines.arangodb)) {
-      console.warn(
-        `Manifest "${filename}" for app "${manifest.name}":`
-        + ` ArangoDB version ${serverVersion} probably not compatible`
-        + ` with expected version ${manifest.engines.arangodb}.`
-      );
+      warnings.push(il`
+        ArangoDB version ${serverVersion} probably not compatible
+        with expected version ${manifest.engines.arangodb}.
+      `);
     }
   }
 
-  Object.keys(manifest).forEach(function (key) {
-    if (!manifestSchema[key] && (!legacy || legacyManifestFields.indexOf(key) === -1)) {
-      console.warn(`Manifest "${filename}" for app "${manifest.name}": unknown attribute "${key}"`);
+  for (const key of Object.keys(inputManifest)) {
+    if (manifestSchema[key]) {
+      continue;
     }
-  });
+    manifest[key] = inputManifest[key];
+    if (key === 'engine' && !inputManifest.engines) {
+      warnings.push('Unknown field "engine". Did you mean "engines"?');
+    } else if (!legacy || legacyManifestFields.indexOf(key) === -1) {
+      warnings.push(`Unknown field "${key}".`);
+    }
+  }
 
-  if (validationErrors.length) {
+  if (manifest.version && !semver.valid(manifest.version)) {
+    warnings.push(`Not a valid version: "${manifest.verison}"`);
+  }
+
+  if (manifest.provides) {
+    if (typeof manifest.provides === 'string') {
+      manifest.provides = [manifest.provides];
+    }
+    if (Array.isArray(manifest.provides)) {
+      const provides = manifest.provides;
+      manifest.provides = {};
+      for (const provided of provides) {
+        const tokens = provided.split(':');
+        manifest.provides[tokens[0]] = tokens[1] || '*';
+      }
+    }
+    for (const name of Object.keys(manifest.provides)) {
+      const version = manifest.provides[name];
+      if (!semver.valid(version)) {
+        errors.push(`Provided "${name}" invalid version: "${version}".`);
+      }
+    }
+  }
+
+  if (manifest.dependencies) {
+    for (const key of Object.keys(manifest.dependencies)) {
+      if (typeof manifest.dependencies[key] === 'string') {
+        const tokens = manifest.dependencies[key].split(':');
+        manifest.dependencies[key] = {
+          name: tokens[0] || '*',
+          version: tokens[1] || '*',
+          required: true
+        };
+      }
+      const version = manifest.dependencies[key].version;
+      if (!semver.validRange(version)) {
+        errors.push(`Dependency "${key}" invalid version: "${version}".`);
+      }
+    }
+  }
+
+  if (notices.length) {
+    console.infoLines(dd`
+      Manifest for service at "${mount}":
+      ${notices.join('\n')}
+    `);
+  }
+
+  if (warnings.length) {
+    console.warnLines(dd`
+      Manifest for service at "${mount}":
+      ${warnings.join('\n')}
+    `);
+  }
+
+  if (errors.length) {
+    console.errorLines(dd`
+      Manifest for service at "${mount}":
+      ${errors.join('\n')}
+    `);
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-      errorMessage: validationErrors.join('\n')
+      errorMessage: dd`
+        ${errors.ERROR_INVALID_APPLICATION_MANIFEST.message}
+        Manifest for service at "${mount}":
+        ${errors.join('\n')}
+      `
     });
-  } else {
-    if (manifest.dependencies) {
-      Object.keys(manifest.dependencies).forEach(function (key) {
-        const dependency = manifest.dependencies[key];
-        if (typeof dependency === 'string') {
-          const tokens = dependency.split(':');
-          manifest.dependencies[key] = {
-            name: tokens[0] || '*',
-            version: tokens[1] || '*',
-            required: true
-          };
-        }
-      });
-    }
+  }
 
-    if (legacy && manifest.defaultDocument === undefined) {
+  if (legacy) {
+    if (manifest.defaultDocument === undefined) {
       manifest.defaultDocument = 'index.html';
     }
 
     if (typeof manifest.controllers === 'string') {
       manifest.controllers = {'/': manifest.controllers};
     }
-
-    if (typeof manifest.tests === 'string') {
-      manifest.tests = [manifest.tests];
-    }
   }
+
+  if (typeof manifest.tests === 'string') {
+    manifest.tests = [manifest.tests];
+  }
+
+  return manifest;
 }
 
 
@@ -369,41 +458,44 @@ function checkManifest(filename, manifest) {
 /// All errors are handled including file not found. Returns undefined if manifest is invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-function validateManifestFile(filename) {
-  var mf, msg;
+function validateManifestFile(filename, mount) {
+  let mf;
   if (!fs.exists(filename)) {
-    msg = `Cannot find manifest file "${filename}"`;
-    throwFileNotFound(msg);
+    throwFileNotFound(`Cannot find manifest file "${filename}"`);
   }
   try {
     mf = JSON.parse(fs.read(filename));
   } catch (e) {
-    const error = new ArangoError({
-      errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
-      errorMessage: errors.ERROR_MALFORMED_MANIFEST_FILE.message
-      + '\nFile: ' + filename
-      + '\nCause: ' + e.stack
-    });
-    error.cause = e;
-    throw error;
+    throw Object.assign(
+      new ArangoError({
+        errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
+        errorMessage: dd`
+          ${errors.ERROR_MALFORMED_MANIFEST_FILE.message}
+          File: ${filename}
+          Cause: ${e.stack}
+        `
+      }), {cause: e}
+    );
   }
   try {
-    checkManifest(filename, mf);
+    mf = checkManifest(filename, mf, mount);
   } catch (e) {
-    const error = new ArangoError({
-      errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-      errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
-      + '\nFile: ' + filename
-      + '\nCause: ' + e.stack
-    });
-    error.cause = e;
-    throw error;
+    throw Object.assign(
+      new ArangoError({
+        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+        errorMessage: dd`
+          ${errors.ERROR_INVALID_APPLICATION_MANIFEST.message}
+          File: ${filename}
+          Cause: ${e.stack}
+        `
+      }), {cause: e}
+    );
   }
   return mf;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Checks if the mountpoint is reserved for system apps
+/// @brief Checks if the mountpoint is reserved for system services
 ////////////////////////////////////////////////////////////////////////////////
 
 function isSystemMount(mount) {
@@ -411,10 +503,10 @@ function isSystemMount(mount) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the root path for application. Knows about system apps
+/// @brief returns the root path for service. Knows about system services
 ////////////////////////////////////////////////////////////////////////////////
 
-function computeRootAppPath(mount) {
+function computeRootServicePath(mount) {
   if (isSystemMount(mount)) {
     return FoxxService._systemAppPath;
   }
@@ -428,7 +520,7 @@ function computeRootAppPath(mount) {
 function transformMountToPath(mount) {
   var list = mount.split('/');
   list.push('APP');
-  return fs.join.apply(fs, list);
+  return joinPath(...list);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -442,24 +534,24 @@ function transformPathToMount(path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the application path for mount point
+/// @brief returns the service path for mount point
 ////////////////////////////////////////////////////////////////////////////////
 
-function computeAppPath(mount) {
-  var root = computeRootAppPath(mount);
+function computeServicePath(mount) {
+  var root = computeRootServicePath(mount);
   var mountPath = transformMountToPath(mount);
-  return fs.join(root, mountPath);
+  return joinPath(root, mountPath);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an app script
+/// @brief executes a service script
 ////////////////////////////////////////////////////////////////////////////////
 
-function executeAppScript(scriptName, app, argv) {
-  var scripts = app.manifest.scripts;
+function executeScript(scriptName, service, argv) {
+  var scripts = service.manifest.scripts;
   // Only run setup/teardown scripts if they exist
   if (scripts[scriptName] || (scriptName !== 'setup' && scriptName !== 'teardown')) {
-    return app.run(scripts[scriptName], {
+    return service.run(scripts[scriptName], {
       foxxContext: {
         argv: argv ? (Array.isArray(argv) ? argv : [argv]) : []
       }
@@ -468,66 +560,66 @@ function executeAppScript(scriptName, app, argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a valid app config for validation purposes
+/// @brief returns a valid service config for validation purposes
 ////////////////////////////////////////////////////////////////////////////////
 
-function fakeAppConfig(path) {
-  var file = fs.join(path, 'manifest.json');
+function fakeServiceConfig(path, mount) {
+  var file = joinPath(path, 'manifest.json');
   return {
     id: '__internal',
     root: '',
     path: path,
     options: {},
     mount: '/internal',
-    manifest: validateManifestFile(file),
+    manifest: validateManifestFile(file, mount),
     isSystem: false,
     isDevelopment: false
   };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the app path and manifest
+/// @brief returns the service path and manifest
 ////////////////////////////////////////////////////////////////////////////////
 
-function appConfig(mount, options, activateDevelopment) {
-  var root = computeRootAppPath(mount);
+function serviceConfig(mount, options, activateDevelopment) {
+  var root = computeRootServicePath(mount);
   var path = transformMountToPath(mount);
 
-  var file = fs.join(root, path, 'manifest.json');
+  var file = joinPath(root, path, 'manifest.json');
    return {
     id: mount,
     path: path,
     options: options || {},
     mount: mount,
-    manifest: validateManifestFile(file),
+    manifest: validateManifestFile(file, mount),
     isSystem: isSystemMount(mount),
     isDevelopment: activateDevelopment || false
   };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Creates an app with options and returns it
-/// All errors are handled including app not found. Returns undefined if app is invalid.
-/// If the app is valid it will be added into the local app cache.
+/// @brief Creates a service with options and returns it
+/// All errors are handled including service not found. Returns undefined if service is invalid.
+/// If the service is valid it will be added into the local service cache.
 ////////////////////////////////////////////////////////////////////////////////
 
-function createApp(mount, options, activateDevelopment) {
+function createService(mount, options, activateDevelopment) {
   var dbname = arangodb.db._name();
-  var config = appConfig(mount, options, activateDevelopment);
-  var app = new FoxxService(config);
-  appCache[dbname][mount] = app;
-  return app;
+  var config = serviceConfig(mount, options, activateDevelopment);
+  var service = new FoxxService(config);
+  serviceCache[dbname][mount] = service;
+  return service;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Distributes zip file to peer coordinators. Only used in cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-function uploadToPeerCoordinators(appInfo, coordinators) {
+function uploadToPeerCoordinators(serviceInfo, coordinators) {
   let coordOptions = {
     coordTransactionID: ArangoClusterInfo.uniqid()
   };
-  let req = fs.readBuffer(fs.join(fs.getTempPath(), appInfo));
+  let req = fs.readBuffer(joinPath(fs.getTempPath(), serviceInfo));
   let httpOptions = {};
   let mapping = {};
   for (let i = 0; i < coordinators.length; ++i) {
@@ -539,22 +631,18 @@ function uploadToPeerCoordinators(appInfo, coordinators) {
   }
   return {
     results: cluster.wait(coordOptions, coordinators),
-    mapping: mapping
+    mapping
   };
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Generates an App with the given options into the targetPath
+/// @brief Generates a service with the given options into the targetPath
 ////////////////////////////////////////////////////////////////////////////////
 
-function installAppFromGenerator(targetPath, options) {
+function installServiceFromGenerator(targetPath, options) {
   var invalidOptions = [];
   // Set default values:
-  options.name = options.name || 'MyApp';
-  options.author = options.author || 'Author';
-  options.description = options.description || '';
-  options.license = options.license || 'Apache 2';
   options.documentCollections = options.documentCollections || [];
   options.edgeCollections = options.edgeCollections || [];
   if (typeof options.name !== 'string') {
@@ -578,8 +666,10 @@ function installAppFromGenerator(targetPath, options) {
   if (invalidOptions.length > 0) {
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_FOXX_OPTIONS.code,
-      errorMessage: errors.ERROR_INVALID_FOXX_OPTIONS.message
-      + '\nOptions: ' + JSON.stringify(invalidOptions, undefined, 2)
+      errorMessage: dd`
+        ${errors.ERROR_INVALID_FOXX_OPTIONS.message}
+        Options: ${JSON.stringify(invalidOptions, undefined, 2)}
+      `
     });
   }
   var cfg = generator.generate(options);
@@ -587,12 +677,12 @@ function installAppFromGenerator(targetPath, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Extracts an app from zip and moves it to temporary path
+/// @brief Extracts a service from zip and moves it to temporary path
 ///
-/// return path to app
+/// return path to service
 ////////////////////////////////////////////////////////////////////////////////
 
-function extractAppToPath(archive, targetPath, noDelete) {
+function extractServiceToPath(archive, targetPath, noDelete) {
   var tempFile = fs.getTempFile('zip', false);
   fs.makeDirectory(tempFile);
   fs.unzipFile(archive, tempFile, false, true);
@@ -643,10 +733,10 @@ function extractAppToPath(archive, targetPath, noDelete) {
     mp = found.substr(0, found.length - mf.length - 1);
   }
 
-  fs.move(fs.join(tempFile, mp), targetPath);
+  fs.move(joinPath(tempFile, mp), targetPath);
 
   // .............................................................................
-  // throw away temporary app folder
+  // throw away temporary service folder
   // .............................................................................
   if (found !== mf) {
     try {
@@ -663,8 +753,8 @@ function extractAppToPath(archive, targetPath, noDelete) {
 /// @brief builds a github repository URL
 ////////////////////////////////////////////////////////////////////////////////
 
-function buildGithubUrl(appInfo) {
-  var splitted = appInfo.split(':');
+function buildGithubUrl(serviceInfo) {
+  var splitted = serviceInfo.split(':');
   var repository = splitted[1];
   var version = splitted[2];
   if (version === undefined) {
@@ -679,10 +769,10 @@ function buildGithubUrl(appInfo) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Downloads an app from remote zip file and copies it to mount path
+/// @brief Downloads a service from remote zip file and copies it to mount path
 ////////////////////////////////////////////////////////////////////////////////
 
-function installAppFromRemote(url, targetPath) {
+function installServiceFromRemote(url, targetPath) {
   var tempFile = fs.getTempFile('downloads', false);
   var auth;
 
@@ -713,24 +803,24 @@ function installAppFromRemote(url, targetPath) {
     let details = String(err.stack || err);
     throwDownloadError(`Could not download from "${url}": ${details}`);
   }
-  extractAppToPath(tempFile, targetPath);
+  extractServiceToPath(tempFile, targetPath);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Copies an app from local, either zip file or folder, to mount path
+/// @brief Copies a service from local, either zip file or folder, to mount path
 ////////////////////////////////////////////////////////////////////////////////
 
-function installAppFromLocal(path, targetPath) {
+function installServiceFromLocal(path, targetPath) {
   if (fs.isDirectory(path)) {
-    extractAppToPath(utils.zipDirectory(path), targetPath);
+    extractServiceToPath(utils.zipDirectory(path), targetPath);
   } else {
-    extractAppToPath(path, targetPath, true);
+    extractServiceToPath(path, targetPath, true);
   }
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run a Foxx application script
+/// @brief run a Foxx service script
 ///
 /// Input:
 /// * scriptName: the script name
@@ -747,13 +837,13 @@ function runScript(scriptName, mount, options) {
     [ scriptName, mount ]
   );
 
-  var app = lookupApp(mount);
+  var service = lookupService(mount);
 
-  return executeAppScript(scriptName, app, options) || null;
+  return executeScript(scriptName, service, options) || null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the app's README.md
+/// @brief return the service's README.md
 ///
 /// Input:
 /// * mount: the mount path starting with a "/"
@@ -768,20 +858,20 @@ function readme(mount) {
     [ [ 'Mount path', 'string' ] ],
     [ mount ]
   );
-  let app = lookupApp(mount);
+  let service = lookupService(mount);
   let path, readmeText;
 
-  path = fs.join(app.root, app.path, 'README.md');
+  path = joinPath(service.root, service.path, 'README.md');
   readmeText = fs.exists(path) && fs.read(path);
   if (!readmeText) {
-    path = fs.join(app.root, app.path, 'README');
+    path = joinPath(service.root, service.path, 'README');
     readmeText = fs.exists(path) && fs.read(path);
   }
   return readmeText || null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run a Foxx application's tests
+/// @brief run a Foxx service's tests
 ///
 /// Input:
 /// * mount: the mount path starting with a "/"
@@ -797,18 +887,18 @@ function runTests(mount, options) {
     [ mount ]
   );
 
-  var app = lookupApp(mount);
+  var service = lookupService(mount);
   var reporter = options ? options.reporter : null;
-  return require('@arangodb/foxx/mocha').run(app, reporter);
+  return require('@arangodb/foxx/mocha').run(service, reporter);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Initializes the appCache and fills it initially for each db.
+/// @brief Initializes the serviceCache and fills it initially for each db.
 ////////////////////////////////////////////////////////////////////////////////
 
 function initCache() {
   var dbname = arangodb.db._name();
-  if (!appCache.hasOwnProperty(dbname)) {
+  if (!serviceCache.hasOwnProperty(dbname)) {
     initializeFoxx();
   }
 }
@@ -821,8 +911,8 @@ function initCache() {
 function _scanFoxx(mount, options, activateDevelopment) {
   options = options || { };
   var dbname = arangodb.db._name();
-  delete appCache[dbname][mount];
-  var app = createApp(mount, options, activateDevelopment);
+  delete serviceCache[dbname][mount];
+  var service = createService(mount, options, activateDevelopment);
   if (!options.__clusterDistribution) {
     db._executeTransaction({
       collections: {
@@ -830,7 +920,7 @@ function _scanFoxx(mount, options, activateDevelopment) {
       },
       action() {
         try {
-          utils.getStorage().save(app.toJSON());
+          utils.getStorage().save(service.toJSON());
         }
         catch (err) {
           if (!options.replace || err.errorNum !== errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
@@ -838,16 +928,16 @@ function _scanFoxx(mount, options, activateDevelopment) {
           }
           var old = utils.getStorage().firstExample({ mount: mount });
           if (old === null) {
-            throw new Error(`Could not find app for mountpoint "${mount}"`);
+            throw new Error(`Could not find service for mountpoint "${mount}"`);
           }
           var data = Object.assign({}, old);
-          data.manifest = app.toJSON().manifest;
+          data.manifest = service.toJSON().manifest;
           utils.getStorage().replace(old, data);
         }
       }
     });
   }
-  return app;
+  return service;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -862,9 +952,9 @@ function scanFoxx(mount, options) {
     [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   initCache();
-  var app = _scanFoxx(mount, options);
+  var service = _scanFoxx(mount, options);
   reloadRouting();
-  return app.simpleJSON();
+  return service.simpleJSON();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -879,7 +969,7 @@ function rescanFoxx(mount) {
     [ [ 'Mount path', 'string' ] ],
     [ mount ] );
 
-  var old = lookupApp(mount);
+  var old = lookupService(mount);
   //var collection = utils.getStorage();
   initCache();
   _scanFoxx(
@@ -890,30 +980,30 @@ function rescanFoxx(mount) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Build app in path
+/// @brief Build service in path
 ////////////////////////////////////////////////////////////////////////////////
 
-function _buildAppInPath(appInfo, path, options) {
+function _buildServiceInPath(serviceInfo, path, options) {
   try {
-    if (appInfo === 'EMPTY') {
-      // Make Empty app
-      installAppFromGenerator(path, options || {});
-    } else if (/^GIT:/i.test(appInfo)) {
-      installAppFromRemote(buildGithubUrl(appInfo), path);
-    } else if (/^https?:/i.test(appInfo)) {
-      installAppFromRemote(appInfo, path);
-    } else if (utils.pathRegex.test(appInfo)) {
-      installAppFromLocal(appInfo, path);
-    } else if (/^uploads[\/\\]tmp-/.test(appInfo)) {
-      appInfo = fs.join(fs.getTempPath(), appInfo);
-      installAppFromLocal(appInfo, path);
+    if (serviceInfo === 'EMPTY') {
+      // Make Empty service
+      installServiceFromGenerator(path, options || {});
+    } else if (/^GIT:/i.test(serviceInfo)) {
+      installServiceFromRemote(buildGithubUrl(serviceInfo), path);
+    } else if (/^https?:/i.test(serviceInfo)) {
+      installServiceFromRemote(serviceInfo, path);
+    } else if (utils.pathRegex.test(serviceInfo)) {
+      installServiceFromLocal(serviceInfo, path);
+    } else if (/^uploads[\/\\]tmp-/.test(serviceInfo)) {
+      serviceInfo = joinPath(fs.getTempPath(), serviceInfo);
+      installServiceFromLocal(serviceInfo, path);
     } else {
       try {
         store.update();
       } catch (e) {
         console.warnLines(`Failed to update Foxx store: ${e.stack}`);
       }
-      installAppFromRemote(store.buildUrl(appInfo), path);
+      installServiceFromRemote(store.buildUrl(serviceInfo), path);
     }
   } catch (e) {
     try {
@@ -926,17 +1016,17 @@ function _buildAppInPath(appInfo, path, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Internal app validation function
+/// @brief Internal service validation function
 /// Does not check parameters and throws errors.
 ////////////////////////////////////////////////////////////////////////////////
 
-function _validateApp(appInfo) {
+function _validateService(serviceInfo, mount) {
   var tempPath = fs.getTempFile('apps', false);
   try {
-    _buildAppInPath(appInfo, tempPath, {});
-    var tmp = new FoxxService(fakeAppConfig(tempPath));
+    _buildServiceInPath(serviceInfo, tempPath, {});
+    var tmp = new FoxxService(fakeServiceConfig(tempPath, mount));
     if (!tmp.needsConfiguration()) {
-      routeAndExportApp(tmp, true);
+      routeAndExportService(tmp, true);
     }
   } finally {
     fs.removeDirectoryRecursive(tempPath, true);
@@ -949,13 +1039,13 @@ function _validateApp(appInfo) {
 /// Does not check parameters and throws errors.
 ////////////////////////////////////////////////////////////////////////////////
 
-function _install(appInfo, mount, options, runSetup) {
-  var targetPath = computeAppPath(mount, true);
-  var app;
+function _install(serviceInfo, mount, options, runSetup) {
+  var targetPath = computeServicePath(mount, true);
+  var service;
   var collection = utils.getStorage();
   options = options || {};
   if (fs.exists(targetPath)) {
-    throw new Error('An app is already installed at this location.');
+    throw new Error('An service is already installed at this location.');
   }
   fs.makeDirectoryRecursive(targetPath);
   // Remove the empty APP folder.
@@ -963,15 +1053,15 @@ function _install(appInfo, mount, options, runSetup) {
   fs.removeDirectory(targetPath);
 
   initCache();
-  _buildAppInPath(appInfo, targetPath, options);
+  _buildServiceInPath(serviceInfo, targetPath, options);
   try {
-    app = _scanFoxx(mount, options);
+    service = _scanFoxx(mount, options);
     if (runSetup) {
-      executeAppScript('setup', lookupApp(mount));
+      executeScript('setup', lookupService(mount));
     }
-    if (!app.needsConfiguration()) {
+    if (!service.needsConfiguration()) {
       // Validate Routing & Exports
-      routeAndExportApp(app, true);
+      routeAndExportService(service, true);
     }
   } catch (e) {
     try {
@@ -987,7 +1077,9 @@ function _install(appInfo, mount, options, runSetup) {
           },
           action() {
             var definition = collection.firstExample({mount: mount});
-            collection.remove(definition._key);
+            if (definition !== null) {
+              collection.remove(definition._key);
+            }
           }
         });
       }
@@ -996,24 +1088,24 @@ function _install(appInfo, mount, options, runSetup) {
     }
     throw e;
   }
-  return app;
+  return service;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Installs a new foxx application on the given mount point.
+/// @brief Installs a new foxx service on the given mount point.
 ///
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-function install(appInfo, mount, options) {
+function install(serviceInfo, mount, options) {
   checkParameter(
-    'install(<appInfo>, <mount>, [<options>])',
+    'install(<serviceInfo>, <mount>, [<options>])',
     [ [ 'Install information', 'string' ],
       [ 'Mount path', 'string' ] ],
-    [ appInfo, mount ] );
+    [ serviceInfo, mount ] );
   utils.validateMount(mount);
-  let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(appInfo);
-  var app = _install(appInfo, mount, options, true);
+  let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(serviceInfo);
+  var service = _install(serviceInfo, mount, options, true);
   options = options || {};
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
     let name = ArangoServerState.id();
@@ -1021,7 +1113,7 @@ function install(appInfo, mount, options) {
       return c !== name;
     });
     if (hasToBeDistributed) {
-      let result = uploadToPeerCoordinators(appInfo, coordinators);
+      let result = uploadToPeerCoordinators(serviceInfo, coordinators);
       let mapping = result.mapping;
       let res = result.results;
       let intOpts = JSON.parse(JSON.stringify(options));
@@ -1041,7 +1133,7 @@ function install(appInfo, mount, options) {
       cluster.wait(coordOptions, coordinators);
     } else {
       /*jshint -W075:true */
-      let req = {appInfo, mount, options};
+      let req = {appInfo: serviceInfo, mount, options};
       /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
@@ -1058,7 +1150,7 @@ function install(appInfo, mount, options) {
     }
   }
   reloadRouting();
-  return app.simpleJSON();
+  return service.simpleJSON();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1068,21 +1160,21 @@ function install(appInfo, mount, options) {
 
 function _uninstall(mount, options) {
   var dbname = arangodb.db._name();
-  if (!appCache.hasOwnProperty(dbname)) {
+  if (!serviceCache.hasOwnProperty(dbname)) {
     initializeFoxx(options);
   }
-  var app;
+  var service;
   options = options || {};
   try {
-    app = lookupApp(mount);
+    service = lookupService(mount);
   } catch (e) {
     if (!options.force) {
       throw e;
     }
   }
   var collection = utils.getStorage();
-  var targetPath = computeAppPath(mount, true);
-  delete appCache[dbname][mount];
+  var targetPath = computeServicePath(mount, true);
+  delete serviceCache[dbname][mount];
   if (!options.__clusterDistribution) {
     try {
       db._executeTransaction({
@@ -1102,7 +1194,7 @@ function _uninstall(mount, options) {
   }
   if (options.teardown !== false && options.teardown !== 'false') {
     try {
-      executeAppScript('teardown', app);
+      executeScript('teardown', service);
     } catch (e) {
       if (!options.force) {
         throw e;
@@ -1116,7 +1208,7 @@ function _uninstall(mount, options) {
       throw e;
     }
   }
-  if (options.force && app === undefined) {
+  if (options.force && service === undefined) {
     return {
       simpleJSON() {
         return {
@@ -1127,11 +1219,11 @@ function _uninstall(mount, options) {
       }
     };
   }
-  return app;
+  return service;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Uninstalls the foxx application on the given mount point.
+/// @brief Uninstalls the foxx service on the given mount point.
 ///
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
@@ -1143,7 +1235,7 @@ function uninstall(mount, options) {
     [ mount ] );
   utils.validateMount(mount);
   options = options || {};
-  var app = _uninstall(mount, options);
+  var service = _uninstall(mount, options);
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
     let coordinators = ArangoClusterInfo.getCoordinators();
     /*jshint -W075:true */
@@ -1164,32 +1256,32 @@ function uninstall(mount, options) {
     }
   }
   reloadRouting();
-  return app.simpleJSON();
+  return service.simpleJSON();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Replaces a foxx application on the given mount point by an other one.
+/// @brief Replaces a foxx service on the given mount point by an other one.
 ///
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-function replace(appInfo, mount, options) {
+function replace(serviceInfo, mount, options) {
   checkParameter(
-    'replace(<appInfo>, <mount>, [<options>])',
+    'replace(<serviceInfo>, <mount>, [<options>])',
     [ [ 'Install information', 'string' ],
       [ 'Mount path', 'string' ] ],
-    [ appInfo, mount ] );
+    [ serviceInfo, mount ] );
   utils.validateMount(mount);
-  _validateApp(appInfo);
+  _validateService(serviceInfo, mount);
   options = options || {};
-  let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(appInfo);
+  let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(serviceInfo);
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
     let name = ArangoServerState.id();
     let coordinators = ArangoClusterInfo.getCoordinators().filter(function(c) {
       return c !== name;
     });
     if (hasToBeDistributed) {
-      let result = uploadToPeerCoordinators(appInfo, coordinators);
+      let result = uploadToPeerCoordinators(serviceInfo, coordinators);
       let mapping = result.mapping;
       let res = result.results;
       let intOpts = JSON.parse(JSON.stringify(options));
@@ -1210,7 +1302,7 @@ function replace(appInfo, mount, options) {
     } else {
       let intOpts = JSON.parse(JSON.stringify(options));
       /*jshint -W075:true */
-      let req = {appInfo, mount, options: intOpts};
+      let req = {appInfo: serviceInfo, mount, options: intOpts};
       /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
@@ -1229,34 +1321,34 @@ function replace(appInfo, mount, options) {
     __clusterDistribution: options.__clusterDistribution || false,
     force: !options.__clusterDistribution
   });
-  var app = _install(appInfo, mount, options, true);
+  var service = _install(serviceInfo, mount, options, true);
   reloadRouting();
-  return app.simpleJSON();
+  return service.simpleJSON();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Upgrade a foxx application on the given mount point by a new one.
+/// @brief Upgrade a foxx service on the given mount point by a new one.
 ///
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-function upgrade(appInfo, mount, options) {
+function upgrade(serviceInfo, mount, options) {
   checkParameter(
-    'upgrade(<appInfo>, <mount>, [<options>])',
+    'upgrade(<serviceInfo>, <mount>, [<options>])',
     [ [ 'Install information', 'string' ],
       [ 'Mount path', 'string' ] ],
-    [ appInfo, mount ] );
+    [ serviceInfo, mount ] );
   utils.validateMount(mount);
-  _validateApp(appInfo);
+  _validateService(serviceInfo, mount);
   options = options || {};
-  let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(appInfo);
+  let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(serviceInfo);
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
     let name = ArangoServerState.id();
     let coordinators = ArangoClusterInfo.getCoordinators().filter(function(c) {
       return c !== name;
     });
     if (hasToBeDistributed) {
-      let result = uploadToPeerCoordinators(appInfo, coordinators);
+      let result = uploadToPeerCoordinators(serviceInfo, coordinators);
       let mapping = result.mapping;
       let res = result.results;
       let intOpts = JSON.parse(JSON.stringify(options));
@@ -1277,7 +1369,7 @@ function upgrade(appInfo, mount, options) {
     } else {
       let intOpts = JSON.parse(JSON.stringify(options));
       /*jshint -W075:true */
-      let req = {appInfo, mount, options: intOpts};
+      let req = {appInfo: serviceInfo, mount, options: intOpts};
       /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
@@ -1292,15 +1384,15 @@ function upgrade(appInfo, mount, options) {
       }
     }
   }
-  var oldApp = lookupApp(mount);
-  var oldConf = oldApp.getConfiguration(true);
+  var oldService = lookupService(mount);
+  var oldConf = oldService.getConfiguration(true);
   options.configuration = options.configuration || {};
   Object.keys(oldConf).forEach(function (key) {
     if (!options.configuration.hasOwnProperty(key)) {
       options.configuration[key] = oldConf[key];
     }
   });
-  var oldDeps = oldApp.options.dependencies || {};
+  var oldDeps = oldService.options.dependencies || {};
   options.dependencies = options.dependencies || {};
   Object.keys(oldDeps).forEach(function (key) {
     if (!options.dependencies.hasOwnProperty(key)) {
@@ -1311,27 +1403,27 @@ function upgrade(appInfo, mount, options) {
     __clusterDistribution: options.__clusterDistribution || false,
     force: !options.__clusterDistribution
   });
-  var app = _install(appInfo, mount, options, true);
+  var service = _install(serviceInfo, mount, options, true);
   reloadRouting();
-  return app.simpleJSON();
+  return service.simpleJSON();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes the Foxx apps
+/// @brief initializes the Foxx services
 ////////////////////////////////////////////////////////////////////////////////
 
 function initializeFoxx(options) {
   var dbname = arangodb.db._name();
   var mounts = syncWithFolder(options);
   refillCaches(dbname);
-  checkMountedSystemApps(dbname);
+  checkMountedSystemService(dbname);
   mounts.forEach(function (mount) {
-    executeAppScript('setup', lookupApp(mount));
+    executeScript('setup', lookupService(mount));
   });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compute all app routes
+/// @brief compute all service routes
 ////////////////////////////////////////////////////////////////////////////////
 
 function mountPoints() {
@@ -1340,15 +1432,15 @@ function mountPoints() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toggles development mode of app and reloads routing
+/// @brief toggles development mode of service and reloads routing
 ////////////////////////////////////////////////////////////////////////////////
 
 function _toggleDevelopment(mount, activate) {
-  var app = lookupApp(mount);
-  app.development(activate);
-  utils.updateApp(mount, app.toJSON());
+  var service = lookupService(mount);
+  service.development(activate);
+  utils.updateService(mount, service.toJSON());
   reloadRouting();
-  return app;
+  return service;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1360,8 +1452,8 @@ function setDevelopment(mount) {
     'development(<mount>)',
     [ [ 'Mount path', 'string' ] ],
     [ mount ] );
-  var app = _toggleDevelopment(mount, true);
-  return app.simpleJSON();
+  var service = _toggleDevelopment(mount, true);
+  return service.simpleJSON();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1373,12 +1465,12 @@ function setProduction(mount) {
     'production(<mount>)',
     [ [ 'Mount path', 'string' ] ],
     [ mount ] );
-  var app = _toggleDevelopment(mount, false);
-  return app.simpleJSON();
+  var service = _toggleDevelopment(mount, false);
+  return service.simpleJSON();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Configure the app at the mountpoint
+/// @brief Configure the service at the mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 function configure(mount, options) {
@@ -1387,19 +1479,19 @@ function configure(mount, options) {
     [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   utils.validateMount(mount, true);
-  var app = lookupApp(mount);
-  var invalid = app.applyConfiguration(options.configuration || {});
+  var service = lookupService(mount);
+  var invalid = service.applyConfiguration(options.configuration || {});
   if (invalid.length > 0) {
     // TODO Error handling
     console.log(invalid);
   }
-  utils.updateApp(mount, app.toJSON());
+  utils.updateService(mount, service.toJSON());
   reloadRouting();
-  return app.simpleJSON();
+  return service.simpleJSON();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Set up dependencies of the app at the mountpoint
+/// @brief Set up dependencies of the service at the mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 function updateDeps(mount, options) {
@@ -1408,19 +1500,19 @@ function updateDeps(mount, options) {
     [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   utils.validateMount(mount, true);
-  var app = lookupApp(mount);
-  var invalid = app.applyDependencies(options.dependencies || {});
+  var service = lookupService(mount);
+  var invalid = service.applyDependencies(options.dependencies || {});
   if (invalid.length > 0) {
     // TODO Error handling
     console.log(invalid);
   }
-  utils.updateApp(mount, app.toJSON());
+  utils.updateService(mount, service.toJSON());
   reloadRouting();
-  return app.simpleJSON();
+  return service.simpleJSON();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the configuration for the app at the given mountpoint
+/// @brief Get the configuration for the service at the given mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 function configuration(mount) {
@@ -1429,12 +1521,12 @@ function configuration(mount) {
     [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   utils.validateMount(mount, true);
-  var app = lookupApp(mount);
-  return app.getConfiguration();
+  var service = lookupService(mount);
+  return service.getConfiguration();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the dependencies for the app at the given mountpoint
+/// @brief Get the dependencies for the service at the given mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 function dependencies(mount) {
@@ -1443,41 +1535,41 @@ function dependencies(mount) {
     [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   utils.validateMount(mount, true);
-  var app = lookupApp(mount);
-  return app.getDependencies();
+  var service = lookupService(mount);
+  return service.getDependencies();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Require the exports defined on the mount point
 ////////////////////////////////////////////////////////////////////////////////
 
-function requireApp(mount) {
+function requireService(mount) {
   checkParameter(
-    'requireApp(<mount>)',
+    'requireService(<mount>)',
     [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   utils.validateMount(mount, true);
-  var service = lookupApp(mount);
+  var service = lookupService(mount);
   if (service.needsConfiguration()) {
     throw new ArangoError({
       errorNum: errors.ERROR_APP_NEEDS_CONFIGURATION.code,
       errorMessage: errors.ERROR_APP_NEEDS_CONFIGURATION.message
     });
   }
-  return routeAndExportApp(service, true).exports;
+  return routeAndExportService(service, true).exports;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Syncs the apps in ArangoDB with the applications stored on disc
+/// @brief Syncs the services in ArangoDB with the services stored on disc
 ////////////////////////////////////////////////////////////////////////////////
 
 function syncWithFolder(options) {
   var dbname = arangodb.db._name();
   options = options || {};
   options.replace = true;
-  appCache = appCache || {};
-  appCache[dbname] = {};
-  var folders = fs.listTree(FoxxService._appPath).filter(filterAppRoots);
+  serviceCache = serviceCache || {};
+  serviceCache[dbname] = {};
+  var folders = fs.listTree(FoxxService._appPath).filter(filterServiceRoots);
 //  var collection = utils.getStorage();
   return folders.map(function (folder) {
     var mount = transformPathToMount(folder);
@@ -1507,7 +1599,7 @@ exports.configure = configure;
 exports.updateDeps = updateDeps;
 exports.configuration = configuration;
 exports.dependencies = dependencies;
-exports.requireApp = requireApp;
+exports.requireService = requireService;
 exports._resetCache = resetCache;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1519,13 +1611,13 @@ exports.mountPoints = mountPoints;
 exports.routes = routes;
 exports.ensureRouted = ensureRouted;
 exports.rescanFoxx = rescanFoxx;
-exports.lookupApp = lookupApp;
+exports.lookupService = lookupService;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports from foxx utils module.
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.mountedApp = utils.mountedApp;
+exports.mountedService = utils.mountedService;
 exports.list = utils.list;
 exports.listJson = utils.listJson;
 exports.listDevelopment = utils.listDevelopment;

@@ -39,6 +39,7 @@ struct TRI_string_buffer_t {
   char* _buffer;
   char* _current;
   size_t _len;
+  bool _initializeMemory;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,7 +60,8 @@ TRI_string_buffer_t* TRI_CreateSizedStringBuffer(TRI_memory_zone_t*, size_t);
 /// @warning You must call initialize before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitStringBuffer(TRI_string_buffer_t*, TRI_memory_zone_t*);
+void TRI_InitStringBuffer(TRI_string_buffer_t*, TRI_memory_zone_t*, 
+                          bool initializeMemory = true);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the string buffer with a specific size
@@ -68,7 +70,7 @@ void TRI_InitStringBuffer(TRI_string_buffer_t*, TRI_memory_zone_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitSizedStringBuffer(TRI_string_buffer_t*, TRI_memory_zone_t*,
-                               size_t const);
+                               size_t const, bool initializeMemory = true);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the string buffer
@@ -203,11 +205,24 @@ int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str,
                                   size_t len);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends characters but url-encode the string
+/// @brief appends characters but does not check buffer bounds
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendUrlEncodedStringStringBuffer(TRI_string_buffer_t* self,
-                                           char const* str);
+static inline void TRI_AppendCharUnsafeStringBuffer(TRI_string_buffer_t* self, char chr) {
+  *self->_current++ = chr;
+}
+
+static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, char const* str) {
+  size_t len = strlen(str);
+  memcpy(self->_current, str, len);
+  self->_current += len;
+}
+
+static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, char const* str,
+                                                      size_t len) {
+  memcpy(self->_current, str, len);
+  self->_current += len;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters but json-encode the null-terminated string
@@ -382,16 +397,16 @@ class StringBuffer {
   /// @brief initializes the string buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit StringBuffer(TRI_memory_zone_t* zone) {
-    TRI_InitStringBuffer(&_buffer, zone);
+  explicit StringBuffer(TRI_memory_zone_t* zone, bool initializeMemory = true) {
+    TRI_InitStringBuffer(&_buffer, zone, initializeMemory);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the string buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  StringBuffer(TRI_memory_zone_t* zone, size_t initialSize) {
-    TRI_InitSizedStringBuffer(&_buffer, zone, initialSize);
+  StringBuffer(TRI_memory_zone_t* zone, size_t initialSize, bool initializeMemory = true) {
+    TRI_InitSizedStringBuffer(&_buffer, zone, initialSize, initializeMemory);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -762,7 +777,7 @@ class StringBuffer {
     TRI_AppendCharStringBuffer(&_buffer, chr);
     return *this;
   }
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief appends as json-encoded
   //////////////////////////////////////////////////////////////////////////////

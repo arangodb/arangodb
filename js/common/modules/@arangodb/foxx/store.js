@@ -1,7 +1,7 @@
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Foxx application store
+/// @brief Foxx service store
 ///
 /// @file
 ///
@@ -76,10 +76,10 @@ var getFishbowlStorage = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief comparator for applications
+/// @brief comparator for services
 ////////////////////////////////////////////////////////////////////////////////
 
-var compareApps =  function(l, r) {
+var compareServices =  function(l, r) {
   var left = l.name.toLowerCase();
   var right = r.name.toLowerCase();
 
@@ -177,7 +177,7 @@ var updateFishbowlFromZip = function(filename) {
 
     var m = fs.listTree(root);
     var reSub = /(.*)\.json$/;
-    var f, match, app, desc;
+    var f, match, service, desc;
 
     for (i = 0;  i < m.length;  ++i) {
       f = m[i];
@@ -186,13 +186,13 @@ var updateFishbowlFromZip = function(filename) {
         continue;
       }
 
-      app = fs.join(root, f);
+      service = fs.join(root, f);
 
       try {
-        desc = JSON.parse(fs.read(app));
+        desc = JSON.parse(fs.read(service));
       }
       catch (err1) {
-        arangodb.printf("Cannot parse description for app '" + f + "': %s\n", String(err1));
+        arangodb.printf("Cannot parse description for service '" + f + "': %s\n", String(err1));
         continue;
       }
 
@@ -216,17 +216,17 @@ var updateFishbowlFromZip = function(filename) {
           var c = require("internal").db._collection(params.collection);
           c.truncate();
 
-          params.apps.forEach(function(app) {
-            c.save(app);
+          params.services.forEach(function(service) {
+            c.save(service);
           });
         },
         params: {
-          apps: toSave,
+          services: toSave,
           collection: fishbowl.name()
         }
       });
 
-      arangodb.printf("Updated local repository information with %d application(s)\n",
+      arangodb.printf("Updated local repository information with %d service(s)\n",
                       toSave.length);
     }
   }
@@ -245,7 +245,7 @@ var updateFishbowlFromZip = function(filename) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the search result for FOXX applications
+/// @brief returns the search result for FOXX services
 ////////////////////////////////////////////////////////////////////////////////
 
 var searchJson = function (name) {
@@ -293,19 +293,19 @@ var searchJson = function (name) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief searchs for an available FOXX applications
+/// @brief searchs for an available FOXX services
 ////////////////////////////////////////////////////////////////////////////////
 
 var search = function (name) {
   var docs = searchJson(name);
 
   arangodb.printTable(
-    docs.sort(compareApps),
+    docs.sort(compareServices),
     [ "name", "author", "description" ],
     {
       prettyStrings: true,
-      totalString: "%s application(s) found",
-      emptyString: "no applications found",
+      totalString: "%s service(s) found",
+      emptyString: "no services found",
       rename: {
         name : "Name",
         author : "Author",
@@ -346,7 +346,7 @@ function extractMaxVersion(matchEngine, versionDoc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all available FOXX applications
+/// @brief returns all available FOXX services
 ////////////////////////////////////////////////////////////////////////////////
 
 function availableJson(matchEngine) {
@@ -414,19 +414,19 @@ var update = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prints all available FOXX applications
+/// @brief prints all available FOXX services
 ////////////////////////////////////////////////////////////////////////////////
 
 var available = function (matchEngine) {
   var list = availableJson(matchEngine);
 
   arangodb.printTable(
-    list.sort(compareApps),
+    list.sort(compareServices),
     [ "name", "author", "description", "latestVersion" ],
     {
       prettyStrings: true,
-      totalString: "%s application(s) found",
-      emptyString: "no applications found, please use 'update'",
+      totalString: "%s service(s) found",
+      emptyString: "no services found, please use 'update'",
       rename: {
         "name" : "Name",
         "author" : "Author",
@@ -438,11 +438,11 @@ var available = function (matchEngine) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets json-info for an available FOXX application
+/// @brief gets json-info for an available FOXX service
 ////////////////////////////////////////////////////////////////////////////////
 
 var infoJson = function (name) {
-  utils.validateAppName(name);
+  utils.validateServiceName(name);
 
   var fishbowl = getFishbowlStorage();
 
@@ -456,11 +456,11 @@ var infoJson = function (name) {
     { '@storage': fishbowl.name(), 'name': name }).toArray();
 
   if (desc.length === 0) {
-    arangodb.print("No application '" + name + "' available, please try 'search'");
+    arangodb.print("No service '" + name + "' available, please try 'search'");
     return;
   }
   else if (desc.length > 1) {
-    arangodb.print("Multiple applications are named '" + name + "', please try 'search'");
+    arangodb.print("Multiple services are named '" + name + "', please try 'search'");
     return;
   }
   else {
@@ -469,19 +469,19 @@ var infoJson = function (name) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a download URL for the given app information
+/// @brief create a download URL for the given service information
 ////////////////////////////////////////////////////////////////////////////////
 
-var buildUrl = function(appInfo) {
+var buildUrl = function(serviceInfo) {
 
   // TODO Validate
-  let infoSplit = appInfo.split(":");
+  let infoSplit = serviceInfo.split(":");
   let name = infoSplit[0];
   let version = infoSplit[1];
   let storeInfo = infoJson(name);
 
   if (storeInfo === undefined) {
-    throw "Application not found";
+    throw "Service not found";
   }
 
   let versions = storeInfo.versions;
@@ -512,7 +512,7 @@ var buildUrl = function(appInfo) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prints info for an available FOXX application
+/// @brief prints info for an available FOXX service
 ////////////////////////////////////////////////////////////////////////////////
 
 var info = function (name) {
