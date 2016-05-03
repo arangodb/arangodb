@@ -152,7 +152,7 @@ BOOST_AUTO_TEST_CASE (tst_2) {
     };    
   
   int32_t len = 0;
-  char* result = TRI_tolower_utf8(TRI_CORE_MEM_ZONE, (const char*) gruessgott1, strlen((const char*) gruessgott1), &len);
+  char* result = TRI_tolower_utf8(TRI_CORE_MEM_ZONE, (const char*) gruessgott1, (int32_t) strlen((const char*) gruessgott1), &len);
 
 
   //printf("\nOriginal: %s\nLower: %s (%d)\n", gruessgott1, result, len);
