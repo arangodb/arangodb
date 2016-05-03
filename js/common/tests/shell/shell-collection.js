@@ -215,10 +215,7 @@ function CollectionSuite () {
       assertEqual(4 * 1024 * 1024, c1.properties().journalSize);
 
       c1.properties({ journalSize: 8 * 1024 * 1024 });
-      require("internal").print(8 * 1024 * 1024 + " " + c1.properties().journalSize);
-      
       assertEqual(8 * 1024 * 1024, c1.properties().journalSize);
-      
       
       c1.properties({ journalSize: 16 * 1024 * 1024 });
       assertEqual(16 * 1024 * 1024, c1.properties().journalSize);
