@@ -655,7 +655,7 @@ bool AgencyComm::tryInitializeStructure() {
         VPackObjectBuilder d(&builder);
         builder.add("_system", VPackValue(VPackValueType::Object));
         builder.add("name", VPackValue("_system"));
-        builder.add("id", VPackValue(1));
+        builder.add("id", VPackValue("1"));
         builder.close();
 //KV        builder.add("_system",
         //                VPackValue("{name:_system, id:1}"));
@@ -687,7 +687,7 @@ bool AgencyComm::tryInitializeStructure() {
         VPackObjectBuilder d(&builder);
         builder.add("_system", VPackValue(VPackValueType::Object));
         builder.add("name", VPackValue("_system"));
-        builder.add("id", VPackValue(1));
+        builder.add("id", VPackValue("1"));
         builder.close();
 //KV        builder.add("_system",
         //                VPackValue("{name:_system, id:1}"));
