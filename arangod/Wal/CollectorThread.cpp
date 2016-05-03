@@ -42,6 +42,10 @@
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBIndex.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::wal;
 
@@ -415,6 +419,9 @@ int CollectorThread::collectLogfiles(bool& worked) {
         _collectorResult = TRI_ERROR_NO_ERROR;
       }
 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+      RocksDBFeature::instance()->syncWal();
+#endif
       _logfileManager->setCollectionDone(logfile);
     } else {
       // return the logfile to the logfile manager in case of errors

@@ -35,7 +35,11 @@
 
 #include <velocypack/Slice.h>
 
-#define TRI_DEFAULT_BATCH_SIZE 1000
+#ifdef ARANGODB_ENABLE_ROCKSDB
+namespace rocksdb {
+class Transaction;
+}
+#endif
 
 struct TRI_document_collection_t;
 
@@ -120,6 +124,12 @@ class Transaction {
   virtual ~Transaction();
 
  public:
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief default batch size for index and other operations
+  //////////////////////////////////////////////////////////////////////////////
+
+  static constexpr uint64_t defaultBatchSize() { return 1000; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Type of cursor
@@ -156,6 +166,14 @@ class Transaction {
   std::shared_ptr<TransactionContext> transactionContext() const {
     return _transactionContext;
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get (or create) a rocksdb WriteTransaction
+  //////////////////////////////////////////////////////////////////////////////
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  rocksdb::Transaction* rocksTransaction();
+#endif
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a transaction hint

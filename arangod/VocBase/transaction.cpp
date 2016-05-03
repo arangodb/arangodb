@@ -34,6 +34,15 @@
 #include "Wal/LogfileManager.h"
 #include "Utils/Transaction.h"
 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBFeature.h"
+
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+#include <rocksdb/utilities/optimistic_transaction_db.h>
+#include <rocksdb/utilities/transaction.h>
+#endif
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define LOG_TRX(trx, level)  \
@@ -108,11 +117,14 @@ static inline bool NeedWriteMarker(TRI_transaction_t const* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClearQueryCache(TRI_transaction_t* trx) {
-  std::vector<std::string> collections;
-
   size_t const n = trx->_collections._length;
 
+  if (n == 0) {
+    return;
+  }
+
   try {
+    std::vector<std::string> collections;
     for (size_t i = 0; i < n; ++i) {
       auto trxCollection = static_cast<TRI_transaction_collection_t*>(
           TRI_AtVectorPointer(&trx->_collections, i));
@@ -748,6 +760,9 @@ TRI_transaction_t* TRI_CreateTransaction(TRI_vocbase_t* vocbase,
   trx->_hasOperations = false;
   trx->_waitForSync = waitForSync;
   trx->_beginWritten = false;
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  trx->_rocksTransaction = nullptr;
+#endif
 
   if (timeout > 0.0) {
     trx->_timeout = (uint64_t)(timeout * 1000000.0);
@@ -770,6 +785,10 @@ bool TRI_FreeTransaction(TRI_transaction_t* trx) {
   if (trx->_status == TRI_TRANSACTION_RUNNING) {
     TRI_AbortTransaction(trx, 0);
   }
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  delete trx->_rocksTransaction;
+#endif
 
   // release the marker protector
   bool const hasFailedOperations =
@@ -1127,6 +1146,15 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
 
   if (isSingleOperationTransaction) {
     // operation is directly executed
+#ifdef ARANGODB_ENABLE_ROCKSDB
+    if (trx->_rocksTransaction != nullptr) {
+      auto status = trx->_rocksTransaction->Commit();
+
+      if (!status.ok()) { 
+        // TODO: what to do here?
+      }
+    }
+#endif
     operation.handle();
 
     arangodb::aql::QueryCache::instance()->invalidate(
@@ -1220,6 +1248,7 @@ int TRI_BeginTransaction(TRI_transaction_t* trx, TRI_transaction_hint_t hints,
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
+  
   } else {
     TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
   }
@@ -1258,9 +1287,22 @@ int TRI_CommitTransaction(TRI_transaction_t* trx, int nestingLevel) {
   int res = TRI_ERROR_NO_ERROR;
 
   if (nestingLevel == 0) {
+#ifdef ARANGODB_ENABLE_ROCKSDB
+    if (trx->_rocksTransaction != nullptr) {
+      auto status = trx->_rocksTransaction->Commit();
+
+      if (!status.ok()) {
+        res = TRI_ERROR_INTERNAL;
+        TRI_AbortTransaction(trx, nestingLevel);
+        return res;
+      }
+    }
+#endif
+
     res = WriteCommitMarker(trx);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      // TODO: revert rocks transaction somehow
       TRI_AbortTransaction(trx, nestingLevel);
 
       // return original error

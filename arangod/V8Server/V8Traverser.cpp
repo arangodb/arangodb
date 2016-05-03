@@ -1113,7 +1113,7 @@ bool DepthFirstTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
     }
     std::shared_ptr<OperationCursor> cursor = _trx->indexScan(
         eColName, arangodb::Transaction::CursorType::INDEX, indexHandle,
-        _builder.slice(), 0, UINT64_MAX, TRI_DEFAULT_BATCH_SIZE, false);
+        _builder.slice(), 0, UINT64_MAX, Transaction::defaultBatchSize(), false);
     if (cursor->failed()) {
       // Some error, ignore and go to next
       eColIdx++;

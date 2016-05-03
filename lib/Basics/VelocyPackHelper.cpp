@@ -95,7 +95,7 @@ void VelocyPackHelper::initialize() {
 
   // set the attribute translator in the global options
   VPackOptions::Defaults.attributeTranslator = Translator.get();
-  // VPackOptions::Defaults.unsupportedTypeBehavior = VPackOptions::ConvertUnsupportedType;
+  VPackOptions::Defaults.unsupportedTypeBehavior = VPackOptions::ConvertUnsupportedType;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::KeyString)).getUInt() == KeyAttribute - AttributeBase);
@@ -222,6 +222,8 @@ static int TypeWeight(VPackSlice const& slice) {
       return 5;
     case VPackValueType::External:
       return TypeWeight(slice.resolveExternal());
+    case VPackValueType::MaxKey:
+      return 99; // must be highest
     default:
       // All other values have equal weight
       return 0;

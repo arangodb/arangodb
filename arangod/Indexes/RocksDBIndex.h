@@ -18,19 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_SKIPLIST_INDEX_H
-#define ARANGOD_INDEXES_SKIPLIST_INDEX_H 1
+#ifndef ARANGOD_INDEXES_ROCKSDB_INDEX_H
+#define ARANGOD_INDEXES_ROCKSDB_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
-#include "Basics/SkipList.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/PathBasedIndex.h"
+#include "Indexes/RocksDBFeature.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+
+#include <rocksdb/db.h>
+#include <rocksdb/utilities/optimistic_transaction_db.h>
+
+#include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
+
+namespace rocksdb {
+class OptimisticTransactionDB;
+}
 
 namespace arangodb {
 namespace aql {
@@ -38,53 +48,43 @@ class SortCondition;
 struct Variable;
 }
 
-class SkiplistIndex;
+class PrimaryIndex;
+class RocksDBIndex;
 class Transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Iterator structure for skip list. We require a start and stop node
-///
-/// Intervals are open in the sense that both end points are not members
-/// of the interval. This means that one has to use SkipList::nextNode
-/// on the start node to get the first element and that the stop node
-/// can be NULL. Note that it is ensured that all intervals in an iterator
-/// are non-empty.
+/// @brief Iterator structure for RocksDB. We require a start and stop node
 ////////////////////////////////////////////////////////////////////////////////
 
-class SkiplistIterator : public IndexIterator {
+class RocksDBIterator : public IndexIterator {
  private:
-  friend class SkiplistIndex;
+  friend class RocksDBIndex;
 
  private:
-  // Shorthand for the skiplist node
-  typedef arangodb::basics::SkipListNode<VPackSlice,
-                                         TRI_index_element_t> Node;
-
- private:
-  bool _reverse;
-  Node* _cursor;
-
-  Node* _leftEndPoint;   // Interval left border, first excluded element
-  Node* _rightEndPoint;  // Interval right border, first excluded element
+  arangodb::Transaction* _trx;
+  arangodb::PrimaryIndex* _primaryIndex;
+  rocksdb::OptimisticTransactionDB* _db;
+  std::unique_ptr<rocksdb::Iterator> _cursor;
+  std::unique_ptr<arangodb::velocypack::Buffer<char>> _leftEndpoint;   // Interval left border
+  std::unique_ptr<arangodb::velocypack::Buffer<char>> _rightEndpoint;  // Interval right border
+  bool const _reverse;
+  bool _probe;
 
  public:
-  SkiplistIterator(bool reverse, Node* left,
-                   Node* right)
-      : _reverse(reverse),
-        _leftEndPoint(left),
-        _rightEndPoint(right) {
-    reset(); // Initializes the cursor
-  }
+  RocksDBIterator(arangodb::Transaction* trx, 
+                  arangodb::RocksDBIndex const* index,
+                  arangodb::PrimaryIndex* primaryIndex,
+                  rocksdb::OptimisticTransactionDB* db,
+                  bool reverse, 
+                  arangodb::velocypack::Slice const& left,
+                  arangodb::velocypack::Slice const& right);
 
-  // always holds the last node returned, initially equal to
-  // the _leftEndPoint (or the
-  // _rightEndPoint in the reverse case),
-  // can be nullptr if the iterator is exhausted.
+  ~RocksDBIterator() = default;
 
  public:
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Get the next element in the skiplist
+  /// @brief Get the next element in the index
   ////////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* next() override;
@@ -96,52 +96,27 @@ class SkiplistIterator : public IndexIterator {
   void reset() override;
 };
 
-class SkiplistIndex final : public PathBasedIndex {
-  struct KeyElementComparator {
-    int operator()(VPackSlice const* leftKey,
-                   TRI_index_element_t const* rightElement) const;
-
-    explicit KeyElementComparator(SkiplistIndex* idx) { _idx = idx; }
-
-   private:
-    SkiplistIndex* _idx;
-  };
-
-  struct ElementElementComparator {
-    int operator()(TRI_index_element_t const* leftElement,
-                   TRI_index_element_t const* rightElement,
-                   arangodb::basics::SkipListCmpType cmptype) const;
-
-    explicit ElementElementComparator(SkiplistIndex* idx) { _idx = idx; }
-
-   private:
-    SkiplistIndex* _idx;
-  };
-
-  friend class SkiplistIterator;
-  friend struct KeyElementComparator;
-  friend struct ElementElementComparator;
-
-  typedef arangodb::basics::SkipList<VPackSlice,
-                                     TRI_index_element_t> TRI_Skiplist;
+class RocksDBIndex final : public PathBasedIndex {
+  friend class RocksDBIterator;
 
  public:
-  SkiplistIndex() = delete;
+  RocksDBIndex() = delete;
 
-  SkiplistIndex(
+  RocksDBIndex(
       TRI_idx_iid_t, struct TRI_document_collection_t*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&, bool,
       bool);
 
-  explicit SkiplistIndex(VPackSlice const&);
+  explicit RocksDBIndex(VPackSlice const&);
 
-  ~SkiplistIndex();
+  ~RocksDBIndex();
 
  public:
   IndexType type() const override final {
-    return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
+    return Index::TRI_IDX_TYPE_ROCKSDB_INDEX;
   }
   
+  bool isPersistent() const override final { return true; }
   bool canBeDropped() const override final { return true; }
 
   bool isSorted() const override final { return true; }
@@ -152,6 +127,36 @@ class SkiplistIndex final : public PathBasedIndex {
 
   void toVelocyPack(VPackBuilder&, bool) const override final;
   void toVelocyPackFigures(VPackBuilder&) const override final;
+  
+  static constexpr size_t minimalPrefixSize() {
+    return sizeof(TRI_voc_tick_t);
+  }
+
+  static constexpr size_t keyPrefixSize() {
+    return sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(TRI_idx_iid_t);
+  }
+  
+  static std::string buildPrefix(TRI_voc_tick_t databaseId) {
+    std::string value;
+    value.append(reinterpret_cast<char const*>(&databaseId), sizeof(TRI_voc_tick_t));
+    return value;
+  }
+  
+  static std::string buildPrefix(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+    std::string value;
+    value.append(reinterpret_cast<char const*>(&databaseId), sizeof(TRI_voc_tick_t));
+    value.append(reinterpret_cast<char const*>(&collectionId), sizeof(TRI_voc_cid_t));
+    return value;
+  }
+
+  static std::string buildPrefix(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) {
+    std::string value;
+    value.reserve(keyPrefixSize());
+    value.append(reinterpret_cast<char const*>(&databaseId), sizeof(TRI_voc_tick_t));
+    value.append(reinterpret_cast<char const*>(&collectionId), sizeof(TRI_voc_cid_t));
+    value.append(reinterpret_cast<char const*>(&indexId), sizeof(TRI_idx_iid_t));
+    return value;
+  }
 
   int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
@@ -159,15 +164,17 @@ class SkiplistIndex final : public PathBasedIndex {
   int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
+  int drop() override final;
+
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief attempts to locate an entry in the skip list index
+  /// @brief attempts to locate an entry in the index
   ///
   /// Warning: who ever calls this function is responsible for destroying
-  /// the velocypack::Slice and the SkiplistIterator* results
+  /// the velocypack::Slice and the RocksDBIterator* results
   //////////////////////////////////////////////////////////////////////////////
 
-  SkiplistIterator* lookup(arangodb::Transaction*, arangodb::velocypack::Slice const,
-                           bool) const;
+  RocksDBIterator* lookup(arangodb::Transaction*, arangodb::velocypack::Slice const,
+                          bool) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
@@ -204,26 +211,12 @@ class SkiplistIndex final : public PathBasedIndex {
 
  private:
 
-  // Shorthand for the skiplist node
-  typedef arangodb::basics::SkipListNode<VPackSlice,
-                                         TRI_index_element_t> Node;
-
-  ElementElementComparator CmpElmElm;
-
-  KeyElementComparator CmpKeyElm;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Checks if the interval is valid. It is declared invalid if
-  ///        one border is nullptr or the right is lower than left.
-  ////////////////////////////////////////////////////////////////////////////////
-
-  bool intervalValid(Node* left, Node* right) const;
-
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief the actual skiplist index
+  /// @brief the RocksDB instance
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_Skiplist* _skiplistIndex;
+  rocksdb::OptimisticTransactionDB* _db;
+
 };
 }
 

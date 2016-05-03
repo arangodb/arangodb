@@ -331,7 +331,7 @@ std::shared_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
   return ast->query()->trx()->indexScanForCondition(
           _collection->getName(), _indexes[_currentIndex], ast,
           conditionNode, outVariable, UINT64_MAX,
-          TRI_DEFAULT_BATCH_SIZE, node->_reverse);
+          Transaction::defaultBatchSize(), node->_reverse);
   DEBUG_END_BLOCK();
 }
 

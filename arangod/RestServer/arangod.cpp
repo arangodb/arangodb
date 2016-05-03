@@ -66,6 +66,10 @@
 #include "Wal/LogfileManager.h"
 #include "Wal/RecoveryFeature.h"
 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBFeature.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::wal;
 
@@ -161,6 +165,9 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RecoveryFeature(&server));
   server.addFeature(new RestServerFeature(&server, "arangodb"));
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  server.addFeature(new RocksDBFeature(&server));
+#endif
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ScriptFeature(&server, &ret));
   server.addFeature(new ServerFeature(&server, &ret));
