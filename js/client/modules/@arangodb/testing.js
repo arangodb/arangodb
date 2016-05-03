@@ -879,7 +879,10 @@ function executeValgrind(cmd, args, options, valgrindTest) {
     args = toArgv(valgrindOpts, true).concat([cmd]).concat(args);
     cmd = options.valgrind;
   }
-
+  
+  if (options.extremeVerbosity) {
+    print("starting process " + cmd + " with arguments: " + JSON.stringify(args));
+  }
   return executeExternal(cmd, args);
 }
 
@@ -2354,24 +2357,46 @@ testFuncs.authentication_parameters = function(options) {
 /// @brief TEST: boost
 ////////////////////////////////////////////////////////////////////////////////
 
+function locateBoostTest(name) {
+  var file = fs.join(UNITTESTS_DIR,name);
+  if (platform.substr(0, 3) === 'win') {
+    file += ".exe";
+  }
+  
+  if (!fs.exists(file)) {
+    return "";
+  }
+  return file;
+}
+
 testFuncs.boost = function(options) {
   const args = ["--show_progress"];
 
   let results = {};
 
   if (!options.skipBoost) {
-    const run = fs.join(UNITTESTS_DIR, "basics_suite");
+    const run = locateBoostTest("basics_suite");
 
-    if (fs.exists(run)) {
+    if (run !== "") {
       results.basics = executeAndWait(run, args, options, "basics");
+    }
+    else {
+      results.basics = {
+        status: false,
+        message: "binary 'basics_suite' not found"};
     }
   }
 
   if (!options.skipGeo) {
-    const run = fs.join(UNITTESTS_DIR, "geo_suite");
+    const run = locateBoostTest("geo_suite");
 
-    if (fs.exists(run)) {
+    if (run !== "") {
       results.geo_suite = executeAndWait(run, args, options, "geo_suite");
+    }
+    else {
+      results.geo_suite = {
+        status: false,
+        message: "binary 'geo_suite' not found"};
     }
   }
 
@@ -3904,7 +3929,7 @@ function unitTest(cases, options) {
   let caselist = [];
 
   for (let n = 0; n < cases.length; ++n) {
-    let splitted = cases[n].split(/[,;|]/);
+    let splitted = cases[n].split(/[,;\.|]/);
 
     for (let m = 0; m < splitted.length; ++m) {
       let which = splitted[m];

@@ -306,6 +306,24 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   static VPackSlice extractToFromDocument(VPackSlice const&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief quick access to the _rev attribute in a database document
+  /// the document must have at least three attributes: _key, _id, _rev 
+  /// (possibly with _from and _to in between)
+  //////////////////////////////////////////////////////////////////////////////
+  
+  static VPackSlice extractRevFromDocument(VPackSlice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief extract _key and _rev from a document, in one go
+  /// this is an optimized version used when loading collections, WAL 
+  /// collection and compaction
+  //////////////////////////////////////////////////////////////////////////////
+  
+  static void extractKeyAndRevFromDocument(VPackSlice const& slice,
+                                           VPackSlice& keySlice,
+                                           TRI_voc_rid_t& revisionId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document
@@ -382,6 +400,19 @@ class Transaction {
   void invokeOnAllElements(std::string const& collectionName,
                            std::function<bool(TRI_doc_mptr_t const*)>);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return one  document from a collection, fast path
+  ///        If everything went well the result will contain the found document
+  ///        (as an external on single_server)  and this function will return TRI_ERROR_NO_ERROR.
+  ///        If there was an error the code is returned and it is guaranteed
+  ///        that result remains unmodified.
+  ///        Does not care for revision handling!
+  //////////////////////////////////////////////////////////////////////////////
+
+  int documentFastPath(std::string const& collectionName,
+                       arangodb::velocypack::Slice const value,
+                       arangodb::velocypack::Builder& result);
+ 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return one or multiple documents from a collection
   //////////////////////////////////////////////////////////////////////////////

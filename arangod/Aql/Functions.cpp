@@ -55,8 +55,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-using VertexId = arangodb::traverser::VertexId;
-
 /// @brief thread-local cache for compiled regexes
 thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
     nullptr;
@@ -477,16 +475,16 @@ static void RequestEdges(VPackSlice const& vertexSlice,
     vertexId = vertexSlice.copyString();
   } else if (vertexSlice.isObject()) {
     vertexId = arangodb::basics::VelocyPackHelper::getStringValue(vertexSlice,
-                                                                  TRI_VOC_ATTRIBUTE_ID, "");
+                                                                  StaticStrings::IdString, "");
   } else {
     // Nothing to do.
     // Return (error for illegal input is thrown outside
     return;
   }
 
-  VPackBuilder searchValueBuilder;
-  EdgeIndex::buildSearchValue(direction, vertexId, searchValueBuilder);
-  VPackSlice search = searchValueBuilder.slice();
+  TransactionBuilderLeaser searchValueBuilder(trx);
+  EdgeIndex::buildSearchValue(direction, vertexId, *(searchValueBuilder.get()));
+  VPackSlice search = searchValueBuilder->slice();
   std::shared_ptr<OperationCursor> cursor = trx->indexScan(
       collectionName, arangodb::Transaction::CursorType::INDEX, indexId,
       search, 0, UINT64_MAX, 1000, false);
@@ -530,25 +528,24 @@ static void RequestEdges(VPackSlice const& vertexSlice,
             // somehow invalid
             continue;
           }
-          std::vector<std::string> split = arangodb::basics::StringUtils::split(target, "/");
-          TRI_ASSERT(split.size() == 2);
-          // We have to make sure the transaction know this collection!
-          trx->addCollectionAtRuntime(split[0]);
-          VPackBuilder vertexSearch;
-          vertexSearch.openObject();
-          vertexSearch.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(split[1]));
-          vertexSearch.close();
-          OperationOptions opts;
-          OperationResult vertexResult = trx->document(split[0], vertexSearch.slice(), opts);
-          if (vertexResult.failed()) {
-            if (vertexResult.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-              // This is okay
-              result.add("vertex", VPackValue(VPackValueType::Null));
+          size_t pos = target.find("/");
+          TRI_ASSERT(pos != std::string::npos);
+          std::string collection = target.substr(0, pos);
+          std::string key = target.substr(pos + 1);
+
+          searchValueBuilder->clear();
+          searchValueBuilder->openObject();
+          searchValueBuilder->add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+          searchValueBuilder->close();
+          result.add(VPackValue("vertex"));
+          int res = trx->documentFastPath(collection, searchValueBuilder->slice(), result);
+          if (res != TRI_ERROR_NO_ERROR) {
+            if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+              // Not found is ok. Is equal to NULL
+              result.add(VPackValue(VPackValueType::Null));
             } else {
-              THROW_ARANGO_EXCEPTION(vertexResult.code);
+              THROW_ARANGO_EXCEPTION(res);
             }
-          } else {
-            result.add("vertex", vertexResult.slice().resolveExternal());
           }
         }
       }
@@ -600,58 +597,47 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
                                     std::string const& identifier,
                                     bool ignoreError,
                                     VPackBuilder& result) {
-  OperationOptions options;
-  OperationResult opRes;
   TransactionBuilderLeaser searchBuilder(trx);
 
   searchBuilder->openObject();
   searchBuilder->add(VPackValue(StaticStrings::KeyString));
 
-  std::vector<std::string> parts =
-      arangodb::basics::StringUtils::split(identifier, "/");
-
-  if (parts.size() == 1) {
+  size_t pos = identifier.find('/');
+  if (pos == std::string::npos) {
     searchBuilder->add(VPackValue(identifier));
     searchBuilder->close();
-  } else if (parts.size() == 2) {
+  } else {
     if (collectionName.empty()) {
-      searchBuilder->add(VPackValue(parts[1]));
+      searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
       searchBuilder->close();
-      collectionName = parts[0];
-    } else if (parts[0] != collectionName) {
+      collectionName = identifier.substr(0, pos);
+    } else if (identifier.substr(0, pos) != collectionName) {
       // Reqesting an _id that cannot be stored in this collection
       if (ignoreError) {
         return;
       }
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     } else {
-      searchBuilder->add(VPackValue(parts[1]));
+      searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
       searchBuilder->close();
     }
-  } else {
-    if (ignoreError) {
-      return;
-    }
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
+  int res = TRI_ERROR_NO_ERROR;
   try {
-    opRes = trx->document(collectionName, searchBuilder->slice(), options);
+    res = trx->documentFastPath(collectionName, searchBuilder->slice(), result);
   } catch (arangodb::basics::Exception const&) {
     if (ignoreError) {
       return;
     }
     throw;
   }
-
-  if (opRes.failed()) {
+  if (res != TRI_ERROR_NO_ERROR) {
     if (ignoreError) {
       return;
     }
-    THROW_ARANGO_EXCEPTION(opRes.code);
+    THROW_ARANGO_EXCEPTION(res);
   }
-
-  result.add(opRes.slice());
 }
 
 /// @brief Helper function to merge given parameters

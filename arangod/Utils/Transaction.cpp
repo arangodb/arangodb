@@ -736,8 +736,8 @@ VPackSlice Transaction::extractKeyFromDocument(VPackSlice const& slice) {
     // and point to the attribute value 
     return VPackSlice(p + 1); 
   }
-  // we actually should not get here. however, if for some reason we do,
-  // we simply fall back to the regular lookup method
+  
+  // fall back to the regular lookup method
   return slice.get(StaticStrings::KeyString); 
 }
 
@@ -768,8 +768,7 @@ VPackSlice Transaction::extractFromFromDocument(VPackSlice const& slice) {
     p += VPackSlice(p).byteSize();
   }
 
-  // we actually should not get here. however, if for some reason we do,
-  // we simply fall back to the regular lookup method
+  // fall back to the regular lookup method
   return slice.get(StaticStrings::FromString); 
 }
 
@@ -800,9 +799,84 @@ VPackSlice Transaction::extractToFromDocument(VPackSlice const& slice) {
     p += VPackSlice(p).byteSize();
   }
   
-  // we actually should not get here. however, if for some reason we do,
-  // we simply fall back to the regular lookup method
+  // fall back to the regular lookup method
   return slice.get(StaticStrings::ToString); 
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief quick access to the _rev attribute in a database document
+/// the document must have at least three attributes: _key, _id, _rev 
+/// (possibly with _from and _to in between)
+//////////////////////////////////////////////////////////////////////////////
+
+VPackSlice Transaction::extractRevFromDocument(VPackSlice const& slice) {
+  TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.length() >= 2); 
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+  VPackValueLength count = 0;
+
+  while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 5) {
+    if (*p == basics::VelocyPackHelper::RevAttribute) {
+      // the + 1 is required so that we can skip over the attribute name
+      // and point to the attribute value 
+      return VPackSlice(p + 1);
+    }
+    // skip over the attribute name
+    ++p;
+    // skip over the attribute value
+    p += VPackSlice(p).byteSize();
+  }
+
+  // fall back to the regular lookup method
+  return slice.get(StaticStrings::RevString); 
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief extract _key and _rev from a document, in one go
+/// this is an optimized version used when loading collections, WAL 
+/// collection and compaction
+//////////////////////////////////////////////////////////////////////////////
+    
+void Transaction::extractKeyAndRevFromDocument(VPackSlice const& slice, 
+                                               VPackSlice& keySlice, 
+                                               TRI_voc_rid_t& revisionId) {
+  TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.length() >= 2); 
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+  VPackValueLength count = 0;
+  bool foundKey = false;
+  bool foundRev = false;
+
+  while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 5) {
+    if (*p == basics::VelocyPackHelper::KeyAttribute) {
+      keySlice = VPackSlice(p + 1);
+      if (foundRev) {
+        return;
+      }
+      foundKey = true;
+    } else if (*p == basics::VelocyPackHelper::RevAttribute) {
+      VPackSlice revSlice(p + 1);
+      if (revSlice.isString()) {
+        revisionId = basics::StringUtils::uint64(revSlice.copyString());
+      } else if (revSlice.isNumber()) {
+        revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
+      }
+      if (foundKey) {
+        return;
+      }
+      foundRev = true;
+    }
+    // skip over the attribute name
+    ++p;
+    // skip over the attribute value
+    p += VPackSlice(p).byteSize();
+  }
+
+  // fall back to regular lookup
+  keySlice = slice.get(StaticStrings::KeyString);    
+  revisionId = basics::StringUtils::uint64(slice.get(StaticStrings::RevString).copyString());
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -831,13 +905,9 @@ void Transaction::buildDocumentIdentity(TRI_document_collection_t* document,
     builder.add("_oldRev", oldRid);
   }
   if (oldMptr != nullptr) {
-    // builder.add("old", VPackSlice(oldMptr->vpack()));
-    // TODO: add externals later.
     builder.add("old", VPackValue(oldMptr->vpack(), VPackValueType::External));
   }
   if (newMptr != nullptr) {
-    // builder.add("new", VPackSlice(newMptr->vpack()));
-    // TODO: add externals later.
     builder.add("new", VPackValue(newMptr->vpack(), VPackValueType::External));
   }
   builder.close();
@@ -1120,6 +1190,54 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return one  document from a collection, fast path
+///        If everything went well the result will contain the found document
+///        (as an external on single_server)  and this function will return TRI_ERROR_NO_ERROR.
+///        If there was an error the code is returned and it is guaranteed
+///        that result remains unmodified.
+///        Does not care for revision handling!
+//////////////////////////////////////////////////////////////////////////////
+
+int Transaction::documentFastPath(std::string const& collectionName,
+                                  VPackSlice const value,
+                                  VPackBuilder& result) {
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+  if (!value.isObject()) {
+    // must provide a document object
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  if (ServerState::isCoordinator(_serverRole)) {
+    OperationOptions options; // use default configuration
+    OperationResult opRes = documentCoordinator(collectionName, value, options);
+    if (opRes.failed()) {
+      return opRes.code;
+    }
+    result.add(opRes.slice());
+  }
+
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+
+  orderDitch(cid); // will throw when it fails
+
+  std::string key(Transaction::extractKeyPart(value));
+  if (key.empty()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+
+  TRI_doc_mptr_t mptr;
+  int res = document->read(this, key, &mptr, !isLocked(document, TRI_TRANSACTION_READ));
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+  TRI_ASSERT(mptr.vpack() != nullptr);
+  result.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
+  return TRI_ERROR_NO_ERROR;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2181,19 +2299,16 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
       indexScan(collectionName, Transaction::CursorType::ALL, IndexHandle(),
                 {}, skip, limit, 1000, false);
 
-  auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
-  while (cursor->hasMore()) {
-    cursor->getMore(result);
+  if (cursor->failed()) {
+    return OperationResult(cursor->code);
+  }
 
-    if (result->failed()) {
-      return OperationResult(result->code);
-    }
-  
-    VPackSlice docs = result->slice();
-    VPackArrayIterator it(docs, true);
-    while (it.valid()) {
-      resultBuilder.add(it.value());
-      it.next();
+  std::vector<TRI_doc_mptr_t*> result;
+  result.reserve(1000);
+  while (cursor->hasMore()) {
+    cursor->getMoreMptr(result, 1000);
+    for (auto const& mptr : result) {
+      resultBuilder.add(VPackValue(mptr->vpack(), VPackValueType::External));
     }
   }
 

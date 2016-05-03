@@ -29,16 +29,31 @@ const assert = require('assert');
 const internal = require('internal');
 const pluck = require('@arangodb/util').pluck;
 
-const TEMPLATES = [
-  'main', 'dcModel', 'ecModel', 'dcRouter', 'ecRouter', 'setup', 'teardown', 'test'
-].reduce(function (obj, name) {
-  obj[name] = _.template(fs.read(fs.join(
+const template = (filename) => _.template(
+  fs.read(fs.join(
     internal.startupPath,
-    'server', 'modules', '@arangodb', 'foxx', 'templates',
-    `${name}.js.tmpl`
-  )));
+    'server',
+    'modules',
+    '@arangodb',
+    'foxx',
+    'templates',
+    `${filename}.tmpl`
+  ))
+);
+
+const TEMPLATES = [
+  'main',
+  'dcModel',
+  'ecModel',
+  'dcRouter',
+  'ecRouter',
+  'setup',
+  'teardown',
+  'test'
+].reduce(function (obj, name) {
+  obj[name] = template(`${name}.js`);
   return obj;
-}, {});
+}, {readme: template('README.md')});
 
 
 exports.generate = function (opts) {
@@ -73,11 +88,15 @@ exports.generate = function (opts) {
     tests: 'test/**/*.js'
   }, null, 4);
   files.push({name: 'manifest.json', content: manifest});
+
   const main = TEMPLATES.main({routePaths: [].concat(
     pluck(dcNames, 'routerFile'),
     pluck(ecNames, 'routerFile')
   )});
   files.push({name: 'main.js', content: main});
+
+  const readme = TEMPLATES.readme(opts);
+  files.push({name: 'README.md', content: readme});
 
   folders.push('routes');
   folders.push('models');

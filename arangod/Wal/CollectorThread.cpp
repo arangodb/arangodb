@@ -589,10 +589,12 @@ void CollectorThread::processCollectionMarker(
 
     VPackSlice slice(reinterpret_cast<char const*>(walMarker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
-
-    TRI_voc_rid_t revisionId = arangodb::basics::VelocyPackHelper::stringUInt64(slice.get(StaticStrings::RevString));
-
-    auto found = document->primaryIndex()->lookupKey(&trx, Transaction::extractKeyFromDocument(slice));
+    
+    VPackSlice keySlice;
+    TRI_voc_rid_t revisionId = 0;
+    Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+  
+    auto found = document->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found == nullptr || found->revisionId() != revisionId ||
         found->getMarkerPtr() != walMarker) {
@@ -615,10 +617,12 @@ void CollectorThread::processCollectionMarker(
 
     VPackSlice slice(reinterpret_cast<char const*>(walMarker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
+    
+    VPackSlice keySlice;
+    TRI_voc_rid_t revisionId = 0;
+    Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
-    TRI_voc_rid_t revisionId = arangodb::basics::VelocyPackHelper::stringUInt64(slice.get(StaticStrings::RevString));
-
-    auto found = document->primaryIndex()->lookupKey(&trx, Transaction::extractKeyFromDocument(slice));
+    auto found = document->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found != nullptr && found->revisionId() > revisionId) {
       // somebody re-created the document with a newer revision

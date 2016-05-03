@@ -786,10 +786,12 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
   arangodb::Transaction* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
-  VPackSlice const keySlice = Transaction::extractKeyFromDocument(slice);
-  TRI_voc_rid_t const rid = StringUtils::uint64(slice.get(StaticStrings::RevString).copyString());
+  VPackSlice keySlice;
+  TRI_voc_rid_t revisionId;
+
+  Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
  
-  SetRevision(document, rid, false);
+  SetRevision(document, revisionId, false);
   document->_keyGenerator->track(keySlice.copyString());
 
   ++state->_documents;
@@ -837,8 +839,8 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
   }
 
   // it is an update, but only if found has a smaller revision identifier
-  else if (found->revisionId() < rid ||
-           (found->revisionId() == rid && found->getFid() <= fid)) {
+  else if (found->revisionId() < revisionId ||
+           (found->revisionId() == revisionId && found->getFid() <= fid)) {
     // save the old data
     TRI_doc_mptr_t oldData = *found;
 
@@ -889,10 +891,13 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
   arangodb::Transaction* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
-  VPackSlice const keySlice = Transaction::extractKeyFromDocument(slice);
-  TRI_voc_rid_t const rid = StringUtils::uint64(slice.get(StaticStrings::RevString).copyString());
+  
+  VPackSlice keySlice;
+  TRI_voc_rid_t revisionId;
+
+  Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
  
-  document->setLastRevision(rid, false);
+  document->setLastRevision(revisionId, false);
   document->_keyGenerator->track(keySlice.copyString());
 
   ++state->_deletions;
