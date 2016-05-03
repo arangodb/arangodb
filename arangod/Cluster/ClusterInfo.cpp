@@ -1060,6 +1060,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   auto agencyCallback = std::make_shared<AgencyCallback>(
     ac, "Current/Databases/" + name, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
+  TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   {
     AgencyCommLocker locker("Plan", "WRITE");
@@ -1103,7 +1104,6 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
       count = 0;
     }
   }
-  _agencyCallbackRegistry->unregisterCallback(agencyCallback);
   if (dbServerResult >= 0) {
     return dbServerResult;
   }
