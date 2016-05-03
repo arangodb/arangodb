@@ -139,7 +139,7 @@ std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery() {
   try {
     do {
       std::unique_ptr<AqlItemBlock> tmp(
-          _subquery->getSome(DefaultBatchSize, DefaultBatchSize));
+          _subquery->getSome(DefaultBatchSize(), DefaultBatchSize()));
 
       if (tmp.get() == nullptr) {
         break;

@@ -580,7 +580,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
       if (useQueryCache) {
         // iterate over result, return it and store it in query cache
         while (nullptr != (value = _engine->getSome(
-                               1, ExecutionBlock::DefaultBatchSize))) {
+                               1, ExecutionBlock::DefaultBatchSize()))) {
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
@@ -611,7 +611,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
       } else {
         // iterate over result and return it
         while (nullptr != (value = _engine->getSome(
-                               1, ExecutionBlock::DefaultBatchSize))) {
+                               1, ExecutionBlock::DefaultBatchSize()))) {
 
           size_t const n = value->size();
           for (size_t i = 0; i < n; ++i) {
@@ -742,7 +742,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
         uint32_t j = 0;
         while (nullptr != (value = _engine->getSome(
-                               1, ExecutionBlock::DefaultBatchSize))) {
+                               1, ExecutionBlock::DefaultBatchSize()))) {
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
@@ -766,16 +766,20 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         }
       } else {
         // iterate over result and return it
+        bool suppressResult = silent();
+
         uint32_t j = 0;
         while (nullptr != (value = _engine->getSome(
-                               1, ExecutionBlock::DefaultBatchSize))) {
-          size_t const n = value->size();
+                               1, ExecutionBlock::DefaultBatchSize()))) {
+          if (!suppressResult) {
+            size_t const n = value->size();
 
-          for (size_t i = 0; i < n; ++i) {
-            AqlValue const& val = value->getValueReference(i, resultRegister);
+            for (size_t i = 0; i < n; ++i) {
+              AqlValue const& val = value->getValueReference(i, resultRegister);
 
-            if (!val.isEmpty()) {
-              result.result->Set(j++, val.toV8(isolate, _trx));
+              if (!val.isEmpty()) {
+                result.result->Set(j++, val.toV8(isolate, _trx));
+              }
             }
           }
           delete value;

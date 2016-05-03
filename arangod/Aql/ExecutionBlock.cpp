@@ -27,9 +27,6 @@
 
 using namespace arangodb::aql;
 
-/// @brief batch size value
-size_t const ExecutionBlock::DefaultBatchSize = 1000;
-
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _trx(engine->getQuery()->trx()),
@@ -309,7 +306,7 @@ bool ExecutionBlock::hasMore() {
   if (!_buffer.empty()) {
     return true;
   }
-  if (getBlock(DefaultBatchSize, DefaultBatchSize)) {
+  if (getBlock(DefaultBatchSize(), DefaultBatchSize())) {
     _pos = 0;
     return true;
   }

@@ -85,7 +85,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
     // try again!
 
     if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
         _done = true;
         return nullptr;
@@ -182,7 +182,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
 
   while (skipped < atLeast) {
     if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
         _done = true;
         return skipped;

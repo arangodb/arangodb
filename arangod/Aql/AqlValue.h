@@ -144,7 +144,15 @@ struct AqlValue final {
     _data.range = new Range(low, high);
     setType(AqlValueType::RANGE);
   }
-  
+ 
+  /// @brief AqlValues can be copied and moved as required
+  /// memory management is not performed via AqlValue destructor but via 
+  /// explicit calls to destroy()
+  AqlValue(AqlValue const&) noexcept = default; 
+  AqlValue& operator=(AqlValue const&) noexcept = default; 
+  AqlValue(AqlValue&&) noexcept = default; 
+  AqlValue& operator=(AqlValue&&) noexcept = default; 
+
   ~AqlValue() = default;
   
   /// @brief whether or not the value must be destroyed
@@ -162,12 +170,12 @@ struct AqlValue final {
   }
   
   /// @brief whether or not the value is a range
-  bool isRange() const {
+  inline bool isRange() const {
     return type() == RANGE;
   }
   
   /// @brief whether or not the value is a docvec
-  bool isDocvec() const {
+  inline bool isDocvec() const {
     return type() == DOCVEC;
   }
 

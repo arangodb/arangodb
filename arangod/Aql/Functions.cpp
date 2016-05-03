@@ -462,13 +462,15 @@ static bool SortNumberList(arangodb::AqlTransaction* trx,
   return true;
 }
 
-static void RequestEdges(VPackSlice const& vertexSlice,
+static void RequestEdges(VPackSlice vertexSlice,
                          arangodb::AqlTransaction* trx,
                          std::string const& collectionName,
                          Transaction::IndexHandle const& indexId,
                          TRI_edge_direction_e direction,
                          arangodb::ExampleMatcher const* matcher,
                          bool includeVertices, VPackBuilder& result) {
+
+  vertexSlice = vertexSlice.resolveExternals();
 
   std::string vertexId;
   if (vertexSlice.isString()) {
@@ -501,25 +503,26 @@ static void RequestEdges(VPackSlice const& vertexSlice,
     VPackSlice edges = opRes->slice();
     TRI_ASSERT(edges.isArray());
     if (includeVertices) {
-      for (auto const& edge : VPackArrayIterator(edges)) {
+      for (auto const& edge : VPackArrayIterator(edges, false)) {
         VPackObjectBuilder guard(&result);
         if (matcher == nullptr || matcher->matches(edge)) {
           result.add("edge", edge);
 
           std::string target;
-          TRI_ASSERT(edge.hasKey(StaticStrings::FromString));
-          TRI_ASSERT(edge.hasKey(StaticStrings::ToString));
+          VPackSlice e = edge.resolveExternals();
+          TRI_ASSERT(e.hasKey(StaticStrings::FromString));
+          TRI_ASSERT(e.hasKey(StaticStrings::ToString));
           switch (direction) {
             case TRI_EDGE_OUT:
-              target = Transaction::extractToFromDocument(edge).copyString();
+              target = Transaction::extractToFromDocument(e).copyString();
               break;
             case TRI_EDGE_IN:
-              target = Transaction::extractFromFromDocument(edge).copyString();
+              target = Transaction::extractFromFromDocument(e).copyString();
               break;
             case TRI_EDGE_ANY:
-              target = Transaction::extractToFromDocument(edge).copyString();
+              target = Transaction::extractToFromDocument(e).copyString();
               if (target == vertexId) {
-                target = Transaction::extractFromFromDocument(edge).copyString();
+                target = Transaction::extractFromFromDocument(e).copyString();
               }
               break;
           }
@@ -535,14 +538,14 @@ static void RequestEdges(VPackSlice const& vertexSlice,
 
           searchValueBuilder->clear();
           searchValueBuilder->openObject();
-          searchValueBuilder->add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+          searchValueBuilder->add(StaticStrings::KeyString, VPackValue(key));
           searchValueBuilder->close();
           result.add(VPackValue("vertex"));
           int res = trx->documentFastPath(collection, searchValueBuilder->slice(), result);
           if (res != TRI_ERROR_NO_ERROR) {
             if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
               // Not found is ok. Is equal to NULL
-              result.add(VPackValue(VPackValueType::Null));
+              result.add(arangodb::basics::VelocyPackHelper::NullValue());
             } else {
               THROW_ARANGO_EXCEPTION(res);
             }
@@ -550,7 +553,7 @@ static void RequestEdges(VPackSlice const& vertexSlice,
         }
       }
     } else {
-      for (auto const& edge : VPackArrayIterator(edges)) {
+      for (auto const& edge : VPackArrayIterator(edges, false)) {
         if (matcher == nullptr || matcher->matches(edge)) {
           result.add(edge);
         }
@@ -2574,7 +2577,7 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
   builder->openArray();
     
   if (vertexSlice.isArray()) {
-    for (auto const& v : VPackArrayIterator(vertexSlice)) {
+    for (auto const& v : VPackArrayIterator(vertexSlice, false)) {
       RequestEdges(v, trx, collectionName, indexId, direction,
                    matcher.get(), includeVertices, *builder.get());
     }

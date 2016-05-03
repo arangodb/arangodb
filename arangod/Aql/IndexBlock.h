@@ -28,9 +28,6 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexNode.h"
-#include "Utils/AqlTransaction.h"
-
-struct TRI_doc_mptr_t;
 
 namespace arangodb {
 struct OperationCursor;
@@ -45,6 +42,19 @@ class AqlItemBlock;
 struct AstNode;
 struct Collection;
 class ExecutionEngine;
+
+/// @brief struct to hold the member-indexes in the _condition node
+struct NonConstExpression {
+  size_t const orMember;
+  size_t const andMember;
+  size_t const operatorMember;
+  Expression* expression;
+
+  NonConstExpression(size_t orM, size_t andM, size_t opM, Expression* exp)
+      : orMember(orM), andMember(andM), operatorMember(opM), expression(exp) {}
+
+  ~NonConstExpression() { delete expression; }
+};
 
 class IndexBlock : public ExecutionBlock {
  public:
