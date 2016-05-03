@@ -452,10 +452,20 @@ class Slice {
   // returns the Slice managed by an External or the Slice itself if it's not
   // an External
   Slice resolveExternal() const {
-    if (isExternal()) {
+    if (*_start == 0x1d) {
       return Slice(extractValue<char const*>());
     }
     return *this;
+  }
+ 
+  // returns the Slice managed by an External or the Slice itself if it's not
+  // an External, recursive version
+  Slice resolveExternals() const {
+    char const* current = reinterpret_cast<char const*>(_start);
+    while (*current == 0x1d) {
+      current = Slice(current).extractValue<char const*>();
+    }
+    return Slice(current);
   }
 
   // translates an integer key into a string
