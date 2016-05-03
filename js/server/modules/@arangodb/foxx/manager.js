@@ -70,21 +70,11 @@ const legacyManifestFields = [
 ];
 
 const manifestSchema = {
+  // FoxxStore metadata
   name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).optional(),
   version: joi.string().optional(),
-  engines: (
-    joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.string().required())
-  ),
-
-  license: joi.string().optional(),
-  description: joi.string().allow('').default(''),
   keywords: joi.array().optional(),
-  thumbnail: joi.string().optional(),
-  author: joi.string().allow('').default(''),
-  contributors: joi.array().optional(),
-  defaultDocument: joi.string().allow('').optional(),
+  license: joi.string().optional(),
   repository: (
     joi.object().optional()
     .keys({
@@ -93,9 +83,29 @@ const manifestSchema = {
     })
   ),
 
+  // Additional web interface metadata
+  author: joi.string().allow('').default(''),
+  contributors: joi.array().optional(),
+  description: joi.string().allow('').default(''),
+  thumbnail: joi.string().optional(),
+
+  // Compatibility
+  engines: (
+    joi.object().optional()
+    .pattern(RE_EMPTY, joi.forbidden())
+    .pattern(RE_NOT_EMPTY, joi.string().required())
+  ),
+
+  // Index redirect
+  defaultDocument: joi.string().allow('').optional(),
+
+  // JS path
   lib: joi.string().default('.'),
+
+  // Entrypoint
   main: joi.string().optional(),
 
+  // Config
   configuration: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -113,6 +123,7 @@ const manifestSchema = {
     ))
   ),
 
+  // Dependencies supported
   dependencies: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -127,6 +138,7 @@ const manifestSchema = {
     ))
   ),
 
+  // Dependencies provided
   provides: (
     joi.alternatives().try(
       joi.string().optional(),
@@ -138,6 +150,7 @@ const manifestSchema = {
     )
   ),
 
+  // Bundled assets
   files: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -152,12 +165,15 @@ const manifestSchema = {
     ))
   ),
 
+  // Scripts/queue jobs
   scripts: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
     .pattern(RE_NOT_EMPTY, joi.string().required())
     .default(Object, 'empty scripts object')
   ),
+
+  // Foxx tests path
   tests: (
     joi.alternatives()
     .try(
