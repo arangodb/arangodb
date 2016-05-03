@@ -736,8 +736,8 @@ VPackSlice Transaction::extractKeyFromDocument(VPackSlice const& slice) {
     // and point to the attribute value 
     return VPackSlice(p + 1); 
   }
-  // we actually should not get here. however, if for some reason we do,
-  // we simply fall back to the regular lookup method
+  
+  // fall back to the regular lookup method
   return slice.get(StaticStrings::KeyString); 
 }
 
@@ -768,8 +768,7 @@ VPackSlice Transaction::extractFromFromDocument(VPackSlice const& slice) {
     p += VPackSlice(p).byteSize();
   }
 
-  // we actually should not get here. however, if for some reason we do,
-  // we simply fall back to the regular lookup method
+  // fall back to the regular lookup method
   return slice.get(StaticStrings::FromString); 
 }
 
@@ -800,9 +799,84 @@ VPackSlice Transaction::extractToFromDocument(VPackSlice const& slice) {
     p += VPackSlice(p).byteSize();
   }
   
-  // we actually should not get here. however, if for some reason we do,
-  // we simply fall back to the regular lookup method
+  // fall back to the regular lookup method
   return slice.get(StaticStrings::ToString); 
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief quick access to the _rev attribute in a database document
+/// the document must have at least three attributes: _key, _id, _rev 
+/// (possibly with _from and _to in between)
+//////////////////////////////////////////////////////////////////////////////
+
+VPackSlice Transaction::extractRevFromDocument(VPackSlice const& slice) {
+  TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.length() >= 2); 
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+  VPackValueLength count = 0;
+
+  while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 5) {
+    if (*p == basics::VelocyPackHelper::RevAttribute) {
+      // the + 1 is required so that we can skip over the attribute name
+      // and point to the attribute value 
+      return VPackSlice(p + 1);
+    }
+    // skip over the attribute name
+    ++p;
+    // skip over the attribute value
+    p += VPackSlice(p).byteSize();
+  }
+
+  // fall back to the regular lookup method
+  return slice.get(StaticStrings::RevString); 
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief extract _key and _rev from a document, in one go
+/// this is an optimized version used when loading collections, WAL 
+/// collection and compaction
+//////////////////////////////////////////////////////////////////////////////
+    
+void Transaction::extractKeyAndRevFromDocument(VPackSlice const& slice, 
+                                               VPackSlice& keySlice, 
+                                               TRI_voc_rid_t& revisionId) {
+  TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.length() >= 2); 
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+  VPackValueLength count = 0;
+  bool foundKey = false;
+  bool foundRev = false;
+
+  while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 5) {
+    if (*p == basics::VelocyPackHelper::KeyAttribute) {
+      keySlice = VPackSlice(p + 1);
+      if (foundRev) {
+        return;
+      }
+      foundKey = true;
+    } else if (*p == basics::VelocyPackHelper::RevAttribute) {
+      VPackSlice revSlice(p + 1);
+      if (revSlice.isString()) {
+        revisionId = basics::StringUtils::uint64(revSlice.copyString());
+      } else if (revSlice.isNumber()) {
+        revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
+      }
+      if (foundKey) {
+        return;
+      }
+      foundRev = true;
+    }
+    // skip over the attribute name
+    ++p;
+    // skip over the attribute value
+    p += VPackSlice(p).byteSize();
+  }
+
+  // fall back to regular lookup
+  keySlice = slice.get(StaticStrings::KeyString);    
+  revisionId = basics::StringUtils::uint64(slice.get(StaticStrings::RevString).copyString());
 }
 
 //////////////////////////////////////////////////////////////////////////////

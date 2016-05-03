@@ -306,6 +306,24 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   static VPackSlice extractToFromDocument(VPackSlice const&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief quick access to the _rev attribute in a database document
+  /// the document must have at least three attributes: _key, _id, _rev 
+  /// (possibly with _from and _to in between)
+  //////////////////////////////////////////////////////////////////////////////
+  
+  static VPackSlice extractRevFromDocument(VPackSlice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief extract _key and _rev from a document, in one go
+  /// this is an optimized version used when loading collections, WAL 
+  /// collection and compaction
+  //////////////////////////////////////////////////////////////////////////////
+  
+  static void extractKeyAndRevFromDocument(VPackSlice const& slice,
+                                           VPackSlice& keySlice,
+                                           TRI_voc_rid_t& revisionId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document

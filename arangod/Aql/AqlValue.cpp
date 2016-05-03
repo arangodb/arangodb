@@ -356,7 +356,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
     case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found(s.get(name));
+        VPackSlice found(s.resolveExternal().get(name));
         if (found.isCustom()) { 
           // _id needs special treatment
           mustDestroy = true;
@@ -399,7 +399,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
     case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found(s.get(names));
+        VPackSlice found(s.resolveExternal().get(names, true));
         if (found.isCustom()) { 
           // _id needs special treatment
           mustDestroy = true;
