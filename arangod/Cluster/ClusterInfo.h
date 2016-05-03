@@ -591,11 +591,11 @@ class ClusterInfo {
   void loadPlannedCollections();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief (re-)load the information about planned databases
+  /// @brief (re-)load the information about our plan
   /// Usually one does not have to call this directly.
   //////////////////////////////////////////////////////////////////////////////
 
-  void loadPlannedDatabases();
+  void loadPlan();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about current databases
@@ -833,13 +833,7 @@ class ClusterInfo {
   void invalidateCurrent();
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief actually clears a list of planned databases
-  //////////////////////////////////////////////////////////////////////////////
-
-  void clearPlannedDatabases(
-      std::unordered_map<DatabaseID, TRI_json_t*>& databases);
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief actually clears a list of current databases
   //////////////////////////////////////////////////////////////////////////////
@@ -917,11 +911,12 @@ class ClusterInfo {
   std::unordered_map<ServerID, ServerID>
       _coordinators;  // from Current/Coordinators
   ProtectionData _coordinatorsProt;
+  
+  std::shared_ptr<VPackBuilder> _plan;
+  
+  std::unordered_map<DatabaseID, VPackSlice> _plannedDatabases;  // from Plan/Databases
 
-  // First the databases, there is Plan and Current information:
-  std::unordered_map<DatabaseID, struct TRI_json_t*>
-      _plannedDatabases;  // from Plan/Databases
-  ProtectionData _plannedDatabasesProt;
+  ProtectionData _planProt;
 
   std::unordered_map<DatabaseID,
                      std::unordered_map<ServerID, struct TRI_json_t*>>

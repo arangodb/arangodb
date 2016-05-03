@@ -293,7 +293,6 @@ ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::~ClusterInfo() {
-  clearPlannedDatabases(_plannedDatabases);
   clearCurrentDatabases(_currentDatabases);
 }
 
@@ -338,7 +337,7 @@ void ClusterInfo::flush() {
   loadServers();
   loadCurrentDBServers();
   loadCurrentCoordinators();
-  loadPlannedDatabases();
+  loadPlan();
   loadCurrentDatabases();
   loadPlannedCollections();
   loadCurrentCollections();
@@ -351,9 +350,9 @@ void ClusterInfo::flush() {
 bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
   int tries = 0;
 
-  if (reload || !_plannedDatabasesProt.isValid ||
+  if (reload || !_planProt.isValid ||
       !_currentDatabasesProt.isValid || !_DBServersProt.isValid) {
-    loadPlannedDatabases();
+    loadPlan();
     loadCurrentDatabases();
     loadCurrentDBServers();
     ++tries;  // no need to reload if the database is not found
@@ -372,7 +371,7 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
 
       // look up database by name:
 
-      READ_LOCKER(readLocker, _plannedDatabasesProt.lock);
+      READ_LOCKER(readLocker, _planProt.lock);
       // _plannedDatabases is a map-type<DatabaseID, TRI_json_t*>
       auto it = _plannedDatabases.find(databaseID);
 
@@ -395,7 +394,7 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
       break;
     }
 
-    loadPlannedDatabases();
+    loadPlan();
     loadCurrentDatabases();
     loadCurrentDBServers();
   }
@@ -410,9 +409,9 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
 std::vector<DatabaseID> ClusterInfo::listDatabases(bool reload) {
   std::vector<DatabaseID> result;
 
-  if (reload || !_plannedDatabasesProt.isValid ||
+  if (reload || !_planProt.isValid ||
       !_currentDatabasesProt.isValid || !_DBServersProt.isValid) {
-    loadPlannedDatabases();
+    loadPlan();
     loadCurrentDatabases();
     loadCurrentDBServers();
   }
@@ -427,7 +426,7 @@ std::vector<DatabaseID> ClusterInfo::listDatabases(bool reload) {
   }
 
   {
-    READ_LOCKER(readLockerPlanned, _plannedDatabasesProt.lock);
+    READ_LOCKER(readLockerPlanned, _planProt.lock);
     READ_LOCKER(readLockerCurrent, _currentDatabasesProt.lock);
     // _plannedDatabases is a map-type<DatabaseID, TRI_json_t*>
     auto it = _plannedDatabases.begin();
@@ -450,34 +449,16 @@ std::vector<DatabaseID> ClusterInfo::listDatabases(bool reload) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief actually clears a list of planned databases
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::clearPlannedDatabases(
-    std::unordered_map<DatabaseID, TRI_json_t*>& databases) {
-  auto it = databases.begin();
-  while (it != databases.end()) {
-    TRI_json_t* json = (*it).second;
-
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
-    ++it;
-  }
-  databases.clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about planned databases
+/// @brief (re-)load the information about our plan
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 //
-static std::string const prefixPlannedDatabases = "Plan/Databases";
+static std::string const prefixPlan = "Plan";
 
-void ClusterInfo::loadPlannedDatabases() {
-  uint64_t storedVersion = _plannedDatabasesProt.version;
-  MUTEX_LOCKER(mutexLocker, _plannedDatabasesProt.mutex);
-  if (_plannedDatabasesProt.version > storedVersion) {
+void ClusterInfo::loadPlan() {
+  uint64_t storedVersion = _planProt.version;
+  MUTEX_LOCKER(mutexLocker, _planProt.mutex);
+  if (_planProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
   }
@@ -488,46 +469,46 @@ void ClusterInfo::loadPlannedDatabases() {
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixPlannedDatabases, true);
+      result = _agency.getValues2(prefixPlan, true);
     }
   }
 
   if (result.successful()) {
+    VPackSlice slice = result._vpack->slice()[0].get(
+        std::vector<std::string>({AgencyComm::prefixStripped(), "Plan"}));
+    auto planBuilder = std::make_shared<VPackBuilder>();
+    planBuilder->add(slice);
+    
+    VPackSlice planSlice = planBuilder->slice();
 
-    velocypack::Slice databases =
-      result._vpack->slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Plan", "Databases"}));
-
-    if (!databases.isNone()) {
+    if (planSlice.isObject()) {
       decltype(_plannedDatabases) newDatabases;
+      bool swapDatabases = false;
 
-      for (auto const& database : VPackObjectIterator(databases)) {
+      auto databasesSlice = planSlice.get("Databases");
+      if (databasesSlice.isObject()) {
+        for (auto const& database : VPackObjectIterator(databasesSlice)) {
+          std::string const& name = database.key.copyString();
 
-        std::string const& name = database.key.copyString();
-
-        // TODO: _plannedDatabases need to be moved to velocypack
-        // Then this can be merged to swap
-
-        TRI_json_t* options = 
-          arangodb::basics::VelocyPackHelper::velocyPackToJson(database.value);
-
-        newDatabases.insert(std::make_pair(name, options));
-
+          newDatabases.insert(std::make_pair(name, database.value));
+        }
+        swapDatabases = true;
       }
 
-      // Now set the new value:
-      {
-        WRITE_LOCKER(writeLocker, _plannedDatabasesProt.lock);
+      WRITE_LOCKER(writeLocker, _planProt.lock);
+      _plan = planBuilder;
+      if (swapDatabases) {
         _plannedDatabases.swap(newDatabases);
-        _plannedDatabasesProt.version++;  // such that others notice our change
-        _plannedDatabasesProt.isValid = true;  // will never be reset to false
       }
-      clearPlannedDatabases(newDatabases);  // delete the old stuff
+      _planProt.version++;  // such that others notice our change
+      _planProt.isValid = true;  // will never be reset to false
       return;
+    } else {
+      LOG(ERR) << "\"Plan\" is not an object in agency";
     }
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixPlannedDatabases
+  LOG(DEBUG) << "Error while loading " << prefixPlan
              << " httpCode: " << result.httpCode()
              << " errorCode: " << result.errorCode()
              << " errorMessage: " << result.errorMessage()
@@ -1081,7 +1062,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   }
 
   // Now update our own cache of planned databases:
-  loadPlannedDatabases();
+  loadPlan();
   
   int count = 0;  // this counts, when we have to reload the DBServers
   while (TRI_microtime() <= endTime) {
@@ -1173,7 +1154,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   }
 
   // Load our own caches:
-  loadPlannedDatabases();
+  loadPlan();
   loadPlannedCollections();
 
   // Now wait for it to appear and be complete:
@@ -2704,8 +2685,8 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
 
 void ClusterInfo::invalidatePlan() {
   {
-    WRITE_LOCKER(writeLocker, _plannedDatabasesProt.lock);
-    _plannedDatabasesProt.isValid = false;
+    WRITE_LOCKER(writeLocker, _planProt.lock);
+    _planProt.isValid = false;
   }
   {
     WRITE_LOCKER(writeLocker, _plannedCollectionsProt.lock);
