@@ -38,6 +38,12 @@
   top: 100px;
   width: 350px;
 
+  select {
+    @extend %flat-select;
+    margin-bottom: 30px;
+    padding-left: 35px;
+  }
+
   .login-logo-round {
     margin-bottom: 25px;
     margin-top: 10px;
@@ -54,13 +60,8 @@
     float: left;
     font-size: 14pt;
     left: 30px;
-    margin-right: 44px;
     margin-top: 11px;
     position: absolute;
-
-    &.fa-lock {
-      right: -9px;
-    }
   }
 
   .wrong-credentials {
@@ -77,7 +78,7 @@
     @extend %inputs;
     background: $c-login-grey !important;
     background-color: $c-login-grey !important;
-    border: 0;
+    border: 2px $c-login-grey !important;
     border-bottom-left-radius: 3px;
     border-bottom-right-radius: 3px;
     border-top-left-radius: 3px;
@@ -93,10 +94,11 @@
   }
 
   .form-error {
-    border: 1px solid $c-negative !important;
+    border: 2px solid $c-negative !important;
   }
 
   button {
+    @extend %animated;
     height: 40px;
     width: 100%;
   }
