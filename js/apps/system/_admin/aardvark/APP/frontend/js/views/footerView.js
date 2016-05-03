@@ -10,6 +10,9 @@
     isOffline: true,
     isOfflineCounter: 0,
     firstLogin: true,
+    timer: 15000,
+    lap: 0,
+    timerFunction: null,
 
     events: {
       'click .footer-center p' : 'showShortcutModal'
@@ -20,12 +23,16 @@
       var self = this;
       window.setInterval(function() {
         self.getVersion();
-      }, 15000);
+      }, self.timer);
       self.getVersion();
 
       window.VISIBLE = true;
       document.addEventListener('visibilitychange', function () {
         window.VISIBLE = !window.VISIBLE;
+      });
+
+      $('#offlinePlaceholder button').on('click', function() {
+        self.getVersion();
       });
     },
 
@@ -40,12 +47,17 @@
           $('#healthStatus').addClass('positive');
           $('.health-state').html('GOOD');
           $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+          $('#offlinePlaceholder').hide();
         }
         else {
           $('#healthStatus').removeClass('positive');
           $('#healthStatus').addClass('negative');
-          $('.health-state').html('OFFLINE');
+          $('.health-state').html('UNKNOWN');
           $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+
+          //show offline overlay
+          $('#offlinePlaceholder').show();
+          this.reconnectAnimation(0);
         }
       }
       else {
@@ -60,15 +72,36 @@
       }
     },
 
+    reconnectAnimation: function(lap) {
+      var self = this;
+
+      if (lap === 0) {
+        self.lap = lap;
+        $('#offlineSeconds').text(self.timer / 1000);
+        clearTimeout(self.timerFunction);
+      }
+
+      if (self.lap < this.timer / 1000) {
+        self.lap++;
+        $('#offlineSeconds').text(self.timer / 1000 - self.lap);
+
+        self.timerFunction = window.setTimeout(function() {
+          if (self.timer / 1000 - self.lap === 0) {
+            self.getVersion();
+          }
+          else {
+            self.reconnectAnimation(self.lap);
+          }
+        }, 1000);
+      }
+    },
+
     renderClusterState: function(connection) {
-      var ok = 0, error = 0;
+      var error = 0;
 
       if (connection) {
         this.collection.each(function(value) {
-          if (value.toJSON().status === 'ok') {
-            ok++;
-          }
-          else {
+          if (value.toJSON().status !== 'ok') {
             error++;
           }
         });
