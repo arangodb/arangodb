@@ -55,8 +55,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-using VertexId = arangodb::traverser::VertexId;
-
 /// @brief thread-local cache for compiled regexes
 thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
     nullptr;
@@ -477,7 +475,7 @@ static void RequestEdges(VPackSlice const& vertexSlice,
     vertexId = vertexSlice.copyString();
   } else if (vertexSlice.isObject()) {
     vertexId = arangodb::basics::VelocyPackHelper::getStringValue(vertexSlice,
-                                                                  TRI_VOC_ATTRIBUTE_ID, "");
+                                                                  StaticStrings::IdString, "");
   } else {
     // Nothing to do.
     // Return (error for illegal input is thrown outside
