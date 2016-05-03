@@ -535,8 +535,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       std::string const name = options.value.get("name").copyString();
       TRI_voc_tick_t id = 0;
 
-      LOG(INFO) << options.value.toJson();
-      
       if (options.value.hasKey("id")) {
         VPackSlice const v = options.value.get("id");
         if (v.isString()) {
