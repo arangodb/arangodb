@@ -419,6 +419,14 @@ bool AgencyCommResult::parse(std::string const& stripKeyPrefix, bool withDirs) {
   return result;
 }
 
+VPackSlice AgencyCommResult::parse(std::string const& path) {
+  std::vector<std::string> pv (1,AgencyComm::prefixStripped());
+  std::vector<std::string> tmp = basics::StringUtils::split(path,'/');
+  pv.insert(pv.end(), tmp.begin(), tmp.end());
+  return _vpack->slice()[0].get(pv);
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the static global URL prefix
 ////////////////////////////////////////////////////////////////////////////////

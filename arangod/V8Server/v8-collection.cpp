@@ -2506,8 +2506,7 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionUnload
 ////////////////////////////////////////////////////////////////////////////////
-#warning iostream
-#include <iostream>
+
 static void JS_UnloadVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
 

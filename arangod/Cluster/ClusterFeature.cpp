@@ -372,7 +372,6 @@ void ClusterFeature::start() {
           result._values.begin();
 
       if (it != result._values.end()) {
-        LOG(INFO) << (*it).second._vpack->slice().toJson();
 
         VPackSlice slice = (*it).second._vpack->slice();
         _heartbeatInterval = slice.getUInt();

@@ -207,14 +207,21 @@ void HeartbeatThread::runDBServer() {
           if (currentVersion == 0) {
             LOG(ERR) << "Current/Version in agency is 0.";
           } else {
-            if (currentVersion > _desiredVersions.current) {
-              _desiredVersions.current = currentVersion;
-              LOG(INFO) << "Found greater Current/Version in agency.";
-              syncDBServerStatusQuo();
+            {
+              MUTEX_LOCKER(mutexLocker, _statusLock);
+              if (currentVersion > _desiredVersions.current) {
+                _desiredVersions.current = currentVersion;
+                LOG(DEBUG) << "Found greater Current/Version in agency.";
+              }
             }
+            syncDBServerStatusQuo();
           }
         }
       }
+    }
+
+    if (isStopping()) {
+      break;
     }
 
     double remain = interval - (TRI_microtime() - start);
@@ -535,8 +542,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       std::string const name = options.value.get("name").copyString();
       TRI_voc_tick_t id = 0;
 
-      LOG(INFO) << options.value.toJson();
-      
       if (options.value.hasKey("id")) {
         VPackSlice const v = options.value.get("id");
         if (v.isString()) {
@@ -633,6 +638,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
 bool HeartbeatThread::syncDBServerStatusQuo() {
   bool shouldUpdate = false;
+  bool becauseOfPlan = false;
+  bool becauseOfCurrent = false;
   {
     MUTEX_LOCKER(mutexLocker, _statusLock);
     // mop: only dispatch one at a time
@@ -644,16 +651,28 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
       LOG(DEBUG) << "Plan version " << _currentVersions.plan 
                  << " is lower than desired version " << _desiredVersions.plan;
       _isDispatchingChange = true;
-    } else if (_desiredVersions.current > _currentVersions.current) {
+      becauseOfPlan = true;
+    }
+    if (_desiredVersions.current > _currentVersions.current) {
       LOG(DEBUG) << "Current version " << _currentVersions.current 
                  << " is lower than desired version " 
                  << _desiredVersions.current;
       _isDispatchingChange = true;
+      becauseOfCurrent = true;
     }
     shouldUpdate = _isDispatchingChange;
   }
 
   if (shouldUpdate) {
+    // First invalidate the caches in ClusterInfo:
+    auto ci = ClusterInfo::instance();
+    if (becauseOfPlan) {
+      ci->invalidatePlan();
+    }
+    if (becauseOfCurrent) {
+      ci->invalidateCurrent();
+    }
+
     LOG(TRACE) << "Dispatching Sync";
     // schedule a job for the change
     std::unique_ptr<arangodb::rest::Job> job(new ServerJob(this));
