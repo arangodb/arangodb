@@ -290,8 +290,12 @@ else ()
 
   include(VcMacros)
 
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
+  option(USE_OPTIMIZE_FOR_ARCHITECTURE "try to determine CPU architecture" ON)
+
+  if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+    include(OptimizeForArchitecture)
+    OptimizeForArchitecture()
+  endif ()
 
   set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
