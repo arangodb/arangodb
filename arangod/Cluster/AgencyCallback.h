@@ -53,7 +53,7 @@ public:
   std::string const key;
   
   void refetchAndUpdate();
-  void waitForExecution(double);
+  void executeByCallbackOrTimeout(double);
   
 
 private:

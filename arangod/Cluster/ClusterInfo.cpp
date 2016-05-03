@@ -1318,7 +1318,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   loadPlannedCollections();
 
   while (TRI_microtime() <= endTime) {
-    agencyCallback->waitForExecution(interval);
+    agencyCallback->executeByCallbackOrTimeout(interval);
 
     if (dbServerResult >= 0) {
       break;
@@ -1410,7 +1410,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   loadPlannedCollections();
 
   while (TRI_microtime() <= endTime) {
-    agencyCallback->waitForExecution(interval);
+    agencyCallback->executeByCallbackOrTimeout(interval);
     if (dbServerResult >= 0) {
       break;
     }
