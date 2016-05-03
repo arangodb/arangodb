@@ -35,8 +35,6 @@
 
 using namespace arangodb;
 
-#include <iostream>
-
 AgencyCallback::AgencyCallback(AgencyComm& agency, 
                                std::string const& key, 
                                std::function<bool(VPackSlice const&)> const& cb,
@@ -133,7 +131,7 @@ void AgencyCallback::waitWithFailover(double timeout) {
   }
 }
 
-void AgencyCallback::waitForExecution(double maxTimeout) {
+void AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   auto compareBuilder = std::make_shared<VPackBuilder>();
   if (_lastData) {
     compareBuilder = _lastData;
