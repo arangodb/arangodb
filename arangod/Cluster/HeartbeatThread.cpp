@@ -154,6 +154,10 @@ void HeartbeatThread::runDBServer() {
     }
   }
   
+  // we check Current/Version every few heartbeats:
+  int const currentCountStart = 5;  
+  int currentCount = currentCountStart;
+
   while (!isStopping()) {
     LOG(DEBUG) << "sending heartbeat to agency";
 
@@ -181,6 +185,39 @@ void HeartbeatThread::runDBServer() {
     if (isStopping()) {
       break;
     }
+
+    if (--currentCount == 0) {
+      currentCount = currentCountStart;
+      LOG(TRACE) << "Refetching Current/Version...";
+      AgencyCommResult res = _agency.getValues2("Current/Version", false);
+      if (!res.successful()) {
+        LOG(ERR) << "Could not read Current/Version from agency.";
+      } else {
+        VPackSlice s 
+            = res._vpack->slice()[0].get(std::vector<std::string>(
+                  {_agency.prefixStripped(), std::string("Current"), 
+                   std::string("Version")}));
+        if (!s.isInteger()) {
+          LOG(ERR) << "Current/Version in agency is not an integer.";
+        } else {
+          uint64_t currentVersion = 0;
+          try {
+            currentVersion = s.getUInt();
+          } catch (...) {
+          }
+          if (currentVersion == 0) {
+            LOG(ERR) << "Current/Version in agency is 0.";
+          } else {
+            if (currentVersion > _desiredVersions.current) {
+              _desiredVersions.current = currentVersion;
+              LOG(INFO) << "Found greater Current/Version in agency.";
+              syncDBServerStatusQuo();
+            }
+          }
+        }
+      }
+    }
+
     double remain = interval - (TRI_microtime() - start);
     // mop: execute at least once
     do {
@@ -458,17 +495,6 @@ uint64_t HeartbeatThread::getLastCommandIndex() {
   return 0;
 }
 
-// We need to sort the _system database to the beginning:
-static bool myDBnamesComparer(std::string const& a, std::string const& b) {
-  if (a == "_system") {
-    return true;
-  }
-  if (b == "_system") {
-    return false;
-  }
-  return a < b;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a plan version change, coordinator case
 /// this is triggered if the heartbeat thread finds a new plan version number
@@ -616,10 +642,13 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
     }
 
     if (_desiredVersions.plan > _currentVersions.plan) {
-      LOG(DEBUG) << "Plan version " << _currentVersions.plan << " is lower than desired version " << _desiredVersions.plan;
+      LOG(DEBUG) << "Plan version " << _currentVersions.plan 
+                 << " is lower than desired version " << _desiredVersions.plan;
       _isDispatchingChange = true;
     } else if (_desiredVersions.current > _currentVersions.current) {
-      LOG(DEBUG) << "Current version " << _currentVersions.current << " is lower than desired version " << _desiredVersions.current;
+      LOG(DEBUG) << "Current version " << _currentVersions.current 
+                 << " is lower than desired version " 
+                 << _desiredVersions.current;
       _isDispatchingChange = true;
     }
     shouldUpdate = _isDispatchingChange;
