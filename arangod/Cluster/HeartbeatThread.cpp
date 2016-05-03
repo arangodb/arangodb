@@ -500,14 +500,27 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     // instance if not yet present:
     
     for (auto const& options : VPackObjectIterator (databases)) {
+
+      auto nameSlice = options.value.get("name");
+      if (nameSlice.isNone()) {
+        LOG (ERR) << "Missing name in agency database plan";
+        continue;      
+      }
       
       std::string const name = options.value.get("name").copyString();
       TRI_voc_tick_t id = 0;
+
+      LOG(INFO) << options.value.toJson();
       
       if (options.value.hasKey("id")) {
         VPackSlice const v = options.value.get("id");
-        if (v.isNumber()) {
-          id = v.getUInt();
+        if (v.isString()) {
+          try {
+            id = std::stoul(v.copyString());
+          } catch (std::exception const& e) {
+            LOG(ERR) << "Failed to convert id string to number";
+            LOG(ERR) << e.what();
+          }
         }
       }
       

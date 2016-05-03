@@ -896,14 +896,11 @@ ArangoDatabase.prototype._createDatabase = function (name, options, users) {
     users: users || [ ]
   };
 
-  require("internal").print(JSON.stringify(data));
   var requestResult = this._connection.POST("/_api/database", JSON.stringify(data));
 
-  require("internal").print(JSON.stringify(data));
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);
   }
-  require("internal").print(requestResult);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -915,6 +912,7 @@ ArangoDatabase.prototype._createDatabase = function (name, options, users) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._dropDatabase = function (name) {
+  
   var requestResult = this._connection.DELETE("/_api/database/" + encodeURIComponent(name));
 
   if (requestResult !== null && requestResult.error === true) {
