@@ -653,10 +653,12 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("Databases"));
       {
         VPackObjectBuilder d(&builder);
-        builder.add("_system", VPackValue(VPackValueType::Object));
-        builder.add("name", VPackValue("_system"));
-        builder.add("id", VPackValue("1"));
-        builder.close();
+        builder.add(VPackValue("_system"));
+        {
+          VPackObjectBuilder d2(&builder);
+          builder.add("name", VPackValue("_system"));
+          builder.add("id", VPackValue("1"));
+        }
 //KV        builder.add("_system",
         //                VPackValue("{name:_system, id:1}"));
       }
@@ -685,10 +687,12 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("Databases"));
       {
         VPackObjectBuilder d(&builder);
-        builder.add("_system", VPackValue(VPackValueType::Object));
-        builder.add("name", VPackValue("_system"));
-        builder.add("id", VPackValue("1"));
-        builder.close();
+        builder.add(VPackValue("_system"));
+        {
+          VPackObjectBuilder d2(&builder);
+          builder.add("name", VPackValue("_system"));
+          builder.add("id", VPackValue("1"));
+        }
 //KV        builder.add("_system",
         //                VPackValue("{name:_system, id:1}"));
       }
