@@ -401,6 +401,19 @@ class Transaction {
                            std::function<bool(TRI_doc_mptr_t const*)>);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief return one  document from a collection, fast path
+  ///        If everything went well the result will contain the found document
+  ///        (as an external on single_server)  and this function will return TRI_ERROR_NO_ERROR.
+  ///        If there was an error the code is returned and it is guaranteed
+  ///        that result remains unmodified.
+  ///        Does not care for revision handling!
+  //////////////////////////////////////////////////////////////////////////////
+
+  int documentFastPath(std::string const& collectionName,
+                       arangodb::velocypack::Slice const value,
+                       arangodb::velocypack::Builder& result);
+ 
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief return one or multiple documents from a collection
   //////////////////////////////////////////////////////////////////////////////
 
