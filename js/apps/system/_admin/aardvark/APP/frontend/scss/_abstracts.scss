@@ -57,30 +57,6 @@
   transition: .3s ease all;
   width: 100%;
 
-  &.blue {
-    background-color:#3498DB;
-  }
-
-  &.blue:hover {
-    background-color:#2980B9;
-  }
-
-  &.green {
-    background-color:#2ECC71;
-  }
-
-  &.green:hover {
-    background-color:#27AE60;
-  }
-
-  &.red {
-    background-color:#E74C3C;
-  }
-
-  &.red:hover {
-    background-color:#C0392B;
-  }
-
   &:disabled {
     opacity: .5;
   }
