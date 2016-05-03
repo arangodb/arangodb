@@ -927,8 +927,8 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     size_t const n = res->size();
     bool isMultiple = (n > 1);
+    object.clear();
     if (isMultiple) {
-      object.clear();
       object.openArray();
     }
 
