@@ -1044,7 +1044,6 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
       }
       if (tmpHaveError) {
         errorMsg = "Error in creation of database:" + tmpMsg;
-        std::cout << errorMsg << std::endl;
         dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE;
         return true;
       }
