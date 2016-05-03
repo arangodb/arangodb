@@ -588,6 +588,10 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     VPackSlice toUpdate = object.slice();
 
+    if (toUpdate.isNone()) {
+      continue;
+    }
+
     // fetch old revision
     OperationResult opRes = _trx->update(_collection->name, toUpdate, options); 
     if (!isMultiple) {
@@ -983,6 +987,10 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
 
     VPackSlice toUpdate = object.slice();
+
+    if (toUpdate.isNone()) {
+      continue;
+    }
     // fetch old revision
     OperationResult opRes = _trx->replace(_collection->name, toUpdate, options); 
     if (!isMultiple) {
