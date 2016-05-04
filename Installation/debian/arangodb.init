@@ -36,15 +36,15 @@ start () {
     ( cd $PIDDIR && chown arangodb:arangodb . ) || exit 1
 
     if [ "$1" = "--upgrade" ]; then
-      $DAEMON -c $CONF --uid arangodb --gid arangodb --no-server $@
+      $DAEMON -c $CONF --uid arangodb --gid arangodb --server.rest-server no $@
       RETVAL=$?
       log_end_msg $RETVAL
     else
-      $DAEMON -c $CONF --uid arangodb --gid arangodb --no-server --log.tty "" --check-version
+      $DAEMON -c $CONF --uid arangodb --gid arangodb --server.rest-server no --log.foreground-tty no --database.check-version
       RETVAL=$?
 
       if [ "$RETVAL" -eq 0 ];  then
-        $DAEMON -c $CONF --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --log.tty "" --supervisor $@
+        $DAEMON -c $CONF --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --log.foreground-tty no --supervisor $@
 	RETVAL=$?
 	log_end_msg $RETVAL
       else
@@ -106,7 +106,7 @@ case "$1" in
   upgrade)
     log_daemon_msg "Upgrading $DESC" "$NAME"
 
-    start --upgrade
+    start --database.auto-upgrade true
     exit $?
     ;;
 
