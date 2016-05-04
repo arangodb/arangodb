@@ -91,7 +91,6 @@ if (CMAKE_COMPILER_IS_GNUCC)
   set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer -DNDEBUG"       CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer -DNDEBUG" CACHE INTERNAL "C++ release with debug info flags")
 
-  MESSAGE(${CMAKE_CXX_FLAGS})
 elseif (CMAKE_COMPILER_IS_CLANG)
   if (VERBOSE)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
@@ -241,7 +240,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
 set(ROCKSDB_LIBS rocksdblib${ARTIFACT_SUFFIX})
-MESSAGE(${ROCKSDB_LIBS})
+
 if (WIN32)
   set(SYSTEM_LIBS Shlwapi.lib Rpcrt4.lib)
 else()
