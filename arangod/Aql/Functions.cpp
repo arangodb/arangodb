@@ -976,13 +976,13 @@ AqlValue Functions::ToArray(arangodb::aql::Query* query,
 
   if (value.isArray()) {
     // return copy of the original array
-    return AqlValue(value);
+    return value.clone();
   }
 
   if (value.isNull(true)) {
     return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
   }
-  
+
   TransactionBuilderLeaser builder(trx);
   builder->openArray();
   if (value.isBoolean() || value.isNumber() || value.isString()) {
@@ -993,7 +993,11 @@ AqlValue Functions::ToArray(arangodb::aql::Query* query,
     VPackSlice slice = materializer.slice(value, false);
     // return an array with the attribute values
     for (auto const& it : VPackObjectIterator(slice, true)) {
-      builder->add(it.value);
+      if (it.value.isCustom()) {
+        builder->add(VPackValue(trx->extractIdString(slice)));
+      } else {
+        builder->add(it.value);
+      }
     }
   }
   builder->close();
