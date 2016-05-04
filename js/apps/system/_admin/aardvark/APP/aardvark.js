@@ -68,6 +68,7 @@ router.post('/logout', function (req, res) {
 
 router.post('/login', function (req, res) {
   const currentDb = db._name();
+  /*
   const actualDb = req.body.database;
   if (actualDb !== currentDb) {
     res.redirect(307, joinPath(
@@ -78,7 +79,7 @@ router.post('/login', function (req, res) {
     ));
     return;
   }
-
+  */
   const user = req.body.username;
   const valid = users.isValid(user, req.body.password);
 
@@ -93,8 +94,8 @@ router.post('/login', function (req, res) {
 })
 .body({
   username: joi.string().required(),
-  password: joi.string().required().allow(''),
-  database: joi.string().default(db._name())
+  password: joi.string().required().allow('')
+  //database: joi.string().default(db._name())
 }, 'Login credentials.')
 .error('unauthorized', 'Invalid credentials.')
 .summary('Log in')

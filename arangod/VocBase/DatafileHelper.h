@@ -35,13 +35,13 @@ namespace DatafileHelper {
 /// a WAL file (bit set) or a datafile (bit not set)
 ////////////////////////////////////////////////////////////////////////////////
   
-constexpr uint64_t WalFileBitmask() { return 0x8000000000000000ULL; }
+constexpr inline uint64_t WalFileBitmask() { return 0x8000000000000000ULL; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal size of a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr TRI_voc_size_t MaximalMarkerSize() {
+constexpr inline TRI_voc_size_t MaximalMarkerSize() {
   static_assert(sizeof(TRI_voc_size_t) >= 4, "TRI_voc_size_t is too small");
 
   return 2UL * 1024UL * 1024UL * 1024UL; // 2 GB
@@ -51,7 +51,7 @@ constexpr TRI_voc_size_t MaximalMarkerSize() {
 /// @brief journal overhead
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr TRI_voc_size_t JournalOverhead() {
+constexpr inline TRI_voc_size_t JournalOverhead() {
   return sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t);
 }
 
@@ -60,7 +60,7 @@ constexpr TRI_voc_size_t JournalOverhead() {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-static constexpr T AlignedSize(T value) {
+static constexpr inline T AlignedSize(T value) {
   return (value + 7) - ((value + 7) & 7);
 }
 

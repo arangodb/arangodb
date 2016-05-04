@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, EJS, arangoHelper, window, setTimeout, $, templateEngine*/
+/*global Backbone, document, EJS, _, arangoHelper, window, setTimeout, $, templateEngine*/
 
 (function() {
   "use strict";
@@ -8,18 +8,19 @@
     el: '#content',
     el2: '.header',
     el3: '.footer',
+    loggedIn: false,
 
     events: {
-      "submit #loginForm" : "login",
-      "keypress #loginForm input" : "clear",
-      "change #loginForm input" : "clear"
+      "submit #loginForm" : "goTo",
+      "keyup #loginForm input" : "validate",
+      "change #loginForm input" : "validate",
+      "focusout #loginForm input" : "validate"
     },
 
     template: templateEngine.createTemplate("loginView.ejs"),
 
     render: function() {
       $(this.el).html(this.template.render({}));
-      $('#loginDatabase').val('_system');
       $(this.el2).hide();
       $(this.el3).hide();
 
@@ -33,50 +34,70 @@
       $('.wrong-credentials').hide();
     },
 
-    login: function (e) {
-      e.preventDefault();
+    validate: function(event) {
+      this.clear();
+      var self = this;
+
       var username = $('#loginUsername').val();
       var password = $('#loginPassword').val();
-      var database = $('#loginDatabase').val();
 
       if (!username) {
-        //Heiko: Form-Validator - please fill out all req. fields
+        //do not send unneccessary requests if no user is given
         return;
       }
 
-      var callback = function(error, username) {
-        var callback2 = function(error) {
-          if (error) {
-            arangoHelper.arangoError("User", "Could not fetch user settings"); 
-          }
-        };
-
+      console.log(event);
+      var callback = function(error) {
         if (error) {
-          $('#loginForm input').addClass("form-error");
-          $('.wrong-credentials').show();
+          if (event.type === 'focusout') {
+            //$('#loginForm input').addClass("form-error");
+            $('.wrong-credentials').show();
+          }
         }
         else {
-          var currentDB = window.location.pathname.split('/')[2];
-          if (currentDB !== database) {
-            var path = window.location.origin + window.location.pathname.replace(currentDB, database);
-            window.location.href = path;
-            $(this.el2).show();
-            $(this.el3).show();
-            $('#currentUser').text(username);
-            this.collection.loadUserSettings(callback2);
-            return;
+          $('.wrong-credentials').hide();
+
+          if (!self.loggedIn) {
+            self.loggedIn = true;
+            //get list of allowed dbs
+            $.ajax("/_api/database/user").success(function(data) {
+              //enable db select and login button
+              $('#loginDatabase').prop('disabled', false);
+              $('#submitLogin').prop('disabled', false);
+              $('#loginDatabase').html('');
+              //fill select with allowed dbs
+              _.each(data.result, function(db) {
+                $('#loginDatabase').append(
+                  '<option>' + db + '</option>'
+                ); 
+              });
+            });
           }
-          
-          $(this.el2).show();
-          $(this.el3).show();
-          window.location.reload();
-          $('#currentUser').text(username);
-          this.collection.loadUserSettings(callback2);
-        } 
+        }
       }.bind(this);
 
-      this.collection.login(username, password, database, callback);
+      this.collection.login(username, password, callback);
 
+    },
+
+    goTo: function (e) {
+      e.preventDefault();
+      var username = $('#loginUsername').val();
+      var database = $('#loginDatabase').val();
+
+      var callback2 = function(error) {
+        if (error) {
+          arangoHelper.arangoError("User", "Could not fetch user settings"); 
+        }
+      };
+
+      var currentDB = window.location.pathname.split('/')[2];
+      var path = window.location.origin + window.location.pathname.replace(currentDB, database);
+      window.location.href = path;
+      $(this.el2).show();
+      $(this.el3).show();
+      $('#currentUser').text(username);
+      this.collection.loadUserSettings(callback2);
     }
 
   });

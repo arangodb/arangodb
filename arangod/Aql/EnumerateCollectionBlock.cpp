@@ -31,18 +31,14 @@
 
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
-
 EnumerateCollectionBlock::EnumerateCollectionBlock(
     ExecutionEngine* engine, EnumerateCollectionNode const* ep)
     : ExecutionBlock(engine, ep),
       _collection(ep->_collection),
       _scanner(nullptr),
-      _documentsSize(0),
-      _posInDocuments(0),
-      _random(ep->_random),
+      _iterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue()),
       _mustStoreResult(true) {
-  _scanner = new CollectionScanner(_trx, _collection->getName(), _random);
+  _scanner = new CollectionScanner(_trx, _collection->getName(), ep->_random);
 }
 
 EnumerateCollectionBlock::~EnumerateCollectionBlock() { delete _scanner; }
@@ -51,8 +47,7 @@ EnumerateCollectionBlock::~EnumerateCollectionBlock() { delete _scanner; }
 void EnumerateCollectionBlock::initializeDocuments() {
   _scanner->reset();
   _documents = VPackSlice();
-  _documentsSize = 0;
-  _posInDocuments = 0;
+  _iterator = VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
 }
 
 /// @brief skip instead of fetching
@@ -70,7 +65,7 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
   skipped += skippedHere;
 
   _documents = VPackSlice();
-  _posInDocuments = 0;
+  _iterator = VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
 
   _engine->_stats.scannedFull += static_cast<int64_t>(skippedHere);
 
@@ -86,8 +81,8 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
 /// @brief continue fetching of documents
 bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
   DEBUG_BEGIN_BLOCK();  
-  if (hint < DefaultBatchSize) {
-    hint = DefaultBatchSize;
+  if (hint < DefaultBatchSize()) {
+    hint = DefaultBatchSize();
   }
 
   throwIfKilled();  // check if we were aborted
@@ -99,17 +94,17 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
   _documents = _scanner->scan(hint);
 
   TRI_ASSERT(_documents.isArray());
-  VPackValueLength count = _documents.length();
-  _documentsSize = static_cast<size_t>(count);
+  _iterator = VPackArrayIterator(_documents, true);
+
+  VPackValueLength count = _iterator.size();
 
   if (count == 0) {
     _documents = VPackSlice();
+    _iterator = VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
     return false;
   }
 
   _engine->_stats.scannedFull += static_cast<int64_t>(count);
-
-  _posInDocuments = 0;
 
   return true;
   DEBUG_END_BLOCK();  
@@ -155,7 +150,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   }
 
   if (_buffer.empty()) {
-    size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
     if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
       _done = true;
       return nullptr;
@@ -169,14 +164,14 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   size_t const curRegs = cur->getNrRegs();
 
   // Get more documents from collection if _documents is empty:
-  if (_posInDocuments >= _documentsSize) {
+  if (_iterator.index() >= _iterator.size()) {
     if (!moreDocuments(atMost)) {
       _done = true;
       return nullptr;
     }
   }
 
-  size_t available = _documentsSize - _posInDocuments;
+  size_t available = _iterator.size() - _iterator.index();
   size_t toSend = (std::min)(atMost, available);
   RegisterId nrRegs =
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
@@ -202,16 +197,15 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
       // The result is in the first variable of this depth,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
-      res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs),
-                    AqlValue(_documents.at(_posInDocuments)));
+      res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), AqlValue(_iterator.value()));
       // No harm done, if the setValue throws!
     }
 
-    ++_posInDocuments;
+    _iterator.next();
   }
 
   // Advance read position:
-  if (_posInDocuments >= _documentsSize) {
+  if (_iterator.index() >= _iterator.size()) {
     // we have exhausted our local documents buffer
     // fetch more documents into our buffer
     if (!moreDocuments(atMost)) {
@@ -242,18 +236,20 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
   }
 
   if (!_documents.isNone()) {
-    if (_posInDocuments < _documentsSize) {
+    if (_iterator.index() < _iterator.size()) {
       // We still have unread documents in the _documents buffer
       // Just skip them
-      size_t couldSkip = _documentsSize - _posInDocuments;
+      size_t couldSkip = _iterator.size() - _iterator.index();
       if (atMost <= couldSkip) {
-        // More in buffer then to skip.
-        _posInDocuments += atMost;
+        // More in buffer than to skip.
+
+        // move forward the iterator
+        _iterator.forward(atMost);
         return atMost;
       }
       // Skip entire buffer
       _documents = VPackSlice();
-      _posInDocuments = 0;
+      _iterator = VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
       skipped += couldSkip;
     }
   }
@@ -264,7 +260,7 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
 
   while (skipped < atLeast) {
     if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       if (!getBlock(toFetch, toFetch)) {
         _done = true;
         return skipped;

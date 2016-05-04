@@ -164,6 +164,9 @@ class Query {
 
   /// @brief should the execution be profiled?
   bool profiling() const { return getBooleanOption("profile", false); }
+  
+  /// @brief should we suppress the query result (useful for performance testing only)?
+  bool silent() const { return getBooleanOption("silent", false); }
 
   /// @brief maximum number of plans to produce
   size_t maxNumberOfPlans() const {
