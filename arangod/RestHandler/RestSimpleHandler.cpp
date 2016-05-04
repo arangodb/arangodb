@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -158,7 +159,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
       if (!collectionName.empty()) {
         auto const* col =
-            TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
+            TRI_LookupCollectionByNameVocBase(_vocbase, collectionName);
 
         if (col != nullptr && collectionName.compare(col->_name) != 0) {
           // user has probably passed in a numeric collection id.
@@ -295,7 +296,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
 
       if (!collectionName.empty()) {
         auto const* col =
-            TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
+            TRI_LookupCollectionByNameVocBase(_vocbase, collectionName);
 
         if (col != nullptr && collectionName.compare(col->_name) != 0) {
           // user has probably passed in a numeric collection id.
@@ -353,7 +354,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     {
       VPackObjectBuilder guard(&result);
       createResponse(GeneralResponse::ResponseCode::OK);
-      _response->setContentType("application/json; charset=utf-8");
+      _response->setContentType(StaticStrings::MimeTypeJson);
 
       if (qResult.isArray()) {
 

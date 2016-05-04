@@ -32,33 +32,21 @@ const errors = require('@arangodb').errors;
 const joinPath = require('path').posix.join;
 const notifications = require('@arangodb/configuration').notifications;
 const examples = require('@arangodb/graph-examples/example-graph');
+const systemStorage = require('@arangodb/foxx/sessions/storages/_system');
 const createRouter = require('@arangodb/foxx/router');
+const users = require('@arangodb/users');
 
+const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
 const API_DOCS = require(module.context.fileName('api-docs.json'));
 API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 
-const sessions = module.context.sessions;
-const auth = module.context.auth;
+const sessions = systemStorage();
 const router = createRouter();
 module.exports = router;
 
 
 router.get('/whoAmI', function(req, res) {
-  let user = null;
-
-  if (req.session.uid) {
-    try {
-      const doc = db._users.document(req.session.uid);
-      user = doc.user;
-    } catch (e) {
-      if (!e.isArangoError || e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
-        throw e;
-      }
-      sessions.setUser(req.session, null);
-    }
-  }
-
-  res.json({user});
+  res.json({user: req.session.uid || null});
 })
 .summary('Return the current user')
 .description(dd`
@@ -80,6 +68,7 @@ router.post('/logout', function (req, res) {
 
 router.post('/login', function (req, res) {
   const currentDb = db._name();
+  /*
   const actualDb = req.body.database;
   if (actualDb !== currentDb) {
     res.redirect(307, joinPath(
@@ -90,27 +79,23 @@ router.post('/login', function (req, res) {
     ));
     return;
   }
-
-  const doc = db._users.firstExample({user: req.body.username});
-  const valid = auth.verify(
-    doc ? doc.authData.simple : null,
-    req.body.password
-  );
+  */
+  const user = req.body.username;
+  const valid = users.isValid(user, req.body.password);
 
   if (!valid) {
-    res.throw('unauthorized');
+    res.throw('unauthorized', 'Bad username or password');
   }
 
-  sessions.setUser(req.session, doc);
+  sessions.setUser(req.session, user);
   sessions.save(req.session);
 
-  const user = doc.user;
   res.json({user});
 })
 .body({
   username: joi.string().required(),
-  password: joi.string().required().allow(''),
-  database: joi.string().default(db._name())
+  password: joi.string().required().allow('')
+  //database: joi.string().default(db._name())
 }, 'Login credentials.')
 .error('unauthorized', 'Invalid credentials.')
 .summary('Log in')
@@ -200,36 +185,34 @@ authRouter.post('/query/explain', function(req, res) {
 
 
 authRouter.post('/query/upload/:user', function(req, res) {
-  let doc;
+  let user;
 
   try {
-    doc = db._users.document(req.session.uid);
+    user = users.document(req.session.uid);
   } catch (e) {
-    if (!e.isArangoError || e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+    if (!e.isArangoError || e.errorNum !== ERROR_USER_NOT_FOUND) {
       throw e;
     }
-  }
-
-  if (!doc) {
+    sessions.setUser(req.session);
     res.throw('not found');
   }
 
-  if (!doc.userData.queries) {
-    doc.userData.queries = [];
+  if (!user.extra.queries) {
+    user.extra.queries = [];
   }
 
-  const existingQueries = doc.userData.queries
+  const existingQueries = user.extra.queries
   .map(query => query.name);
 
   for (const query of req.body) {
     if (existingQueries.indexOf(query.name) !== -1) {
       existingQueries.push(query.name);
-      doc.userData.queries.push(query);
+      user.extra.queries.push(query);
     }
   }
 
-  const meta = db._users.replace(doc, doc);
-  res.json(meta);
+  users.update(user.user, undefined, undefined, user.extra);
+  res.json(user.extra.queries);
 })
 .pathParam('user', joi.string().required(), 'Username. Ignored if authentication is enabled.')
 .body(joi.array().items(joi.object({
@@ -245,22 +228,20 @@ authRouter.post('/query/upload/:user', function(req, res) {
 
 
 authRouter.get('/query/download/:user', function(req, res) {
-  let doc;
+  let user;
 
   try {
-    doc = db._users.document(req.session.uid);
+    user = users.document(req.session.uid);
   } catch (e) {
-    if (!e.isArangoError || e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+    if (!e.isArangoError || e.errorNum !== ERROR_USER_NOT_FOUND) {
       throw e;
     }
-  }
-
-  if (!doc) {
+    sessions.setUser(req.session);
     res.throw('not found');
   }
 
-  res.attachment(`queries-${db._name()}-${doc.user}.json`);
-  res.json(doc.userData.queries || []);
+  res.attachment(`queries-${db._name()}-${user.user}.json`);
+  res.json(user.extra.queries || []);
 })
 .pathParam('user', joi.string().required(), 'Username. Ignored if authentication is enabled.')
 .error('not found', 'User does not exist.')

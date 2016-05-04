@@ -149,7 +149,7 @@ int ModificationBlock::extractKey(AqlValue const& value,
                                   std::string& key) {
   if (value.isObject()) {
     bool mustDestroy;
-    AqlValue sub = value.get(_trx, TRI_VOC_ATTRIBUTE_KEY, mustDestroy, false);
+    AqlValue sub = value.get(_trx, StaticStrings::KeyString, mustDestroy, false);
     AqlValueGuard guard(sub, mustDestroy);
 
     if (sub.isString()) {
@@ -294,7 +294,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // no error. we expect to have a key
         // create a slice for the key
         keyBuilder.openObject();
-        keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+        keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
         keyBuilder.close();
       } else {
         // We have an error, handle it
@@ -403,7 +403,8 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
     size_t const n = res->size();
 
     throwIfKilled();  // check if we were aborted
-    bool isMultiple = (n > 1);
+    bool const isMultiple = (n > 1);
+
     if (!isMultiple) {
       // loop over the complete block. Well it is one element only
       for (size_t i = 0; i < n; ++i) {
@@ -453,7 +454,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         dstRow -= n;
         VPackSlice resultList = opRes.slice();
         TRI_ASSERT(resultList.isArray());
-        for (auto const& elm: VPackArrayIterator(resultList)) {
+        for (auto const& elm: VPackArrayIterator(resultList, false)) {
           bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
               elm, "error", false);
           if (!wasError) {
@@ -562,7 +563,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
         if (hasKeyVariable) {
           keyBuilder.clear();
           keyBuilder.openObject();
-          keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+          keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
           keyBuilder.close();
 
           VPackBuilder tmp = VPackCollection::merge(
@@ -587,6 +588,10 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
 
     VPackSlice toUpdate = object.slice();
+
+    if (toUpdate.isNone()) {
+      continue;
+    }
 
     // fetch old revision
     OperationResult opRes = _trx->update(_collection->name, toUpdate, options); 
@@ -649,6 +654,16 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
 UpsertBlock::UpsertBlock(ExecutionEngine* engine, UpsertNode const* ep)
     : ModificationBlock(engine, ep) {}
 
+bool UpsertBlock::isShardKeyError(VPackSlice const slice) const {
+  TRI_ASSERT(_isDBServer);
+
+  if (_usesDefaultSharding) {
+    return false;
+  }
+
+  return slice.hasKey(StaticStrings::KeyString);
+}
+
 /// @brief the actual work horse for inserting data
 AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   size_t const count = countBlocksRows(blocks);
@@ -701,13 +716,14 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
     auto* res = *it; 
 
     throwIfKilled();  // check if we were aborted
+    
+    insertBuilder.clear();
+    updateBuilder.clear();
 
     size_t const n = res->size();
-
-    bool isMultiple = (n > 1);
+      
+    bool const isMultiple = (n > 1);
     if (isMultiple) {
-      insertBuilder.clear();
-      updateBuilder.clear();
       insertBuilder.openArray();
       updateBuilder.openArray();
     }
@@ -739,7 +755,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
          
             keyBuilder.clear();
             keyBuilder.openObject();
-            keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+            keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
             keyBuilder.close();
             if (isMultiple) {
               VPackBuilder tmp = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
@@ -758,8 +774,12 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         AqlValue const& insertDoc = res->getValueReference(i, insertRegisterId);
         VPackSlice toInsert = insertDoc.slice();
         if (toInsert.isObject()) {
-          insertBuilder.add(toInsert);
-          insRows.emplace_back(dstRow);
+          if (_isDBServer && isShardKeyError(toInsert)) {
+            errorCode = TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
+          } else {
+            insertBuilder.add(toInsert);
+            insRows.emplace_back(dstRow);
+          }
         } else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
         }
@@ -927,8 +947,8 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     size_t const n = res->size();
     bool isMultiple = (n > 1);
+    object.clear();
     if (isMultiple) {
-      object.clear();
       object.openArray();
     }
 
@@ -960,7 +980,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
         if (hasKeyVariable) {
           keyBuilder.clear();
           keyBuilder.openObject();
-          keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+          keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
           keyBuilder.close();
           VPackBuilder tmp = VPackCollection::merge(
               a.slice(), keyBuilder.slice(), false, false);
@@ -983,6 +1003,10 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
 
     VPackSlice toUpdate = object.slice();
+
+    if (toUpdate.isNone()) {
+      continue;
+    }
     // fetch old revision
     OperationResult opRes = _trx->replace(_collection->name, toUpdate, options); 
     if (!isMultiple) {

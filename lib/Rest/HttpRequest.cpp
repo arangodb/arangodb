@@ -37,6 +37,8 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+  
+static std::string const EMPTY_STR = "";
 
 std::string const HttpRequest::BATCH_CONTENT_TYPE =
     "application/x-arango-batchpart";
@@ -61,9 +63,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
 }
 
 HttpRequest::~HttpRequest() {
-  if (_header != nullptr) {
-    delete[] _header;
-  }
+  delete[] _header;
 }
 
 int32_t HttpRequest::compatibility() {
@@ -504,8 +504,7 @@ void HttpRequest::setValues(char* buffer, char* end) {
         *(key - 2) = '\0';
         setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
       } else {
-        std::string keyStr(keyBegin, key - keyBegin);
-        _values[keyStr] = valueBegin;
+        _values[std::string(keyBegin, key - keyBegin)] = valueBegin;
       }
 
       keyBegin = key = buffer + 1;
@@ -564,8 +563,7 @@ void HttpRequest::setValues(char* buffer, char* end) {
       *(key - 2) = '\0';
       setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
     } else {
-      std::string keyStr(keyBegin, key - keyBegin);
-      _values[keyStr] = valueBegin;
+      _values[std::string(keyBegin, key - keyBegin)] = valueBegin;
     }
   }
 }
@@ -600,14 +598,12 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
       }
     }
 
-    std::string keyStr(key, keyLength);
-    _headers[keyStr] = value;
+    _headers[std::string(key, keyLength)] = value;
   }
 }
 
 void HttpRequest::setCookie(char* key, size_t length, char const* value) {
-  std::string keyStr(key, length);
-  _cookies[keyStr] = value;
+  _cookies[std::string(key, length)] = value;
 }
 
 void HttpRequest::parseCookies(char const* buffer) {
@@ -710,8 +706,6 @@ void HttpRequest::parseCookies(char const* buffer) {
 }
 
 std::string const& HttpRequest::cookieValue(std::string const& key) const {
-  static std::string EMPTY_STR = "";
-
   auto it = _cookies.find(key);
 
   if (it == _cookies.end()) {
@@ -722,8 +716,6 @@ std::string const& HttpRequest::cookieValue(std::string const& key) const {
 }
 
 std::string const& HttpRequest::cookieValue(std::string const& key, bool& found) const {
-  static std::string EMPTY_STR = "";
-
   auto it = _cookies.find(key);
 
   if (it == _cookies.end()) {

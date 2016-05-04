@@ -34,7 +34,7 @@ module.exports = function jwtStorage(cfg) {
   }
   assert(cfg.algorithm === 'none' || cfg.secret, `Must pass a JWT secret for "${cfg.algorithm}" algorithm`);
   assert(cfg.algorithm !== 'none' || !cfg.secret, 'Must NOT pass a JWT secret for "none" algorithm');
-  const expiry = (cfg.expiry || 60) * 60 * 1000;
+  const ttl = (cfg.ttl || 60 * 60) * 1000;
   return {
     fromClient(sid) {
       const token = crypto.jwtDecode(cfg.secret, sid, cfg.verify === false);
@@ -52,7 +52,7 @@ module.exports = function jwtStorage(cfg) {
         uid: session.uid,
         iat: session.created,
         payload: session.data,
-        exp: Date.now() + expiry
+        exp: Date.now() + ttl
       };
       return crypto.jwtEncode(cfg.secret, token, cfg.algorithm);
     },

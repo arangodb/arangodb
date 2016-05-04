@@ -271,17 +271,59 @@ class Transaction {
   /// @brief extract the _key attribute from a slice
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::string extractKey(VPackSlice const);
+  static std::string extractKeyPart(VPackSlice const);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the _id attribute from a slice, and convert it into a 
   /// string
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string extractIdString(VPackSlice const);
+  std::string extractIdString(VPackSlice);
 
   static std::string extractIdString(CollectionNameResolver const*, 
-                                     VPackSlice const&, VPackSlice const&);
+                                     VPackSlice, VPackSlice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief quick access to the _key attribute in a database document
+  /// the document must have at least two attributes, and _key is supposed to
+  /// be the first one
+  //////////////////////////////////////////////////////////////////////////////
+
+  static VPackSlice extractKeyFromDocument(VPackSlice);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief quick access to the _from attribute in a database document
+  /// the document must have at least five attributes: _key, _id, _from, _to
+  /// and _rev (in this order)
+  //////////////////////////////////////////////////////////////////////////////
+  
+  static VPackSlice extractFromFromDocument(VPackSlice);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief quick access to the _to attribute in a database document
+  /// the document must have at least five attributes: _key, _id, _from, _to
+  /// and _rev (in this order)
+  //////////////////////////////////////////////////////////////////////////////
+
+  static VPackSlice extractToFromDocument(VPackSlice);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief quick access to the _rev attribute in a database document
+  /// the document must have at least three attributes: _key, _id, _rev 
+  /// (possibly with _from and _to in between)
+  //////////////////////////////////////////////////////////////////////////////
+  
+  static VPackSlice extractRevFromDocument(VPackSlice);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief extract _key and _rev from a document, in one go
+  /// this is an optimized version used when loading collections, WAL 
+  /// collection and compaction
+  //////////////////////////////////////////////////////////////////////////////
+  
+  static void extractKeyAndRevFromDocument(VPackSlice slice,
+                                           VPackSlice& keySlice,
+                                           TRI_voc_rid_t& revisionId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document
@@ -358,6 +400,19 @@ class Transaction {
   void invokeOnAllElements(std::string const& collectionName,
                            std::function<bool(TRI_doc_mptr_t const*)>);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return one  document from a collection, fast path
+  ///        If everything went well the result will contain the found document
+  ///        (as an external on single_server)  and this function will return TRI_ERROR_NO_ERROR.
+  ///        If there was an error the code is returned and it is guaranteed
+  ///        that result remains unmodified.
+  ///        Does not care for revision handling!
+  //////////////////////////////////////////////////////////////////////////////
+
+  int documentFastPath(std::string const& collectionName,
+                       arangodb::velocypack::Slice const value,
+                       arangodb::velocypack::Builder& result);
+ 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return one or multiple documents from a collection
   //////////////////////////////////////////////////////////////////////////////
@@ -524,6 +579,14 @@ class Transaction {
       std::string const&);
 
  private:
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief creates an id string from a custom _id value and the _key string
+  //////////////////////////////////////////////////////////////////////////////
+        
+  static std::string makeIdFromCustom(CollectionNameResolver const* resolver,
+                                      VPackSlice const& idPart, 
+                                      VPackSlice const& keyPart);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build a VPack object with _id, _key and _rev and possibly
@@ -857,16 +920,6 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constants for _id, _key, _rev
-  //////////////////////////////////////////////////////////////////////////////
-
-  static std::string const KeyString;
-  static std::string const RevString;
-  static std::string const IdString;
-  static std::string const FromString;
-  static std::string const ToString;
 };
 
 class TransactionBuilderLeaser {

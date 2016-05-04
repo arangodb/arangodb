@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -85,7 +85,7 @@ void ExampleMatcher::fillExampleDefinition(
     char const* _key = strchr(tmp.c_str(), '/');
     if (_key != nullptr) {
       _key += 1;
-      std::vector<std::string> key({TRI_VOC_ATTRIBUTE_KEY});
+      std::vector<std::string> key({ StaticStrings::KeyString });
       def._paths.emplace_back(key);
       def._values.add(VPackValue(_key));
       return;
@@ -183,7 +183,8 @@ ExampleMatcher::ExampleMatcher(VPackSlice const& example,
 /// @brief Checks if the given velocyPack matches the examples in this class
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExampleMatcher::matches(VPackSlice const toMatch) const {
+bool ExampleMatcher::matches(VPackSlice const test) const {
+  VPackSlice toMatch = test.resolveExternal();
   for (auto const& def : definitions) {
     VPackSlice const compareValue = def.slice();
     size_t i = 0;

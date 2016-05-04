@@ -174,7 +174,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       VPackSlice slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
-      state->documentOperations[collectionId][slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()] = marker;
+      state->documentOperations[collectionId][Transaction::extractKeyFromDocument(slice).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;
     }
@@ -235,19 +235,6 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
           ++it;
         }
       }
-      break;
-    }
-    
-    case TRI_DF_MARKER_BEGIN_REMOTE_TRANSACTION:
-    case TRI_DF_MARKER_COMMIT_REMOTE_TRANSACTION: {
-      break;
-    }
-
-    case TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION: {
-      transaction_remote_abort_marker_t const* m =
-          reinterpret_cast<transaction_remote_abort_marker_t const*>(marker);
-      // note which abort markers we found
-      state->handledTransactions.emplace(m->_transactionId);
       break;
     }
 
@@ -602,21 +589,22 @@ void CollectorThread::processCollectionMarker(
 
     VPackSlice slice(reinterpret_cast<char const*>(walMarker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
-
-    TRI_voc_rid_t revisionId = arangodb::basics::VelocyPackHelper::stringUInt64(slice.get(TRI_VOC_ATTRIBUTE_REV));
-
-    auto found = document->primaryIndex()->lookupKey(&trx, slice.get(TRI_VOC_ATTRIBUTE_KEY));
+    
+    VPackSlice keySlice;
+    TRI_voc_rid_t revisionId = 0;
+    Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+  
+    auto found = document->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found == nullptr || found->revisionId() != revisionId ||
-        found->getDataPtr() != walMarker) {
+        found->getMarkerPtr() != walMarker) {
       // somebody inserted a new revision of the document or the revision
       // was already moved by the compactor
       dfi.numberDead++;
       dfi.sizeDead += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
     } else {
       // we can safely update the master pointer's dataptr value
-      found->setDataPtr(
-          static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
+      found->setVPackFromMarker(reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition));
       found->setFid(fid, false); // points to datafile now
 
       dfi.numberAlive++;
@@ -629,10 +617,12 @@ void CollectorThread::processCollectionMarker(
 
     VPackSlice slice(reinterpret_cast<char const*>(walMarker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
+    
+    VPackSlice keySlice;
+    TRI_voc_rid_t revisionId = 0;
+    Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
-    TRI_voc_rid_t revisionId = arangodb::basics::VelocyPackHelper::stringUInt64(slice.get(TRI_VOC_ATTRIBUTE_REV));
-
-    auto found = document->primaryIndex()->lookupKey(&trx, slice.get(TRI_VOC_ATTRIBUTE_KEY));
+    auto found = document->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found != nullptr && found->revisionId() > revisionId) {
       // somebody re-created the document with a newer revision

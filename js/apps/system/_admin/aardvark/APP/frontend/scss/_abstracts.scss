@@ -25,6 +25,49 @@
   cursor: pointer;
 }
 
+%animated {
+  -moz-transition: all .2s ease-in;
+  -o-transition: all .2s ease-in;
+  -webkit-transition: all .2s ease-in;
+  transition: all .2s ease-in;
+}
+
+%flat-select {
+  -webkit-appearance: none;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50px' height='50px'><polyline points='46.139,15.518 25.166,36.49 4.193,15.519'/></svg>");
+  background-color: $c-login-grey;
+  background-position: right 10px top 12px;
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
+  border: 0;
+  -webkit-border-radius: 2px;
+  border-radius: 2px;
+  color: $c-black;
+  font-size: 14px;
+  font-weight: 400;
+  height: 40px;
+  line-height: initial;
+  outline: 0;
+  padding: 12px;
+  text-align: center;
+  -moz-transition: .3s ease all;
+  -ms-transition: .3s ease all;
+  -o-transition: .3s ease all;
+  -webkit-transition: .3s ease all;
+  transition: .3s ease all;
+  width: 100%;
+
+  &:disabled {
+    opacity: .5;
+  }
+
+  &:focus,
+  &:active {
+    border: 0;
+    outline: 0;
+  }
+}
+
 %noselect {
   -webkit-touch-callout: none;
   -khtml-user-select: none;

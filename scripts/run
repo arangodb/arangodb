@@ -42,7 +42,7 @@ done
 
 echo Database has its data in ${DBDIR}
 echo Logfile is in ${LOGFILE}
-$VG bin/arangod \
+$VG build/bin/arangod \
     --configuration none \
     --cluster.arangod-path bin${PS}arangod \
     --cluster.coordinator-config etc${PS}relative${PS}arangod-coordinator.conf \

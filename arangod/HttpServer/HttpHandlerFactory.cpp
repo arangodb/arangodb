@@ -23,6 +23,7 @@
 
 #include "HttpHandlerFactory.h"
 
+#include "Cluster/ServerState.h"
 #include "HttpServer/HttpHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
@@ -70,42 +71,6 @@ HttpHandlerFactory::HttpHandlerFactory(std::string const& authenticationRealm,
       _setContext(setContext),
       _setContextData(setContextData),
       _notFound(nullptr) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a handler factory
-////////////////////////////////////////////////////////////////////////////////
-
-HttpHandlerFactory::HttpHandlerFactory(HttpHandlerFactory const& that)
-    : _authenticationRealm(that._authenticationRealm),
-      _minCompatibility(that._minCompatibility),
-      _allowMethodOverride(that._allowMethodOverride),
-      _setContext(that._setContext),
-      _setContextData(that._setContextData),
-      _constructors(that._constructors),
-      _datas(that._datas),
-      _prefixes(that._prefixes),
-      _notFound(that._notFound) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copies a handler factory
-////////////////////////////////////////////////////////////////////////////////
-
-HttpHandlerFactory& HttpHandlerFactory::operator=(
-    HttpHandlerFactory const& that) {
-  if (this != &that) {
-    _authenticationRealm = that._authenticationRealm;
-    _minCompatibility = that._minCompatibility;
-    _allowMethodOverride = that._allowMethodOverride;
-    _setContext = that._setContext;
-    _setContextData = that._setContextData;
-    _constructors = that._constructors;
-    _datas = that._datas;
-    _prefixes = that._prefixes;
-    _notFound = that._notFound;
-  }
-
-  return *this;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a handler factory
@@ -193,12 +158,21 @@ HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
 HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
   static std::string const ROOT_PATH = "/";
 
-  if (MaintenanceMode) {
+  std::string const& path = request->requestPath();
+
+  // In the bootstrap phase, we would like that coordinators answer the 
+  // following to endpoints, but not yet others:
+  if (MaintenanceMode &&
+      (!ServerState::instance()->isCoordinator() ||
+       (path != "/_api/shard-comm" && 
+        path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+        path.find("/_api/aql") == std::string::npos))) { 
+    LOG(DEBUG) << "Maintenance mode: refused path: "
+               << path;
     return new MaintenanceHandler(request);
   }
 
   std::unordered_map<std::string, create_fptr> const& ii = _constructors;
-  std::string const& path = request->requestPath();
   std::string const* modifiedPath = &path;
   std::string prefix;
 

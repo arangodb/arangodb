@@ -174,12 +174,14 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Nonce.cpp
   Basics/ReadWriteLock.cpp
   Basics/ReadWriteLockCPP11.cpp
+  Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/ThreadPool.cpp
   Basics/Timers.cpp
   Basics/Utf8Helper.cpp
+  Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/WorkMonitor.cpp
   Basics/application-exit.cpp
@@ -208,6 +210,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/vector.cpp
   Basics/voc-errors.cpp
   Basics/voc-mimetypes.cpp
+  Basics/xxhash.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp

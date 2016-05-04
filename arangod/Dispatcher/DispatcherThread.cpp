@@ -51,7 +51,7 @@ DispatcherThread::DispatcherThread(DispatcherQueue* queue)
 
 void DispatcherThread::run() {
   double worked = 0;
-  double const grace = 0.2;
+  double const grace = 0.01;
 
   // iterate until we are shutting down
   while (!_queue->_stopping.load(std::memory_order_relaxed)) {

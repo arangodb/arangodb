@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cursor.h"
+#include "Basics/VelocyPackDumper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/CollectionExport.h"
@@ -69,15 +70,13 @@ VelocyPackCursor::VelocyPackCursor(TRI_vocbase_t* vocbase, CursorId id,
     : Cursor(id, batchSize, extra, ttl, hasCount),
       _vocbase(vocbase),
       _result(std::move(result)),
-      _size(_result.result->slice().length()),
+      _iterator(_result.result->slice(), true),
       _cached(_result.cached) {
   TRI_ASSERT(_result.result->slice().isArray());
   TRI_UseVocBase(vocbase);
 }
 
 VelocyPackCursor::~VelocyPackCursor() {
-  freeJson();
-
   TRI_ReleaseVocBase(_vocbase);
 }
 
@@ -86,11 +85,11 @@ VelocyPackCursor::~VelocyPackCursor() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool VelocyPackCursor::hasNext() {
-  if (_position < _size) {
+  if (_iterator.valid()) {
     return true;
   }
 
-  freeJson();
+  _isDeleted = true;
   return false;
 }
 
@@ -100,16 +99,17 @@ bool VelocyPackCursor::hasNext() {
 
 VPackSlice VelocyPackCursor::next() {
   TRI_ASSERT(_result.result != nullptr);
-  TRI_ASSERT(_position < _size);
-  VPackSlice slice = _result.result->slice();
-  return slice.at(_position++);
+  TRI_ASSERT(_iterator.valid());
+  VPackSlice slice = _iterator.value();
+  _iterator.next();
+  return slice;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the cursor size
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t VelocyPackCursor::count() const { return _size; }
+size_t VelocyPackCursor::count() const { return _iterator.size(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the cursor contents into a string buffer
@@ -124,39 +124,45 @@ void VelocyPackCursor::dump(arangodb::basics::StringBuffer& buffer) {
   // if the specified batch size does not get out of hand
   // otherwise specifying a very high batch size would make the allocation fail
   // in every case, even if there were much less documents in the collection
-  auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+  size_t num = n;
+  if (num == 0) {
+    num = 1;
+  } else if (num >= 10000) {
+    num = 10000;
+  }
+  int res = buffer.reserve(num * 48);
 
-  if (n <= 50000) {
-    int res = buffer.reserve(n * 48);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
-  arangodb::basics::VPackStringBufferAdapter bufferAdapter(
-      buffer.stringBuffer());
-  VPackDumper dumper(&bufferAdapter, transactionContext->getVPackOptions());
-  for (size_t i = 0; i < n; ++i) {
-    if (!hasNext()) {
-      break;
-    }
+  arangodb::basics::VelocyPackDumper dumper(&buffer, _result.context->getVPackOptions());
 
-    if (i > 0) {
-      buffer.appendChar(',');
-    }
+  try {
 
-    auto row = next();
-    if (row.isNone()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
+    for (size_t i = 0; i < n; ++i) {
+      if (!hasNext()) {
+        break;
+      }
 
-    try {
-      dumper.dump(row);
-    } catch (...) {
-      /// TODO correct error Handling!
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      if (i > 0) {
+        buffer.appendChar(',');
+      }
+
+      auto row = next();
+
+      if (row.isNone()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      dumper.dumpValue(row);
     }
+  } catch (arangodb::basics::Exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
   buffer.appendText("],\"hasMore\":");
@@ -177,11 +183,8 @@ void VelocyPackCursor::dump(arangodb::basics::StringBuffer& buffer) {
   VPackSlice const extraSlice = extra();
 
   if (extraSlice.isObject()) {
-    arangodb::basics::VPackStringBufferAdapter bufferAdapter(
-        buffer.stringBuffer());
-    VPackDumper dumper(&bufferAdapter);
     buffer.appendText(",\"extra\":");
-    dumper.dump(extraSlice);
+    dumper.dumpValue(extraSlice);
   }
 
   buffer.appendText(",\"cached\":");
@@ -191,14 +194,6 @@ void VelocyPackCursor::dump(arangodb::basics::StringBuffer& buffer) {
     // mark the cursor as deleted
     this->deleted();
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the internals
-////////////////////////////////////////////////////////////////////////////////
-
-void VelocyPackCursor::freeJson() {
-  _isDeleted = true;
 }
 
 ExportCursor::ExportCursor(TRI_vocbase_t* vocbase, CursorId id,
@@ -298,8 +293,7 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
       buffer.appendChar(',');
     }
 
-    char const* p = reinterpret_cast<char const*>(_ex->_documents->at(_position++));
-    VPackSlice const slice(p + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+    VPackSlice const slice(reinterpret_cast<char const*>(_ex->_documents->at(_position++)));
 
     {
       result.clear();

@@ -25,6 +25,7 @@
 
 var db = require("@arangodb").db;
 var internal = require("internal");
+var shallowCopy = require("@arangodb/util").shallowCopy;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the frontend collection
@@ -67,7 +68,7 @@ exports.notifications.versions = function () {
     }
   }
 
-  d = d._shallowCopy;
+  d = shallowCopy(d);
 
   if (! d.hasOwnProperty(v)) {
     d.versions = {};

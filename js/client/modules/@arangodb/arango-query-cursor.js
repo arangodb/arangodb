@@ -220,6 +220,12 @@ ArangoQueryCursor.prototype.next = function () {
   return result;
 };
 
+ArangoQueryCursor.prototype[Symbol.iterator] = function* () {
+  while (this._hasNext) {
+    yield this.next();
+  }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief explicitly dispose the cursor
 ///

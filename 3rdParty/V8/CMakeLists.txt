@@ -11,7 +11,7 @@ if (POLICY CMP0048)
 endif ()
 
 project(V8)
-set(V8_VERSION 4.9.391)
+set(V8_VERSION 5.0.71.39)
 
 # create target directory
 
@@ -360,9 +360,9 @@ else ()
 
   option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
 
-  set(V8_CFLAGS   "")
-  set(V8_CXXFLAGS "")
-  set(V8_LDFLAGS "")
+  set(V8_CFLAGS   "$ENV{V8_CFLAGS}")
+  set(V8_CXXFLAGS "$ENV{V8_CXXFLAGS}")
+  set(V8_LDFLAGS  "$ENV{V8_LDFLAGS}")
 
   if (USE_DEBUG_V8)
     set(V8_TARGET_ARCH "${V8_PROC_ARCH}.debug")
@@ -464,4 +464,11 @@ if (WIN32)
   install(FILES ${ICU_DT}
     DESTINATION "share/arangodb/"
     RENAME ${ICU_DT_DEST})
+  install(FILES ${ICU_DT}
+    DESTINATION "bin/share/arangodb/"
+    RENAME ${ICU_DT_DEST})
+else()
+  add_custom_target(nonthinV8
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../Installation/archive-de-thinner.sh ${V8_REL_TARGET_PATH}
+    COMMENT de-thins V8 .a files)
 endif()

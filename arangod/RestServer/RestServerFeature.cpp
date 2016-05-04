@@ -70,7 +70,6 @@
 #include "VocBase/server.h"
 
 using namespace arangodb;
-using namespace arangodb::application_features;
 using namespace arangodb::rest;
 using namespace arangodb::options;
 
@@ -98,6 +97,7 @@ RestServerFeature::RestServerFeature(
   startsAfter("Database");
   startsAfter("Upgrade");
   startsAfter("CheckVersion");
+  startsAfter("FoxxQueues");
 }
 
 void RestServerFeature::collectOptions(
@@ -151,20 +151,23 @@ void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
                                                 TRI_server_t* server) {
   // get database name from request
-  std::string dbName = request->databaseName();
+  std::string const& dbName = request->databaseName();
 
+  char const* p;
   if (dbName.empty()) {
     // if no databases was specified in the request, use system database name
     // as a fallback
-    dbName = TRI_VOC_SYSTEM_DATABASE;
-    request->setDatabaseName(dbName);
+    request->setDatabaseName(StaticStrings::SystemDatabase);
+    p = StaticStrings::SystemDatabase.c_str();
+  } else {
+    p = dbName.c_str();
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    return TRI_UseCoordinatorDatabaseServer(server, dbName.c_str());
+    return TRI_UseCoordinatorDatabaseServer(server, p);
   }
 
-  return TRI_UseDatabaseServer(server, dbName.c_str());
+  return TRI_UseDatabaseServer(server, p);
 }
 
 static bool SetRequestContext(HttpRequest* request, void* data) {
@@ -199,9 +202,7 @@ void RestServerFeature::start() {
 
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
-  auto vocbase = DatabaseFeature::DATABASE->vocbase();
-  V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
-  _httpOptions._vocbase = vocbase;
+  _httpOptions._vocbase = DatabaseFeature::DATABASE->vocbase();
 
   _handlerFactory.reset(new HttpHandlerFactory(
       _authenticationRealm, _defaultApiCompatibility, _allowMethodOverride,
@@ -213,9 +214,6 @@ void RestServerFeature::start() {
   for (auto& server : _servers) {
     server->startListening();
   }
-
-  // disabled maintenance mode
-  HttpHandlerFactory::setMaintenance(false);
 
   LOG(INFO) << "Authentication is turned " << (_authentication ? "on" : "off");
 
@@ -229,9 +227,6 @@ void RestServerFeature::start() {
               << (_authenticationUnixSockets ? "on" : "off");
 #endif
   }
-
-  LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
-            << ") is ready for business. Have fun!";
 }
 
 void RestServerFeature::stop() {

@@ -171,10 +171,9 @@
       this.collection.create(options, {
         wait:true,
         error: function(data, err) {
-          //Fix this. Function not available
-          //self.handleError(err.status, err.statusText, name);
+          arangoHelper.parseError("User", err, data);
         },
-        success: function(data) {
+        success: function() {
           self.updateUserManagement();
           window.modalView.hide();
         }

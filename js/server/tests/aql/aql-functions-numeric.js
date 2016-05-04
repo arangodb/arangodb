@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNull, assertTrue */
+/*global assertEqual, assertTrue */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, functions
 ///
@@ -325,21 +325,21 @@ function ahuacatlNumericFunctionsTestSuite () {
       data.forEach(function (value) {
         var actual = getQueryResults("RETURN SQRT(" + JSON.stringify(value[0]) + ")");
         if (value[1] === null) {
-          assertNull(actual[0]);
+          assertEqual(0, actual[0]);
         }
         else {
           assertEqual(value[1].toFixed(4), actual[0].toFixed(4));
         }
         actual = getQueryResults("RETURN NOOPT(SQRT(" + JSON.stringify(value[0]) + "))");
         if (value[1] === null) {
-          assertNull(actual[0]);
+          assertEqual(0, actual[0]);
         }
         else {
           assertEqual(value[1].toFixed(4), actual[0].toFixed(4));
         }
         actual = getQueryResults("RETURN NOOPT(V8(SQRT(" + JSON.stringify(value[0]) + ")))");
         if (value[1] === null) {
-          assertNull(actual[0]);
+          assertEqual(0, actual[0]);
         }
         else {
           assertEqual(value[1].toFixed(4), actual[0].toFixed(4));
@@ -1994,14 +1994,14 @@ function ahuacatlNumericFunctionsTestSuite () {
         var query = "RETURN POW(" + JSON.stringify(value[0]) + ", " + JSON.stringify(value[1]) + ")";
         var actual = getQueryResults(query);
         if (value[2] === null) {
-          assertNull(actual[0]);
+          assertEqual(0, actual[0]);
         }
         else {
           assertEqual(value[2].toPrecision(4), actual[0].toPrecision(4), value);
         }
         actual = getQueryResults("RETURN NOOPT(POW(" + JSON.stringify(value[0]) + ", " + JSON.stringify(value[1]) + "))");
         if (value[2] === null) {
-          assertNull(actual[0]);
+          assertEqual(0, actual[0]);
         }
         else {
           assertEqual(value[2].toPrecision(4), actual[0].toPrecision(4), value);
@@ -2009,7 +2009,7 @@ function ahuacatlNumericFunctionsTestSuite () {
         query = "RETURN NOOPT(V8(POW(" + JSON.stringify(value[0]) + ", " + JSON.stringify(value[1]) + ")))";
         actual = getQueryResults(query);
         if (value[2] === null) {
-          assertNull(actual[0], query);
+          assertEqual(0, actual[0], query);
         }
         else {
           assertEqual(value[2].toPrecision(4), actual[0].toPrecision(4), value);

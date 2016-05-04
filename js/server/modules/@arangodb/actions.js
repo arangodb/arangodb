@@ -43,6 +43,7 @@ var console = require("console");
 
 var arangodb = require("@arangodb");
 var foxxManager = require("@arangodb/foxx/manager");
+var shallowCopy = require("@arangodb/util").shallowCopy;
 var ErrorStackParser = require("error-stack-parser");
 
 const MIME_DEFAULT = 'text/plain; charset=utf-8';
@@ -970,7 +971,7 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
       routes.prefix,
       path + "/*",
       rexpr + "(/[^/]+)*/?",
-      urlParameters._shallowCopy,
+      shallowCopy(urlParameters),
       depth + 1,
       true));
   }
@@ -1009,7 +1010,7 @@ function foxxRouting (req, res, options, next) {
   var mount = options.mount;
 
   try {
-    var app = foxxManager.lookupApp(mount);
+    var app = foxxManager.lookupService(mount);
     var devel = app.isDevelopment;
 
     if (devel || ! options.hasOwnProperty('routing')) {
@@ -1017,7 +1018,7 @@ function foxxRouting (req, res, options, next) {
 
       if (devel) {
         foxxManager.rescanFoxx(mount); // TODO can move this to somewhere else?
-        app = foxxManager.lookupApp(mount);
+        app = foxxManager.lookupService(mount);
       }
 
       if (app.isBroken) {
@@ -1672,7 +1673,7 @@ function handleRedirect (req, res, options, headers) {
     + "</a>.</p></body></html>";
 
   if (headers !== undefined) {
-    res.headers = headers._shallowCopy;
+    res.headers = shallowCopy(headers);
   }
   else {
     res.headers = {};
@@ -1830,6 +1831,68 @@ function indexNotFound (req, res, collection, index, headers) {
   }
 }
 
+function arangoErrorToHttpCode(num) {
+  if (!num) {
+    return exports.HTTP_SERVER_ERROR;
+  }
+
+  switch (num) {
+    case arangodb.ERROR_INTERNAL:
+    case arangodb.ERROR_OUT_OF_MEMORY:
+    case arangodb.ERROR_GRAPH_TOO_MANY_ITERATIONS:
+    case arangodb.ERROR_ARANGO_DOCUMENT_KEY_BAD:
+      return exports.HTTP_SERVER_ERROR;
+
+    case arangodb.ERROR_FORBIDDEN:
+    case arangodb.ERROR_ARANGO_USE_SYSTEM_DATABASE:
+      return exports.HTTP_FORBIDDEN;
+
+    case arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND:
+    case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND:
+    case arangodb.ERROR_ARANGO_DATABASE_NOT_FOUND:
+    case arangodb.ERROR_ARANGO_ENDPOINT_NOT_FOUND:
+    case arangodb.ERROR_ARANGO_NO_INDEX:
+    case arangodb.ERROR_ARANGO_INDEX_NOT_FOUND:
+    case arangodb.ERROR_CURSOR_NOT_FOUND:
+    case arangodb.ERROR_USER_NOT_FOUND:
+    case arangodb.ERROR_TASK_NOT_FOUND:
+    case arangodb.ERROR_QUERY_NOT_FOUND:
+      return exports.HTTP_NOT_FOUND;
+
+    case arangodb.ERROR_REQUEST_CANCELED:
+      return exports.HTTP_REQUEST_TIMEOUT;
+
+    case arangodb.ERROR_ARANGO_DUPLICATE_NAME:
+    case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER:
+      return exports.HTTP_CONFLICT;
+
+    case arangodb.ERROR_CLUSTER_UNSUPPORTED:
+      return exports.HTTP_NOT_IMPLEMENTED;
+
+    case arangodb.ERROR_ARANGO_ILLEGAL_NAME:
+    case arangodb.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
+    case arangodb.ERROR_ARANGO_CROSS_COLLECTION_REQUEST:
+    case arangodb.ERROR_ARANGO_INDEX_HANDLE_BAD:
+    case arangodb.ERROR_ARANGO_DOCUMENT_TOO_LARGE:
+    case arangodb.ERROR_ARANGO_COLLECTION_NOT_UNLOADED:
+    case arangodb.ERROR_ARANGO_COLLECTION_TYPE_INVALID:
+    case arangodb.ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED:
+    case arangodb.ERROR_ARANGO_DOCUMENT_KEY_BAD:
+    case arangodb.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
+    case arangodb.ERROR_ARANGO_DOCUMENT_KEY_MISSING:
+    case arangodb.ERROR_ARANGO_DOCUMENT_TYPE_INVALID:
+    case arangodb.ERROR_ARANGO_DATABASE_NAME_INVALID:
+    case arangodb.ERROR_ARANGO_INVALID_KEY_GENERATOR:
+    case arangodb.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE:
+    case arangodb.ERROR_ARANGO_COLLECTION_TYPE_MISMATCH:
+    case arangodb.ERROR_ARANGO_COLLECTION_NOT_LOADED:
+    case arangodb.ERROR_ARANGO_DOCUMENT_REV_BAD:
+      return exports.HTTP_BAD;
+  }
+
+  return exports.HTTP_BAD;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock actionsResultException
 ////////////////////////////////////////////////////////////////////////////////
@@ -1855,13 +1918,6 @@ function resultException (req, res, err, headers, verbose) {
   }
 
   if (err instanceof internal.ArangoError) {
-    num = err.errorNum;
-    code = exports.HTTP_BAD;
-
-    if (num === 0) {
-      num = arangodb.ERROR_INTERNAL;
-    }
-
     if (err.errorMessage !== "") {
       if (verbose !== false) {
         info.message = err.errorMessage;
@@ -1871,44 +1927,8 @@ function resultException (req, res, err, headers, verbose) {
       }
     }
 
-    switch (num) {
-      case arangodb.ERROR_INTERNAL:
-      case arangodb.ERROR_OUT_OF_MEMORY:
-      case arangodb.ERROR_GRAPH_TOO_MANY_ITERATIONS:
-        code = exports.HTTP_SERVER_ERROR;
-        break;
-
-      case arangodb.ERROR_FORBIDDEN:
-      case arangodb.ERROR_ARANGO_USE_SYSTEM_DATABASE:
-        code = exports.HTTP_FORBIDDEN;
-        break;
-
-      case arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND:
-      case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND:
-      case arangodb.ERROR_ARANGO_DATABASE_NOT_FOUND:
-      case arangodb.ERROR_ARANGO_ENDPOINT_NOT_FOUND:
-      case arangodb.ERROR_ARANGO_NO_INDEX:
-      case arangodb.ERROR_ARANGO_INDEX_NOT_FOUND:
-      case arangodb.ERROR_CURSOR_NOT_FOUND:
-      case arangodb.ERROR_USER_NOT_FOUND:
-      case arangodb.ERROR_TASK_NOT_FOUND:
-      case arangodb.ERROR_QUERY_NOT_FOUND:
-        code = exports.HTTP_NOT_FOUND;
-        break;
-
-      case arangodb.ERROR_REQUEST_CANCELED:
-        code = exports.HTTP_REQUEST_TIMEOUT;
-        break;
-
-      case arangodb.ERROR_ARANGO_DUPLICATE_NAME:
-      case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER:
-        code = exports.HTTP_CONFLICT;
-        break;
-
-      case arangodb.ERROR_CLUSTER_UNSUPPORTED:
-        code = exports.HTTP_NOT_IMPLEMENTED;
-        break;
-    }
+    num = err.errorNum || arangodb.ERROR_INTERNAL;
+    code = arangoErrorToHttpCode(num);
   }
   else if (err instanceof TypeError) {
     num = arangodb.ERROR_TYPE_ERROR;
@@ -2126,6 +2146,7 @@ exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
 exports.addCookie                = addCookie;
 exports.stringifyRequest         = stringifyRequest;
+exports.arangoErrorToHttpCode    = arangoErrorToHttpCode;
 
 // standard HTTP responses
 exports.badParameter             = badParameter;

@@ -163,7 +163,7 @@ void AffinityFeature::prepare() {
 void AffinityFeature::start() {
   if (0 < _threadAffinity) {
     LOG(INFO) << "the server has " << _n << " (hyper) cores, using " << _ns
-              << " scheduler threads, " << _nd << " dispatcher threads";
+              << " scheduler thread(s), " << _nd << " dispatcher thread(s)";
 
     if (0 < _ns) {
       LOG(DEBUG) << "scheduler cores: " << _ps;
@@ -182,6 +182,6 @@ void AffinityFeature::start() {
     size_t ns = (scheduler == nullptr ? 0 : scheduler->concurrency());
 
     LOG(INFO) << "the server has " << _n << " (hyper) cores, using " << ns
-                << " scheduler threads, " << nd << " dispatcher threads";
+                << " scheduler thread(s), " << nd << " dispatcher thread(s)";
   }
 }

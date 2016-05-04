@@ -167,9 +167,6 @@ class Optimizer {
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule_pass9 = 900,
 
-    /// Pass 9: fuse calculations
-    fuseCalculationsRule_pass9 = 901,
-
     /// Pass 9: patch update statements
     patchUpdateStatementsRule_pass9 = 902,
 

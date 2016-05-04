@@ -252,7 +252,7 @@ class AssocUnique {
 
     LOG(TRACE) << "resizing index " << cb << " done";
 
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << targetSize;
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << targetSize;
   }
 
   //////////////////////////////////////////////////////////////////////////////

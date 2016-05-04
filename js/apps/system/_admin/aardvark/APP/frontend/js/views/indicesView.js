@@ -60,15 +60,6 @@
       var sparse;
 
       switch (indexType) {
-        case 'Cap':
-          var size = parseInt($('#newCapSize').val(), 10) || 0;
-        var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
-        postParameter = {
-          type: 'cap',
-          size: size,
-          byteSize: byteSize
-        };
-        break;
         case 'Geo':
           //HANDLE ARRAY building
           fields = $('#newGeoFields').val();
@@ -115,6 +106,7 @@
         };
         break;
       }
+
       var callback = function(error, msg){
         if (error) {
           if (msg) {
@@ -125,10 +117,14 @@
             arangoHelper.arangoError("Document error", "Could not create index.");
           }
         }
+        //toggle back
         self.toggleNewIndexView();
+
+        //rerender
+        self.render();
       };
 
-      self.model.createIndex(postParameter, callback);
+      this.model.createIndex(postParameter, callback);
     },
 
     bindIndexEvents: function() {
@@ -141,6 +137,7 @@
         $('#cancelIndex').unbind('click');
         $('#cancelIndex').bind('click', function() {
           self.toggleNewIndexView();
+          self.render();
         });
 
         $('#createIndex').unbind('click');
@@ -303,7 +300,7 @@
 
     resetIndexForms: function () {
       $('#indexHeader input').val('').prop("checked", false);
-      $('#newIndexType').val('Cap').prop('selected',true);
+      $('#newIndexType').val('Geo').prop('selected',true);
       this.selectIndexType();
     },
 

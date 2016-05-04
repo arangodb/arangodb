@@ -19,7 +19,9 @@ const yaml = require("js-yaml");
 const documentationSourceDirs = [
   fs.join(fs.makeAbsolute(''), "Documentation/Examples/setup-arangosh.js"),
   fs.join(fs.makeAbsolute(''), "Documentation/DocuBlocks"),
-  fs.join(fs.makeAbsolute(''), "Documentation/Books/Users")
+  fs.join(fs.makeAbsolute(''), "Documentation/Books/Users"),
+  fs.join(fs.makeAbsolute(''), "Documentation/Books/AQL"),
+  fs.join(fs.makeAbsolute(''), "Documentation/Books/HTTP")
 ];
 
 const theScript = 'utils/generateExamples.py';
@@ -127,7 +129,7 @@ function main(argv) {
     serverArgs["javascript.app-path"] = fs.join(tmpDataDir, "apps");
     serverArgs["javascript.startup-directory"] = "js";
     serverArgs["log.file"] = fs.join(tmpDataDir, "log");
-    serverArgs["server.disable-authentication"] = "true";
+    serverArgs["server.authentication"] = "false";
     serverArgs["server.endpoint"] = serverEndpoint;
     serverArgs["server.threads"] = "3";
 

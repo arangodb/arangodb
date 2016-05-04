@@ -230,7 +230,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
         if (!v8connection->lastErrorMessage().empty()) {
           std::ostringstream is2;
 
-          is2 << "Error message '" << v8connection->lastErrorMessage() << "'";
+          is2 << "Error message: '" << v8connection->lastErrorMessage() << "'";
 
           _console->printErrorLine(is2.str());
         }
@@ -904,10 +904,6 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
                                                            // console
   files.push_back(
       "common/bootstrap/modules.js");  // must come last before patches
-
-  if (runMode != ShellFeature::RunMode::JSLINT) {
-    files.push_back("common/bootstrap/monkeypatches.js");
-  }
 
   files.push_back("client/client.js");  // needs internal
 

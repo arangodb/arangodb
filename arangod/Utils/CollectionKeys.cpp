@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionKeys.h"
+#include "Basics/StaticStrings.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -105,7 +106,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   }
 
   TRI_ASSERT(_markers == nullptr);
-  _markers = new std::vector<TRI_df_marker_t const*>();
+  _markers = new std::vector<void const*>();
   _markers->reserve(16384);
 
   // copy all datafile markers into the result under the read-lock
@@ -122,10 +123,10 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
     trx.invokeOnAllElements(_document->_info.name(), [this, &maxTick](TRI_doc_mptr_t const* mptr) {
       // only use those markers that point into datafiles
       if (!mptr->pointsToWal()) {
-        auto marker = mptr->getMarkerPtr();
+        TRI_df_marker_t const* marker = mptr->getMarkerPtr();
 
         if (marker->getTick() <= maxTick) {
-          _markers->emplace_back(marker);
+          _markers->emplace_back(mptr->vpack());
         }
       }
 
@@ -137,11 +138,11 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
 
   // now sort all markers without the read-lock
   std::sort(_markers->begin(), _markers->end(),
-            [](TRI_df_marker_t const* lhs, TRI_df_marker_t const* rhs) -> bool {
-    VPackSlice l(reinterpret_cast<char const*>(lhs) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
-    VPackSlice r(reinterpret_cast<char const*>(rhs) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+            [](void const* lhs, void const* rhs) -> bool {
+    VPackSlice l(reinterpret_cast<char const*>(lhs));
+    VPackSlice r(reinterpret_cast<char const*>(rhs));
 
-    return (l.get(TRI_VOC_ATTRIBUTE_KEY).copyString() < r.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+    return (l.get(StaticStrings::KeyString).copyString() < r.get(StaticStrings::KeyString).copyString());
   });
 }
 
@@ -156,9 +157,8 @@ std::tuple<std::string, std::string, uint64_t> CollectionKeys::hashChunk(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  size_t const offset = DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
-  VPackSlice first(reinterpret_cast<char const*>(_markers->at(from)) + offset);
-  VPackSlice last(reinterpret_cast<char const*>(_markers->at(to - 1)) + offset);
+  VPackSlice first(reinterpret_cast<char const*>(_markers->at(from)));
+  VPackSlice last(reinterpret_cast<char const*>(_markers->at(to - 1)));
 
   TRI_ASSERT(first.isObject());
   TRI_ASSERT(last.isObject());
@@ -166,18 +166,18 @@ std::tuple<std::string, std::string, uint64_t> CollectionKeys::hashChunk(
   uint64_t hash = 0x012345678;
 
   for (size_t i = from; i < to; ++i) {
-    VPackSlice current(reinterpret_cast<char const*>(_markers->at(i)) + offset);
+    VPackSlice current(reinterpret_cast<char const*>(_markers->at(i)));
     TRI_ASSERT(current.isObject());
 
     // we can get away with the fast hash function here, as key values are 
     // restricted to strings
-    hash ^= current.get(TRI_VOC_ATTRIBUTE_KEY).hash();
-    hash ^= current.get(TRI_VOC_ATTRIBUTE_REV).hash();
+    hash ^= current.get(StaticStrings::KeyString).hash();
+    hash ^= current.get(StaticStrings::RevString).hash();
   }
 
   return std::make_tuple(
-    first.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), 
-    last.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), 
+    first.get(StaticStrings::KeyString).copyString(), 
+    last.get(StaticStrings::KeyString).copyString(), 
     hash);
 }
 
@@ -198,15 +198,13 @@ void CollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
   
-  size_t const offset = DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
-
   for (size_t i = from; i < to; ++i) {
-    VPackSlice current(reinterpret_cast<char const*>(_markers->at(i)) + offset);
+    VPackSlice current(reinterpret_cast<char const*>(_markers->at(i)));
     TRI_ASSERT(current.isObject());
 
     result.openArray();
-    result.add(current.get(TRI_VOC_ATTRIBUTE_KEY));
-    result.add(current.get(TRI_VOC_ATTRIBUTE_REV));
+    result.add(current.get(StaticStrings::KeyString));
+    result.add(current.get(StaticStrings::RevString));
     result.close();
   }
 }
@@ -221,8 +219,6 @@ void CollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size_t chun
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  size_t const offset = DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
-  
   for (auto const& it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -234,7 +230,7 @@ void CollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size_t chun
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
     
-    VPackSlice current(reinterpret_cast<char const*>(_markers->at(position)) + offset);
+    VPackSlice current(reinterpret_cast<char const*>(_markers->at(position)));
     TRI_ASSERT(current.isObject());
   
     result.add(current);

@@ -23,6 +23,7 @@
 
 #include "ClusterMethods.h"
 #include "Basics/conversions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -365,12 +366,12 @@ static void collectResultsFromAllShards(
 /// @brief creates a copy of all HTTP headers to forward
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, std::string> getForwardableRequestHeaders(
+std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
     arangodb::HttpRequest* request) {
-  std::map<std::string, std::string> const& headers = request->headers();
-  std::map<std::string, std::string>::const_iterator it = headers.begin();
+  std::unordered_map<std::string, std::string> const& headers = request->headers();
+  std::unordered_map<std::string, std::string>::const_iterator it = headers.begin();
 
-  std::map<std::string, std::string> result;
+  std::unordered_map<std::string, std::string> result;
 
   while (it != headers.end()) {
     std::string const& key = (*it).first;
@@ -467,8 +468,7 @@ int usersOnCoordinator(std::string const& dbname, VPackBuilder& result,
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
   for (auto const& p : *shards) {
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
 
     // set collection name (shard id)
     auto body = std::make_shared<std::string>();
@@ -545,8 +545,7 @@ int revisionOnCoordinator(std::string const& dbname,
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
   for (auto const& p : *shards) {
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
         arangodb::GeneralRequest::RequestType::GET,
@@ -622,8 +621,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
   for (auto const& p : *shards) {
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
         arangodb::GeneralRequest::RequestType::GET,
@@ -719,8 +717,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (auto const& p : *shards) {
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
         arangodb::GeneralRequest::RequestType::GET,
@@ -833,8 +830,8 @@ int createDocumentOnCoordinator(
       } else {
         reqBuilder.clear();
         reqBuilder.openObject();
+        reqBuilder.add(StaticStrings::KeyString, VPackValue(idx.second));
         TRI_SanitizeObject(slice, reqBuilder);
-        reqBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(idx.second));
         reqBuilder.close();
         body = std::make_shared<std::string>(reqBuilder.slice().toJson());
       }
@@ -846,8 +843,8 @@ int createDocumentOnCoordinator(
           reqBuilder.add(slice.at(idx.first));
         } else {
           reqBuilder.openObject();
+          reqBuilder.add(StaticStrings::KeyString, VPackValue(idx.second));
           TRI_SanitizeObject(slice.at(idx.first), reqBuilder);
-          reqBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(idx.second));
           reqBuilder.close();
         }
       }
@@ -945,7 +942,7 @@ int deleteDocumentOnCoordinator(
         VPackSlice const node, VPackValueLength const index) -> int {
       // Sort out the _key attribute and identify the shard responsible for it.
 
-      std::string _key(Transaction::extractKey(node));
+      std::string _key(Transaction::extractKeyPart(node));
       ShardID shardID;
       if (_key.empty()) {
         // We have invalid input at this point.
@@ -1147,8 +1144,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (auto const& p : *shards) {
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
                      arangodb::GeneralRequest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
@@ -1182,7 +1178,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const slice, OperationOptions const& options,
-    std::unique_ptr<std::map<std::string, std::string>>& headers,
+    std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<VPackBuilder>& resultBody) {
@@ -1345,7 +1341,7 @@ int getDocumentOnCoordinator(
               optsUrlPart,
           nullptr);
       auto headersCopy =
-          std::make_unique<std::map<std::string, std::string>>(*headers);
+          std::make_unique<std::unordered_map<std::string, std::string>>(*headers);
       req.setHeaders(headersCopy);
       requests.emplace_back(std::move(req));
     }
@@ -1619,8 +1615,7 @@ int getFilteredEdgesOnCoordinator(
     reqBodyString->append(bodyBuilder.toJson());
   }
   for (auto const& p : *shards) {
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
                      arangodb::GeneralRequest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" +
@@ -1630,7 +1625,7 @@ int getFilteredEdgesOnCoordinator(
   // Now listen to the results:
   int count;
   responseCode = arangodb::GeneralResponse::ResponseCode::OK;
-  contentType = "application/json; charset=utf-8";
+  contentType = StaticStrings::MimeTypeJson;
   size_t filtered = 0;
   size_t scannedIndex = 0;
 
@@ -1703,7 +1698,7 @@ int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const& slice,
     arangodb::OperationOptions const& options, bool isPatch,
-    std::unique_ptr<std::map<std::string, std::string>>& headers,
+    std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<VPackBuilder>& resultBody) {
@@ -1961,8 +1956,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
                     (waitForCollector ? "true" : "false");
   auto body = std::make_shared<std::string const>();
   for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     // set collection name (shard id)
     cc->asyncRequest("", coordTransactionID, "server:" + *it,
                      arangodb::GeneralRequest::RequestType::PUT, url, body,

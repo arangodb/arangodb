@@ -36,8 +36,14 @@
 (function () {
   var internal = require("internal");
   var console = require("console");
-  return function () {
+  if (internal.threadNumber === 0) {
     // run the local upgrade-database script (global.UPGRADE_ARGS has been set)
+    global.UPGRADE_ARGS = {
+      isCluster: true,
+      isDbServer: true,
+      isRelaunch: false
+    };
+
     var result = internal.loadStartup("server/upgrade-database.js");
 
     result = global.UPGRADE_STARTED && result;
@@ -45,20 +51,17 @@
     delete global.UPGRADE_ARGS;
 
     if (!result) {
-      return false;
+      console.error("upgrade-database.js script failed!");
     }
 
     // statistics can be turned off
     if (internal.enableStatistics) {
       require("@arangodb/statistics").startup();
     }
+  }
 
-    // start the queue manager once
-    require('@arangodb/foxx/queues/manager').run();
-
-    console.info("bootstraped DB server %s", global.ArangoServerState.id());
-    return true;
-  };
+  console.info("bootstraped DB server %s", global.ArangoServerState.id());
+  return true;
 }());
 
 

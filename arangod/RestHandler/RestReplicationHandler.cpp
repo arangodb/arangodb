@@ -747,9 +747,9 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
   std::string const& dbname = _request->databaseName();
 
-  auto headers = std::make_shared<std::map<std::string, std::string>>(
+  auto headers = std::make_shared<std::unordered_map<std::string, std::string>>(
       arangodb::getForwardableRequestHeaders(_request));
-  std::map<std::string, std::string> values = _request->values();
+  std::unordered_map<std::string, std::string> values = _request->values();
   std::string params;
   for (auto const& i : values) {
     if (i.first != "DBserver") {
@@ -900,7 +900,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
   if (found) {
     TRI_vocbase_col_t* c =
-        TRI_LookupCollectionByNameVocBase(_vocbase, value6.c_str());
+        TRI_LookupCollectionByNameVocBase(_vocbase, value6);
 
     if (c == nullptr) {
       generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -1489,7 +1489,7 @@ int RestReplicationHandler::processRestoreCollection(
 
   if (col == nullptr) {
     // not found, try name next
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, name);
   }
 
   // drop an existing collection if it exists
@@ -1502,6 +1502,7 @@ int RestReplicationHandler::processRestoreCollection(
 
         // instead, truncate them
         SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
+        trx.addHint(TRI_TRANSACTION_HINT_RECOVERY, false); // to turn off waitForSync!
 
         res = trx.begin();
         if (res != TRI_ERROR_NO_ERROR) {
@@ -1933,6 +1934,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
     options.silent = true;
     options.ignoreRevs = true;
     options.isRestore = true;
+    options.waitForSync = false;
 
     try {
       OperationResult opRes = trx.insert(collectionName, slice, options);
@@ -1957,6 +1959,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
       OperationOptions options;
       options.silent = true;
       options.ignoreRevs = true;
+      options.waitForSync = false;
       OperationResult opRes = trx.remove(collectionName, old, options);
 
       if (!opRes.successful() &&
@@ -2129,6 +2132,7 @@ int RestReplicationHandler::processRestoreData(
     CollectionNameResolver const& resolver, TRI_voc_cid_t cid, bool useRevision,
     bool force, std::string& errorMsg) {
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), cid, TRI_TRANSACTION_WRITE);
+  trx.addHint(TRI_TRANSACTION_HINT_RECOVERY, false); // to turn off waitForSync!
 
   int res = trx.begin();
 
@@ -2348,7 +2352,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
         errorMsg = "cannot find shard";
         res = TRI_ERROR_INTERNAL;
       } else {
-        auto headers = std::make_unique<std::map<std::string, std::string>>();
+        auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
         size_t j = it->second;
         auto body = std::make_shared<std::string const>(bufs[j]->c_str(),
                                                         bufs[j]->length());
@@ -2494,7 +2498,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
   }
 
   TRI_vocbase_col_t* c =
-      TRI_LookupCollectionByNameVocBase(_vocbase, collection.c_str());
+      TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
   if (c == nullptr) {
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -2865,7 +2869,7 @@ void RestReplicationHandler::handleCommandDump() {
   }
 
   TRI_vocbase_col_t* c =
-      TRI_LookupCollectionByNameVocBase(_vocbase, collection.c_str());
+      TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
   if (c == nullptr) {
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -3541,7 +3545,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, shard.copyString().c_str());
+  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, shard.copyString());
   if (col == nullptr) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                   "did not find collection");

@@ -1413,7 +1413,9 @@ AstNode* Ast::replaceVariableReference(AstNode* node, Variable const* variable,
 void Ast::validateAndOptimize() {
   struct TraversalContext {
     std::unordered_set<std::string> writeCollectionsSeen;
+    std::unordered_map<std::string, int64_t> collectionsFirstSeen;
     int64_t stopOptimizationRequests = 0;
+    int64_t nestingLevel = 0;
     bool isInFilter = false;
     bool hasSeenAnyWriteNode = false;
     bool hasSeenWriteNodeInCurrentScope = false;
@@ -1430,8 +1432,14 @@ void Ast::validateAndOptimize() {
         // NOOPT will turn all function optimizations off
         ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
       }
+    } else if (node->type == NODE_TYPE_COLLECTION) {
+      // note the level on which we first saw a collection
+      auto c = static_cast<TraversalContext*>(data);
+      c->collectionsFirstSeen.emplace(node->getString(), c->nestingLevel);
     } else if (node->type == NODE_TYPE_AGGREGATIONS) {
       ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
+    } else if (node->type == NODE_TYPE_SUBQUERY) {
+      ++static_cast<TraversalContext*>(data)->nestingLevel;
     } else if (node->hasFlag(FLAG_BIND_PARAMETER)) {
       return false;
     } else if (node->type == NODE_TYPE_REMOVE ||
@@ -1454,6 +1462,8 @@ void Ast::validateAndOptimize() {
   auto postVisitor = [&](AstNode const* node, void* data) -> void {
     if (node->type == NODE_TYPE_FILTER) {
       static_cast<TraversalContext*>(data)->isInFilter = false;
+    } else if (node->type == NODE_TYPE_SUBQUERY) {
+      --static_cast<TraversalContext*>(data)->nestingLevel;
     } else if (node->type == NODE_TYPE_REMOVE ||
                node->type == NODE_TYPE_INSERT ||
                node->type == NODE_TYPE_UPDATE ||
@@ -1468,6 +1478,16 @@ void Ast::validateAndOptimize() {
       auto collection = node->getMember(1);
       std::string name = collection->getString();
       c->writeCollectionsSeen.emplace(name);
+      
+      auto it = c->collectionsFirstSeen.find(name);
+
+      if (it != c->collectionsFirstSeen.end()) {
+        if ((*it).second < c->nestingLevel) {
+          name = "collection '" + name;
+          name.push_back('\'');
+          THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION, name.c_str());
+        }
+      }
     } else if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
@@ -1547,7 +1567,9 @@ void Ast::validateAndOptimize() {
           !func->canRunOnDBServer) {
         // if canRunOnDBServer is true, then this is an indicator for a
         // document-accessing function
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
+        std::string name("function ");
+        name.append(func->externalName);
+        THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION, name.c_str());
       }
 
       if (static_cast<TraversalContext*>(data)->stopOptimizationRequests == 0) {
@@ -1587,9 +1609,12 @@ void Ast::validateAndOptimize() {
     // collection
     if (node->type == NODE_TYPE_COLLECTION) {
       auto c = static_cast<TraversalContext*>(data);
-
+      
       if (c->writeCollectionsSeen.find(node->getString()) != c->writeCollectionsSeen.end()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
+        std::string name("collection '");
+        name.append(node->getString());
+        name.push_back('\'');
+        THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION, name.c_str());
       }
 
       return node;
@@ -1599,7 +1624,7 @@ void Ast::validateAndOptimize() {
     if (node->type == NODE_TYPE_TRAVERSAL) {
       // traversals must not be used after a modification operation
       if (static_cast<TraversalContext*>(data)->hasSeenAnyWriteNode) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
+        THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION, "traversal");
       }
 
       return node;
@@ -1977,7 +2002,7 @@ AstNode* Ast::createArithmeticResultNode(double value) {
     // if the architecture does not use IEEE754 values then this shouldn't do
     // any harm either
     _query->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-    return createNodeValueNull();
+    return const_cast<AstNode*>(&ZeroNode);
   }
 
   return createNodeValueDouble(value);
@@ -2025,7 +2050,13 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
   auto converted = operand->castToNumber(this);
 
   if (converted->isNullValue()) {
-    return createNodeValueNull();
+    return const_cast<AstNode*>(&ZeroNode);
+  }
+    
+  if (converted->value.type != VALUE_TYPE_INT &&
+      converted->value.type != VALUE_TYPE_DOUBLE) {
+    // non-numeric operand
+    return node;
   }
 
   if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS) {
@@ -2047,7 +2078,7 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
         // if the architecture does not use IEEE754 values then this shouldn't
         // do
         // any harm either
-        return createNodeValueNull();
+        return const_cast<AstNode*>(&ZeroNode);
       }
 
       return createNodeValueDouble(value);
@@ -2251,16 +2282,6 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       auto left = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
 
-      if (left->isNullValue() && !lhs->isNullValue()) {
-        // conversion of lhs failed
-        return createNodeValueNull();
-      }
-
-      if (right->isNullValue() && !rhs->isNullValue()) {
-        // conversion of rhs failed
-        return createNodeValueNull();
-      }
-
       bool useDoublePrecision =
           (left->isDoubleValue() || right->isDoubleValue());
 
@@ -2282,16 +2303,6 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MINUS) {
       auto left = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
-
-      if (left->isNullValue() && !lhs->isNullValue()) {
-        // conversion of lhs failed
-        return createNodeValueNull();
-      }
-
-      if (right->isNullValue() && !rhs->isNullValue()) {
-        // conversion of rhs failed
-        return createNodeValueNull();
-      }
 
       bool useDoublePrecision =
           (left->isDoubleValue() || right->isDoubleValue());
@@ -2315,16 +2326,6 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       auto left = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
 
-      if (left->isNullValue() && !lhs->isNullValue()) {
-        // conversion of lhs failed
-        return createNodeValueNull();
-      }
-
-      if (right->isNullValue() && !rhs->isNullValue()) {
-        // conversion of rhs failed
-        return createNodeValueNull();
-      }
-
       bool useDoublePrecision =
           (left->isDoubleValue() || right->isDoubleValue());
 
@@ -2347,16 +2348,6 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       auto left = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
 
-      if (left->isNullValue() && !lhs->isNullValue()) {
-        // conversion of lhs failed
-        return createNodeValueNull();
-      }
-
-      if (right->isNullValue() && !rhs->isNullValue()) {
-        // conversion of rhs failed
-        return createNodeValueNull();
-      }
-
       bool useDoublePrecision =
           (left->isDoubleValue() || right->isDoubleValue());
       if (!useDoublePrecision) {
@@ -2365,7 +2356,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
         if (r == 0) {
           _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-          return createNodeValueNull();
+          return const_cast<AstNode*>(&ZeroNode);
         }
 
         // check if the result would overflow
@@ -2380,7 +2371,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
       if (right->getDoubleValue() == 0.0) {
         _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return createNodeValueNull();
+        return const_cast<AstNode*>(&ZeroNode);
       }
 
       return createArithmeticResultNode(left->getDoubleValue() /
@@ -2388,16 +2379,6 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
       auto left = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
-
-      if (left->isNullValue() && !lhs->isNullValue()) {
-        // conversion of lhs failed
-        return createNodeValueNull();
-      }
-
-      if (right->isNullValue() && !rhs->isNullValue()) {
-        // conversion of rhs failed
-        return createNodeValueNull();
-      }
 
       bool useDoublePrecision =
           (left->isDoubleValue() || right->isDoubleValue());
@@ -2407,7 +2388,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
         if (r == 0) {
           _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-          return createNodeValueNull();
+          return const_cast<AstNode*>(&ZeroNode);
         }
 
         // check if the result would overflow
@@ -2421,7 +2402,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
       if (right->getDoubleValue() == 0.0) {
         _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return createNodeValueNull();
+        return const_cast<AstNode*>(&ZeroNode);
       }
 
       return createArithmeticResultNode(

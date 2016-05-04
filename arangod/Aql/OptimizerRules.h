@@ -71,10 +71,6 @@ void moveCalculationsUpRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 void moveCalculationsDownRule(Optimizer*, ExecutionPlan*,
                               Optimizer::Rule const*);
 
-/// @brief fuse multiple calculations into a single one
-/// this rule modifies the plan in place
-void fuseCalculationsRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
-
 /// @brief determine the "right" type of CollectNode and
 /// add a sort node for each COLLECT (may be removed later)
 /// this rule cannot be turned off (otherwise, the query result might be wrong!)

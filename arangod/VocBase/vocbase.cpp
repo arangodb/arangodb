@@ -32,6 +32,7 @@
 #include "Aql/QueryList.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
@@ -1556,11 +1557,15 @@ std::string TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase(TRI_vocbase_t* vocbase,
-                                                     char const* name) {
+                                                     std::string const& name) {
+  if (name.empty()) {
+    return nullptr;
+  }
+
   // if collection name is passed as a stringified id, we'll use the lookupbyid
   // function
   // this is safe because collection names must not start with a digit
-  if (*name >= '0' && *name <= '9') {
+  if (name[0] >= '0' && name[0] <= '9') {
     return TRI_LookupCollectionByIdVocBase(vocbase, StringUtils::uint64(name));
   }
 
@@ -1596,8 +1601,8 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase(TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
-    TRI_vocbase_t* vocbase, char const* name, const TRI_col_type_t type) {
-  if (name == nullptr) {
+    TRI_vocbase_t* vocbase, std::string const& name, TRI_col_type_t type) {
+  if (name.empty()) {
     return nullptr;
   }
 
@@ -1610,7 +1615,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
       // support lookup by id, too
       try {
         TRI_voc_cid_t id =
-            arangodb::basics::StringUtils::uint64(name, strlen(name));
+            arangodb::basics::StringUtils::uint64(name);
         auto it = vocbase->_collectionsById.find(id);
 
         if (it != vocbase->_collectionsById.end()) {
@@ -1635,7 +1640,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
   // collection not found. now create it
   VPackBuilder builder;  // DO NOT FILL IT
   arangodb::VocbaseCollectionInfo parameter(
-      vocbase, name, (TRI_col_type_e)type,
+      vocbase, name.c_str(), (TRI_col_type_e)type,
       (TRI_voc_size_t)vocbase->_settings.defaultMaximalSize, builder.slice());
   TRI_vocbase_col_t* collection =
       TRI_CreateCollectionVocBase(vocbase, parameter, 0, true);
@@ -2319,10 +2324,11 @@ void TRI_FillVPackSub(TRI_vpack_sub_t* sub,
 /// @brief extract the _rev attribute from a slice
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice const slice) {
+TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
+  slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
 
-  VPackSlice r(slice.get(TRI_VOC_ATTRIBUTE_REV));
+  VPackSlice r(slice.get(StaticStrings::RevString));
   if (r.isString()) {
     VPackValueLength length;
     char const* p = r.getString(length);
@@ -2343,12 +2349,13 @@ VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice) {
     return VPackSlice();
   }
 
-  return slice.get(TRI_VOC_ATTRIBUTE_REV);
+  return slice.get(StaticStrings::RevString);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
+/// the result is the object excluding _id, _key and _rev
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
@@ -2356,11 +2363,33 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
   VPackObjectIterator it(slice);
   while (it.valid()) {
     std::string key(it.key().copyString());
-    if (key[0] != '_' ||
-        (key != TRI_VOC_ATTRIBUTE_ID &&
-         key != TRI_VOC_ATTRIBUTE_KEY &&
-         key != TRI_VOC_ATTRIBUTE_REV)) {
-      builder.add(key, it.value());
+    if (key.empty() || key[0] != '_' ||
+         (key != StaticStrings::KeyString &&
+          key != StaticStrings::IdString &&
+          key != StaticStrings::RevString)) {
+      builder.add(std::move(key), it.value());
+    }
+    it.next();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sanitize an object, given as slice, builder must contain an
+/// open object which will remain open. also excludes _from and _to
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) {
+  TRI_ASSERT(slice.isObject());
+  VPackObjectIterator it(slice);
+  while (it.valid()) {
+    std::string key(it.key().copyString());
+    if (key.empty() || key[0] != '_' ||
+         (key != StaticStrings::KeyString &&
+          key != StaticStrings::IdString &&
+          key != StaticStrings::RevString &&
+          key != StaticStrings::FromString &&
+          key != StaticStrings::ToString)) {
+      builder.add(std::move(key), it.value());
     }
     it.next();
   }

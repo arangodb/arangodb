@@ -59,15 +59,16 @@ function runSetup () {
 
         var i, c = db._collection("UnitTestsRecovery");
         for (i = 0; i < 10000; ++i) {
-          c.save({ _key: "test" + i, value1: "test" + i, value2: i }, true); // wait for sync
+          c.save({ _key: "test" + i, value1: "test" + i, value2: i });
         }
         for (i = 0; i < 10000; i += 2) {
-          c.remove("test" + i, true);
+          c.remove("test" + i);
         }
+        c.update("test1", { value2 : 1 }, { waitForSync : true }); // enfore sync
       }
     });
   });
-        
+
   db._useDatabase("_system");
 
   internal.debugSegfault("crashing server");

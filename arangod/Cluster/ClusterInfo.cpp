@@ -35,6 +35,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/hashes.h"
 #include "Basics/json-utilities.h"
 #include "Basics/json.h"
 #include "Cluster/ServerState.h"
@@ -2494,7 +2495,6 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
   shardID = shards->at(hash % shards->size());
   return error;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find the shard that is responsible for a document, which is given

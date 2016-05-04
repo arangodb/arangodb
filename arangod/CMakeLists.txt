@@ -215,6 +215,7 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
   RestServer/AffinityFeature.cpp
+  RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
   RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
@@ -302,7 +303,6 @@ add_executable(${BIN_ARANGOD}
   Wal/CollectorThread.cpp
   Wal/Logfile.cpp
   Wal/LogfileManager.cpp
-  Wal/Marker.cpp
   Wal/RecoverState.cpp
   Wal/RecoveryFeature.cpp
   Wal/RemoverThread.cpp

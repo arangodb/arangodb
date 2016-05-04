@@ -57,7 +57,7 @@ function ahuacatlDynamicAttributesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDynamicAttributesNonStringNames : function () {
-      var expected = { "null" : 7, "true" : 12, "false" : 15, "123" : 21, "-42.5" : 99, "" : 117, "1,2,3,4" : 131, "[object Object]" : 149 };
+      var expected = { "true" : 12, "false" : 15, "123" : 21, "-42.5" : 99, "" : 117, "1,2,3,4" : 131, "[object Object]" : 149 };
       var actual = AQL_EXECUTE("RETURN { [ PASSTHRU(null) ] : 7, [ PASSTHRU(true) ] : 12, [ PASSTHRU(false) ] : 15, [ PASSTHRU(123) ] : 21, [ PASSTHRU(-42.5) ] : 99, [ PASSTHRU([ ]) ] : 117, [ PASSTHRU([ 1, 2, 3, 4 ]) ] : 131, [ PASSTHRU({ a: 1 }) ] : 149 }");
       assertEqual(expected, actual.json[0]);
     },

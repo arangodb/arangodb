@@ -250,12 +250,12 @@ class LogfileManager final : public application_features::ApplicationFeature {
   /// this is a convenience function that combines allocate, memcpy and finalize
   SlotInfoCopy allocateAndWrite(TRI_voc_tick_t databaseId, 
                                 TRI_voc_cid_t collectionId, 
-                                void* mem, uint32_t size, bool wakeUpSynchronizer,
+                                Marker const*, bool wakeUpSynchronizer,
                                 bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // write data into the logfile
   /// this is a convenience function that combines allocate, memcpy and finalize
-  SlotInfoCopy allocateAndWrite(void* mem, uint32_t size, bool wakeUpSynchronizer, 
+  SlotInfoCopy allocateAndWrite(Marker const* marker, bool wakeUpSynchronizer, 
                                 bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // write marker into the logfile
@@ -378,7 +378,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   // memcpy the data into the WAL region and return the filled slot
   // to the WAL logfile manager
   SlotInfoCopy writeSlot(SlotInfo& slotInfo,
-                         void* src, uint32_t size,
+                         Marker const* marker,
                          bool wakeUpSynchronizer,
                          bool waitForSyncRequested,
                          bool waitUntilSyncDone);

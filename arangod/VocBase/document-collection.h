@@ -196,22 +196,19 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int insert(arangodb::Transaction*, arangodb::velocypack::Slice const,
              TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool);
   int update(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
+             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
              VPackSlice&, TRI_doc_mptr_t&);
   int replace(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
+             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
              VPackSlice&, TRI_doc_mptr_t&);
   int remove(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             arangodb::OperationOptions&, bool, VPackSlice&, TRI_doc_mptr_t&);
+             arangodb::OperationOptions&, TRI_voc_tick_t&, bool, 
+             VPackSlice&, TRI_doc_mptr_t&);
 
   int rollbackOperation(arangodb::Transaction*, TRI_voc_document_operation_e, 
                         TRI_doc_mptr_t*, TRI_doc_mptr_t const*);
 
  private:
-  arangodb::wal::Marker* createVPackInsertMarker(
-      arangodb::Transaction*, arangodb::velocypack::Slice const);
-  arangodb::wal::Marker* createVPackRemoveMarker(
-      arangodb::Transaction*, arangodb::velocypack::Slice const);
   int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const,
                      TRI_doc_mptr_t*&);
   int checkRevision(arangodb::Transaction*, arangodb::velocypack::Slice const,
@@ -238,6 +235,9 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int newObjectForInsert(
       arangodb::Transaction* trx,
       arangodb::velocypack::Slice const& value,
+      arangodb::velocypack::Slice const& fromSlice,
+      arangodb::velocypack::Slice const& toSlice,
+      bool isEdgeCollection,
       uint64_t& hash,
       arangodb::velocypack::Builder& builder,
       bool isRestore);
@@ -250,6 +250,9 @@ struct TRI_document_collection_t : public TRI_collection_t {
       arangodb::Transaction* trx,
       arangodb::velocypack::Slice const& oldValue,
       arangodb::velocypack::Slice const& newValue,
+      arangodb::velocypack::Slice const& fromSlice,
+      arangodb::velocypack::Slice const& toSlice,
+      bool isEdgeCollection,
       std::string const& rev,
       arangodb::velocypack::Builder& builder);
 
@@ -261,6 +264,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
       arangodb::Transaction* trx,
       arangodb::velocypack::Slice const& oldValue,
       arangodb::velocypack::Slice const& newValue,
+      bool isEdgeCollection,
       std::string const& rev,
       bool mergeObjects, bool keepNull,
       arangodb::velocypack::Builder& b);

@@ -24,10 +24,11 @@
 #include "RestUploadHandler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
-#include "Logger/Logger.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "HttpServer/HttpServer.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 
 using namespace arangodb;
@@ -104,8 +105,9 @@ HttpHandler::status_t RestUploadHandler::execute() {
 
   // create the response
   createResponse(GeneralResponse::ResponseCode::CREATED);
-  _response->setContentType("application/json; charset=utf-8");
+  _response->setContentType(StaticStrings::MimeTypeJson);
 
+  // TODO: use RestBaseHandler
   VPackBuilder b;
   b.add(VPackValue(VPackValueType::Object));
   b.add("filename", VPackValue(fullName));

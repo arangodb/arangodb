@@ -1,0 +1,26 @@
+# config file for arango-dfdb
+
+[database]
+auto-upgrade = false
+upgrade-check = false
+directory= @LOCALSTATEDIR@/lib/arangodb3
+# maximal-journal-size=33554432
+
+[server]
+rest-server = false
+authenication = false
+statistics = false
+# set number of threads to 1 so we don't have concurrency
+threads = 1
+
+[javascript]
+startup-directory = @PKGDATADIR@/js
+app-path = @LOCALSTATEDIR@/lib/arangodb3-apps
+script = @PKGDATADIR@/js/server/arango-dfdb.js
+v8-contexts = 1
+
+[foxx]
+queues = false
+
+[log]
+level = info

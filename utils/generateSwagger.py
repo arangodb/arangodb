@@ -150,12 +150,6 @@ restReplyBodyParam = None
 restSubBodyParam = None
 
 ################################################################################
-### @brief C_FILE
-################################################################################
-
-C_FILE = False
-
-################################################################################
 ### @brief DEBUG
 ################################################################################
 
@@ -283,10 +277,7 @@ def LIT(txt, wordboundary = ['<b>','</b>']):
 ################################################################################
 
 def Typography(txt):
-    if C_FILE:
-        txt = txt[4:-1]
-    else:
-        txt = txt[0:-1]
+    txt = txt[0:-1]
 
 #    txt = BackTicks(txt)
 #    txt = AsteriskBold(txt)
@@ -376,7 +367,6 @@ class Regexen:
         self.END_EXAMPLE_ARANGOSH_RUN = re.compile('.*@END_EXAMPLE_ARANGOSH_RUN')
         self.EXAMPLES = re.compile('.*@EXAMPLES')
         self.EXAMPLE_ARANGOSH_RUN = re.compile('.*@EXAMPLE_ARANGOSH_RUN{')
-        self.FILE = re.compile('.*@file')
         self.RESTBODYPARAM = re.compile('.*@RESTBODYPARAM')
         self.RESTSTRUCT = re.compile('.*@RESTSTRUCT')
         self.RESTALLBODYPARAM = re.compile('.*@RESTALLBODYPARAM')
@@ -392,17 +382,13 @@ class Regexen:
         self.RESTRETURNCODES = re.compile('.*@RESTRETURNCODES')
         self.RESTURLPARAM = re.compile('.*@RESTURLPARAM{')
         self.RESTURLPARAMETERS = re.compile('.*@RESTURLPARAMETERS')
-        self.NON_COMMENT = re.compile('^[^/].*')
 
 ################################################################################
 ### @brief checks for end of comment
 ################################################################################
 
 def check_end_of_comment(line, r):
-    if C_FILE:
-        return r.NON_COMMENT.match(line)
-    else:
-        return r.RESTDONE.match(line)
+    return r.RESTDONE.match(line)
 
 ################################################################################
 ### @brief next_step
@@ -460,7 +446,7 @@ def generic_handler(cargo, r, message):
 ################################################################################
 
 def generic_handler_desc(cargo, r, message, op, para, name):
-    global DEBUG, C_FILE, operation
+    global DEBUG, operation
 
     if DEBUG: print >> sys.stderr, message
     (fp, last) = cargo
@@ -483,9 +469,6 @@ def generic_handler_desc(cargo, r, message, op, para, name):
                     raise
             return next, c
 
-        if C_FILE and line[0:4] == "////":
-            continue
-
         line = Typography(line)
         para[name] += line + '\n'
 
@@ -495,9 +478,13 @@ def start_docublock(cargo, r=Regexen()):
     global currentDocuBlock
     (fp, last) = cargo
     try:
-        currentDocuBlock = last.split(' ')[2].rstrip()
+        # TODO remove when all /// are removed from the docublocks
+        if last.startswith('/// '):
+          currentDocuBlock = last.split(' ')[2].rstrip()
+        else:
+          currentDocuBlock = last.split(' ')[1].rstrip()
     except Exception as x:
-        print >> sys.stderr, "failed to fetch docublock in '" + last + "'"
+        print >> sys.stderr, "failed to fetch docublock in '" + last + "': " + str(x)
         raise
 
     return generic_handler(cargo, r, 'start_docublock')
@@ -768,7 +755,7 @@ def reststruct(cargo, r=Regexen()):
     try:
         (name, className, ptype, required, ptype2) = parameters(last).split(',')
     except Exception as x:
-        print >> sys.stderr, "RESTSTRUCT: 4 arguments required. You gave me: " + parameters(last)
+        print >> sys.stderr, "RESTSTRUCT: 5 arguments required. You gave me: " + parameters(last)
         raise
 
     CheckReqOpt(required)
@@ -1002,7 +989,7 @@ def examples(cargo, r=Regexen()):
 
 
 def example_arangosh_run(cargo, r=Regexen()):
-    global currentExample, DEBUG, C_FILE
+    global currentExample, DEBUG
 
     if DEBUG: print >> sys.stderr, "example_arangosh_run"
     fp, last = cargo
@@ -1010,7 +997,12 @@ def example_arangosh_run(cargo, r=Regexen()):
     exampleHeader = brTrim(operation['x-examples'][currentExample]).strip()
 
     # new examples code TODO should include for each example own object in json file
-    examplefile = open(os.path.join(os.path.dirname(__file__), '../Documentation/Examples/' + parameters(last) + '.generated'))
+    fn = os.path.join(os.path.dirname(__file__), '../Examples/' + parameters(last) + '.generated')
+    try:
+        examplefile = open(fn)
+    except:
+        print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
+        raise
     operation['x-examples'][currentExample]= '<details><summary>Example: ' + exampleHeader.strip('\n ') + '</summary><br><br><pre><code class="json">'
 
     for line in examplefile.readlines():
@@ -1035,7 +1027,7 @@ def example_arangosh_run(cargo, r=Regexen()):
 ################################################################################
 
 def eof(cargo):
-    global DEBUG, C_FILE
+    global DEBUG
     if DEBUG: print >> sys.stderr, "eof"
 
 ################################################################################
@@ -1043,7 +1035,7 @@ def eof(cargo):
 ################################################################################
 
 def error(cargo):
-    global DEBUG, C_FILE
+    global DEBUG
     if DEBUG: print >> sys.stderr, "error"
 
     sys.stderr.write('Unidentifiable line:\n' + cargo)
@@ -1053,7 +1045,7 @@ def error(cargo):
 ################################################################################
 
 def comment(cargo, r=Regexen()):
-    global DEBUG, C_FILE
+    global DEBUG
 
     if DEBUG: print >> sys.stderr, "comment"
     (fp, last) = cargo
@@ -1061,8 +1053,6 @@ def comment(cargo, r=Regexen()):
     while 1:
         line = fp.readline()
         if not line: return eof, (fp, line)
-
-        if r.FILE.match(line): C_FILE = True
 
         next, c = next_step(fp, line, r)
 
@@ -1076,22 +1066,12 @@ def comment(cargo, r=Regexen()):
 ################################################################################
 
 def skip_code(cargo, r=Regexen()):
-    global DEBUG, C_FILE
+    global DEBUG
 
     if DEBUG: print >> sys.stderr, "skip_code"
     (fp, last) = cargo
     
-    if not C_FILE:
-        return comment((fp, last), r)
-
-    while 1:
-        line = fp.readline()
-
-        if not line:
-            return eof, (fp, line)
-
-        if not r.NON_COMMENT.match(line):
-            return comment((fp, line), r)
+    return comment((fp, last), r)
 
 ################################################################################
 ### @brief main
@@ -1225,15 +1205,25 @@ files = {}
 #  "structure" : [ "js/actions/api-structure.js" ],
 
 for chapter in os.listdir(topdir):
+    if not os.path.isdir(os.path.join(topdir, chapter)) or chapter[0] == ".":
+        continue
     files[chapter] = []
-    for oneFile in os.listdir(topdir + "/" + chapter):
-        files[chapter].append(topdir + "/" + chapter + '/' + oneFile)
+    curPath = os.path.join(topdir, chapter)
+    for oneFile in os.listdir(curPath):
+        curPath2 = os.path.join(curPath, oneFile)
+        if os.path.isfile(curPath2) and oneFile[0] != "." and oneFile.endswith(".md"):
+            files[chapter].append(os.path.join(topdir, chapter, oneFile))
 
 for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
     currentTag = name
     for fn in filenames:
+        thisfn = fn
         infile = open(fn)
-        getOneApi(infile, name + " - " + ', '.join(filenames))
+        try:
+            getOneApi(infile, name + " - " + ', '.join(filenames))
+        except Exception as x:
+            print >> sys.stderr, "\nwhile parsing file: '%s' error: %s" % (thisfn, x)
+            raise
         infile.close()
         currentDocuBlock = None
         lastDocuBlock = None

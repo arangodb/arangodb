@@ -13,6 +13,7 @@
 *.gcno
 *.gcda
 
+*.swp
 *.diff
 *.patch
 *.lnk
@@ -68,6 +69,9 @@ arangod/Aql/grammar.output
 arangod/Aql/tokens.cpp
 
 bin/
+logs/
+output/
+out/
 
 etc/arangodb/*.conf
 

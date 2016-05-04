@@ -36,9 +36,9 @@ module.exports = function collectionStorage(cfg) {
   if (!cfg) {
     cfg = {};
   }
-  const autoUpdate = Boolean(cfg.autoUpdate);
+  const autoUpdate = Boolean(cfg.autoUpdate !== false);
   const pruneExpired = Boolean(cfg.pruneExpired);
-  const expiry = (cfg.expiry || 60) * 60 * 1000;
+  const ttl = (cfg.ttl || 60 * 60) * 1000;
   const collection = (
     typeof cfg.collection === 'string'
     ? db._collection(cfg.collection)
@@ -66,7 +66,7 @@ module.exports = function collectionStorage(cfg) {
           return null;
         }
         if (autoUpdate) {
-          collection.update(sid, {expires: now + expiry});
+          collection.update(sid, {expires: now + ttl});
         }
         return {
           _key: session._key,
@@ -91,7 +91,7 @@ module.exports = function collectionStorage(cfg) {
       const payload = {
         uid: session.uid,
         created: session.created,
-        expires: Date.now() + expiry,
+        expires: Date.now() + ttl,
         data: session.data
       };
       if (!session._key) {

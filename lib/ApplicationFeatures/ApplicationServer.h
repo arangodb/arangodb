@@ -36,6 +36,23 @@ class ProgramOptions;
 namespace application_features {
 class ApplicationFeature;
 
+enum class ServerState {
+  UNINITIALIZED,
+  IN_COLLECT_OPTIONS,
+  IN_VALIDATE_OPTIONS,
+  IN_PREPARE,
+  IN_START,
+  IN_WAIT,
+  IN_STOP,
+  STOPPED
+};
+
+class ProgressHandler {
+ public:
+  std::function<void(ServerState)> _state;
+  std::function<void(ServerState, std::string const& featureName)> _feature;
+};
+
 // the following phases exists:
 //
 // `collectOptions`
@@ -91,16 +108,6 @@ class ApplicationServer {
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
  public:
-  enum class ServerState {
-    UNINITIALIZED,
-    IN_COLLECT_OPTIONS,
-    IN_VALIDATE_OPTIONS,
-    IN_PREPARE,
-    IN_START,
-    IN_STOP,
-    STOPPED
-  };
-
   enum class FeatureState {
     UNINITIALIZED,
     INITIALIZED,
@@ -116,6 +123,7 @@ class ApplicationServer {
   }
   static bool isPrepared() {
     return server != nullptr && (server->_state == ServerState::IN_START ||
+                                 server->_state == ServerState::IN_WAIT ||
                                  server->_state == ServerState::IN_STOP);
   }
 
@@ -189,6 +197,10 @@ class ApplicationServer {
   // return the server state
   ServerState state() const { return _state; }
 
+  void addReporter(ProgressHandler reporter) {
+    _progressReports.emplace_back(reporter);
+  }
+
  private:
   // look up a feature and return a pointer to it. may be nullptr
   static ApplicationFeature* lookupFeature(std::string const&);
@@ -244,6 +256,9 @@ class ApplicationServer {
   void dropPrivilegesTemporarily();
   void dropPrivilegesPermanently();
 
+  void reportServerProgress(ServerState);
+  void reportFeatureProgress(ServerState, std::string const&);
+
  private:
   // the current state
   ServerState _state = ServerState::UNINITIALIZED;
@@ -265,6 +280,9 @@ class ApplicationServer {
 
   // whether or not to dump dependencies
   bool _dumpDependencies = false;
+
+  // reporter for progress
+  std::vector<ProgressHandler> _progressReports;
 };
 }
 }

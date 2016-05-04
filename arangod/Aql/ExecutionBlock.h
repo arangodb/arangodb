@@ -46,19 +46,6 @@ class AqlTransaction;
 
 namespace aql {
 
-/// @brief struct to hold the member-indexes in the _condition node
-struct NonConstExpression {
-  size_t const orMember;
-  size_t const andMember;
-  size_t const operatorMember;
-  Expression* expression;
-
-  NonConstExpression(size_t orM, size_t andM, size_t opM, Expression* exp)
-      : orMember(orM), andMember(andM), operatorMember(opM), expression(exp) {}
-
-  ~NonConstExpression() { delete expression; }
-};
-
 class ExecutionEngine;
 
 class ExecutionBlock {
@@ -66,8 +53,11 @@ class ExecutionBlock {
   ExecutionBlock(ExecutionEngine*, ExecutionNode const*);
 
   virtual ~ExecutionBlock();
-
+ 
  public:
+  /// @brief batch size value
+  static constexpr inline size_t DefaultBatchSize() { return 1000; }
+
   /// @brief determine the number of rows in a vector of blocks
   size_t countBlocksRows(std::vector<AqlItemBlock*> const&) const;
 
@@ -209,10 +199,6 @@ class ExecutionBlock {
 
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
-
- public:
-  /// @brief batch size value
-  static size_t const DefaultBatchSize;
 };
 
 }  // namespace arangodb::aql

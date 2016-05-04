@@ -28,6 +28,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Timers.h"
 #include "Basics/VelocyPackHelper.h"
@@ -59,16 +60,6 @@
 
 using namespace arangodb;
   
-//////////////////////////////////////////////////////////////////////////////
-/// @brief constants for _id, _key, _rev
-//////////////////////////////////////////////////////////////////////////////
-
-std::string const Transaction::KeyString(TRI_VOC_ATTRIBUTE_KEY);
-std::string const Transaction::RevString(TRI_VOC_ATTRIBUTE_REV);
-std::string const Transaction::IdString(TRI_VOC_ATTRIBUTE_ID);
-std::string const Transaction::FromString(TRI_VOC_ATTRIBUTE_FROM);
-std::string const Transaction::ToString(TRI_VOC_ATTRIBUTE_TO);
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief IndexHandle getter method
 //////////////////////////////////////////////////////////////////////////////
@@ -604,10 +595,10 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
 /// @brief extract the _key attribute from a slice
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Transaction::extractKey(VPackSlice const slice) {
+std::string Transaction::extractKeyPart(VPackSlice const slice) {
   // extract _key
   if (slice.isObject()) {
-    VPackSlice k = slice.get(KeyString);
+    VPackSlice k = slice.get(StaticStrings::KeyString);
     if (!k.isString()) {
       return ""; // fail
     }
@@ -617,7 +608,7 @@ std::string Transaction::extractKey(VPackSlice const slice) {
     std::string key = slice.copyString();
     size_t pos = key.find('/');
     if (pos != std::string::npos) {
-      key = key.substr(pos+1);
+      key = key.substr(pos + 1);
     }
     return key;
   } 
@@ -625,11 +616,36 @@ std::string Transaction::extractKey(VPackSlice const slice) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief creates an id string from a custom _id value and the _key string
+//////////////////////////////////////////////////////////////////////////////
+        
+std::string Transaction::makeIdFromCustom(CollectionNameResolver const* resolver,
+                                          VPackSlice const& id, 
+                                          VPackSlice const& key) {
+  TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
+  TRI_ASSERT(key.isString());
+
+  uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
+  // create a buffer big enough for collection name + _key
+  char buffer[TRI_COL_NAME_LENGTH + TRI_VOC_KEY_MAX_LENGTH + 2];
+  size_t len = resolver->getCollectionNameCluster(&buffer[0], cid);
+  buffer[len] = '/';
+
+  VPackValueLength keyLength;
+  char const* p = key.getString(keyLength);
+  if (p == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid _key value");
+  }
+  memcpy(&buffer[len + 1], p, keyLength);
+  return std::string(&buffer[0], len + 1 + keyLength);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _id attribute from a slice, and convert it into a 
 /// string
 //////////////////////////////////////////////////////////////////////////////
 
-std::string Transaction::extractIdString(VPackSlice const slice) {
+std::string Transaction::extractIdString(VPackSlice slice) {
   return extractIdString(resolver(), slice, VPackSlice());
 }
 
@@ -639,13 +655,39 @@ std::string Transaction::extractIdString(VPackSlice const slice) {
 //////////////////////////////////////////////////////////////////////////////
 
 std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
-                                         VPackSlice const& slice,
+                                         VPackSlice slice,
                                          VPackSlice const& base) {
-  VPackSlice id = slice;
+  VPackSlice id;
+
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
+   
   if (slice.isObject()) {
     // extract id attribute from object
-    id = slice.get(IdString);
+    uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+    if (*p == basics::VelocyPackHelper::KeyAttribute) {
+      // skip over attribute name
+      ++p;
+      VPackSlice key = VPackSlice(p);
+      // skip over attribute value
+      p += key.byteSize();
+      
+      if (*p == basics::VelocyPackHelper::IdAttribute) {
+        id = VPackSlice(p + 1);
+        // we should be pointing to a custom value now
+        TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
+ 
+        return makeIdFromCustom(resolver, id, key);
+      }
+    }
+
+    // in case the quick access above did not work out, use the slow path... 
+    id = slice.get(StaticStrings::IdString);
+  } else {
+    id = slice;
   }
+  
   if (id.isString()) {
     // already a string...
     return id.copyString();
@@ -658,30 +700,199 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
   // we now need to extract the _key attribute
   VPackSlice key;
   if (slice.isObject()) {
-    key = slice.get(KeyString);
+    key = slice.get(StaticStrings::KeyString);
   } else if (base.isObject()) {
-    key = base.get(KeyString);
+    key = base.get(StaticStrings::KeyString);
+  } else if (base.isExternal()) {
+    key = base.resolveExternal().get(StaticStrings::KeyString);
   }
 
   if (!key.isString()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
-  
-  uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
-  char buffer[512];  // This is enough for collection name + _key
-  size_t len = resolver->getCollectionNameCluster(&buffer[0], cid);
-  buffer[len] = '/';
-
-  VPackValueLength keyLength;
-  char const* p = key.getString(keyLength);
-  if (p == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid _key value");
-  }
-  memcpy(&buffer[len + 1], p, keyLength);
-  return std::string(&buffer[0], len + 1 + keyLength);
+        
+  return makeIdFromCustom(resolver, id, key);
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief quick access to the _key attribute in a database document
+/// the document must have at least two attributes, and _key is supposed to
+/// be the first one
+//////////////////////////////////////////////////////////////////////////////
+
+VPackSlice Transaction::extractKeyFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
+  TRI_ASSERT(slice.isObject());
+  // a regular document must have at least the three attributes 
+  // _key, _id and _rev (in this order). _key must be the first attribute
+  // however this method may also be called for remove markers, which only
+  // have _key and _rev. therefore the only assertion that we can make
+  // here is that the document at least has two attributes 
+  TRI_ASSERT(slice.length() >= 2); 
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+
+  if (*p == basics::VelocyPackHelper::KeyAttribute) {
+    // the + 1 is required so that we can skip over the attribute name
+    // and point to the attribute value 
+    return VPackSlice(p + 1); 
+  }
   
+  // fall back to the regular lookup method
+  return slice.get(StaticStrings::KeyString); 
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief quick access to the _from attribute in a database document
+/// the document must have at least five attributes: _key, _id, _from, _to
+/// and _rev (in this order)
+//////////////////////////////////////////////////////////////////////////////
+
+VPackSlice Transaction::extractFromFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
+  TRI_ASSERT(slice.isObject());
+  // this method must only be called on edges
+  // this means we must have at least the attributes  _key, _id, _from, _to and _rev
+  TRI_ASSERT(slice.length() >= 5); 
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+  VPackValueLength count = 0;
+
+  while (*p <= basics::VelocyPackHelper::FromAttribute && ++count <= 3) {
+    if (*p == basics::VelocyPackHelper::FromAttribute) {
+      // the + 1 is required so that we can skip over the attribute name
+      // and point to the attribute value 
+      return VPackSlice(p + 1);
+    }
+    // skip over the attribute name
+    ++p;
+    // skip over the attribute value
+    p += VPackSlice(p).byteSize();
+  }
+
+  // fall back to the regular lookup method
+  return slice.get(StaticStrings::FromString); 
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief quick access to the _to attribute in a database document
+/// the document must have at least five attributes: _key, _id, _from, _to
+/// and _rev (in this order)
+//////////////////////////////////////////////////////////////////////////////
+
+VPackSlice Transaction::extractToFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
+  // this method must only be called on edges
+  // this means we must have at least the attributes  _key, _id, _from, _to and _rev
+  TRI_ASSERT(slice.length() >= 5); 
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+  VPackValueLength count = 0;
+
+  while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 4) {
+    if (*p == basics::VelocyPackHelper::ToAttribute) {
+      // the + 1 is required so that we can skip over the attribute name
+      // and point to the attribute value 
+      return VPackSlice(p + 1);
+    }
+    // skip over the attribute name
+    ++p;
+    // skip over the attribute value
+    p += VPackSlice(p).byteSize();
+  }
+  
+  // fall back to the regular lookup method
+  return slice.get(StaticStrings::ToString); 
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief quick access to the _rev attribute in a database document
+/// the document must have at least three attributes: _key, _id, _rev 
+/// (possibly with _from and _to in between)
+//////////////////////////////////////////////////////////////////////////////
+
+VPackSlice Transaction::extractRevFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
+  TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.length() >= 2); 
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+  VPackValueLength count = 0;
+
+  while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 5) {
+    if (*p == basics::VelocyPackHelper::RevAttribute) {
+      // the + 1 is required so that we can skip over the attribute name
+      // and point to the attribute value 
+      return VPackSlice(p + 1);
+    }
+    // skip over the attribute name
+    ++p;
+    // skip over the attribute value
+    p += VPackSlice(p).byteSize();
+  }
+
+  // fall back to the regular lookup method
+  return slice.get(StaticStrings::RevString); 
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief extract _key and _rev from a document, in one go
+/// this is an optimized version used when loading collections, WAL 
+/// collection and compaction
+//////////////////////////////////////////////////////////////////////////////
+    
+void Transaction::extractKeyAndRevFromDocument(VPackSlice slice, 
+                                               VPackSlice& keySlice, 
+                                               TRI_voc_rid_t& revisionId) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
+  TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.length() >= 2); 
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+  VPackValueLength count = 0;
+  bool foundKey = false;
+  bool foundRev = false;
+
+  while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 5) {
+    if (*p == basics::VelocyPackHelper::KeyAttribute) {
+      keySlice = VPackSlice(p + 1);
+      if (foundRev) {
+        return;
+      }
+      foundKey = true;
+    } else if (*p == basics::VelocyPackHelper::RevAttribute) {
+      VPackSlice revSlice(p + 1);
+      if (revSlice.isString()) {
+        revisionId = basics::StringUtils::uint64(revSlice.copyString());
+      } else if (revSlice.isNumber()) {
+        revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
+      }
+      if (foundKey) {
+        return;
+      }
+      foundRev = true;
+    }
+    // skip over the attribute name
+    ++p;
+    // skip over the attribute value
+    p += VPackSlice(p).byteSize();
+  }
+
+  // fall back to regular lookup
+  keySlice = slice.get(StaticStrings::KeyString);    
+  revisionId = basics::StringUtils::uint64(slice.get(StaticStrings::RevString).copyString());
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief build a VPack object with _id, _key and _rev, the result is
 /// added to the builder in the argument as a single object.
@@ -697,25 +908,21 @@ void Transaction::buildDocumentIdentity(TRI_document_collection_t* document,
                                         TRI_doc_mptr_t const* newMptr) {
   builder.openObject();
   if (ServerState::isRunningInCluster(_serverRole)) {
-    builder.add(IdString, VPackValue(resolver()->getCollectionName(cid) + "/" + key));
+    builder.add(StaticStrings::IdString, VPackValue(resolver()->getCollectionName(cid) + "/" + key));
   } else {
-    builder.add(IdString, VPackValue(document->_info.name() + "/" + key));
+    builder.add(StaticStrings::IdString, VPackValue(document->_info.name() + "/" + key));
   }
-  builder.add(KeyString, VPackValue(key));
+  builder.add(StaticStrings::KeyString, VPackValue(key));
   TRI_ASSERT(!rid.isNone());
-  builder.add(RevString, rid);
+  builder.add(StaticStrings::RevString, rid);
   if (!oldRid.isNone()) {
     builder.add("_oldRev", oldRid);
   }
   if (oldMptr != nullptr) {
-    builder.add("old", VPackSlice(oldMptr->vpack()));
-    // TODO: add externals later.
-    //builder.add("old", VPackValue(VPackValueType::External, oldMptr->vpack()));
+    builder.add("old", VPackValue(oldMptr->vpack(), VPackValueType::External));
   }
   if (newMptr != nullptr) {
-    builder.add("new", VPackSlice(newMptr->vpack()));
-    // TODO: add externals later.
-    //builder.add("new", VPackValue(VPackValueType::External, newMptr->vpack()));
+    builder.add("new", VPackValue(newMptr->vpack(), VPackValueType::External));
   }
   builder.close();
 }
@@ -875,7 +1082,7 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
     }
   
     VPackSlice docs = result->slice();
-    VPackArrayIterator it(docs);
+    VPackArrayIterator it(docs, true);
     while (it.valid()) {
       resultBuilder.add(it.value());
       it.next();
@@ -999,6 +1206,54 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
   }
 }
 
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return one  document from a collection, fast path
+///        If everything went well the result will contain the found document
+///        (as an external on single_server)  and this function will return TRI_ERROR_NO_ERROR.
+///        If there was an error the code is returned and it is guaranteed
+///        that result remains unmodified.
+///        Does not care for revision handling!
+//////////////////////////////////////////////////////////////////////////////
+
+int Transaction::documentFastPath(std::string const& collectionName,
+                                  VPackSlice const value,
+                                  VPackBuilder& result) {
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+  if (!value.isObject()) {
+    // must provide a document object
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  if (ServerState::isCoordinator(_serverRole)) {
+    OperationOptions options; // use default configuration
+    OperationResult opRes = documentCoordinator(collectionName, value, options);
+    if (opRes.failed()) {
+      return opRes.code;
+    }
+    result.add(opRes.slice());
+  }
+
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+
+  orderDitch(cid); // will throw when it fails
+
+  std::string key(Transaction::extractKeyPart(value));
+  if (key.empty()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+
+  TRI_doc_mptr_t mptr;
+  int res = document->read(this, key, &mptr, !isLocked(document, TRI_TRANSACTION_READ));
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+  TRI_ASSERT(mptr.vpack() != nullptr);
+  result.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
+  return TRI_ERROR_NO_ERROR;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return one or multiple documents from a collection
 //////////////////////////////////////////////////////////////////////////////
@@ -1027,13 +1282,13 @@ OperationResult Transaction::document(std::string const& collectionName,
 OperationResult Transaction::documentCoordinator(std::string const& collectionName,
                                                  VPackSlice const value,
                                                  OperationOptions& options) {
-  auto headers = std::make_unique<std::map<std::string, std::string>>();
+  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
   if (!value.isArray()) {
-    std::string key(Transaction::extractKey(value));
+    std::string key(Transaction::extractKeyPart(value));
     if (key.empty()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
@@ -1075,7 +1330,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   auto workOnOneDocument = [&](VPackSlice const value, bool isMultiple) -> int {
     TIMER_START(TRANSACTION_DOCUMENT_EXTRACT);
 
-    std::string key(Transaction::extractKey(value));
+    std::string key(Transaction::extractKeyPart(value));
     if (key.empty()) {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }
@@ -1096,7 +1351,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
       return res;
     }
   
-    TRI_ASSERT(mptr.getDataPtr() != nullptr);
+    TRI_ASSERT(mptr.vpack() != nullptr);
     if (!expectedRevision.isNone()) {
       VPackSlice foundRevision = mptr.revisionIdAsSlice();
       if (expectedRevision != foundRevision) {
@@ -1110,9 +1365,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     }
   
     if (!options.silent) {
-      //resultBuilder.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
-      // This is the future, for now, we have to do this:
-      resultBuilder.add(VPackSlice(mptr.vpack()));
+      resultBuilder.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
     } else if (isMultiple) {
       resultBuilder.add(VPackSlice::nullSlice());
     }
@@ -1234,7 +1487,6 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   }
 
   VPackBuilder resultBuilder;
-
   TRI_voc_tick_t maxTick = 0;
 
   auto workForOneDocument = [&](VPackSlice const value) -> int {
@@ -1265,10 +1517,10 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
       return TRI_ERROR_NO_ERROR;
     }
 
-    TRI_ASSERT(mptr.getDataPtr() != nullptr);
+    TRI_ASSERT(mptr.vpack() != nullptr);
     
     std::string keyString 
-        = VPackSlice(mptr.vpack()).get(KeyString).copyString();
+        = VPackSlice(mptr.vpack()).get(StaticStrings::KeyString).copyString();
 
     TIMER_START(TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY);
 
@@ -1301,7 +1553,8 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   }
   
   TIMER_STOP(TRANSACTION_INSERT_WORK_FOR_ONE);
-  
+ 
+  // wait for operation(s) to be synced to disk here 
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0) {
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(maxTick);
   }
@@ -1322,13 +1575,13 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
 
     VPackBuilder payload;
 
-    auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
+    auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
       VPackObjectBuilder guard(&payload);
+      VPackSlice s = result.get(StaticStrings::KeyString);
+      payload.add(StaticStrings::KeyString, s);
+      s = result.get(StaticStrings::RevString);
+      payload.add(StaticStrings::RevString, s);
       TRI_SanitizeObject(doc, payload);
-      VPackSlice s = result.get(KeyString);
-      payload.add(KeyString, s);
-      s = result.get(RevString);
-      payload.add(RevString, s);
     };
 
     VPackSlice ourResult = resultBuilder.slice();
@@ -1377,7 +1630,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
                      GeneralResponse::ResponseCode::CREATED);
           if (replicationWorked) {
             bool found;
-            requests[i].result.answer->header("x-arango-error-codes", found);
+            requests[i].result.answer->header(StaticStrings::ErrorCodes, found);
             replicationWorked = !found;
           }
           if (!replicationWorked) {
@@ -1439,7 +1692,7 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
                                                VPackSlice const newValue,
                                                OperationOptions& options) {
 
-  auto headers = std::make_unique<std::map<std::string, std::string>>();
+  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
@@ -1512,7 +1765,7 @@ OperationResult Transaction::replace(std::string const& collectionName,
 OperationResult Transaction::replaceCoordinator(std::string const& collectionName,
                                                 VPackSlice const newValue,
                                                 OperationOptions& options) {
-  auto headers = std::make_unique<std::map<std::string, std::string>>();
+  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
@@ -1583,6 +1836,7 @@ OperationResult Transaction::modifyLocal(
   }
 
   VPackBuilder resultBuilder;  // building the complete result
+  TRI_voc_tick_t maxTick = 0;
 
   auto workForOneDocument = [&](VPackSlice const newVal, bool isBabies) -> int {
     if (!newVal.isObject()) {
@@ -1591,21 +1845,26 @@ OperationResult Transaction::modifyLocal(
     TRI_doc_mptr_t mptr;
     VPackSlice actualRevision;
     TRI_doc_mptr_t previous;
+    TRI_voc_tick_t resultMarkerTick = 0;
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-      res = document->replace(this, newVal, &mptr, options,
+      res = document->replace(this, newVal, &mptr, options, resultMarkerTick, 
           !isLocked(document, TRI_TRANSACTION_WRITE), actualRevision,
           previous);
     } else {
-      res = document->update(this, newVal, &mptr, options,
+      res = document->update(this, newVal, &mptr, options, resultMarkerTick,
           !isLocked(document, TRI_TRANSACTION_WRITE), actualRevision,
           previous);
+    }
+    
+    if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
+      maxTick = resultMarkerTick;
     }
 
     if (res == TRI_ERROR_ARANGO_CONFLICT) {
       // still return 
       if ((!options.silent || doingSynchronousReplication) && !isBabies) {
-        std::string key = newVal.get(KeyString).copyString();
+        std::string key = newVal.get(StaticStrings::KeyString).copyString();
         buildDocumentIdentity(document, resultBuilder, cid, key, actualRevision,
                               VPackSlice(), 
                               options.returnOld ? &previous : nullptr, nullptr);
@@ -1615,10 +1874,10 @@ OperationResult Transaction::modifyLocal(
       return res;
     }
 
-    TRI_ASSERT(mptr.getDataPtr() != nullptr);
+    TRI_ASSERT(mptr.vpack() != nullptr);
 
     if (!options.silent || doingSynchronousReplication) {
-      std::string key = newVal.get(KeyString).copyString();
+      std::string key = newVal.get(StaticStrings::KeyString).copyString();
       buildDocumentIdentity(document, resultBuilder, cid, key, 
           mptr.revisionIdAsSlice(), actualRevision, 
           options.returnOld ? &previous : nullptr , 
@@ -1646,6 +1905,11 @@ OperationResult Transaction::modifyLocal(
   } else {
     res = workForOneDocument(newValue, false);
   }
+  
+  // wait for operation(s) to be synced to disk here 
+  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0) {
+    arangodb::wal::LogfileManager::instance()->slots()->waitForTick(maxTick);
+  }
 
   if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1664,13 +1928,13 @@ OperationResult Transaction::modifyLocal(
 
     VPackBuilder payload;
 
-    auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
+    auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
       VPackObjectBuilder guard(&payload);
+      VPackSlice s = result.get(StaticStrings::KeyString);
+      payload.add(StaticStrings::KeyString, s);
+      s = result.get(StaticStrings::RevString);
+      payload.add(StaticStrings::RevString, s);
       TRI_SanitizeObject(doc, payload);
-      VPackSlice s = result.get(KeyString);
-      payload.add(KeyString, s);
-      s = result.get(RevString);
-      payload.add(RevString, s);
     };
 
     VPackSlice ourResult = resultBuilder.slice();
@@ -1717,7 +1981,7 @@ OperationResult Transaction::modifyLocal(
                    GeneralResponse::ResponseCode::OK);
         if (replicationWorked) {
           bool found;
-          requests[i].result.answer->header("x-arango-error-codes", found);
+          requests[i].result.answer->header(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
         }
         if (!replicationWorked) {
@@ -1828,6 +2092,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   }
 
   VPackBuilder resultBuilder;
+  TRI_voc_tick_t maxTick = 0;
 
   auto workOnOneDocument = [&](VPackSlice value, bool isBabies) -> int {
     VPackSlice actualRevision;
@@ -1838,24 +2103,30 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
       key = value.copyString();
       size_t pos = key.find('/');
       if (pos != std::string::npos) {
-        key = key.substr(pos+1);
+        key = key.substr(pos + 1);
         builder = std::make_shared<VPackBuilder>();
         builder->add(VPackValue(key));
         value = builder->slice();
       }
     } else if (value.isObject()) {
-      VPackSlice keySlice = value.get(KeyString);
+      VPackSlice keySlice = value.get(StaticStrings::KeyString);
       if (!keySlice.isString()) {
         return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
       }
-      key = value.get(KeyString).copyString();
+      key = value.get(StaticStrings::KeyString).copyString();
     } else {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }
 
-    int res = document->remove(this, value, options,
+    TRI_voc_tick_t resultMarkerTick = 0;
+
+    int res = document->remove(this, value, options, resultMarkerTick,
                                !isLocked(document, TRI_TRANSACTION_WRITE),
                                actualRevision, previous);
+    
+    if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
+      maxTick = resultMarkerTick;
+    }
     
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_CONFLICT && 
@@ -1893,6 +2164,11 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   } else {
     res = workOnOneDocument(value, false);
   }
+ 
+  // wait for operation(s) to be synced to disk here 
+  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0) {
+    arangodb::wal::LogfileManager::instance()->slots()->waitForTick(maxTick);
+  }
 
   if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1911,13 +2187,13 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
 
     VPackBuilder payload;
 
-    auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
+    auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
       VPackObjectBuilder guard(&payload);
+      VPackSlice s = result.get(StaticStrings::KeyString);
+      payload.add(StaticStrings::KeyString, s);
+      s = result.get(StaticStrings::RevString);
+      payload.add(StaticStrings::RevString, s);
       TRI_SanitizeObject(doc, payload);
-      VPackSlice s = result.get(KeyString);
-      payload.add(KeyString, s);
-      s = result.get(RevString);
-      payload.add(RevString, s);
     };
 
     VPackSlice ourResult = resultBuilder.slice();
@@ -1962,7 +2238,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
                    GeneralResponse::ResponseCode::OK);
         if (replicationWorked) {
           bool found;
-          requests[i].result.answer->header("x-arango-error-codes", found);
+          requests[i].result.answer->header(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
         }
         if (!replicationWorked) {
@@ -2037,19 +2313,16 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
       indexScan(collectionName, Transaction::CursorType::ALL, IndexHandle(),
                 {}, skip, limit, 1000, false);
 
-  auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
-  while (cursor->hasMore()) {
-    cursor->getMore(result);
+  if (cursor->failed()) {
+    return OperationResult(cursor->code);
+  }
 
-    if (result->failed()) {
-      return OperationResult(result->code);
-    }
-  
-    VPackSlice docs = result->slice();
-    VPackArrayIterator it(docs);
-    while (it.valid()) {
-      resultBuilder.add(it.value());
-      it.next();
+  std::vector<TRI_doc_mptr_t*> result;
+  result.reserve(1000);
+  while (cursor->hasMore()) {
+    cursor->getMoreMptr(result, 1000);
+    for (auto const& mptr : result) {
+      resultBuilder.add(VPackValue(mptr->vpack(), VPackValueType::External));
     }
   }
 
@@ -2117,11 +2390,13 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
 
   options.ignoreRevs = true;
 
+  TRI_voc_tick_t resultMarkerTick = 0;
+
   auto callback = [&](TRI_doc_mptr_t const* mptr) {
     VPackSlice actualRevision;
     TRI_doc_mptr_t previous;
-    int res = document->remove(this, VPackSlice(mptr->vpack()), options, false,
-                               actualRevision, previous);
+    int res = document->remove(this, VPackSlice(mptr->vpack()), options, 
+                               resultMarkerTick, false, actualRevision, previous);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);

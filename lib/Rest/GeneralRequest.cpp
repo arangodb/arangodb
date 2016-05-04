@@ -33,6 +33,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 int32_t const GeneralRequest::MIN_COMPATIBILITY = 10300L;
+  
+static std::string const EMPTY_STR = "";
 
 std::string GeneralRequest::translateVersion(ProtocolVersion version) {
   switch (version) {
@@ -210,17 +212,15 @@ void GeneralRequest::addSuffix(std::string const& part) {
   char* utf8_nfc = TRI_normalize_utf8_to_NFC(
       TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
 
-  if (utf8_nfc) {
+  if (utf8_nfc != nullptr) {
     _suffix.emplace_back(utf8_nfc);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8_nfc);
   } else {
-    _suffix.emplace_back(decoded);
+    _suffix.emplace_back(std::move(decoded));
   }
 }
 
 std::string const& GeneralRequest::header(std::string const& key) const {
-  static std::string EMPTY_STR = "";
-
   auto it = _headers.find(key);
 
   if (it == _headers.end()) {
@@ -231,8 +231,6 @@ std::string const& GeneralRequest::header(std::string const& key) const {
 }
 
 std::string const& GeneralRequest::header(std::string const& key, bool& found) const {
-  static std::string EMPTY_STR = "";
-
   auto it = _headers.find(key);
 
   if (it == _headers.end()) {
@@ -245,8 +243,6 @@ std::string const& GeneralRequest::header(std::string const& key, bool& found) c
 }
 
 std::string const& GeneralRequest::value(std::string const& key) const {
-  static std::string EMPTY_STR = "";
-
   auto it = _values.find(key);
 
   if (it == _values.end()) {
@@ -257,8 +253,6 @@ std::string const& GeneralRequest::value(std::string const& key) const {
 }
 
 std::string const& GeneralRequest::value(std::string const& key, bool& found) const {
-  static std::string EMPTY_STR = "";
-
   auto it = _values.find(key);
 
   if (it == _values.end()) {
@@ -271,8 +265,6 @@ std::string const& GeneralRequest::value(std::string const& key, bool& found) co
 }
 
 void GeneralRequest::setArrayValue(char* key, size_t length, char const* value) {
-  std::string keyStr(key, length);
-
-  _arrayValues[keyStr].emplace_back(value);
+  _arrayValues[std::string(key, length)].emplace_back(value);
 }
 

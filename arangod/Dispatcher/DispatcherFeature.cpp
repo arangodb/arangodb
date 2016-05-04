@@ -26,6 +26,7 @@
 #include "Dispatcher/Dispatcher.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-dispatcher.h"
@@ -89,6 +90,8 @@ void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
       } else {
         _nrStandardThreads = n - 2;
       }
+    } else {
+      _nrStandardThreads = 1;
     }
   }
     
@@ -133,6 +136,25 @@ void DispatcherFeature::beginShutdown() {
 }
 
 void DispatcherFeature::stop() {
+  // signal the shutdown to the scheduler thread, so it does not
+  // create any new tasks for us
+  auto scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler != nullptr) {
+    scheduler->beginShutdown();
+  }
+
+  // wait for scheduler threads to finish
+  int counter = 0;
+  while (scheduler != nullptr && scheduler->isRunning()) {
+    usleep(10000);
+
+    // warn every 5 secs
+    if (++counter == 50) {
+      LOG(INFO) << "waiting for scheduler to shut down";
+      counter = 0;
+    }
+  }
+
   _dispatcher->shutdown();
 
   DISPATCHER = nullptr;

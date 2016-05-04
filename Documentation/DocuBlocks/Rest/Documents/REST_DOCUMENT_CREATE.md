@@ -1,81 +1,106 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock REST_DOCUMENT_CREATE
-/// @brief creates a document
+/// @brief creates documents
 ///
-/// @RESTHEADER{POST /_api/document,Create document}
+/// @RESTHEADER{POST /_api/document/{collection},Create document}
 ///
-/// @RESTALLBODYPARAM{document,json,required}
-/// A JSON representation of the document.
+/// @RESTALLBODYPARAM{data,json,required}
+/// A JSON representation of a single document or of an array of documents.
 ///
 /// @RESTQUERYPARAMETERS
 ///
-/// @RESTQUERYPARAM{collection,string,required}
-/// The collection name.
-///
-/// @RESTQUERYPARAM{createCollection,boolean,optional}
-/// If this parameter has a value of *true* or *yes*, then the collection is
-/// created if it does not yet exist. Other values will be ignored so the
-/// collection must be present for the operation to succeed.
-///
-/// **Note**: this flag is not supported in a cluster. Using it will result in an
-/// error.
+/// @RESTQUERYPARAM{collection,string,optional}
+/// The name of the collection. This is only for backward compatibility.
+/// In ArangoDB versions < 3.0, the URL path was */_api/document* and
+/// this query parameter was required. This combination still works, but
+/// the recommended way is to specify the collection in the URL path.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been synced to disk.
 ///
+/// @RESTQUERYPARAM{returnNew,boolean,optional}
+/// Return additionally the complete new document under the attribute *new*
+/// in the result.
+///
 /// @RESTDESCRIPTION
-/// Creates a new document in the collection named *collection*.  A JSON
-/// representation of the document must be passed as the body of the POST
-/// request.
+/// Creates a new document from the document given in the body, unless there
+/// is already a document with the *_key* given. If no *_key* is given, a new
+/// unique *_key* is generated automatically.
 ///
-/// If the document was created successfully, then the "Location" header
-/// contains the path to the newly created document. The "ETag" header field
-/// contains the revision of the document.
+/// The body can be an array of documents, in which case all
+/// documents in the array are inserted with the same semantics as for a
+/// single document. The result body will contain a JSON array of the
+/// same length as the input array, and each entry contains the result
+/// of the operation for the corresponding input. In case of an error
+/// the entry is a document with attributes *error* set to *true* and
+/// errorCode set to the error code that has happened.
+/// 
+/// Possibly given *_id* and *_rev* attributes in the body are always ignored,
+/// the URL part or the query parameter collection respectively counts.
 ///
-/// The body of the response contains a JSON object with the following
-/// attributes:
+/// If the document was created successfully, then the *Location* header
+/// contains the path to the newly created document. The *ETag* header field
+/// contains the revision of the document. Both are only set in the single
+/// document case.
 ///
-/// - *_id* contains the document handle of the newly created document
-/// - *_key* contains the document key
-/// - *_rev* contains the document revision
+/// The body of the response contains a JSON object (single document case)
+/// with the following attributes:
 ///
-/// If the collection parameter *waitForSync* is *false*, then the call returns
-/// as soon as the document has been accepted. It will not wait until the
-/// document has been synced to disk.
+///   - *_id* contains the document handle of the newly created document
+///   - *_key* contains the document key
+///   - *_rev* contains the document revision
+///
+/// In the multi case the body is an array of such objects.
+///
+/// If the collection parameter *waitForSync* is *false*, then the call
+/// returns as soon as the document has been accepted. It will not wait
+/// until the documents have been synced to disk.
 ///
 /// Optionally, the query parameter *waitForSync* can be used to force
-/// synchronization of the document creation operation to disk even in case that
-/// the *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* query parameter can be used to force synchronization of just
-/// this specific operations. To use this, set the *waitForSync* parameter to
-/// *true*. If the *waitForSync* parameter is not specified or set to *false*,
-/// then the collection's default *waitForSync* behavior is applied. The
-/// *waitForSync* query parameter cannot be used to disable synchronization for
-/// collections that have a default *waitForSync* value of *true*.
+/// synchronization of the document creation operation to disk even in
+/// case that the *waitForSync* flag had been disabled for the entire
+/// collection. Thus, the *waitForSync* query parameter can be used to
+/// force synchronization of just this specific operations. To use this,
+/// set the *waitForSync* parameter to *true*. If the *waitForSync*
+/// parameter is not specified or set to *false*, then the collection's
+/// default *waitForSync* behavior is applied. The *waitForSync* query
+/// parameter cannot be used to disable synchronization for collections
+/// that have a default *waitForSync* value of *true*.
+///
+/// If the query parameter *returnNew* is *true*, then, for each
+/// generated document, the complete new document is returned under
+/// the *new* attribute in the result.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the document was created successfully and *waitForSync* was
-/// *true*.
+/// is returned if the documents were created successfully and
+/// *waitForSync* was *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was created successfully and *waitForSync* was
-/// *false*.
+/// is returned if the documents were created successfully and
+/// *waitForSync* was *false*.
 ///
 /// @RESTRETURNCODE{400}
-/// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// is returned if the body does not contain a valid JSON representation
+/// of one document or an array of documents. The response body contains
+/// an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by *collection* is unknown.  The
-/// response body contains an error document in this case.
+/// is returned if the collection specified by *collection* is unknown.
+/// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{409}
-/// is returned if a document with the same qualifiers in
-/// an indexed attribute conflicts with an already existing document
-/// and thus violating that uniq constraint.
-/// The response body contains an error document in this case.
+/// is returned in the single document case if a document with the
+/// same qualifiers in an indexed attribute conflicts with an already
+/// existing document and thus violates that unique constraint. The
+/// response body contains an error document in this case. In the array
+/// case only 201 or 202 is returned, but if an error occurred, the
+/// additional HTTP header *X-Arango-Error-Codes* is set, which
+/// contains a map of the error codes that occurred together with their
+/// multiplicities, as in: *1205:10,1210:17* which means that in 10
+/// cases the error 1205 "illegal document handle" and in 17 cases the
+/// error 1210 "unique constraint violated" has happened.
 ///
 /// @EXAMPLES
 ///
@@ -88,7 +113,7 @@
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: true });
 ///
-///     var url = "/_api/document?collection=" + cn;
+///     var url = "/_api/document/" + cn;
 ///     var body = '{ "Hello": "World" }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
@@ -107,7 +132,7 @@
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: false });
 ///
-///     var url = "/_api/document?collection=" + cn;
+///     var url = "/_api/document/" + cn;
 ///     var body = '{ "Hello": "World" }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
@@ -126,29 +151,12 @@
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: false });
 ///
-///     var url = "/_api/document?collection=" + cn + "&waitForSync=true";
+///     var url = "/_api/document/" + cn + "&waitForSync=true";
 ///     var body = '{ "Hello": "World" }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);
-///
-///     logJsonResponse(response);
-///   ~ db._drop(cn);
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
-/// Create a document in a new, named collection
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostCreate2}
-///     var cn = "products";
-///     db._drop(cn);
-///
-///     var url = "/_api/document?collection=" + cn + "&createCollection=true";
-///     var body = '{ "Hello": "World" }';
-///
-///     var response = logCurlRequest('POST', url, body);
-///
-///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
 ///   ~ db._drop(cn);
@@ -160,7 +168,7 @@
 ///     var cn = "products";
 ///     db._drop(cn);
 ///
-///     var url = "/_api/document?collection=" + cn;
+///     var url = "/_api/document/" + cn;
 ///     var body = '{ "Hello": "World" }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
@@ -176,7 +184,7 @@
 ///     var cn = "products";
 ///     db._drop(cn);
 ///
-///     var url = "/_api/document?collection=" + cn;
+///     var url = "/_api/document/" + cn;
 ///     var body = '{ 1: "World" }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
@@ -185,5 +193,39 @@
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Insert multiple documents:
+/// TODO, make this example work.
+///
+/// @ EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostMulti}
+///     var cn = "products";
+///     db._drop(cn);
+///
+///     var url = "/_api/document/" + cn;
+///     var body = '[{"Hello":"Earth"}, {"Hello":"Venus"}, {"Hello":"Mars"}]';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @ END_EXAMPLE_ARANGOSH_RUN
+///
+/// Use of returnNew:
+/// TODO, make this example work.
+///
+/// @ EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostMulti}
+///     var cn = "products";
+///     db._drop(cn);
+///
+///     var url = "/_api/document/" + cn + "?returnNew=true";
+///     var body = '{"Hello":"World"}';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @ END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

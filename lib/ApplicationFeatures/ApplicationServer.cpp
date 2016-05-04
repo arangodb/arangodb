@@ -146,10 +146,11 @@ bool ApplicationServer::isRequired(std::string const& name) const {
 // signal. after that, it will shutdown all features
 void ApplicationServer::run(int argc, char* argv[]) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::run";
-  
+
   // collect options from all features
   // in this phase, all features are order-independent
   _state = ServerState::IN_COLLECT_OPTIONS;
+  reportServerProgress(_state);
   collectOptions();
 
   // setup dependency, but ignore any failure for now
@@ -164,6 +165,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
   // validate options of all features
   _state = ServerState::IN_VALIDATE_OPTIONS;
+  reportServerProgress(_state);
   validateOptions();
 
   // enable automatic features
@@ -181,24 +183,30 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // if they want other features to access them, or if they want to access
   // these files with dropped privileges
   _state = ServerState::IN_PREPARE;
+  reportServerProgress(_state);
   prepare();
 
   // permanently drop the privileges
   dropPrivilegesPermanently();
-  
+
   // start features. now features are allowed to start threads, write files etc.
   _state = ServerState::IN_START;
+  reportServerProgress(_state);
   start();
 
   // wait until we get signaled the shutdown request
+  _state = ServerState::IN_WAIT;
+  reportServerProgress(_state);
   wait();
 
   // stop all features
   _state = ServerState::IN_STOP;
+  reportServerProgress(_state);
   stop();
 
   // stopped
   _state = ServerState::STOPPED;
+  reportServerProgress(_state);
 }
 
 // signal the server to shut down
@@ -253,6 +261,7 @@ void ApplicationServer::collectOptions() {
   apply([this](ApplicationFeature* feature) {
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::loadOptions";
     feature->collectOptions(_options);
+    reportFeatureProgress(_state, feature->name());
   }, true);
 }
 
@@ -302,11 +311,13 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
 void ApplicationServer::validateOptions() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::validateOptions";
 
-  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
-    if ((*it)->isEnabled()) {
-      LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::validateOptions";
-      (*it)->validateOptions(_options);
-      (*it)->state(FeatureState::VALIDATED);
+  for (auto feature : _orderedFeatures) {
+    if (feature->isEnabled()) {
+      LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name()
+                                        << "::validateOptions";
+      feature->validateOptions(_options);
+      feature->state(FeatureState::VALIDATED);
+      reportFeatureProgress(_state, feature->name());
     }
   }
 }
@@ -383,7 +394,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
       }
       insert = j - 1;
     }
-    if (insert != i ){
+    if (insert != i) {
       for (size_t j = i; j > insert; --j) {
         features[j] = features[j - 1];
       }
@@ -437,9 +448,9 @@ void ApplicationServer::prepare() {
   // we start with elevated privileges
   bool privilegesElevated = true;
 
-  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
-    if ((*it)->isEnabled()) {
-      bool const requiresElevated = (*it)->requiresElevatedPrivileges();
+  for (auto feature : _orderedFeatures) {
+    if (feature->isEnabled()) {
+      bool const requiresElevated = feature->requiresElevatedPrivileges();
 
       if (requiresElevated != privilegesElevated) {
         // must change privileges for the feature
@@ -453,9 +464,9 @@ void ApplicationServer::prepare() {
       }
 
       try {
-        LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::prepare";
-        (*it)->prepare();
-        (*it)->state(FeatureState::PREPARED);
+        LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::prepare";
+        feature->prepare();
+        feature->state(FeatureState::PREPARED);
       } catch (...) {
         // restore original privileges
         if (!privilegesElevated) {
@@ -463,6 +474,8 @@ void ApplicationServer::prepare() {
         }
         throw;
       }
+
+      reportFeatureProgress(_state, feature->name());
     }
   }
 }
@@ -470,21 +483,24 @@ void ApplicationServer::prepare() {
 void ApplicationServer::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::start";
 
-  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
-    LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::start";
-    (*it)->start();
-    (*it)->state(FeatureState::STARTED);
+  for (auto feature : _orderedFeatures) {
+    LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::start";
+    feature->start();
+    feature->state(FeatureState::STARTED);
+    reportFeatureProgress(_state, feature->name());
   }
 }
 
 void ApplicationServer::stop() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::stop";
 
-  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
-       ++it) {
-    LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::stop";
-    (*it)->stop();
-    (*it)->state(FeatureState::STOPPED);
+  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+    auto feature = *it;
+
+    LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::stop";
+    feature->stop();
+    feature->state(FeatureState::STOPPED);
+    reportFeatureProgress(_state, feature->name());
   }
 }
 
@@ -537,4 +553,17 @@ void ApplicationServer::dropPrivilegesPermanently() {
   }
 
   _privilegesDropped = true;
+}
+
+void ApplicationServer::reportServerProgress(ServerState state) {
+  for (auto reporter : _progressReports) {
+    reporter._state(state);
+  }
+}
+
+void ApplicationServer::reportFeatureProgress(ServerState state,
+                                              std::string const& name) {
+  for (auto reporter : _progressReports) {
+    reporter._feature(state, name);
+  }
 }

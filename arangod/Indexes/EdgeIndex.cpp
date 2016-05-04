@@ -25,6 +25,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
@@ -53,7 +54,7 @@ static uint64_t HashElementKey(void*, VPackSlice const* key) {
   }
   // we can get away with the fast hash function here, as edge
   // index values are restricted to strings
-  return key->hash(hash);
+  return key->hashString(hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,12 +72,11 @@ static uint64_t HashElementEdgeFrom(void*, TRI_doc_mptr_t const* mptr,
     hash = fasthash64(&hash, sizeof(hash), 0x56781234);
   } else {
     // Is identical to HashElementKey
-    VPackSlice tmp(mptr->vpack());
-    tmp = tmp.get(Transaction::FromString);
+    VPackSlice tmp = Transaction::extractFromFromDocument(VPackSlice(mptr->vpack()));
     TRI_ASSERT(tmp.isString());
     // we can get away with the fast hash function here, as edge
     // index values are restricted to strings
-    hash = tmp.hash(hash);
+    hash = tmp.hashString(hash);
   }
   return hash;
 }
@@ -96,13 +96,11 @@ static uint64_t HashElementEdgeTo(void*, TRI_doc_mptr_t const* mptr,
     hash = fasthash64(&hash, sizeof(hash), 0x56781234);
   } else {
     // Is identical to HashElementKey
-    VPackSlice tmp(mptr->vpack());
-    TRI_ASSERT(tmp.isObject());
-    tmp = tmp.get(Transaction::ToString);
+    VPackSlice tmp = Transaction::extractToFromDocument(VPackSlice(mptr->vpack()));
     TRI_ASSERT(tmp.isString());
     // we can get away with the fast hash function here, as edge
     // index values are restricted to strings
-    hash = tmp.hash(hash);
+    hash = tmp.hashString(hash);
   }
   return hash;
 }
@@ -118,10 +116,9 @@ static bool IsEqualKeyEdgeFrom(void*, VPackSlice const* left,
 
   // left is a key
   // right is an element, that is a master pointer
-  VPackSlice tmp(right->vpack());
-  tmp = tmp.get(Transaction::FromString);
+  VPackSlice tmp = Transaction::extractFromFromDocument(VPackSlice(right->vpack()));
   TRI_ASSERT(tmp.isString());
-  return *left == tmp;
+  return (*left).equals(tmp);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,10 +132,9 @@ static bool IsEqualKeyEdgeTo(void*, VPackSlice const* left,
 
   // left is a key
   // right is an element, that is a master pointer
-  VPackSlice tmp(right->vpack());
-  tmp = tmp.get(Transaction::ToString);
+  VPackSlice tmp = Transaction::extractToFromDocument(VPackSlice(right->vpack()));
   TRI_ASSERT(tmp.isString());
-  return *left == tmp;
+  return (*left).equals(tmp);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,14 +156,13 @@ static bool IsEqualElementEdgeFromByKey(void*,
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
 
-  VPackSlice lSlice(left->vpack());
-  lSlice = lSlice.get(Transaction::FromString);
+  VPackSlice lSlice = Transaction::extractFromFromDocument(VPackSlice(left->vpack()));
   TRI_ASSERT(lSlice.isString());
 
-  VPackSlice rSlice(right->vpack());
-  rSlice = rSlice.get(Transaction::FromString);
+  VPackSlice rSlice = Transaction::extractFromFromDocument(VPackSlice(right->vpack()));
   TRI_ASSERT(rSlice.isString());
-  return lSlice == rSlice;
+
+  return lSlice.equals(rSlice);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,28 +175,22 @@ static bool IsEqualElementEdgeToByKey(void*,
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
 
-  VPackSlice lSlice(left->vpack());
-  lSlice = lSlice.get(Transaction::ToString);
+  VPackSlice lSlice = Transaction::extractToFromDocument(VPackSlice(left->vpack()));
   TRI_ASSERT(lSlice.isString());
-
-  VPackSlice rSlice(right->vpack());
-  rSlice = rSlice.get(Transaction::ToString);
+  
+  VPackSlice rSlice = Transaction::extractToFromDocument(VPackSlice(right->vpack()));
   TRI_ASSERT(rSlice.isString());
-  return lSlice == rSlice;
+
+  return lSlice.equals(rSlice);
 }
 
 TRI_doc_mptr_t* EdgeIndexIterator::next() {
-  while (true) {
-    if (_position >= static_cast<size_t>(_keys.length())) {
-      // we're at the end of the lookup values
-      return nullptr;
-    }
-
+  while (_iterator.valid()) {
     if (_buffer.empty()) {
       // We start a new lookup
       _posInBuffer = 0;
 
-      VPackSlice tmp = _keys.at(_position);
+      VPackSlice tmp = _iterator.value();
       if (tmp.isObject()) {
         tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
       }
@@ -222,22 +211,18 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
     }
 
     // found no result. now go to next lookup value in _keys
-    ++_position;
+    _iterator.next();
   }
+
+  return nullptr;
 }
 
 void EdgeIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& buffer, size_t limit) {
   size_t atMost = _batchSize > limit ? limit : _batchSize;
 
-  while (true) {
-    if (_position >= static_cast<size_t>(_keys.length())) {
-      // we're at the end of the lookup values
-      buffer.clear();
-      return;
-    }
-
+  while (_iterator.valid()) {
     if (buffer.empty()) {
-      VPackSlice tmp = _keys.at(_position);
+      VPackSlice tmp = _iterator.value();
       if (tmp.isObject()) {
         tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
       }
@@ -254,20 +239,19 @@ void EdgeIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& buffer, size_t 
     if (!buffer.empty()) {
       // found something
       return;
-      //return buffer.at(_posInBuffer++);
     }
 
     // found no result. now go to next lookup value in _keys
-    ++_position;
+    _iterator.next();
   }
+
+  buffer.clear();
 }
 
-
-
 void EdgeIndexIterator::reset() {
-  _position = 0;
   _posInBuffer = 0;
   _buffer.clear();
+  _iterator.reset(true);
 }
 
 TRI_doc_mptr_t* AnyDirectionEdgeIndexIterator::next() {
@@ -309,8 +293,8 @@ void AnyDirectionEdgeIndexIterator::reset() {
 EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
-                {{{Transaction::FromString, false}},
-                 {{Transaction::ToString, false}}}),
+                {{{StaticStrings::FromString, false}},
+                 {{StaticStrings::ToString, false}}}),
             false, false),
       _edgesFrom(nullptr),
       _edgesTo(nullptr),
@@ -594,8 +578,8 @@ bool EdgeIndex::supportsFilterCondition(
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
   SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(Transaction::FromString, false)},
-       {arangodb::basics::AttributeName(Transaction::ToString, false)}});
+      {{arangodb::basics::AttributeName(StaticStrings::FromString, false)},
+       {arangodb::basics::AttributeName(StaticStrings::ToString, false)}});
   return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems,
                           estimatedCost);
 }
@@ -611,8 +595,8 @@ IndexIterator* EdgeIndex::iteratorForCondition(
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(Transaction::FromString, false)},
-       {arangodb::basics::AttributeName(Transaction::ToString, false)}});
+      {{arangodb::basics::AttributeName(StaticStrings::FromString, false)},
+       {arangodb::basics::AttributeName(StaticStrings::ToString, false)}});
 
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -667,8 +651,8 @@ arangodb::aql::AstNode* EdgeIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
   SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(Transaction::FromString, false)},
-       {arangodb::basics::AttributeName(Transaction::ToString, false)}});
+      {{arangodb::basics::AttributeName(StaticStrings::FromString, false)},
+       {arangodb::basics::AttributeName(StaticStrings::ToString, false)}});
 
   return matcher.specializeOne(this, node, reference);
 }

@@ -299,7 +299,7 @@ bool FilterBlock::hasMore() {
     // trigger an expensive fetching operation, even if later on only
     // a single document is needed due to a LIMIT...
     // However, how should we know this here?
-    if (!getBlock(DefaultBatchSize, DefaultBatchSize)) {
+    if (!getBlock(DefaultBatchSize(), DefaultBatchSize())) {
       _done = true;
       return false;
     }
@@ -393,8 +393,8 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
     if (_fullCount) {
       // if fullCount is set, we must fetch all elements from the
       // dependency. we'll use the default batch size for this
-      atLeast = DefaultBatchSize;
-      atMost = DefaultBatchSize;
+      atLeast = DefaultBatchSize();
+      atMost = DefaultBatchSize();
 
       // suck out all data from the dependencies
       while (true) {

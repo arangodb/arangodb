@@ -57,7 +57,7 @@ void BindParameters::process() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID);
   }
 
-  for (auto const& it : VPackObjectIterator(slice)) {
+  for (auto const& it : VPackObjectIterator(slice, false)) {
     std::string const key(it.key.copyString());
     VPackSlice const value(it.value);
     
@@ -85,12 +85,11 @@ VPackBuilder BindParameters::StripCollectionNames(VPackSlice const& keys,
   TRI_ASSERT(keys.isArray());
   VPackBuilder result;
   result.openArray();
-  for (auto const& element : VPackArrayIterator(keys)) {
+  for (auto const& element : VPackArrayIterator(keys, false)) {
     if (element.isString()) {
       VPackValueLength l;
       char const* s = element.getString(l);
-      char search = '/';
-      auto p = static_cast<char const*>(memchr(s, search, l));
+      auto p = static_cast<char const*>(memchr(s, '/', l));
       if (p != nullptr && strncmp(s, collectionName, p - s) == 0) {
         // key begins with collection name + '/', now strip it in place for
         // further comparisons

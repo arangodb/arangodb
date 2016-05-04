@@ -137,11 +137,6 @@ enum TRI_df_marker_type_t : uint8_t {
   TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION = 71,
   TRI_DF_MARKER_VPACK_ABORT_TRANSACTION = 72,
 
-  // deprecated
-  TRI_DF_MARKER_BEGIN_REMOTE_TRANSACTION = 200,
-  TRI_DF_MARKER_COMMIT_REMOTE_TRANSACTION = 201,
-  TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION = 202,
-
   TRI_DF_MARKER_MAX  // again, this is not a real
                      // marker, but we use it for
                      // bounds checking
@@ -254,38 +249,45 @@ struct TRI_df_marker_t {
   TRI_df_marker_t() : _size(0), _crc(0), _typeAndTick(0) {}
   ~TRI_df_marker_t() {}
 
-  inline off_t offsetOfSize() const {
+  inline off_t offsetOfSize() const noexcept {
     return offsetof(TRI_df_marker_t, _size);
   }
-  inline off_t offsetOfCrc() const {
+  inline off_t offsetOfCrc() const noexcept {
     return offsetof(TRI_df_marker_t, _crc);
   }
-  inline off_t offsetOfTypeAndTick() const {
+  inline off_t offsetOfTypeAndTick() const noexcept {
     return offsetof(TRI_df_marker_t, _typeAndTick);
   }
-  inline TRI_voc_size_t getSize() const { return _size; }
-  inline void setSize(TRI_voc_size_t size) { _size = size; }
+  inline TRI_voc_size_t getSize() const noexcept { return _size; }
+  inline void setSize(TRI_voc_size_t size) noexcept { _size = size; }
   
-  inline TRI_voc_crc_t getCrc() const { return _crc; }
-  inline void setCrc(TRI_voc_crc_t crc) { _crc = crc; }
+  inline TRI_voc_crc_t getCrc() const noexcept { return _crc; }
+  inline void setCrc(TRI_voc_crc_t crc) noexcept { _crc = crc; }
 
-  inline TRI_voc_tick_t getTick() const { 
+  inline TRI_voc_tick_t getTick() const noexcept { 
     return static_cast<TRI_voc_tick_t>(_typeAndTick & 0x00ffffffffffffffULL); 
   }
-  inline void setTick(TRI_voc_tick_t tick) { 
+  inline void setTick(TRI_voc_tick_t tick) noexcept { 
     _typeAndTick &= 0xff00000000000000ULL; 
     _typeAndTick |= tick;
   }
-
-  inline TRI_df_marker_type_t getType() const { 
+  inline TRI_df_marker_type_t getType() const noexcept { 
     return static_cast<TRI_df_marker_type_t>((_typeAndTick & 0xff00000000000000ULL) >> 56); 
   }
-  inline void setType(TRI_df_marker_type_t type) { 
+  inline void setType(TRI_df_marker_type_t type) noexcept { 
     uint64_t t = static_cast<uint64_t>(type) << 56;
     _typeAndTick &= 0x00ffffffffffffffULL; 
     _typeAndTick |= t;
   } 
+  inline void setTypeAndTick(TRI_df_marker_type_t type, TRI_voc_tick_t tick) noexcept {
+    uint64_t t = static_cast<uint64_t>(type) << 56;
+    t |= (tick & 0x00ffffffffffffffULL); 
+    _typeAndTick = t;
+  }
+
 };
+
+static_assert(sizeof(TRI_df_marker_t) == 16, "invalid size for TRI_df_marker_t");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile header marker

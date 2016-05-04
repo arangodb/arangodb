@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_AQL_AQL_VALUE_H
@@ -51,10 +52,9 @@ struct AqlValue final {
 
   /// @brief AqlValueType, indicates what sort of value we have
   enum AqlValueType : uint8_t { 
-    VPACK_DOCUMENT, // contains a pointer to a vpack document, memory is not managed!
-    VPACK_POINTER, // contains a pointer to a vpack value, memory is not managed!
+    VPACK_SLICE_POINTER, // contains a pointer to a vpack document, memory is not managed!
     VPACK_INLINE, // contains vpack data, inline
-    VPACK_EXTERNAL, // contains vpack, via pointer to a managed buffer
+    VPACK_MANAGED, // contains vpack, via pointer to a managed buffer
     DOCVEC, // a vector of blocks of results coming from a subquery, managed
     RANGE // a pointer to a range remembering lower and upper bound, managed
   };
@@ -63,13 +63,13 @@ struct AqlValue final {
   /// The last byte of this union (_data.internal[15]) will be used to identify 
   /// the type of the contained data:
   ///
-  /// VPACK_POINTER: data may be referenced via a pointer to a VPack slice
+  /// VPACK_SLICE_POINTER: data may be referenced via a pointer to a VPack slice
   /// existing somewhere in memory. The AqlValue is not responsible for managing
   /// this memory.
   /// VPACK_INLINE: VPack values with a size less than 16 bytes can be stored 
   /// directly inside the data.internal structure. All data is stored inline, 
   /// so there is no need for memory management.
-  /// VPACK_EXTERNAL: all values of a larger size will be stored in 
+  /// VPACK_MANAGED: all values of a larger size will be stored in 
   /// _data.external via a managed VPackBuffer object. The Buffer is managed
   /// by the AqlValue.
   /// DOCVEC: a managed vector of AqlItemBlocks, for storing subquery results.
@@ -87,7 +87,7 @@ struct AqlValue final {
  public:
   // construct an empty AqlValue
   // note: this is the default constructor and should be as cheap as possible
-  AqlValue() {
+  AqlValue() noexcept {
     // construct a slice of type None
     _data.internal[0] = '\x00';
     setType(AqlValueType::VPACK_INLINE);
@@ -99,7 +99,7 @@ struct AqlValue final {
   // construct from pointer
   explicit AqlValue(uint8_t const* pointer) {
     _data.pointer = pointer;
-    setType(AqlValueType::VPACK_POINTER);
+    setType(AqlValueType::VPACK_SLICE_POINTER);
   }
   
   // construct from docvec, taking over its ownership
@@ -123,7 +123,7 @@ struct AqlValue final {
   // construct from Buffer, taking over its ownership
   explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer) {
     _data.buffer = buffer;
-    setType(AqlValueType::VPACK_EXTERNAL);
+    setType(AqlValueType::VPACK_MANAGED);
   }
   
   // construct from Builder
@@ -144,13 +144,21 @@ struct AqlValue final {
     _data.range = new Range(low, high);
     setType(AqlValueType::RANGE);
   }
-  
+ 
+  /// @brief AqlValues can be copied and moved as required
+  /// memory management is not performed via AqlValue destructor but via 
+  /// explicit calls to destroy()
+  AqlValue(AqlValue const&) noexcept = default; 
+  AqlValue& operator=(AqlValue const&) noexcept = default; 
+  AqlValue(AqlValue&&) noexcept = default; 
+  AqlValue& operator=(AqlValue&&) noexcept = default; 
+
   ~AqlValue() = default;
   
   /// @brief whether or not the value must be destroyed
   inline bool requiresDestruction() const {
     AqlValueType t = type();
-    return (t == VPACK_EXTERNAL || t == DOCVEC || t == RANGE);
+    return (t == VPACK_MANAGED || t == DOCVEC || t == RANGE);
   }
 
   /// @brief whether or not the value is empty / none
@@ -162,17 +170,17 @@ struct AqlValue final {
   }
   
   /// @brief whether or not the value is a range
-  bool isRange() const {
+  inline bool isRange() const {
     return type() == RANGE;
   }
   
   /// @brief whether or not the value is a docvec
-  bool isDocvec() const {
+  inline bool isDocvec() const {
     return type() == DOCVEC;
   }
 
   /// @brief hashes the value
-  uint64_t hash(arangodb::AqlTransaction*) const;
+  uint64_t hash(arangodb::AqlTransaction*, uint64_t seed = 0xdeadbeef) const;
 
   /// @brief whether or not the value contains a none value
   bool isNone() const;
@@ -201,6 +209,16 @@ struct AqlValue final {
   
   /// @brief get the (array) element at position 
   AqlValue at(int64_t position, bool& mustDestroy, bool copy) const;
+  
+  /// @brief get the _key attribute from an object/document
+  AqlValue getKeyAttribute(arangodb::AqlTransaction* trx,
+                           bool& mustDestroy, bool copy) const;
+  /// @brief get the _from attribute from an object/document
+  AqlValue getFromAttribute(arangodb::AqlTransaction* trx,
+                            bool& mustDestroy, bool copy) const;
+  /// @brief get the _to attribute from an object/document
+  AqlValue getToAttribute(arangodb::AqlTransaction* trx,
+                          bool& mustDestroy, bool copy) const;
   
   /// @brief get the (object) element by name(s)
   AqlValue get(arangodb::AqlTransaction* trx,
@@ -243,15 +261,18 @@ struct AqlValue final {
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::AqlTransaction*) const;
 
   /// @brief materializes a value into the builder
-  void toVelocyPack(arangodb::AqlTransaction*, arangodb::velocypack::Builder& builder) const;
-  
+  void toVelocyPack(arangodb::AqlTransaction*,
+                    arangodb::velocypack::Builder& builder,
+                    bool resolveExternals) const;
+
   /// @brief materialize a value into a new one. this expands docvecs and 
   /// ranges
-  AqlValue materialize(arangodb::AqlTransaction*, bool& hasCopied) const;
+  AqlValue materialize(arangodb::AqlTransaction*, bool& hasCopied,
+                       bool resolveExternals) const;
 
   /// @brief return the slice for the value
-  /// this will throw if the value type is not VPACK_POINTER, VPACK_INLINE or
-  /// VPACK_EXTERNAL
+  /// this will throw if the value type is not VPACK_SLICE_POINTER, VPACK_INLINE or
+  /// VPACK_MANAGED
   arangodb::velocypack::Slice slice() const;
   
   /// @brief clone a value
@@ -259,7 +280,8 @@ struct AqlValue final {
   
   /// @brief invalidates/resets a value to None, not freeing any memory
   void erase() {
-    initFromSlice(arangodb::velocypack::Slice());
+    _data.internal[0] = '\x00';
+    setType(AqlValueType::VPACK_INLINE);
   }
   
   /// @brief destroy, explicit destruction, only when needed
@@ -290,8 +312,9 @@ struct AqlValue final {
   /// @brief initializes value from a slice
   void initFromSlice(arangodb::velocypack::Slice const& slice) {
     if (slice.isExternal()) {
-      _data.pointer = VPackSlice(slice.getExternal()).start();
-      setType(AqlValueType::VPACK_POINTER);
+      // recursively resolve externals
+      _data.pointer = slice.resolveExternals().start();
+      setType(AqlValueType::VPACK_SLICE_POINTER);
       return;
     }
     arangodb::velocypack::ValueLength length = slice.byteSize();
@@ -303,12 +326,12 @@ struct AqlValue final {
       // Use external
       _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length);
       _data.buffer->append(reinterpret_cast<char const*>(slice.begin()), length);
-      setType(AqlValueType::VPACK_EXTERNAL);
+      setType(AqlValueType::VPACK_MANAGED);
     }
   }
 
   /// @brief sets the value type
-  inline void setType(AqlValueType type) {
+  inline void setType(AqlValueType type) noexcept {
     _data.internal[sizeof(_data.internal) - 1] = type;
   }
 };
@@ -335,14 +358,60 @@ struct AqlValueMaterializer {
   explicit AqlValueMaterializer(arangodb::AqlTransaction* trx) 
       : trx(trx), materialized(), hasCopied(false) {}
 
+  AqlValueMaterializer(AqlValueMaterializer const& other) 
+      : trx(other.trx), materialized(other.materialized), hasCopied(other.hasCopied) {
+    if (other.hasCopied) {
+      // copy other's slice
+      materialized = other.materialized.clone();
+    }
+  }
+  
+  AqlValueMaterializer& operator=(AqlValueMaterializer const& other) {
+    if (this != &other) {
+      TRI_ASSERT(trx == other.trx); // must be from same transaction
+      if (hasCopied) {
+        // destroy our own slice
+        materialized.destroy();
+        hasCopied = false;
+      }
+      // copy other's slice
+      materialized = other.materialized.clone();
+      hasCopied = other.hasCopied;
+    }
+    return *this;
+  }
+  
+  AqlValueMaterializer(AqlValueMaterializer&& other) noexcept 
+      : trx(other.trx), materialized(other.materialized), hasCopied(other.hasCopied) {
+    // reset other
+    other.hasCopied = false;
+    other.materialized = AqlValue();
+  }
+  
+  AqlValueMaterializer& operator=(AqlValueMaterializer&& other) noexcept {
+    if (this != &other) {
+      TRI_ASSERT(trx == other.trx); // must be from same transaction
+      if (hasCopied) {
+        // destroy our own slice
+        materialized.destroy();
+      }
+      // reset other
+      materialized = other.materialized;
+      hasCopied = other.hasCopied;
+      other.materialized = AqlValue();
+    }
+    return *this;
+  }
+
   ~AqlValueMaterializer() { 
     if (hasCopied) { 
       materialized.destroy(); 
     } 
   }
 
-  arangodb::velocypack::Slice slice(AqlValue const& value) {
-    materialized = value.materialize(trx, hasCopied);
+  arangodb::velocypack::Slice slice(AqlValue const& value,
+                                    bool resolveExternals) {
+    materialized = value.materialize(trx, hasCopied, resolveExternals);
     return materialized.slice();
   }
 
@@ -367,14 +436,13 @@ struct hash<arangodb::aql::AqlValue> {
     arangodb::aql::AqlValue::AqlValueType type = x.type();
     size_t res = intHash(type);
     switch (type) {
-      case arangodb::aql::AqlValue::VPACK_DOCUMENT: 
-      case arangodb::aql::AqlValue::VPACK_POINTER: {
+      case arangodb::aql::AqlValue::VPACK_SLICE_POINTER: { 
         return res ^ ptrHash(x._data.pointer);
       }
       case arangodb::aql::AqlValue::VPACK_INLINE: {
         return res ^ static_cast<size_t>(arangodb::velocypack::Slice(&x._data.internal[0]).hash());
       }
-      case arangodb::aql::AqlValue::VPACK_EXTERNAL: {
+      case arangodb::aql::AqlValue::VPACK_MANAGED: {
         return res ^ ptrHash(x._data.buffer);
       }
       case arangodb::aql::AqlValue::DOCVEC: {
@@ -399,14 +467,13 @@ struct equal_to<arangodb::aql::AqlValue> {
       return false;
     }
     switch (type) {
-      case arangodb::aql::AqlValue::VPACK_DOCUMENT: 
-      case arangodb::aql::AqlValue::VPACK_POINTER: {
+      case arangodb::aql::AqlValue::VPACK_SLICE_POINTER: {
         return a._data.pointer == b._data.pointer;
       }
       case arangodb::aql::AqlValue::VPACK_INLINE: {
         return arangodb::velocypack::Slice(&a._data.internal[0]).equals(arangodb::velocypack::Slice(&b._data.internal[0]));
       }
-      case arangodb::aql::AqlValue::VPACK_EXTERNAL: {
+      case arangodb::aql::AqlValue::VPACK_MANAGED: {
         return a._data.buffer == b._data.buffer;
       }
       case arangodb::aql::AqlValue::DOCVEC: {

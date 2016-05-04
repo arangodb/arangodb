@@ -85,13 +85,6 @@ describe('Foxx Manager install', function() {
       .with.property('errorNum', errors.ERROR_MALFORMED_MANIFEST_FILE.code);
     });
 
-    it('with incomplete manifest', function() {
-      expect(function () {
-        FoxxManager.install(fs.join(basePath, 'incomplete-manifest'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_INVALID_APPLICATION_MANIFEST.code);
-    });
-
     it('with malformed name', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-name'), '/unittest/broken');

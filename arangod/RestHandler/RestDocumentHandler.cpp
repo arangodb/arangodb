@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDocumentHandler.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -162,7 +163,7 @@ bool RestDocumentHandler::createDocument() {
       errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
     }
     errorBuilder.close();
-    _response->setHeader("X-Arango-Error-Codes", errorBuilder.slice().toJson());
+    _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.slice().toJson());
   }
   return true;
 }
@@ -227,10 +228,10 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
-    builder.add(Transaction::KeyString, VPackValue(key));
+    builder.add(StaticStrings::KeyString, VPackValue(key));
     if (ifRid != 0) {
       options.ignoreRevs = false;
-      builder.add(Transaction::RevString, VPackValue(std::to_string(ifRid)));
+      builder.add(StaticStrings::RevString, VPackValue(std::to_string(ifRid)));
     }
   }
   VPackSlice search = builder.slice();
@@ -383,7 +384,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.silent = extractBooleanParameter("silent", false);
 
   // extract the revision, if single document variant and header given:
-  std::shared_ptr<VPackBuilder> builder(nullptr);
+  std::shared_ptr<VPackBuilder> builder;
   if (!isArrayCase) {
     TRI_voc_rid_t revision = 0;
     bool isValidRevision;
@@ -393,7 +394,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
                     "invalid revision number");
       return false;
     }
-    VPackSlice keyInBody = body.get(Transaction::KeyString);
+    VPackSlice keyInBody = body.get(StaticStrings::KeyString);
     if ((revision != 0 && TRI_ExtractRevisionId(body) != revision) ||
         keyInBody.isNone() ||
         (keyInBody.isString() && keyInBody.copyString() != key)) {
@@ -402,9 +403,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       {
         VPackObjectBuilder guard(builder.get());
         TRI_SanitizeObject(body, *builder);
-        builder->add(Transaction::KeyString, VPackValue(key));
+        builder->add(StaticStrings::KeyString, VPackValue(key));
         if (revision != 0) {
-          builder->add(Transaction::RevString,
+          builder->add(StaticStrings::RevString,
                        VPackValue(std::to_string(revision)));
         }
       }
@@ -469,7 +470,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
     }
     errorBuilder.close();
-    _response->setHeader("X-Arango-Error-Codes", errorBuilder.slice().toJson());
+    _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.slice().toJson());
   }
 
   return true;
@@ -523,10 +524,10 @@ bool RestDocumentHandler::deleteDocument() {
   if (suffix.size() == 2) {
     {
       VPackObjectBuilder guard(&builder);
-      builder.add(Transaction::KeyString, VPackValue(key));
+      builder.add(StaticStrings::KeyString, VPackValue(key));
       if (revision != 0) {
         opOptions.ignoreRevs = false;
-        builder.add(Transaction::RevString, VPackValue(std::to_string(revision)));
+        builder.add(StaticStrings::RevString, VPackValue(std::to_string(revision)));
       }
     }
     search = builder.slice();

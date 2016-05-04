@@ -52,7 +52,7 @@ SocketTask::SocketTask(TRI_socket_t socket, double keepAliveTimeout)
       _readBuffer(nullptr),
       _clientClosed(false),
       _tid(0) {
-  _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, false);
 
   ConnectionStatisticsAgent::acquire();
   connectionStatisticsAgentSetStart();
@@ -94,7 +94,7 @@ void SocketTask::setKeepAliveTimeout(double timeout) {
 
 bool SocketTask::fillReadBuffer() {
   // reserve some memory for reading
-  if (_readBuffer->reserve(READ_BLOCK_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
+  if (_readBuffer->reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
     // out of memory
     LOG(TRACE) << "out of memory";
 
@@ -105,6 +105,7 @@ bool SocketTask::fillReadBuffer() {
 
   if (nr > 0) {
     _readBuffer->increaseLength(nr);
+    _readBuffer->ensureNullTerminated();
     return true;
   }
 
@@ -184,12 +185,8 @@ bool SocketTask::handleWrite() {
   }
 
   if (len == 0) {
-    if (nullptr != _writeBuffer) {
-      delete _writeBuffer;
-      _writeBuffer = nullptr;
-    }
-
-    TRI_ASSERT(_writeBuffer == nullptr);
+    delete _writeBuffer;
+    _writeBuffer = nullptr;
 
     completedWriteBuffer();
 
@@ -235,9 +232,7 @@ void SocketTask::setWriteBuffer(StringBuffer* buffer,
 
     completedWriteBuffer();
   } else {
-    if (_writeBuffer != nullptr) {
-      delete _writeBuffer;
-    }
+    delete _writeBuffer;
 
     _writeBuffer = buffer;
   }

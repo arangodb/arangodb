@@ -25,6 +25,7 @@
 #define ARANGOD_VOC_BASE_TRAVERSER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/hashes.h"
 #include "Basics/Traverser.h"
 #include "Aql/AstNode.h"
 #include "Utils/CollectionNameResolver.h"

@@ -55,10 +55,10 @@ function runSetup () {
       var c = db._collection("UnitTestsRecovery");
       var i;
       for (i = 0; i < 10000; ++i) {
-        c.save({ _key: "test" + i, value1: i, value2: "foobarbaz" + i }, true);
+        c.save({ _key: "test" + i, value1: i, value2: "foobarbaz" + i });
       }
       for (i = 0; i < 50; ++i) {
-        c.remove("old" + i);
+        c.remove("old" + i, { waitForSync: i === 49 });
       }
     }
   });

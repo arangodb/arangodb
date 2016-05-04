@@ -117,8 +117,7 @@ class ClusterTraverser : public Traverser {
   /// @brief internal cursor to enumerate the paths of a graph
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::basics::PathEnumerator<std::string, std::string,
-                                                   size_t>> _enumerator;
+  std::unique_ptr<arangodb::basics::PathEnumerator<std::string, std::string, size_t>> _enumerator;
 };
 
 class ClusterTraversalPath : public TraversalPath {

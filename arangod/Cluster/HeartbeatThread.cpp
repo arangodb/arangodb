@@ -66,9 +66,11 @@ HeartbeatThread::HeartbeatThread(TRI_server_t* server,
       _maxFailsBeforeWarning(maxFailsBeforeWarning),
       _numFails(0),
       _lastSuccessfulVersion(0),
-      _dispatchedVersion(0),
+      _isDispatchingChange(false),
       _currentPlanVersion(0),
       _ready(false),
+      _currentVersions(0, 0),
+      _desiredVersions(0, 0),
       _wasNotified(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,38 +116,34 @@ void HeartbeatThread::runDBServer() {
   std::function<bool(VPackSlice const& result)> updatePlan = [&](
       VPackSlice const& result) {
     if (!result.isNumber()) {
-      LOG(ERR) << "Version is not a number! " << result.toJson();
+      LOG(ERR) << "Plan Version is not a number! " << result.toJson();
       return false;
     }
     uint64_t version = result.getNumber<uint64_t>();
     
-    bool mustChangePlan = false;
-    uint64_t versionToChange = 0;
+    bool doSync = false;
     {
       MUTEX_LOCKER(mutexLocker, _statusLock);
-      if (version > _currentPlanVersion) {
-        _currentPlanVersion = version;
-
-        mustChangePlan = _lastSuccessfulVersion < _currentPlanVersion;
-        versionToChange = _currentPlanVersion;
+      if (version > _desiredVersions.plan) {
+        _desiredVersions.plan = version;
+        LOG(DEBUG) << "Desired Current Version is now " << _desiredVersions.plan;
+        doSync = true;
       }
     }
-    if (mustChangePlan) {
-      LOG(TRACE) << "Dispatching " << versionToChange;
-      handlePlanChangeDBServer(versionToChange);
-    } else {
-      LOG(TRACE) << "not dispatching";
+
+    if (doSync) {
+      syncDBServerStatusQuo();
     }
 
     return true;
   };
-
-  auto agencyCallback = std::make_shared<AgencyCallback>(
+  
+  auto planAgencyCallback = std::make_shared<AgencyCallback>(
       _agency, "Plan/Version", updatePlan, true);
-
+  
   bool registered = false;
   while (!registered) {
-    registered = _agencyCallbackRegistry->registerCallback(agencyCallback);
+    registered = _agencyCallbackRegistry->registerCallback(planAgencyCallback);
     if (!registered) {
       LOG(ERR) << "Couldn't register plan change in agency!";
       sleep(1);
@@ -178,15 +176,14 @@ void HeartbeatThread::runDBServer() {
     if (isStopping()) {
       break;
     }
-    // XXX execute at least once
     double remain = interval - (TRI_microtime() - start);
-    while (remain > 0) {
+    // mop: execute at least once
+    do {
       LOG(TRACE) << "Entering update loop";
       
       bool wasNotified;
       {
         CONDITION_LOCKER(locker, _condition);
-        LOG(INFO) << _wasNotified;
         wasNotified = _wasNotified;
         if (!wasNotified) {
           locker.wait(static_cast<uint64_t>(remain * 1000000.0));
@@ -197,32 +194,24 @@ void HeartbeatThread::runDBServer() {
 
       if (!wasNotified) {
         LOG(TRACE) << "Lock reached timeout";
-        agencyCallback->refetchAndUpdate();
+        planAgencyCallback->refetchAndUpdate();
       } else {
-        // mop: a plan change returned successfully...check if we are up-to-date
-        bool mustChangePlan;
-        uint64_t versionToChange;
-        {
-          MUTEX_LOCKER(mutexLocker, _statusLock);
-          mustChangePlan = _lastSuccessfulVersion < _currentPlanVersion;
-          versionToChange = _currentPlanVersion;
-        }
-        if (mustChangePlan) {
-          LOG(TRACE) << "Dispatching " << versionToChange;
-          handlePlanChangeDBServer(versionToChange);
-        }
+        // mop: a plan change returned successfully...
+        // recheck and redispatch in case our desired versions increased
+        // in the meantime
+        syncDBServerStatusQuo();
       }
       remain = interval - (TRI_microtime() - start);
-    }
+    } while (remain > 0);
   }
 
-  _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+  _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
   int count = 0;
   while (++count < 3000) {
     bool isInPlanChange;
     {
       MUTEX_LOCKER(mutexLocker, _statusLock);
-      isInPlanChange = _dispatchedVersion > 0;
+      isInPlanChange = _isDispatchingChange;
     }
     if (!isInPlanChange) {
       break;
@@ -408,16 +397,19 @@ bool HeartbeatThread::init() {
 /// @brief finished plan change
 ////////////////////////////////////////////////////////////////////////////////
 
-void HeartbeatThread::removeDispatchedJob(bool success) {
+void HeartbeatThread::removeDispatchedJob(ServerJobResult result) {
   LOG(TRACE) << "Dispatched job returned!";
   {
     MUTEX_LOCKER(mutexLocker, _statusLock);
-    if (success) {
-      _lastSuccessfulVersion = _dispatchedVersion;
+    if (result.success) {
+      LOG(DEBUG) << "Sync request successful. Now have Plan " << result.planVersion << ", Current " << result.currentVersion;
+      _currentVersions = AgencyVersions(result);
     } else {
-      LOG(WARN) << "Updating plan to " << _dispatchedVersion << " failed!";
+      LOG(DEBUG) << "Sync request failed!";
+      // mop: we will retry immediately so wait at least a LITTLE bit
+      usleep(10000);
     }
-    _dispatchedVersion = 0;
+    _isDispatchingChange = false;
   }
   CONDITION_LOCKER(guard, _condition);
   _wasNotified = true;
@@ -598,31 +590,43 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 /// this is triggered if the heartbeat thread finds a new plan version number
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
-  LOG(TRACE) << "found a plan update";
-
-  // schedule a job for the change
-  std::unique_ptr<arangodb::rest::Job> job(new ServerJob(this));
-  
-  auto dispatcher = DispatcherFeature::DISPATCHER;
+bool HeartbeatThread::syncDBServerStatusQuo() {
+  bool shouldUpdate = false;
   {
     MUTEX_LOCKER(mutexLocker, _statusLock);
     // mop: only dispatch one at a time
-    if (_dispatchedVersion > 0) {
+    if (_isDispatchingChange) {
       return false;
     }
-    _dispatchedVersion = currentPlanVersion;
+
+    if (_desiredVersions.plan > _currentVersions.plan) {
+      LOG(DEBUG) << "Plan version " << _currentVersions.plan << " is lower than desired version " << _desiredVersions.plan;
+      _isDispatchingChange = true;
+    } else if (_desiredVersions.current > _currentVersions.current) {
+      LOG(DEBUG) << "Current version " << _currentVersions.current << " is lower than desired version " << _desiredVersions.current;
+      _isDispatchingChange = true;
+    }
+    shouldUpdate = _isDispatchingChange;
   }
-  if (dispatcher->addJob(job) == TRI_ERROR_NO_ERROR) {
-    LOG(TRACE) << "scheduled plan update handler";
-    return true;
+
+  if (shouldUpdate) {
+    LOG(TRACE) << "Dispatching Sync";
+    // schedule a job for the change
+    std::unique_ptr<arangodb::rest::Job> job(new ServerJob(this));
+
+    auto dispatcher = DispatcherFeature::DISPATCHER;
+    if (dispatcher == nullptr) {
+      LOG(ERR) << "could not schedule dbserver sync - dispatcher gone.";
+      return false;
+    }
+    if (dispatcher->addJob(job) == TRI_ERROR_NO_ERROR) {
+      LOG(TRACE) << "scheduled dbserver sync";
+      return true;
+    }
+    MUTEX_LOCKER(mutexLocker, _statusLock);
+    _isDispatchingChange = false;
+    LOG(ERR) << "could not schedule dbserver sync";
   }
-  MUTEX_LOCKER(mutexLocker, _statusLock);
-  _dispatchedVersion = 0;
-
-
-  LOG(ERR) << "could not schedule plan update handler";
-
   return false;
 }
 

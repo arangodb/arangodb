@@ -23,6 +23,7 @@
 
 #include "datafile.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
@@ -982,7 +983,6 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
   TRI_ERRORBUF;
   void* data;
   TRI_stat_t status;
-  TRI_df_header_marker_t header;
   void* mmHandle;
 
   // this function must not be called for non-physical datafiles
@@ -1031,7 +1031,8 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
   }
 
   // read header from file
-  char* ptr = (char*)&header;
+  TRI_df_header_marker_t header;
+  char* ptr = reinterpret_cast<char*>(&header);
   ssize_t len = sizeof(TRI_df_header_marker_t);
 
   bool ok = TRI_ReadPointer(fd, ptr, len);
@@ -1064,7 +1065,7 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
     if (header._version != TRI_DF_VERSION) {
       TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
 
-      LOG(ERR) << "unknown datafile version '" << (unsigned int)header._version << "' in datafile '" << filename << "'";
+      LOG(ERR) << "unknown datafile version '" << header._version << "' in datafile '" << filename << "'";
 
       if (!ignoreErrors) {
         TRI_CLOSE(fd);
@@ -1075,7 +1076,7 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
 
   // check the maximal size
   if (size > header._maximalSize) {
-    LOG(DEBUG) << "datafile '" << filename << "' has size '" << (unsigned int)size << "', but maximal size is '" << (unsigned int)header._maximalSize << "'";
+    LOG(DEBUG) << "datafile '" << filename << "' has size '" << size << "', but maximal size is '" << header._maximalSize << "'";
   }
 
   // map datafile into memory
@@ -1233,14 +1234,6 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
       return "commit transaction";
     case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION:
       return "abort transaction";
-
-    // datafile markers
-    case TRI_DF_MARKER_BEGIN_REMOTE_TRANSACTION:
-      return "begin remote transaction";
-    case TRI_DF_MARKER_COMMIT_REMOTE_TRANSACTION:
-      return "commit remote transaction";
-    case TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION:
-      return "abort remote transaction";
 
     default:
       return "unused/unknown";
@@ -1892,7 +1885,7 @@ static DatafileScan ScanDatafile(TRI_datafile_t const* datafile) {
         type == TRI_DF_MARKER_VPACK_REMOVE) {
       VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
       TRI_ASSERT(slice.isObject());
-      entry.key = slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+      entry.key = slice.get(StaticStrings::KeyString).copyString();
     }
 
     scan.entries.emplace_back(entry);

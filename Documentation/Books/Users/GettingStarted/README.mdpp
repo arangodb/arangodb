@@ -1,0 +1,31 @@
+!CHAPTER Getting started
+
+!SECTION ArangoDB programs 
+
+The ArangoDB package comes with the following programs:
+
+* `arangod`: The ArangoDB database daemon. This server program is
+  intended to run as a daemon process and to serve the various clients
+  connection to the server via TCP / HTTP.
+  See [Details about the ArangoDB Server](../GettingStarted/Arangod.md)
+  
+* `arangosh`: The ArangoDB shell. A client that implements a
+  read-eval-print loop (REPL) and provides functions to access and
+  administrate the ArangoDB server.
+  See [Details about the ArangoDB Shell](../Administration/Arangosh/README.md)
+  
+* `arangoimp`: A bulk importer for the ArangoDB server.
+  See [Details about Arangoimp](../Administration/Arangoimp.md)
+  
+* `arangodump`: A tool to create backups of an ArangoDB database. See
+   [Details about Arangodump](../Administration/Arangodump.md)
+   
+* `arangorestore`: A tool to reload data from a backup into an ArangoDB database.
+  See [Details about Arangorestore](../Administration/Arangorestore.md)
+  
+* `arango-dfdb`: A datafile debugger for ArangoDB. It is intended to be
+  used primarily during development of ArangoDB.
+  See [Details about Arango-DFDB](../Troubleshooting/ArangoDfdb.md)
+  
+* `arangobench`: A benchmark and test tool. It can be used for performance and
+  server function testing. See [Details about Arangobench](../Troubleshooting/Arangobench.md)

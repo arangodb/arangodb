@@ -33,6 +33,8 @@
 
 using namespace arangodb;
 using namespace arangodb::wal;
+  
+static uint32_t const PrologueSize = DatafileHelper::AlignedSize<uint32_t>(sizeof(TRI_df_prologue_marker_t));
 
 /// @brief create the slots
 Slots::Slots(LogfileManager* logfileManager, size_t numberOfSlots,
@@ -128,7 +130,6 @@ SlotInfo Slots::nextUnused(uint32_t size) {
 /// @brief return the next unused slot
 SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                            uint32_t size) {
-  static uint32_t const PrologueSize = DatafileHelper::AlignedSize<uint32_t>(sizeof(TRI_df_prologue_marker_t));
 
   // we need to use the aligned size for writing
   uint32_t alignedSize = DatafileHelper::AlignedSize<uint32_t>(size);
@@ -619,6 +620,8 @@ int Slots::writeHeader(Slot* slot) {
 int Slots::writePrologue(Slot* slot, void* mem, TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
   TRI_df_prologue_marker_t header = DatafileHelper::CreatePrologueMarker(databaseId, collectionId);
   size_t const size = header.base.getSize();
+
+  TRI_ASSERT(size == PrologueSize);
 
   TRI_ASSERT(mem != nullptr);
 

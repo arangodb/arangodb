@@ -28,7 +28,7 @@ option(VERBOSE OFF)
 option(USE_DEV_TIMERS OFF)
 
 if (USE_DEV_TIMERS)
-  add_definitions("-DUSE_DEV_TIMERS")
+  add_definitions("-DUSE_DEV_TIMERS=1")
 endif ()
 
 ################################################################################
@@ -75,7 +75,11 @@ set(TEST_GEO_SUITE    geo_suite)
 ## VERSION FILES
 ################################################################################
 
-string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
+if (${CMAKE_MAJOR_VERSION} EQUAL 2)
+  set(ARANGODB_BUILD_DATE "YYYY-MM-DD HH:MM:SS")
+else ()
+  string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
+endif ()
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
@@ -146,8 +150,6 @@ else ()
   set(MAKE make)
 endif ()
 
-find_package(FLEX)
-find_package(BISON)
 find_package(PythonInterp 2 REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE} REALPATH)
 
@@ -210,9 +212,13 @@ if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++11")
 endif ()
 
-if (APPLE AND CMAKE_COMPILER_IS_CLANG)
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
-  add_definitions("-Wno-deprecated-declarations")
+if (CMAKE_COMPILER_IS_CLANG)
+  if (APPLE)
+    set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
+    add_definitions("-Wno-deprecated-declarations")
+  else ()
+    list(APPEND BASE_LIBS atomic)
+  endif ()
 endif ()
 
 # need c++11
@@ -286,8 +292,12 @@ else ()
 
   include(VcMacros)
 
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
+  option(USE_OPTIMIZE_FOR_ARCHITECTURE "try to determine CPU architecture" ON)
+
+  if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+    include(OptimizeForArchitecture)
+    OptimizeForArchitecture()
+  endif ()
 
   set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
@@ -344,6 +354,9 @@ option(USE_MAINTAINER_MODE
 
 if (USE_MAINTAINER_MODE)
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
+
+  find_package(FLEX)
+  find_package(BISON)
 endif ()
 
 ################################################################################
@@ -643,19 +656,6 @@ add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
 
 include_directories(${ICU_INCLUDE_DIR})
 
-if (MSVC)
-  add_custom_target(
-    icudat1
-    ALL
-    COMMAND ${CMAKE_COMMAND} -E copy
-      "${PROJECT_SOURCE_DIR}/3rdParty/V8/V8-4.9.391/third_party/icu/source/data/in/icudtl.dat"
-      "${PROJECT_BINARY_DIR}/bin/share/arangodb/icudt54l.dat"
-    COMMAND ${CMAKE_COMMAND} -E copy
-      "${PROJECT_SOURCE_DIR}/3rdParty/V8/V8-4.9.391/third_party/icu/source/data/in/icudtl.dat"
-      "${PROJECT_SOURCE_DIR}/icudt54l.dat"
-  )
-endif ()
-
 ################################################################################
 ## LIBEV
 ################################################################################
@@ -773,9 +773,9 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${ICU_LIBS}
   ${OPENSSL_LIBRARIES}
   ${BASE_LIBS}
-  ${CMAKE_THREAD_LIBS_INIT}
   ${CMAKE_DL_LIBS}
   ${SYS_LIBS}
+  ${CMAKE_THREAD_LIBS_INIT}
 )
 
 add_subdirectory(lib)
