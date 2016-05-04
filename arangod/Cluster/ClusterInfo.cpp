@@ -469,12 +469,12 @@ void ClusterInfo::loadPlan() {
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixPlan, true);
+      result = _agency.getValues2(prefixPlan);
     }
   }
 
   if (result.successful()) {
-    VPackSlice slice = result._vpack->slice()[0].get(
+    VPackSlice slice = result.slice()[0].get(
         std::vector<std::string>({AgencyComm::prefixStripped(), "Plan"}));
     auto planBuilder = std::make_shared<VPackBuilder>();
     planBuilder->add(slice);
@@ -561,14 +561,14 @@ void ClusterInfo::loadCurrentDatabases() {
   {
     AgencyCommLocker locker("Plan", "READ");
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrentDatabases, true);
+      result = _agency.getValues2(prefixCurrentDatabases);
     }
   }
   
   if (result.successful()) {
     
     velocypack::Slice databases =
-      result._vpack->slice()[0].get(std::vector<std::string>(
+      result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefixStripped(), "Current", "Databases"}));
 
     if (!databases.isNone()) {
@@ -638,7 +638,7 @@ void ClusterInfo::loadPlannedCollections() {
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixPlannedCollections, true);
+      result = _agency.getValues2(prefixPlannedCollections);
     } else {
       LOG(ERR) << "Error while locking " << prefixPlannedCollections;
       return;
@@ -648,7 +648,7 @@ void ClusterInfo::loadPlannedCollections() {
   if (result.successful()) {
 
     velocypack::Slice databases =
-      result._vpack->slice()[0].get(std::vector<std::string>(
+      result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefixStripped(), "Plan", "Collections"}));
     
     if (!databases.isNone()) {
@@ -843,14 +843,14 @@ void ClusterInfo::loadCurrentCollections() {
     AgencyCommLocker locker("Current", "READ");
     
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrentCollections, true);
+      result = _agency.getValues2(prefixCurrentCollections);
     }
   }
   
   if (result.successful()) {
     
     velocypack::Slice databases =
-      result._vpack->slice()[0].get(std::vector<std::string>(
+      result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefixStripped(), "Current", "Collections"}));
     
     if (!databases.isNone()) {
@@ -1426,15 +1426,14 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
 
-    res = ac.getValues2("Plan/Collections/" + databaseName + "/" + collectionID,
-                       false);
+    res = ac.getValues2("Plan/Collections/" + databaseName+"/" + collectionID);
 
     if (!res.successful()) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
     velocypack::Slice collection =
-      res._vpack->slice()[0]
+      res.slice()[0]
       .get(AgencyComm::prefixStripped())
       .get("Plan").get("Collections").get(databaseName).get(collectionID);
 
@@ -1503,11 +1502,10 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
 
-    res = ac.getValues2("Plan/Collections/" + databaseName + "/" + collectionID,
-                       false);
+    res = ac.getValues2("Plan/Collections/" + databaseName +"/" + collectionID);
 
     velocypack::Slice col =
-      res._vpack->slice()[0]
+      res.slice()[0]
       .get(AgencyComm::prefixStripped()).get("Plan").get("Collections")
       .get(databaseName).get(collectionID);
 
@@ -1698,11 +1696,11 @@ int ClusterInfo::ensureIndexCoordinator(
   std::string const key =
       "Plan/Collections/" + databaseName + "/" + collectionID;
 
-  AgencyCommResult previous = ac.getValues2(key, false);
+  AgencyCommResult previous = ac.getValues2(key);
   bool usePrevious = true;
 
   velocypack::Slice database =
-    previous._vpack->slice()[0].get(std::vector<std::string>(
+    previous.slice()[0].get(std::vector<std::string>(
           { AgencyComm::prefixStripped(), "Plan", "Collections", databaseName }));
 
   if (!database.isObject()) {
@@ -1847,8 +1845,14 @@ int ClusterInfo::ensureIndexCoordinator(
   TRI_ASSERT(numberOfShards > 0);
 
   // now wait for the index to appear
-  AgencyCommResult res = ac.getValues("Current/Version", false);
+  AgencyCommResult res = ac.getValues2("Current/Version");
   if (!res.successful()) {
+    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                       errorMsg);
+  }
+  VPackSlice versionSlice = res.slice()[0].get(
+      std::vector<std::string>({ac.prefixStripped(), "Current", "Version"}));
+  if (!versionSlice.isInteger()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
   }
@@ -1887,10 +1891,10 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   std::string const key =
       "Plan/Collections/" + databaseName + "/" + collectionID;
   
-  AgencyCommResult res = ac.getValues2(key, false);
+  AgencyCommResult res = ac.getValues2(key);
 
   velocypack::Slice previous =
-    res._vpack->slice()[0].get(std::vector<std::string>(
+    res.slice()[0].get(std::vector<std::string>(
     { AgencyComm::prefixStripped(), "Plan", "Collections", databaseName, collectionID }
   ));
   TRI_ASSERT(VPackObjectIterator(previous).size()>0);
@@ -2069,8 +2073,14 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   }
 
   // now wait for the index to disappear
-  res = ac.getValues("Current/Version", false);
+  res = ac.getValues2("Current/Version");
   if (!res.successful()) {
+    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                       errorMsg);
+  }
+  VPackSlice versionSlice = res.slice()[0].get(
+      std::vector<std::string>({ac.prefixStripped(), "Current", "Version"}));
+  if (!versionSlice.isInteger()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
   }
@@ -2107,14 +2117,14 @@ void ClusterInfo::loadServers() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixServers, true);
+      result = _agency.getValues2(prefixServers);
     }
   }
 
   if (result.successful()) {
     
     velocypack::Slice serversRegistered =
-      result._vpack->slice()[0].get(std::vector<std::string>(
+      result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefixStripped(), "Current", "ServersRegistered"}));
 
     if (!serversRegistered.isNone()) {
@@ -2239,14 +2249,14 @@ void ClusterInfo::loadCurrentCoordinators() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrentCoordinators, true);
+      result = _agency.getValues2(prefixCurrentCoordinators);
     }
   }
 
   if (result.successful()) {
 
     velocypack::Slice currentCoordinators =
-      result._vpack->slice()[0].get(std::vector<std::string>(
+      result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefixStripped(), "Current", "Coordinators"}));
 
     if (!currentCoordinators.isNone()) {
@@ -2296,14 +2306,14 @@ void ClusterInfo::loadCurrentDBServers() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrentDBServers, true);
+      result = _agency.getValues2(prefixCurrentDBServers);
     }
   }
 
   if (result.successful()) {
 
     velocypack::Slice currentDBServers =
-      result._vpack->slice()[0].get(std::vector<std::string>(
+      result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefixStripped(), "Current", "DBServers"}));
 
     if (!currentDBServers.isNone()) {

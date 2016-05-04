@@ -453,6 +453,13 @@ VPackSlice AgencyCommResult::parse(std::string const& path) {
   return _vpack->slice()[0].get(pv);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// get results of query as slice
+////////////////////////////////////////////////////////////////////////////////
+
+VPackSlice AgencyCommResult::slice() {
+  return _vpack->slice();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the static global URL prefix
@@ -1354,7 +1361,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
 /// @brief gets one or multiple values from the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::getValues2(std::string const& key, bool recursive) {
+AgencyCommResult AgencyComm::getValues2(std::string const& key) {
   std::string url(buildUrl());
   
   url += "/read";
@@ -1378,14 +1385,14 @@ AgencyCommResult AgencyComm::getValues2(std::string const& key, bool recursive) 
   
   try {
 
-    result._vpack = VPackParser::fromJson(result.body().c_str());
+    result.setVPack(VPackParser::fromJson(result.body().c_str()));
 
-    if (!result._vpack->slice().isArray()) {
+    if (!result.slice().isArray()) {
       result._statusCode = 500;
       return result;
     }
 
-    if (result._vpack->slice().length() != 1) {
+    if (result.slice().length() != 1) {
       result._statusCode = 500;
       return result;
     }
