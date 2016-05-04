@@ -155,7 +155,6 @@ TRI_doc_mptr_t* RocksDBIterator::next() {
     if (res < 0) {
       if (_reverse) {
         return nullptr;
-        _cursor->Prev();
       } else {
         _cursor->Next();
       }

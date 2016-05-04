@@ -76,8 +76,8 @@ static bool IsMarker28 (void const* marker) {
   off_t o = offsetof(Marker28, _crc);
   size_t n = sizeof(TRI_voc_crc_t);
 
-  char const* ptr = (char const*) marker;
-  Marker28 const* m = (Marker28 const*) marker;
+  char const* ptr = static_cast<char const*>(marker);
+  Marker28 const* m = static_cast<Marker28 const*>(marker);
 
   TRI_voc_crc_t crc = TRI_InitialCrc32();
 
