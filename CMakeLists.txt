@@ -157,7 +157,8 @@ else ()
   set(ROCKSDB_LIBS "")
 endif ()
 
-get_filename_component(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE} REALPATH)
+find_package(PythonInterp 2 REQUIRED)
+get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 ################################################################################
 ## ARCHITECTURE
