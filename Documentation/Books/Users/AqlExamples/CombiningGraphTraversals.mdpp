@@ -24,7 +24,7 @@ We use [the city graph](../Graphs/README.md#the-city-graph) and its geo indices:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock COMBINING_GRAPH_01_create_graph
 
-We search all german cities in a range of 400 km around the ex-capital **Bonn**: **Hambung** and **Cologne**.
+We search all german cities in a range of 400 km around the ex-capital **Bonn**: **Hamburg** and **Cologne**.
 We won't find **Paris** since its in the `frenchCity` collection.
 
     @startDocuBlockInline COMBINING_GRAPH_02_combine
