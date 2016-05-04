@@ -378,6 +378,7 @@ struct AqlValueMaterializer {
       materialized = other.materialized.clone();
       hasCopied = other.hasCopied;
     }
+    return *this;
   }
   
   AqlValueMaterializer(AqlValueMaterializer&& other) noexcept 
@@ -398,6 +399,7 @@ struct AqlValueMaterializer {
       materialized = other.materialized;
       other.materialized = AqlValue();
     }
+    return *this;
   }
 
   ~AqlValueMaterializer() { 
