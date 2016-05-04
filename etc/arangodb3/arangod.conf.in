@@ -5,8 +5,8 @@
 # 
 
 [database]
-directory = @LOCALSTATEDIR@/lib/arangodb
-# directory = @HOMEDRIVE@/@HOMEPATH@/arangodb/databases
+directory = @LOCALSTATEDIR@/lib/arangodb3
+# directory = @HOMEDRIVE@/@HOMEPATH@/arangodb3/databases
 
 # maximal-journal-size = 33554432
 
@@ -49,7 +49,7 @@ authentication = false
 [javascript]
 startup-directory = @PKGDATADIR@/js
 app-path = @LOCALSTATEDIR@/lib/arangodb3-apps
-# app-path = @HOMEDRIVE@/@HOMEPATH@/arangodb/apps
+# app-path = @HOMEDRIVE@/@HOMEPATH@/arangodb3/apps
 
 # number of worker threads for V8
 v8-contexts = 5
