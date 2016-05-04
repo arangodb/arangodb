@@ -33,24 +33,83 @@ using namespace arangodb::consensus;
 
 
 Supervision::Supervision() : arangodb::Thread("Supervision"), _agent(nullptr),
-                             _frequency(5000000) {}
+                             _snapshot("Supervision"), _frequency(5000000) {
+  
+}
 
 Supervision::~Supervision() {
   shutdown();
 };
 
 void Supervision::wakeUp () {
+
+  TRI_ASSERT(_agent!=nullptr);
+  _snapshot = _agent->readDB().get("/");
   _cv.signal();
+  
 }
 
-std::vector<check_t> Supervision::check (Node const& readDB, std::string const& path) const {
+/*
+      "Sync": {
+        "UserVersion": 2,
+        "ServerStates": {
+          "DBServer2": {
+            "time": "2016-05-04T09:17:31Z",
+            "status": "SERVINGASYNC"
+          },
+          "DBServer1": {
+            "time": "2016-05-04T09:17:30Z",
+            "status": "SERVINGASYNC"
+          },
+          "Coordinator1": {
+            "time": "2016-05-04T09:17:31Z",
+            "status": "SERVING"
+          }
+        },
+        "Problems": null,
+        "LatestID": 2000001,
+        "HeartbeatIntervalMs": 1000,
+        "Commands": null
+      },
+*/
+
+std::vector<check_t> Supervision::check (std::string const& path) {
+
   std::vector<check_t> ret;
-  Node::Children machines = readDB(path).children();
+  Node::Children const& machines = _snapshot(path).children();
+
   for (auto const& machine : machines) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << machine.first;
-    ret.push_back(check_t(machine.first, true));
+
+    ServerID const& serverID = machine.first;
+    auto it = _vital_signs.find(serverID);
+
+    if (it != _vital_signs.end()) {   // Existing server
+      LOG(INFO) << __LINE__ << " " <<
+        _snapshot(std::string("/Sync/") + serverID + "/time").toJson() << ":" <<
+        _snapshot(std::string("/Sync/") + serverID + "/time").toJson();
+      if (it->second->serverTimestamp ==
+          _snapshot(std::string("/Sync/") + serverID + "/time").toJson()) {
+        continue;
+      } else {
+        it->second->update(
+          _snapshot(std::string("/Sync/") + serverID + "/time").toJson(),
+          _snapshot(std::string("/Sync/") + serverID + "/status").toJson());
+      }
+    } else {                          // New server
+      LOG(INFO) << __LINE__ << " " <<
+        _snapshot(std::string("/Sync/") + serverID + "/time").toJson() << ":" <<
+        _snapshot(std::string("/Sync/") + serverID + "/time").toJson();
+      _vital_signs.emplace(
+        serverID,
+        std::make_shared<VitalSign>(
+          _snapshot(std::string("/Sync/") + serverID + "/time").toJson(),
+          _snapshot(std::string("/Sync/") + serverID + "/status").toJson()));
+    }
+
   }
+
   return ret;
+
 }
 
 bool Supervision::doChecks (bool timedout) {
@@ -59,9 +118,10 @@ bool Supervision::doChecks (bool timedout) {
     return false;
   }
 
-  Node const& readDB = _agent->readDB().get("/");
+  _snapshot = _agent->readDB().get("/");
+  
   LOG_TOPIC(INFO, Logger::AGENCY) << "Sanity checks";
-  std::vector<check_t> ret = check(readDB, "/arango/Current/DBServers");
+  std::vector<check_t> ret = check("/arango/Current/DBServers");
   
   return true;
   

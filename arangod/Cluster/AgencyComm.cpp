@@ -692,8 +692,6 @@ bool AgencyComm::tryInitializeStructure() {
           builder.add("name", VPackValue("_system"));
           builder.add("id", VPackValue("1"));
         }
-//KV        builder.add("_system",
-        //                VPackValue("{name:_system, id:1}"));
       }
       builder.add("Lock", VPackValue("UNLOCKED"));
       addEmptyVPackObject("DBServers", builder);
@@ -726,11 +724,26 @@ bool AgencyComm::tryInitializeStructure() {
           builder.add("name", VPackValue("_system"));
           builder.add("id", VPackValue("1"));
         }
-//KV        builder.add("_system",
-        //                VPackValue("{name:_system, id:1}"));
       }
       addEmptyVPackObject("DBServers", builder);
       builder.add("Lock", VPackValue("UNLOCKED"));
+    }
+    addEmptyVPackObject("Supervision", builder);
+    {
+      VPackObjectBuilder c(&builder);
+      addEmptyVPackObject("Jobs", builder);
+      {
+        VPackObjectBuilder d(&builder);
+        addEmptyVPackObject("Pending", builder);
+      }      
+      {
+        VPackObjectBuilder d(&builder);
+        addEmptyVPackObject("Finished", builder);
+      }      
+      {
+        VPackObjectBuilder d(&builder);
+        addEmptyVPackObject("Failed", builder);
+      }      
     }
     builder.add("InitDone", VPackValue(true));
   } catch (...) {
