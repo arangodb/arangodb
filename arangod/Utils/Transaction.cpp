@@ -35,9 +35,9 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/PrimaryIndex.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/HashIndex.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Indexes/SkiplistIndex.h"
 #include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"
@@ -51,6 +51,13 @@
 #include "VocBase/MasterPointers.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBIndex.h"
+
+#include <rocksdb/utilities/optimistic_transaction_db.h>
+#include <rocksdb/utilities/transaction.h>
+#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -590,6 +597,19 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
   }
   return ditch;
 }
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get (or create) a rocksdb WriteTransaction
+//////////////////////////////////////////////////////////////////////////////
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+rocksdb::Transaction* Transaction::rocksTransaction() {
+  if (_trx->_rocksTransaction == nullptr) {
+    _trx->_rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
+  }
+  return _trx->_rocksTransaction;
+}
+#endif
   
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _key attribute from a slice
@@ -3044,6 +3064,10 @@ std::shared_ptr<Index> Transaction::indexForCollectionCoordinator(
           idx.reset(new arangodb::HashIndex(v));
         } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
           idx.reset(new arangodb::SkiplistIndex(v));
+#ifdef ARANGODB_ENABLE_ROCKSDB
+        } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX) {
+          idx.reset(new arangodb::RocksDBIndex(v));
+#endif
         }
         return idx;
       }

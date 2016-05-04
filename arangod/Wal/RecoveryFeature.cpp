@@ -40,8 +40,11 @@ RecoveryFeature::RecoveryFeature(ApplicationServer* server)
 
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Database"); // TODO
+  startsAfter("Database"); 
   startsAfter("LogfileManager");
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  startsAfter("RocksDB");
+#endif
 }
 
 /// @brief run the recovery procedure

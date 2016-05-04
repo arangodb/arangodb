@@ -337,7 +337,6 @@ bool SkiplistIndex::intervalValid(Node* left, Node* right) const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attempts to locate an entry in the skip list index
 ///
-/// Note: this function will not destroy the passed slOperator before it returns
 /// Warning: who ever calls this function is responsible for destroying
 /// the SkiplistIterator* results
 ////////////////////////////////////////////////////////////////////////////////
@@ -990,7 +989,13 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     try {
       for (auto const& val : VPackArrayIterator(expandedSlice)) {
         auto iterator = lookup(trx, val, reverse);
-        iterators.push_back(iterator);
+        try {
+          iterators.push_back(iterator);
+        } catch (...) {
+          // avoid leak
+          delete iterator;
+          throw;
+        }
       }
       if (reverse) {
         std::reverse(iterators.begin(), iterators.end());

@@ -150,8 +150,15 @@ else ()
   set(MAKE make)
 endif ()
 
+if (USE_ROCKSDB)
+  find_package(Snappy)
+else ()
+  set(SNAPPY_STATIC_LIB "")
+  set(ROCKSDB_LIBS "")
+endif ()
+
 find_package(PythonInterp 2 REQUIRED)
-get_filename_component(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE} REALPATH)
+get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 ################################################################################
 ## ARCHITECTURE
@@ -257,6 +264,7 @@ endif ()
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/rocksdb/include)
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
@@ -423,6 +431,19 @@ endif ()
 if (${USE_JEMALLOC} AND ${USE_TCMALLOC})
   MESSAGE(FATAL_ERROR " you mustn't demand for tcmalloc and jemalloc at the same time!")
 endif()
+
+################################################################################
+## ROCKSDB
+################################################################################
+
+option(USE_ROCKSDB
+  "whether RocksDB is enabled"
+  OFF
+)
+
+if (USE_ROCKSDB)
+  add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
+endif ()
 
 ################################################################################
 ## LIBRARY RESOLV
@@ -649,6 +670,15 @@ endif ()
 
 include_directories(${Boost_INCLUDE_DIR})
 add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
+
+################################################################################
+## ROCKSDB
+################################################################################
+
+if (USE_ROCKSDB)
+include_directories(${ROCKSDB_INCLUDE_DIR})
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+endif ()
 
 ################################################################################
 ## ICU

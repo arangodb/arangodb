@@ -167,7 +167,8 @@ class Index {
     TRI_IDX_TYPE_HASH_INDEX,
     TRI_IDX_TYPE_EDGE_INDEX,
     TRI_IDX_TYPE_FULLTEXT_INDEX,
-    TRI_IDX_TYPE_SKIPLIST_INDEX
+    TRI_IDX_TYPE_SKIPLIST_INDEX,
+    TRI_IDX_TYPE_ROCKSDB_INDEX
   };
 
  public:
@@ -328,6 +329,8 @@ class Index {
   static bool Compare(VPackSlice const& lhs, VPackSlice const& rhs);
 
   virtual IndexType type() const = 0;
+  virtual bool isPersistent() const { return false; }
+  virtual bool canBeDropped() const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the index is sorted
@@ -356,6 +359,8 @@ class Index {
 
   // a garbage collection function for the index
   virtual int cleanup();
+  // called when the index is dropped
+  virtual int drop();
 
   // give index a hint about the expected size
   virtual int sizeHint(arangodb::Transaction*, size_t);
