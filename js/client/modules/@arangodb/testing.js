@@ -518,7 +518,6 @@ function checkArangoAlive(arangod, options) {
       arangod.exitStatus = res;
       analyzeServerCrash(arangod, options, "health Check");
     }
-
   }
   
   return ret;
@@ -3968,7 +3967,7 @@ function unitTest(cases, options) {
     UNITTESTS_DIR = fs.join(UNITTESTS_DIR, options.buildType);
   }
 
-  CONFIG_DIR = fs.join(TOP_DIR, builddir, "etc", "arangodb");
+  CONFIG_DIR = fs.join(TOP_DIR, builddir, "etc", "arangodb3");
   ARANGOBENCH_BIN = fs.join(BIN_DIR, "arangobench");
   ARANGODUMP_BIN = fs.join(BIN_DIR, "arangodump");
   ARANGOD_BIN = fs.join(BIN_DIR, "arangod");
