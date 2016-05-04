@@ -126,11 +126,10 @@ BOOST_AUTO_TEST_CASE (tst_df_footer_marker) {
 BOOST_AUTO_TEST_CASE (tst_col_header_marker) {
   size_t s = sizeof(TRI_col_header_marker_t);
 
-  BOOST_CHECK_EQUAL(16 + 16, (int) s); // base + own size
+  BOOST_CHECK_EQUAL(16 + 8, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
   BOOST_CHECK_EQUAL(16, (int) offsetOf(&TRI_col_header_marker_t::_cid));
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&TRI_col_header_marker_t::_type));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

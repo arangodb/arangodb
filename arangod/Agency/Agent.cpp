@@ -297,7 +297,7 @@ bool Agent::load() {
   if (!_state.loadCollections(vocbase, 
                               _config.waitForSync)) {
     LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Failed to load persistent state on statup.";
+      << "Failed to load persistent state on startup.";
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
