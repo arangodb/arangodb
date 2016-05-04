@@ -461,7 +461,7 @@ else()
   add_library(rocksdblib${ARTIFACT_SUFFIX} STATIC ${SOURCES})
 endif()
 
-add_library(rocksdb${ARTIFACT_SUFFIX} SHARED ${SOURCES})
+add_library(rocksdb${ARTIFACT_SUFFIX} STATIC ${SOURCES})
 if (WIN32)
   set_target_properties(rocksdb${ARTIFACT_SUFFIX} PROPERTIES COMPILE_FLAGS "-DROCKSDB_DLL -DROCKSDB_LIBRARY_EXPORTS /Fd${CMAKE_CFG_INTDIR}/rocksdb${ARTIFACT_SUFFIX}.pdb")
 ENDIF()

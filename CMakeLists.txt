@@ -141,6 +141,19 @@ elseif (APPLE)
 endif ()
 
 ################################################################################
+## ROCKSDB
+################################################################################
+
+option(USE_ROCKSDB
+  "whether RocksDB is enabled"
+  OFF
+)
+
+if (USE_ROCKSDB)
+  add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
+endif ()
+
+################################################################################
 ## EXTERNAL PROGRAMS
 ################################################################################
 
@@ -431,19 +444,6 @@ endif ()
 if (${USE_JEMALLOC} AND ${USE_TCMALLOC})
   MESSAGE(FATAL_ERROR " you mustn't demand for tcmalloc and jemalloc at the same time!")
 endif()
-
-################################################################################
-## ROCKSDB
-################################################################################
-
-option(USE_ROCKSDB
-  "whether RocksDB is enabled"
-  OFF
-)
-
-if (USE_ROCKSDB)
-  add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
-endif ()
 
 ################################################################################
 ## LIBRARY RESOLV
