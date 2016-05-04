@@ -2813,15 +2813,19 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
     return list.clone();
   }
 
+  AqlValueMaterializer toAppendMaterializer(trx);
+  VPackSlice t = toAppendMaterializer.slice(toAppend, false);
+    
+  if (t.isArray() && t.length() == 0) {
+    return list.clone();
+  }
+
   bool unique = false;
   if (parameters.size() == 3) {
     AqlValue a = ExtractFunctionParameterValue(trx, parameters, 2);
     unique = a.toBoolean();
   }
   
-  AqlValueMaterializer toAppendMaterializer(trx);
-  VPackSlice t = toAppendMaterializer.slice(toAppend, false);
-    
   AqlValueMaterializer materializer(trx);
   VPackSlice l = materializer.slice(list, false);
 
@@ -2829,9 +2833,10 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
   builder->openArray();
 
   if (!list.isNull(true)) {
-    TRI_ASSERT(list.isArray());
-    for (auto const& it : VPackArrayIterator(l)) {
-      builder->add(it);
+    if (list.isArray()) {
+      for (auto const& it : VPackArrayIterator(l)) {
+        builder->add(it);
+      }
     }
   }
   if (!toAppend.isArray()) {
@@ -2841,8 +2846,17 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
   } else {
     AqlValueMaterializer materializer(trx);
     VPackSlice slice = materializer.slice(toAppend, false);
-    for (auto const& it : VPackArrayIterator(slice)) {
-      if (!unique || !ListContainsElement(l, it)) {
+    if (unique) {
+      std::unordered_set<VPackSlice> added;
+      added.reserve(slice.length());
+      for (auto const& it : VPackArrayIterator(slice)) {
+        if (added.find(it) == added.end() && !ListContainsElement(l, it)) {
+          builder->add(it);
+          added.emplace(it);
+        }
+      }
+    } else {
+      for (auto const& it : VPackArrayIterator(slice)) {
         builder->add(it);
       }
     }
