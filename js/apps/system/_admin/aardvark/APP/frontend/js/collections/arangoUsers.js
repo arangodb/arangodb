@@ -31,15 +31,14 @@ window.ArangoUsers = Backbone.Collection.extend({
     return a > b ? 1 : a < b ? -1 : 0;
   },
 
-  login: function (username, password, database, callback) {
+  login: function (username, password, callback) {
     var self = this;
 
     $.ajax("login", {
       method: "POST",
       data: JSON.stringify({
         username: username,
-        password: password,
-        database: database
+        password: password
       }),
       dataType: "json"
     }).success(

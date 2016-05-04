@@ -35,14 +35,14 @@ using namespace arangodb::wal;
   
 /// @brief returns the bitmask for the synchronous waiters
 /// for use in _waiters only
-static constexpr uint64_t syncWaitersMask() {
+static constexpr inline uint64_t syncWaitersMask() {
   return static_cast<uint64_t>(0xffffffffULL); 
 }
   
 /// @brief returns the numbers of bits to shift to get the
 /// number of asynchronous waiters 
 /// for use in _waiters only
-static constexpr int asyncWaitersBits() { return 32; }
+static constexpr inline int asyncWaitersBits() { return 32; }
 
 SynchronizerThread::SynchronizerThread(LogfileManager* logfileManager,
                                        uint64_t syncInterval)

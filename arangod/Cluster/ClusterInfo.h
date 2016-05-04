@@ -774,13 +774,6 @@ class ClusterInfo {
   std::vector<ServerID> getCurrentDBServers();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for
-  /// our id
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string getTargetServerEndpoint(ServerID const&);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief find the servers who are responsible for a shard (one leader
   /// and possibly multiple followers).
   /// If it is not found in the cache, the cache is reloaded once, if

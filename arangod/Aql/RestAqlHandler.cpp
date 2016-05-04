@@ -713,7 +713,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         auto atLeast =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
         auto atMost = VelocyPackHelper::getNumericValue<size_t>(
-            querySlice, "atMost", ExecutionBlock::DefaultBatchSize);
+            querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
         std::unique_ptr<AqlItemBlock> items;
         if (shardId.empty()) {
           items.reset(query->engine()->getSome(atLeast, atMost));
@@ -747,7 +747,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         auto atLeast =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
         auto atMost = VelocyPackHelper::getNumericValue<size_t>(
-            querySlice, "atMost", ExecutionBlock::DefaultBatchSize);
+            querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
         size_t skipped;
         try {
           if (shardId.empty()) {

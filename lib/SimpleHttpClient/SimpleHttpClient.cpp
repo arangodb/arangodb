@@ -810,7 +810,7 @@ void SimpleHttpClient::processChunkedHeader() {
 
   try {
     contentLength =
-        static_cast<uint32_t>(std::stol(line, nullptr, 16));  // C++11
+        static_cast<uint32_t>(std::stol(line, nullptr, 16));  
   } catch (...) {
     setErrorMessage("found invalid content-length", true);
     // reset connection

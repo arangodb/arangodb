@@ -702,12 +702,10 @@ bool AgencyComm::tryInitializeStructure() {
         addEmptyVPackObject("_system", builder);
       }
     }
-    addEmptyVPackObject("Launchers", builder);
     builder.add(VPackValue("Target"));
     {
       VPackObjectBuilder c(&builder);
       addEmptyVPackObject("Coordinators", builder);
-      addEmptyVPackObject("MapIDToEndpoint", builder);
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);

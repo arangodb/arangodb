@@ -47,15 +47,8 @@ class ArrayIterator {
     if (slice.type() != ValueType::Array) {
       throw Exception(Exception::InvalidValueType, "Expecting Array slice");
     }
-      
-    if (_size > 0) {
-      auto h = slice.head();
-      if (h == 0x13) {
-        _current = slice.at(0).start();
-      } else if (allowRandomIteration) {
-        _current = slice.begin() + slice.findDataOffset(h);
-      }
-    }
+   
+    reset(allowRandomIteration);   
   }
 
   ArrayIterator(ArrayIterator const& other)
@@ -138,6 +131,25 @@ class ArrayIterator {
   inline bool isFirst() const throw() { return (_position == 0); }
 
   inline bool isLast() const throw() { return (_position + 1 >= _size); }
+
+  inline void forward(ValueLength count) {
+    if (_position + count >= _size) {
+      // beyond end of data
+      _current = nullptr;
+      _position = _size;
+    } else {
+      auto h = _slice.head();
+      if (h == 0x13) {
+        while (count-- > 0) {
+          _current += Slice(_current).byteSize();
+          ++_position;
+        }
+      } else {
+        _position += count;
+        _current = _slice.at(_position).start();
+      } 
+    }
+  }
     
   inline void reset(bool allowRandomIteration) {
     _position = 0;

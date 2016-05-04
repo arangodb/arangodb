@@ -220,7 +220,7 @@ bool GatherBlock::hasMore() {
     for (size_t i = 0; i < _gatherBlockBuffer.size(); i++) {
       if (!_gatherBlockBuffer.at(i).empty()) {
         return true;
-      } else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
+      } else if (getBlock(i, DefaultBatchSize(), DefaultBatchSize())) {
         _gatherBlockPos.at(i) = std::make_pair(i, 0);
         return true;
       }
@@ -620,7 +620,7 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   // _buffer.at(i) we are sending to <clientId>
 
   if (pos.first > _buffer.size()) {
-    if (!ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+    if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
       _doneForClient.at(clientId) = true;
       return false;
     }
@@ -802,7 +802,7 @@ bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
     return true;
   }
 
-  if (!getBlockForClient(DefaultBatchSize, DefaultBatchSize, clientId)) {
+  if (!getBlockForClient(DefaultBatchSize(), DefaultBatchSize(), clientId)) {
     _doneForClient.at(clientId) = true;
     return false;
   }

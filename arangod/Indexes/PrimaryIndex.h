@@ -47,8 +47,7 @@ class PrimaryIndexIterator final : public IndexIterator {
       : _trx(trx), 
         _index(index), 
         _keys(keys.get()), 
-        _iterator(_keys->slice(), true), 
-        _position(0) {
+        _iterator(_keys->slice(), true) {
 
         keys.release(); // now we have ownership for _keys
         TRI_ASSERT(_keys->slice().isArray());
@@ -65,7 +64,6 @@ class PrimaryIndexIterator final : public IndexIterator {
   PrimaryIndex const* _index;
   std::unique_ptr<VPackBuilder> _keys;
   arangodb::velocypack::ArrayIterator _iterator;
-  size_t _position;
 };
 
 class AllIndexIterator final : public IndexIterator {

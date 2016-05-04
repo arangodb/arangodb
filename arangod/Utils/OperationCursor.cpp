@@ -57,7 +57,8 @@ void OperationCursor::getMore(std::shared_ptr<OperationResult>& opRes,
     // Create a valid pointer if none is given
     auto tmp = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
     opRes.swap(tmp);
-  }
+  } 
+  
   // This may throw out of memory
   if (!hasMore()) {
     TRI_ASSERT(false);
@@ -68,7 +69,7 @@ void OperationCursor::getMore(std::shared_ptr<OperationResult>& opRes,
   if (batchSize == UINT64_MAX) {
     batchSize = _batchSize;
   }
-
+  
   VPackBuilder builder(opRes->buffer);
   builder.clear();
   try {
@@ -79,7 +80,7 @@ void OperationCursor::getMore(std::shared_ptr<OperationResult>& opRes,
       --batchSize;
       --_limit;
       if (useExternals) {
-        builder.add(VPackValue(mptr->vpack(), VPackValueType::External));
+        builder.addExternal(mptr->vpack());
       } else {
         builder.add(VPackSlice(mptr->vpack()));
       }

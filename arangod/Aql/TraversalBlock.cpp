@@ -375,7 +375,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   }
 
   if (_buffer.empty()) {
-    size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
     if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
       _done = true;
       return nullptr;
@@ -476,7 +476,7 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
   }
 
   if (_buffer.empty()) {
-    size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
     if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
       _done = true;
       return skipped;

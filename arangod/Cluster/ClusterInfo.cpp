@@ -2373,42 +2373,6 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for
-/// our id
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string const prefixTargetServerEndpoint = "Target/MapIDToEndpoint/";
-
-std::string ClusterInfo::getTargetServerEndpoint(ServerID const& serverID) {
-  AgencyCommResult result;
-
-  // fetch value at Target/MapIDToEndpoint
-  {
-    AgencyCommLocker locker("Target", "READ");
-
-    if (locker.successful()) {
-      result = _agency.getValues2(prefixTargetServerEndpoint + serverID, false);
-    }
-  }
-
-  if (result.successful()) {
-    result.parse(prefixTargetServerEndpoint, false);
-
-    // check if we can find ourselves in the list returned by the agency
-    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-        result._values.find(serverID);
-
-    if (it != result._values.end()) {
-      VPackSlice const slice = it->second._vpack->slice();
-      return arangodb::basics::VelocyPackHelper::getStringValue(slice, "");
-    }
-  }
-
-  // not found
-  return "";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find the servers who are responsible for a shard (one leader
 /// and multiple followers)
 /// If it is not found in the cache, the cache is reloaded once, if
