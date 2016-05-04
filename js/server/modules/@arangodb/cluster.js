@@ -157,80 +157,6 @@ function addShardFollower(endpoint, shard) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get values from Plan or Current by a prefix
-////////////////////////////////////////////////////////////////////////////////
-
-function getByPrefix (values, prefix) {
-  var result = { };
-  var a;
-  var n = prefix.length;
-
-  for (a in values) {
-    if (values.hasOwnProperty(a)) {
-      if (a.substr(0, n) === prefix) {
-        result[a.substr(n)] = values[a];
-      }
-    }
-  }
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get values from Plan or Current by a prefix
-////////////////////////////////////////////////////////////////////////////////
-
-function getByPrefix3d (values, prefix) {
-  var result = { };
-  var a;
-  var n = prefix.length;
-
-  for (a in values) {
-    if (values.hasOwnProperty(a)) {
-      if (a.substr(0, n) === prefix) {
-        var key = a.substr(n);
-        var parts = key.split('/');
-        if (parts.length >= 2) {
-          if (! result.hasOwnProperty(parts[0])) {
-            result[parts[0]] = { };
-          }
-          result[parts[0]][parts[1]] = values[a];
-        }
-      }
-    }
-  }
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get values from Plan or Current by a prefix
-////////////////////////////////////////////////////////////////////////////////
-
-function getByPrefix4d (values, prefix) {
-  var result = { };
-  var a;
-  var n = prefix.length;
-
-  for (a in values) {
-    if (values.hasOwnProperty(a)) {
-      if (a.substr(0, n) === prefix) {
-        var key = a.substr(n);
-        var parts = key.split('/');
-        if (parts.length >= 3) {
-          if (! result.hasOwnProperty(parts[0])) {
-            result[parts[0]] = { };
-          }
-          if (! result[parts[0]].hasOwnProperty(parts[1])) {
-            result[parts[0]][parts[1]] = { };
-          }
-          result[parts[0]][parts[1]][parts[2]] = values[a];
-        }
-      }
-    }
-  }
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup for 4-dimensional nested dictionary data
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -355,6 +281,7 @@ function getLocalCollections () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function createLocalDatabases (plannedDatabases, currentDatabases, writeLocked) {
+
   var ourselves = global.ArangoServerState.id();
   var createDatabaseAgency = function (payload) {
     global.ArangoAgency.set("Current/Databases/" + payload.name + "/" + ourselves,
@@ -483,7 +410,7 @@ function cleanupCurrentDatabases (writeLocked) {
   db._useDatabase("_system");
 
   var all = global.ArangoAgency.get("Current/Databases", true);
-  var currentDatabases = getByPrefix3d(all, "Current/Databases/");
+  var currentDatabases = all.arango.Current.Databases;
   var localDatabases = getLocalDatabases();
   var name;
 
@@ -511,8 +438,9 @@ function cleanupCurrentDatabases (writeLocked) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function handleDatabaseChanges (plan, current, writeLocked) {
-  var plannedDatabases = getByPrefix(plan, "Plan/Databases/");
-  var currentDatabases = getByPrefix(plan, "Current/Databases/");
+
+  var plannedDatabases = plan.Databases;
+  var currentDatabases = current.Databases;
 
   createLocalDatabases(plannedDatabases, currentDatabases, writeLocked);
   dropLocalDatabases(plannedDatabases, writeLocked);
@@ -892,7 +820,7 @@ function cleanupCurrentCollections (plannedCollections, writeLocked) {
   db._useDatabase("_system");
 
   var all = global.ArangoAgency.get("Current/Collections", true);
-  var currentCollections = getByPrefix4d(all, "Current/Collections/");
+  var currentCollections = all.arango.Current.Collections;
   var shardMap = getShardMap(plannedCollections);
   var database;
 
@@ -947,7 +875,7 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
 
   // Get current information about collections from agency:
   var all = global.ArangoAgency.get("Current/Collections", true);
-  var currentCollections = getByPrefix4d(all, "Current/Collections/");
+  var currentCollections = all.arango.Current.Collections;
 
   var rep = require("@arangodb/replication");
 
@@ -998,8 +926,7 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
                       require("internal").wait(0.5);
                       all = global.ArangoAgency.get("Current/Collections",
                                                     true);
-                      currentCollections = getByPrefix4d(all,
-                                                   "Current/Collections/");
+                      currentCollections = all.Current.Collections;
                       inCurrent = lookup4d(currentCollections, database, 
                                            collection, shard);
                     }
@@ -1081,12 +1008,12 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function handleCollectionChanges (plan, takeOverResponsibility, writeLocked) {
-  var plannedCollections = getByPrefix3d(plan, "Plan/Collections/");
+  var plannedCollections = plan.Collections;
 
   var ok = true;
 
   try {
-    createLocalCollections(plannedCollections, plan["Plan/Version"], takeOverResponsibility, writeLocked);
+    createLocalCollections(plannedCollections, plan.Version, takeOverResponsibility, writeLocked);
     dropLocalCollections(plannedCollections, writeLocked);
     cleanupCurrentCollections(plannedCollections, writeLocked);
     synchronizeLocalFollowerCollections(plannedCollections);
@@ -1194,20 +1121,18 @@ function handleChanges (plan, current, writeLocked) {
     // Need to check role change for automatic failover:
     var myId = ArangoServerState.id();
     if (role === "PRIMARY") {
-      if (! plan.hasOwnProperty("Plan/DBServers/"+myId)) {
+      if (! plan.DBServers[myId]) {
         // Ooops! We do not seem to be a primary any more!
         changed = ArangoServerState.redetermineRole();
       }
-    }
-    else { // role === "SECONDARY"
-      if (plan.hasOwnProperty("Plan/DBServers/"+myId)) {
+    } else { // role === "SECONDARY"
+      if (plan.DBServers[myId]) {
         changed = ArangoServerState.redetermineRole();
         if (!changed) {
           // mop: oops...changing role has failed. retry next time.
           return false;
         }
-      }
-      else {
+      } else {
         var found = null;
         var p;
         for (p in plan) {
@@ -1436,7 +1361,7 @@ var handlePlanChange = function () {
       global.ArangoAgency.increaseVersion(lockInfo.part + "/Version");
       
       let version = global.ArangoAgency.get(lockInfo.part + "/Version");
-      versions[lockInfo.part.toLowerCase()] = version[lockInfo.part + "/Version"];
+      versions[lockInfo.part.toLowerCase()] = version.arango[lockInfo.part].Version;
       
       global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
     }
@@ -1447,16 +1372,16 @@ var handlePlanChange = function () {
   }
 
   try {
-    var plan    = global.ArangoAgency.get("Plan", true);
-    var current = global.ArangoAgency.get("Current", true);
+    var plan    = global.ArangoAgency.get("Plan", true).arango.Plan;
+    var current = global.ArangoAgency.get("Current", true).arango.Current;
 
-    versions.plan = plan['Plan/Version'];
-    versions.current = current['Current/Version'];
+    versions.plan = plan.Version;
+    versions.current = current.Version;
 
     handleChanges(plan, current, writeLocked);
+
     console.info("plan change handling successful");
-  }
-  catch (err) {
+  } catch (err) {
     console.error("error details: %s", JSON.stringify(err));
     console.error("error stack: %s", err.stack);
     console.error("plan change handling failed");

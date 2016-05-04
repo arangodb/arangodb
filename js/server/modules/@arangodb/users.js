@@ -360,15 +360,14 @@ exports.reload = function () {
 
     while (! done) {
       try {
-        UserVersion = ArangoAgency.get("Sync/UserVersion")["Sync/UserVersion"];
-        // This is now a string!
+        UserVersion = ArangoAgency.get("Sync/UserVersion");
+        UserVersion = UserVersion.arango.Sync.UserVersion;
       }
       catch (err) {
         break;
       }
       try {
-        done = ArangoAgency.cas("Sync/UserVersion",UserVersion,
-                                (parseInt(UserVersion,10)+1).toString());
+        done = ArangoAgency.cas("Sync/UserVersion",UserVersion, UserVersion+1);
       }
       catch (err2) {
         break;

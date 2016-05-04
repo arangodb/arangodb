@@ -912,6 +912,7 @@ ArangoDatabase.prototype._createDatabase = function (name, options, users) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._dropDatabase = function (name) {
+  
   var requestResult = this._connection.DELETE("/_api/database/" + encodeURIComponent(name));
 
   if (requestResult !== null && requestResult.error === true) {

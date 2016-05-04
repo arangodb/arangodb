@@ -88,6 +88,11 @@ public:
   /// @brief Create Builder representing this store
   void toBuilder (Builder&) const;
 
+  /// @brief Copy out a node
+  Node const get (std::string const& path) const;
+
+  std::string toJson () const;
+
   friend class Node;
 
 private:

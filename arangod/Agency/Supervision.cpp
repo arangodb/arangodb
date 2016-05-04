@@ -30,20 +30,97 @@
 
 using namespace arangodb::consensus;
 
+
+
 Supervision::Supervision() : arangodb::Thread("Supervision"), _agent(nullptr),
-                             _frequency(5000000) {}
+                             _snapshot("Supervision"), _frequency(5000000) {
+  
+}
 
 Supervision::~Supervision() {
   shutdown();
 };
 
 void Supervision::wakeUp () {
+
+  TRI_ASSERT(_agent!=nullptr);
+  _snapshot = _agent->readDB().get("/");
   _cv.signal();
+  
+}
+
+/*
+      "Sync": {
+        "UserVersion": 2,
+        "ServerStates": {
+          "DBServer2": {
+            "time": "2016-05-04T09:17:31Z",
+            "status": "SERVINGASYNC"
+          },
+          "DBServer1": {
+            "time": "2016-05-04T09:17:30Z",
+            "status": "SERVINGASYNC"
+          },
+          "Coordinator1": {
+            "time": "2016-05-04T09:17:31Z",
+            "status": "SERVING"
+          }
+        },
+        "Problems": null,
+        "LatestID": 2000001,
+        "HeartbeatIntervalMs": 1000,
+        "Commands": null
+      },
+*/
+static std::string const syncPrefix = "/arango/Sync/ServerStates/";
+static std::string const supervisionPrefix = "/arango/Supervision";
+std::vector<check_t> Supervision::check (std::string const& path) {
+
+  std::vector<check_t> ret;
+  Node::Children const& machines = _snapshot(path).children();
+
+  for (auto const& machine : machines) {
+
+    ServerID const& serverID = machine.first;
+    auto it = _vital_signs.find(serverID);
+    std::string lastHeartbeatTime = _snapshot(syncPrefix + serverID + "/time").toJson();
+    std::string lastHeartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
+    
+    if (it != _vital_signs.end()) {   // Existing server
+      if (it->second->serverTimestamp == lastHeartbeatTime) {
+        LOG(WARN) << "NO GOOD:" << serverID << it->second->serverTimestamp << ":" << it->second->serverStatus;
+        continue;
+      } else {
+        query_t report = std::make_shared<Builder>();
+        report->openArray(); report->openArray(); report->openObject();
+        report->add("Status", VPackValue("GOOD"));
+        report->close(); report->close(); report->close();
+        LOG(DEBUG) << "GOOD:" << serverID<< it->second->serverTimestamp << ":" << it->second->serverStatus;
+        it->second->update(lastHeartbeatStatus,lastHeartbeatTime);
+      }
+    } else {                          // New server
+      _vital_signs[serverID] = 
+        std::make_shared<VitalSign>(lastHeartbeatStatus,lastHeartbeatTime);
+    }
+  }
+
+  return ret;
+
 }
 
 bool Supervision::doChecks (bool timedout) {
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Sanity checks";
+
+  if (_agent == nullptr) {
+    return false;
+  }
+
+  _snapshot = _agent->readDB().get("/");
+  
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sanity checks";
+  std::vector<check_t> ret = check("/arango/Current/DBServers");
+  
   return true;
+  
 }
 
 void Supervision::run() {

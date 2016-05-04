@@ -534,6 +534,7 @@ actions.defineHttp({
       var oldValue;
       try {
         oldValue = ArangoAgency.get("Plan/DBServers/" + primary, false, false);
+        oldValue = oldValue.arango.Plan.DBServers[primary];
       }
       catch (e1) {
         actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
@@ -651,6 +652,7 @@ actions.defineHttp({
       try {
         oldValue = ArangoAgency.get("Plan/DBServers/" + body.primary, false,
                                     false);
+        oldValue = oldValue.arango.Plan.DBservers[body.primary];
       }
       catch (e1) {
         actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
@@ -700,6 +702,7 @@ function changeAllShardReponsibilities (oldServer, newServer) {
   // This is only called when we have the write lock and we "only" have to
   // make sure that either all or none of the shards are moved.
   var collections = ArangoAgency.get("Plan/Collections", true, false);
+  collections = collections.arango.Plan.Collections;
   var done = {};
   try {
   Object.keys(collections).forEach(function(collectionKey) {
@@ -831,6 +834,7 @@ actions.defineHttp({
       try {
         oldValue = ArangoAgency.get("Plan/DBServers/" + body.primary, false,
                                     false);
+        oldValue = oldValue.arango.Plan.DBservers[body.primary];
       }
       catch (e1) {
         actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,

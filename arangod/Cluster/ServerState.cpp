@@ -190,16 +190,6 @@ void ServerState::findAndSetRoleBlocking() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::flush() {
-  {
-    WRITE_LOCKER(writeLocker, _lock);
-
-    if (_id.empty()) {
-      return;
-    }
-
-    _address = ClusterInfo::instance()->getTargetServerEndpoint(_id);
-  }
-  
   findAndSetRoleBlocking();
 }
 
@@ -484,32 +474,8 @@ void ServerState::setDescription(std::string const& description) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getAddress() {
-  std::string id;
-
-  {
-    READ_LOCKER(readLocker, _lock);
-    if (!_address.empty()) {
-      return _address;
-    }
-
-    id = _id;
-  }
-
-  // address not yet set
-  if (id.empty()) {
-    return "";
-  }
-
-  // fetch and set the address
-  std::string const address =
-      ClusterInfo::instance()->getTargetServerEndpoint(id);
-
-  {
-    WRITE_LOCKER(writeLocker, _lock);
-    _address = address;
-  }
-
-  return address;
+  READ_LOCKER(readLocker, _lock);
+  return _address;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

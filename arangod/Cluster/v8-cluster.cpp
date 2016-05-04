@@ -32,6 +32,9 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "VocBase/server.h"
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -221,65 +224,30 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("get(<key>, <recursive>, <withIndexes>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("get(<key>)");
   }
 
   std::string const key = TRI_ObjectToString(args[0]);
-  bool recursive = false;
-  bool withIndexes = false;
-
-  if (args.Length() > 1) {
-    recursive = TRI_ObjectToBoolean(args[1]);
-  }
-  if (args.Length() > 2) {
-    withIndexes = TRI_ObjectToBoolean(args[2]);
-  }
-
   AgencyComm comm;
-  AgencyCommResult result = comm.getValues(key, recursive);
+  AgencyCommResult result = comm.getValues2(key);
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
   }
 
-  result.parse("", false);
-
   v8::Handle<v8::Object> l = v8::Object::New(isolate);
 
-  if (withIndexes) {
-    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-        result._values.begin();
-
-    while (it != result._values.end()) {
-      std::string const key = (*it).first;
-      VPackSlice const slice = it->second._vpack->slice();
-      std::string const idx = StringUtils::itoa((*it).second._index);
-
-      if (!slice.isNone()) {
-        v8::Handle<v8::Object> sub = v8::Object::New(isolate);
-
-        sub->Set(TRI_V8_ASCII_STRING("value"), TRI_VPackToV8(isolate, slice));
-        sub->Set(TRI_V8_ASCII_STRING("index"), TRI_V8_STD_STRING(idx));
-
-        l->Set(TRI_V8_STD_STRING(key), sub);
-      }
-
-      ++it;
-    }
-  } else {
-    // return just the value for each key
-    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-        result._values.begin();
-
-    while (it != result._values.end()) {
-      std::string const key = (*it).first;
-      VPackSlice const slice = it->second._vpack->slice();
-
+  // return just the value for each key
+  
+  for (auto const& a : VPackArrayIterator(result.slice())) {
+    for (auto const& o : VPackObjectIterator(a)) {
+      
+      std::string const key = o.key.copyString();
+      VPackSlice const slice = o.value;
+      
       if (!slice.isNone()) {
         l->ForceSet(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
       }
-
-      ++it;
     }
   }
 
