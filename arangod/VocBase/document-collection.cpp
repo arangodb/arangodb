@@ -555,7 +555,7 @@ arangodb::Index* TRI_document_collection_t::removeIndex(TRI_idx_iid_t iid) {
   size_t const n = _indexes.size();
 
   for (size_t i = 0; i < n; ++i) {
-    auto& idx = _indexes[i];
+    arangodb::Index* idx = _indexes[i];
 
     if (!idx->canBeDropped()) {
       continue;
@@ -1414,7 +1414,6 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
   TRI_col_header_marker_t cm;
   DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(&cm), TRI_DF_MARKER_COL_HEADER,
                          sizeof(TRI_col_header_marker_t), static_cast<TRI_voc_tick_t>(fid));
-  cm._type = static_cast<TRI_col_type_t>(document->_info.type());
   cm._cid = document->_info.id();
 
   res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, false);
