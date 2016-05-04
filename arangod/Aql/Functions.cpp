@@ -1694,8 +1694,7 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
 
   VPackOptions options;
   options.customTypeHandler =
-      trx->transactionContext()->createCustomTypeHandler(query->vocbase(),
-                                                         trx->resolver());
+      trx->transactionContext()->orderCustomTypeHandler().get();
   std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
@@ -1815,13 +1814,14 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
 
   VPackOptions options;
   options.customTypeHandler =
-      trx->transactionContext()->createCustomTypeHandler(query->vocbase(),
-                                                         trx->resolver());
+      trx->transactionContext()->orderCustomTypeHandler().get();
   std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(&options));
 
+  std::vector<AqlValueMaterializer> materializers;
+  materializers.reserve(n);
   for (size_t i = 0; i < n; ++i) {
     AqlValue value = ExtractFunctionParameterValue(trx, parameters, i);
 
@@ -1831,8 +1831,8 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
       return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
     }
 
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(value, false);
+    materializers.emplace_back(trx);
+    VPackSlice slice = materializers.back().slice(value, false);
 
     for (auto const& v : VPackArrayIterator(slice)) {
       if (values.find(v) == values.end()) {
@@ -1874,11 +1874,11 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
                                  arangodb::AqlTransaction* trx,
                                  VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "INTERSECTION", 2);
-  
+
   VPackOptions options;
   options.customTypeHandler =
-      trx->transactionContext()->createCustomTypeHandler(query->vocbase(),
-                                                         trx->resolver());
+      trx->transactionContext()->orderCustomTypeHandler().get();
+
   std::unordered_map<VPackSlice, size_t,
                      arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
@@ -1886,6 +1886,8 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
              arangodb::basics::VelocyPackHelper::VPackEqual(&options));
 
   size_t const n = parameters.size();
+  std::vector<AqlValueMaterializer> materializers;
+  materializers.reserve(n);
   for (size_t i = 0; i < n; ++i) {
     AqlValue value = ExtractFunctionParameterValue(trx, parameters, i);
 
@@ -1895,8 +1897,8 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
       return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
     }
     
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(value, false);
+    materializers.emplace_back(trx);
+    VPackSlice slice = materializers.back().slice(value, false);
 
     for (auto const& it : VPackArrayIterator(slice)) {
       if (i == 0) {
@@ -2365,8 +2367,7 @@ AqlValue Functions::Minus(arangodb::aql::Query* query,
 
   VPackOptions options;
   options.customTypeHandler =
-      trx->transactionContext()->createCustomTypeHandler(query->vocbase(),
-                                                         trx->resolver());
+      trx->transactionContext()->orderCustomTypeHandler().get();
   std::unordered_map<VPackSlice, size_t,
                      arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
@@ -2561,6 +2562,7 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
     // We might have examples
     AqlValue exampleValue = ExtractFunctionParameterValue(trx, parameters, 3);
     if ((exampleValue.isArray() && exampleValue.length() != 0) || exampleValue.isObject()) {
+      // TODO CHECK SURVIVAL
       AqlValueMaterializer materializer(trx);
       VPackSlice exampleSlice = materializer.slice(exampleValue, false);
 
@@ -2772,8 +2774,7 @@ AqlValue Functions::Push(arangodb::aql::Query* query,
   }
   VPackOptions options;
   options.customTypeHandler =
-      trx->transactionContext()->createCustomTypeHandler(query->vocbase(),
-                                                         trx->resolver());
+      trx->transactionContext()->orderCustomTypeHandler().get();
   if (parameters.size() == 3) {
     AqlValue unique = ExtractFunctionParameterValue(trx, parameters, 2);
     if (!unique.toBoolean() || !ListContainsElement(&options, l, p)) {
@@ -2854,8 +2855,7 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
 
   VPackOptions options;
   options.customTypeHandler =
-      trx->transactionContext()->createCustomTypeHandler(query->vocbase(),
-                                                         trx->resolver());
+      trx->transactionContext()->orderCustomTypeHandler().get();
   if (!list.isNull(true)) {
     if (list.isArray()) {
       for (auto const& it : VPackArrayIterator(l)) {
@@ -2911,8 +2911,7 @@ AqlValue Functions::Unshift(arangodb::aql::Query* query,
 
   VPackOptions options;
   options.customTypeHandler =
-      trx->transactionContext()->createCustomTypeHandler(query->vocbase(),
-                                                         trx->resolver());
+      trx->transactionContext()->orderCustomTypeHandler().get();
   size_t unused;
   if (unique && list.isArray() &&
       ListContainsElement(trx, &options, list, toAppend, unused)) {
@@ -3053,8 +3052,7 @@ AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
   
   VPackOptions options;
   options.customTypeHandler =
-      trx->transactionContext()->createCustomTypeHandler(query->vocbase(),
-                                                         trx->resolver());
+      trx->transactionContext()->orderCustomTypeHandler().get();
   try {
     AqlValueMaterializer valuesMaterializer(trx);
     VPackSlice v = valuesMaterializer.slice(values, false);
@@ -3498,8 +3496,7 @@ AqlValue Functions::Position(arangodb::aql::Query* query,
     AqlValue searchValue = ExtractFunctionParameterValue(trx, parameters, 1);
     VPackOptions options;
     options.customTypeHandler =
-        trx->transactionContext()->createCustomTypeHandler(query->vocbase(),
-                                                           trx->resolver());
+        trx->transactionContext()->orderCustomTypeHandler().get();
 
     size_t index;
     if (ListContainsElement(trx, &options, list, searchValue, index)) {
