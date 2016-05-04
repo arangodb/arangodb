@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, skiplist index queries
@@ -30,8 +30,6 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
