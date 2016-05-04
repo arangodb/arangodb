@@ -67,7 +67,7 @@ void AgencyCallback::refetchAndUpdate() {
   kv.erase(std::remove(kv.begin(), kv.end(), ""), kv.end());
   
   std::shared_ptr<VPackBuilder> newData = std::make_shared<VPackBuilder>();
-  newData->add(result._vpack->slice()[0].get(kv));
+  newData->add(result.slice()[0].get(kv));
   
   checkValue(newData);
   

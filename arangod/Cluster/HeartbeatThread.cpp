@@ -193,7 +193,7 @@ void HeartbeatThread::runDBServer() {
         LOG(ERR) << "Could not read Current/Version from agency.";
       } else {
         VPackSlice s 
-            = res._vpack->slice()[0].get(std::vector<std::string>(
+            = res.slice()[0].get(std::vector<std::string>(
                   {_agency.prefixStripped(), std::string("Current"), 
                    std::string("Version")}));
         if (!s.isInteger()) {
@@ -326,7 +326,7 @@ void HeartbeatThread::runCoordinator() {
 
     if (result.successful()) {
       VPackSlice versionSlice
-          = result._vpack->slice()[0].get(std::vector<std::string>(
+          = result.slice()[0].get(std::vector<std::string>(
               {_agency.prefixStripped(), "Plan", "Version"}));
 
       if (versionSlice.isInteger()) {
@@ -354,7 +354,7 @@ void HeartbeatThread::runCoordinator() {
     if (result.successful()) {
 
       velocypack::Slice slice =
-        result._vpack->slice()[0].get(std::vector<std::string>(
+        result.slice()[0].get(std::vector<std::string>(
               {_agency.prefixStripped(), "Sync", "UserVersion"}));
 
       if (slice.isInteger()) {
@@ -401,7 +401,7 @@ void HeartbeatThread::runCoordinator() {
     if (result.successful()) {
       
       VPackSlice versionSlice
-          = result._vpack->slice()[0].get(std::vector<std::string>(
+          = result.slice()[0].get(std::vector<std::string>(
               {_agency.prefixStripped(), "Plan", "Version"}));
       if (versionSlice.isInteger()) {
 
@@ -533,7 +533,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     
     std::vector<TRI_voc_tick_t> ids;
     velocypack::Slice databases =
-      result._vpack->slice()[0].get(std::vector<std::string>(
+      result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefixStripped(), "Plan", "Databases"}));
     
     if (!databases.isObject()) {

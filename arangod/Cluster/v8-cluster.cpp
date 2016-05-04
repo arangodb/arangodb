@@ -239,7 +239,7 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // return just the value for each key
   
-  for (auto const& a : VPackArrayIterator(result._vpack->slice())) {
+  for (auto const& a : VPackArrayIterator(result.slice())) {
     for (auto const& o : VPackObjectIterator(a)) {
       
       std::string const key = o.key.copyString();
