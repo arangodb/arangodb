@@ -601,18 +601,18 @@ set(EXES ${APPS})
 
 
 
-MESSAGE("---- xxxx ${LIBS}")
+# MESSAGE("---- xxxx ${LIBS}")
 foreach(sourcefile ${EXES})
     string(REPLACE ".cc" "" exename ${sourcefile})
     string(REGEX REPLACE "^((.+)/)+" "" exename ${exename})
     add_executable(${exename}${ARTIFACT_SUFFIX} ${sourcefile})
     target_link_libraries(${exename}${ARTIFACT_SUFFIX} ${LIBS})
 
-    MESSAGE("-------------- ${sourcefile}")
-    get_cmake_property(_variableNames VARIABLES)
-    foreach (_variableName ${_variableNames})
-      message(STATUS "${_variableName}=${${_variableName}}")
-    endforeach()
+    #MESSAGE("-------------- ${sourcefile}")
+    #get_cmake_property(_variableNames VARIABLES)
+    #foreach (_variableName ${_variableNames})
+    #  message(STATUS "${_variableName}=${${_variableName}}")
+    #endforeach()
 endforeach(sourcefile ${EXES})
 
 # test utilities are only build in debug
