@@ -168,7 +168,7 @@ size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) co
 };
 
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
-  return VelocyPackHelper::compare(lhs, rhs, false) == 0;
+  return VelocyPackHelper::compare(lhs, rhs, false, _options) == 0;
 };
 
 bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const noexcept {
