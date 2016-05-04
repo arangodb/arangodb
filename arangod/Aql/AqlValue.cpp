@@ -954,6 +954,8 @@ int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
       size_t ritem = 0;
       size_t const lsize = left._data.docvec->size();
       size_t const rsize = right._data.docvec->size();
+      size_t lrows = left._data.docvec->at(0)->size();
+      size_t rrows = right._data.docvec->at(0)->size();
 
       while (lblock < lsize && rblock < rsize) {
         AqlValue const& lval = left._data.docvec->at(lblock)->getValueReference(litem, 0);
@@ -964,13 +966,19 @@ int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
         if (cmp != 0) {
           return cmp;
         }
-        if (++litem == lsize) {
+        if (++litem == lrows) {
           litem = 0;
           lblock++;
+          if (lblock < lsize) {
+            lrows = left._data.docvec->at(lblock)->size();
+          }
         }
-        if (++ritem == rsize) {
+        if (++ritem == rrows) {
           ritem = 0;
           rblock++;
+          if (rblock < rsize) {
+            rrows = right._data.docvec->at(rblock)->size();
+          }
         }
       }
 

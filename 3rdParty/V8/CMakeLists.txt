@@ -360,9 +360,9 @@ else ()
 
   option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
 
-  set(V8_CFLAGS   "")
-  set(V8_CXXFLAGS "")
-  set(V8_LDFLAGS "")
+  set(V8_CFLAGS   "$ENV{V8_CFLAGS}")
+  set(V8_CXXFLAGS "$ENV{V8_CXXFLAGS}")
+  set(V8_LDFLAGS  "$ENV{V8_LDFLAGS}")
 
   if (USE_DEBUG_V8)
     set(V8_TARGET_ARCH "${V8_PROC_ARCH}.debug")

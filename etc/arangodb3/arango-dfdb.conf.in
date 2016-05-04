@@ -3,7 +3,7 @@
 [database]
 auto-upgrade = false
 upgrade-check = false
-directory= @LOCALSTATEDIR@/lib/arangodb
+directory= @LOCALSTATEDIR@/lib/arangodb3
 # maximal-journal-size=33554432
 
 [server]
@@ -15,7 +15,7 @@ threads = 1
 
 [javascript]
 startup-directory = @PKGDATADIR@/js
-app-path = @LOCALSTATEDIR@/lib/arangodb-apps
+app-path = @LOCALSTATEDIR@/lib/arangodb3-apps
 script = @PKGDATADIR@/js/server/arango-dfdb.js
 v8-contexts = 1
 

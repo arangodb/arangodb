@@ -5,11 +5,11 @@ set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc
 
 # /etc -------------------------------
 if (ETCDIR STREQUAL "")
-  set(ETCDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/etc/arangodb")
-  set(ETCDIR_INSTALL "etc/arangodb")
+  set(ETCDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/etc/arangodb3")
+  set(ETCDIR_INSTALL "etc/arangodb3")
 else ()
-  set(ETCDIR_NATIVE "${ETCDIR}/arangodb")
-  set(ETCDIR_INSTALL "${ETCDIR}/arangodb")
+  set(ETCDIR_NATIVE "${ETCDIR}/arangodb3")
+  set(ETCDIR_INSTALL "${ETCDIR}/arangodb3")
 endif ()
 
 # MS stuff ---------------------------
@@ -26,7 +26,7 @@ add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
 # /var
 set(VARDIR ""
   CACHE path
-  "System configuration directory (defaults to prefix/var/arangodb)"
+  "System configuration directory (defaults to prefix/var/arangodb3)"
 )
 
 if (VARDIR STREQUAL "")
@@ -40,16 +40,16 @@ endif ()
 file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
 
 # database directory 
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb3")
 
 # apps
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb-apps")
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb3-apps")
 
 # logs
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb3")
 
 # package
-set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb")
+set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb3")
 
 # resources
 set(TRI_RESOURCEDIR "resources")
@@ -100,16 +100,16 @@ endif ()
 
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
-  FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf.in FileContent)
-  STRING(REPLACE "@PKGDATADIR@" "@ROOTDIR@/share/arangodb"
+  FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in FileContent)
+  STRING(REPLACE "@PKGDATADIR@" "@ROOTDIR@/share/arangodb3"
     FileContent "${FileContent}") 
   STRING(REPLACE "@LOCALSTATEDIR@" "@ROOTDIR@/var"
     FileContent "${FileContent}")
   STRING(REPLACE "@SBINDIR@" "@ROOTDIR@/bin"
     FileContent "${FileContent}")
-  STRING(REPLACE "@LIBEXECDIR@/arangodb" "@ROOTDIR@/bin"
+  STRING(REPLACE "@LIBEXECDIR@/arangodb3" "@ROOTDIR@/bin"
     FileContent "${FileContent}")
-  STRING(REPLACE "@SYSCONFDIR@" "@ROOTDIR@/etc/arangodb"
+  STRING(REPLACE "@SYSCONFDIR@" "@ROOTDIR@/etc/arangodb3"
     FileContent "${FileContent}")
   if (MSVC)
     STRING(REPLACE "@PROGRAM_SUFFIX@" ".exe"
@@ -117,17 +117,17 @@ macro (generate_root_config name)
     STRING(REGEX REPLACE "[\r\n]file =" "\n# file =" 
       FileContent "${FileContent}")
   endif ()
-  FILE(WRITE ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf "${FileContent}")
+  FILE(WRITE ${PROJECT_BINARY_DIR}/etc/arangodb3/${name}.conf "${FileContent}")
 endmacro ()
 
 #  generates config file using the configured paths ----------------------------
 macro (generate_path_config name)
-  FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf.in FileContent)
+  FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in FileContent)
   STRING(REPLACE "@PKGDATADIR@" "${TRI_PKGDATADIR}" 
     FileContent "${FileContent}")
   STRING(REPLACE "@LOCALSTATEDIR@" "${VARDIR_NATIVE}" 
     FileContent "${FileContent}")
-  FILE(WRITE ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf "${FileContent}")
+  FILE(WRITE ${PROJECT_BINARY_DIR}/etc/arangodb3/${name}.conf "${FileContent}")
 endmacro ()
 
 # installs a config file -------------------------------------------------------
@@ -138,7 +138,7 @@ macro (install_config name)
     generate_path_config(${name})
   endif ()
   install(
-    FILES ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf
+    FILES ${PROJECT_BINARY_DIR}/etc/arangodb3/${name}.conf
     DESTINATION ${ETCDIR_INSTALL})
 endmacro ()
 
@@ -219,10 +219,10 @@ if (MSVC)
   install_readme(LICENSE . LICENSE.txt)
   install_readme(LICENSES-OTHER-COMPONENTS.md . LICENSES-OTHER-COMPONENTS.md)
 else ()
-  install_readme(README share/doc/arangodb README)
-  install_readme(README.md share/doc/arangodb README.md)
-  install_readme(LICENSE share/doc/arangodb LICENSE)
-  install_readme(LICENSES-OTHER-COMPONENTS.md share/doc/arangodb LICENSES-OTHER-COMPONENTS.md)
+  install_readme(README share/doc/arangodb3 README)
+  install_readme(README.md share/doc/arangodb3 README.md)
+  install_readme(LICENSE share/doc/arangodb3 LICENSE)
+  install_readme(LICENSES-OTHER-COMPONENTS.md share/doc/arangodb3 LICENSES-OTHER-COMPONENTS.md)
 endif ()
 
 # Build package ----------------------------------------------------------------
@@ -231,9 +231,9 @@ if (NOT(MSVC))
 endif()
 
 # General
-set(CPACK_PACKAGE_NAME "arangodb")
+set(CPACK_PACKAGE_NAME "arangodb3")
 set(CPACK_PACKAGE_VENDOR  "ArangoDB GmbH")
-set(CPACK_PACKAGE_CONTACT "info@arangodb.org")
+set(CPACK_PACKAGE_CONTACT "info@arangodb.com")
 set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
 
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
@@ -247,8 +247,8 @@ set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "a multi-purpose NoSQL database
  graphs, and key-values. Build high performance applications using a convenient
  SQL-like query language or JavaScript extensions.
  .
+ Copyright: 2014-2016 by ArangoDB GmbH
  Copyright: 2012-2013 by triAGENS GmbH
- Copyright: 2014-2015 by ArangoDB GmbH
  ArangoDB Software
  www.arangodb.com
 ")
@@ -318,7 +318,7 @@ if (NOT(MSVC))
     FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
     PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
     DESTINATION etc/init.d
-    RENAME arangodb
+    RENAME arangodb3
     COMPONENT debian-extras
   )
 endif()
@@ -335,14 +335,13 @@ add_custom_target (love
 # Finally: user cpack
 include(CPack)
 
-
 ################################################################################
 ### @brief install client-side JavaScript files
 ################################################################################
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client 
-  DESTINATION share/arangodb/js
+  DESTINATION share/arangodb3/js
   FILES_MATCHING PATTERN "*.js"
   REGEX "^.*/common/test-data$" EXCLUDE
   REGEX "^.*/common/tests$" EXCLUDE
@@ -354,7 +353,7 @@ install(
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/actions ${PROJECT_SOURCE_DIR}/js/apps ${PROJECT_SOURCE_DIR}/js/contrib ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/server
-  DESTINATION share/arangodb/js
+  DESTINATION share/arangodb3/js
   REGEX "^.*/server/tests$" EXCLUDE
 )
 
@@ -363,7 +362,7 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb3
   DESTINATION ${VARDIR_INSTALL}/log)
 
 ################################################################################
@@ -371,7 +370,7 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb3
   DESTINATION ${VARDIR_INSTALL}/lib)
 
 ################################################################################
@@ -379,14 +378,5 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb-apps
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb3-apps
   DESTINATION ${VARDIR_INSTALL}/lib)
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                       END-OF-FILE
-## -----------------------------------------------------------------------------
-
-## Local Variables:
-## mode: outline-minor
-## outline-regexp: "### @brief\\|## --SECTION--\\|# -\\*- "
-## End:
