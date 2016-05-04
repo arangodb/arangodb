@@ -2,9 +2,15 @@
 set -e
 
 TAG=1
+BOOK=1
 
 if [ "$1" == "--no-commit" ];  then
   TAG=0
+  shift
+fi
+
+if [ "$1" == "--no-book" ];  then
+  BOOK=0
   shift
 fi
 
@@ -45,7 +51,6 @@ if [ `uname` == "Darwin" ];  then
   CMAKE_CONFIGURE="${CMAKE_CONFIGURE} -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11"
 fi
 
-if test 0 = 1;  then
 echo "COMPILING"
 rm -rf build && mkdir build
 
@@ -54,7 +59,6 @@ rm -rf build && mkdir build
   cmake .. ${CMAKE_CONFIGURE}
   make -j 8
 )
-fi
 
 echo "LINTING"
 ./utils/jslint.sh
@@ -86,8 +90,10 @@ echo "GRUNT"
 
 git add -f Documentation/Examples/*.generated
 
-echo "DOCUMENTATION"
-cd Documentation/Books; make
+if [ "$BOOK" == "1" ];  then
+  echo "DOCUMENTATION"
+  (cd Documentation/Books; make)
+fi
 
 case "$TAG" in
   *-alpha*|*-beta*|devel)
