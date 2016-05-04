@@ -555,7 +555,7 @@ arangodb::Index* TRI_document_collection_t::removeIndex(TRI_idx_iid_t iid) {
   size_t const n = _indexes.size();
 
   for (size_t i = 0; i < n; ++i) {
-    auto& idx = _indexes[i];
+    arangodb::Index* idx = _indexes[i];
 
     if (!idx->canBeDropped()) {
       continue;
