@@ -72,7 +72,8 @@ exports.Communication = function() {
     var _agency = exports._createAgency();
     var stubs = {
       get: function(route, recursive) {
-        return _agency.get(route, recursive);
+        var ret =  _agency.get(route, recursive);
+        return ret;
       },
       getValue: function(route, name) {
         var res  = _agency.get(route + "/" + name);

@@ -372,10 +372,10 @@ void ClusterFeature::start() {
           result._values.begin();
 
       if (it != result._values.end()) {
-        VPackSlice slice = (*it).second._vpack->slice();
-        _heartbeatInterval =
-            arangodb::basics::VelocyPackHelper::stringUInt64(slice);
 
+        VPackSlice slice = (*it).second._vpack->slice();
+        _heartbeatInterval = slice.getUInt();
+        
         LOG(INFO) << "using heartbeat interval value '" << _heartbeatInterval
                   << " ms' from agency";
       }
@@ -389,7 +389,6 @@ void ClusterFeature::start() {
                    "default value '"
                 << _heartbeatInterval << " ms'";
     }
-
     // start heartbeat thread
     _heartbeatThread = new HeartbeatThread(DatabaseServerFeature::SERVER,
                                            _agencyCallbackRegistry.get(),

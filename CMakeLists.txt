@@ -177,7 +177,7 @@ get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 ## ARCHITECTURE
 ################################################################################
 
-if (SOLARIS)
+if (SOLARIS OR NOT CMAKE_SIZEOF_VOID_P)
   set(CMAKE_SIZEOF_VOID_P 8)
   set(CMAKE_CXX_SIZEOF_DATA_PTR 8)
 endif ()

@@ -1148,12 +1148,14 @@ void RestReplicationHandler::handleCommandClusterInventory() {
       generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN);
     } else {
-      result = _agency.getValues(prefix, false);
+      result = _agency.getValues2(prefix);
       if (!result.successful()) {
         generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                       TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
       } else {
-        if (!result.parse(prefix + "/", false)) {
+        VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
+              {_agency.prefixStripped(), "Plan", "Collections", dbName}));
+        if (!colls.isObject()) {
           generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
         } else {
@@ -1163,8 +1165,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
             resultBuilder.add(VPackValue("collections"));
             {
               VPackArrayBuilder b2(&resultBuilder);
-              for (auto const& it : result._values) {
-                VPackSlice const subResultSlice = it.second._vpack->slice();
+              for (auto const& p : VPackObjectIterator(colls)) {
+                VPackSlice const subResultSlice = p.value;
                 if (subResultSlice.isObject()) {
                   if (includeSystem ||
                       !arangodb::basics::VelocyPackHelper::getBooleanValue(
