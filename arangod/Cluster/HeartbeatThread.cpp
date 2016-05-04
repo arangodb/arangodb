@@ -351,8 +351,8 @@ void HeartbeatThread::runCoordinator() {
     if (result.successful()) {
 
       velocypack::Slice slice =
-        result._vpack->slice()[0].get(AgencyComm::prefixStripped())
-        .get("Sync").get("UserVersion");
+        result._vpack->slice()[0].get(std::vector<std::string>(
+              {_agency.prefixStripped(), "Sync", "UserVersion"}));
 
       if (slice.isNumber()) {
         // there is a UserVersion
@@ -524,15 +524,21 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     
     std::vector<TRI_voc_tick_t> ids;
     velocypack::Slice databases =
-      result._vpack->slice()[0]
-      .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
-      .get("Plan").get("Databases");
+      result._vpack->slice()[0].get(std::vector<std::string>(
+            {AgencyComm::prefixStripped(), "Plan", "Databases"}));
     
+    if (!databases.isObject()) {
+      return false;
+    }
+
     // loop over all database names we got and create a local database
     // instance if not yet present:
     
     for (auto const& options : VPackObjectIterator (databases)) {
 
+      if (!options.value.isObject()) {
+        continue;
+      }
       auto nameSlice = options.value.get("name");
       if (nameSlice.isNone()) {
         LOG (ERR) << "Missing name in agency database plan";
