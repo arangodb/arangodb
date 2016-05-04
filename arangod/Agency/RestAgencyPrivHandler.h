@@ -53,7 +53,7 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
       return false;
     } else {
       try {
-        val = std::stol(val_str);
+        val = std::stoul(val_str);
       } catch (std::invalid_argument const&) {
         LOG(WARN) << "Value for query string " << name
                   << "cannot be converted to integral type";
