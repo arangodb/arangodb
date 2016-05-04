@@ -35,8 +35,11 @@ class CollectionNameResolver;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct IndexIteratorContext {
+  IndexIteratorContext(IndexIteratorContext const&) = delete;
+  IndexIteratorContext& operator=(IndexIteratorContext const&) = delete;
+  
+  IndexIteratorContext() = delete;
   IndexIteratorContext(TRI_vocbase_t*, CollectionNameResolver const*);
-
   explicit IndexIteratorContext(TRI_vocbase_t*);
 
   ~IndexIteratorContext();
@@ -63,7 +66,6 @@ class IndexIterator {
   IndexIterator& operator=(IndexIterator const&) = delete;
 
   IndexIterator() {}
-
   virtual ~IndexIterator();
 
   virtual TRI_doc_mptr_t* next();

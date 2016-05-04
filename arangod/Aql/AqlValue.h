@@ -397,6 +397,7 @@ struct AqlValueMaterializer {
       }
       // reset other
       materialized = other.materialized;
+      hasCopied = other.hasCopied;
       other.materialized = AqlValue();
     }
     return *this;

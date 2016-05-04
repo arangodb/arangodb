@@ -58,6 +58,10 @@
 #include "VocBase/vocbase-defaults.h"
 #include "Wal/LogfileManager.h"
 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBFeature.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -316,8 +320,16 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
     }
 
     // we need to clean up the pointers later so we insert it into this vector
-    vocbase->_deadCollections.emplace_back(collection);
+    try {
+      vocbase->_deadCollections.emplace_back(collection);
+    } catch (...) {
+    }
   }
+  
+  // delete persistent indexes    
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  RocksDBFeature::dropCollection(vocbase->_id, collection->cid());
+#endif
 
   // .............................................................................
   // rename collection directory
@@ -1027,11 +1039,11 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
     UnregisterCollection(vocbase, collection);
+    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
     if (writeMarker) {
       WriteDropCollectionMarker(vocbase, collection->_cid, collection->name());
     }
-
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     DropCollectionCallback(nullptr, collection);
 
@@ -1075,11 +1087,11 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
 
     UnregisterCollection(vocbase, collection);
+    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
     if (writeMarker) {
       WriteDropCollectionMarker(vocbase, collection->_cid, collection->name());
     }
-
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     state = DROP_PERFORM;
     return TRI_ERROR_NO_ERROR;
