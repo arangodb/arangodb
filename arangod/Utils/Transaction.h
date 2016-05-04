@@ -307,7 +307,7 @@ class Transaction {
   /// be the first one
   //////////////////////////////////////////////////////////////////////////////
 
-  static VPackSlice extractKeyFromDocument(VPackSlice const&);
+  static VPackSlice extractKeyFromDocument(VPackSlice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief quick access to the _from attribute in a database document
@@ -315,7 +315,7 @@ class Transaction {
   /// and _rev (in this order)
   //////////////////////////////////////////////////////////////////////////////
   
-  static VPackSlice extractFromFromDocument(VPackSlice const&);
+  static VPackSlice extractFromFromDocument(VPackSlice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief quick access to the _to attribute in a database document
@@ -323,7 +323,7 @@ class Transaction {
   /// and _rev (in this order)
   //////////////////////////////////////////////////////////////////////////////
 
-  static VPackSlice extractToFromDocument(VPackSlice const&);
+  static VPackSlice extractToFromDocument(VPackSlice);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief quick access to the _rev attribute in a database document
@@ -331,7 +331,7 @@ class Transaction {
   /// (possibly with _from and _to in between)
   //////////////////////////////////////////////////////////////////////////////
   
-  static VPackSlice extractRevFromDocument(VPackSlice const&);
+  static VPackSlice extractRevFromDocument(VPackSlice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract _key and _rev from a document, in one go
@@ -339,7 +339,7 @@ class Transaction {
   /// collection and compaction
   //////////////////////////////////////////////////////////////////////////////
   
-  static void extractKeyAndRevFromDocument(VPackSlice const& slice,
+  static void extractKeyAndRevFromDocument(VPackSlice slice,
                                            VPackSlice& keySlice,
                                            TRI_voc_rid_t& revisionId);
 

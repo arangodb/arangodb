@@ -624,8 +624,8 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         for (auto& it2 : *(it.second)) {
           delete it2;
         }
+        delete it.second;
       }
-      delete it.second;
     }
     allGroups.clear();
   };

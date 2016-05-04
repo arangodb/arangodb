@@ -329,7 +329,9 @@ function ClusterCrudReplaceSuite () {
       fail();
     }
     catch (err2) {
-      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
+      if (err2.errorNum !== ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+        assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
+      }
     }
 
 
@@ -619,7 +621,9 @@ function ClusterCrudUpdateSuite () {
       fail();
     }
     catch (err2) {
-      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
+      if (err2.errorNum !== ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+        assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
+      }
     }
 
     try {

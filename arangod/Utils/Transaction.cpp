@@ -740,7 +740,10 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
 /// be the first one
 //////////////////////////////////////////////////////////////////////////////
 
-VPackSlice Transaction::extractKeyFromDocument(VPackSlice const& slice) {
+VPackSlice Transaction::extractKeyFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
   TRI_ASSERT(slice.isObject());
   // a regular document must have at least the three attributes 
   // _key, _id and _rev (in this order). _key must be the first attribute
@@ -767,7 +770,10 @@ VPackSlice Transaction::extractKeyFromDocument(VPackSlice const& slice) {
 /// and _rev (in this order)
 //////////////////////////////////////////////////////////////////////////////
 
-VPackSlice Transaction::extractFromFromDocument(VPackSlice const& slice) {
+VPackSlice Transaction::extractFromFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
   TRI_ASSERT(slice.isObject());
   // this method must only be called on edges
   // this means we must have at least the attributes  _key, _id, _from, _to and _rev
@@ -798,8 +804,10 @@ VPackSlice Transaction::extractFromFromDocument(VPackSlice const& slice) {
 /// and _rev (in this order)
 //////////////////////////////////////////////////////////////////////////////
 
-VPackSlice Transaction::extractToFromDocument(VPackSlice const& slice) {
-  TRI_ASSERT(slice.isObject());
+VPackSlice Transaction::extractToFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
   // this method must only be called on edges
   // this means we must have at least the attributes  _key, _id, _from, _to and _rev
   TRI_ASSERT(slice.length() >= 5); 
@@ -829,7 +837,10 @@ VPackSlice Transaction::extractToFromDocument(VPackSlice const& slice) {
 /// (possibly with _from and _to in between)
 //////////////////////////////////////////////////////////////////////////////
 
-VPackSlice Transaction::extractRevFromDocument(VPackSlice const& slice) {
+VPackSlice Transaction::extractRevFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2); 
 
@@ -858,9 +869,12 @@ VPackSlice Transaction::extractRevFromDocument(VPackSlice const& slice) {
 /// collection and compaction
 //////////////////////////////////////////////////////////////////////////////
     
-void Transaction::extractKeyAndRevFromDocument(VPackSlice const& slice, 
+void Transaction::extractKeyAndRevFromDocument(VPackSlice slice, 
                                                VPackSlice& keySlice, 
                                                TRI_voc_rid_t& revisionId) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2); 
 

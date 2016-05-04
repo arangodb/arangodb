@@ -78,10 +78,17 @@ void V8PeriodicTask::getDescription(VPackBuilder& builder) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8PeriodicTask::handlePeriod() {
+  TRI_ASSERT(DispatcherFeature::DISPATCHER != nullptr);
+  
   std::unique_ptr<Job> job(new V8Job(
       _vocbase, "(function (params) { " + _command + " } )(params);",
       _parameters, _allowUseDatabase));
-
+  
+  if (DispatcherFeature::DISPATCHER == nullptr) {
+    LOG(WARN) << "could not add task " << _command << " to non-existing queue";
+    return false;
+  }
+  
   DispatcherFeature::DISPATCHER->addJob(job);
 
   return true;

@@ -33,6 +33,7 @@
 var actions = require("@arangodb/actions");
 var graph = require("@arangodb/graph-blueprint");
 var arangodb = require("@arangodb");
+var shallowCopy = require("@arangodb/util").shallowCopy;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,7 +387,7 @@ function update_graph_vertex (req, res, g, isPatch) {
       waitForSync = true;
     }
 
-    var shallow = json._shallowCopy;
+    var shallow = shallowCopy(json);
 
     var id2 = null;
     if (isPatch) {
@@ -781,7 +782,7 @@ function update_graph_edge (req, res, g, isPatch) {
       waitForSync = true;
     }
 
-    var shallow = json._shallowCopy;
+    var shallow = shallowCopy(json);
     if (json.hasOwnProperty('_from')) {
       shallow._from = json._from;
     }

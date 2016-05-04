@@ -58,7 +58,6 @@
     * [Skiplists](Indexing/Skiplist.md)
     * [Fulltext Indexes](Indexing/Fulltext.md)
     * [Geo Indexes](Indexing/Geo.md)
-    * [Cap Constraint](Indexing/Cap.md)
 #
 * [Graphs](Graphs/README.md)
   * [General Graphs](Graphs/GeneralGraphs/README.md)

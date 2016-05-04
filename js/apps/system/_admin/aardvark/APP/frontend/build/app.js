@@ -19023,15 +19023,14 @@ window.ArangoUsers = Backbone.Collection.extend({
     return a > b ? 1 : a < b ? -1 : 0;
   },
 
-  login: function (username, password, database, callback) {
+  login: function (username, password, callback) {
     var self = this;
 
     $.ajax("login", {
       method: "POST",
       data: JSON.stringify({
         username: username,
-        password: password,
-        database: database
+        password: password
       }),
       dataType: "json"
     }).success(
@@ -22614,18 +22613,29 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
       });
 
-      //sort for library
-      opts.file.sort(function(a,b){
-        return new Date(b[0]) - new Date(a[0]);
-      });
+      if (opts.file === undefined) {
+        $('#loadingScreen span').text('Statistics not ready yet. Waiting.');
+        $('#loadingScreen').show();
+        $('#content').hide();
+      }
+      else {
+        $('#content').show();
+        $('#loadingScreen').hide();
 
-      g.updateOptions(opts);
-			
-			//clean up history
-			if (this.history[this.server].hasOwnProperty(figure)) {
-				this.cleanupHistory(figure);
-			}
+        //sort for library
+        opts.file.sort(function(a,b){
+          return new Date(b[0]) - new Date(a[0]);
+        });
 
+        g.updateOptions(opts);
+        
+        //clean up history
+        if (this.history[this.server].hasOwnProperty(figure)) {
+          this.cleanupHistory(figure);
+        }
+      }
+      $(window).trigger('resize');
+      this.resize();
     },
 
     mergeDygraphHistory: function (newData, i) {
@@ -25145,6 +25155,9 @@ window.ArangoUsers = Backbone.Collection.extend({
     isOffline: true,
     isOfflineCounter: 0,
     firstLogin: true,
+    timer: 15000,
+    lap: 0,
+    timerFunction: null,
 
     events: {
       'click .footer-center p' : 'showShortcutModal'
@@ -25155,12 +25168,16 @@ window.ArangoUsers = Backbone.Collection.extend({
       var self = this;
       window.setInterval(function() {
         self.getVersion();
-      }, 15000);
+      }, self.timer);
       self.getVersion();
 
       window.VISIBLE = true;
       document.addEventListener('visibilitychange', function () {
         window.VISIBLE = !window.VISIBLE;
+      });
+
+      $('#offlinePlaceholder button').on('click', function() {
+        self.getVersion();
       });
     },
 
@@ -25175,12 +25192,17 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('#healthStatus').addClass('positive');
           $('.health-state').html('GOOD');
           $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+          $('#offlinePlaceholder').hide();
         }
         else {
           $('#healthStatus').removeClass('positive');
           $('#healthStatus').addClass('negative');
-          $('.health-state').html('OFFLINE');
+          $('.health-state').html('UNKNOWN');
           $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+
+          //show offline overlay
+          $('#offlinePlaceholder').show();
+          this.reconnectAnimation(0);
         }
       }
       else {
@@ -25195,15 +25217,36 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
     },
 
+    reconnectAnimation: function(lap) {
+      var self = this;
+
+      if (lap === 0) {
+        self.lap = lap;
+        $('#offlineSeconds').text(self.timer / 1000);
+        clearTimeout(self.timerFunction);
+      }
+
+      if (self.lap < this.timer / 1000) {
+        self.lap++;
+        $('#offlineSeconds').text(self.timer / 1000 - self.lap);
+
+        self.timerFunction = window.setTimeout(function() {
+          if (self.timer / 1000 - self.lap === 0) {
+            self.getVersion();
+          }
+          else {
+            self.reconnectAnimation(self.lap);
+          }
+        }, 1000);
+      }
+    },
+
     renderClusterState: function(connection) {
-      var ok = 0, error = 0;
+      var error = 0;
 
       if (connection) {
         this.collection.each(function(value) {
-          if (value.toJSON().status === 'ok') {
-            ok++;
-          }
-          else {
+          if (value.toJSON().status !== 'ok') {
             error++;
           }
         });
@@ -27115,7 +27158,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, EJS, arangoHelper, window, setTimeout, $, templateEngine*/
+/*global Backbone, document, EJS, _, arangoHelper, window, setTimeout, $, templateEngine*/
 
 (function() {
   "use strict";
@@ -27123,18 +27166,19 @@ window.ArangoUsers = Backbone.Collection.extend({
     el: '#content',
     el2: '.header',
     el3: '.footer',
+    loggedIn: false,
 
     events: {
-      "submit #loginForm" : "login",
-      "keypress #loginForm input" : "clear",
-      "change #loginForm input" : "clear"
+      "submit #loginForm" : "goTo",
+      "keyup #loginForm input" : "validate",
+      "change #loginForm input" : "validate",
+      "focusout #loginForm input" : "validate"
     },
 
     template: templateEngine.createTemplate("loginView.ejs"),
 
     render: function() {
       $(this.el).html(this.template.render({}));
-      $('#loginDatabase').val('_system');
       $(this.el2).hide();
       $(this.el3).hide();
 
@@ -27148,50 +27192,70 @@ window.ArangoUsers = Backbone.Collection.extend({
       $('.wrong-credentials').hide();
     },
 
-    login: function (e) {
-      e.preventDefault();
+    validate: function(event) {
+      this.clear();
+      var self = this;
+
       var username = $('#loginUsername').val();
       var password = $('#loginPassword').val();
-      var database = $('#loginDatabase').val();
 
       if (!username) {
-        //Heiko: Form-Validator - please fill out all req. fields
+        //do not send unneccessary requests if no user is given
         return;
       }
 
-      var callback = function(error, username) {
-        var callback2 = function(error) {
-          if (error) {
-            arangoHelper.arangoError("User", "Could not fetch user settings"); 
-          }
-        };
-
+      console.log(event);
+      var callback = function(error) {
         if (error) {
-          $('#loginForm input').addClass("form-error");
-          $('.wrong-credentials').show();
+          if (event.type === 'focusout') {
+            //$('#loginForm input').addClass("form-error");
+            $('.wrong-credentials').show();
+          }
         }
         else {
-          var currentDB = window.location.pathname.split('/')[2];
-          if (currentDB !== database) {
-            var path = window.location.origin + window.location.pathname.replace(currentDB, database);
-            window.location.href = path;
-            $(this.el2).show();
-            $(this.el3).show();
-            $('#currentUser').text(username);
-            this.collection.loadUserSettings(callback2);
-            return;
+          $('.wrong-credentials').hide();
+
+          if (!self.loggedIn) {
+            self.loggedIn = true;
+            //get list of allowed dbs
+            $.ajax("/_api/database/user").success(function(data) {
+              //enable db select and login button
+              $('#loginDatabase').prop('disabled', false);
+              $('#submitLogin').prop('disabled', false);
+              $('#loginDatabase').html('');
+              //fill select with allowed dbs
+              _.each(data.result, function(db) {
+                $('#loginDatabase').append(
+                  '<option>' + db + '</option>'
+                ); 
+              });
+            });
           }
-          
-          $(this.el2).show();
-          $(this.el3).show();
-          window.location.reload();
-          $('#currentUser').text(username);
-          this.collection.loadUserSettings(callback2);
-        } 
+        }
       }.bind(this);
 
-      this.collection.login(username, password, database, callback);
+      this.collection.login(username, password, callback);
 
+    },
+
+    goTo: function (e) {
+      e.preventDefault();
+      var username = $('#loginUsername').val();
+      var database = $('#loginDatabase').val();
+
+      var callback2 = function(error) {
+        if (error) {
+          arangoHelper.arangoError("User", "Could not fetch user settings"); 
+        }
+      };
+
+      var currentDB = window.location.pathname.split('/')[2];
+      var path = window.location.origin + window.location.pathname.replace(currentDB, database);
+      window.location.href = path;
+      $(this.el2).show();
+      $(this.el3).show();
+      $('#currentUser').text(username);
+      this.collection.loadUserSettings(callback2);
     }
 
   });
@@ -34880,6 +34944,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     execute: function(callback, args) {
       $('#subNavigationBar .breadcrumb').html('');
       $('#subNavigationBar .bottom').html('');
+      $('#loadingScreen').hide();
       if (callback) {
         callback.apply(this, args);
       }

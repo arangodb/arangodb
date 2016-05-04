@@ -48,7 +48,7 @@ authentication = false
 
 [javascript]
 startup-directory = @PKGDATADIR@/js
-app-path = @LOCALSTATEDIR@/lib/arangodb-apps
+app-path = @LOCALSTATEDIR@/lib/arangodb3-apps
 # app-path = @HOMEDRIVE@/@HOMEPATH@/arangodb/apps
 
 # number of worker threads for V8
@@ -59,7 +59,7 @@ level = info
 file = @LOCALSTATEDIR@/log/arangodb/arangod.log
 
 [cluster]
-data-path = @LOCALSTATEDIR@/lib/arangodb/cluster
+data-path = @LOCALSTATEDIR@/lib/arangodb3/cluster
 log-path = @LOCALSTATEDIR@/log/arangodb/cluster
 arangod-path = @SBINDIR@/arangod@PROGRAM_SUFFIX@
 dbserver-config = @SYSCONFDIR@/arangod.conf

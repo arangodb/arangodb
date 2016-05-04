@@ -75,7 +75,11 @@ set(TEST_GEO_SUITE    geo_suite)
 ## VERSION FILES
 ################################################################################
 
-string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
+if (${CMAKE_MAJOR_VERSION} EQUAL 2)
+  set(ARANGODB_BUILD_DATE "YYYY-MM-DD HH:MM:SS")
+else ()
+  string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
+endif ()
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
@@ -153,9 +157,6 @@ else ()
   set(ROCKSDB_LIBS "")
 endif ()
 
-find_package(FLEX)
-find_package(BISON)
-find_package(PythonInterp 2 REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE} REALPATH)
 
 ################################################################################
@@ -298,8 +299,12 @@ else ()
 
   include(VcMacros)
 
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
+  option(USE_OPTIMIZE_FOR_ARCHITECTURE "try to determine CPU architecture" ON)
+
+  if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+    include(OptimizeForArchitecture)
+    OptimizeForArchitecture()
+  endif ()
 
   set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
@@ -356,6 +361,9 @@ option(USE_MAINTAINER_MODE
 
 if (USE_MAINTAINER_MODE)
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
+
+  find_package(FLEX)
+  find_package(BISON)
 endif ()
 
 ################################################################################
@@ -794,9 +802,9 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${ICU_LIBS}
   ${OPENSSL_LIBRARIES}
   ${BASE_LIBS}
-  ${CMAKE_THREAD_LIBS_INIT}
   ${CMAKE_DL_LIBS}
   ${SYS_LIBS}
+  ${CMAKE_THREAD_LIBS_INIT}
 )
 
 add_subdirectory(lib)
