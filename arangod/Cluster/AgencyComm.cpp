@@ -726,22 +726,16 @@ bool AgencyComm::tryInitializeStructure() {
       addEmptyVPackObject("DBServers", builder);
       builder.add("Lock", VPackValue("UNLOCKED"));
     }
-    addEmptyVPackObject("Supervision", builder);
+    builder.add(VPackValue("Supervision"));
     {
       VPackObjectBuilder c(&builder);
-      addEmptyVPackObject("Jobs", builder);
+      builder.add(VPackValue("Jobs"));
       {
         VPackObjectBuilder d(&builder);
         addEmptyVPackObject("Pending", builder);
-      }      
-      {
-        VPackObjectBuilder d(&builder);
         addEmptyVPackObject("Finished", builder);
-      }      
-      {
-        VPackObjectBuilder d(&builder);
         addEmptyVPackObject("Failed", builder);
-      }      
+      }
     }
     builder.add("InitDone", VPackValue(true));
   } catch (...) {
