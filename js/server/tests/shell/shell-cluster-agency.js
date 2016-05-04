@@ -478,7 +478,7 @@ function AgencySuite () {
         // key not found
       }
         
-      var values = agency.get("UnitTestsAgency/2", true).arango.UnitTestsAgency.2;
+      var values = agency.get("UnitTestsAgency/2", true).arango.UnitTestsAgency["2"];
       assertEqual({ "UnitTestsAgency/2/1/foo" : "baz" }, values); 
     },
 
