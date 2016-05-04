@@ -2304,7 +2304,7 @@ char* TRI_LocateConfigDirectory() {
 #ifdef _SYSCONFDIR_
   r += _SYSCONFDIR_;
 #else
-  r += "etc\\arangodb";
+  r += "etc\\arangodb3";
 #endif
 
   r += std::string(1, TRI_DIR_SEPARATOR_CHAR);
@@ -2315,12 +2315,13 @@ char* TRI_LocateConfigDirectory() {
 #elif defined(_SYSCONFDIR_)
 
 char* TRI_LocateConfigDirectory() {
-  char const* dir = _SYSCONFDIR_;
   char* v = LocateConfigDirectoryEnv();
 
   if (v != nullptr) {
     return v;
   }
+
+  char const* dir = _SYSCONFDIR_;
 
   if (*dir == '\0') {
     return nullptr;
