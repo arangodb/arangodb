@@ -270,7 +270,6 @@
             "frontend/js/bootstrap/errors.js",
             "frontend/js/bootstrap/modules/console.js",
             "frontend/js/client/bootstrap/modules/internal.js", 
-            "frontend/js/bootstrap/monkeypatches.js", 
             "frontend/js/modules/**/*.js",
             "frontend/js/client/client.js"
           ],

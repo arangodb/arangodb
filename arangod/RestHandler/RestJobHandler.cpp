@@ -122,6 +122,11 @@ void RestJobHandler::putJobMethod() {
   uint64_t jobId = StringUtils::uint64(value);
 
   if (method == "cancel") {
+    if (DispatcherFeature::DISPATCHER == nullptr) {
+      generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_HTTP_NOT_FOUND);
+    }
+    
     bool status = DispatcherFeature::DISPATCHER->cancelJob(jobId);
 
     // unknown or already fetched job

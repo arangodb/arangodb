@@ -233,119 +233,6 @@ void VelocyPackDumper::dumpInteger(VPackSlice const* slice) {
   }
 }
 
-void VelocyPackDumper::dumpString(char const* src, VPackValueLength len) {
-  static char const EscapeTable[256] = {
-      // 0    1    2    3    4    5    6    7    8    9    A    B    C    D    E
-      // F
-      'u',  'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f', 'r',
-      'u',
-      'u',  // 00
-      'u',  'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u',
-      'u',
-      'u',  // 10
-      0,    0,   '"', 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,
-      '/',  // 20
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,
-      0,  // 30~4F
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      '\\', 0,   0,   0,  // 50
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,
-      0,  // 60~FF
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,    0,   0,   0};
-
-  TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
-
-  uint8_t const* p = reinterpret_cast<uint8_t const*>(src);
-  uint8_t const* e = p + len;
-
-  static size_t const maxCount = 16;
-  size_t count = maxCount;
-
-  while (p < e) {
-    uint8_t c = *p;
-
-    // don't check for buffer reallocation on every single character
-    if (count == maxCount) {
-      // maximum value that we can append in one go is 6 bytes
-      int res = TRI_ReserveStringBuffer(buffer, 6 * count);
-     
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      count = 0;
-    } else {
-      ++count;
-    }
-
-
-    if ((c & 0x80) == 0) {
-      // check for control characters
-      char esc = EscapeTable[c];
-
-      if (esc) {
-        if (c != '/' || options->escapeForwardSlashes) {
-          // escape forward slashes only when requested
-          TRI_AppendCharUnsafeStringBuffer(buffer, '\\');
-        }
-        TRI_AppendCharUnsafeStringBuffer(buffer, static_cast<char>(esc));
-
-        if (esc == 'u') {
-          uint16_t i1 = (((uint16_t)c) & 0xf0) >> 4;
-          uint16_t i2 = (((uint16_t)c) & 0x0f);
-
-          TRI_AppendStringUnsafeStringBuffer(buffer, "00", 2);
-          TRI_AppendCharUnsafeStringBuffer(buffer,
-              static_cast<char>((i1 < 10) ? ('0' + i1) : ('A' + i1 - 10)));
-          TRI_AppendCharUnsafeStringBuffer(buffer,
-              static_cast<char>((i2 < 10) ? ('0' + i2) : ('A' + i2 - 10)));
-        }
-      } else {
-        TRI_AppendCharUnsafeStringBuffer(buffer, static_cast<char>(c));
-      }
-    } else if ((c & 0xe0) == 0xc0) {
-      // two-byte sequence
-      if (p + 1 >= e) {
-        throw VPackException(VPackException::InvalidUtf8Sequence);
-      }
-
-      TRI_AppendStringUnsafeStringBuffer(buffer, reinterpret_cast<char const*>(p), 2);
-      ++p;
-    } else if ((c & 0xf0) == 0xe0) {
-      // three-byte sequence
-      if (p + 2 >= e) {
-        throw VPackException(VPackException::InvalidUtf8Sequence);
-      }
-
-      TRI_AppendStringUnsafeStringBuffer(buffer, reinterpret_cast<char const*>(p), 3);
-      p += 2;
-    } else if ((c & 0xf8) == 0xf0) {
-      // four-byte sequence
-      if (p + 3 >= e) {
-        throw VPackException(VPackException::InvalidUtf8Sequence);
-      }
-
-      TRI_AppendStringUnsafeStringBuffer(buffer, reinterpret_cast<char const*>(p), 4);
-      p += 3;
-    }
-
-    ++p;
-  }
-}
-
 void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base) {
   if (base == nullptr) {
     base = slice;
@@ -435,9 +322,15 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
     case VPackValueType::String: {
       VPackValueLength len;
       char const* p = slice->getString(len);
-      TRI_AppendCharUnsafeStringBuffer(buffer, '"');
-      dumpString(p, len);
-      if (TRI_AppendCharStringBuffer(buffer, '"') != TRI_ERROR_NO_ERROR) {
+      int res;
+      if (len == 0) {
+        res = TRI_AppendString2StringBuffer(buffer, "\"\"", 2);
+      } else {
+        res = TRI_AppendCharStringBuffer(buffer, '"');
+        res |= TRI_AppendJsonEncodedStringStringBuffer(buffer, p, len, options->escapeForwardSlashes);
+        res |= TRI_AppendCharStringBuffer(buffer, '"');
+      }
+      if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
       break;
@@ -453,10 +346,12 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
       if (options->customTypeHandler == nullptr) {
         throw VPackException(VPackException::NeedCustomTypeHandler);
       } else {
-        TRI_AppendCharUnsafeStringBuffer(buffer, '"');
         std::string v = options->customTypeHandler->toString(*slice, nullptr, *base);
-        dumpString(v.c_str(), v.size());
-        if (TRI_AppendCharStringBuffer(buffer, '"') != TRI_ERROR_NO_ERROR) {
+        
+        int res = TRI_AppendCharStringBuffer(buffer, '"');
+        res |= TRI_AppendJsonEncodedStringStringBuffer(buffer, v.c_str(), v.size(), options->escapeForwardSlashes);
+        res |= TRI_AppendCharStringBuffer(buffer, '"');
+        if (res != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
       }

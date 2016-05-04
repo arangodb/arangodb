@@ -28,7 +28,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var is = require("@arangodb/is"),
-  internal = require("internal"),
+  propertyKeys = require("@arangodb/util").propertyKeys,
+  shallowCopy = require("@arangodb/util").shallowCopy,
   Edge,
   Graph,
   Vertex,
@@ -245,7 +246,7 @@ Edge.prototype.getProperty = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPropertyKeys = function () {
-  return internal.propertyKeys(this._properties);
+  return propertyKeys(this._properties);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,7 +254,7 @@ Edge.prototype.getPropertyKeys = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.properties = function () {
-  return this._properties._shallowCopy;
+  return shallowCopy(this._properties);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -432,7 +433,7 @@ Vertex.prototype.getProperty = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getPropertyKeys = function () {
-  return internal.propertyKeys(this._properties);
+  return propertyKeys(this._properties);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -450,7 +451,7 @@ Vertex.prototype.getPropertyKeys = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.properties = function () {
-  return this._properties._shallowCopy;
+  return shallowCopy(this._properties);
 };
 
 
@@ -496,7 +497,7 @@ Graph.prototype._prepareEdgeData = function (data, label) {
   if (is.notExisty(data) || is.noObject(data)) {
     edgeData = {};
   } else {
-    edgeData = data._shallowCopy || {};
+    edgeData = shallowCopy(data) || {};
   }
 
   edgeData.$label = label;
@@ -510,7 +511,7 @@ Graph.prototype._prepareVertexData = function (data) {
   if (is.notExisty(data) || is.noObject(data)) {
     vertexData = {};
   } else {
-    vertexData = data._shallowCopy || {};
+    vertexData = shallowCopy(data) || {};
   }
 
   return vertexData;

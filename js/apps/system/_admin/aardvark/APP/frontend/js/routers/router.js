@@ -46,6 +46,7 @@
     execute: function(callback, args) {
       $('#subNavigationBar .breadcrumb').html('');
       $('#subNavigationBar .bottom').html('');
+      $('#loadingScreen').hide();
       if (callback) {
         callback.apply(this, args);
       }

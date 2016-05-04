@@ -615,6 +615,10 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
     std::unique_ptr<arangodb::rest::Job> job(new ServerJob(this));
 
     auto dispatcher = DispatcherFeature::DISPATCHER;
+    if (dispatcher == nullptr) {
+      LOG(ERR) << "could not schedule dbserver sync - dispatcher gone.";
+      return false;
+    }
     if (dispatcher->addJob(job) == TRI_ERROR_NO_ERROR) {
       LOG(TRACE) << "scheduled dbserver sync";
       return true;

@@ -20,6 +20,60 @@ body {
     right: 0; }
   body .centralRow {
     position: relative; }
+  body .loadingScreen {
+    background-color: #fff;
+    bottom: 0;
+    left: 0;
+    padding-top: 100px;
+    position: absolute;
+    right: 0;
+    top: 102px;
+    z-index: 100; }
+    body .loadingScreen span {
+      display: inline-block;
+      margin-top: 10px;
+      text-align: center;
+      width: 100%; }
+    body .loadingScreen i {
+      width: 100%; }
+  body #offlinePlaceholder {
+    background: rgba(64, 74, 83, 0.8);
+    height: 100%;
+    left: 0;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 9999; }
+    body #offlinePlaceholder .offline-div {
+      overflow: auto;
+      position: fixed;
+      top: 20%;
+      width: 100%;
+      z-index: 1050; }
+      body #offlinePlaceholder .offline-div h3 {
+        font-weight: 300; }
+      body #offlinePlaceholder .offline-div p {
+        font-weight: 300; }
+      body #offlinePlaceholder .offline-div .pure-u {
+        width: 100%; }
+      body #offlinePlaceholder .offline-div .offline-window {
+        background: #fff;
+        border-radius: 3px; }
+        body #offlinePlaceholder .offline-div .offline-window .offline-header {
+          padding-top: 10px;
+          text-align: center; }
+        body #offlinePlaceholder .offline-div .offline-window .offline-body {
+          padding-bottom: 20px;
+          padding-top: 0; }
+          body #offlinePlaceholder .offline-div .offline-window .offline-body .animation_state {
+            padding-top: 20px; }
+          body #offlinePlaceholder .offline-div .offline-window .offline-body > p {
+            text-align: center;
+            margin-bottom: 0; }
+        body #offlinePlaceholder .offline-div .offline-window .offline-header,
+        body #offlinePlaceholder .offline-div .offline-window .offline-body {
+          padding-left: 20px;
+          padding-right: 20px; }
 
 body,
 input,
@@ -2113,11 +2167,53 @@ textarea,
 .dropdownImport.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus {
   cursor: pointer; }
 
-.arangoToolbar span.clickable:hover {
+.arangoToolbar span.clickable:hover, .login-window button {
   -moz-transition: all .2s ease-in;
   -o-transition: all .2s ease-in;
   -webkit-transition: all .2s ease-in;
   transition: all .2s ease-in; }
+
+.login-window select {
+  -webkit-appearance: none;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50px' height='50px'><polyline points='46.139,15.518 25.166,36.49 4.193,15.519'/></svg>");
+  background-color: #f2f2f2;
+  background-position: right 10px top 12px;
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
+  border: 0;
+  -webkit-border-radius: 2px;
+  border-radius: 2px;
+  color: #000;
+  font-size: 14px;
+  font-weight: 400;
+  height: 40px;
+  line-height: initial;
+  outline: 0;
+  padding: 12px;
+  text-align: center;
+  -moz-transition: .3s ease all;
+  -ms-transition: .3s ease all;
+  -o-transition: .3s ease all;
+  -webkit-transition: .3s ease all;
+  transition: .3s ease all;
+  width: 100%; }
+  .login-window select.blue {
+    background-color: #3498DB; }
+  .login-window select.blue:hover {
+    background-color: #2980B9; }
+  .login-window select.green {
+    background-color: #2ECC71; }
+  .login-window select.green:hover {
+    background-color: #27AE60; }
+  .login-window select.red {
+    background-color: #E74C3C; }
+  .login-window select.red:hover {
+    background-color: #C0392B; }
+  .login-window select:disabled {
+    opacity: .5; }
+  .login-window select:focus, .login-window select:active {
+    border: 0;
+    outline: 0; }
 
 .subnavmenu .infoEntry:hover .info {
   -webkit-touch-callout: none;
@@ -6723,6 +6819,9 @@ div.headerBar {
   position: relative;
   top: 100px;
   width: 350px; }
+  .login-window select {
+    margin-bottom: 30px;
+    padding-left: 35px; }
   .login-window .login-logo-round {
     margin-bottom: 25px;
     margin-top: 10px; }
@@ -6735,11 +6834,8 @@ div.headerBar {
     float: left;
     font-size: 14pt;
     left: 30px;
-    margin-right: 44px;
     margin-top: 11px;
     position: absolute; }
-    .login-window .fa.fa-lock {
-      right: -9px; }
   .login-window .wrong-credentials {
     color: #e74c3c;
     margin-top: -30px;
@@ -6749,7 +6845,7 @@ div.headerBar {
   .login-window .login-input {
     background: #f2f2f2 !important;
     background-color: #f2f2f2 !important;
-    border: 0;
+    border: 2px #f2f2f2 !important;
     border-bottom-left-radius: 3px;
     border-bottom-right-radius: 3px;
     border-top-left-radius: 3px;
@@ -6763,7 +6859,7 @@ div.headerBar {
     padding-left: 35px;
     width: 100%; }
   .login-window .form-error {
-    border: 1px solid #e74c3c !important; }
+    border: 2px solid #e74c3c !important; }
   .login-window button {
     height: 40px;
     width: 100%; }
