@@ -87,7 +87,7 @@ struct AqlValue final {
  public:
   // construct an empty AqlValue
   // note: this is the default constructor and should be as cheap as possible
-  AqlValue() {
+  AqlValue() noexcept {
     // construct a slice of type None
     _data.internal[0] = '\x00';
     setType(AqlValueType::VPACK_INLINE);
@@ -180,7 +180,7 @@ struct AqlValue final {
   }
 
   /// @brief hashes the value
-  uint64_t hash(arangodb::AqlTransaction*) const;
+  uint64_t hash(arangodb::AqlTransaction*, uint64_t seed = 0xdeadbeef) const;
 
   /// @brief whether or not the value contains a none value
   bool isNone() const;
@@ -280,7 +280,8 @@ struct AqlValue final {
   
   /// @brief invalidates/resets a value to None, not freeing any memory
   void erase() {
-    initFromSlice(arangodb::velocypack::Slice());
+    _data.internal[0] = '\x00';
+    setType(AqlValueType::VPACK_INLINE);
   }
   
   /// @brief destroy, explicit destruction, only when needed
@@ -330,7 +331,7 @@ struct AqlValue final {
   }
 
   /// @brief sets the value type
-  inline void setType(AqlValueType type) {
+  inline void setType(AqlValueType type) noexcept {
     _data.internal[sizeof(_data.internal) - 1] = type;
   }
 };
@@ -356,6 +357,48 @@ class AqlValueGuard {
 struct AqlValueMaterializer {
   explicit AqlValueMaterializer(arangodb::AqlTransaction* trx) 
       : trx(trx), materialized(), hasCopied(false) {}
+
+  AqlValueMaterializer(AqlValueMaterializer const& other) 
+      : trx(other.trx), materialized(other.materialized), hasCopied(other.hasCopied) {
+    if (other.hasCopied) {
+      // copy other's slice
+      materialized = other.materialized.clone();
+    }
+  }
+  
+  AqlValueMaterializer& operator=(AqlValueMaterializer const& other) {
+    if (this != &other) {
+      TRI_ASSERT(trx == other.trx); // must be from same transaction
+      if (hasCopied) {
+        // destroy our own slice
+        materialized.destroy();
+        hasCopied = false;
+      }
+      // copy other's slice
+      materialized = other.materialized.clone();
+      hasCopied = other.hasCopied;
+    }
+  }
+  
+  AqlValueMaterializer(AqlValueMaterializer&& other) noexcept 
+      : trx(other.trx), materialized(other.materialized), hasCopied(other.hasCopied) {
+    // reset other
+    other.hasCopied = false;
+    other.materialized = AqlValue();
+  }
+  
+  AqlValueMaterializer& operator=(AqlValueMaterializer&& other) noexcept {
+    if (this != &other) {
+      TRI_ASSERT(trx == other.trx); // must be from same transaction
+      if (hasCopied) {
+        // destroy our own slice
+        materialized.destroy();
+      }
+      // reset other
+      materialized = other.materialized;
+      other.materialized = AqlValue();
+    }
+  }
 
   ~AqlValueMaterializer() { 
     if (hasCopied) { 

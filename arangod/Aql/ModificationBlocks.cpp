@@ -403,7 +403,8 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
     size_t const n = res->size();
 
     throwIfKilled();  // check if we were aborted
-    bool isMultiple = (n > 1);
+    bool const isMultiple = (n > 1);
+
     if (!isMultiple) {
       // loop over the complete block. Well it is one element only
       for (size_t i = 0; i < n; ++i) {
@@ -453,7 +454,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         dstRow -= n;
         VPackSlice resultList = opRes.slice();
         TRI_ASSERT(resultList.isArray());
-        for (auto const& elm: VPackArrayIterator(resultList)) {
+        for (auto const& elm: VPackArrayIterator(resultList, false)) {
           bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
               elm, "error", false);
           if (!wasError) {
@@ -715,13 +716,14 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
     auto* res = *it; 
 
     throwIfKilled();  // check if we were aborted
+    
+    insertBuilder.clear();
+    updateBuilder.clear();
 
     size_t const n = res->size();
-
-    bool isMultiple = (n > 1);
+      
+    bool const isMultiple = (n > 1);
     if (isMultiple) {
-      insertBuilder.clear();
-      updateBuilder.clear();
       insertBuilder.openArray();
       updateBuilder.openArray();
     }
