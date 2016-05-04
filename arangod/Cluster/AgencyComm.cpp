@@ -1199,7 +1199,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::exists(std::string const& key) {
-  AgencyCommResult result = getValues2(key);
+  AgencyCommResult result = getValues(key, false);
 
   return result.successful();  
 }

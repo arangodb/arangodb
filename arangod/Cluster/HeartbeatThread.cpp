@@ -174,7 +174,7 @@ void HeartbeatThread::runDBServer() {
       // send an initial GET request to Sync/Commands/my-id
     
       AgencyCommResult result =
-        _agency.getValues2("Sync/Commands/" + _myId);
+        _agency.getValues("Sync/Commands/" + _myId);
       
       if (result.successful()) {
         handleStateChange(result, lastCommandIndex);
@@ -307,7 +307,7 @@ void HeartbeatThread::runCoordinator() {
     
       // send an initial GET request to Sync/Commands/my-id
       AgencyCommResult result =
-          _agency.getValues2("Sync/Commands/" + _myId);
+          _agency.getValues("Sync/Commands/" + _myId);
 
       if (result.successful()) {
         handleStateChange(result, lastCommandIndex);

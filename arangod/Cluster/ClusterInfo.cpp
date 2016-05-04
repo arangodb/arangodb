@@ -1850,6 +1850,12 @@ int ClusterInfo::ensureIndexCoordinator(
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
   }
+  VPackSlice versionSlice = res._vpack->slice()[0].get(
+      std::vector<std::string>({ac.prefixStripped(), "Current", "Version"}));
+  if (!versionSlice.isInteger()) {
+    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                       errorMsg);
+  }
   
   
   while (TRI_microtime() <= endTime) {
@@ -2069,6 +2075,12 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   // now wait for the index to disappear
   res = ac.getValues2("Current/Version");
   if (!res.successful()) {
+    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                       errorMsg);
+  }
+  VPackSlice versionSlice = res._vpack->slice()[0].get(
+      std::vector<std::string>({ac.prefixStripped(), "Current", "Version"}));
+  if (!versionSlice.isInteger()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
   }
