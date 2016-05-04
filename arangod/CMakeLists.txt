@@ -62,10 +62,21 @@ if (MSVC)
     VERSION_REVISION ${BUILD_ID}
   )
 endif ()
+  
+if (USE_ROCKSDB) 
+  set(ROCKSDB_FILES
+    Indexes/RocksDBFeature.cpp
+    Indexes/RocksDBIndex.cpp
+    Indexes/RocksDBKeyComparator.cpp
+  )
+else ()
+  set(ROCKSDB_FILES "")
+endif ()
 
 add_executable(${BIN_ARANGOD}
   ${ARANGO_MSVC}
   ${ProductVersionFiles}
+  ${ROCKSDB_FILES}
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
@@ -319,6 +330,8 @@ target_link_libraries(${BIN_ARANGOD}
   ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${V8_LIBS}
+  ${ROCKSDB_LIBS}
+  ${SNAPPY_STATIC_LIB}
   ${SYSTEM_LIBRARIES}
 )
 

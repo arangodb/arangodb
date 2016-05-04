@@ -48,6 +48,8 @@ class FulltextIndex final : public Index {
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
+  
+  bool canBeDropped() const override final { return true; }
 
   bool isSorted() const override final { return false; }
 

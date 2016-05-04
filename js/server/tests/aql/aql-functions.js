@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var db = internal.db;
 var errors = internal.errors;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
@@ -60,6 +61,8 @@ var assertEqualObj = function (expected, actual) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlFunctionsTestSuite () {
+  var collectionName = "UnitTestsAqlFunctions";
+  var collection;
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,6 +70,8 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      db._drop(collectionName);
+      collection = db._create(collectionName);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,6 +79,7 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._drop(collectionName);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2464,6 +2470,40 @@ function ahuacatlFunctionsTestSuite () {
       var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1, 2, 3, 3, 4, 4, 5, 1 ], [ 2, 4, 5 ]))");
       assertEqual(expected, actual[0].sort());
     },
+
+    testIntersectionAllDocuments : function () {
+      // Insert 10 elements
+      for (var i = 0; i < 10; ++i) {
+        collection.save({});
+      }
+      var bindVars = {"@collection": collectionName};
+      var actual = getQueryResults("LET list = (FOR x IN @@collection RETURN x) RETURN INTERSECTION(list, list)", bindVars);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0].length, 10);
+    },
+
+    testIntersectionAllDocuments2 : function () {
+      // Insert 10 elements
+      for (var i = 0; i < 10; ++i) {
+        collection.save({});
+      }
+      var bindVars = {"@collection": collectionName};
+      var actual = getQueryResults("RETURN INTERSECTION((FOR x IN @@collection RETURN x), (FOR x IN @@collection RETURN x))", bindVars);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0].length, 10);
+    },
+
+    testIntersectionSingleDocuments : function () {
+      // Insert 10 elements
+      for (var i = 0; i < 10; ++i) {
+        collection.save({});
+      }
+      var bindVars = {"@collection": collectionName};
+      var actual = getQueryResults("FOR x IN @@collection RETURN INTERSECTION([x], [x])", bindVars);
+      assertEqual(actual.length, 10);
+    },
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test flatten function

@@ -133,6 +133,8 @@ class PrimaryIndex final : public Index {
     return Index::TRI_IDX_TYPE_PRIMARY_INDEX;
   }
 
+  bool canBeDropped() const override final { return false; }
+
   bool isSorted() const override final { return false; }
 
   bool hasSelectivityEstimate() const override final { return true; }

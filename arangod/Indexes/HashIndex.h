@@ -100,6 +100,8 @@ class HashIndex final : public PathBasedIndex {
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_HASH_INDEX;
   }
+  
+  bool canBeDropped() const override final { return true; }
 
   bool isSorted() const override final { return false; }
 
