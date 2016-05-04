@@ -44,14 +44,14 @@ AqlValue::AqlValue(TRI_doc_mptr_t const* mptr) {
 }
 
 /// @brief hashes the value
-uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
+uint64_t AqlValue::hash(arangodb::AqlTransaction* trx, uint64_t seed) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
     case VPACK_INLINE: 
     case VPACK_MANAGED: {
       // we must use the slow hash function here, because a value may have 
       // different representations in case its an array/object/number
-      return slice().normalizedHash();
+      return slice().normalizedHash(seed);
     }
     case DOCVEC:
     case RANGE: { 
@@ -59,7 +59,7 @@ uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
       toVelocyPack(trx, builder, false);
       // we must use the slow hash function here, because a value may have 
       // different representations in case its an array/object/number
-      return builder.slice().normalizedHash();
+      return builder.slice().normalizedHash(seed);
     }
   }
 

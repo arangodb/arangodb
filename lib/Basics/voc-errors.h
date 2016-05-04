@@ -441,7 +441,7 @@
 /// - 1578: @LIT{disallowed dynamic call to '\%s'}
 ///    "Will be raised when a dynamic function call is made to a function that
 ///   cannot be called dynamically."
-/// - 1579: @LIT{access after data-modification}
+/// - 1579: @LIT{access after data-modification by \%s}
 ///    "Will be raised when collection data are accessed after a
 ///   data-modification operation."
 /// - 1580: @LIT{invalid user function name}
@@ -573,7 +573,7 @@
 /// - 1934: @LIT{Invalid example type. Has to be Array or Object}
 ///   Invalid example type. Has to be Array or Object.
 /// - 1935: @LIT{Invalid number of arguments. Expected: }
-///   Invalid number of arguments. Expected:
+///   Invalid number of arguments. Expected: 
 /// - 1936: @LIT{Invalid parameter type.}
 ///   Invalid parameter type.
 /// - 1937: @LIT{Invalid id}
@@ -2443,7 +2443,7 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1579: ERROR_QUERY_ACCESS_AFTER_MODIFICATION
 ///
-/// access after data-modification
+/// access after data-modification by %s
 ///
 ///  "Will be raised when collection data are accessed after a
 /// data-modification operation."
@@ -3043,9 +3043,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1935: ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS
 ///
-/// Invalid number of arguments. Expected:
+/// Invalid number of arguments. Expected: 
 ///
-/// Invalid number of arguments. Expected:
+/// Invalid number of arguments. Expected: 
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS                       (1935)

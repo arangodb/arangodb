@@ -180,7 +180,7 @@ struct AqlValue final {
   }
 
   /// @brief hashes the value
-  uint64_t hash(arangodb::AqlTransaction*) const;
+  uint64_t hash(arangodb::AqlTransaction*, uint64_t seed = 0xdeadbeef) const;
 
   /// @brief whether or not the value contains a none value
   bool isNone() const;
@@ -280,7 +280,8 @@ struct AqlValue final {
   
   /// @brief invalidates/resets a value to None, not freeing any memory
   void erase() {
-    initFromSlice(arangodb::velocypack::Slice());
+    _data.internal[0] = '\x00';
+    setType(AqlValueType::VPACK_INLINE);
   }
   
   /// @brief destroy, explicit destruction, only when needed
