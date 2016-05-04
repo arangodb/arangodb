@@ -482,7 +482,7 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
       if (idSlice.isString()) {
         // delete persistent indexes for this database
         TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(idSlice.copyString()));
-        RocksDBFeature::instance()->dropDatabase(id);
+        RocksDBFeature::dropDatabase(id);
       }
 #endif
 
@@ -1033,7 +1033,7 @@ static void DatabaseManager(void* data) {
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
         // delete persistent indexes for this database
-        RocksDBFeature::instance()->dropDatabase(database->_id);
+        RocksDBFeature::dropDatabase(database->_id);
 #endif
 
         LOG(TRACE) << "physically removing database directory '"
