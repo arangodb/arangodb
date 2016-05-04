@@ -919,11 +919,11 @@ void ClusterInfo::loadCurrentCollections() {
     }
   }
   
-  LOG(DEBUG) << "Error while loading " << prefixCurrentCollections
-             << " httpCode: " << result.httpCode()
-             << " errorCode: " << result.errorCode()
-             << " errorMessage: " << result.errorMessage()
-             << " body: " << result.body();
+  LOG(ERR) << "Error while loading " << prefixCurrentCollections
+           << " httpCode: " << result.httpCode()
+           << " errorCode: " << result.errorCode()
+           << " errorMessage: " << result.errorMessage()
+           << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
