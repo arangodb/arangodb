@@ -2242,7 +2242,7 @@ int InputBuffer::incrementalHistorySearch(PromptBase& pi, int startChar) {
                  historyLinePosition);  // draw user's text with our prompt
 
   // loop until we get an exit character
-  int c;
+  int c = 0;
   bool keepLooping = true;
   bool useSearchedLine = true;
   bool searchAgain = false;
