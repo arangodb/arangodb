@@ -747,8 +747,6 @@ static AqlValue VertexIdsToAqlValueVPack(arangodb::aql::Query* query,
   return AqlValue(builder.get());
 }
 
-
-
 /// @brief Load geoindex for collection name
 static arangodb::Index* getGeoIndex(arangodb::AqlTransaction* trx,
                                     TRI_voc_cid_t const& cid,
