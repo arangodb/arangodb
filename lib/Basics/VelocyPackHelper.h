@@ -71,8 +71,15 @@ class VelocyPackHelper {
 ////////////////////////////////////////////////////////////////////////////////
 
   struct VPackEqual {
-    bool operator()(arangodb::velocypack::Slice const&,
-                    arangodb::velocypack::Slice const&) const;
+    private:
+      arangodb::velocypack::Options const* _options;
+    public:
+     VPackEqual() : _options(nullptr) {}
+     explicit VPackEqual(arangodb::velocypack::Options const* opts)
+         : _options(opts) {}
+
+     bool operator()(arangodb::velocypack::Slice const&,
+                     arangodb::velocypack::Slice const&) const;
   };
 
   struct VPackStringEqual {

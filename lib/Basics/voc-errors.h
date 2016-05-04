@@ -443,7 +443,7 @@
 /// - 1578: @LIT{disallowed dynamic call to '\%s'}
 ///    "Will be raised when a dynamic function call is made to a function that
 ///   cannot be called dynamically."
-/// - 1579: @LIT{access after data-modification}
+/// - 1579: @LIT{access after data-modification by \%s}
 ///    "Will be raised when collection data are accessed after a
 ///   data-modification operation."
 /// - 1580: @LIT{invalid user function name}
@@ -2455,7 +2455,7 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1579: ERROR_QUERY_ACCESS_AFTER_MODIFICATION
 ///
-/// access after data-modification
+/// access after data-modification by %s
 ///
 ///  "Will be raised when collection data are accessed after a
 /// data-modification operation."

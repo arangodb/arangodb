@@ -43,6 +43,7 @@ var console = require("console");
 
 var arangodb = require("@arangodb");
 var foxxManager = require("@arangodb/foxx/manager");
+var shallowCopy = require("@arangodb/util").shallowCopy;
 var ErrorStackParser = require("error-stack-parser");
 
 const MIME_DEFAULT = 'text/plain; charset=utf-8';
@@ -970,7 +971,7 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
       routes.prefix,
       path + "/*",
       rexpr + "(/[^/]+)*/?",
-      urlParameters._shallowCopy,
+      shallowCopy(urlParameters),
       depth + 1,
       true));
   }
@@ -1672,7 +1673,7 @@ function handleRedirect (req, res, options, headers) {
     + "</a>.</p></body></html>";
 
   if (headers !== undefined) {
-    res.headers = headers._shallowCopy;
+    res.headers = shallowCopy(headers);
   }
   else {
     res.headers = {};

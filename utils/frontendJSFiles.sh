@@ -28,7 +28,6 @@ JAVASCRIPT_BROWSER="\
   bootstrap/modules/internal.js \
   bootstrap/modules/console.js \
   bootstrap/errors.js \
-  bootstrap/monkeypatches.js \
   \
   client/client.js \
   client/bootstrap/modules/internal.js \

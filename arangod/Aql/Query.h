@@ -292,6 +292,8 @@ class Query {
  private:
   /// @brief initializes the query
   void init();
+  
+  void setExecutionTime();
 
   /// @brief log a query
   void log();

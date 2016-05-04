@@ -30,6 +30,7 @@
 
 var internal = require("internal"); // OK: reloadAuth
 var arangodb = require("@arangodb");
+var shallowCopy = require("@arangodb/util").shallowCopy;
 var crypto = require("@arangodb/crypto");
 
 var db = arangodb.db;
@@ -240,7 +241,7 @@ exports.update = function (username, password, active, userData, changePassword)
     throw err;
   }
 
-  var data = user._shallowCopy;
+  var data = shallowCopy(user);
 
   if (password !== undefined) {
     data.authData.simple = hashPassword(password);
@@ -418,7 +419,7 @@ exports.changePassword = function (token, password) {
 
   password = validatePassword(password);
 
-  var authData = user._shallowCopy.authData;
+  var authData = shallowCopy(user).authData;
 
   delete authData.passwordToken;
   authData.simple = hashPassword(password);
