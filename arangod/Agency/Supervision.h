@@ -56,8 +56,7 @@ public:
 
   template<TASKS T>
   class Task {
-    Task (const VPackSlice& config) {
-    }
+    explicit Task (const VPackSlice& config) {}
     ServerID _serverID;
     std::string _endpoint;
   };
