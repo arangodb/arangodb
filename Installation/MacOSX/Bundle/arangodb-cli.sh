@@ -15,7 +15,7 @@ for script in $SCRIPTS; do
     echo "export ROOTDIR=\"${ROOTDIR}/Contents/MacOS/opt/arangodb\""
     echo
 
-    echo "exec \"\${ROOTDIR}/$script\" -c \"\${ROOTDIR}/etc/arangodb/${base}.conf\" \$*"
+    echo "exec \"\${ROOTDIR}/$script\" -c \"\${ROOTDIR}/etc/arangodb3/${base}.conf\" \$*"
   ) > ${ROOTDIR}/Contents/MacOS/$base.$$
 
   chmod 755 ${ROOTDIR}/Contents/MacOS/$base.$$
@@ -52,7 +52,7 @@ INFOFILE="/tmp/ArangoDB-CLI.info.$$"
   echo "ArangoDB server has been started"
   echo ""
   echo "The database directory is located at"
-  echo "   '${ROOTDIR}/Contents/MacOS/opt/arangodb/var/lib/arangodb'"
+  echo "   '${ROOTDIR}/Contents/MacOS/opt/arangodb/var/lib/arangodb3'"
   echo ""
   echo "The log file is located at"
   echo "   '${ROOTDIR}/Contents/MacOS/opt/arangodb/var/log/arangodb/arangod.log'"
