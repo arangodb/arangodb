@@ -141,6 +141,8 @@ class SkiplistIndex final : public PathBasedIndex {
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
+  
+  bool canBeDropped() const override final { return true; }
 
   bool isSorted() const override final { return true; }
 
