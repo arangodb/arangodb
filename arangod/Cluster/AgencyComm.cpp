@@ -1199,7 +1199,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::exists(std::string const& key) {
-  AgencyCommResult result = getValues(key, false);
+  AgencyCommResult result = getValues2(key);
 
   return result.successful();  
 }
@@ -1347,7 +1347,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
 /// @brief gets one or multiple values from the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::getValues2(std::string const& key, bool recursive) {
+AgencyCommResult AgencyComm::getValues2(std::string const& key) {
   std::string url(buildUrl());
   
   url += "/read";

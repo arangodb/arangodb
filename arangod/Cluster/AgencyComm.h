@@ -592,7 +592,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult getValues(std::string const&, bool);
-  AgencyCommResult getValues2(std::string const&, bool);
+  AgencyCommResult getValues2(std::string const&);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increment a value

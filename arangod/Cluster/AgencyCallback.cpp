@@ -57,7 +57,7 @@ void AgencyCallback::refetchAndUpdate() {
     return;
   }
 
-  AgencyCommResult result = _agency.getValues2(key, true);
+  AgencyCommResult result = _agency.getValues2(key);
 
   if (!result.successful()) {
     return;

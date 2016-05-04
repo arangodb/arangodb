@@ -218,27 +218,18 @@ static void JS_IncreaseVersionAgency(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a value from the agency
 ////////////////////////////////////////////////////////////////////////////////
+
 static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("get(<key>, <recursive>, <withIndexes>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("get(<key>)");
   }
 
   std::string const key = TRI_ObjectToString(args[0]);
-  bool recursive = false;
-  bool withIndexes = false;
-
-  if (args.Length() > 1) {
-    recursive = TRI_ObjectToBoolean(args[1]);
-  }
-  if (args.Length() > 2) {
-    withIndexes = TRI_ObjectToBoolean(args[2]);
-  }
-
   AgencyComm comm;
-  AgencyCommResult result = comm.getValues2(key, recursive);
+  AgencyCommResult result = comm.getValues2(key);
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
@@ -246,39 +237,16 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> l = v8::Object::New(isolate);
 
-  if (withIndexes) {
-    
-    for (auto const& a : VPackArrayIterator(result._vpack->slice())) {
-      for (auto const& o : VPackObjectIterator(a)) {
-        
-        std::string const key = o.key.copyString();
-        VPackSlice const slice = o.value;
-#warning TODO index
-        std::string const idx = "0";//StringUtils::itoa((*it).second._index); 
-        
-        if (!slice.isNone()) {
-          v8::Handle<v8::Object> sub = v8::Object::New(isolate);
-          
-          sub->Set(TRI_V8_ASCII_STRING("value"), TRI_VPackToV8(isolate, slice));
-          sub->Set(TRI_V8_ASCII_STRING("index"), TRI_V8_STD_STRING(idx));
-          
-          l->Set(TRI_V8_STD_STRING(key), sub);
-        }
-      }
+  // return just the value for each key
+  
+  for (auto const& a : VPackArrayIterator(result._vpack->slice())) {
+    for (auto const& o : VPackObjectIterator(a)) {
       
-    }
-  } else {
-    // return just the value for each key
-    
-    for (auto const& a : VPackArrayIterator(result._vpack->slice())) {
-      for (auto const& o : VPackObjectIterator(a)) {
-        
-        std::string const key = o.key.copyString();
-        VPackSlice const slice = o.value;
-        
-        if (!slice.isNone()) {
-          l->ForceSet(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
-        }
+      std::string const key = o.key.copyString();
+      VPackSlice const slice = o.value;
+      
+      if (!slice.isNone()) {
+        l->ForceSet(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
       }
     }
   }

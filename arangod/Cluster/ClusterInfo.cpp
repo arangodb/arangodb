@@ -469,7 +469,7 @@ void ClusterInfo::loadPlan() {
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixPlan, true);
+      result = _agency.getValues2(prefixPlan);
     }
   }
 
@@ -561,7 +561,7 @@ void ClusterInfo::loadCurrentDatabases() {
   {
     AgencyCommLocker locker("Plan", "READ");
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrentDatabases, true);
+      result = _agency.getValues2(prefixCurrentDatabases);
     }
   }
   
@@ -638,7 +638,7 @@ void ClusterInfo::loadPlannedCollections() {
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixPlannedCollections, true);
+      result = _agency.getValues2(prefixPlannedCollections);
     } else {
       LOG(ERR) << "Error while locking " << prefixPlannedCollections;
       return;
@@ -843,7 +843,7 @@ void ClusterInfo::loadCurrentCollections() {
     AgencyCommLocker locker("Current", "READ");
     
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrentCollections, true);
+      result = _agency.getValues2(prefixCurrentCollections);
     }
   }
   
@@ -1426,8 +1426,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
 
-    res = ac.getValues2("Plan/Collections/" + databaseName + "/" + collectionID,
-                       false);
+    res = ac.getValues2("Plan/Collections/" + databaseName+"/" + collectionID);
 
     if (!res.successful()) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -1503,8 +1502,7 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
 
-    res = ac.getValues2("Plan/Collections/" + databaseName + "/" + collectionID,
-                       false);
+    res = ac.getValues2("Plan/Collections/" + databaseName +"/" + collectionID);
 
     velocypack::Slice col =
       res._vpack->slice()[0]
@@ -1698,7 +1696,7 @@ int ClusterInfo::ensureIndexCoordinator(
   std::string const key =
       "Plan/Collections/" + databaseName + "/" + collectionID;
 
-  AgencyCommResult previous = ac.getValues2(key, false);
+  AgencyCommResult previous = ac.getValues2(key);
   bool usePrevious = true;
 
   velocypack::Slice database =
@@ -1847,7 +1845,7 @@ int ClusterInfo::ensureIndexCoordinator(
   TRI_ASSERT(numberOfShards > 0);
 
   // now wait for the index to appear
-  AgencyCommResult res = ac.getValues("Current/Version", false);
+  AgencyCommResult res = ac.getValues2("Current/Version");
   if (!res.successful()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
@@ -1887,7 +1885,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   std::string const key =
       "Plan/Collections/" + databaseName + "/" + collectionID;
   
-  AgencyCommResult res = ac.getValues2(key, false);
+  AgencyCommResult res = ac.getValues2(key);
 
   velocypack::Slice previous =
     res._vpack->slice()[0].get(std::vector<std::string>(
@@ -2069,7 +2067,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   }
 
   // now wait for the index to disappear
-  res = ac.getValues("Current/Version", false);
+  res = ac.getValues2("Current/Version");
   if (!res.successful()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
@@ -2107,7 +2105,7 @@ void ClusterInfo::loadServers() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixServers, true);
+      result = _agency.getValues2(prefixServers);
     }
   }
 
@@ -2239,7 +2237,7 @@ void ClusterInfo::loadCurrentCoordinators() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrentCoordinators, true);
+      result = _agency.getValues2(prefixCurrentCoordinators);
     }
   }
 
@@ -2296,7 +2294,7 @@ void ClusterInfo::loadCurrentDBServers() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrentDBServers, true);
+      result = _agency.getValues2(prefixCurrentDBServers);
     }
   }
 
