@@ -1003,7 +1003,6 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
     if (result.isObject() && result.length() == numDbServers) {
       VPackObjectIterator dbs(result);
       
-      std::map<std::string, AgencyCommResultEntry>::iterator it;
       std::string tmpMsg = "";
       bool tmpHaveError = false;
 
