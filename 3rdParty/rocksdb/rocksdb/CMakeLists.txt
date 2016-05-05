@@ -43,7 +43,8 @@ ELSEIF(UNIX)
 else()
   MESSAGE(ERROR "unknown platform!")
 endif()
-string(CONCAT GIT_DATE_TIME ${DATE} ${TIME})
+# cmake 2.8 does not like string(CONCAT GIT_DATE_TIME ${DATE} ${TIME})
+set(GIT_DATE_TIME "${DATE} ${TIME}")
 
 find_package(Git)
 
