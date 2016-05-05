@@ -2782,27 +2782,30 @@ void FollowerInfo::add(ServerID const& sid) {
   bool success = false;
   do {
 
-    AgencyCommResult res = ac.getValues(path, false);
+    AgencyCommResult res = ac.getValues2(path, false);
+
     if (res.successful()) {
-      if (res.parse("", false)) {
-        auto it = res._values.begin();
-        if (it != res._values.end() && it->first == path) {
-          VPackSlice oldValue = it->second._vpack->slice();
-          auto newValue = newShardEntry(oldValue, sid, true);
-          AgencyCommResult res2 =
-              ac.casValue(path, oldValue, newValue.slice(), 0, 0);
-          if (res2.successful()) {
-            success = true;
-            break;  //
-          } else {
-            LOG(WARN) << "FollowerInfo::add, could not cas key " << path;
-          }
+      
+      velocypack::Slice currentShards =
+        result.slice()[0].get(std::vector<std::string>(
+          {AgencyComm::prefixStripped(), "Current", "Collections",
+              _docColl->_vocbase->_name,
+              std::to_string(_docColl->_info.planId()),
+              _docColl->_info.name()}));
+      
+      for (auto const& shard : currentShards) {
+        VPackSlice oldValue = shard.value;
+        auto newValue = newShardEntry(oldValue, sid, true);
+        AgencyCommResult res2 =
+          ac.casValue(path, oldValue, newValue.slice(), 0, 0);
+        if (res2.successful()) {
+          success = true;
+          break;  //
         } else {
-          LOG(ERR) << "FollowerInfo::add, did not find key " << path
-                   << " in agency.";
+          LOG(WARN) << "FollowerInfo::add, could not cas key " << path;
         }
       } else {
-        LOG(ERR) << "FollowerInfo::add, could not parse " << path
+        LOG(ERR) << "FollowerInfo::add, did not find key " << path
                  << " in agency.";
       }
     } else {
@@ -2847,28 +2850,30 @@ void FollowerInfo::remove(ServerID const& sid) {
   double startTime = TRI_microtime();
   bool success = false;
   do {
-
-    AgencyCommResult res = ac.getValues(path, false);
+    
+    AgencyCommResult res = ac.getValues2(path2, false);
     if (res.successful()) {
-      if (res.parse("", false)) {
-        auto it = res._values.begin();
-        if (it != res._values.end() && it->first == path) {
-          VPackSlice oldValue = it->second._vpack->slice();
-          auto newValue = newShardEntry(oldValue, sid, false);
-          AgencyCommResult res2 =
-              ac.casValue(path, oldValue, newValue.slice(), 0, 0);
-          if (res2.successful()) {
-            success = true;
-            break;  //
-          } else {
-            LOG(WARN) << "FollowerInfo::remove, could not cas key " << path;
-          }
+
+      velocypack::Slice currentShards =
+        result.slice()[0].get(std::vector<std::string>(
+          {AgencyComm::prefixStripped(), "Current", "Collections",
+              _docColl->_vocbase->_name,
+              std::to_string(_docColl->_info.planId()),
+              _docColl->_info.name()}));
+
+      for (auto const& shard : currentShards) { 
+        VPackSlice oldValue = shard.value;
+        auto newValue = newShardEntry(oldValue, sid, false);
+        AgencyCommResult res2 =
+          ac.casValue(path, oldValue, newValue.slice(), 0, 0);
+        if (res2.successful()) {
+          success = true;
+          break;  //
         } else {
-          LOG(ERR) << "FollowerInfo::remove, did not find key " << path
-                   << " in agency.";
+          LOG(WARN) << "FollowerInfo::remove, could not cas key " << path;
         }
       } else {
-        LOG(ERR) << "FollowerInfo::remove, could not parse " << path
+        LOG(ERR) << "FollowerInfo::remove, did not find key " << path
                  << " in agency.";
       }
     } else {
