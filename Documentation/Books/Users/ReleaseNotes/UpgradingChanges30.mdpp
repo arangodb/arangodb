@@ -14,7 +14,7 @@ The pattern for collection directory names was changed in 3.0 to include a rando
 id component at the end. The new pattern is `collection-<id>-<random>`, where `<id>` 
 is the collection id and `<random>` is a random number. Previous versions of ArangoDB 
 used a pattern `collection-<id>` without the random number.
-  
+
 !SECTION Edges and edges attributes
 
 In ArangoDB prior to 3.0 the attributes `_from` and `_to` of edges were treated 
@@ -35,7 +35,35 @@ referenced by `_from` and `_to` values may be dropped and re-created later. Any
 `_from` and `_to` values of edges pointing to such dropped collection are unaffected
 by the drop operation now. 
 
+!SECTION Documents
+
+Documents (in contrast to edges) cannot contain the attributes `_from` or `_to` on the
+main level in ArangoDB 3.0. These attributes will be automatically removed when saving
+documents (i.e. non-edges). `_from` and `_to` can be still used in sub-objects inside
+documents.
+
+The `_from` and `_to` attributes will of course be preserved and are still required when 
+saving edges.
+
+
 !SECTION AQL
+
+!SUBSECTION Edges handling
+
+When updating or replacing edges via AQL, any modifications to the `_from` and `_to`
+attributes of edges were ignored by previous versions of ArangoDB, without signaling
+any errors. This was due to the `_from` and `_to` attributes being immutable in earlier
+versions of ArangoDB.
+
+From 3.0 on, the `_from` and `_to` attributes of edges are mutable, so any AQL queries that
+modify the `_from` or `_to` attribute values of edges will attempt to actually change these
+attributes. Clients should be aware of this change and should review their queries that
+modify edges to rule out unintended side-effects.
+
+Additionally, when completely replacing the data of existing edges via the AQL `REPLACE`
+operation, it is now required to specify values for the `_from` and `_to` attributes,
+as `REPLACE` requires the entire new document to be specified. If either `_from` or `_to`
+are missing from the replacement document, an `REPLACE` operation will fail.
 
 !SUBSECTION Typecasting functions
 
@@ -50,6 +78,33 @@ The type casting applied by the `TO_NUMBER()` AQL function has changed as follow
 
 Additionally, the `TO_STRING()` AQL function now converts `null` values into an empty string
 (`""`) instead of the string `"null"`.
+
+!SUBSECTION Attribute names and parameters
+
+Previous versions of ArangoDB had some trouble with attribute names that contained the dot
+symbol (`.`). Some code parts in AQL used the dot symbol to split an attribute name into
+sub-components, so an attribute named `a.b` was not completely distinguishable from an
+attribute `a` with a sub-attribute `b`. This inconsistent behavior sometimes allowed "hacks"
+to work such as passing sub-attributes in a bind parameter as follows:
+
+```
+FOR doc IN collection
+  FILTER doc.@name == 1
+  RETURN doc
+```
+
+If the bind parameter `@name` contained the dot symbol (e.g. `@bind` = `a.b`, it was unclear 
+whether this should trigger sub-attribute access (i.e. `doc.a.b`) or a access to an attribute 
+with exactly the specified name (i.e. `doc."a.b"`).
+
+ArangoDB 3.0 now handles attribute names containing the dot symbol properly, and sending a
+bind parameter `@name` = `a.b` will now always trigger an access to the attribute `doc."a.b"`,
+not the sub-attribute `b` of `a` in `doc`. 
+
+For users that used the "hack" of passing bind parameters containing dot symbol to access
+sub-attributes, ArangoDB 3.0 allows specifying the attribute name parts as an array of strings,
+e.g. `@name` = `[ "a", "b" ]`, which will be resolved to the sub-attribute access `doc.a.b` 
+when the query is executed.
 
 !SUBSECTION Arithmetic operators
 
