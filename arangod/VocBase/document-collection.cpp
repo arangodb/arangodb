@@ -60,6 +60,15 @@
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBIndex.h"
+
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+#include <rocksdb/utilities/optimistic_transaction_db.h>
+#include <rocksdb/utilities/transaction.h>
+#endif
+
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
@@ -551,15 +560,16 @@ arangodb::Index* TRI_document_collection_t::removeIndex(TRI_idx_iid_t iid) {
   size_t const n = _indexes.size();
 
   for (size_t i = 0; i < n; ++i) {
-    auto idx = _indexes[i];
+    arangodb::Index* idx = _indexes[i];
 
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-        idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+    if (!idx->canBeDropped()) {
       continue;
     }
 
     if (idx->id() == iid) {
       // found!
+      idx->drop();
+
       _indexes.erase(_indexes.begin() + i);
 
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
@@ -628,7 +638,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t*,
                                 arangodb::wal::DocumentOperation&, bool&);
 
 static int FillIndex(arangodb::Transaction*, TRI_document_collection_t*,
-                     arangodb::Index*);
+                     arangodb::Index*, bool = true);
 
 static int GeoIndexFromVelocyPack(arangodb::Transaction*,
                                   TRI_document_collection_t*, VPackSlice const&,
@@ -643,6 +653,13 @@ static int SkiplistIndexFromVelocyPack(arangodb::Transaction*,
                                        TRI_document_collection_t*,
                                        VPackSlice const&, TRI_idx_iid_t,
                                        arangodb::Index**);
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+static int RocksDBIndexFromVelocyPack(arangodb::Transaction*,
+                                      TRI_document_collection_t*,
+                                      VPackSlice const&, TRI_idx_iid_t,
+                                      arangodb::Index**);
+#endif
 
 static int FulltextIndexFromVelocyPack(arangodb::Transaction*,
                                        TRI_document_collection_t*,
@@ -1402,7 +1419,6 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
   TRI_col_header_marker_t cm;
   DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(&cm), TRI_DF_MARKER_COL_HEADER,
                          sizeof(TRI_col_header_marker_t), static_cast<TRI_voc_tick_t>(fid));
-  cm._type = static_cast<TRI_col_type_t>(document->_info.type());
   cm._cid = document->_info.id();
 
   res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, false);
@@ -1512,6 +1528,18 @@ int TRI_FromVelocyPackIndexDocumentCollection(
 
   if (typeStr == "skiplist") {
     return SkiplistIndexFromVelocyPack(trx, document, slice, iid, idx);
+  }
+  
+  // ...........................................................................
+  // ROCKSDB INDEX
+  // ...........................................................................
+  if (typeStr == "rocksdb") {
+#ifdef ARANGODB_ENABLE_ROCKSDB
+    return RocksDBIndexFromVelocyPack(trx, document, slice, iid, idx);
+#else
+    LOG(ERR) << "index type not supported in this build";
+    return TRI_ERROR_NOT_IMPLEMENTED;
+#endif
   }
 
   if (typeStr == "fulltext") {
@@ -2060,8 +2088,13 @@ static int FillIndexSequential(arangodb::Transaction* trx,
 
 static int FillIndex(arangodb::Transaction* trx,
                      TRI_document_collection_t* document,
-                     arangodb::Index* idx) {
+                     arangodb::Index* idx,
+                     bool skipPersistent) {
   if (!document->useSecondaryIndexes()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  if (idx->isPersistent() && skipPersistent) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -2129,6 +2162,18 @@ static arangodb::Index* LookupPathIndexDocumentCollection(
         }
         break;
       }
+      
+#ifdef ARANGODB_ENABLE_ROCKSDB
+      case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
+        auto rocksDBIndex = static_cast<arangodb::RocksDBIndex*>(idx);
+
+        if (unique != rocksDBIndex->unique() ||
+            (sparsity != -1 && sparsity != (rocksDBIndex->sparse() ? 1 : 0))) {
+          continue;
+        }
+        break;
+      }
+#endif
 
       default: { continue; }
     }
@@ -3037,6 +3082,155 @@ static arangodb::Index* LookupFulltextIndexDocumentCollection(
   }
 
   return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a rocksdb index to the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static arangodb::Index* CreateRocksDBIndexDocumentCollection(
+    arangodb::Transaction* trx, TRI_document_collection_t* document,
+    std::vector<std::string> const& attributes, TRI_idx_iid_t iid, bool sparse,
+    bool unique, bool& created) {
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  created = false;
+  std::vector<std::vector<arangodb::basics::AttributeName>> fields;
+
+  int res = NamesByAttributeNames(attributes, fields, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return nullptr;
+  }
+
+  // ...........................................................................
+  // Attempt to find an existing index which matches the attributes above.
+  // If a suitable index is found, return that one otherwise we need to create
+  // a new one.
+  // ...........................................................................
+
+  int sparsity = sparse ? 1 : 0;
+  auto idx = LookupPathIndexDocumentCollection(
+      document, fields, arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX, sparsity,
+      unique, false);
+
+  if (idx != nullptr) {
+    LOG(TRACE) << "rocksdb-index already created";
+
+    return idx;
+  }
+
+  if (iid == 0) {
+    iid = arangodb::Index::generateId();
+  }
+
+  // Create the index
+  auto rocksDBIndex = std::make_unique<arangodb::RocksDBIndex>(
+      iid, document, fields, unique, sparse);
+  idx = static_cast<arangodb::Index*>(rocksDBIndex.get());
+
+  // initializes the index with all existing documents
+  res = FillIndex(trx, document, idx, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+
+    return nullptr;
+  }
+  
+  auto rocksTransaction = trx->rocksTransaction();
+  TRI_ASSERT(rocksTransaction != nullptr);
+  auto status = rocksTransaction->Commit();
+  if (!status.ok()) {
+    // TODO:
+  }
+  auto t = trx->getInternals();
+  delete t->_rocksTransaction;
+  t->_rocksTransaction = nullptr;
+
+  // store index and return
+  try {
+    document->addIndex(idx);
+    rocksDBIndex.release();
+  } catch (...) {
+    TRI_set_errno(res);
+
+    return nullptr;
+  }
+
+  created = true;
+
+  return idx;
+
+#else
+  TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
+  created = false;
+  return nullptr;
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores an index
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+static int RocksDBIndexFromVelocyPack(arangodb::Transaction* trx,
+                                      TRI_document_collection_t* document,
+                                      VPackSlice const& definition,
+                                      TRI_idx_iid_t iid,
+                                      arangodb::Index** dst) {
+  return PathBasedIndexFromVelocyPack(trx, document, definition, iid,
+                                      CreateRocksDBIndexDocumentCollection,
+                                      dst);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a rocksdb index (unique or non-unique)
+/// the index lock must be held when calling this function
+////////////////////////////////////////////////////////////////////////////////
+
+arangodb::Index* TRI_LookupRocksDBIndexDocumentCollection(
+    TRI_document_collection_t* document,
+    std::vector<std::string> const& attributes, int sparsity, bool unique) {
+  std::vector<std::vector<arangodb::basics::AttributeName>> fields;
+
+  int res = NamesByAttributeNames(attributes, fields, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return nullptr;
+  }
+
+  return LookupPathIndexDocumentCollection(
+      document, fields, arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX, sparsity,
+      unique, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a RocksDB index exists
+////////////////////////////////////////////////////////////////////////////////
+
+arangodb::Index* TRI_EnsureRocksDBIndexDocumentCollection(
+    arangodb::Transaction* trx, TRI_document_collection_t* document,
+    TRI_idx_iid_t iid, std::vector<std::string> const& attributes, bool sparse,
+    bool unique, bool& created) {
+
+  auto idx = CreateRocksDBIndexDocumentCollection(
+      trx, document, attributes, iid, sparse, unique, created);
+
+  if (idx != nullptr) {
+    if (created) {
+      arangodb::aql::QueryCache::instance()->invalidate(
+          document->_vocbase, document->_info.namec_str());
+      int res = TRI_SaveIndex(document, idx, true);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = nullptr;
+      }
+    }
+  }
+
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

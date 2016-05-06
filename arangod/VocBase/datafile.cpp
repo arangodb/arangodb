@@ -41,6 +41,56 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a marker appears to be created by ArangoDB 28
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_voc_cid_t Crc28(TRI_voc_cid_t crc, void const* data, size_t length) {
+  static TRI_voc_cid_t const CrcPolynomial = 0xEDB88320; 
+  unsigned char* current = (unsigned char*) data;   
+  while (length--) {
+    crc ^= *current++;
+
+    for (unsigned int i = 0; i < 8; ++i) {
+      if (crc & 1) {
+        crc = (crc >> 1) ^ CrcPolynomial;
+      } else {
+        crc = crc >> 1;         
+      }
+    }
+  }   
+  return crc;
+}
+
+static bool IsMarker28 (void const* marker) {
+  struct Marker28 {
+    TRI_voc_size_t       _size; 
+    TRI_voc_crc_t        _crc;     
+    uint32_t             _type;   
+#ifdef TRI_PADDING_32
+    char _padding_df_marker[4];
+#endif
+    TRI_voc_tick_t _tick;     
+  };
+
+  TRI_voc_size_t zero = 0;
+  off_t o = offsetof(Marker28, _crc);
+  size_t n = sizeof(TRI_voc_crc_t);
+
+  char const* ptr = static_cast<char const*>(marker);
+  Marker28 const* m = static_cast<Marker28 const*>(marker);
+
+  TRI_voc_crc_t crc = TRI_InitialCrc32();
+
+  crc = Crc28(crc, ptr, o);
+  crc = Crc28(crc, (char*) &zero, n);
+  crc = Crc28(crc, ptr + o + n, m->_size - o - n);
+
+  crc = TRI_FinalCrc32(crc);
+
+  return crc == m->_crc;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the datafile is a physical file (true) or an
 /// anonymous mapped region (false)
 ////////////////////////////////////////////////////////////////////////////////
@@ -1031,11 +1081,17 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
   }
 
   // read header from file
-  TRI_df_header_marker_t header;
-  char* ptr = reinterpret_cast<char*>(&header);
+  char buffer[128];
+  memset(&buffer[0], 0, sizeof(buffer)); 
+
   ssize_t len = sizeof(TRI_df_header_marker_t);
 
-  bool ok = TRI_ReadPointer(fd, ptr, len);
+  ssize_t toRead = sizeof(buffer);
+  if (toRead > static_cast<ssize_t>(status.st_size)) {
+    toRead = static_cast<ssize_t>(status.st_size);
+  }
+
+  bool ok = TRI_ReadPointer(fd, &buffer[0], toRead);
 
   if (!ok) {
     LOG(ERR) << "cannot read datafile header from '" << filename << "': " << TRI_last_error();
@@ -1044,12 +1100,24 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
     return nullptr;
   }
 
+  char const* ptr = reinterpret_cast<char*>(&buffer[0]);
   char const* end = static_cast<char const*>(ptr) + len;
+  TRI_df_header_marker_t const* header = reinterpret_cast<TRI_df_header_marker_t const*>(&buffer[0]);
 
   // check CRC
-  ok = CheckCrcMarker(&header.base, end);
+  ok = CheckCrcMarker(reinterpret_cast<TRI_df_marker_t const*>(ptr), end);
 
   if (!ok) {
+    if (IsMarker28(ptr)) {
+      LOG(ERR) << "datafile found from older version of ArangoDB. "
+               << "Please dump data from that version with arangodump "
+               << "and reload it into this ArangoDB instance with arangorestore";
+      TRI_CLOSE(fd);
+      TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
+
+      return nullptr;
+    }
+
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
 
     LOG(ERR) << "corrupted datafile header read from '" << filename << "'";
@@ -1062,10 +1130,10 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
 
   // check the datafile version
   if (ok) {
-    if (header._version != TRI_DF_VERSION) {
+    if (header->_version != TRI_DF_VERSION) {
       TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
 
-      LOG(ERR) << "unknown datafile version '" << header._version << "' in datafile '" << filename << "'";
+      LOG(ERR) << "unknown datafile version '" << header->_version << "' in datafile '" << filename << "'";
 
       if (!ignoreErrors) {
         TRI_CLOSE(fd);
@@ -1075,8 +1143,8 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
   }
 
   // check the maximal size
-  if (size > header._maximalSize) {
-    LOG(DEBUG) << "datafile '" << filename << "' has size '" << size << "', but maximal size is '" << header._maximalSize << "'";
+  if (size > header->_maximalSize) {
+    LOG(DEBUG) << "datafile '" << filename << "' has size '" << size << "', but maximal size is '" << header->_maximalSize << "'";
   }
 
   // map datafile into memory

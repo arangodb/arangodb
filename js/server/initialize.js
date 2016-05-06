@@ -52,7 +52,6 @@
   load(`${startupPath}/server/bootstrap/modules/internal.js`); // deps: internal, fs, console
   load(`${startupPath}/common/bootstrap/modules/vm.js`); // deps: internal
   load(`${startupPath}/common/bootstrap/modules.js`); // must come last before patches
-  load(`${startupPath}/common/bootstrap/monkeypatches.js`);
 }());
 
 // common globals

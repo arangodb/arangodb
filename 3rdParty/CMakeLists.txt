@@ -19,6 +19,15 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libev)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/OpenSSL)
 
 ################################################################################
+## ROCKSDB
+################################################################################
+
+if (USE_ROCKSDB)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb/)
+  #add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
+endif ()
+
+################################################################################
 ## V8 and ICU
 ################################################################################
 

@@ -150,7 +150,9 @@ bool HttpCommTask::processRead() {
       RequestStatisticsAgent::acquire();
 
 #if USE_DEV_TIMERS
-      RequestStatisticsAgent::_statistics->_id = (void*) this;
+      if (RequestStatisticsAgent::_statistics != nullptr) {
+        RequestStatisticsAgent::_statistics->_id = (void*) this;
+      }
 #endif
 
       _newRequest = false;

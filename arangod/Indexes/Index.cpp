@@ -112,6 +112,9 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "skiplist") == 0) {
     return TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
+  if (::strcmp(type, "rocksdb") == 0) {
+    return TRI_IDX_TYPE_ROCKSDB_INDEX;
+  }
   if (::strcmp(type, "fulltext") == 0) {
     return TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
@@ -139,6 +142,8 @@ char const* Index::typeName(Index::IndexType type) {
       return "hash";
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
       return "skiplist";
+    case TRI_IDX_TYPE_ROCKSDB_INDEX:
+      return "rocksdb";
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
       return "fulltext";
     case TRI_IDX_TYPE_GEO1_INDEX:
@@ -435,6 +440,15 @@ int Index::batchInsert(arangodb::Transaction*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Index::cleanup() {
+  // do nothing
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default implementation for drop
+////////////////////////////////////////////////////////////////////////////////
+
+int Index::drop() {
   // do nothing
   return TRI_ERROR_NO_ERROR;
 }

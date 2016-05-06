@@ -84,6 +84,7 @@ start() {
                 --javascript.startup-directory ./js \
                 --server.authentication false \
                 --javascript.app-path ./js/apps \
+                --log.force-direct true \
                 > cluster/$PORT.stdout 2>&1 &
 }
 

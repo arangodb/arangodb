@@ -30,6 +30,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
@@ -288,7 +289,7 @@ bool IndexBlock::initIndexes() {
   if (_cursor->failed()) {
     THROW_ARANGO_EXCEPTION(_cursor->code);
   }
-
+    
   while (!_cursor->hasMore()) {
     if (node->_reverse) {
       --_currentIndex;
@@ -331,7 +332,7 @@ std::shared_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
   return ast->query()->trx()->indexScanForCondition(
           _collection->getName(), _indexes[_currentIndex], ast,
           conditionNode, outVariable, UINT64_MAX,
-          TRI_DEFAULT_BATCH_SIZE, node->_reverse);
+          Transaction::defaultBatchSize(), node->_reverse);
   DEBUG_END_BLOCK();
 }
 
@@ -384,6 +385,8 @@ bool IndexBlock::readIndex(size_t atMost) {
   bool isReverse = (static_cast<IndexNode const*>(getPlanNode()))->_reverse;
   bool isLastIndex = (_currentIndex == lastIndexNr && !isReverse) ||
                      (_currentIndex == 0 && isReverse);
+  bool const hasMultipleIndexes = (_indexes.size() > 1); 
+
   while (_cursor != nullptr) {
     if (!_cursor->hasMore()) {
       startNextCursor();
@@ -407,18 +410,25 @@ bool IndexBlock::readIndex(size_t atMost) {
     TRI_IF_FAILURE("IndexBlock::readIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    for (auto const& doc : VPackArrayIterator(slice)) {
-      std::string key =
-          arangodb::basics::VelocyPackHelper::getStringValue(doc, TRI_VOC_ATTRIBUTE_KEY, "");
-      if (_alreadyReturned.find(key) == _alreadyReturned.end()) {
-        if (!isLastIndex) {
-          _alreadyReturned.emplace(key);
-        }
+    
+    for (auto const& doc : VPackArrayIterator(slice, true)) {
+      if (!hasMultipleIndexes) {
         _documents.emplace_back(doc);
-      }
+      } else {
+        VPackSlice keySlice = Transaction::extractKeyFromDocument(doc);
+        std::string key = keySlice.copyString();
+        if (_alreadyReturned.find(key) == _alreadyReturned.end()) {
+          if (!isLastIndex) {
+            _alreadyReturned.emplace(std::move(key));
+          }
+          _documents.emplace_back(doc);
+        }
+      } 
     }
     // Leave the loop here, we can only exhaust one cursor at a time, otherwise slices are lost
-    break;
+    if (!_documents.empty()) {
+      break;
+    }
   }
   _posInDocs = 0;
   return (!_documents.empty());
@@ -455,7 +465,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     // try again!
 
     if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
         _done = true;
         return nullptr;
@@ -477,7 +487,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
           _pos = 0;
         }
         if (_buffer.empty()) {
-          if (!ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+          if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
             _done = true;
             return nullptr;
           }
@@ -549,7 +559,7 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
 
   while (skipped < atLeast) {
     if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
         _done = true;
         return skipped;

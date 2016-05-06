@@ -145,6 +145,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_ONLY_ON_DBSERVER, "this operation is only valid on a DBserver in a cluster");
   REG_ERROR(ERROR_CLUSTER_BACKEND_UNAVAILABLE, "A cluster backend which was required for the operation could not be reached");
   REG_ERROR(ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT, "An endpoint couldn't be found");
+  REG_ERROR(ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID, "Invalid agency structure");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -178,7 +179,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_QUERY_EXCEPTION_OPTIONS, "query options expected");
   REG_ERROR(ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, "collection '%s' used as expression operand");
   REG_ERROR(ERROR_QUERY_DISALLOWED_DYNAMIC_CALL, "disallowed dynamic call to '%s'");
-  REG_ERROR(ERROR_QUERY_ACCESS_AFTER_MODIFICATION, "access after data-modification");
+  REG_ERROR(ERROR_QUERY_ACCESS_AFTER_MODIFICATION, "access after data-modification by %s");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_CODE, "invalid user function code");
   REG_ERROR(ERROR_QUERY_FUNCTION_NOT_FOUND, "user function '%s()' not found");

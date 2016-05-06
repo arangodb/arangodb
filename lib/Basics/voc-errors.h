@@ -355,6 +355,8 @@
 ///   Will be raised if a required db server can't be reached.
 /// - 1479: @LIT{An endpoint couldn't be found}
 ///    "An endpoint couldn't be found"
+/// - 1480: @LIT{Invalid agency structure}
+///    "The structure in the agency is invalid"
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -441,7 +443,7 @@
 /// - 1578: @LIT{disallowed dynamic call to '\%s'}
 ///    "Will be raised when a dynamic function call is made to a function that
 ///   cannot be called dynamically."
-/// - 1579: @LIT{access after data-modification}
+/// - 1579: @LIT{access after data-modification by \%s}
 ///    "Will be raised when collection data are accessed after a
 ///   data-modification operation."
 /// - 1580: @LIT{invalid user function name}
@@ -573,7 +575,7 @@
 /// - 1934: @LIT{Invalid example type. Has to be Array or Object}
 ///   Invalid example type. Has to be Array or Object.
 /// - 1935: @LIT{Invalid number of arguments. Expected: }
-///   Invalid number of arguments. Expected:
+///   Invalid number of arguments. Expected: 
 /// - 1936: @LIT{Invalid parameter type.}
 ///   Invalid parameter type.
 /// - 1937: @LIT{Invalid id}
@@ -2093,6 +2095,16 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT                       (1479)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1480: ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID
+///
+/// Invalid agency structure
+///
+///  "The structure in the agency is invalid"
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID                        (1480)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
 ///
 /// query killed
@@ -2443,7 +2455,7 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1579: ERROR_QUERY_ACCESS_AFTER_MODIFICATION
 ///
-/// access after data-modification
+/// access after data-modification by %s
 ///
 ///  "Will be raised when collection data are accessed after a
 /// data-modification operation."
@@ -3043,9 +3055,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1935: ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS
 ///
-/// Invalid number of arguments. Expected:
+/// Invalid number of arguments. Expected: 
 ///
-/// Invalid number of arguments. Expected:
+/// Invalid number of arguments. Expected: 
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS                       (1935)

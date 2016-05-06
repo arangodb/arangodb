@@ -286,6 +286,12 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 
 /// @brief add a node to the list of nodes
 void Query::addNode(AstNode* node) { _nodes.emplace_back(node); }
+    
+void Query::setExecutionTime() {
+  if (_engine != nullptr) {
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+  }
+}
 
 /// @brief extract a region from the query
 std::string Query::extractRegion(int line, int column) const {
@@ -571,6 +577,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
     options.buildUnindexedArrays = true;
     options.buildUnindexedObjects = true;
 
+    TRI_ASSERT(_engine != nullptr);
     auto resultBuilder = std::make_shared<VPackBuilder>(&options);
     try {
       resultBuilder->openArray();
@@ -580,7 +587,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
       if (useQueryCache) {
         // iterate over result, return it and store it in query cache
         while (nullptr != (value = _engine->getSome(
-                               1, ExecutionBlock::DefaultBatchSize))) {
+                               1, ExecutionBlock::DefaultBatchSize()))) {
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
@@ -611,7 +618,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
       } else {
         // iterate over result and return it
         while (nullptr != (value = _engine->getSome(
-                               1, ExecutionBlock::DefaultBatchSize))) {
+                               1, ExecutionBlock::DefaultBatchSize()))) {
 
           size_t const n = value->size();
           for (size_t i = 0; i < n; ++i) {
@@ -655,22 +662,22 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
     return result;
   } catch (arangodb::basics::Exception const& ex) {
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    setExecutionTime();
     cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), ex.message() + getStateString());
   } catch (std::bad_alloc const&) {
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResult(
         TRI_ERROR_OUT_OF_MEMORY,
         TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
   } catch (std::exception const& ex) {
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, ex.what() + getStateString());
   } catch (...) {
+    setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     return QueryResult(TRI_ERROR_INTERNAL,
                        TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
   }
@@ -726,6 +733,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     result.result = v8::Array::New(isolate);
 
+    TRI_ASSERT(_engine != nullptr);
+
     // this is the RegisterId our results can be found in
     auto const resultRegister = _engine->resultRegister();
     AqlItemBlock* value = nullptr;
@@ -742,7 +751,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
         uint32_t j = 0;
         while (nullptr != (value = _engine->getSome(
-                               1, ExecutionBlock::DefaultBatchSize))) {
+                               1, ExecutionBlock::DefaultBatchSize()))) {
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
@@ -766,16 +775,20 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         }
       } else {
         // iterate over result and return it
+        bool suppressResult = silent();
+
         uint32_t j = 0;
         while (nullptr != (value = _engine->getSome(
-                               1, ExecutionBlock::DefaultBatchSize))) {
-          size_t const n = value->size();
+                               1, ExecutionBlock::DefaultBatchSize()))) {
+          if (!suppressResult) {
+            size_t const n = value->size();
 
-          for (size_t i = 0; i < n; ++i) {
-            AqlValue const& val = value->getValueReference(i, resultRegister);
+            for (size_t i = 0; i < n; ++i) {
+              AqlValue const& val = value->getValueReference(i, resultRegister);
 
-            if (!val.isEmpty()) {
-              result.result->Set(j++, val.toV8(isolate, _trx));
+              if (!val.isEmpty()) {
+                result.result->Set(j++, val.toV8(isolate, _trx));
+              }
             }
           }
           delete value;
@@ -808,21 +821,21 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     return result;
   } catch (arangodb::basics::Exception const& ex) {
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    setExecutionTime();
     cleanupPlanAndEngine(ex.code());
     return QueryResultV8(ex.code(), ex.message() + getStateString());
   } catch (std::bad_alloc const&) {
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResultV8(
         TRI_ERROR_OUT_OF_MEMORY,
         TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
   } catch (std::exception const& ex) {
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResultV8(TRI_ERROR_INTERNAL, ex.what() + getStateString());
   } catch (...) {
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL,
                        TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
@@ -1076,7 +1089,7 @@ void Query::exitContext() {
 
 /// @brief returns statistics for current query.
 void Query::getStats(VPackBuilder& builder) {
-  if (_engine) {
+  if (_engine != nullptr) {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     _engine->_stats.toVelocyPack(builder);
   } else {

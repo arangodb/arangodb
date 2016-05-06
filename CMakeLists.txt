@@ -75,7 +75,11 @@ set(TEST_GEO_SUITE    geo_suite)
 ## VERSION FILES
 ################################################################################
 
-string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
+if (${CMAKE_MAJOR_VERSION} EQUAL 2)
+  set(ARANGODB_BUILD_DATE "YYYY-MM-DD HH:MM:SS")
+else ()
+  string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
+endif ()
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
@@ -137,6 +141,19 @@ elseif (APPLE)
 endif ()
 
 ################################################################################
+## ROCKSDB
+################################################################################
+
+option(USE_ROCKSDB
+  "whether RocksDB is enabled"
+  OFF
+)
+
+if (USE_ROCKSDB)
+  add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
+endif ()
+
+################################################################################
 ## EXTERNAL PROGRAMS
 ################################################################################
 
@@ -146,16 +163,21 @@ else ()
   set(MAKE make)
 endif ()
 
-find_package(FLEX)
-find_package(BISON)
+if (USE_ROCKSDB)
+  find_package(Snappy)
+else ()
+  set(SNAPPY_STATIC_LIB "")
+  set(ROCKSDB_LIBS "")
+endif ()
+
 find_package(PythonInterp 2 REQUIRED)
-get_filename_component(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE} REALPATH)
+get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 ################################################################################
 ## ARCHITECTURE
 ################################################################################
 
-if (SOLARIS)
+if (SOLARIS OR NOT CMAKE_SIZEOF_VOID_P)
   set(CMAKE_SIZEOF_VOID_P 8)
   set(CMAKE_CXX_SIZEOF_DATA_PTR 8)
 endif ()
@@ -255,6 +277,7 @@ endif ()
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/rocksdb/include)
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
@@ -352,6 +375,9 @@ option(USE_MAINTAINER_MODE
 
 if (USE_MAINTAINER_MODE)
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
+
+  find_package(FLEX)
+  find_package(BISON)
 endif ()
 
 ################################################################################
@@ -646,6 +672,15 @@ include_directories(${Boost_INCLUDE_DIR})
 add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
 
 ################################################################################
+## ROCKSDB
+################################################################################
+
+if (USE_ROCKSDB)
+include_directories(${ROCKSDB_INCLUDE_DIR})
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+endif ()
+
+################################################################################
 ## ICU
 ################################################################################
 
@@ -768,9 +803,9 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${ICU_LIBS}
   ${OPENSSL_LIBRARIES}
   ${BASE_LIBS}
-  ${CMAKE_THREAD_LIBS_INIT}
   ${CMAKE_DL_LIBS}
   ${SYS_LIBS}
+  ${CMAKE_THREAD_LIBS_INIT}
 )
 
 add_subdirectory(lib)

@@ -110,7 +110,7 @@ struct OperationCursor {
 //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<OperationResult> getMore(uint64_t batchSize = UINT64_MAX,
-                                           bool useExternals = false);
+                                           bool useExternals = true);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Get next batchSize many elements.
@@ -120,7 +120,7 @@ struct OperationCursor {
 //////////////////////////////////////////////////////////////////////////////
 
   void getMore(std::shared_ptr<OperationResult>&, uint64_t batchSize = UINT64_MAX,
-               bool useExternals = false);
+               bool useExternals = true);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Get next batchSize many elements. mptr variant

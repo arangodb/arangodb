@@ -29,6 +29,7 @@
 
 var arangodb = require("@arangodb"),
   is = require("@arangodb/is"),
+  shallowCopy = require("@arangodb/util").shallowCopy,
   db = arangodb.db,
   ArangoCollection = arangodb.ArangoCollection,
   common = require("@arangodb/graph-common"),
@@ -88,7 +89,7 @@ var findOrCreateEdgeCollectionByName = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
-  var shallow = this._properties._shallowCopy;
+  var shallow = shallowCopy(this._properties);
   var id;
 
   // Could potentially change the weight of edges
@@ -244,7 +245,7 @@ Vertex.prototype.outbound = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
-  var shallow = this._properties._shallowCopy;
+  var shallow = shallowCopy(this._properties);
   var id;
 
   shallow[name] = value;

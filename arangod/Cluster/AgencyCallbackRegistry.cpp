@@ -110,27 +110,3 @@ std::string AgencyCallbackRegistry::getEndpointUrl(uint32_t endpoint) {
 
   return url.str();
 }
-
-void AgencyCallbackRegistry::awaitNextChange(std::string const& key, double timeout) {
-  auto maxWait = std::chrono::milliseconds(static_cast<int>(timeout * 1000));
-
-  std::condition_variable cv;
-  
-  std::function<bool(VPackSlice const& result)> notify = [&](VPackSlice const& result) {
-    LOG(DEBUG) << "Notifying change!";
-    cv.notify_one();
-    return true;
-  };
-  auto agencyCallback = std::make_shared<AgencyCallback>(_agency, key, notify, false);
-  
-  std::mutex mtx;
-  std::unique_lock<std::mutex> lck(mtx);
-  // mop: hmmm if callback registering failed this will just wait for the timeout, which
-  // should be ok I think?
-  registerCallback(agencyCallback);
-  LOG(DEBUG) << "Awaiting change!";
-  if (cv.wait_for(lck, maxWait) == std::cv_status::timeout) {
-    LOG(DEBUG) << "Reached timeout!";
-  }
-  unregisterCallback(agencyCallback);
-}

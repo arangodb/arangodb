@@ -34,7 +34,7 @@ add_executable(${TEST_BASICS_SUITE}
   ../lib/Basics/WorkMonitorDummy.cpp
 )
 
-target_include_directories(
+include_directories(
   ${TEST_BASICS_SUITE}
   PUBLIC ${Boost_UNIT_TEST_INCLUDE_DIR}
 )

@@ -50,6 +50,10 @@
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBIndex.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -125,13 +129,13 @@ static int GenerateServerId(void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ReadServerId(char const* filename) {
-  TRI_server_id_t foundId;
-
   TRI_ASSERT(filename != nullptr);
 
   if (!TRI_ExistsFile(filename)) {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
+  
+  TRI_server_id_t foundId;
   try {
     std::string filenameString(filename);
     std::shared_ptr<VPackBuilder> builder =
@@ -144,8 +148,7 @@ static int ReadServerId(char const* filename) {
     if (!idSlice.isString()) {
       return TRI_ERROR_INTERNAL;
     }
-    std::string idString = idSlice.copyString();
-    foundId = StringUtils::uint64(idString);
+    foundId = StringUtils::uint64(idSlice.copyString());
   } catch (...) {
     // Nothing to free
     return TRI_ERROR_INTERNAL;
@@ -474,6 +477,15 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
       LOG(INFO) << "removing superfluous database directory '"
                 << databaseDirectory << "'";
 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+      VPackSlice idSlice = parameters.get("id");
+      if (idSlice.isString()) {
+        // delete persistent indexes for this database
+        TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(idSlice.copyString()));
+        RocksDBFeature::dropDatabase(id);
+      }
+#endif
+
       TRI_RemoveDirectory(databaseDirectory.c_str());
       continue;
     }
@@ -485,9 +497,8 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
     }
-    std::string idString = idSlice.copyString();
 
-    TRI_voc_tick_t id = (TRI_voc_tick_t)StringUtils::uint64(idString);
+    TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(idSlice.copyString()));
 
     VPackSlice nameSlice = parameters.get("name");
 
@@ -1020,12 +1031,16 @@ static void DatabaseManager(void* data) {
         // regular database
         // ---------------------------
 
-        // remember the database path
-        char* path;
+#ifdef ARANGODB_ENABLE_ROCKSDB
+        // delete persistent indexes for this database
+        RocksDBFeature::dropDatabase(database->_id);
+#endif
 
         LOG(TRACE) << "physically removing database directory '"
                    << database->_path << "' of database '" << database->_name
                    << "'";
+
+        std::string path;
 
         // remove apps directory for database
         V8DealerFeature* dealer = 
@@ -1033,29 +1048,23 @@ static void DatabaseManager(void* data) {
         auto appPath = dealer->appPath();
 
         if (database->_isOwnAppsDirectory && !appPath.empty()) {
-          path = TRI_Concatenate3File(appPath.c_str(), "_db", database->_name);
+          path = arangodb::basics::FileUtils::buildFilename(arangodb::basics::FileUtils::buildFilename(appPath, "_db"), database->_name);
 
-          if (path != nullptr) {
-            if (TRI_IsDirectory(path)) {
-              LOG(TRACE) << "removing app directory '" << path
-                         << "' of database '" << database->_name << "'";
+          if (TRI_IsDirectory(path.c_str())) {
+            LOG(TRACE) << "removing app directory '" << path
+                       << "' of database '" << database->_name << "'";
 
-              TRI_RemoveDirectory(path);
-            }
-
-            TRI_Free(TRI_CORE_MEM_ZONE, path);
+            TRI_RemoveDirectory(path.c_str());
           }
         }
 
-        path = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database->_path);
+        // remember db path
+        path = std::string(database->_path);
 
         TRI_DestroyVocBase(database);
 
         // remove directory
-        if (path != nullptr) {
-          TRI_RemoveDirectory(path);
-          TRI_FreeString(TRI_CORE_MEM_ZONE, path);
-        }
+        TRI_RemoveDirectory(path.c_str());
       }
 
       delete database;

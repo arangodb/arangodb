@@ -53,7 +53,7 @@ int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     return res;
   }
   // suck all blocks into _buffer
-  while (getBlock(DefaultBatchSize, DefaultBatchSize)) {
+  while (getBlock(DefaultBatchSize(), DefaultBatchSize())) {
   }
 
   if (_buffer.empty()) {
@@ -117,7 +117,7 @@ void SortBlock::doSorting() {
     // install the rearranged values from _buffer into newbuffer
 
     while (count < sum) {
-      size_t sizeNext = (std::min)(sum - count, DefaultBatchSize);
+      size_t sizeNext = (std::min)(sum - count, DefaultBatchSize());
       AqlItemBlock* next = new AqlItemBlock(sizeNext, nrregs);
 
       try {

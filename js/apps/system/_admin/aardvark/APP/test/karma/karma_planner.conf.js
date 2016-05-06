@@ -68,7 +68,6 @@ module.exports = function(karma) {
       'frontend/js/modules/@arangodb/common.js',
       'frontend/js/modules/@arangodb/index.js',
       'frontend/js/bootstrap/errors.js',
-      'frontend/js/bootstrap/monkeypatches.js',
       'frontend/js/bootstrap/module-internal.js',
       'frontend/js/client/bootstrap/module-internal.js',
       'frontend/js/client/client.js',
