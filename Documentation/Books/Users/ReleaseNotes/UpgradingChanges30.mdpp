@@ -15,7 +15,6 @@ id component at the end. The new pattern is `collection-<id>-<random>`, where `<
 is the collection id and `<random>` is a random number. Previous versions of ArangoDB 
 used a pattern `collection-<id>` without the random number.
   
-
 !SECTION Edges and edges attributes
 
 In ArangoDB prior to 3.0 the attributes `_from` and `_to` of edges were treated 
@@ -36,7 +35,6 @@ referenced by `_from` and `_to` values may be dropped and re-created later. Any
 `_from` and `_to` values of edges pointing to such dropped collection are unaffected
 by the drop operation now. 
 
-
 !SECTION AQL
 
 !SUBSECTION Typecasting functions
@@ -52,7 +50,6 @@ The type casting applied by the `TO_NUMBER()` AQL function has changed as follow
 
 Additionally, the `TO_STRING()` AQL function now converts `null` values into an empty string
 (`""`) instead of the string `"null"`.
-
 
 !SUBSECTION Arithmetic operators
 
@@ -101,118 +98,124 @@ FOR doc IN myCollection
 
 and to modify data in different collection via subqueries.
 
-
 !SUBSECTION Other changes
 
 The AQL optimizer rule "merge-traversal-filter" that already existed in 3.0 was renamed to 
 "optimize-traversals". This should be of no relevance to client applications except if 
 they programatically look for applied optimizer rules in the explain out of AQL queries.
 
+!SECTION JavaScript API changes
 
-!SECTION Command-line options
+The following incompatible changes have been made to the JavaScript API in ArangoDB 3.0:
 
-Quite a few startup options in ArangoDB 2 were double negations (like
-`--server.disable-authentication false`). In ArangoDB 3 these are now expressed as 
-positives (e. g. `--server.authentication`). Also the options between the ArangoDB
-server and its client tools have being unified. For example, the logger options are 
-now the same for the server and the client tools. Additionally many options have
-been moved into more appropriate topic sections.
+!SUBSECTION Edges API
 
-!SUBSECTION Renamed options
+When completely replacing an edge via a collection's `replace()` function the replacing 
+edge data now needs to contain the `_from` and `_to` attributes for the new edge. Previous
+versions of ArangoDB did not require the edge data to contain `_from` and `_to` attributes
+when replacing an edge, since `_from` and `_to` values were immutable for existing edges.
 
-The following options have been available before 3.0 and have changed their name 
-in 3.0:
+For example, the following call worked in ArangoDB 2.8 but will fail in 3.0:
 
-- `--server.disable-authentication` was renamed to `--server.authentication`. 
-  Note that the meaning of the option `--server.authentication` is the opposite of 
-  the previous `--server.disable-authentication`.
-- `--server.disable-authentication-unix-sockets` was renamed to 
-  `--server.authentication-unix-sockets`. Note that the meaning of the option 
-  `--server.authentication-unix-sockets` is the opposite of the previous 
-  `--server.disable-authentication-unix-sockets`.
-- `--server.disable-statistics` was renamed to `--server.statistics`. Note that the
-  meaning of the option `--server.statistics` is the opposite of the previous
-  `--server.disable-statistics`.
-- `--server.keyfile` was renamed to `--ssl.keyfile`. The meaning of the option is
-  unchanged.
-- `--server.foxx-queues` was renamed to `--foxx.queues`. The meaning of the option
-  is unchanged.
-- `--server.foxx-queues-poll-interval` was renamed to `--foxx.queues-poll-interval`.
-  The meaning of the option is unchanged.
-- `--log.tty` was renamed to `--log.foreground-tty`. The meaning of the option is
-  unchanged.
-- `--upgrade` has been renamed to `--database.auto-upgrade`. In contrast to 2.8 this
-  option now requires a boolean parameter. To actually perform an automatic database 
-  upgrade at startup use `--database.auto-upgrade true`. To not perform it, use
-  `--database.auto-upgrade false`.
-- `--check-version` has been renamed to `--database.check-version`.
-- `--temp-path` has been renamed to `--temp.path`.
-
-!SUBSECTION Log verbosity, topics and output files
-
-Logging now supports log topics. You can control these by specifying a log
-topic in front of a log level or an output. For example
-
-```
-  --log.level startup=trace --log.level info
+```js
+db.edgeCollection.replace("myKey", { value: "test" });
 ```
 
-will log messages concerning startup at trace level, everything else at info
-level. `--log.level` can be specified multiple times at startup, for as many 
-topics as needed.
+To make this work in ArangoDB 3.0, `_from` and `_to` need to be added to the replacement
+data:
 
-Some relevant log topics available in 3.0 are:
+```js
+db.edgeCollection.replace("myKey", { _from: "myVertexCollection/1", _to: "myVertexCollection/2", value: "test" });
+```
 
-- *collector*: information about the WAL collector's state
-- *compactor*: information about the collection datafile compactor
-- *datafiles*: datafile-related operations
-- *mmap*: information about memory-mapping operations
-- *performance*: some performance-related information
-- *queries*: executed AQL queries
-- *replication*: replication-related info
-- *requests*: HTTP requests
-- *startup*: information about server startup and shutdown
-- *threads*: information about threads
+Note that this only affects the `replace()` function but not `update()`, which will
+only update the specified attributes of the edge and leave all others intact.
 
-The new log option `--log.output <definition>` allows directing the global
-or per-topic log output to different outputs. The output definition "<definition>" 
-can be one of
+Additionally, the functions `edges()`, `outEdges()` and `inEdges()` with an array of edge 
+ids will now make the edge ids unique before returning the connected edges. This is probably 
+desired anyway, as results will be returned only once per distinct input edge id. However, 
+it may break client applications that rely on the old behavior.
 
-- "-" for stdin
-- "+" for stderr
-- "syslog://<syslog-facility>"
-- "syslog://<syslog-facility>/<application-name>"
-- "file://<relative-path>"
+!SUBSECTION Collection API
 
-The option can be specified multiple times in order to configure the output
-for different log topics. To set up a per-topic output configuration, use
-`--log.output <topic>=<definition>`, e.g.
+!SUBSUBSECTION Example matching
 
-  queries=file://queries.txt
+The collection function `byExampleHash()` and `byExampleSkiplist()` have been removed in 3.0.
+Their functionality is provided by collection's `byExample()` function, which will automatically
+use a suitable index if present.
 
-logs all queries to the file "queries.txt".
+The collection function `byConditionSkiplist()` has been removed in 3.0. The same functionality
+can be achieved by issuing an AQL query with the target condition, which will automatically use
+a suitable index if present.
 
-The old option `--log.file` is still available in 3.0 for convenience reasons. In
-3.0 it is a shortcut for the more general option `--log.output file://filename`.
-  
-The old option `--log.requests-file` is still available in 3.0. It is now a shortcut
-for the more general option `--log.output requests=file://...`.
+!SUBSUBSECTION Revision id handling
 
-The old option `--log.performance` is still available in 3.0. It is now a shortcut
-for the more general option `--log.level performance=trace`.
+The `exists()` method of a collection now throws an exception when the specified document
+exists but its revision id does not match the revision id specified. Previous versions of
+ArangoDB simply returned `false` if either no document existed with the specified key or
+when the revision id did not match. It was therefore impossible to distinguish these two
+cases from the return value alone. 3.0 corrects this. Additionally, `exists()` in previous
+versions always returned a boolean if only the document key was given. 3.0 now returns the
+document's meta-data, which includes the document's current revision id.
 
-!SUBSECTION Removed options for logging
+Given there is a document with key `test` in collection `myCollection`, then the behavior
+of 3.0 is as follows:
 
-The options `--log.content-filter` and `--log.source-filter` have been removed. They
-have most been used during ArangoDB's internal development.
+```js
+/* test if document exists. this returned true in 2.8 */
+db.myCollection.exists("test");
+{ 
+  "_key" : "test", 
+  "_id" : "myCollection/test", 
+  "_rev" : "9758059" 
+}
 
-The syslog-related options `--log.application` and `--log.facility` have been removed.
-They are superseded by the more general `--log.output` option which can also handle 
-syslog targets. 
+/* test if document exists. this returned true in 2.8 */
+db.myCollection.exists({ _key: "test" });
+{ 
+  "_key" : "test", 
+  "_id" : "myCollection/test", 
+  "_rev" : "9758059" 
+}
+
+/* test if document exists. this also returned false in 2.8 */
+db.myCollection.exists("foo");
+false
+
+/* test if document with a given revision id exists. this returned true in 2.8 */
+db.myCollection.exists({ _key: "test", _rev: "9758059" });
+{ 
+  "_key" : "test", 
+  "_id" : "myCollection/test", 
+  "_rev" : "9758059" 
+}
+
+/* test if document with a given revision id exists. this returned false in 2.8 */
+db.myCollection.exists({ _key: "test", _rev: "1234" });
+JavaScript exception: ArangoError 1200: conflict
+```
+
+!SUBSUBSECTION Cap constraints
+
+The cap constraints feature has been removed. This change has led to the removal of the
+collection operations `first()` and `last()`, which were internally based on data from 
+cap constraints.
+
+As cap constraints have been removed in ArangoDB 3.0 it is not possible to create an
+index of type "cap" with a collection's `ensureIndex()` function. The dedicated function
+`ensureCapConstraint()` has also been removed from the collection API.
+
+!SUBSUBSECTION Undocumented APIs
+
+The undocumented functions `BY_EXAMPLE_HASH()` and `BY_EXAMPLE_SKIPLIST()` and 
+`BY_CONDITION_SKIPLIST` have been removed. These functions were always hidden and not 
+intended to be part of the public JavaScript API for collections.
 
 !SECTION HTTP API changes
 
 !SUBSECTION CRUD operations
+
+The following incompatible changes have been made to the HTTP API in ArangoDB 3.0:
 
 !SUBSUBSECTION General
 
@@ -271,7 +274,6 @@ documents please use the `If-Match` HTTP header as described above. When no revi
 check if required the HTTP header can be omitted, and the operations will work on the
 current revision of the document, regardless of its revision id.
 
- 
 !SUBSECTION All documents API
 
 The HTTP API for retrieving the ids, keys or URLs of all documents from a collection
@@ -426,6 +428,109 @@ API:
   versions of ArangoDB but have been marked as not intended to be called by end
   users since ArangoDB version 2.3. These methods should not have been part of any
   ArangoDB manual since version 2.4.
+- `/_api/structure`: an unfinished API for data format and type checks, superseded
+  by Foxx.
+
+!SECTION Command-line options
+
+Quite a few startup options in ArangoDB 2 were double negations (like
+`--server.disable-authentication false`). In ArangoDB 3 these are now expressed as 
+positives (e. g. `--server.authentication`). Also the options between the ArangoDB
+server and its client tools have being unified. For example, the logger options are 
+now the same for the server and the client tools. Additionally many options have
+been moved into more appropriate topic sections.
+
+!SUBSECTION Renamed options
+
+The following options have been available before 3.0 and have changed their name 
+in 3.0:
+
+- `--server.disable-authentication` was renamed to `--server.authentication`. 
+  Note that the meaning of the option `--server.authentication` is the opposite of 
+  the previous `--server.disable-authentication`.
+- `--server.disable-authentication-unix-sockets` was renamed to 
+  `--server.authentication-unix-sockets`. Note that the meaning of the option 
+  `--server.authentication-unix-sockets` is the opposite of the previous 
+  `--server.disable-authentication-unix-sockets`.
+- `--server.disable-statistics` was renamed to `--server.statistics`. Note that the
+  meaning of the option `--server.statistics` is the opposite of the previous
+  `--server.disable-statistics`.
+- `--server.keyfile` was renamed to `--ssl.keyfile`. The meaning of the option is
+  unchanged.
+- `--server.foxx-queues` was renamed to `--foxx.queues`. The meaning of the option
+  is unchanged.
+- `--server.foxx-queues-poll-interval` was renamed to `--foxx.queues-poll-interval`.
+  The meaning of the option is unchanged.
+- `--log.tty` was renamed to `--log.foreground-tty`. The meaning of the option is
+  unchanged.
+- `--upgrade` has been renamed to `--database.auto-upgrade`. In contrast to 2.8 this
+  option now requires a boolean parameter. To actually perform an automatic database 
+  upgrade at startup use `--database.auto-upgrade true`. To not perform it, use
+  `--database.auto-upgrade false`.
+- `--check-version` has been renamed to `--database.check-version`.
+- `--temp-path` has been renamed to `--temp.path`.
+
+!SUBSECTION Log verbosity, topics and output files
+
+Logging now supports log topics. You can control these by specifying a log
+topic in front of a log level or an output. For example
+
+```
+  --log.level startup=trace --log.level info
+```
+
+will log messages concerning startup at trace level, everything else at info
+level. `--log.level` can be specified multiple times at startup, for as many 
+topics as needed.
+
+Some relevant log topics available in 3.0 are:
+
+- *collector*: information about the WAL collector's state
+- *compactor*: information about the collection datafile compactor
+- *datafiles*: datafile-related operations
+- *mmap*: information about memory-mapping operations
+- *performance*: some performance-related information
+- *queries*: executed AQL queries
+- *replication*: replication-related info
+- *requests*: HTTP requests
+- *startup*: information about server startup and shutdown
+- *threads*: information about threads
+
+The new log option `--log.output <definition>` allows directing the global
+or per-topic log output to different outputs. The output definition "<definition>" 
+can be one of
+
+- "-" for stdin
+- "+" for stderr
+- "syslog://<syslog-facility>"
+- "syslog://<syslog-facility>/<application-name>"
+- "file://<relative-path>"
+
+The option can be specified multiple times in order to configure the output
+for different log topics. To set up a per-topic output configuration, use
+`--log.output <topic>=<definition>`, e.g.
+
+  queries=file://queries.txt
+
+logs all queries to the file "queries.txt".
+
+The old option `--log.file` is still available in 3.0 for convenience reasons. In
+3.0 it is a shortcut for the more general option `--log.output file://filename`.
+  
+The old option `--log.requests-file` is still available in 3.0. It is now a shortcut
+for the more general option `--log.output requests=file://...`.
+
+The old option `--log.performance` is still available in 3.0. It is now a shortcut
+for the more general option `--log.level performance=trace`.
+
+!SUBSECTION Removed options for logging
+
+The options `--log.content-filter` and `--log.source-filter` have been removed. They
+have most been used during ArangoDB's internal development.
+
+The syslog-related options `--log.application` and `--log.facility` have been removed.
+They are superseded by the more general `--log.output` option which can also handle 
+syslog targets. 
 
 !SECTION ArangoShell and client tools
 
@@ -437,7 +542,6 @@ and all client tools uses these APIs.
 In order to connect to earlier versions of ArangoDB with the client tools, an older
 version of the client tools needs to be kept installed.
 
-
 !SUBSECTION Command-line options changed
 
 For all client tools, the option `--server.disable-authentication` was renamed to
@@ -447,12 +551,10 @@ is the opposite of the previous `--server.disable-authentication`.
 The command-line option `--quiet` was removed from all client tools except arangosh 
 because it had no effect in those tools.
 
-
 !SUBSECTION Arangobench
 
 In order to make its purpose more apparent, the former `arangob` client tool has 
 been renamed to `arangobench` in 3.0.
-
 
 !SECTION Miscellaneous changes
 
@@ -460,3 +562,6 @@ The checksum calculation algorithm for the `collection.checksum()` method and it
 corresponding REST API GET `/_api/collection/<collection</checksum` has changed in 3.0. 
 Checksums calculated in 3.0 will differ from checksums calculated with 2.8 or before.
 
+The ArangoDB server in 3.0 does not read a file `ENDPOINTS` containing a list of 
+additional endpoints on startup. In 2.8 this file was automatically read if present
+in the database directory.
