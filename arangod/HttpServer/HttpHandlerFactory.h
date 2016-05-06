@@ -79,7 +79,7 @@ class HttpHandlerFactory {
   /// @brief constructs a new handler factory
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory(std::string const&, int32_t, bool, context_fptr, void*);
+  HttpHandlerFactory(std::string const&, bool, context_fptr, void*);
 
   HttpHandlerFactory(HttpHandlerFactory const&) = delete;
   HttpHandlerFactory& operator=(HttpHandlerFactory const&) = delete;
@@ -148,14 +148,6 @@ class HttpHandlerFactory {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string _authenticationRealm;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief minimum compatibility
-  /// the value is an ArangoDB version number in the following format:
-  /// 10000 * major + 100 * minor (e.g. 10400 for ArangoDB 1.4)
-  //////////////////////////////////////////////////////////////////////////////
-
-  int32_t _minCompatibility;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief allow overriding HTTP request method with custom headers

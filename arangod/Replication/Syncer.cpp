@@ -516,7 +516,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
   std::string cnameString = getCName(slice);
 
   // TODO
-  // Backwards compatibiltiy. old check to nullptr, new is empty string
+  // Backwards compatibility. old check to nullptr, new is empty string
   // Other api does not know yet.
   char const* cname = nullptr;
   if (!cnameString.empty()) {
@@ -575,7 +575,7 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   std::string cnameString = getCName(slice);
 
   // TODO
-  // Backwards compatibiltiy. old check to nullptr, new is empty string
+  // Backwards compatibility. old check to nullptr, new is empty string
   // Other api does not know yet.
   char const* cname = nullptr;
   if (!cnameString.empty()) {
