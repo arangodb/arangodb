@@ -37,12 +37,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-/// @brief construct a document
-AqlValue::AqlValue(TRI_doc_mptr_t const* mptr) {
-  _data.pointer = mptr->vpack();
-  setType(AqlValueType::VPACK_SLICE_POINTER);
-}
-
 /// @brief hashes the value
 uint64_t AqlValue::hash(arangodb::AqlTransaction* trx, uint64_t seed) const {
   switch (type()) {
@@ -170,7 +164,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy,
           position = n + position;
         }
         if (position >= 0 && position < n) {
-          if (doCopy || s.byteSize() < sizeof(_data.internal)) {
+          if (doCopy) {
             mustDestroy = true;
             return AqlValue(s.at(position));
           }
@@ -242,7 +236,7 @@ AqlValue AqlValue::getKeyAttribute(arangodb::AqlTransaction* trx,
       if (s.isObject()) {
         VPackSlice found = Transaction::extractKeyFromDocument(s);
         if (!found.isNone()) {
-          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+          if (doCopy) {
             mustDestroy = true;
             return AqlValue(found);
           }
@@ -278,7 +272,7 @@ AqlValue AqlValue::getFromAttribute(arangodb::AqlTransaction* trx,
       if (s.isObject()) {
         VPackSlice found = Transaction::extractFromFromDocument(s);
         if (!found.isNone()) {
-          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+          if (doCopy) {
             mustDestroy = true;
             return AqlValue(found);
           }
@@ -314,7 +308,7 @@ AqlValue AqlValue::getToAttribute(arangodb::AqlTransaction* trx,
       if (s.isObject()) {
         VPackSlice found = Transaction::extractToFromDocument(s);
         if (!found.isNone()) {
-          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+          if (doCopy) {
             mustDestroy = true;
             return AqlValue(found);
           }
@@ -349,14 +343,14 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
     case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found(s.resolveExternal().get(name));
+        VPackSlice found(s.get(name));
         if (found.isCustom()) { 
           // _id needs special treatment
           mustDestroy = true;
           return AqlValue(trx->extractIdString(s));
         }
         if (!found.isNone()) {
-          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+          if (doCopy) {
             mustDestroy = true;
             return AqlValue(found);
           }
@@ -391,14 +385,14 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
     case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found(s.resolveExternal().get(names, true));
+        VPackSlice found(s.get(names, true));
         if (found.isCustom()) { 
           // _id needs special treatment
           mustDestroy = true;
           return AqlValue(trx->extractIdString(s));
         }
         if (!found.isNone()) {
-          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+          if (doCopy) {
             mustDestroy = true;
             return AqlValue(found);
           }
@@ -427,7 +421,7 @@ bool AqlValue::hasKey(arangodb::AqlTransaction* trx,
     case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
     case VPACK_MANAGED: {
-      VPackSlice s(slice().resolveExternal());
+      VPackSlice s(slice());
       return (s.isObject() && s.hasKey(name));
     }
     case DOCVEC: 
@@ -841,14 +835,14 @@ VPackSlice AqlValue::slice() const {
     case VPACK_INLINE: {
       VPackSlice s(&_data.internal[0]);
       if (s.isExternal()) {
-        s = VPackSlice(s.getExternal());
+        s = s.resolveExternal();
       }
       return s;
     }
     case VPACK_MANAGED: {
       VPackSlice s(_data.buffer->data());
       if (s.isExternal()) {
-        s = VPackSlice(s.getExternal());
+        s = s.resolveExternal();
       }
       return s;
     }

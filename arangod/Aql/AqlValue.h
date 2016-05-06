@@ -29,6 +29,7 @@
 #include "Aql/Range.h"
 #include "Aql/types.h"
 #include "Basics/VelocyPackHelper.h"
+#include "VocBase/document-collection.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
@@ -94,12 +95,21 @@ struct AqlValue final {
   }
 
   // construct from document
-  explicit AqlValue(TRI_doc_mptr_t const* mptr);
+  explicit AqlValue(TRI_doc_mptr_t const* mptr) {
+    _data.pointer = mptr->vpack();
+    setType(AqlValueType::VPACK_SLICE_POINTER);
+    TRI_ASSERT(VPackSlice(_data.pointer).isObject());
+    TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
+  }
   
   // construct from pointer
   explicit AqlValue(uint8_t const* pointer) {
-    _data.pointer = pointer;
+    // we must get rid of Externals first here, because all
+    // methods that use VPACK_SLICE_POINTER expect its contents
+    // to be non-Externals
+    _data.pointer = VPackSlice(pointer).resolveExternals().begin();
     setType(AqlValueType::VPACK_SLICE_POINTER);
+    TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
   }
   
   // construct from docvec, taking over its ownership

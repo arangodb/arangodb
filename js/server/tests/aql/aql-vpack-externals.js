@@ -136,7 +136,23 @@ function aqlVPackExternalsTestSuite () {
       }
     },
 
+    testExternalAttributeAccess: function () {
+      let coll = db._collection(collName);
+      let ecoll = db._collection(edgeColl);
+      coll.truncate();
+      ecoll.truncate();
+      coll.insert({ _key: "a", w: 1});
+      coll.insert({ _key: "b", w: 2});
+      coll.insert({ _key: "c", w: 3});
+      ecoll.insert({ _key: "a", _from: coll.name() + "/a", _to: coll.name() + "/b", w: 1});
+      ecoll.insert({ _key: "b", _from: coll.name() + "/b", _to: coll.name() + "/c", w: 2});
 
+      const query = `FOR x,y,p IN 1..10 OUTBOUND '${collName}/a' ${edgeColl} SORT x._key, y._key RETURN p.vertices[*].w`;
+      const cursor = db._query(query);
+     
+      assertEqual([ 1, 2 ], cursor.next());
+      assertEqual([ 1, 2, 3 ], cursor.next());
+    }
   };
 
 }
