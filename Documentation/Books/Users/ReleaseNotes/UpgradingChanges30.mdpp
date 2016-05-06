@@ -231,7 +231,7 @@ as before.
 The "location" HTTP header returned by ArangoDB when inserting a new document or edge
 now always contains the database name. This was also the default behavior in previous
 versions of ArangoDB, but it could be overridden by clients sending the HTTP header
-`x-arangodb-version: 1.4` in the request. Clients can continue to send this header to
+`x-arango-version: 1.4` in the request. Clients can continue to send this header to
 ArangoDB 3.0, but the header will not influence the location response headers produced 
 by ArangoDB 3.0 anymore.
 
@@ -388,13 +388,13 @@ following result attributes as they became meaningless in 3.0:
 When creating a database via the API POST `/_api/database`, ArangoDB will now always
 return the HTTP status code 202 (created) if the operation succeeds. Previous versions
 of ArangoDB returned HTTP 202 as well, but this behavior was changable by sending an
-HTTP header `x-arangodb-version: 1.4`. When sending this header, previous versions of
+HTTP header `x-arango-version: 1.4`. When sending this header, previous versions of
 ArangoDB returned an HTTP status code 200 (ok). Clients can still send this header to
 ArangoDB 3.0 but this will not influence the HTTP status code produced by ArangoDB.
 
 The "location" header produced by ArangoDB 3.0 will now always contain the database 
 name. This was also the default in previous versions of ArangoDB, but the behaviour
-could be overriden by sending the HTTP header `x-arangodb-version: 1.4`. Clients can
+could be overridden by sending the HTTP header `x-arango-version: 1.4`. Clients can
 still send the header, but this will not make the database name in the "location"
 response header disappear.
 
@@ -531,6 +531,19 @@ have most been used during ArangoDB's internal development.
 The syslog-related options `--log.application` and `--log.facility` have been removed.
 They are superseded by the more general `--log.output` option which can also handle 
 syslog targets. 
+
+!SUBSECTION Removed other options
+
+The option `--server.default-api-compatibility` was present in earlier version of
+ArangoDB to control various aspects of the server behavior, e.g. HTTP return codes
+or the format of HTTP "location" headers. Client applications could send an HTTP
+header "x-arango-version" with a version number to request the server behavior of
+a certain ArangoDB version.
+
+This option was only honored in a handful of cases (described above) and was removed
+in 3.0 because the changes in server behavior controlled by this option were changed
+even before ArangoDB 2.0. This should have left enough time for client applications
+to adapt to the new behavior, making the option superfluous in 3.0.
 
 !SECTION ArangoShell and client tools
 

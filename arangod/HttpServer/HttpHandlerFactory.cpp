@@ -61,12 +61,10 @@ class MaintenanceHandler : public HttpHandler {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandlerFactory::HttpHandlerFactory(std::string const& authenticationRealm,
-                                       int32_t minCompatibility,
                                        bool allowMethodOverride,
                                        context_fptr setContext,
                                        void* setContextData)
     : _authenticationRealm(authenticationRealm),
-      _minCompatibility(minCompatibility),
       _allowMethodOverride(allowMethodOverride),
       _setContext(setContext),
       _setContextData(setContextData),
@@ -141,8 +139,7 @@ std::string HttpHandlerFactory::authenticationRealm(
 
 HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
                                                char const* ptr, size_t length) {
-  HttpRequest* request = new HttpRequest(info, ptr, length, _minCompatibility,
-                                         _allowMethodOverride);
+  HttpRequest* request = new HttpRequest(info, ptr, length, _allowMethodOverride);
 
   if (request != nullptr) {
     setRequestContext(request);
