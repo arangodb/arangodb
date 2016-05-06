@@ -137,8 +137,8 @@ void AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
     compareBuilder = _lastData;
   }
   
-  _useCv = true;
   CONDITION_LOCKER(locker, _cv);
+  _useCv = true;
   locker.wait(static_cast<uint64_t>(maxTimeout * 1000000.0));
   _useCv = false;
   

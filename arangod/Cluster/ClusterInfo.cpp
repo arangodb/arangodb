@@ -302,31 +302,44 @@ ClusterInfo::~ClusterInfo() {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ClusterInfo::uniqid(uint64_t count) {
-  MUTEX_LOCKER(mutexLocker, _idLock);
+  while (true) {
+    uint64_t oldValue;
+    {
+      // The quick path, we have enough in our private reserve:
+      MUTEX_LOCKER(mutexLocker, _idLock);
 
-  if (_uniqid._currentValue + count - 1 >= _uniqid._upperValue) {
+      if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
+        uint64_t result = _uniqid._currentValue;
+        _uniqid._currentValue += count;
+
+        return result;
+      }
+      oldValue = _uniqid._currentValue;
+    }
+
+    // We need to fetch from the agency
+ 
     uint64_t fetch = count;
 
     if (fetch < MinIdsPerBatch) {
       fetch = MinIdsPerBatch;
     }
 
-    AgencyCommResult result = _agency.uniqid("Sync/LatestID", fetch, 0.0);
+    uint64_t result = _agency.uniqid(fetch, 0.0);
 
-    if (!result.successful() || result._index == 0) {
-      return 0;
+    {
+      MUTEX_LOCKER(mutexLocker, _idLock);
+
+      if (oldValue == _uniqid._currentValue) {
+        _uniqid._currentValue = result + count;
+        _uniqid._upperValue = result + fetch - 1;
+
+        return result;
+      }
+      // If we get here, somebody else tried succeeded in doing the same,
+      // so we just try again.
     }
-
-    _uniqid._currentValue = result._index + count;
-    _uniqid._upperValue = _uniqid._currentValue + fetch - 1;
-
-    return result._index;
   }
-
-  uint64_t result = _uniqid._currentValue;
-  _uniqid._currentValue += count;
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
