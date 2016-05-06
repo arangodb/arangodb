@@ -292,7 +292,7 @@ class CollectionInfo {
       return false;
     }
   
-    auto firstElement = shardKeysSlice.get(0);
+    auto firstElement = shardKeysSlice.at(0);
     TRI_ASSERT(firstElement.isString());
     std::string shardKey =
         arangodb::basics::VelocyPackHelper::getStringValue(firstElement, "");
