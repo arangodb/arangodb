@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/AgencyComm.h"
@@ -35,6 +36,8 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 struct TRI_json_t;
 
@@ -55,7 +58,7 @@ class CollectionInfo {
  public:
   CollectionInfo();
 
-  explicit CollectionInfo(struct TRI_json_t*);
+  CollectionInfo(std::shared_ptr<VPackBuilder>, VPackSlice);
 
   CollectionInfo(CollectionInfo const&);
 
@@ -72,14 +75,8 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   int replicationFactor () const {
-    TRI_json_t* const node 
-        = arangodb::basics::JsonHelper::getObjectElement(_json,
-                                                         "replicationFactor");
-
-    if (TRI_IsNumberJson(node)) {
-      return (int) (node->_value._number);
-    }
-    return 1;
+    return arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+        _slice, "replicationFactor", 1);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -87,7 +84,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool empty() const {
-    return (nullptr == _json);  //|| (id() == 0);
+    return _slice.isNone();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -95,7 +92,14 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_cid_t id() const {
-    return arangodb::basics::JsonHelper::stringUInt64(_json, "id");
+    if (!_slice.isObject()) {
+      return 0;
+    }
+    VPackSlice idSlice = _slice.get("id");
+    if (idSlice.isString()) {
+      return arangodb::basics::VelocyPackHelper::stringUInt64(idSlice);
+    }
+    return 0;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -103,7 +107,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string id_as_string() const {
-    return arangodb::basics::JsonHelper::getStringValue(_json, "id", "");
+    return arangodb::basics::VelocyPackHelper::getStringValue(_slice, "id", "");
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -111,7 +115,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string name() const {
-    return arangodb::basics::JsonHelper::getStringValue(_json, "name", "");
+    return arangodb::basics::VelocyPackHelper::getStringValue(_slice, "name", "");
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -119,8 +123,8 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_col_type_e type() const {
-    return (TRI_col_type_e)arangodb::basics::JsonHelper::getNumericValue<int>(
-        _json, "type", (int)TRI_COL_TYPE_UNKNOWN);
+    return (TRI_col_type_e)arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+        _slice, "type", (int)TRI_COL_TYPE_UNKNOWN);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -129,8 +133,8 @@ class CollectionInfo {
 
   TRI_vocbase_col_status_e status() const {
     return (TRI_vocbase_col_status_e)
-        arangodb::basics::JsonHelper::getNumericValue<int>(
-            _json, "status", (int)TRI_VOC_COL_STATUS_CORRUPTED);
+        arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+            _slice, "status", (int)TRI_VOC_COL_STATUS_CORRUPTED);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -146,7 +150,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool deleted() const {
-    return arangodb::basics::JsonHelper::getBooleanValue(_json, "deleted",
+    return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "deleted",
                                                          false);
   }
 
@@ -155,7 +159,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool doCompact() const {
-    return arangodb::basics::JsonHelper::getBooleanValue(_json, "doCompact",
+    return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "doCompact",
                                                          false);
   }
 
@@ -164,7 +168,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool isSystem() const {
-    return arangodb::basics::JsonHelper::getBooleanValue(_json, "isSystem",
+    return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "isSystem",
                                                          false);
   }
 
@@ -173,7 +177,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool isVolatile() const {
-    return arangodb::basics::JsonHelper::getBooleanValue(_json, "isVolatile",
+    return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "isVolatile",
                                                          false);
   }
 
@@ -181,24 +185,22 @@ class CollectionInfo {
   /// @brief returns the indexes
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t const* getIndexes() const {
-    return arangodb::basics::JsonHelper::getObjectElement(_json, "indexes");
+  VPackSlice const getIndexes() const {
+    if (_slice.isNone()) {
+      return VPackSlice();
+    }
+    return _slice.get("indexes");
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a copy of the key options
-  /// the caller is responsible for freeing it
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t* keyOptions() const {
-    TRI_json_t const* keyOptions =
-        arangodb::basics::JsonHelper::getObjectElement(_json, "keyOptions");
-
-    if (keyOptions != nullptr) {
-      return TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
+  VPackSlice const keyOptions() const {
+    if (_slice.isNone()) {
+      return VPackSlice();
     }
-
-    return nullptr;
+    return _slice.get("keyOptions");
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -206,12 +208,10 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool allowUserKeys() const {
-    TRI_json_t const* keyOptions =
-        arangodb::basics::JsonHelper::getObjectElement(_json, "keyOptions");
-
-    if (keyOptions != nullptr) {
-      return arangodb::basics::JsonHelper::getBooleanValue(
-          keyOptions, "allowUserKeys", true);
+    VPackSlice keyOptionsSlice = keyOptions();
+    if (!keyOptionsSlice.isNone()) {
+      return arangodb::basics::VelocyPackHelper::getBooleanValue(
+          keyOptionsSlice, "allowUserKeys", true);
     }
 
     return true;  // the default value
@@ -222,7 +222,7 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool waitForSync() const {
-    return arangodb::basics::JsonHelper::getBooleanValue(_json, "waitForSync",
+    return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "waitForSync",
                                                          false);
   }
 
@@ -231,8 +231,8 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_size_t journalSize() const {
-    return arangodb::basics::JsonHelper::getNumericValue<TRI_voc_size_t>(
-        _json, "journalSize", 0);
+    return arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+        _slice, "journalSize", 0);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -240,8 +240,8 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   uint32_t indexBuckets() const {
-    return arangodb::basics::JsonHelper::getNumericValue<uint32_t>(
-        _json, "indexBuckets", 1);
+    return arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+        _slice, "indexBuckets", 1);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -249,9 +249,19 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::string> shardKeys() const {
-    TRI_json_t* const node =
-        arangodb::basics::JsonHelper::getObjectElement(_json, "shardKeys");
-    return arangodb::basics::JsonHelper::stringArray(node);
+    std::vector<std::string> shardKeys;
+    
+    if (_slice.isNone()) {
+      return shardKeys;
+    }
+    auto shardKeysSlice = _slice.get("shardKeys");
+    if (shardKeysSlice.isArray()) {
+      for (auto const& shardKey: VPackArrayIterator(shardKeysSlice)) {
+        shardKeys.push_back(shardKey.copyString());
+      }
+    }
+
+    return shardKeys;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -259,15 +269,18 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool usesDefaultShardKeys() const {
-    TRI_json_t* const node =
-        arangodb::basics::JsonHelper::getObjectElement(_json, "shardKeys");
-    if (TRI_LengthArrayJson(node) != 1) {
+    if (_slice.isNone()) {
       return false;
     }
-    TRI_json_t* firstKey = TRI_LookupArrayJson(node, 0);
-    TRI_ASSERT(TRI_IsStringJson(firstKey));
+    auto shardKeysSlice = _slice.get("shardKeys");
+    if (!shardKeysSlice.isArray() || shardKeysSlice.length() != 1) {
+      return false;
+    }
+  
+    auto firstElement = shardKeysSlice.get(0);
+    TRI_ASSERT(firstElement.isString());
     std::string shardKey =
-        arangodb::basics::JsonHelper::getStringValue(firstKey, "");
+        arangodb::basics::VelocyPackHelper::getStringValue(firstElement, "");
     return shardKey == TRI_VOC_ATTRIBUTE_KEY;
   }
 
@@ -287,22 +300,18 @@ class CollectionInfo {
       return res;
     }
     res.reset(new ShardMap());
-    TRI_json_t* const node =
-        arangodb::basics::JsonHelper::getObjectElement(_json, "shards");
-    if (node != nullptr && TRI_IsObjectJson(node)) {
-      size_t len = TRI_LengthVector(&node->_value._objects);
-      for (size_t i = 0; i < len; i += 2) {
-        auto key =
-            static_cast<TRI_json_t*>(TRI_AtVector(&node->_value._objects, i));
-        auto value = static_cast<TRI_json_t*>(
-            TRI_AtVector(&node->_value._objects, i + 1));
-        if (TRI_IsStringJson(key) && TRI_IsArrayJson(value)) {
-          ShardID shard = arangodb::basics::JsonHelper::getStringValue(key, "");
-          std::vector<ServerID> servers =
-              arangodb::basics::JsonHelper::stringArray(value);
-          if (shard != "") {
-            (*res).insert(make_pair(shard, servers));
+    
+    auto shardsSlice = _slice.get("shards");
+    if (shardsSlice.isObject()) {
+      for (auto const& shardSlice: VPackObjectIterator(shardsSlice)) {
+        if (shardSlice.key.isString() && shardSlice.value.isArray()) {
+          ShardID shard = shardSlice.key.copyString();
+
+          std::vector<ServerID> servers;
+          for (auto const& serverSlice: VPackArrayIterator(shardSlice.value)) {
+            servers.push_back(serverSlice.copyString());
           }
+          (*res).insert(make_pair(shardSlice.key.copyString(), servers));
         }
       }
     }
@@ -318,11 +327,13 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   int numberOfShards() const {
-    TRI_json_t* const node =
-        arangodb::basics::JsonHelper::getObjectElement(_json, "shards");
+    if (_slice.isNone()) {
+      return 0;
+    }
+    auto shardsSlice = _slice.get("shards");
 
-    if (TRI_IsObjectJson(node)) {
-      return (int)(TRI_LengthVector(&node->_value._objects) / 2);
+    if (shardsSlice.isObject()) {
+      return shardsSlice.length();
     }
     return 0;
   }
@@ -331,10 +342,16 @@ class CollectionInfo {
   /// @brief returns the json
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t const* getJson() const { return _json; }
+  std::shared_ptr<VPackBuilder> const getVPack() const { return _vpack; }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the slice
+  //////////////////////////////////////////////////////////////////////////////
+  VPackSlice const getSlice() const { return _slice; }
 
  private:
-  TRI_json_t* _json;
+  std::shared_ptr<VPackBuilder> _vpack;
+  VPackSlice _slice;
 
   // Only to protect the cache:
   mutable Mutex _mutex;
@@ -567,13 +584,6 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<DatabaseID> listDatabases(bool = false);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief (re-)load the information about planned collections from the agency
-  /// Usually one does not have to call this directly.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void loadPlannedCollections();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
@@ -911,7 +921,6 @@ class ClusterInfo {
 
   // The Plan state:
   AllCollections _plannedCollections;  // from Plan/Collections/
-  ProtectionData _plannedCollectionsProt;
   std::unordered_map<CollectionID,
                      std::shared_ptr<std::vector<std::string>>>
       _shards;  // from Plan/Collections/
