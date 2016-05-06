@@ -602,7 +602,9 @@ void ClusterInfo::loadCurrent() {
       {
         WRITE_LOCKER(writeLocker, _currentProt.lock);
         _current = currentBuilder;
-        _currentDatabases.swap(newDatabases);
+        if (swapDatabases) {
+          _currentDatabases.swap(newDatabases);
+        }
         _currentProt.version++;  // such that others notice our change
         _currentProt.isValid = true;  // will never be reset to false
       }
