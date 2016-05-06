@@ -39,10 +39,74 @@ by the drop operation now.
 
 !SECTION AQL
 
+!SUBSECTION Typecasting functions
+
+The type casting applied by the `TO_NUMBER()` AQL function has changed as follows:
+- string values that do not contain a valid numeric value are now converted to the number
+  `0`. In previous versions of ArangoDB such string values were converted to the value
+  `null`.
+- array values with more than 1 member are now converted to the number `0`. In previous
+  versions of ArangoDB such arrays were converted to the value `null`.
+- objects / documents are now converted to the number `0`. In previous versions of ArangoDB
+  objects / documents were converted to the value `null`.
+
+Additionally, the `TO_STRING()` AQL function now converts `null` values into an empty string
+(`""`) instead of the string `"null"`.
+
+
+!SUBSECTION Arithmetic operators
+
+As the arithmetic operations in AQL implicitly convert their operands to numeric values using 
+`TO_NUMBER()`, their casting behavior has also changed as described above.
+
+Some examples of the changed behavior:
+
+- `"foo" + 1` produces `1` now. In previous versions this produced `null`.
+- `[ 1, 2 ] + 1` produces `1`. In previous versions this produced `null`.
+- `1 + "foo" + 1´ produces `2` now. In previous version this produced `1`.
+
+!SUBSECTION Keywords
+
 `LIKE` is now a keyword in AQL. Using `LIKE` in either case as an attribute or collection 
 name in AQL queries now requires quoting.
 
-The AQL optimizer rule "merge-traversal-filter" was renamed to "optimize-traversals".
+!SUBSECTION Subqueries
+
+Queries that contain Subqueries that contain data-modification operations such as `INSERT`, 
+`UPDATE`, `REPLACE`, `UPSERT` or `REMOVE` will now refuse to execute if the collection
+affected by the subquery's data-modification operation is read-accessed in an outer scope 
+of the query.
+
+For example, the following query will refuse to execute as the collection `myCollection`
+is modified in the subquery but also read-accessed in the outer scope:
+
+```
+FOR doc IN myCollection
+  LET changes = (
+    FOR what IN myCollection 
+      FILTER what.value == 1 
+      REMOVE what IN myCollection
+  )
+  RETURN doc
+```
+
+It is still possible to write to collections from which data is read in the same query,
+e.g.
+
+```
+FOR doc IN myCollection
+  FILTER doc.value == 1 
+  REMOVE doc IN myCollection
+```
+
+and to modify data in different collection via subqueries.
+
+
+!SUBSECTION Other changes
+
+The AQL optimizer rule "merge-traversal-filter" that already existed in 3.0 was renamed to 
+"optimize-traversals". This should be of no relevance to client applications except if 
+they programatically look for applied optimizer rules in the explain out of AQL queries.
 
 
 !SECTION Command-line options
