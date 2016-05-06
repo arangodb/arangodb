@@ -223,6 +223,9 @@ struct AqlValue final {
   /// @brief get the _key attribute from an object/document
   AqlValue getKeyAttribute(arangodb::AqlTransaction* trx,
                            bool& mustDestroy, bool copy) const;
+  /// @brief get the _id attribute from an object/document
+  AqlValue getIdAttribute(arangodb::AqlTransaction* trx,
+                          bool& mustDestroy, bool copy) const;
   /// @brief get the _from attribute from an object/document
   AqlValue getFromAttribute(arangodb::AqlTransaction* trx,
                             bool& mustDestroy, bool copy) const;

@@ -258,6 +258,47 @@ AqlValue AqlValue::getKeyAttribute(arangodb::AqlTransaction* trx,
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
+/// @brief get the _id attribute from an object/document
+AqlValue AqlValue::getIdAttribute(arangodb::AqlTransaction* trx,
+                                  bool& mustDestroy, bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_SLICE_POINTER:
+    case VPACK_INLINE:
+      doCopy = false; 
+      // fall-through intentional
+    case VPACK_MANAGED: {
+      VPackSlice s(slice());
+      if (s.isObject()) {
+        VPackSlice found = Transaction::extractIdFromDocument(s);
+        if (found.isCustom()) { 
+          // _id as a custom type needs special treatment
+          mustDestroy = true;
+          return AqlValue(trx->extractIdString(trx->resolver(), found, s));
+        }
+        if (!found.isNone()) {
+          if (doCopy) {
+            mustDestroy = true;
+            return AqlValue(found);
+          }
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
+        }
+      }
+      // fall-through intentional
+      break;
+    }
+    case DOCVEC: 
+    case RANGE: {
+      // will return null
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
 /// @brief get the _from attribute from an object/document
 AqlValue AqlValue::getFromAttribute(arangodb::AqlTransaction* trx,
                                     bool& mustDestroy, bool doCopy) const {
