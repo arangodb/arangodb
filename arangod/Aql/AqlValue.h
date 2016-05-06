@@ -120,7 +120,9 @@ struct AqlValue final {
 
   // construct boolean value type
   explicit AqlValue(bool value) {
-    initFromSlice(value ? arangodb::basics::VelocyPackHelper::TrueValue() : arangodb::basics::VelocyPackHelper::FalseValue());
+    VPackSlice slice(value ? arangodb::basics::VelocyPackHelper::TrueValue() : arangodb::basics::VelocyPackHelper::FalseValue());
+    memcpy(_data.internal, slice.begin(), slice.byteSize());
+    setType(AqlValueType::VPACK_INLINE);
   }
   
   // construct from std::string
@@ -323,12 +325,10 @@ struct AqlValue final {
   }
   
   /// @brief initializes value from a slice
-  void initFromSlice(arangodb::velocypack::Slice const& slice) {
+  void initFromSlice(arangodb::velocypack::Slice slice) {
     if (slice.isExternal()) {
       // recursively resolve externals
-      _data.pointer = slice.resolveExternals().start();
-      setType(AqlValueType::VPACK_SLICE_POINTER);
-      return;
+      slice = slice.resolveExternals();
     }
     arangodb::velocypack::ValueLength length = slice.byteSize();
     if (length < sizeof(_data.internal)) {
