@@ -212,15 +212,220 @@ syslog targets.
 
 !SECTION HTTP API changes
 
+!SUBSECTION CRUD operations
+
+!SUBSUBSECTION General
+
+The HTTP insert operations for single documents and edges (POST `/_api/document`) do 
+not support the URL parameter "createCollection" anymore. In previous versions of
+ArangoDB this parameter could be used to automatically create a collection upon 
+insertion of the first document. It is now required that the target collection already
+exists when using this API, otherwise it will return an HTTP 404 error.
+
+Collections can still be created easily via a separate call to POST `/_api/collection`
+as before.
+
+The "location" HTTP header returned by ArangoDB when inserting a new document or edge
+now always contains the database name. This was also the default behavior in previous
+versions of ArangoDB, but it could be overridden by clients sending the HTTP header
+`x-arangodb-version: 1.4` in the request. Clients can continue to send this header to
+ArangoDB 3.0, but the header will not influence the location response headers produced 
+by ArangoDB 3.0 anymore.
+
+Additionally the CRUD operations APIs do not return an attribute "error" in the
+response body with an attribute value of "false" in case an operation succeeded.
+
+!SUBSUBSECTION Revision id handling
+
+The operations for updating, replacing and removing documents can optionally check the
+revision number of the document to be updated, replaced or removed so the caller can
+ensure the operation works on a specific version of the document and there are no
+lost updates.
+
+Previous versions of ArangoDB allowed passing the revision id of the previous document
+either in the HTTP header `If-Match` or in the URL parameter `rev`. For example, 
+removing a document with a specific revision id could be achieved as follows:
+
+```
+curl -X DELETE \
+     "http://127.0.0.1:8529/_api/document/myCollection/myKey?rev=123" 
+```
+
+ArangoDB 3.0 does not support passing the revision id via the "rev" URL parameter
+anymore. Instead the previous revision id must be passed in the HTTP header `If-Match`,
+e.g.
+
+```
+curl -X DELETE \
+     --header "If-Match: '123'" \
+     "http://127.0.0.1:8529/_api/document/myCollection/myKey" 
+```
+
+The URL parameter "policy" was also usable in previous versions of ArangoDB to
+control revision handling. Using it was redundant to specifying the expected revision
+id via the "rev" parameter or "If-Match" HTTP header and therefore support for the "policy"
+parameter was removed in 3.0.
+
+In order to check for a previous revision id when updating, replacing or removing 
+documents please use the `If-Match` HTTP header as described above. When no revision
+check if required the HTTP header can be omitted, and the operations will work on the
+current revision of the document, regardless of its revision id.
+
+ 
+!SUBSECTION All documents API
+
+The HTTP API for retrieving the ids, keys or URLs of all documents from a collection
+was previously located at GET `/_api/document?collection=...`. This API was moved to
+PUT `/_api/simple/all-keys` and is now executed as an AQL query. 
+The name of the collection must now be passed in the HTTP request body instead of in
+the request URL. The same is true for the "type" parameter, which controls the type of
+the result to be created.
+
+Calls to the previous API can be translated as follows:
+
+- old: GET `/_api/document?collection=<collection>&type=<type>` without HTTP request body
+- 3.0: PUT `/_api/simple/all-keys` with HTTP request body `{"name":"<collection>","type":"id"}`
+
+The result format of this API has also changed slightly. In previous versions calls to
+the API returned a JSON object with a `documents` attribute. As the functionality is
+based on AQL internally in 3.0, the API now returns a JSON object with a `result` attribute:
+
+!SUBSECTION Edges API
+
+!SUBSUBSECTION CRUD operations
+
+The API for documents and edges have been unified in ArangoDB 3.0. The CRUD operations 
+for documents and edges are now handled by the same endpoint at `/_api/document`. For 
+CRUD operations there is no distinction anymore between documents and edges API-wise.
+
+That means CRUD operations concerning edges need to be sent to the HTTP endpoint 
+`/_api/document` instead of `/_api/edge`. Sending requests to `/_api/edge` will
+result in an HTTP 404 error in 3.0. The following methods are available at 
+`/_api/document` for documents and edge:
+
+- HTTP POST: insert new document or edge
+- HTTP GET: fetch an existing document or edge
+- HTTP PUT: replace an existing document or edge
+- HTTP PATCH: partially update an existing document or edge
+- HTTP DELETE: remove an existing document or edge
+
+When completely replacing an edge via HTTP PUT please note that the replacing edge
+data now needs to contain the `_from` and `_to` attributes for the edge. Previous
+versions of ArangoDB did not require sending `_from` and `_to` when replacing edges, 
+as `_from` and `_to` values were immutable for existing edges.
+
+The `_from` and `_to` attributes of edges now also need to be present inside the
+edges objects sent to the server:
+
+```
+curl -X POST \
+     --data '{"value":1,"_from":"myVertexCollection/1","_to":"myVertexCollection/2"}' \
+     "http://127.0.0.1:8529/_api/document?collection=myEdgeCollection" 
+```
+
+Previous versions of ArangoDB required the `_from` and `_to` attributes of edges be 
+sent separately in URL parameter `from` and `to`:
+
+```
+curl -X POST \
+     --data '{"value":1}' \
+     "http://127.0.0.1:8529/_api/edge?collection=e&from=myVertexCollection/1&to=myVertexCollection/2" 
+```
+
+!SUBSUBSECTION Querying connected edges
+
+The REST API for querying connected edges at GET `/_api/edges/<collection>` will now
+make the edge ids unique before returning the connected edges. This is probably desired anyway
+as results will now be returned only once per distinct input edge id. However, it may break 
+client applications that rely on the old behavior.
+
+!SUBSUBSECTION Graph API
+
+Some data-modification operations in the named graphs API at `/_api/gharial` now return either
+HTTP 202 (Accepted) or HTTP 201 (Created) if the operation succeeds. Which status code is returned
+depends on the `waitForSync` attribute of the affected collection. In previous versions some
+of these operations return HTTP 200 regardless of the `waitForSync` value.
+
+!SUBSECTION Simple queries API
+
+The REST routes PUT `/_api/simple/first` and `/_api/simple/last` have been removed
+entirely. These APIs were responsible for returning the first-inserted and 
+least-inserted documents in a collection. This feature was built on cap constraints
+internally, which have been removed in 3.0.
+
+Calling one of these endpoints in 3.0 will result in an HTTP 404 error.
+
+!SUBSECTION Indexes API
+
+It is not supported in 3.0 to create an index with type `cap` (cap constraint) in 
+3.0 as the cap constraints feature has bee removed. Calling the index creation
+endpoint HTTP API POST `/_api/index?collection=...` with an index type `cap` will 
+therefore result in an HTTP 400 error.
+
+!SUBSECTION Log entries API
+
 The REST route HTTP GET `/_admin/log` is now accessible from within all databases. In
 previous versions of ArangoDB, this route was accessible from within the `_system`
 database only, and an HTTP 403 (Forbidden) was thrown by the server for any access
 from within another database.
 
-The undocumented HTTP REST endpoints `/_open/cerberus` and `/_system/cerberus` have
-been removed. These endpoints have been used by some ArangoDB-internal applications
-and were not part of ArangoDB's public API.
+!SUBSECTION Figures API
 
+The REST route HTTP GET `/_api/collection/<collection>/figures` will not return the 
+following result attributes as they became meaningless in 3.0:
+
+- shapefiles.count
+- shapes.fileSize
+- shapes.count
+- shapes.size
+- attributes.count
+- attributes.size
+
+!SUBSECTION Databases and Collections APIs
+
+When creating a database via the API POST `/_api/database`, ArangoDB will now always
+return the HTTP status code 202 (created) if the operation succeeds. Previous versions
+of ArangoDB returned HTTP 202 as well, but this behavior was changable by sending an
+HTTP header `x-arangodb-version: 1.4`. When sending this header, previous versions of
+ArangoDB returned an HTTP status code 200 (ok). Clients can still send this header to
+ArangoDB 3.0 but this will not influence the HTTP status code produced by ArangoDB.
+
+The "location" header produced by ArangoDB 3.0 will now always contain the database 
+name. This was also the default in previous versions of ArangoDB, but the behaviour
+could be overriden by sending the HTTP header `x-arangodb-version: 1.4`. Clients can
+still send the header, but this will not make the database name in the "location"
+response header disappear.
+
+!SUBSECTION Replication APIs
+
+The URL parameter "failOnUnknown" was removed from the REST API GET `/_api/replication/dump`.
+This parameter controlled whether dumping or replicating edges should fail if one
+of the vertex collections linked in the edge's `_from` or `_to` attributes was not
+present anymore. In this case the `_from` and `_to` values could not be translated into
+meaningful ids anymore. 
+
+There were two ways for handling this:
+- setting `failOnUnknown` to `true` caused the HTTP request to fail, leaving error 
+  handling to the user
+- setting `failOnUnknown` to `false` caused the HTTP request to continue, translating
+  the collection name part in the `_from` or `_to` value to `_unknown`.
+
+In ArangoDB 3.0 this parameter is obsolete, as `_from` and `_to` are stored as self-contained
+string values all the time, so they cannot get invalid when referenced collections are
+dropped.
+
+!SUBSECTION Undocumented APIs
+
+The following undocumented HTTP REST endpoints have been removed from ArangoDB's REST
+API:
+
+- `/_open/cerberus` and `/_system/cerberus`: these endpoints were intended for some 
+  ArangoDB-internal applications only
+- PUT /_api/simple/by-example-hash`, PUT `/_api/simple/by-example-skiplist` and
+  PUT `/_api/simple/by-condition-skiplist`: these methods were documented in early
+  versions of ArangoDB but have been marked as not intended to be called by end
+  users since ArangoDB version 2.3. These methods should not have been part of any
+  ArangoDB manual since version 2.4.
 
 !SECTION ArangoShell and client tools
 
@@ -252,6 +457,6 @@ been renamed to `arangobench` in 3.0.
 !SECTION Miscellaneous changes
 
 The checksum calculation algorithm for the `collection.checksum()` method and its
-corresponding REST API has changed in 3.0. Checksums calculated in 3.0 will differ
-from checksums calculated with 2.8 or before.
+corresponding REST API GET `/_api/collection/<collection</checksum` has changed in 3.0. 
+Checksums calculated in 3.0 will differ from checksums calculated with 2.8 or before.
 

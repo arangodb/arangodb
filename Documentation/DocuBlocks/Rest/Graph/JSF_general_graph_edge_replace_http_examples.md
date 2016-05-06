@@ -34,8 +34,8 @@ The body has to be the JSON object to be stored.
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200}
-Returned if the edge could be replaced.
+@RESTRETURNCODE{201}
+Returned if the request was successful but waitForSync is true.
 
 @RESTRETURNCODE{202}
 Returned if the request was successful but waitForSync is false.

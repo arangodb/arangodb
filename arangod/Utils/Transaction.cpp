@@ -136,6 +136,7 @@ static void createBabiesError(VPackBuilder& builder,
     builder.openObject();
     builder.add("error", VPackValue(true));
     builder.add("errorNum", VPackValue(errorCode));
+    builder.add("errorMessage", VPackValue(TRI_errno_string(errorCode)));
     builder.close();
   }
 

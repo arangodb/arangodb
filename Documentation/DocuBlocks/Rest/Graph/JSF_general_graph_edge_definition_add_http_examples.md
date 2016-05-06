@@ -29,8 +29,13 @@ One or many edge collections that can contain target vertices.
 
 @RESTRETURNCODES
 
+@RESTRETURNCODE{201}
+Returned if the definition could be added successfully and
+waitForSync is enabled for the `_graphs` collection.
+
 @RESTRETURNCODE{202}
-Returned if the definition could be added successfully.
+Returned if the definition could be added successfully and
+waitForSync is disabled for the `_graphs` collection.
 
 @RESTRETURNCODE{400}
 Returned if the defininition could not be added, the edge collection
