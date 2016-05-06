@@ -395,8 +395,6 @@ void HeartbeatThread::runCoordinator() {
 
     double remain = interval - (TRI_microtime() - start);
 
-    LOG(INFO) << "HeartbeatThread: remain is " << remain;
-
     // sleep for a while if appropriate, on some systems usleep does not
     // like arguments greater than 1000000
     while (remain > 0.0) {
