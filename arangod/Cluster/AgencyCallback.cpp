@@ -137,10 +137,12 @@ void AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
     compareBuilder = _lastData;
   }
   
-  CONDITION_LOCKER(locker, _cv);
-  _useCv = true;
-  locker.wait(static_cast<uint64_t>(maxTimeout * 1000000.0));
-  _useCv = false;
+  {
+    CONDITION_LOCKER(locker, _cv);
+    _useCv = true;
+    locker.wait(static_cast<uint64_t>(maxTimeout * 1000000.0));
+    _useCv = false;
+  }
   
   if (!_lastData || _lastData->slice().equals(compareBuilder->slice())) {
     LOG(DEBUG) << "Waiting done and nothing happended. Refetching to be sure";
