@@ -92,8 +92,8 @@ bool AgencyCallback::executeEmpty() {
     result = _cb(VPackSlice::noneSlice());
   }
 
+  CONDITION_LOCKER(locker, _cv);
   if (_useCv) {
-    CONDITION_LOCKER(locker, _cv);
     _cv.signal();
   }
   return result;
@@ -107,8 +107,8 @@ bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
     result = _cb(newData->slice());
   }
 
+  CONDITION_LOCKER(locker, _cv);
   if (_useCv) {
-    CONDITION_LOCKER(locker, _cv);
     _cv.signal();
   }
   return result;
