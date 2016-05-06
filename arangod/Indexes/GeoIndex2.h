@@ -70,6 +70,8 @@ class GeoIndex2 final : public Index {
 
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+  
+  bool canBeDropped() const override final { return true; }
 
   bool isSorted() const override final { return false; }
 

@@ -328,7 +328,7 @@ class Builder {
     ValueLength const tos = _stack.back();
     return _start[tos] == 0x0b || _start[tos] == 0x14;
   }
-
+  
   // Add a subvalue into an object from a Value:
   uint8_t* add(std::string const& attrName, Value const& sub);
 
@@ -345,6 +345,38 @@ class Builder {
 
   // Add a subvalue into an array from a Value:
   uint8_t* add(Value const& sub);
+  
+  // Add an External slice to an array
+  uint8_t* addExternal(uint8_t const* sub) {
+    if (options->disallowExternals) {
+      // External values explicitly disallowed as a security
+      // precaution
+      throw Exception(Exception::BuilderExternalsDisallowed);
+    }
+
+    bool haveReported = false;
+    if (!_stack.empty()) {
+      if (! _keyWritten) {
+        reportAdd();
+        haveReported = true;
+      }
+    }
+    try {
+      auto oldPos = _pos;
+      reserveSpace(1 + sizeof(void*));
+      // store pointer. this doesn't need to be portable
+      _start[_pos++] = 0x1d;
+      memcpy(_start + _pos, &sub, sizeof(void*));
+      _pos += sizeof(void*);
+      return _start + oldPos;
+    } catch (...) {
+      // clean up in case of an exception
+      if (haveReported) {
+        cleanupAdd();
+      }
+      throw;
+    }
+  }
 
   // Add a slice to an array
   uint8_t* add(Slice const& sub);

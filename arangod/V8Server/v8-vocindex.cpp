@@ -44,6 +44,10 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBIndex.h"
+#endif
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -290,6 +294,19 @@ static int EnhanceJsonIndexSkiplist(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a RocksDB index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexRocksDB(v8::Isolate* isolate,
+                                   v8::Handle<v8::Object> const obj,
+                                   VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(isolate, obj, builder, 0, create);
+  ProcessIndexSparseFlag(isolate, obj, builder, create);
+  ProcessIndexUniqueFlag(isolate, obj, builder);
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -412,6 +429,10 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
       case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
         res = EnhanceJsonIndexSkiplist(isolate, obj, builder, create);
         break;
+      
+      case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX:
+        res = EnhanceJsonIndexRocksDB(isolate, obj, builder, create);
+        break;
 
       case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
         res = EnhanceJsonIndexFulltext(isolate, obj, builder, create);
@@ -525,7 +546,8 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
         if (val.find("[*]") != std::string::npos) {
           if (type != arangodb::Index::TRI_IDX_TYPE_HASH_INDEX &&
-              type != arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+              type != arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX &&
+              type != arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX) {
             // expansion used in index type that does not support it
             TRI_V8_THROW_EXCEPTION_MESSAGE(
                 TRI_ERROR_BAD_PARAMETER,
@@ -660,6 +682,27 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
                                                       sparsity, unique));
       }
       break;
+    }
+    
+    case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
+      if (attributes.empty()) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+      if (create) {
+        idx = static_cast<arangodb::RocksDBIndex*>(
+            TRI_EnsureRocksDBIndexDocumentCollection(
+                &trx, document, iid, attributes, sparse, unique, created));
+      } else {
+        idx = static_cast<arangodb::RocksDBIndex*>(
+            TRI_LookupRocksDBIndexDocumentCollection(document, attributes,
+                                                     sparsity, unique));
+      }
+      break;
+#else
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "index type not supported in this build");
+#endif
     }
 
     case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
@@ -1202,28 +1245,15 @@ static void JS_DropIndexVocbaseCol(
   auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection,
                                      args[0], true);
 
-  if (idx == nullptr) {
-    return;
-  }
-
-  if (idx->id() == 0) {
+  if (idx == nullptr || idx->id() == 0) {
     TRI_V8_RETURN_FALSE();
   }
 
-  if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-      idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+  if (!idx->canBeDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  // .............................................................................
-  // inside a write transaction, write-lock is acquired by TRI_DropIndex...
-  // .............................................................................
-
   bool ok = TRI_DropIndexDocumentCollection(document, idx->id(), true);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
 
   if (ok) {
     TRI_V8_RETURN_TRUE();

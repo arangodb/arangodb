@@ -85,6 +85,8 @@ const optionsDocumentation = [
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
   '   - `skipShebang`: if set, the shebang tests are skipped.',
+  '   - `testBuckets`: split tests in to buckets and execute on, for example',
+  '       10/2 will split into 10 buckets and execute the third bucket.',
   '',
   '   - `onlyNightly`: execute only the nightly tests',
   '   - `loopEternal`: to loop one test over and over.',
@@ -163,6 +165,7 @@ const optionsDefaults = {
   "skipSsl": false,
   "skipTimeCritical": false,
   "test": undefined,
+  "testBuckets": undefined,
   "username": "root",
   "valgrind": false,
   "valgrindFileBase": "",
@@ -455,6 +458,44 @@ function analyzeCoreDumpWindows(instanceInfo) {
   executeExternalAndWait("cdb", args);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the bad has happened, tell it the user and try to gather more
+///        information about the incident.
+////////////////////////////////////////////////////////////////////////////////
+function analyzeServerCrash(arangod, options, checkStr)
+{
+  serverCrashed = true;
+  const storeArangodPath = "/var/tmp/arangod_" + arangod.pid;
+
+  print(RED +
+        "during: " + checkStr + ": Core dump written; copying arangod to " +
+        arangod.rootDir + " for later analysis.\n" +
+        "Server shut down with :\n" +
+        yaml.safeDump(arangod) +
+        "marking build as crashy.");
+
+  let corePath = (options.coreDirectory === "") ?
+      "core" :
+      options.coreDirectory + "/core*" + arangod.pid + "*'";
+
+  arangod.exitStatus.gdbHint = "Run debugger with 'gdb " +
+    storeArangodPath + " " + corePath;
+
+  if (platform.substr(0, 3) === 'win') {
+    // Windows: wait for procdump to do its job...
+    statusExternal(arangod.monitor, true);
+    analyzeCoreDumpWindows(arangod);
+  } else {
+    fs.copyFile("bin/arangod", storeArangodPath);
+    analyzeCoreDump(arangod, options, storeArangodPath, arangod.pid);
+  }
+
+  print(RESET);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief periodic checks whether spawned arangod processes are still alive
+////////////////////////////////////////////////////////////////////////////////
 function checkArangoAlive(arangod, options) {
   if (arangod.hasOwnProperty('exitStatus')) {
     return false;
@@ -468,42 +509,17 @@ function checkArangoAlive(arangod, options) {
     print(arangod);
 
     if (res.hasOwnProperty('signal') &&
-      ((res.signal === 11) ||
-        (res.signal === 6) ||
-        // Windows sometimes has random numbers in signal...
-        (platform.substr(0, 3) === 'win')
-      )
-    ) {
-      const storeArangodPath = "/var/tmp/arangod_" + arangod.pid;
-
-      print("Core dump written; copying arangod to " +
-        arangod.rootDir + " for later analysis.");
-
-      let corePath = (options.coreDirectory === "") ?
-        "core" :
-        options.coreDirectory + "/core*" + arangod.pid + "*'";
-
-      res.gdbHint = "Run debugger with 'gdb " +
-        storeArangodPath + " " + corePath;
-
-      if (platform.substr(0, 3) === 'win') {
-        // Windows: wait for procdump to do its job...
-        statusExternal(arangod.monitor, true);
-        analyzeCoreDumpWindows(arangod);
-      } else {
-        fs.copyFile("bin/arangod", storeArangodPath);
-        analyzeCoreDump(arangod, options, storeArangodPath, arangod.pid);
-      }
+        ((res.signal === 11) ||
+         (res.signal === 6) ||
+         // Windows sometimes has random numbers in signal...
+         (platform.substr(0, 3) === 'win')
+        )
+       ) {
+      arangod.exitStatus = res;
+      analyzeServerCrash(arangod, options, "health Check");
     }
-
-    arangod.exitStatus = res;
   }
-
-  if (!ret) {
-    print("marking crashy");
-    serverCrashed = true;
-  }
-
+  
   return ret;
 }
 
@@ -891,10 +907,6 @@ function executeValgrind(cmd, args, options, valgrindTest) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function executeAndWait(cmd, args, options, valgrindTest) {
-  if (options.extremeVerbosity) {
-    print("executeAndWait: cmd =", cmd, "args =", args);
-  }
-
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -920,7 +932,17 @@ function executeAndWait(cmd, args, options, valgrindTest) {
     cmd = options.valgrind;
   }
 
+  if (options.extremeVerbosity) {
+    print("executeAndWait: cmd =", cmd, "args =", args);
+  }
+
   const startTime = time();
+  if ((typeof(cmd) !== "string") || (cmd === 'true') || (cmd === 'false')) {
+    return {
+      status: false,
+      message: "true or false as binary name for test cmd =" + cmd + "args =" + args
+    };
+  }
   const res = executeExternalAndWait(cmd, args);
   const deltaTime = time() - startTime;
 
@@ -1187,16 +1209,7 @@ function shutdownInstance(instanceInfo, options) {
         }
       } else if (arangod.exitStatus.status !== "TERMINATED") {
         if (arangod.exitStatus.hasOwnProperty('signal')) {
-          print("Server shut down with : " +
-            yaml.safeDump(arangod.exitStatus) +
-            " marking build as crashy.");
-
-          serverCrashed = true;
-          return false;
-        }
-        if (platform.substr(0, 3) === 'win') {
-          // Windows: wait for procdump to do its job...
-          statusExternal(arangod.monitor, true);
+          analyzeServerCrash(arangod, options, "instance Shutdown");
         }
       } else {
         print("Server shutdown: Success.");
@@ -1808,6 +1821,44 @@ function filterTestcaseByOptions(testname, options, whichFilter) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief split into buckets
+////////////////////////////////////////////////////////////////////////////////
+
+function splitBuckets(options, cases) {
+  if (!options.testBuckets || cases.length === 0) {
+    return cases;
+  }
+
+  let m = cases.length;
+  let n = options.testBuckets.split("/");
+  let r = parseInt(n[0]);
+  let s = parseInt(n[1]);
+
+  if (r < 1) {
+    r = 1;
+  }
+
+  if (r === 1) {
+    return cases;
+  }
+
+  if (s < 0) {
+    s = 0;
+  }
+  if (r <= s) {
+    s = r - 1;
+  }
+
+  let result = [];
+
+  for (let i = s % m; i < cases.length; i = i + r) {
+    result.push(cases[i]);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test functions for all
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2358,11 +2409,11 @@ testFuncs.authentication_parameters = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function locateBoostTest(name) {
-  var file = fs.join(UNITTESTS_DIR,name);
+  var file = fs.join(UNITTESTS_DIR, name);
   if (platform.substr(0, 3) === 'win') {
     file += ".exe";
   }
-  
+
   if (!fs.exists(file)) {
     return "";
   }
@@ -2379,11 +2430,11 @@ testFuncs.boost = function(options) {
 
     if (run !== "") {
       results.basics = executeAndWait(run, args, options, "basics");
-    }
-    else {
+    } else {
       results.basics = {
         status: false,
-        message: "binary 'basics_suite' not found"};
+        message: "binary 'basics_suite' not found"
+      };
     }
   }
 
@@ -2392,11 +2443,11 @@ testFuncs.boost = function(options) {
 
     if (run !== "") {
       results.geo_suite = executeAndWait(run, args, options, "geo_suite");
-    }
-    else {
+    } else {
       results.geo_suite = {
         status: false,
-        message: "binary 'geo_suite' not found"};
+        message: "binary 'geo_suite' not found"
+      };
     }
   }
 
@@ -3322,15 +3373,21 @@ testFuncs.shell_server = function(options) {
 testFuncs.shell_server_aql = function(options) {
   findTests();
 
+  let cases;
+  let name;
+
   if (!options.skipAql) {
     if (options.skipRanges) {
-      return performTests(options, testsCases.server_aql,
-        'shell_server_aql_skipranges');
+      cases = testsCases.server_aql;
+      name = 'shell_server_aql_skipranges';
     } else {
-      return performTests(options,
-        testsCases.server_aql.concat(testsCases.server_aql_extended),
-        'shell_server_aql');
+      cases = testsCases.server_aql.concat(testsCases.server_aql_extended);
+      name = 'shell_server_aql';
     }
+
+    cases = splitBuckets(options, cases);
+
+    return performTests(options, cases, name);
   }
 
   return {
@@ -3910,7 +3967,7 @@ function unitTest(cases, options) {
     UNITTESTS_DIR = fs.join(UNITTESTS_DIR, options.buildType);
   }
 
-  CONFIG_DIR = fs.join(TOP_DIR, builddir, "etc", "arangodb");
+  CONFIG_DIR = fs.join(TOP_DIR, builddir, "etc", "arangodb3");
   ARANGOBENCH_BIN = fs.join(BIN_DIR, "arangobench");
   ARANGODUMP_BIN = fs.join(BIN_DIR, "arangodump");
   ARANGOD_BIN = fs.join(BIN_DIR, "arangod");

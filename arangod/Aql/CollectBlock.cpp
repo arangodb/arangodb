@@ -624,8 +624,8 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         for (auto& it2 : *(it.second)) {
           delete it2;
         }
+        delete it.second;
       }
-      delete it.second;
     }
     allGroups.clear();
   };
@@ -832,7 +832,8 @@ size_t HashedCollectBlock::GroupKeyHash::operator()(
   for (auto const& it : value) {
     // we must use the slow hash function here, because a value may have 
     // different representations in case its an array/object/number
-    hash ^= it.hash(_trx);
+    // (calls normalizedHash() internally)
+    hash = it.hash(_trx, hash);
   }
 
   return static_cast<size_t>(hash);

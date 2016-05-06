@@ -188,12 +188,12 @@ void HeartbeatThread::runDBServer() {
     if (--currentCount == 0) {
       currentCount = currentCountStart;
       LOG(TRACE) << "Refetching Current/Version...";
-      AgencyCommResult res = _agency.getValues2("Current/Version", false);
+      AgencyCommResult res = _agency.getValues2("Current/Version");
       if (!res.successful()) {
         LOG(ERR) << "Could not read Current/Version from agency.";
       } else {
         VPackSlice s 
-            = res._vpack->slice()[0].get(std::vector<std::string>(
+            = res.slice()[0].get(std::vector<std::string>(
                   {_agency.prefixStripped(), std::string("Current"), 
                    std::string("Version")}));
         if (!s.isInteger()) {
@@ -322,19 +322,22 @@ void HeartbeatThread::runCoordinator() {
 
     // get the current version of the Plan
   
-    AgencyCommResult result = _agency.getValues("Plan/Version", false);
+    AgencyCommResult result = _agency.getValues2("Plan/Version");
 
     if (result.successful()) {
-      result.parse("", false);
+      VPackSlice versionSlice
+          = result.slice()[0].get(std::vector<std::string>(
+              {_agency.prefixStripped(), "Plan", "Version"}));
 
-      std::map<std::string, AgencyCommResultEntry>::iterator it =
-          result._values.begin();
-
-      if (it != result._values.end()) {
+      if (versionSlice.isInteger()) {
         // there is a plan version
 
-        uint64_t planVersion = arangodb::basics::VelocyPackHelper::stringUInt64(
-            it->second._vpack->slice());
+        uint64_t planVersion = 0;
+        try {
+          planVersion = versionSlice.getUInt();
+        }
+        catch (...) {
+        }
 
         if (planVersion > lastPlanVersionNoticed) {
           if (handlePlanChangeCoordinator(planVersion)) {
@@ -347,17 +350,22 @@ void HeartbeatThread::runCoordinator() {
     result.clear();
 
   
-    result = _agency.getValues2("Sync/UserVersion", false);
+    result = _agency.getValues2("Sync/UserVersion");
     if (result.successful()) {
 
       velocypack::Slice slice =
-        result._vpack->slice()[0].get(AgencyComm::prefixStripped())
-        .get("Sync").get("UserVersion");
+        result.slice()[0].get(std::vector<std::string>(
+              {_agency.prefixStripped(), "Sync", "UserVersion"}));
 
-      if (slice.isNumber()) {
+      if (slice.isInteger()) {
         // there is a UserVersion
-        uint64_t userVersion = slice.getUInt();
-        if (userVersion != oldUserVersion) {
+        uint64_t userVersion = 0;
+        try {
+          userVersion = slice.getUInt();
+        }
+        catch (...) {
+        }
+        if (userVersion > 0 && userVersion != oldUserVersion) {
           // reload user cache for all databases
           std::vector<DatabaseID> dbs =
               ClusterInfo::instance()->listDatabases(true);
@@ -389,19 +397,20 @@ void HeartbeatThread::runCoordinator() {
       }
     }
 
-    result = _agency.getValues("Current/Version", false);
+    result = _agency.getValues2("Current/Version");
     if (result.successful()) {
-      result.parse("", false);
+      
+      VPackSlice versionSlice
+          = result.slice()[0].get(std::vector<std::string>(
+              {_agency.prefixStripped(), "Plan", "Version"}));
+      if (versionSlice.isInteger()) {
 
-      std::map<std::string, AgencyCommResultEntry>::iterator it =
-          result._values.begin();
-
-      if (it != result._values.end()) {
-        // there is a plan version
-        uint64_t currentVersion =
-            arangodb::basics::VelocyPackHelper::stringUInt64(
-                it->second._vpack->slice());
-
+        uint64_t currentVersion = 0;
+        try {
+          currentVersion = versionSlice.getUInt();
+        }
+        catch (...) {
+        }
         if (currentVersion > lastCurrentVersionNoticed) {
           lastCurrentVersionNoticed = currentVersion;
 
@@ -516,7 +525,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   {
     AgencyCommLocker locker("Plan", "READ");
     if (locker.successful()) {
-      result = _agency.getValues2(prefixPlanChangeCoordinator, true);
+      result = _agency.getValues2(prefixPlanChangeCoordinator);
     }
   }
   
@@ -524,15 +533,21 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     
     std::vector<TRI_voc_tick_t> ids;
     velocypack::Slice databases =
-      result._vpack->slice()[0]
-      .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
-      .get("Plan").get("Databases");
+      result.slice()[0].get(std::vector<std::string>(
+            {AgencyComm::prefixStripped(), "Plan", "Databases"}));
     
+    if (!databases.isObject()) {
+      return false;
+    }
+
     // loop over all database names we got and create a local database
     // instance if not yet present:
     
     for (auto const& options : VPackObjectIterator (databases)) {
 
+      if (!options.value.isObject()) {
+        continue;
+      }
       auto nameSlice = options.value.get("name");
       if (nameSlice.isNone()) {
         LOG (ERR) << "Missing name in agency database plan";
@@ -678,6 +693,10 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
     std::unique_ptr<arangodb::rest::Job> job(new ServerJob(this));
 
     auto dispatcher = DispatcherFeature::DISPATCHER;
+    if (dispatcher == nullptr) {
+      LOG(ERR) << "could not schedule dbserver sync - dispatcher gone.";
+      return false;
+    }
     if (dispatcher->addJob(job) == TRI_ERROR_NO_ERROR) {
       LOG(TRACE) << "scheduled dbserver sync";
       return true;

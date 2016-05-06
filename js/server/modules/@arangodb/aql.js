@@ -7965,7 +7965,11 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
   'use strict';
 
-  options = CLONE(options) || {};
+  if (typeof options !== "object" || Array.isArray(options)) {
+    options = {};
+  } else {
+    options = CLONE(options);
+  }
   if (! options.direction) {
     options.direction =  'any';
   }

@@ -67,8 +67,6 @@ class VelocyPackDumper {
 
   void dumpInteger(velocypack::Slice const*);
 
-  void dumpString(char const*, velocypack::ValueLength);
-  
  public:
   velocypack::Options const* options;
 

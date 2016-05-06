@@ -35,9 +35,9 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/PrimaryIndex.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/HashIndex.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Indexes/SkiplistIndex.h"
 #include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"
@@ -51,6 +51,13 @@
 #include "VocBase/MasterPointers.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBIndex.h"
+
+#include <rocksdb/utilities/optimistic_transaction_db.h>
+#include <rocksdb/utilities/transaction.h>
+#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -591,6 +598,19 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
   return ditch;
 }
   
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get (or create) a rocksdb WriteTransaction
+//////////////////////////////////////////////////////////////////////////////
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+rocksdb::Transaction* Transaction::rocksTransaction() {
+  if (_trx->_rocksTransaction == nullptr) {
+    _trx->_rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
+  }
+  return _trx->_rocksTransaction;
+}
+#endif
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _key attribute from a slice
 ////////////////////////////////////////////////////////////////////////////////
@@ -720,7 +740,10 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
 /// be the first one
 //////////////////////////////////////////////////////////////////////////////
 
-VPackSlice Transaction::extractKeyFromDocument(VPackSlice const& slice) {
+VPackSlice Transaction::extractKeyFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
   TRI_ASSERT(slice.isObject());
   // a regular document must have at least the three attributes 
   // _key, _id and _rev (in this order). _key must be the first attribute
@@ -747,7 +770,10 @@ VPackSlice Transaction::extractKeyFromDocument(VPackSlice const& slice) {
 /// and _rev (in this order)
 //////////////////////////////////////////////////////////////////////////////
 
-VPackSlice Transaction::extractFromFromDocument(VPackSlice const& slice) {
+VPackSlice Transaction::extractFromFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
   TRI_ASSERT(slice.isObject());
   // this method must only be called on edges
   // this means we must have at least the attributes  _key, _id, _from, _to and _rev
@@ -778,8 +804,10 @@ VPackSlice Transaction::extractFromFromDocument(VPackSlice const& slice) {
 /// and _rev (in this order)
 //////////////////////////////////////////////////////////////////////////////
 
-VPackSlice Transaction::extractToFromDocument(VPackSlice const& slice) {
-  TRI_ASSERT(slice.isObject());
+VPackSlice Transaction::extractToFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
   // this method must only be called on edges
   // this means we must have at least the attributes  _key, _id, _from, _to and _rev
   TRI_ASSERT(slice.length() >= 5); 
@@ -809,7 +837,10 @@ VPackSlice Transaction::extractToFromDocument(VPackSlice const& slice) {
 /// (possibly with _from and _to in between)
 //////////////////////////////////////////////////////////////////////////////
 
-VPackSlice Transaction::extractRevFromDocument(VPackSlice const& slice) {
+VPackSlice Transaction::extractRevFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2); 
 
@@ -838,9 +869,12 @@ VPackSlice Transaction::extractRevFromDocument(VPackSlice const& slice) {
 /// collection and compaction
 //////////////////////////////////////////////////////////////////////////////
     
-void Transaction::extractKeyAndRevFromDocument(VPackSlice const& slice, 
+void Transaction::extractKeyAndRevFromDocument(VPackSlice slice, 
                                                VPackSlice& keySlice, 
                                                TRI_voc_rid_t& revisionId) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2); 
 
@@ -3028,6 +3062,10 @@ std::shared_ptr<Index> Transaction::indexForCollectionCoordinator(
           idx.reset(new arangodb::HashIndex(v));
         } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
           idx.reset(new arangodb::SkiplistIndex(v));
+#ifdef ARANGODB_ENABLE_ROCKSDB
+        } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX) {
+          idx.reset(new arangodb::RocksDBIndex(v));
+#endif
         }
         return idx;
       }

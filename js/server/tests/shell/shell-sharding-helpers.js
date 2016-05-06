@@ -126,25 +126,6 @@ function ClusterEnabledSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test address
-////////////////////////////////////////////////////////////////////////////////
-    
-    testAddress : function () {
-      assertTrue(agency.set("Target/MapIDToEndpoint/myself", "tcp://127.0.0.1:8529"));
-      assertTrue(agency.set("Plan/Coordinators/myself", "none"));
-      assertTrue(agency.set("Plan/DBServers/myself", "other"));
-      ss.setId("myself");
-      ss.flush();
-
-      assertEqual("tcp://127.0.0.1:8529", ss.address());
-      
-      assertTrue(agency.set("Target/MapIDToEndpoint/myself", "tcp://127.0.0.1:8530"));
-      ss.flush();
-      
-      assertEqual("tcp://127.0.0.1:8530", ss.address());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test isCluster
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -399,6 +380,7 @@ function ClusterEnabledSuite () {
         last = id;
       }
     }
+
   };
 }
 

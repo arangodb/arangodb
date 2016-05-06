@@ -376,7 +376,6 @@ struct TRI_col_header_marker_t {
   TRI_df_marker_t base;  // 16 bytes
 
   TRI_voc_cid_t _cid;  //  8 bytes
-  TRI_col_type_t _type;  //  4 bytes
 };
 
 ////////////////////////////////////////////////////////////////////////////////
