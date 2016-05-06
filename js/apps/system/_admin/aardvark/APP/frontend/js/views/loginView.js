@@ -46,38 +46,40 @@
         return;
       }
 
-      console.log(event);
       var callback = function(error) {
         if (error) {
           if (event.type === 'focusout') {
             //$('#loginForm input').addClass("form-error");
             $('.wrong-credentials').show();
+            $('#loginDatabase').html('');
+            $('#loginDatabase').append(
+              '<option>_system</option>'
+            ); 
+            $('#loginDatabase').prop('disabled', true);
+            $('#submitLogin').prop('disabled', true);
           }
         }
         else {
           $('.wrong-credentials').hide();
 
-          if (!self.loggedIn) {
-            self.loggedIn = true;
-            //get list of allowed dbs
-            $.ajax("/_api/database/user").success(function(data) {
-              //enable db select and login button
-              $('#loginDatabase').prop('disabled', false);
-              $('#submitLogin').prop('disabled', false);
-              $('#loginDatabase').html('');
-              //fill select with allowed dbs
-              _.each(data.result, function(db) {
-                $('#loginDatabase').append(
-                  '<option>' + db + '</option>'
-                ); 
-              });
+          self.loggedIn = true;
+          //get list of allowed dbs
+          $.ajax("/_api/database/user").success(function(data) {
+            //enable db select and login button
+            $('#loginDatabase').prop('disabled', false);
+            $('#submitLogin').prop('disabled', false);
+            $('#loginDatabase').html('');
+            //fill select with allowed dbs
+            _.each(data.result, function(db) {
+              $('#loginDatabase').append(
+                '<option>' + db + '</option>'
+              ); 
             });
-          }
+          });
         }
       }.bind(this);
 
       this.collection.login(username, password, callback);
-
     },
 
     goTo: function (e) {
