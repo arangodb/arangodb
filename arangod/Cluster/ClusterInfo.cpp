@@ -260,7 +260,6 @@ ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::~ClusterInfo() {
-  clearCurrentDatabases(_currentDatabases);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -305,7 +304,7 @@ void ClusterInfo::flush() {
   loadCurrentDBServers();
   loadCurrentCoordinators();
   loadPlan();
-  loadCurrentDatabases();
+  loadCurrent();
   loadCurrentCollections();
 }
 
@@ -317,9 +316,9 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
   int tries = 0;
 
   if (reload || !_planProt.isValid ||
-      !_currentDatabasesProt.isValid || !_DBServersProt.isValid) {
+      !_currentProt.isValid || !_DBServersProt.isValid) {
     loadPlan();
-    loadCurrentDatabases();
+    loadCurrent();
     loadCurrentDBServers();
     ++tries;  // no need to reload if the database is not found
   }
@@ -343,7 +342,7 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
 
       if (it != _plannedDatabases.end()) {
         // found the database in Plan
-        READ_LOCKER(readLocker, _currentDatabasesProt.lock);
+        READ_LOCKER(readLocker, _currentProt.lock);
         // _currentDatabases is
         //     a map-type<DatabaseID, a map-type<ServerID, TRI_json_t*>>
         auto it2 = _currentDatabases.find(databaseID);
@@ -361,7 +360,7 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
     }
 
     loadPlan();
-    loadCurrentDatabases();
+    loadCurrent();
     loadCurrentDBServers();
   }
 
@@ -376,9 +375,9 @@ std::vector<DatabaseID> ClusterInfo::listDatabases(bool reload) {
   std::vector<DatabaseID> result;
 
   if (reload || !_planProt.isValid ||
-      !_currentDatabasesProt.isValid || !_DBServersProt.isValid) {
+      !_currentProt.isValid || !_DBServersProt.isValid) {
     loadPlan();
-    loadCurrentDatabases();
+    loadCurrent();
     loadCurrentDBServers();
   }
 
@@ -393,7 +392,7 @@ std::vector<DatabaseID> ClusterInfo::listDatabases(bool reload) {
 
   {
     READ_LOCKER(readLockerPlanned, _planProt.lock);
-    READ_LOCKER(readLockerCurrent, _currentDatabasesProt.lock);
+    READ_LOCKER(readLockerCurrent, _currentProt.lock);
     // _plannedDatabases is a map-type<DatabaseID, TRI_json_t*>
     auto it = _plannedDatabases.begin();
 
@@ -541,42 +540,16 @@ void ClusterInfo::loadPlan() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a list of current databases
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::clearCurrentDatabases(
-    std::unordered_map<DatabaseID, std::unordered_map<ServerID, TRI_json_t*>>&
-        databases) {
-  auto it = databases.begin();
-  while (it != databases.end()) {
-    auto it2 = (*it).second.begin();
-
-    while (it2 != (*it).second.end()) {
-      TRI_json_t* json = (*it2).second;
-
-      if (json != nullptr) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      }
-
-      ++it2;
-    }
-    ++it;
-  }
-
-  databases.clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about current databases
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string const prefixCurrentDatabases = "Current/Databases";
 
-void ClusterInfo::loadCurrentDatabases() {
-  uint64_t storedVersion = _currentDatabasesProt.version;
-  MUTEX_LOCKER(mutexLocker, _currentDatabasesProt.mutex);
-  if (_currentDatabasesProt.version > storedVersion) {
+void ClusterInfo::loadCurrent() {
+  uint64_t storedVersion = _currentProt.version;
+  MUTEX_LOCKER(mutexLocker, _currentProt.mutex);
+  if (_currentProt.version > storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
   }
@@ -591,48 +564,54 @@ void ClusterInfo::loadCurrentDatabases() {
   }
   
   if (result.successful()) {
-    
-    velocypack::Slice databases =
-      result.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Current", "Databases"}));
 
-    if (!databases.isNone()) {
+    velocypack::Slice slice =
+      result.slice()[0].get(std::vector<std::string>(
+            {AgencyComm::prefixStripped(), "Current"}));
+
+    auto currentBuilder = std::make_shared<VPackBuilder>();
+    currentBuilder->add(slice);
+
+    VPackSlice currentSlice = currentBuilder->slice();
+    if (currentSlice.isObject()) {
       decltype(_currentDatabases) newDatabases;
 
-      for (auto const& dbase : VPackObjectIterator(databases)) {
+      bool swapDatabases = false;
 
-        std::string const database = dbase.key.copyString();
+      VPackSlice databasesSlice;
+      databasesSlice = currentSlice.get("Databases");
+      if (databasesSlice.isObject()) {
+        for (auto const& databaseSlicePair : VPackObjectIterator(databasesSlice)) {
+          std::string const database = databaseSlicePair.key.copyString();
 
-        // _currentDatabases is
-        //   a map-type<DatabaseID, a map-type<ServerID, TRI_json_t*>>
-        auto it2 = newDatabases.find(database);
+          if (!databaseSlicePair.value.isObject()) {
+            continue;
+          }
 
-        if (it2 == newDatabases.end()) {
-          // insert an empty list for this database
-          decltype(it2->second) empty;
-          it2 = newDatabases.insert(std::make_pair(database, empty)).first;
+          std::unordered_map<ServerID, VPackSlice> serverList;
+          for (auto const& serverSlicePair : VPackObjectIterator(databaseSlicePair.value)) {
+            serverList.insert(std::make_pair(serverSlicePair.key.copyString(), serverSlicePair.value));
+          }
+
+          newDatabases.insert(std::make_pair(database, serverList));
         }
-
-        // TODO: _plannedDatabases need to be moved to velocypack
-        // Then this can be merged to swap
-        for (auto const& server : VPackObjectIterator(dbase.value)) {
-          TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson(
-            server.value);
-          (*it2).second.insert(std::make_pair(server.key.copyString(), json));
-        }
-
+        swapDatabases = true;
       }
 
       // Now set the new value:
       {
-        WRITE_LOCKER(writeLocker, _currentDatabasesProt.lock);
-        _currentDatabases.swap(newDatabases);
-        _currentDatabasesProt.version++;  // such that others notice our change
-        _currentDatabasesProt.isValid = true;  // will never be reset to false
+        WRITE_LOCKER(writeLocker, _currentProt.lock);
+        _current = currentBuilder;
+        if (swapDatabases) {
+          _currentDatabases.swap(newDatabases);
+        }
+        _currentProt.version++;  // such that others notice our change
+        _currentProt.isValid = true;  // will never be reset to false
       }
-      clearCurrentDatabases(newDatabases);  // delete the old stuff
-      return;
+    } else {
+      LOG(ERR) << "Current is not an object!";
     }
+    return;
   }
 
   LOG(DEBUG) << "Error while loading " << prefixCurrentDatabases
@@ -946,7 +925,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE;
         return true;
       }
-      loadCurrentDatabases();  // update our cache
+      loadCurrent();  // update our cache
       dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
     }
     return true;
@@ -2576,8 +2555,8 @@ void ClusterInfo::invalidateCurrent() {
     _coordinatorsProt.isValid = false;
   }
   {
-    WRITE_LOCKER(writeLocker, _currentDatabasesProt.lock);
-    _currentDatabasesProt.isValid = false;
+    WRITE_LOCKER(writeLocker, _currentProt.lock);
+    _currentProt.isValid = false;
   }
   {
     WRITE_LOCKER(writeLocker, _currentCollectionsProt.lock);

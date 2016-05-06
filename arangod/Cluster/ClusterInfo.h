@@ -107,6 +107,9 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string id_as_string() const {
+    if (!_slice.isObject()) {
+      return std::string("");
+    }
     return arangodb::basics::VelocyPackHelper::getStringValue(_slice, "id", "");
   }
 
@@ -115,6 +118,9 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string name() const {
+    if (!_slice.isObject()) {
+      return std::string("");
+    }
     return arangodb::basics::VelocyPackHelper::getStringValue(_slice, "name", "");
   }
 
@@ -277,7 +283,7 @@ class CollectionInfo {
       return false;
     }
   
-    auto firstElement = shardKeysSlice.get(0);
+    auto firstElement = shardKeysSlice.at(0);
     TRI_ASSERT(firstElement.isString());
     std::string shardKey =
         arangodb::basics::VelocyPackHelper::getStringValue(firstElement, "");
@@ -593,11 +599,11 @@ class ClusterInfo {
   void loadPlan();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief (re-)load the information about current databases
+  /// @brief (re-)load the information about current state
   /// Usually one does not have to call this directly.
   //////////////////////////////////////////////////////////////////////////////
 
-  void loadCurrentDatabases();
+  void loadCurrent();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection
@@ -901,15 +907,16 @@ class ClusterInfo {
   ProtectionData _coordinatorsProt;
   
   std::shared_ptr<VPackBuilder> _plan;
+  std::shared_ptr<VPackBuilder> _current;
   
   std::unordered_map<DatabaseID, VPackSlice> _plannedDatabases;  // from Plan/Databases
 
   ProtectionData _planProt;
 
   std::unordered_map<DatabaseID,
-                     std::unordered_map<ServerID, struct TRI_json_t*>>
+                     std::unordered_map<ServerID, VPackSlice>>
       _currentDatabases;  // from Current/Databases
-  ProtectionData _currentDatabasesProt;
+  ProtectionData _currentProt;
 
   // We need information about collections, again we have
   // data from Plan and from Current.
