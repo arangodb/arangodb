@@ -770,8 +770,6 @@ static void JS_GetCollectionInfoClusterInfo(
               v8::Number::New(isolate, ci->journalSize()));
   result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
               v8::Number::New(isolate, ci->replicationFactor()));
-  result->Set(TRI_V8_ASCII_STRING("replicationQuorum"),
-              v8::Number::New(isolate, ci->replicationQuorum()));
 
   std::vector<std::string> const& sks = ci->shardKeys();
   v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate, (int)sks.size());

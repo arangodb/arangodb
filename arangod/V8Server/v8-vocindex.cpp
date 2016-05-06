@@ -871,7 +871,6 @@ static void CreateCollectionCoordinator(
   uint64_t numberOfShards = 1;
   std::vector<std::string> shardKeys;
   uint64_t replicationFactor = 1;
-  uint64_t replicationQuorum = 1;
 
   // default shard key
   shardKeys.push_back("_key");
@@ -950,10 +949,6 @@ static void CreateCollectionCoordinator(
     if (p->Has(TRI_V8_ASCII_STRING("replicationFactor"))) {
       replicationFactor = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("replicationFactor")), false);
     }
-
-    if (p->Has(TRI_V8_ASCII_STRING("replicationQuorum"))) {
-      replicationQuorum = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("replicationQuorum")), false);
-    }
   }
 
   if (numberOfShards == 0 || numberOfShards > 1000) {
@@ -962,10 +957,6 @@ static void CreateCollectionCoordinator(
 
   if (replicationFactor == 0 || replicationFactor > 10) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("invalid replicationFactor");
-  }
-
-  if (replicationQuorum == 0 || replicationQuorum > replicationFactor) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid replicationQuorum");
   }
 
   if (shardKeys.empty() || shardKeys.size() > 8) {
@@ -1062,7 +1053,6 @@ static void CreateCollectionCoordinator(
           ("journalSize",  Value(parameters.maximalSize()))
           ("indexBuckets", Value(parameters.indexBuckets()))
           ("replicationFactor", Value(replicationFactor))
-          ("replicationQuorum", Value(replicationQuorum))
           ("keyOptions",   Value(ValueType::Object))
               ("type",          Value("traditional"))
               ("allowUserKeys", Value(allowUserKeys))

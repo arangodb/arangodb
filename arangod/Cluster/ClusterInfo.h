@@ -83,21 +83,6 @@ class CollectionInfo {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the replication quorum
-  //////////////////////////////////////////////////////////////////////////////
-
-  int replicationQuorum () const {
-    TRI_json_t* const node 
-        = arangodb::basics::JsonHelper::getObjectElement(_json,
-                                                         "replicationQuorum");
-
-    if (TRI_IsNumberJson(node)) {
-      return (int) (node->_value._number);
-    }
-    return 1;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether there is no info contained
   //////////////////////////////////////////////////////////////////////////////
 

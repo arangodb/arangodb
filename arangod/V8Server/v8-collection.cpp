@@ -1305,9 +1305,6 @@ static void JS_PropertiesVocbaseCol(
     result->Set(
         TRI_V8_ASCII_STRING("replicationFactor"),
         v8::Number::New(isolate, static_cast<double>(c->replicationFactor())));
-    result->Set(
-        TRI_V8_ASCII_STRING("replicationQuorum"),
-        v8::Number::New(isolate, static_cast<double>(c->replicationQuorum())));
 
     TRI_V8_RETURN(result);
   }
