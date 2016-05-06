@@ -43,6 +43,8 @@ AttributeAccessor::AttributeAccessor(
   if (_attributeParts.size() == 1) {
     if (attributeParts[0] == StaticStrings::KeyString) {
       _type = EXTRACT_KEY;
+    } else if (attributeParts[0] == StaticStrings::IdString) {
+      _type = EXTRACT_ID;
     } else if (attributeParts[0] == StaticStrings::FromString) {
       _type = EXTRACT_FROM;
     } else if (attributeParts[0] == StaticStrings::ToString) {
@@ -76,6 +78,8 @@ AqlValue AttributeAccessor::get(arangodb::AqlTransaction* trx,
       switch (_type) {
         case EXTRACT_KEY:
           return argv->getValueReference(startPos, regs[i]).getKeyAttribute(trx, mustDestroy, true);
+        case EXTRACT_ID:
+          return argv->getValueReference(startPos, regs[i]).getIdAttribute(trx, mustDestroy, true);
         case EXTRACT_FROM:
           return argv->getValueReference(startPos, regs[i]).getFromAttribute(trx, mustDestroy, true);
         case EXTRACT_TO:

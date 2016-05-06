@@ -136,6 +136,7 @@ static void createBabiesError(VPackBuilder& builder,
     builder.openObject();
     builder.add("error", VPackValue(true));
     builder.add("errorNum", VPackValue(errorCode));
+    builder.add("errorMessage", VPackValue(TRI_errno_string(errorCode)));
     builder.close();
   }
 
@@ -762,6 +763,40 @@ VPackSlice Transaction::extractKeyFromDocument(VPackSlice slice) {
   
   // fall back to the regular lookup method
   return slice.get(StaticStrings::KeyString); 
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief quick access to the _id attribute in a database document
+/// the document must have at least two attributes, and _id is supposed to
+/// be the second one
+/// note that this may return a Slice of type Custom!
+//////////////////////////////////////////////////////////////////////////////
+
+VPackSlice Transaction::extractIdFromDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
+  TRI_ASSERT(slice.isObject());
+  // a regular document must have at least the three attributes 
+  // _key, _id and _rev (in this order). _id must be the second attribute
+  TRI_ASSERT(slice.length() >= 2); 
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+
+  if (*p == basics::VelocyPackHelper::KeyAttribute) {
+    // skip over _key 
+    ++p;
+    // skip over _key value
+    p += VPackSlice(p).byteSize();
+    if (*p == basics::VelocyPackHelper::IdAttribute) {
+      // the + 1 is required so that we can skip over the attribute name
+      // and point to the attribute value 
+      return VPackSlice(p + 1); 
+    }
+  }
+  
+  // fall back to the regular lookup method
+  return slice.get(StaticStrings::IdString); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -3030,9 +3065,7 @@ std::shared_ptr<Index> Transaction::indexForCollectionCoordinator(
                                   name.c_str(), _vocbase->_name);
   }
 
-  TRI_json_t const* json = (*collectionInfo).getIndexes();
-  auto indexBuilder = arangodb::basics::JsonHelper::toVelocyPack(json);
-  VPackSlice const slice = indexBuilder->slice();
+  VPackSlice const slice = (*collectionInfo).getIndexes();
 
   if (slice.isArray()) {
     for (auto const& v : VPackArrayIterator(slice)) {
@@ -3094,9 +3127,7 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollectionCoordinator
                                   name.c_str(), _vocbase->_name);
   }
 
-  TRI_json_t const* json = collectionInfo->getIndexes();
-  auto indexBuilder = arangodb::basics::JsonHelper::toVelocyPack(json);
-  VPackSlice const slice = indexBuilder->slice();
+  VPackSlice const slice = collectionInfo->getIndexes();
 
   if (slice.isArray()) {
     size_t const n = static_cast<size_t>(slice.length());

@@ -415,9 +415,8 @@ GeneralResponse::ResponseCode GeneralResponse::responseCode(int code) {
   }
 }
 
-GeneralResponse::GeneralResponse(ResponseCode responseCode,
-                                 uint32_t compatibility)
-    : _responseCode(responseCode), _apiCompatibility(compatibility) {}
+GeneralResponse::GeneralResponse(ResponseCode responseCode)
+    : _responseCode(responseCode) {}
 
 std::string const& GeneralResponse::header(std::string const& key) const {
   std::string k = StringUtils::tolower(key);

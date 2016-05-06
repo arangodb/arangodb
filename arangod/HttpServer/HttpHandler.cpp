@@ -185,8 +185,7 @@ HttpHandler::status_t HttpHandler::executeFull() {
   }
 
   if (status._status != HANDLER_ASYNC && _response == nullptr) {
-    _response = new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
-                                 GeneralRequest::MIN_COMPATIBILITY);
+    _response = new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
   }
 
   requestStatisticsAgentSetRequestEnd();
@@ -245,14 +244,6 @@ void HttpHandler::createResponse(GeneralResponse::ResponseCode code) {
   delete _response;
   _response = nullptr;
 
-  int32_t apiCompatibility;
-
-  if (_request != nullptr) {
-    apiCompatibility = _request->compatibility();
-  } else {
-    apiCompatibility = GeneralRequest::MIN_COMPATIBILITY;
-  }
-
   // create a "standard" (standalone) Http response
-  _response = new HttpResponse(code, apiCompatibility);
+  _response = new HttpResponse(code);
 }

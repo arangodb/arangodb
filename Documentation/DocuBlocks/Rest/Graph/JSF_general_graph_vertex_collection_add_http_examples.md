@@ -14,8 +14,13 @@ The name of the graph.
 
 @RESTRETURNCODES
 
+@RESTRETURNCODE{201}
+Returned if the edge collection could be added successfully and
+waitForSync is true.
+
 @RESTRETURNCODE{202}
-Returned if the edge collection could be added successfully.
+Returned if the edge collection could be added successfully and
+waitForSync is false.
 
 @RESTRETURNCODE{404}
 Returned if no graph with this name could be found.

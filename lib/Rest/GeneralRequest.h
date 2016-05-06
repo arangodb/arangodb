@@ -39,9 +39,6 @@ class GeneralRequest {
   GeneralRequest& operator=(GeneralRequest const&) = delete;
 
  public:
-  static int32_t const MIN_COMPATIBILITY;
-
- public:
   // VSTREAM_CRED: This method is used for sending Authentication
   // request,i.e; username and password.
   //
@@ -83,10 +80,8 @@ class GeneralRequest {
   static RequestType findRequestType(char const*, size_t const);
 
  public:
-  GeneralRequest(ConnectionInfo const& connectionInfo,
-                 int32_t defaultApiCompatibility)
+  GeneralRequest(ConnectionInfo const& connectionInfo)
       : _version(ProtocolVersion::UNKNOWN),
-        _defaultApiCompatibility(defaultApiCompatibility),
         _connectionInfo(connectionInfo),
         _clientTaskId(0),
         _requestContext(nullptr),
@@ -101,8 +96,6 @@ class GeneralRequest {
   // http, https or vpp
   std::string const& protocol() const { return _protocol; }
   void setProtocol(std::string const& protocol) { _protocol = protocol; }
-
-  virtual int32_t compatibility() = 0;
 
   ConnectionInfo const& connectionInfo() const { return _connectionInfo; }
   void setConnectionInfo(ConnectionInfo const& connectionInfo) {
@@ -172,7 +165,6 @@ class GeneralRequest {
  protected:
   ProtocolVersion _version;
   std::string _protocol;
-  int32_t _defaultApiCompatibility;
 
   // connection info
   ConnectionInfo _connectionInfo;
