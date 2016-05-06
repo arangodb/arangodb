@@ -824,7 +824,7 @@ static void JS_GetCollectionInfoClusterInfo(
   }
   result->Set(TRI_V8_ASCII_STRING("shards"), shardIds);
 
-  v8::Handle<v8::Value> indexes = TRI_ObjectJson(isolate, ci->getIndexes());
+  v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, ci->getIndexes());
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
 
   TRI_V8_RETURN(result);

@@ -1072,7 +1072,7 @@ static void CreateCollectionCoordinator(
   if (myerrno != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(myerrno, errorMsg);
   }
-  ci->loadPlannedCollections();
+  ci->loadPlan();
 
   std::shared_ptr<CollectionInfo> c = ci->getCollection(databaseName, cid);
   TRI_vocbase_col_t* newcoll = CoordinatorCollection(vocbase, *c);
@@ -1256,9 +1256,7 @@ static void GetIndexesCoordinator(
 
   v8::Handle<v8::Array> ret = v8::Array::New(isolate);
 
-  std::shared_ptr<VPackBuilder> tmp =
-      arangodb::basics::JsonHelper::toVelocyPack(c->getIndexes());
-  VPackSlice slice = tmp->slice();
+  VPackSlice slice = c->getIndexes();
 
   if (slice.isArray()) {
     uint32_t j = 0;

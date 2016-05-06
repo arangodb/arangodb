@@ -2996,9 +2996,7 @@ std::shared_ptr<Index> Transaction::indexForCollectionCoordinator(
                                   name.c_str(), _vocbase->_name);
   }
 
-  TRI_json_t const* json = (*collectionInfo).getIndexes();
-  auto indexBuilder = arangodb::basics::JsonHelper::toVelocyPack(json);
-  VPackSlice const slice = indexBuilder->slice();
+  VPackSlice const slice = (*collectionInfo).getIndexes();
 
   if (slice.isArray()) {
     for (auto const& v : VPackArrayIterator(slice)) {
@@ -3056,9 +3054,7 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollectionCoordinator
                                   name.c_str(), _vocbase->_name);
   }
 
-  TRI_json_t const* json = collectionInfo->getIndexes();
-  auto indexBuilder = arangodb::basics::JsonHelper::toVelocyPack(json);
-  VPackSlice const slice = indexBuilder->slice();
+  VPackSlice const slice = collectionInfo->getIndexes();
 
   if (slice.isArray()) {
     size_t const n = static_cast<size_t>(slice.length());
