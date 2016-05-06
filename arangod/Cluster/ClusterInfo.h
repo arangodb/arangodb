@@ -75,6 +75,9 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   int replicationFactor () const {
+    if (!_slice.isObject()) {
+      return 1;
+    }
     return arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
         _slice, "replicationFactor", 1);
   }
@@ -129,6 +132,9 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_col_type_e type() const {
+    if (!_slice.isObject()) {
+      return TRI_COL_TYPE_UNKNOWN;
+    }
     return (TRI_col_type_e)arangodb::basics::VelocyPackHelper::getNumericValue<int>(
         _slice, "type", (int)TRI_COL_TYPE_UNKNOWN);
   }
@@ -138,6 +144,9 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_vocbase_col_status_e status() const {
+    if (!_slice.isObject()) {
+      return TRI_VOC_COL_STATUS_CORRUPTED;
+    }
     return (TRI_vocbase_col_status_e)
         arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             _slice, "status", (int)TRI_VOC_COL_STATUS_CORRUPTED);
@@ -246,6 +255,9 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   uint32_t indexBuckets() const {
+    if (!_slice.isObject()) {
+      return 1;
+    }
     return arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
         _slice, "indexBuckets", 1);
   }
