@@ -239,7 +239,7 @@ void HeartbeatThread::runDBServer() {
 
       if (!wasNotified) {
         LOG(TRACE) << "Lock reached timeout";
-        planAgencyCallback->refetchAndUpdate();
+        planAgencyCallback->refetchAndUpdate(true);
       } else {
         // mop: a plan change returned successfully...
         // recheck and redispatch in case our desired versions increased

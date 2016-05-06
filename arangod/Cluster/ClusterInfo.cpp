@@ -29,6 +29,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/ConditionLocker.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -892,8 +893,6 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   AgencyComm ac;
   AgencyCommResult res;
   
-  Mutex dbServersMutex;
-
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
@@ -905,10 +904,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   std::function<bool(VPackSlice const& result)> dbServerChanged =
     [&](VPackSlice const& result) {
     size_t numDbServers;
-    {
-      MUTEX_LOCKER(guard, dbServersMutex);
-      numDbServers = DBServers.size();
-    }
+    numDbServers = DBServers.size();
     if (result.isObject() && result.length() >= numDbServers) {
       // We use >= here since the number of DBservers could have increased
       // during the creation of the database and we might not yet have
@@ -939,16 +935,12 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         }
       }
       if (tmpHaveError) {
-        MUTEX_LOCKER(guard, dbServersMutex);
         errorMsg = "Error in creation of database:" + tmpMsg;
         dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE;
         return true;
       }
       loadCurrent();  // update our cache
-      {
-        MUTEX_LOCKER(guard, dbServersMutex);
-        dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-      }
+      dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
     }
     return true;
   };
@@ -956,7 +948,8 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our 
   // local variables. Therefore we have to protect all accesses to them
-  // by the above mutex.
+  // by a mutex. We use the mutex of the condition variable in the
+  // AgencyCallback for this.
   auto agencyCallback = std::make_shared<AgencyCallback>(
     ac, "Current/Databases/" + name, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
@@ -984,36 +977,32 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   // Now update our own cache of planned databases:
   loadPlan();
   
-  int count = 0;  // this counts, when we have to reload the DBServers
-  while (TRI_microtime() <= endTime) {
-    agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
-    {
-      MUTEX_LOCKER(guard, dbServersMutex);
-      if (dbServerResult >= 0) {
-        break;
-      }
-    }
-
-    if (++count >= static_cast<int>(getReloadServerListTimeout() / interval)) {
-      // We update the list of DBServers every minute in case one of them
-      // was taken away since we last looked. This also helps (slightly)
-      // if a new DBServer was added. However, in this case we report
-      // success a bit too early, which is not too bad.
-      loadCurrentDBServers();
-      {
-        MUTEX_LOCKER(guard, dbServersMutex);
-        DBServers = getCurrentDBServers();
-      }
-      count = 0;
-    }
-  }
   {
-    MUTEX_LOCKER(guard, dbServersMutex);
-    if (dbServerResult >= 0) {
-      return dbServerResult;
+    CONDITION_LOCKER(locker, agencyCallback->_cv);
+
+    int count = 0;  // this counts, when we have to reload the DBServers
+    while (true) {
+      if (++count >= static_cast<int>(getReloadServerListTimeout() / interval)) {
+        // We update the list of DBServers every minute in case one of them
+        // was taken away since we last looked. This also helps (slightly)
+        // if a new DBServer was added. However, in this case we report
+        // success a bit too early, which is not too bad.
+        loadCurrentDBServers();
+        DBServers = getCurrentDBServers();
+        count = 0;
+      }
+
+      if (dbServerResult >= 0) {
+        return dbServerResult;
+      }
+
+      if (TRI_microtime() > endTime) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
+
+      agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
     }
   }
-  return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1043,6 +1032,12 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   };
   
   std::string where("Current/Databases/" + name);
+
+  // ATTENTION: The following callback calls the above closure in a
+  // different thread. Nevertheless, the closure accesses some of our 
+  // local variables. Therefore we have to protect all accesses to them
+  // by a mutex. We use the mutex of the condition variable in the
+  // AgencyCallback for this.
   auto agencyCallback = std::make_shared<AgencyCallback>(
     ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
@@ -1069,7 +1064,6 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
                          errorMsg);
     }
 
-    res.clear();
     res = ac.removeValues("Plan/Collections/" + name, true);
 
     if (!res.successful() &&
@@ -1082,25 +1076,30 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   // Load our own caches:
   loadPlan();
 
-  // Now wait for it to appear and be complete:
-  res.clear();
-  while (TRI_microtime() <= endTime) {
-    agencyCallback->executeByCallbackOrTimeout(interval);
-    if (dbServerResult >= 0) {
-      AgencyCommLocker locker("Current", "WRITE");
-      if (locker.successful()) {
-        res.clear();
-        res = ac.removeValues(where, true);
-        if (res.successful()) {
-          return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+  // Now wait stuff in Current to disappear and thus be complete:
+  {
+    CONDITION_LOCKER(locker, agencyCallback->_cv);
+    while (true) {
+      if (dbServerResult >= 0) {
+        AgencyCommLocker locker("Current", "WRITE");
+        if (locker.successful()) {
+          res = ac.removeValues(where, true);
+          if (res.successful()) {
+            return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+          }
+          return setErrormsg(
+              TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT, errorMsg);
         }
-        return setErrormsg(
-            TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT, errorMsg);
+        return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
-      return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+
+      if (TRI_microtime() > endTime) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
+
+      agencyCallback->executeByCallbackOrTimeout(interval);
     }
   }
-  return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
