@@ -152,8 +152,8 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy,
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
-    case VPACK_INLINE:
       doCopy = false; 
+    case VPACK_INLINE:
       // fall-through intentional
     case VPACK_MANAGED: {
       VPackSlice s(slice());
@@ -228,8 +228,8 @@ AqlValue AqlValue::getKeyAttribute(arangodb::AqlTransaction* trx,
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
-    case VPACK_INLINE:
       doCopy = false; 
+    case VPACK_INLINE:
       // fall-through intentional
     case VPACK_MANAGED: {
       VPackSlice s(slice());
@@ -264,8 +264,8 @@ AqlValue AqlValue::getIdAttribute(arangodb::AqlTransaction* trx,
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
-    case VPACK_INLINE:
       doCopy = false; 
+    case VPACK_INLINE:
       // fall-through intentional
     case VPACK_MANAGED: {
       VPackSlice s(slice());
@@ -305,8 +305,8 @@ AqlValue AqlValue::getFromAttribute(arangodb::AqlTransaction* trx,
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
-    case VPACK_INLINE:
       doCopy = false; 
+    case VPACK_INLINE:
       // fall-through intentional
     case VPACK_MANAGED: {
       VPackSlice s(slice());
@@ -341,8 +341,8 @@ AqlValue AqlValue::getToAttribute(arangodb::AqlTransaction* trx,
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
-    case VPACK_INLINE:
       doCopy = false; 
+    case VPACK_INLINE:
       // fall-through intentional
     case VPACK_MANAGED: {
       VPackSlice s(slice());
@@ -378,8 +378,8 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
-    case VPACK_INLINE:
       doCopy = false; 
+    case VPACK_INLINE:
       // fall-through intentional
     case VPACK_MANAGED: {
       VPackSlice s(slice());
@@ -420,8 +420,8 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
-    case VPACK_INLINE:
       doCopy = false; 
+    case VPACK_INLINE:
       // fall-through intentional
     case VPACK_MANAGED: {
       VPackSlice s(slice());
