@@ -80,13 +80,7 @@ ArangoStatement.prototype.execute = function () {
     } 
   }
   
-  try {  
   var result = AQL_EXECUTE(this._query, this._bindVars, opts);
-  } catch (e) {
-    console.log("HASSHASSHASSHASS", this._query, e);
-    throw e;
-  }
-
   return new GeneralArrayCursor(result.json, 0, null, result);
 };
 
