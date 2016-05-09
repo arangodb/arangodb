@@ -46,7 +46,7 @@ Agent::Agent (config_t const& config)
       _config(config), 
       _lastCommitIndex(0) {
 
-  _state.setEndPoint(_config.endpoint);
+  _state.configure(this);
   _constituent.configure(this);
   _confirmed.resize(size(),0); // agency's size and reset to 0
 }
@@ -81,6 +81,11 @@ term_t Agent::term () const {
 //  Agency size
 inline size_t Agent::size() const {
   return _config.size();
+}
+
+// My endpoint
+std::string const& Agent::endpoint () const {
+  return _config.endpoint;
 }
 
 //  Handle vote request

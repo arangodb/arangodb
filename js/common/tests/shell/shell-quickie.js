@@ -81,6 +81,17 @@ function QuickieSuite () {
       c.update(r._key, {"Hallo":14});
       d = c.document(r._key);
       assertEqual(14, d.Hallo);
+      var aql = db._query("FOR x IN UnitTestCollection RETURN x._key").toArray();
+      assertEqual(1, aql.length);
+      assertEqual(r._key, aql[0]);
+      var i = c.getIndexes();
+      assertEqual(1, i.length); // We have a primary index
+      c.ensureIndex({type: "hash", fields: ["Hallo"]});
+      i = c.getIndexes();
+      assertEqual(2, i.length); // We have a primary index and a hash Index
+      aql = db._query("FOR x IN UnitTestCollection FILTER x.Hallo == 14RETURN x._key").toArray();
+      assertEqual(1, aql.length);
+      assertEqual(r._key, aql[0]);
       c.remove(r._key);
       try {
         d = c.document(r._key);
@@ -119,6 +130,17 @@ function QuickieSuite () {
       d = c.document(r._key);
       assertEqual(13, d.Hallo);
       c.update(r._key, {"Hallo":14});
+      var aql = db._query("FOR x IN UnitTestCollection RETURN x._key").toArray();
+      assertEqual(1, aql.length);
+      assertEqual(r._key, aql[0]);
+      var i = c.getIndexes();
+      assertEqual(1, i.length); // We have a primary index
+      c.ensureIndex({type: "hash", fields: ["Hallo"]});
+      i = c.getIndexes();
+      assertEqual(2, i.length); // We have a primary index and a hash Index
+      aql = db._query("FOR x IN UnitTestCollection FILTER x.Hallo == 14RETURN x._key").toArray();
+      assertEqual(1, aql.length);
+      assertEqual(r._key, aql[0]);
       d = c.document(r._key);
       assertEqual(14, d.Hallo);
       c.remove(r._key);

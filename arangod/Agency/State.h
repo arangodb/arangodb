@@ -93,7 +93,7 @@ public:
 
 
   /// @brief Set endpoint
-  bool setEndPoint (std::string const&);
+  bool configure (Agent* agent);
 
 
   /// @brief Load persisted data from above or start with empty log
@@ -132,7 +132,9 @@ private:
   /// @brief Create collection
   bool createCollection(std::string const& name);
 
-  bool compact ();
+  bool compact (arangodb::consensus::index_t cind);
+
+  Agent* _agent;
 
   TRI_vocbase_t* _vocbase;
 
@@ -142,8 +144,12 @@ private:
   bool _collectionsChecked;                 /**< @brief Collections checked */
   bool _collectionsLoaded;
 
+  size_t _compaction_step;
+  size_t _cur;
+
   OperationOptions _options;
 
+  
   
 };
 
