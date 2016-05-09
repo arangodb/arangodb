@@ -1188,6 +1188,11 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     return true;
   };
 
+  // ATTENTION: The following callback calls the above closure in a
+  // different thread. Nevertheless, the closure accesses some of our 
+  // local variables. Therefore we have to protect all accesses to them
+  // by a mutex. We use the mutex of the condition variable in the
+  // AgencyCallback for this.
   auto agencyCallback = std::make_shared<AgencyCallback>(
     ac, "Current/Collections/" + databaseName + "/"
     + collectionID, dbServerChanged, true, false);
@@ -1224,18 +1229,21 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   // Update our cache:
   loadPlan();
 
-  while (TRI_microtime() <= endTime) {
-    agencyCallback->executeByCallbackOrTimeout(interval);
+  {
+    CONDITION_LOCKER(locker, agencyCallback->_cv);
 
-    if (dbServerResult >= 0) {
-      break;
+    while (true) {
+      if (dbServerResult >= 0) {
+        return dbServerResult;
+      }
+
+      if (TRI_microtime() > endTime) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
+
+      agencyCallback->executeByCallbackOrTimeout(interval);
     }
   }
-  if (dbServerResult >= 0) {
-    return dbServerResult;
-  }
-
-  return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1281,11 +1289,15 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
     return true;
   };
   
-
   // monitor the entry for the collection
   std::string const where =
       "Current/Collections/" + databaseName + "/" + collectionID;
   
+  // ATTENTION: The following callback calls the above closure in a
+  // different thread. Nevertheless, the closure accesses some of our 
+  // local variables. Therefore we have to protect all accesses to them
+  // by a mutex. We use the mutex of the condition variable in the
+  // AgencyCallback for this.
   auto agencyCallback = std::make_shared<AgencyCallback>(
       ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
@@ -1316,16 +1328,21 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   // Update our own cache:
   loadPlan();
 
-  while (TRI_microtime() <= endTime) {
-    agencyCallback->executeByCallbackOrTimeout(interval);
-    if (dbServerResult >= 0) {
-      break;
+  {
+    CONDITION_LOCKER(locker, agencyCallback->_cv);
+
+    while (true) {
+      if (dbServerResult >= 0) {
+        return dbServerResult;
+      }
+
+      if (TRI_microtime() > endTime) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
+
+      agencyCallback->executeByCallbackOrTimeout(interval);
     }
   }
-  if (dbServerResult >= 0) {
-    return dbServerResult;
-  }
-  return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1357,20 +1374,14 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
     }
 
     velocypack::Slice collection =
-      res.slice()[0]
-      .get(AgencyComm::prefixStripped())
-      .get("Plan").get("Collections").get(databaseName).get(collectionID);
+      res.slice()[0].get(std::vector<std::string>(
+            {AgencyComm::prefixStripped(), "Plan", "Collections",
+             databaseName, collectionID}));
 
-    VPackObjectIterator cols (collection);
-    
-    //if (it == res._values.end()) {
-    if (cols.size() == 0) {
+    if (!collection.isObject()) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    if (collection.isNone()) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
     VPackBuilder copy;
     try {
       VPackObjectBuilder b(&copy);
@@ -1428,28 +1439,21 @@ int ClusterInfo::setCollectionStatusCoordinator(
 
     res = ac.getValues2("Plan/Collections/" + databaseName +"/" + collectionID);
 
-    velocypack::Slice col =
-      res.slice()[0]
-      .get(AgencyComm::prefixStripped()).get("Plan").get("Collections")
-      .get(databaseName).get(collectionID);
-
     if (!res.successful()) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    VPackObjectIterator collections(col);
-    if (!collections.valid()) {
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-    }
+    VPackSlice col = res.slice()[0].get(std::vector<std::string>(
+            {AgencyComm::prefixStripped(), "Plan", "Collections",
+             databaseName, collectionID}));
 
-    VPackSlice const slice = col;
-    if (slice.isNone()) {
-      return TRI_ERROR_OUT_OF_MEMORY;
+    if (!col.isObject()) {
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
     TRI_vocbase_col_status_e old = static_cast<TRI_vocbase_col_status_e>(
         arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-            slice, "status", static_cast<int>(TRI_VOC_COL_STATUS_CORRUPTED)));
+            col, "status", static_cast<int>(TRI_VOC_COL_STATUS_CORRUPTED)));
 
     if (old == status) {
       // no status change
@@ -1459,7 +1463,7 @@ int ClusterInfo::setCollectionStatusCoordinator(
     VPackBuilder builder;
     try {
       VPackObjectBuilder b(&builder);
-      for (auto const& entry : VPackObjectIterator(slice)) {
+      for (auto const& entry : VPackObjectIterator(col)) {
         std::string key = entry.key.copyString();
         if (key != "status") {
           builder.add(key, entry.value);
@@ -1501,10 +1505,6 @@ int ClusterInfo::ensureIndexCoordinator(
   std::string where =
     "Current/Collections/" + databaseName + "/" + collectionID;
 
-  std::vector<std::string> wherev = basics::StringUtils::split(
-    AgencyComm::prefix() + where, '/');
-  wherev.erase(std::remove(wherev.begin(), wherev.end(), ""), wherev.end());
-  
   // check index id
   uint64_t iid = 0;
 
@@ -1544,10 +1544,9 @@ int ClusterInfo::ensureIndexCoordinator(
       return true;
     }
 
-    VPackObjectIterator cit (result);
-    if (cit.size() == (size_t)numberOfShards) {
+    if (result.length() == (size_t)numberOfShards) {
       size_t found = 0;
-      for (auto const& shard : cit) {
+      for (auto const& shard : VPackObjectIterator(result)) {
 
         VPackSlice const slice = shard.value;
         if (slice.hasKey("indexes")) {
@@ -1611,11 +1610,15 @@ int ClusterInfo::ensureIndexCoordinator(
     return true;
   };
   
+  // ATTENTION: The following callback calls the above closure in a
+  // different thread. Nevertheless, the closure accesses some of our 
+  // local variables. Therefore we have to protect all accesses to them
+  // by a mutex. We use the mutex of the condition variable in the
+  // AgencyCallback for this.
   auto agencyCallback = std::make_shared<AgencyCallback>(
     ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
-
 
   std::string const key =
       "Plan/Collections/" + databaseName + "/" + collectionID;
@@ -1623,14 +1626,14 @@ int ClusterInfo::ensureIndexCoordinator(
   AgencyCommResult previous = ac.getValues2(key);
   bool usePrevious = true;
 
-  velocypack::Slice database =
+  velocypack::Slice collection =
     previous.slice()[0].get(std::vector<std::string>(
-          { AgencyComm::prefixStripped(), "Plan", "Collections", databaseName }));
+          { AgencyComm::prefixStripped(), "Plan", "Collections",
+            databaseName, collectionID }));
 
-  if (!database.isObject()) {
-    return setErrormsg(TRI_ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID, errorMsg);
+  if (!collection.isObject()) {
+    return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
   }
-  velocypack::Slice collection = database.get(collectionID);
 
   loadPlan();
   // It is possible that between the fetching of the planned collections
@@ -1767,25 +1770,19 @@ int ClusterInfo::ensureIndexCoordinator(
 
   TRI_ASSERT(numberOfShards > 0);
 
-  // now wait for the index to appear
-  AgencyCommResult res = ac.getValues2("Current/Version");
-  if (!res.successful()) {
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
-                       errorMsg);
-  }
-  VPackSlice versionSlice = res.slice()[0].get(
-      std::vector<std::string>({ac.prefixStripped(), "Current", "Version"}));
-  if (!versionSlice.isInteger()) {
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
-                       errorMsg);
-  }
-  
-  
-  while (TRI_microtime() <= endTime) {
-    agencyCallback->executeByCallbackOrTimeout(interval);
+  {
+    CONDITION_LOCKER(locker, agencyCallback->_cv);
 
-    if (dbServerResult >= 0) {
-      return dbServerResult;
+    while (true) {
+      if (dbServerResult >= 0) {
+        return dbServerResult;
+      }
+
+      if (TRI_microtime() > endTime) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
+
+      agencyCallback->executeByCallbackOrTimeout(interval);
     }
   }
 
@@ -1877,6 +1874,11 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     return true; 
   };
   
+  // ATTENTION: The following callback calls the above closure in a
+  // different thread. Nevertheless, the closure accesses some of our 
+  // local variables. Therefore we have to protect all accesses to them
+  // by a mutex. We use the mutex of the condition variable in the
+  // AgencyCallback for this.
   auto agencyCallback = std::make_shared<AgencyCallback>(
     ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
@@ -1973,27 +1975,21 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     TRI_ASSERT(numberOfShards > 0);
   }
 
-  // now wait for the index to disappear
-  res = ac.getValues2("Current/Version");
-  if (!res.successful()) {
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
-                       errorMsg);
-  }
-  VPackSlice versionSlice = res.slice()[0].get(
-      std::vector<std::string>({ac.prefixStripped(), "Current", "Version"}));
-  if (!versionSlice.isInteger()) {
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
-                       errorMsg);
-  }
+  {
+    CONDITION_LOCKER(locker, agencyCallback->_cv);
 
-  while (TRI_microtime() <= endTime) {
-    agencyCallback->executeByCallbackOrTimeout(interval);
-    if (dbServerResult >= 0) {
-      return dbServerResult;
+    while (true) {
+      if (dbServerResult >= 0) {
+        return dbServerResult;
+      }
+
+      if (TRI_microtime() > endTime) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
+
+      agencyCallback->executeByCallbackOrTimeout(interval);
     }
   }
-
-  return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
