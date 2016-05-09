@@ -308,8 +308,8 @@ module.exports = class FoxxService {
 
   simpleJSON() {
     return {
-      name: this.name,
-      version: this.version,
+      name: this.manifest.name,
+      version: this.manifest.version,
       mount: this.mount
     };
   }
