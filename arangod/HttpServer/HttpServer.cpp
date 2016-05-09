@@ -226,8 +226,10 @@ bool HttpServer::handleRequestAsync(HttpCommTask* task,
   if (res != TRI_ERROR_NO_ERROR) {
     job->requestStatisticsAgentSetExecuteError();
     job->RequestStatisticsAgent::transferTo(task);
-    LOG(WARN) << "unable to add job to the job queue: "
-              << TRI_errno_string(res);
+    if (res != TRI_ERROR_DISPATCHER_IS_STOPPING) {
+      LOG(WARN) << "unable to add job to the job queue: "
+                << TRI_errno_string(res);
+    }
     // todo send info to async work manager?
     return false;
   }
