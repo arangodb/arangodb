@@ -158,14 +158,14 @@ SortInformation SortNode::getSortInformation(
 
       expression->stringify(buffer);
       result.criteria.emplace_back(
-          std::make_tuple(setter, buffer->c_str(), (*it).second));
+          std::make_tuple(const_cast<ExecutionNode const*>(setter), std::string(buffer->c_str(), buffer->length()), (*it).second));
       buffer->reset();
     } else {
       // use variable only. note that we cannot use the variable's name as it is
       // not
       // necessarily unique in one query (yes, COLLECT, you are to blame!)
       result.criteria.emplace_back(
-          std::make_tuple(setter, std::to_string(variable->id), (*it).second));
+          std::make_tuple(const_cast<ExecutionNode const*>(setter), std::to_string(variable->id), (*it).second));
     }
   }
 

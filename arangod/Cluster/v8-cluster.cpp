@@ -824,8 +824,8 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
   result->Set(TRI_V8_ASCII_STRING("type"),
               v8::Number::New(isolate, (int)ci->type()));
 
-  TRI_json_t const* json = cic->getIndexes(shardID);
-  v8::Handle<v8::Value> indexes = TRI_ObjectJson(isolate, json);
+  VPackSlice slice = cic->getIndexes(shardID);
+  v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, slice);
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
 
   // Finally, report any possible error:

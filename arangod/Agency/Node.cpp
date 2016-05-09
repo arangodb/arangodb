@@ -591,5 +591,7 @@ std::string Node::toJson() const {
   builder.openArray();
   toBuilder(builder);
   builder.close();
-  return builder.slice()[0].toJson();
+  std::string strval = builder.slice()[0].isString() ?
+    builder.slice()[0].copyString() : builder.slice()[0].toJson();
+  return strval;
 }

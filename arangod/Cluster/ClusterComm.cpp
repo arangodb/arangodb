@@ -403,15 +403,15 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
         "cannot create connection to server '" + res->serverID + "'";
     if (logConnectionErrors()) {
       LOG(ERR) << "cannot create connection to server '"
-               << res->serverID << "'";
+               << res->serverID << "' at endpoint '" << res->endpoint << "'";
     } else {
       LOG(INFO) << "cannot create connection to server '"
-                << res->serverID << "'";
+                << res->serverID << "' at endpoint '" << res->endpoint << "'";
     }
   } else {
     LOG(DEBUG) << "sending "
                << arangodb::HttpRequest::translateMethod(reqtype)
-               << " request to DB server '" << res->serverID
+               << " request to DB server '" << res->serverID << "' at endpoint '" << res->endpoint
                << "': " << body;
     // LOCKING-DEBUG
     // std::cout << "syncRequest: sending " <<
@@ -1226,10 +1226,10 @@ void ClusterCommThread::run() {
           op->result.errorMessage += op->result.serverID;
           if (cc->logConnectionErrors()) {
             LOG(ERR) << "cannot create connection to server '"
-                     << op->result.serverID << "'";
+                     << op->result.serverID << "' at endpoint '" << op->result.endpoint << "'";
           } else {
             LOG(INFO) << "cannot create connection to server '"
-                      << op->result.serverID << "'";
+                      << op->result.serverID << "' at endpoint '" << op->result.endpoint << "'";
           }
         } else {
           if (nullptr != op->body.get()) {
@@ -1238,7 +1238,7 @@ void ClusterCommThread::run() {
                               op->reqtype)
                               .c_str()
                        << " request to DB server '"
-                       << op->result.serverID
+                       << op->result.serverID << "' at endpoint '" << op->result.endpoint
                        << "': " << op->body->c_str();
           } else {
             LOG(DEBUG) << "sending "
@@ -1246,7 +1246,7 @@ void ClusterCommThread::run() {
                               op->reqtype)
                               .c_str()
                        << " request to DB server '"
-                       << op->result.serverID << "'";
+                       << op->result.serverID << "' at endpoint '" << op->result.endpoint << "'";
           }
 
           auto client =

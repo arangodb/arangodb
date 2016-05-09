@@ -92,19 +92,31 @@ std::vector<check_t> Supervision::check (std::string const& path) {
         continue;
       } else {
         query_t report = std::make_shared<Builder>();
-        report->openArray(); report->openArray();
-        report->add(VPackValue(std::string("/arango/Supervision/Health/" + serverID)));
+        report->openArray(); report->openArray();report->openObject();
+        report->add(std::string("/arango/Supervision/Healt/" + serverID),
+                    VPackValue(VPackValueType::Object));
         try {
-          VPackObjectBuilder c(&(*report));
           report->add("Status", VPackValue("GOOD"));
-          report->add("LastHearbeat", VPackValue("GOOD"));
+          report->add("LastHearbeatSent", VPackValue(lastHeartbeatTime));
+          auto in_time_t =
+            std::chrono::system_clock::to_time_t(
+              std::chrono::system_clock::now());
+          std::string ts = ctime(&in_time_t);
+          ts.resize(ts.size()-1);
+          report->add("LastHearbeatReceived", VPackValue(ts));
         } catch (std::exception const& e) {
           LOG(ERR) << e.what();
         }
-        report->close(); report->close();
+        report->close();        
+        report->close();
+        report->close();
+        report->close();
+        
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "GOOD:" << serverID <<
           it->second->serverTimestamp << ":" << it->second->serverStatus;
+        
         it->second->update(lastHeartbeatStatus,lastHeartbeatTime);
+        _agent->write(report);
       }
     } else {                          // New server
       _vital_signs[serverID] = 
