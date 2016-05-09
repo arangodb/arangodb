@@ -120,7 +120,19 @@ The type casting applied by the `TO_NUMBER()` AQL function has changed as follow
   objects / documents were converted to the value `null`.
 
 Additionally, the `TO_STRING()` AQL function now converts `null` values into an empty string
-(`""`) instead of the string `"null"`.
+(`""`) instead of the string `"null"`, which is more in line with `LENGTH(null)` returning
+`0` and not `4` since v2.6.
+
+!SUBSECTION Arithmetic operators
+
+As the arithmetic operations in AQL implicitly convert their operands to numeric values using 
+`TO_NUMBER()`, their casting behavior has also changed as described above.
+
+Some examples of the changed behavior:
+
+- `"foo" + 1` produces `1` now. In previous versions this produced `null`.
+- `[ 1, 2 ] + 1` produces `1`. In previous versions this produced `null`.
+- `1 + "foo" + 1´ produces `2` now. In previous version this produced `1`.
 
 !SUBSECTION Attribute names and parameters
 
@@ -138,27 +150,16 @@ FOR doc IN collection
 
 If the bind parameter `@name` contained the dot symbol (e.g. `@bind` = `a.b`, it was unclear 
 whether this should trigger sub-attribute access (i.e. `doc.a.b`) or a access to an attribute 
-with exactly the specified name (i.e. `doc."a.b"`).
+with exactly the specified name (i.e. `doc["a.b"]`).
 
 ArangoDB 3.0 now handles attribute names containing the dot symbol properly, and sending a
-bind parameter `@name` = `a.b` will now always trigger an access to the attribute `doc."a.b"`,
+bind parameter `@name` = `a.b` will now always trigger an access to the attribute `doc["a.b"]`,
 not the sub-attribute `b` of `a` in `doc`. 
 
 For users that used the "hack" of passing bind parameters containing dot symbol to access
 sub-attributes, ArangoDB 3.0 allows specifying the attribute name parts as an array of strings,
 e.g. `@name` = `[ "a", "b" ]`, which will be resolved to the sub-attribute access `doc.a.b` 
 when the query is executed.
-
-!SUBSECTION Arithmetic operators
-
-As the arithmetic operations in AQL implicitly convert their operands to numeric values using 
-`TO_NUMBER()`, their casting behavior has also changed as described above.
-
-Some examples of the changed behavior:
-
-- `"foo" + 1` produces `1` now. In previous versions this produced `null`.
-- `[ 1, 2 ] + 1` produces `1`. In previous versions this produced `null`.
-- `1 + "foo" + 1´ produces `2` now. In previous version this produced `1`.
 
 !SUBSECTION Keywords
 
@@ -167,7 +168,7 @@ name in AQL queries now requires quoting.
 
 !SUBSECTION Subqueries
 
-Queries that contain Subqueries that contain data-modification operations such as `INSERT`, 
+Queries that contain subqueries that contain data-modification operations such as `INSERT`, 
 `UPDATE`, `REPLACE`, `UPSERT` or `REMOVE` will now refuse to execute if the collection
 affected by the subquery's data-modification operation is read-accessed in an outer scope 
 of the query.
@@ -223,8 +224,8 @@ Among others, the following V8 options change in the new version of ArangoDB:
 - `--es_staging`: in 2.8 it had the meaning `enable all completed harmony features`, in 3.0 
   the option means `enable test-worthy harmony features (for internal use only)`
 
-- `--strong_this`: this option wasn't present in 2.8. In 3.0 it means `don't allow 'this' to escape from constructors`
-  and defaults to true.
+- `--strong_this`: this option wasn't present in 2.8. In 3.0 it means `don't allow 'this' to
+  escape from constructors` and defaults to true.
 
 - `--harmony_regexps`: this options means `enable "harmony regular expression extensions"` 
   and changes its default value from false to true
