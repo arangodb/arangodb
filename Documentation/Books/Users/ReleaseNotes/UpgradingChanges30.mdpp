@@ -76,7 +76,9 @@ This allows using `_from` and `_to` in user-defined indexes. Additionally this a
 updating the `_from` and `_to` values of existing edges. Furthermore, collections
 referenced by `_from` and `_to` values may be dropped and re-created later. Any
 `_from` and `_to` values of edges pointing to such dropped collection are unaffected
-by the drop operation now. 
+by the drop operation now. Also note that renaming the collection referenced in
+`_from` and `_to` in ArangoDB 2.8 also relinked the edges. In 3.0 the edges are NOT
+automatically relinked to the new collection anymore.
 
 !SECTION Documents
 
@@ -473,7 +475,7 @@ Calls to the previous API can be translated as follows:
 
 The result format of this API has also changed slightly. In previous versions calls to
 the API returned a JSON object with a `documents` attribute. As the functionality is
-based on AQL internally in 3.0, the API now returns a JSON object with a `result` attribute:
+based on AQL internally in 3.0, the API now returns a JSON object with a `result` attribute.
 
 !SUBSECTION Edges API
 
