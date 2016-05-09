@@ -930,7 +930,7 @@ bool DistributeBlock::getBlockForClient(size_t atLeast, size_t atMost,
 
     AqlItemBlock* cur = _buffer.at(_index);
 
-    while (_pos < cur->size() && buf.at(clientId).size() < atLeast) {
+    while (_pos < cur->size() && buf.at(clientId).size() < atMost) {
       // this may modify the input item buffer in place
       size_t id = sendToClient(cur);
 
