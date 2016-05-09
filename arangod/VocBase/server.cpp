@@ -482,7 +482,7 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
       if (idSlice.isString()) {
         // delete persistent indexes for this database
         TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(idSlice.copyString()));
-        RocksDBFeature::instance()->dropDatabase(id);
+        RocksDBFeature::dropDatabase(id);
       }
 #endif
 
@@ -1033,7 +1033,7 @@ static void DatabaseManager(void* data) {
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
         // delete persistent indexes for this database
-        RocksDBFeature::instance()->dropDatabase(database->_id);
+        RocksDBFeature::dropDatabase(database->_id);
 #endif
 
         LOG(TRACE) << "physically removing database directory '"
@@ -1712,7 +1712,7 @@ void TRI_EnableDeadlockDetectionDatabasesServer(TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer(
-    TRI_server_t* server) {
+    TRI_server_t* server, bool includeSystem) {
   std::vector<TRI_voc_tick_t> v;
   {
     auto unuser(server->_databasesProtector.use());
@@ -1722,7 +1722,7 @@ std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer(
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
 
-      if (!TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
+      if (includeSystem || !TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
         v.emplace_back(vocbase->_id);
       }
     }

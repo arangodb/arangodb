@@ -29,7 +29,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -37,7 +36,6 @@
 
 #include <ctime>
 #include <iomanip>
-#include <iostream>
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
@@ -113,10 +111,10 @@ std::vector<bool> Store::apply (query_t const& query) {
     case 1:
       applied.push_back(applies(i[0])); break; // no precond
     case 2:
-      if (check(i[1])) {
-        applied.push_back(applies(i[0]));      // precondition
-      } else {
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Precondition failed!";
+      if (check(i[1])) {                       // precondition
+        applied.push_back(applies(i[0]));      
+      } else {                                 // precondition failed
+        LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
         applied.push_back(false);
       }
       break;
@@ -214,7 +212,8 @@ std::vector<bool> Store::apply (
     std::string endpoint, path;
     if (endpointPathFromUrl (url,endpoint,path)) {
 
-      auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
+      auto headerFields = std::make_unique<std::unordered_map<std::string,
+                                                              std::string>>();
       
       ClusterCommResult res =
         arangodb::ClusterComm::instance()->asyncRequest(
@@ -387,7 +386,7 @@ void Store::dumpToBuilder (Builder& builder) const {
       auto in_time_t = std::chrono::system_clock::to_time_t(i.first);
       std::string ts = ctime(&in_time_t);
       ts.resize(ts.size()-1);
-      builder.add(ts, VPackValue((size_t)i.second.get()));
+      builder.add(ts, VPackValue(i.second->uri()));
     }
   }
   {
@@ -507,4 +506,9 @@ std::multimap <std::string,std::string>& Store::observedTable() {
 
 std::multimap <std::string,std::string> const& Store::observedTable() const {
   return _observedTable;
+}
+
+Node const Store::get (std::string const& path) const {
+  MUTEX_LOCKER(storeLocker, _storeLock);  
+  return _node(path);
 }

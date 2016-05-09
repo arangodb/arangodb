@@ -6,7 +6,6 @@ if [ -z "$XTERMOPTIONS" ] ; then
     XTERMOPTIONS="--geometry=80x43"
 fi
 
-
 if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
     echo Must be started in the main ArangoDB source directory.
     exit 1
@@ -84,6 +83,7 @@ start() {
                 --javascript.startup-directory ./js \
                 --server.authentication false \
                 --javascript.app-path ./js/apps \
+                --log.force-direct true \
                 > cluster/$PORT.stdout 2>&1 &
 }
 

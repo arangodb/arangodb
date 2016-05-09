@@ -36,41 +36,100 @@
 
 namespace arangodb {
 
+////////////////////////////////////////////////////////////////////////////////
+/// class AgencyCallback
+///
+/// This class encapsulates an agency observer that has been registered
+/// with the agency. One specifies a callback function that is called
+/// for every incoming HTTP request from the agency. A mutex ensures that
+/// this callback function is only executed in one thread at a time (see 
+/// below for more details).
+///
+/// Furthermore, if needsValue == true, the latest value of the key
+/// which the callback observes is kept and updated with every HTTP
+/// request received from the agency, and handed to the callback
+/// function. If needsValue == false then a None Slice is handed in
+/// instead.
+///
+/// If an initial value should be kept even before the first agency callback
+/// has happened, then needInitialValue must be set to true. In this case
+/// the callback function is already called once at object creation.
+///
+/// Usually, with needsValue == true one would like to wait until a certain
+/// condition is met with respect to the value. The callback is only called
+/// for new values, such that one can check this condition in the callback 
+/// function.
+///
+/// To assist code that wants to wait for something which is discovered
+/// in the callback function (for example a certain value of the
+/// observed key), this class maintains a condition variable, which is
+/// signaled whenever the callback function has been called. To avoid
+/// missing signals, the above mentioned mutex is the one of the condition
+/// variable and the callback function is always called under this mutex
+/// and the signal is sent while the mutex is still held. Thus, the following
+/// pseudocode does not miss events:
+///
+/// create AgencyCallback object with a callback function and register it
+/// TRI_defer(unregister callback)
+/// {
+///   acquire mutex of condition variable
+///   while true:
+///     check if a callback has produced the termination event: if so: OK
+///     if overall patience lost: leave with error
+///     wait for condition variable with a timeout
+/// } 
+///
+/// In this way, the mutex of the condition variable can at the same time
+/// organise mutual exclusion of the callback function and the checking of
+/// the termination condition in the main thread.
+/// The wait for condition variable can conveniently be done with the
+/// method executeByCallbackOrTimeout below.
+
 class AgencyCallback {
-public:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ctor
   //////////////////////////////////////////////////////////////////////////////
+
+public:
   AgencyCallback(AgencyComm&, std::string const&, 
                  std::function<bool(VPackSlice const&)> const&, bool needsValue,
                  bool needsInitialValue = true);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief wait a specified timeout. execute cb if watch didn't fire
-  //////////////////////////////////////////////////////////////////////////////
-  void waitWithFailover(double timeout);
-  
   std::string const key;
+  arangodb::basics::ConditionVariable _cv;
   
-  void refetchAndUpdate();
-  void waitForExecution(double);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief refetch the value, and call the callback function with it, 
+  /// this is called whenever an HTTP request is received from the agency
+  /// (see RestAgencyCallbacksHandler and AgencyCallbackRegistry).
+  //////////////////////////////////////////////////////////////////////////////
+
+  void refetchAndUpdate(bool needToAcquireMutex = true);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief wait until a callback is received or a timeout has happened
+  //////////////////////////////////////////////////////////////////////////////
+
+  void executeByCallbackOrTimeout(double);
   
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief private members
+  //////////////////////////////////////////////////////////////////////////////
 
 private:
-  arangodb::Mutex _lock;
-  arangodb::basics::ConditionVariable _cv;
-  bool _useCv;
-
   AgencyComm& _agency;
   std::function<bool(VPackSlice const&)> const _cb;
   std::shared_ptr<VPackBuilder> _lastData;
   bool const _needsValue;
 
-  // execute callback with current value data
+  // execute callback with current value data:
   bool execute(std::shared_ptr<VPackBuilder>);
-  // execute callback without any data
+  // execute callback without any data:
   bool executeEmpty(); 
 
+  // Compare last value and newly read one and call execute if the are
+  // different:
   void checkValue(std::shared_ptr<VPackBuilder>);
 };
 

@@ -19,8 +19,13 @@ dropped if they are not used in other graphs.
 
 @RESTRETURNCODES
 
+@RESTRETURNCODE{201}
+Is returned if the graph could be dropped and waitForSync is enabled
+for the `_graphs` collection. 
+
 @RESTRETURNCODE{202}
-Returned if the graph could be dropped.
+Returned if the graph could be dropped and waitForSync is disabled
+for the `_graphs` collection.
 
 @RESTRETURNCODE{404}
 Returned if no graph with this name could be found.

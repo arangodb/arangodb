@@ -109,6 +109,7 @@ RocksDBIterator::RocksDBIterator(arangodb::Transaction* trx,
   TRI_ASSERT(_leftEndpoint->size() > 8);
   TRI_ASSERT(_rightEndpoint->size() > 8);
     
+  // LOG(TRACE) << "prefix: " << fasthash64(prefix.c_str(), prefix.size(), 0);
   // LOG(TRACE) << "iterator left key: " << left.toJson();
   // LOG(TRACE) << "iterator right key: " << right.toJson();
     
@@ -155,7 +156,6 @@ TRI_doc_mptr_t* RocksDBIterator::next() {
     if (res < 0) {
       if (_reverse) {
         return nullptr;
-        _cursor->Prev();
       } else {
         _cursor->Next();
       }
@@ -164,13 +164,29 @@ TRI_doc_mptr_t* RocksDBIterator::next() {
   
     res = comparator->Compare(key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
     // LOG(TRACE) << "comparing: " << VPackSlice(key.data() + RocksDBIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _rightEndpoint->data() + RocksDBIndex::keyPrefixSize()).toJson() << " - res: " << res;
+   
+    TRI_doc_mptr_t* doc = nullptr;
+     
+    if (res <= 0) {
+      // get the value for _key, which is the last entry in the key array
+      VPackSlice const keySlice = comparator->extractKeySlice(key);
+      TRI_ASSERT(keySlice.isArray());
+      VPackValueLength const n = keySlice.length();
+      TRI_ASSERT(n > 1); // one value + _key
+    
+      // LOG(TRACE) << "looking up document with key: " << keySlice.toJson();
+      // LOG(TRACE) << "looking up document with primary key: " << keySlice[n - 1].toJson();
+
+      // use primary index to lookup the document
+      doc = _primaryIndex->lookupKey(_trx, keySlice[n - 1]);
+    }
     
     if (_reverse) {
       _cursor->Prev();
     } else {
       _cursor->Next();
     }
-    
+
     if (res > 0) {
       if (!_probe) {
         return nullptr;
@@ -179,14 +195,9 @@ TRI_doc_mptr_t* RocksDBIterator::next() {
       continue;
     }
 
-    // get the value for _key, which is the last entry in the key array
-    VPackSlice const keySlice = comparator->extractKeySlice(key);
-    TRI_ASSERT(keySlice.isArray());
-    VPackValueLength const n = keySlice.length();
-    TRI_ASSERT(n > 1); // one value + _key
-
-    // use primary index to lookup the document
-    return _primaryIndex->lookupKey(_trx, keySlice[n - 1]);
+    if (doc != nullptr) {
+      return doc;
+    }
   }
 }
 

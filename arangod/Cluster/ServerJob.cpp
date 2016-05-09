@@ -35,7 +35,6 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::application_features;

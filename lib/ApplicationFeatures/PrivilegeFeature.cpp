@@ -47,14 +47,24 @@ PrivilegeFeature::PrivilegeFeature(
 }
 
 void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection("server", "Server features");
+
 #ifdef ARANGODB_HAVE_SETUID
   options->addHiddenOption("--uid",
+                           "switch to user-id after reading config files",
+                           new StringParameter(&_uid));
+
+  options->addHiddenOption("--server.uid",
                            "switch to user-id after reading config files",
                            new StringParameter(&_uid));
 #endif
 
 #ifdef ARANGODB_HAVE_SETGID
   options->addHiddenOption("--gid",
+                           "switch to group-id after reading config files",
+                           new StringParameter(&_gid));
+
+  options->addHiddenOption("--server.gid",
                            "switch to group-id after reading config files",
                            new StringParameter(&_gid));
 #endif

@@ -561,6 +561,7 @@
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
+
         var users = getCollection("_users");
 
         if (! users) {

@@ -47,10 +47,8 @@ std::string const HttpRequest::MULTI_PART_CONTENT_TYPE = "multipart/form-data";
 
 HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
                          char const* header, size_t length,
-                         int32_t defaultApiCompatibility,
                          bool allowMethodOverride)
-    : GeneralRequest(connectionInfo, defaultApiCompatibility),
-
+    : GeneralRequest(connectionInfo),
       _contentLength(0),
       _header(nullptr),
       _allowMethodOverride(allowMethodOverride) {
@@ -64,68 +62,6 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
 
 HttpRequest::~HttpRequest() {
   delete[] _header;
-}
-
-int32_t HttpRequest::compatibility() {
-  int32_t result = _defaultApiCompatibility;
-
-  bool found;
-  std::string const& apiVersion = header("x-arango-version", found);
-
-  if (!found) {
-    return result;
-  }
-
-  char const* a = apiVersion.c_str();
-  char const* p = a;
-  char const* e = a + apiVersion.size();
-
-  // read major version
-  uint32_t major = 0;
-
-  while (p < e && *p >= '0' && *p <= '9') {
-    major = major * 10 + (*p - '0');
-    ++p;
-  }
-
-  if (p != a && (*p == '.' || *p == '-' || p == e)) {
-    if (major >= 10000) {
-      // version specified as "10400"
-      if (*p == '\0') {
-        result = major;
-
-        if (result < MIN_COMPATIBILITY) {
-          result = MIN_COMPATIBILITY;
-        } else {
-          // set patch-level to 0
-          result /= 100L;
-          result *= 100L;
-        }
-
-        return result;
-      }
-    }
-
-    a = ++p;
-
-    // read minor version
-    uint32_t minor = 0;
-
-    while (p < e && *p >= '0' && *p <= '9') {
-      minor = minor * 10 + (*p - '0');
-      ++p;
-    }
-
-    if (p != a && (*p == '.' || *p == '-' || p == e)) {
-      result = (int32_t)(minor * 100L + major * 10000L);
-    }
-  }
-
-  if (result < MIN_COMPATIBILITY) {
-    result = MIN_COMPATIBILITY;
-  }
-
-  return result;
 }
 
 void HttpRequest::parseHeader(size_t length) {

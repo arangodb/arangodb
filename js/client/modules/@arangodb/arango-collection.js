@@ -261,8 +261,6 @@ var helpArangoCollection = arangosh.createHelpHeadline("ArangoCollection help") 
   '         <keepNull>)                                                      ' + "\n" +
   '  remove(<id>)                          delete document                   ' + "\n" +
   '  exists(<id>)                          checks whether a document exists  ' + "\n" +
-  '  first()                               first inserted/updated document   ' + "\n" +
-  '  last()                                last inserted/updated document    ' + "\n" +
   '                                                                          ' + "\n" +
   'Attributes:                                                               ' + "\n" +
   '  _database                             database object                   ' + "\n" +

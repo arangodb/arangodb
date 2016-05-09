@@ -23,8 +23,9 @@ Collection will only be dropped if it is not used in other graphs.
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200}
-Returned if the vertex collection was removed from the graph successfully.
+@RESTRETURNCODE{201}
+Returned if the vertex collection was removed from the graph successfully
+and waitForSync is true.
 
 @RESTRETURNCODE{202}
 Returned if the request was successful but waitForSync is false.

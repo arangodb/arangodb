@@ -62,6 +62,11 @@
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"
+
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+#include <rocksdb/utilities/optimistic_transaction_db.h>
+#include <rocksdb/utilities/transaction.h>
 #endif
 
 #include <velocypack/Collection.h>
@@ -555,7 +560,7 @@ arangodb::Index* TRI_document_collection_t::removeIndex(TRI_idx_iid_t iid) {
   size_t const n = _indexes.size();
 
   for (size_t i = 0; i < n; ++i) {
-    auto& idx = _indexes[i];
+    arangodb::Index* idx = _indexes[i];
 
     if (!idx->canBeDropped()) {
       continue;
@@ -633,7 +638,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t*,
                                 arangodb::wal::DocumentOperation&, bool&);
 
 static int FillIndex(arangodb::Transaction*, TRI_document_collection_t*,
-                     arangodb::Index*);
+                     arangodb::Index*, bool = true);
 
 static int GeoIndexFromVelocyPack(arangodb::Transaction*,
                                   TRI_document_collection_t*, VPackSlice const&,
@@ -1414,7 +1419,6 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
   TRI_col_header_marker_t cm;
   DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(&cm), TRI_DF_MARKER_COL_HEADER,
                          sizeof(TRI_col_header_marker_t), static_cast<TRI_voc_tick_t>(fid));
-  cm._type = static_cast<TRI_col_type_t>(document->_info.type());
   cm._cid = document->_info.id();
 
   res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, false);
@@ -2084,12 +2088,13 @@ static int FillIndexSequential(arangodb::Transaction* trx,
 
 static int FillIndex(arangodb::Transaction* trx,
                      TRI_document_collection_t* document,
-                     arangodb::Index* idx) {
+                     arangodb::Index* idx,
+                     bool skipPersistent) {
   if (!document->useSecondaryIndexes()) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (idx->isPersistent()) {
+  if (idx->isPersistent() && skipPersistent) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -3125,13 +3130,23 @@ static arangodb::Index* CreateRocksDBIndexDocumentCollection(
   idx = static_cast<arangodb::Index*>(rocksDBIndex.get());
 
   // initializes the index with all existing documents
-  res = FillIndex(trx, document, idx);
+  res = FillIndex(trx, document, idx, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
 
     return nullptr;
   }
+  
+  auto rocksTransaction = trx->rocksTransaction();
+  TRI_ASSERT(rocksTransaction != nullptr);
+  auto status = rocksTransaction->Commit();
+  if (!status.ok()) {
+    // TODO:
+  }
+  auto t = trx->getInternals();
+  delete t->_rocksTransaction;
+  t->_rocksTransaction = nullptr;
 
   // store index and return
   try {

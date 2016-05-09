@@ -145,8 +145,6 @@ void RocksDBFeature::stop() {
   }
 
   syncWal();
-
-  Instance = nullptr;
 }
   
 RocksDBFeature* RocksDBFeature::instance() {
@@ -171,17 +169,23 @@ int RocksDBFeature::syncWal() {
 }
 
 int RocksDBFeature::dropDatabase(TRI_voc_tick_t databaseId) {
-  TRI_ASSERT(Instance != nullptr);
+  if (Instance == nullptr) {
+    return TRI_ERROR_INTERNAL;
+  }
   return Instance->dropPrefix(RocksDBIndex::buildPrefix(databaseId));
 }
 
 int RocksDBFeature::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
-  TRI_ASSERT(Instance != nullptr);
+  if (Instance == nullptr) {
+    return TRI_ERROR_INTERNAL;
+  }
   return Instance->dropPrefix(RocksDBIndex::buildPrefix(databaseId, collectionId));
 }
 
 int RocksDBFeature::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) {
-  TRI_ASSERT(Instance != nullptr);
+  if (Instance == nullptr) {
+    return TRI_ERROR_INTERNAL;
+  }
   return Instance->dropPrefix(RocksDBIndex::buildPrefix(databaseId, collectionId, indexId));
 }
 

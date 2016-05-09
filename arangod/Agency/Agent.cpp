@@ -46,7 +46,7 @@ Agent::Agent (config_t const& config)
       _config(config), 
       _lastCommitIndex(0) {
 
-  _state.setEndPoint(_config.endpoint);
+  _state.configure(this);
   _constituent.configure(this);
   _confirmed.resize(size(),0); // agency's size and reset to 0
 }
@@ -81,6 +81,11 @@ term_t Agent::term () const {
 //  Agency size
 inline size_t Agent::size() const {
   return _config.size();
+}
+
+// My endpoint
+std::string const& Agent::endpoint () const {
+  return _config.endpoint;
 }
 
 //  Handle vote request
@@ -297,7 +302,7 @@ bool Agent::load() {
   if (!_state.loadCollections(vocbase, 
                               _config.waitForSync)) {
     LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Failed to load persistent state on statup.";
+      << "Failed to load persistent state on startup.";
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";

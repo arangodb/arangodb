@@ -315,7 +315,7 @@ ArangoDatabase.prototype._create = function (name, properties, type) {
     [ "waitForSync", "journalSize", "isSystem", "isVolatile",
       "doCompact", "keyOptions", "shardKeys", "numberOfShards",
       "distributeShardsLike", "indexBuckets", "id",
-      "replicationFactor", "replicationQuorum" ].forEach(function(p) {
+      "replicationFactor" ].forEach(function(p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];
       }
@@ -912,6 +912,7 @@ ArangoDatabase.prototype._createDatabase = function (name, options, users) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._dropDatabase = function (name) {
+  
   var requestResult = this._connection.DELETE("/_api/database/" + encodeURIComponent(name));
 
   if (requestResult !== null && requestResult.error === true) {

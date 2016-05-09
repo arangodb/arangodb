@@ -210,6 +210,32 @@ int QueryList::kill(TRI_voc_tick_t id) {
 
   return TRI_ERROR_NO_ERROR;
 }
+  
+/// @brief kills all currently running queries
+uint64_t QueryList::killAll(bool silent) {
+  uint64_t killed = 0;
+
+  WRITE_LOCKER(writeLocker, _lock);
+
+  for (auto& it : _current) {
+    auto entry = it.second;
+    const_cast<arangodb::aql::Query*>(entry->query)->killed(true);
+    
+    ++killed;
+      
+    std::string queryString(entry->query->queryString(),
+                            entry->query->queryLength());
+  
+
+    if (silent) {
+      LOG(TRACE) << "killing AQL query " << entry->query->id() << " '" << queryString << "'";
+    } else {
+      LOG(WARN) << "killing AQL query " << entry->query->id() << " '" << queryString << "'";
+    }
+  }
+
+  return killed;
+}
 
 /// @brief get the list of currently running queries
 std::vector<QueryEntryCopy> QueryList::listCurrent() {

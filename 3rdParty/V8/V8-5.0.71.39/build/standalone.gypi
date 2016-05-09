@@ -993,7 +993,7 @@
             'conditions': [
               ['v8_target_arch=="x64" or v8_target_arch=="arm64" \
                 or v8_target_arch=="mips64el"', {
-                'xcode_settings': {'WARNING_CFLAGS': ['-Wshorten-64-to-32']},
+                'xcode_settings': {'WARNING_CFLAGS': []}, # '-Wshorten-64-to-32' removed by kaveh on mac
               }],
             ],
           }],

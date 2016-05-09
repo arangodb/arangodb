@@ -100,7 +100,7 @@ class GeneralResponse {
   static ResponseCode responseCode(int);
 
  public:
-  GeneralResponse(ResponseCode, uint32_t);
+  explicit GeneralResponse(ResponseCode);
   virtual ~GeneralResponse() {}
 
  public:
@@ -132,7 +132,6 @@ class GeneralResponse {
 
  protected:
   ResponseCode _responseCode;
-  uint32_t const _apiCompatibility;
   std::unordered_map<std::string, std::string> _headers;
 };
 }

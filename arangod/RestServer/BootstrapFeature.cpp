@@ -22,15 +22,18 @@
 
 #include "RestServer/BootstrapFeature.h"
 
-#include "Logger/Logger.h"
+#include "Aql/QueryList.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "HttpServer/HttpHandlerFactory.h"
+#include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -146,5 +149,37 @@ void BootstrapFeature::start() {
   arangodb::rest::HttpHandlerFactory::setMaintenance(false);
   LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
+}
+
+void BootstrapFeature::stop() {
+  auto server = ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer");
+
+  TRI_server_t* s = server->SERVER; 
+
+  // notify all currently running queries about the shutdown
+  if (ServerState::instance()->isCoordinator()) {
+    std::vector<TRI_voc_tick_t> ids = TRI_GetIdsCoordinatorDatabaseServer(s, true);
+    for (auto& id : ids) {
+      TRI_vocbase_t* vocbase = TRI_UseByIdCoordinatorDatabaseServer(s, id);
+
+      if (vocbase != nullptr) {
+        vocbase->_queries->killAll(true);
+        TRI_ReleaseVocBase(vocbase);
+      }
+    } 
+  } else {
+    std::vector<std::string> names;
+    int res = TRI_GetDatabaseNamesServer(s, names);
+    if (res == TRI_ERROR_NO_ERROR) {
+      for (auto& name : names) {
+        TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(s, name.c_str());
+
+        if (vocbase != nullptr) {
+          vocbase->_queries->killAll(true);
+          TRI_ReleaseVocBase(vocbase);
+        }
+      }
+    }
+  }
 }
 

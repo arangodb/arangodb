@@ -32,6 +32,9 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "VocBase/server.h"
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -221,65 +224,30 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("get(<key>, <recursive>, <withIndexes>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("get(<key>)");
   }
 
   std::string const key = TRI_ObjectToString(args[0]);
-  bool recursive = false;
-  bool withIndexes = false;
-
-  if (args.Length() > 1) {
-    recursive = TRI_ObjectToBoolean(args[1]);
-  }
-  if (args.Length() > 2) {
-    withIndexes = TRI_ObjectToBoolean(args[2]);
-  }
-
   AgencyComm comm;
-  AgencyCommResult result = comm.getValues(key, recursive);
+  AgencyCommResult result = comm.getValues2(key);
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
   }
 
-  result.parse("", false);
-
   v8::Handle<v8::Object> l = v8::Object::New(isolate);
 
-  if (withIndexes) {
-    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-        result._values.begin();
-
-    while (it != result._values.end()) {
-      std::string const key = (*it).first;
-      VPackSlice const slice = it->second._vpack->slice();
-      std::string const idx = StringUtils::itoa((*it).second._index);
-
-      if (!slice.isNone()) {
-        v8::Handle<v8::Object> sub = v8::Object::New(isolate);
-
-        sub->Set(TRI_V8_ASCII_STRING("value"), TRI_VPackToV8(isolate, slice));
-        sub->Set(TRI_V8_ASCII_STRING("index"), TRI_V8_STD_STRING(idx));
-
-        l->Set(TRI_V8_STD_STRING(key), sub);
-      }
-
-      ++it;
-    }
-  } else {
-    // return just the value for each key
-    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-        result._values.begin();
-
-    while (it != result._values.end()) {
-      std::string const key = (*it).first;
-      VPackSlice const slice = it->second._vpack->slice();
-
+  // return just the value for each key
+  
+  for (auto const& a : VPackArrayIterator(result.slice())) {
+    for (auto const& o : VPackObjectIterator(a)) {
+      
+      std::string const key = o.key.copyString();
+      VPackSlice const slice = o.value;
+      
       if (!slice.isNone()) {
         l->ForceSet(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
       }
-
-      ++it;
     }
   }
 
@@ -640,15 +608,13 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (args.Length() < 1 || args.Length() > 3) {
-    TRI_V8_THROW_EXCEPTION_USAGE("uniqid(<key>, <count>, <timeout>)");
+  if (args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("uniqid(<count>, <timeout>)");
   }
 
-  std::string const key = TRI_ObjectToString(args[0]);
-
   uint64_t count = 1;
-  if (args.Length() > 1) {
-    count = TRI_ObjectToUInt64(args[1], true);
+  if (args.Length() > 0) {
+    count = TRI_ObjectToUInt64(args[0], true);
   }
 
   if (count < 1 || count > 10000000) {
@@ -656,18 +622,14 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   double timeout = 0.0;
-  if (args.Length() > 2) {
-    timeout = TRI_ObjectToDouble(args[2]);
+  if (args.Length() > 1) {
+    timeout = TRI_ObjectToDouble(args[1]);
   }
 
   AgencyComm comm;
-  AgencyCommResult result = comm.uniqid(key, count, timeout);
+  uint64_t result = comm.uniqid(count, timeout);
 
-  if (!result.successful() || result._index == 0) {
-    THROW_AGENCY_EXCEPTION(result);
-  }
-
-  std::string const value = StringUtils::itoa(result._index);
+  std::string const value = StringUtils::itoa(result);
 
   TRI_V8_RETURN_STD_STRING(value);
   TRI_V8_TRY_CATCH_END
@@ -802,8 +764,6 @@ static void JS_GetCollectionInfoClusterInfo(
               v8::Number::New(isolate, ci->journalSize()));
   result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
               v8::Number::New(isolate, ci->replicationFactor()));
-  result->Set(TRI_V8_ASCII_STRING("replicationQuorum"),
-              v8::Number::New(isolate, ci->replicationQuorum()));
 
   std::vector<std::string> const& sks = ci->shardKeys();
   v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate, (int)sks.size());
@@ -824,7 +784,7 @@ static void JS_GetCollectionInfoClusterInfo(
   }
   result->Set(TRI_V8_ASCII_STRING("shards"), shardIds);
 
-  v8::Handle<v8::Value> indexes = TRI_ObjectJson(isolate, ci->getIndexes());
+  v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, ci->getIndexes());
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
 
   TRI_V8_RETURN(result);
@@ -1104,7 +1064,7 @@ static void JS_UniqidClusterInfo(
     TRI_V8_THROW_EXCEPTION_PARAMETER("<count> is invalid");
   }
 
-  uint64_t value = ClusterInfo::instance()->uniqid();
+  uint64_t value = ClusterInfo::instance()->uniqid(count);
 
   if (value == 0) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

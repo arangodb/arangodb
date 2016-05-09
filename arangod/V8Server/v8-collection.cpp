@@ -1305,9 +1305,6 @@ static void JS_PropertiesVocbaseCol(
     result->Set(
         TRI_V8_ASCII_STRING("replicationFactor"),
         v8::Number::New(isolate, static_cast<double>(c->replicationFactor())));
-    result->Set(
-        TRI_V8_ASCII_STRING("replicationQuorum"),
-        v8::Number::New(isolate, static_cast<double>(c->replicationQuorum())));
 
     TRI_V8_RETURN(result);
   }
@@ -2509,6 +2506,7 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_UnloadVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
+
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 

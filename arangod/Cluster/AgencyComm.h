@@ -165,14 +165,14 @@ struct AgencyPrecondition {
 
   AgencyPrecondition(std::string const& key, Type t, bool e);
 
-  AgencyPrecondition(std::string const& key, Type t, VPackSlice s);
+  AgencyPrecondition(std::string const& key, Type t, VPackSlice const s);
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
   std::string key;
   Type type;
   bool empty;
-  VPackSlice value;
+  VPackSlice const value;
 };
 
 struct AgencyOperation {
@@ -190,7 +190,7 @@ struct AgencyOperation {
   AgencyOperation(
       std::string const& key,
       AgencyValueOperationType opType,
-      VPackSlice value
+      VPackSlice const value
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -209,7 +209,19 @@ private:
   VPackSlice _value;
 };
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief AgencyTransaction base class
+//////////////////////////////////////////////////////////////////////////////
+
 struct AgencyTransaction {
+  virtual std::string toJson() const = 0;
+  virtual void toVelocyPack(arangodb::velocypack::Builder& builder) const = 0;
+  virtual ~AgencyTransaction() {
+  }
+  virtual bool isWriteTransaction() const = 0;
+};
+
+struct AgencyWriteTransaction : public AgencyTransaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vector of preconditions
@@ -227,19 +239,19 @@ struct AgencyTransaction {
   /// @brief converts the transaction to velocypack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief converts the transaction to json
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string toJson() const;
+  std::string toJson() const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shortcut to create a transaction with one operation
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit AgencyTransaction(AgencyOperation const& operation) {
+  explicit AgencyWriteTransaction(AgencyOperation const& operation) {
     operations.push_back(operation);
   }
   
@@ -248,13 +260,75 @@ struct AgencyTransaction {
   /// precondition
   //////////////////////////////////////////////////////////////////////////////
  
-  explicit AgencyTransaction(AgencyOperation const& operation,
-                             AgencyPrecondition const& precondition) {
+  explicit AgencyWriteTransaction(AgencyOperation const& operation,
+                                  AgencyPrecondition const& precondition) {
     operations.push_back(operation);
     preconditions.push_back(precondition);
   }
-  
-  explicit AgencyTransaction() {
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief default constructor
+//////////////////////////////////////////////////////////////////////////////
+
+  AgencyWriteTransaction() = default;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return type of transaction
+//////////////////////////////////////////////////////////////////////////////
+
+  bool isWriteTransaction() const override final {
+    return true;
+  }
+};
+
+struct AgencyReadTransaction : public AgencyTransaction {
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief vector of operations
+//////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::string> keys;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief converts the transaction to velocypack
+//////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief converts the transaction to json
+//////////////////////////////////////////////////////////////////////////////
+
+  std::string toJson() const override final;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut to create a transaction with one operation
+//////////////////////////////////////////////////////////////////////////////
+
+  explicit AgencyReadTransaction(std::string const& key) {
+    keys.push_back(key);
+  }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut to create a transaction with more than one operation
+//////////////////////////////////////////////////////////////////////////////
+
+  explicit AgencyReadTransaction(std::vector<std::string>&& k) 
+    : keys(k) {
+  }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief default constructor
+//////////////////////////////////////////////////////////////////////////////
+
+  AgencyReadTransaction() = default;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return type of transaction
+//////////////////////////////////////////////////////////////////////////////
+
+  bool isWriteTransaction() const override final {
+    return false;
   }
 };
 
@@ -291,12 +365,6 @@ struct AgencyCommResult {
   //////////////////////////////////////////////////////////////////////////////
 
   int httpCode() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extract the "index" attribute from the result
-  //////////////////////////////////////////////////////////////////////////////
-
-  uint64_t index() const { return _index; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the error code from the result
@@ -351,6 +419,15 @@ struct AgencyCommResult {
   //////////////////////////////////////////////////////////////////////////////
 
   bool parse(std::string const&, bool);
+  VPackSlice parse(std::string const&);
+
+  VPackSlice slice();
+  void setVPack(std::shared_ptr<velocypack::Builder> vpack) {
+    _vpack = vpack;
+  }
+
+ private:
+  std::shared_ptr<velocypack::Builder> _vpack;
 
  public:
   std::string _location;
@@ -359,7 +436,6 @@ struct AgencyCommResult {
   std::string _realBody;
 
   std::map<std::string, AgencyCommResultEntry> _values;
-  uint64_t _index;
   int _statusCode;
   bool _connected;
 };
@@ -473,6 +549,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string prefix();
+  static std::string prefixStripped();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate a timestamp
@@ -538,6 +615,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult getValues(std::string const&, bool);
+  AgencyCommResult getValues2(std::string const&);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increment a value
@@ -574,7 +652,7 @@ class AgencyComm {
   /// @brief get unique id
   //////////////////////////////////////////////////////////////////////////////
 
-  AgencyCommResult uniqid(std::string const&, uint64_t, double);
+  uint64_t uniqid(uint64_t, double);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief registers a callback on a key
@@ -614,9 +692,9 @@ class AgencyComm {
   /// @brief sends a transaction to the agency, handling failover
   //////////////////////////////////////////////////////////////////////////////
 
-  bool sendTransactionWithFailover(
-      AgencyCommResult&,
-      AgencyTransaction const&
+  AgencyCommResult  sendTransactionWithFailover(
+      AgencyTransaction const&,
+      double timeout = 0.0
   );
 
  private:
@@ -655,10 +733,9 @@ class AgencyComm {
   /// @brief sends a write HTTP request to the agency, handling failover
   //////////////////////////////////////////////////////////////////////////////
 
-  bool sendWithFailover(
+  AgencyCommResult sendWithFailover(
       arangodb::GeneralRequest::RequestType,
       double,
-      AgencyCommResult&,
       std::string const&,
       std::string const&,
       bool
@@ -668,9 +745,9 @@ class AgencyComm {
   /// @brief sends data to the URL
   //////////////////////////////////////////////////////////////////////////////
 
-  bool send(arangodb::httpclient::GeneralClientConnection*,
+  AgencyCommResult send(arangodb::httpclient::GeneralClientConnection*,
             arangodb::GeneralRequest::RequestType, double,
-            AgencyCommResult&, std::string const&, std::string const&);
+            std::string const&, std::string const&);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief tries to establish a communication channel
@@ -714,6 +791,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string _globalPrefix;
+  static std::string _globalPrefixStripped;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief endpoints lock

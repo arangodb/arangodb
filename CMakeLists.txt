@@ -141,6 +141,19 @@ elseif (APPLE)
 endif ()
 
 ################################################################################
+## ROCKSDB
+################################################################################
+
+option(USE_ROCKSDB
+  "whether RocksDB is enabled"
+  OFF
+)
+
+if (USE_ROCKSDB)
+  add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
+endif ()
+
+################################################################################
 ## EXTERNAL PROGRAMS
 ################################################################################
 
@@ -164,7 +177,7 @@ get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 ## ARCHITECTURE
 ################################################################################
 
-if (SOLARIS)
+if (SOLARIS OR NOT CMAKE_SIZEOF_VOID_P)
   set(CMAKE_SIZEOF_VOID_P 8)
   set(CMAKE_CXX_SIZEOF_DATA_PTR 8)
 endif ()
@@ -302,10 +315,12 @@ else ()
 
   option(USE_OPTIMIZE_FOR_ARCHITECTURE "try to determine CPU architecture" ON)
 
-  if (USE_OPTIMIZE_FOR_ARCHITECTURE)
-    include(OptimizeForArchitecture)
-    OptimizeForArchitecture()
+  if (NOT USE_OPTIMIZE_FOR_ARCHITECTURE)
+    # mop: core2 (merom) is our absolute minimum!
+    SET(TARGET_ARCHITECTURE "merom")
   endif ()
+  include(OptimizeForArchitecture)
+  OptimizeForArchitecture()
 
   set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
@@ -431,19 +446,6 @@ endif ()
 if (${USE_JEMALLOC} AND ${USE_TCMALLOC})
   MESSAGE(FATAL_ERROR " you mustn't demand for tcmalloc and jemalloc at the same time!")
 endif()
-
-################################################################################
-## ROCKSDB
-################################################################################
-
-option(USE_ROCKSDB
-  "whether RocksDB is enabled"
-  OFF
-)
-
-if (USE_ROCKSDB)
-  add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
-endif ()
 
 ################################################################################
 ## LIBRARY RESOLV

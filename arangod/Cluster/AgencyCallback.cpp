@@ -41,67 +41,49 @@ AgencyCallback::AgencyCallback(AgencyComm& agency,
                                bool needsValue,
                                bool needsInitialValue) 
   : key(key),
-    _useCv(false),
     _agency(agency),
     _cb(cb),
     _needsValue(needsValue) {
   if (_needsValue && needsInitialValue) {
-    refetchAndUpdate();
+    refetchAndUpdate(true);
   }
 }
 
-void AgencyCallback::refetchAndUpdate() {
+void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex) {
   if (!_needsValue) {
     // no need to pass any value to the callback
-    executeEmpty();
+    if (needToAcquireMutex) {
+      CONDITION_LOCKER(locker, _cv);
+      executeEmpty();
+    } else {
+      executeEmpty();
+    }
     return;
   }
 
-  AgencyCommResult result = _agency.getValues(key, true);
+  AgencyCommResult result = _agency.getValues2(key);
 
   if (!result.successful()) {
     return;
   }
   
-  if (!result.parse("", false)) {
-    LOG(ERR) << "Cannot parse body " << result.body();
-    return;
-  }
-
-  // mop: we need to find out if it is a directory :S
-  // because we lost this information while parsing
-  std::shared_ptr<VPackBuilder> bodyBuilder =
-      VPackParser::fromJson(result.body().c_str());
-  
-  VPackSlice slice = bodyBuilder->slice();
-  if (!slice.isObject() || !slice.hasKey("node")) {
-    LOG(ERR) << "Invalid structure " << result.body();
-    return;
-  }
-
-  VPackSlice node = slice.get("node");
-  if (!slice.isObject()) {
-    LOG(ERR) << "Node is not an object";
-    return;
-  }
-
-  bool isDir = node.hasKey("dir");
+  std::vector<std::string> kv = basics::StringUtils::split(AgencyComm::prefix() + key,'/');
+  kv.erase(std::remove(kv.begin(), kv.end(), ""), kv.end());
   
   std::shared_ptr<VPackBuilder> newData = std::make_shared<VPackBuilder>();
-  if (isDir) {
-    VPackObjectBuilder builder(newData.get());
-    for (auto& it: result._values) {
-      newData->add(it.first, it.second._vpack->slice());
-    }
-  } else if (result._values.size() == 0) {
-    newData->add(VPackSlice::noneSlice());
+  newData->add(result.slice()[0].get(kv));
+  
+  if (needToAcquireMutex) {
+    CONDITION_LOCKER(locker, _cv);
+    checkValue(newData);
   } else {
-    newData->add(result._values.begin()->second._vpack->slice());
+    checkValue(newData);
   }
-  checkValue(newData);
 }
 
 void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData) {
+  // Only called from refetchAndUpdate, we always have the mutex when
+  // we get here!
   if (!_lastData || !_lastData->slice().equals(newData->slice())) {
     LOG(DEBUG) << "Got new value " << newData->slice().typeName() << " " << newData->toJson();
     if (execute(newData)) {
@@ -113,66 +95,41 @@ void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData) {
 }
 
 bool AgencyCallback::executeEmpty() {
+  // only called from refetchAndUpdate, we always have the mutex when 
+  // we get here!
   LOG(DEBUG) << "Executing (empty)";
-  bool result;
-  {
-    MUTEX_LOCKER(locker, _lock);
-    result = _cb(VPackSlice::noneSlice());
-  }
-
-  if (_useCv) {
-    CONDITION_LOCKER(locker, _cv);
+  bool result = _cb(VPackSlice::noneSlice());
+  if (result) {
     _cv.signal();
   }
   return result;
 }
 
 bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
+  // only called from refetchAndUpdate, we always have the mutex when 
+  // we get here!
   LOG(DEBUG) << "Executing";
-  bool result;
-  {
-    MUTEX_LOCKER(locker, _lock);
-    result = _cb(newData->slice());
-  }
-
-  if (_useCv) {
-    CONDITION_LOCKER(locker, _cv);
+  bool result = _cb(newData->slice());
+  if (result) {
     _cv.signal();
   }
   return result;
 }
 
-void AgencyCallback::waitWithFailover(double timeout) {
-  VPackSlice compareSlice;
-  if (_lastData) {
-    compareSlice = _lastData->slice();
-  } else {
-    compareSlice = VPackSlice::noneSlice();
-  }
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(timeout * 1000)));
-  
-  if (!_lastData || _lastData->slice().equals(compareSlice)) {
-    LOG(DEBUG) << "Waiting done and nothing happended. Refetching to be sure";
-    // mop: watches have not triggered during our sleep...recheck to be sure
-    refetchAndUpdate();
-  }
-}
-
-void AgencyCallback::waitForExecution(double maxTimeout) {
+void AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
+  // One needs to acquire the mutex of the condition variable
+  // before entering this function!
   auto compareBuilder = std::make_shared<VPackBuilder>();
   if (_lastData) {
     compareBuilder = _lastData;
   }
   
-  _useCv = true;
-  CONDITION_LOCKER(locker, _cv);
-  locker.wait(static_cast<uint64_t>(maxTimeout * 1000000.0));
-  _useCv = false;
-  
-  if (!_lastData || _lastData->slice().equals(compareBuilder->slice())) {
-    LOG(DEBUG) << "Waiting done and nothing happended. Refetching to be sure";
-    // mop: watches have not triggered during our sleep...recheck to be sure
-    refetchAndUpdate();
+  if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0))) {
+    if (!_lastData || !_lastData->slice().equals(compareBuilder->slice())) {
+      LOG(DEBUG) << "Waiting done and nothing happended. Refetching to be sure";
+      // mop: watches have not triggered during our sleep...recheck to be sure
+      refetchAndUpdate(false);
+    }
   }
 }
+

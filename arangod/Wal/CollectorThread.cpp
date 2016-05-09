@@ -420,7 +420,7 @@ int CollectorThread::collectLogfiles(bool& worked) {
       }
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
-      RocksDBFeature::instance()->syncWal();
+      RocksDBFeature::syncWal();
 #endif
       _logfileManager->setCollectionDone(logfile);
     } else {

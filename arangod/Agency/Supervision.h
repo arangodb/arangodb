@@ -24,6 +24,9 @@
 #ifndef ARANGOD_CONSENSUS_SUPERVISION_H
 #define ARANGOD_CONSENSUS_SUPERVISION_H 1
 
+#include "AgencyCommon.h"
+#include "Node.h"
+
 #include "Basics/Thread.h"
 #include "Basics/ConditionVariable.h"
 
@@ -33,9 +36,48 @@ namespace consensus {
 class Agent;
 class Store;
 
+struct check_t {
+  bool good;
+  std::string name;
+  check_t (std::string const& n, bool g) : good(g), name(n) {}
+};
+
 class Supervision : public arangodb::Thread {
   
 public:
+
+  typedef std::chrono::system_clock::time_point TimePoint;
+  typedef std::string ServerID;
+  typedef std::string ServerStatus;
+  typedef std::string ServerTimestamp;
+
+  enum TASKS {LEADER_FAILURE_MIGRATION, FOLLOWER_FAILURE_MIGRATION,
+              LEADER_INTENDED_MIGRATION, FOLLOWER_INTENDED_MIGRATION};
+
+  template<TASKS T>
+  class Task {
+    explicit Task (const VPackSlice& config) {}
+    ServerID _serverID;
+    std::string _endpoint;
+  };
+
+  struct VitalSign {
+
+    VitalSign(ServerStatus s, ServerTimestamp t) :
+      myTimestamp(std::chrono::system_clock::now()),
+      serverStatus(s), serverTimestamp(t) {} 
+
+    void update (ServerStatus s, ServerTimestamp t) {
+      myTimestamp = std::chrono::system_clock::now();
+      serverStatus = s;
+      serverTimestamp = t;
+    }
+      
+    TimePoint myTimestamp;
+    ServerStatus serverStatus;
+    ServerTimestamp serverTimestamp;
+    
+  };
   
   /// @brief Construct sanity checking
   Supervision ();
@@ -60,6 +102,9 @@ public:
 
 private:
 
+  /// @Brief Check mahines under path in agency
+  std::vector<check_t> check (std::string const& path);
+
   /// @brief Read db
   Store const& store () const;
 
@@ -67,12 +112,17 @@ private:
   bool doChecks(bool);
   
   Agent* _agent; /**< @brief My agent */
+  Node   _snapshot;
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread
                                               should run */
 
-  long _frequency;
+  ///@brief last vital signs as reported through heartbeats to agency
+  ///
+  std::map<ServerID,
+           std::shared_ptr<VitalSign>> _vital_signs;
 
+  long _frequency;
   
 };
 

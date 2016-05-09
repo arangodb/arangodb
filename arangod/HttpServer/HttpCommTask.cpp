@@ -150,7 +150,9 @@ bool HttpCommTask::processRead() {
       RequestStatisticsAgent::acquire();
 
 #if USE_DEV_TIMERS
-      RequestStatisticsAgent::_statistics->_id = (void*) this;
+      if (RequestStatisticsAgent::_statistics != nullptr) {
+        RequestStatisticsAgent::_statistics->_id = (void*) this;
+      }
 #endif
 
       _newRequest = false;
@@ -191,8 +193,7 @@ bool HttpCommTask::processRead() {
 
       // header is too large
       HttpResponse response(
-          GeneralResponse::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
-          getCompatibility());
+          GeneralResponse::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE);
 
       // we need to close the connection, because there is no way we
       // know what to remove and then continue
@@ -221,8 +222,7 @@ bool HttpCommTask::processRead() {
         LOG(ERR) << "cannot generate request";
 
         // internal server error
-        HttpResponse response(GeneralResponse::ResponseCode::SERVER_ERROR,
-                              getCompatibility());
+        HttpResponse response(GeneralResponse::ResponseCode::SERVER_ERROR);
 
         // we need to close the connection, because there is no way we
         // know how to remove the body and then continue
@@ -240,8 +240,7 @@ bool HttpCommTask::processRead() {
       if (_httpVersion != GeneralRequest::ProtocolVersion::HTTP_1_0 &&
           _httpVersion != GeneralRequest::ProtocolVersion::HTTP_1_1) {
         HttpResponse response(
-            GeneralResponse::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
-            getCompatibility());
+            GeneralResponse::ResponseCode::HTTP_VERSION_NOT_SUPPORTED);
 
         // we need to close the connection, because there is no way we
         // know what to remove and then continue
@@ -256,8 +255,7 @@ bool HttpCommTask::processRead() {
 
       if (_fullUrl.size() > 16384) {
         HttpResponse response(
-            GeneralResponse::ResponseCode::REQUEST_URI_TOO_LONG,
-            getCompatibility());
+            GeneralResponse::ResponseCode::REQUEST_URI_TOO_LONG);
 
         // we need to close the connection, because there is no way we
         // know what to remove and then continue
@@ -341,8 +339,7 @@ bool HttpCommTask::processRead() {
 
           // bad request, method not allowed
           HttpResponse response(
-              GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
-              getCompatibility());
+              GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED);
 
           // we need to close the connection, because there is no way we
           // know what to remove and then continue
@@ -375,8 +372,7 @@ bool HttpCommTask::processRead() {
         LOG(TRACE) << "cannot serve request - server is inactive";
 
         HttpResponse response(
-            GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE,
-            getCompatibility());
+            GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
 
         // we need to close the connection, because there is no way we
         // know what to remove and then continue
@@ -487,8 +483,6 @@ bool HttpCommTask::processRead() {
   // authenticate
   // .............................................................................
 
-  auto const compatibility = _request->compatibility();
-
   GeneralResponse::ResponseCode authResult =
       _server->handlerFactory()->authenticateRequest(_request);
 
@@ -497,15 +491,15 @@ bool HttpCommTask::processRead() {
   if (authResult == GeneralResponse::ResponseCode::OK || isOptionsRequest) {
     // handle HTTP OPTIONS requests directly
     if (isOptionsRequest) {
-      processCorsOptions(compatibility);
+      processCorsOptions();
     } else {
-      processRequest(compatibility);
+      processRequest();
     }
   }
 
   // not found
   else if (authResult == GeneralResponse::ResponseCode::NOT_FOUND) {
-    HttpResponse response(authResult, compatibility);
+    HttpResponse response(authResult);
     response.setContentType(StaticStrings::MimeTypeJson);
 
     response.body()
@@ -523,7 +517,7 @@ bool HttpCommTask::processRead() {
 
   // forbidden
   else if (authResult == GeneralResponse::ResponseCode::FORBIDDEN) {
-    HttpResponse response(authResult, compatibility);
+    HttpResponse response(authResult);
     response.setContentType(StaticStrings::MimeTypeJson);
 
     response.body()
@@ -540,8 +534,7 @@ bool HttpCommTask::processRead() {
 
   // not authenticated
   else {
-    HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED,
-                          compatibility);
+    HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED);
     if (sendWwwAuthenticateHeader()) {
       std::string realm =
           "basic realm=\"" +
@@ -710,8 +703,7 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    HttpResponse response(GeneralResponse::ResponseCode::LENGTH_REQUIRED,
-                          getCompatibility());
+    HttpResponse response(GeneralResponse::ResponseCode::LENGTH_REQUIRED);
 
     resetState(true);
     handleResponse(&response);
@@ -733,8 +725,7 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
 
     // request entity too large
     HttpResponse response(
-        GeneralResponse::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
-        getCompatibility());
+        GeneralResponse::ResponseCode::REQUEST_ENTITY_TOO_LARGE);
 
     resetState(true);
     handleResponse(&response);
@@ -777,8 +768,8 @@ void HttpCommTask::fillWriteBuffer() {
 /// @brief handles CORS options
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::processCorsOptions(uint32_t compatibility) {
-  HttpResponse response(GeneralResponse::ResponseCode::OK, compatibility);
+void HttpCommTask::processCorsOptions() {
+  HttpResponse response(GeneralResponse::ResponseCode::OK);
 
   response.setHeaderNC(StaticStrings::Allow, StaticStrings::CorsMethods);
 
@@ -815,7 +806,7 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
 /// @brief processes a request
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::processRequest(uint32_t compatibility) {
+void HttpCommTask::processRequest() {
   // check for deflate
   bool found;
   std::string const& acceptEncoding =
@@ -844,8 +835,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   if (handler == nullptr) {
     LOG(TRACE) << "no handler is known, giving up";
 
-    HttpResponse response(GeneralResponse::ResponseCode::NOT_FOUND,
-                          compatibility);
+    HttpResponse response(GeneralResponse::ResponseCode::NOT_FOUND);
 
     clearRequest();
     handleResponse(&response);
@@ -884,8 +874,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
     }
 
     if (ok) {
-      HttpResponse response(GeneralResponse::ResponseCode::ACCEPTED,
-                            compatibility);
+      HttpResponse response(GeneralResponse::ResponseCode::ACCEPTED);
 
       if (jobId > 0) {
         // return the job id we just created
@@ -904,8 +893,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   }
 
   if (!ok) {
-    HttpResponse response(GeneralResponse::ResponseCode::SERVER_ERROR,
-                          compatibility);
+    HttpResponse response(GeneralResponse::ResponseCode::SERVER_ERROR);
     handleResponse(&response);
   }
 }
@@ -979,18 +967,6 @@ bool HttpCommTask::sendWwwAuthenticateHeader() const {
   _request->header(StaticStrings::OmitWwwAuthenticate, found);
 
   return !found;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get request compatibility
-////////////////////////////////////////////////////////////////////////////////
-
-int32_t HttpCommTask::getCompatibility() const {
-  if (_request != nullptr) {
-    return _request->compatibility();
-  }
-
-  return GeneralRequest::MIN_COMPATIBILITY;
 }
 
 bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {

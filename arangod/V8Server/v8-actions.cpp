@@ -128,7 +128,7 @@ class v8_action_t : public TRI_action_t {
 
         result.isValid = true;
         result.response =
-            new HttpResponse(GeneralResponse::ResponseCode::NOT_FOUND, request->compatibility());
+            new HttpResponse(GeneralResponse::ResponseCode::NOT_FOUND);
 
         return result;
       }
@@ -488,11 +488,6 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(CookiesKey);
   req->ForceSet(CookiesKey, cookiesObject);
 
-  // determine API compatibility version
-  int32_t compatibility = request->compatibility();
-  TRI_GET_GLOBAL_STRING(CompatibilityKey);
-  req->ForceSet(CompatibilityKey, v8::Integer::New(isolate, compatibility));
-
   return req;
 }
 
@@ -502,8 +497,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
 static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
                                      TRI_v8_global_t const* v8g,
-                                     v8::Handle<v8::Object> const res,
-                                     uint32_t compatibility) {
+                                     v8::Handle<v8::Object> const res) {
   GeneralResponse::ResponseCode code = GeneralResponse::ResponseCode::OK;
 
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
@@ -513,7 +507,7 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
         (int)(TRI_ObjectToDouble(res->Get(ResponseCodeKey))));
   }
 
-  auto response = std::make_unique<HttpResponse>(code, compatibility);
+  auto response = std::make_unique<HttpResponse>(code);
 
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (res->Has(ContentTypeKey)) {
@@ -722,7 +716,7 @@ static TRI_action_result_t ExecuteActionVocbase(
     result.canceled = false;
 
     HttpResponse* response =
-        new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR, request->compatibility());
+        new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
     if (errorMessage.empty()) {
       errorMessage = TRI_errno_string(errorCode);
     }
@@ -736,8 +730,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 
   else if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      HttpResponse* response = new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
-                                                request->compatibility());
+      HttpResponse* response = new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
       response->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
 
       result.response = response;
@@ -750,7 +743,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 
   else {
     result.response =
-        ResponseV8ToCpp(isolate, v8g, res, request->compatibility());
+        ResponseV8ToCpp(isolate, v8g, res);
   }
 
   return result;
