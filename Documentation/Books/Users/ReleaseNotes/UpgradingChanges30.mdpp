@@ -159,9 +159,60 @@ The AQL optimizer rule "merge-traversal-filter" that already existed in 3.0 was 
 "optimize-traversals". This should be of no relevance to client applications except if 
 they programatically look for applied optimizer rules in the explain out of AQL queries.
 
+!SECTION Upgraded V8 version
+
+The V8 engine that is used inside ArangoDB to execute JavaScript code has been upgraded from
+version 4.3.61 to 5.0.71.39. The new version should be mostly compatible to the old version,
+but there may be subtle differences, including changes of error message texts thrown by the
+engine. 
+Furthermore, some V8 startup parameters have changed their meaning or have been removed in
+the new version. This is only relevant when ArangoDB or ArangoShell are started with a custom
+value for the `--javascript.v8-options` startup option.
+
+Among others, the following V8 options change in the new version of ArangoDB:
+
+- `--es_staging`: in 2.8 it had the meaning `enable all completed harmony features`, in 3.0 
+  the option means `enable test-worthy harmony features (for internal use only)`
+
+- `--strong_this`: this option wasn't present in 2.8. In 3.0 it means `don't allow 'this' to escape from constructors`
+  and defaults to true.
+
+- `--harmony_regexps`: this options means `enable "harmony regular expression extensions"` 
+  and changes its default value from false to true
+
+- `--harmony_proxies`: this options means `enable "harmony proxies"` and changes its default 
+   value from false to true
+
+- `--harmony_reflect`: this options means `enable "harmony Reflect API"` and changes its default 
+   value from false to true
+
+- `--harmony_sloppy`: this options means `enable "harmony features in sloppy mode"` and changes 
+   its default value from false to true
+
+- `--harmony_tostring`: this options means `enable "harmony toString"` and changes its default 
+   value from false to true
+
+- `--harmony_unicode_regexps`: this options means `enable "harmony unicode regexps"` and changes 
+   its default value from false to true
+  
+- `--harmony_arrays`, `--harmony_array_includes`, `--harmony_computed_property_names`, 
+  `--harmony_arrow_functions`, `--harmony_rest_parameters`, `--harmony_classes`, 
+  `--harmony_object_literals`, `--harmony_numeric_literals`, `--harmony_unicode`:
+   these option have been removed in V8 5.
+
 !SECTION JavaScript API changes
 
 The following incompatible changes have been made to the JavaScript API in ArangoDB 3.0:
+
+!SUBSECTION Foxx
+
+The Foxx framework has been completely rewritten for 3.0 with a new, simpler and more 
+familiar API. To make Foxx applications from earlier ArangoDB versions run in 3.0
+without code changes, the application's manifest file needs to be edited.
+
+To enable the legacy mode for a Foxx application, add `"engines": {"arangodb": "^2.8.0"}` 
+(or similar version ranges that exclude 3.0 and up) to the service manifest file
+(named "manifest.json", located in the application's base directory).
 
 !SUBSECTION Edges API
 

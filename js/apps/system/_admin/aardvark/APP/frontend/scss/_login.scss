@@ -55,13 +55,25 @@
     }
   }
 
-  .fa {
-    color: rgba(0, 0, 0, .2);
-    float: left;
-    font-size: 14pt;
-    left: 30px;
-    margin-top: 11px;
+  .checking-password {
+    box-sizing: border-box;
+    color: rgba(0, 0, 0, .5);
+    margin-left: -21px;
+    margin-top: -25px;
     position: absolute;
+    text-align: center;
+    width: 100%;
+  }
+
+  form {
+    .fa {
+      color: rgba(0, 0, 0, .2);
+      float: left;
+      font-size: 14pt;
+      left: 30px;
+      margin-top: 11px;
+      position: absolute;
+    }
   }
 
   .wrong-credentials {

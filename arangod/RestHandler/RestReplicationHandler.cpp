@@ -1649,7 +1649,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     if (!shardKeys.isObject()) {
       // set default shard key
       toMerge.add("shardKeys", VPackValue(VPackValueType::Array));
-      toMerge.add(VPackValue(std::string(TRI_VOC_ATTRIBUTE_KEY)));
+      toMerge.add(VPackValue(StaticStrings::KeyString));
       toMerge.close();  // end of shardKeys
     }
 
@@ -2005,7 +2005,7 @@ static int restoreDataParser(char const* ptr, char const* pos,
 
     return TRI_ERROR_HTTP_CORRUPTED_JSON;
   } catch (...) {
-    return TRI_ERROR_HTTP_CORRUPTED_JSON;
+    return TRI_ERROR_INTERNAL;
   }
 
   VPackSlice const slice = builder.slice();
@@ -2018,7 +2018,7 @@ static int restoreDataParser(char const* ptr, char const* pos,
 
   type = REPLICATION_INVALID;
 
-  for (auto const& pair : VPackObjectIterator(slice)) {
+  for (auto const& pair : VPackObjectIterator(slice, true)) {
     if (!pair.key.isString()) {
       errorMsg = invalidMsg;
 
@@ -2043,12 +2043,18 @@ static int restoreDataParser(char const* ptr, char const* pos,
       if (pair.value.isObject()) {
         doc = pair.value;
     
-        if (doc.hasKey(TRI_VOC_ATTRIBUTE_KEY)) {
-          key = doc.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+        if (doc.hasKey(StaticStrings::KeyString)) {
+          key = doc.get(StaticStrings::KeyString).copyString();
         }
-        else if (useRevision && doc.hasKey(TRI_VOC_ATTRIBUTE_REV)) {
-          rev = doc.get(TRI_VOC_ATTRIBUTE_REV).copyString();
+        else if (useRevision && doc.hasKey(StaticStrings::RevString)) {
+          rev = doc.get(StaticStrings::RevString).copyString();
         } 
+      }
+    }
+    
+    else if (attributeName == "key") {
+      if (key.empty()) {
+        key = pair.value.copyString();
       }
     }
   }
@@ -2059,6 +2065,7 @@ static int restoreDataParser(char const* ptr, char const* pos,
   }
 
   if (key.empty()) {
+    LOG(ERR) << "GOT EXCEPTION 5";
     errorMsg = invalidMsg;
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2109,7 +2116,7 @@ int RestReplicationHandler::processRestoreDataBatch(
 
       oldBuilder.clear();
       oldBuilder.openObject();
-      oldBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+      oldBuilder.add(StaticStrings::KeyString, VPackValue(key));
       oldBuilder.close();
 
       res = applyCollectionDumpMarker(trx, resolver, collectionName, type,

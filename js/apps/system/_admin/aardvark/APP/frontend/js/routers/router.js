@@ -47,6 +47,7 @@
       $('#subNavigationBar .breadcrumb').html('');
       $('#subNavigationBar .bottom').html('');
       $('#loadingScreen').hide();
+      $('#content').show();
       if (callback) {
         callback.apply(this, args);
       }
