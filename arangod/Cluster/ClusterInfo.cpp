@@ -251,7 +251,8 @@ ClusterInfo* ClusterInfo::instance() {  return _instance.get(); }
 
 ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
   : _agency(), _agencyCallbackRegistry(agencyCallbackRegistry), _uniqid() {
-  _uniqid._currentValue = _uniqid._upperValue = 0ULL;
+  _uniqid._currentValue = 1ULL;
+  _uniqid._upperValue = 0ULL;
 
   // Actual loading into caches is postponed until necessary
 }
