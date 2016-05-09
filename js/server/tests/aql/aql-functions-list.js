@@ -39,7 +39,19 @@ var assertQueryError = helper.assertQueryError;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlListTestSuite () {
+  var collectionName = "UnitTestList";
+  var collection; 
+
   return {
+
+    setUp : function () {
+      internal.db._drop(collectionName);
+      collection = internal.db._create(collectionName);
+    },
+
+    tearDown: function () {
+      internal.db._drop(collectionName);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test push function
@@ -698,6 +710,60 @@ function ahuacatlListTestSuite () {
       assertEqual(l, actual[0]);
       assertEqual(1500, actual[0].length);
     },
+
+    testAppendDocuments : function () {
+      for (var i = 0; i < 10; ++i) {
+        collection.save({_key: "test" + i});
+      }
+      var bindVars = {"@collection" : collectionName};
+      var actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN APPEND([], tmp)", bindVars);
+      assertEqual(actual.length, 1);
+      actual = actual[0];
+      assertEqual(actual.length, 10);
+      var actual = actual.sort(function(l, r) { if (l._key < r._key) { return -1;} else if (l._key > r._key) { return 1;} return 0; });
+      for (var i = 0; i < 10; ++i) {
+        assertEqual(actual[i]._key, "test"+i);
+      }
+    },
+
+    testAppendDocuments2 : function () {
+      for (var i = 0; i < 10; ++i) {
+        collection.save({_key: "test" + i});
+      }
+      var bindVars = {"@collection" : collectionName};
+      var actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN APPEND('stringvalue', tmp)", bindVars);
+      assertEqual(actual.length, 1);
+      actual = actual[0];
+      assertEqual(actual.length, 10);
+      var actual = actual.sort(function(l, r) { if (l._key < r._key) { return -1;} else if (l._key > r._key) { return 1;} return 0; });
+      for (var i = 0; i < 10; ++i) {
+        assertEqual(actual[i]._key, "test"+i);
+      }
+    },
+
+    testAppendDocuments3 : function () {
+      for (var i = 0; i < 10; ++i) {
+        collection.save({_key: "test" + i});
+      }
+      var bindVars = {"@collection" : collectionName};
+      var actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x._id) RETURN APPEND('stringvalue', tmp)", bindVars);
+      assertEqual(actual.length, 1);
+      actual = actual[0];
+      assertEqual(actual.length, 10);
+      var actual = actual.sort(function(l, r) { if (l < r) { return -1;} else if (l > r) { return 1;} return 0; });
+      for (var i = 0; i < 10; ++i) {
+        assertEqual(actual[i], collectionName + "/test"+i);
+      }
+    },
+
+    testAppendSecondUnique : function () {
+      var actual = getQueryResults("RETURN APPEND('stringvalue', [1,1,1,1,1,1], true)");
+      assertEqual(actual.length, 1);
+      actual = actual[0];
+      assertEqual(actual, null);
+    },
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test append function
