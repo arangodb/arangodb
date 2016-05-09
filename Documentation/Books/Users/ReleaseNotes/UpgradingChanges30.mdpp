@@ -256,12 +256,11 @@ The following incompatible changes have been made to the JavaScript API in Arang
 !SUBSECTION Foxx
 
 The Foxx framework has been completely rewritten for 3.0 with a new, simpler and more 
-familiar API. To make Foxx applications from earlier ArangoDB versions run in 3.0
-without code changes, the application's manifest file needs to be edited.
+familiar API. To make Foxx services developed for 2.8 or earlier ArangoDB versions run in 3.0, the service's manifest file needs to be edited.
 
-To enable the legacy mode for a Foxx application, add `"engines": {"arangodb": "^2.8.0"}` 
+To enable the legacy mode for a Foxx service, add `"engines": {"arangodb": "^2.8.0"}` 
 (or similar version ranges that exclude 3.0 and up) to the service manifest file
-(named "manifest.json", located in the application's base directory).
+(named "manifest.json", located in the service's base directory).
 
 !SUBSECTION Require
 
@@ -272,7 +271,7 @@ instead of `org/arangodb/<module>`, e.g.
 var cluster = require("@arangodb/cluster"); 
 ```
 
-The old format can still be used and is compatible:
+The old format can still be used for compatibility:
 
 ```js
 var cluster = require("org/arangodb/cluster"); 
