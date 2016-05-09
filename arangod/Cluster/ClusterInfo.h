@@ -329,7 +329,7 @@ class CollectionInfo {
           for (auto const& serverSlice: VPackArrayIterator(shardSlice.value)) {
             servers.push_back(serverSlice.copyString());
           }
-          (*res).insert(make_pair(shardSlice.key.copyString(), servers));
+          (*res).insert(make_pair(shard, servers));
         }
       }
     }
