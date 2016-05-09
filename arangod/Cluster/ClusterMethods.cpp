@@ -184,7 +184,7 @@ static void extractErrorCodes(ClusterCommResult const& res,
                               std::unordered_map<int, size_t>& errorCounter,
                               bool includeNotFound) {
   auto resultHeaders = res.answer->headers();
-  auto codes = resultHeaders.find("X-Arango-Error-Codes");
+  auto codes = resultHeaders.find(StaticStrings::ErrorCodes);
   if (codes != resultHeaders.end()) {
     auto parsedCodes = VPackParser::fromJson(codes->second);
     VPackSlice codesSlice = parsedCodes->slice();
@@ -380,6 +380,7 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
     if (key != "x-arango-async" && key != "authorization" &&
         key != "content-length" && key != "connection" && key != "expect" &&
         key != "host" && key != "origin" &&
+        key != StaticStrings::ErrorCodes &&
         key.substr(0, 14) != "access-control") {
       result.emplace(key, (*it).second);
     }

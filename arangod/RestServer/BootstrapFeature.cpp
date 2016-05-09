@@ -59,20 +59,19 @@ static void raceForClusterBootstrap() {
   auto ci = ClusterInfo::instance();
 
   while (true) {
-    AgencyCommResult result = agency.getValues("Bootstrap", false);
-    if (!result.successful() && 
-        result.httpCode() != (int) arangodb::GeneralResponse::ResponseCode::NOT_FOUND) {
-      // Error in communication, we could live with NOT_FOUND or OK
+    AgencyCommResult result = agency.getValues2("Bootstrap");
+    if (!result.successful()) {
+      // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::STARTUP) 
           << "raceForClusterBootstrap: no agency communication";
       sleep(1);
       continue;
     }
-    result.parse("", false);
-    auto it = result._values.begin();
-    if (it != result._values.end()) {
-      VPackSlice value = it->second._vpack->slice();
-      if (value.isString() && value.isEqualString("done")) {
+    VPackSlice value = result.slice()[0].get(std::vector<std::string>(
+          {agency.prefixStripped(), "Bootstrap"}));
+    if (value.isString()) {
+      // key was found and is a string
+      if (value.isEqualString("done")) {
         // all done, let's get out of here:
         LOG_TOPIC(TRACE, Logger::STARTUP) 
             << "raceForClusterBootstrap: bootstrap already done";
