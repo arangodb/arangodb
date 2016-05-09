@@ -6,9 +6,22 @@
   height: auto !important;
 }
 
-.accordion-heading a {
-  border: 1px solid $c-accordion-heading;
-  color: $c-black;
-  font-weight: 400;
-  width: 397px !important;
+.accordion-heading {
+
+  padding-top: 15px;
+
+  a {
+    border: 1px solid $c-accordion-heading;
+    color: $c-black;
+    font-weight: 400;
+    width: 397px !important;
+  }
+
+  .accordion-toggle {
+    border-radius: 3px;
+    box-sizing: border-box;
+    display: block;
+    padding: 8px 15px;
+    width: 100% !important;
+  }
 }

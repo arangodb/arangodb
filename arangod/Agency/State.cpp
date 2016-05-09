@@ -118,7 +118,7 @@ std::vector<arangodb::consensus::index_t> State::log (
       _log.push_back(log_t(idx[j], term, lid, buf));  // log to RAM
       persist(idx[j], term, lid, i[0]);                  // log to disk
       if (idx[j] > 0 && (idx[j] % _compaction_step) == 0) {
-        compact(idx[j]);
+        //compact(idx[j]);
       }
       ++j;
     }
@@ -145,7 +145,7 @@ bool State::log(query_t const& queries, term_t term,
       _log.push_back(log_t(idx, term, lid, buf));
       persist(idx, term, lid, i.get("query")); // to disk
       if (idx > 0 && (idx % _compaction_step) == 0) {
-        compact(idx);
+        //compact(idx);
       }
     } catch (std::exception const& e) {
       LOG(ERR) << e.what();
@@ -321,8 +321,56 @@ bool State::find (arangodb::consensus::index_t prevIndex, term_t prevTerm) {
 
 bool State::compact (arangodb::consensus::index_t cind) {
 
-  if (checkCollection("compact")) {
+  bool saved = persistSpearhead(cind);
 
+  if (saved) {
+    compactPersistedState(cind);
+    compactVolatileState(cind);
+    return true;
+  } else {
+    return false;
+  }
+
+}
+
+bool State::compactVolatileState (arangodb::consensus::index_t cind) {
+  _log.erase(_log.begin(), _log.begin()+_compaction_step-1);
+  _cur = _log.begin()->index;
+  return true;
+}
+
+bool State::compactPersistedState (arangodb::consensus::index_t cind) {
+  
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->close();
+  
+  std::string const aql(
+    std::string(
+      "FOR l IN log FILTER u._key < 'deleted' REMOVE l IN log"));
+  arangodb::aql::Query query(false, _vocbase,
+                             aql.c_str(), aql.size(), bindVars, nullptr,
+                             arangodb::aql::PART_MAIN);
+  
+  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
+  
+  VPackSlice result = queryResult.result->slice();
+
+  LOG(INFO) << result.toJson();
+  
+  return true;
+  
+}
+
+
+bool State::persistSpearhead (arangodb::consensus::index_t cind) {
+  
+  if (checkCollection("compact")) {
+    
     Builder store;
     store.openObject();
     store.add("spearhead", VPackValue(VPackValueType::Array));
@@ -348,10 +396,8 @@ bool State::compact (arangodb::consensus::index_t cind) {
     auto result = trx.insert("compact", store.slice(), _options);
     res = trx.finish(result.code);
 
-    /*if (res == TRI_ERROR_NO_ERROR) {
-      _log.erase(_log.begin(), _log.begin()+_compaction_step-1);
-      _cur = _log.begin()->index;
-      }*/
+    return (res == TRI_ERROR_NO_ERROR); 
+
   }
 
   LOG_TOPIC (ERR, Logger::AGENCY) << "Compaction failed!";

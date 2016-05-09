@@ -37,7 +37,6 @@
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
-#include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -593,7 +592,8 @@ bool AgencyComm::tryConnect() {
 
     // mop: not sure if a timeout makes sense here
     while (true) {
-      LOG(INFO) << "Trying to find an active agency. Checking " << endpointsStr;
+      LOG_TOPIC(INFO, Logger::AGENCYCOMM) 
+          << "Trying to find an active agency. Checking " << endpointsStr;
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
       while (it != _globalEndpoints.end()) {
@@ -862,8 +862,8 @@ void AgencyComm::disconnect() {
 
 bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
                              bool toFront) {
-  LOG(TRACE) << "adding global agency-endpoint '" << endpointSpecification
-             << "'";
+  LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
+      << "adding global agency-endpoint '" << endpointSpecification << "'";
 
   {
     WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
@@ -1048,7 +1048,8 @@ bool AgencyComm::setPrefix(std::string const& prefix) {
     }
   }
 
-  LOG(TRACE) << "setting agency-prefix to '" << prefix << "'";
+  LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
+      << "setting agency-prefix to '" << prefix << "'";
   return true;
 }
 
@@ -1284,8 +1285,8 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
           }
         }
       } else if (node.isArray()) {
-        LOG(ERR) << node.toJson();
-        LOG(ERR) << "Oops...TODO array unexpected";
+        LOG_TOPIC(ERR, Logger::AGENCYCOMM) << node.toJson();
+        LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Oops...TODO array unexpected";
       } else {
         builder.add("value", node);
       }
@@ -1333,13 +1334,16 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
     VPackStringSink sink(&result._body);
     VPackDumper::dump(s, &sink, &dumperOptions);
 
-    LOG(TRACE) << "Created fake etcd node" << result._body;
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
+        << "Created fake etcd node" << result._body;
     result._statusCode = 200;
   } catch(std::exception &e) {
-    LOG(ERR) << "Error transforming result. " << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+        << "Error transforming result. " << e.what();
     result.clear();
   } catch(...) {
-    LOG(ERR) << "Error transforming result. Out of memory";
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+        << "Error transforming result. Out of memory";
     result.clear();
   }
 
@@ -1390,10 +1394,12 @@ AgencyCommResult AgencyComm::getValues2(std::string const& key) {
     result._statusCode = 200;
     
   } catch(std::exception &e) {
-    LOG(ERR) << "Error transforming result. " << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+        << "Error transforming result. " << e.what();
     result.clear();
   } catch(...) {
-    LOG(ERR) << "Error transforming result. Out of memory";
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+        << "Error transforming result. Out of memory";
     result.clear();
   }
 
@@ -1576,7 +1582,8 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
           {prefixStripped(), "Sync", "LatestID"}));
 
     if (!(oldSlice.isSmallInt() || oldSlice.isUInt())) {
-      LOG(WARN) << "Sync/LatestID in agency is not an unsigned integer, fixing...";
+      LOG_TOPIC(WARN, Logger::AGENCYCOMM) 
+          << "Sync/LatestID in agency is not an unsigned integer, fixing...";
       try {
         VPackBuilder builder;
         builder.add(VPackValue(0));
@@ -1866,10 +1873,12 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
     result._statusCode = 200;
     
   } catch(std::exception &e) {
-    LOG(ERR) << "Error transforming result. " << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+        << "Error transforming result. " << e.what();
     result.clear();
   } catch(...) {
-    LOG(ERR) << "Error transforming result. Out of memory";
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+        << "Error transforming result. Out of memory";
     result.clear();
   }
   return result;
@@ -1964,7 +1973,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
       if (!AgencyComm::hasEndpoint(endpoint)) {
         AgencyComm::addEndpoint(endpoint, true);
 
-        LOG(INFO) << "adding agency-endpoint '" << endpoint << "'";
+        LOG_TOPIC(INFO, Logger::AGENCYCOMM) 
+            << "adding agency-endpoint '" << endpoint << "'";
 
         // re-check the new endpoint
         if (AgencyComm::hasEndpoint(endpoint)) {
@@ -1972,8 +1982,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
           continue;
         }
 
-        LOG(ERR) << "found redirection to unknown endpoint '" << endpoint
-                 << "'. Will not follow!";
+        LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+            << "found redirection to unknown endpoint '" << endpoint
+            << "'. Will not follow!";
 
         // this is an error
         break;
@@ -2029,10 +2040,11 @@ AgencyCommResult AgencyComm::send(
   result._connected = false;
   result._statusCode = 0;
 
-  LOG(TRACE) << "sending " << arangodb::HttpRequest::translateMethod(method)
-             << " request to agency at endpoint '"
-             << connection->getEndpoint()->specification() << "', url '" << url
-             << "': " << body;
+  LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
+      << "sending " << arangodb::HttpRequest::translateMethod(method)
+      << " request to agency at endpoint '"
+      << connection->getEndpoint()->specification() << "', url '" << url
+      << "': " << body;
 
   arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
 
@@ -2052,7 +2064,7 @@ AgencyCommResult AgencyComm::send(
   if (response == nullptr) {
     connection->disconnect();
     result._message = "could not send request to agency";
-    LOG(TRACE) << "sending request to agency failed";
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "sending request to agency failed";
 
     return result;
   }
@@ -2060,7 +2072,7 @@ AgencyCommResult AgencyComm::send(
   if (!response->isComplete()) {
     connection->disconnect();
     result._message = "sending request to agency failed";
-    LOG(TRACE) << "sending request to agency failed";
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "sending request to agency failed";
 
     return result;
   }
@@ -2074,7 +2086,8 @@ AgencyCommResult AgencyComm::send(
     bool found = false;
     result._location = response->getHeaderField("location", found);
 
-    LOG(TRACE) << "redirecting to location: '" << result._location << "'";
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
+        << "redirecting to location: '" << result._location << "'";
 
     if (!found) {
       // a 307 without a location header does not make any sense
@@ -2090,9 +2103,10 @@ AgencyCommResult AgencyComm::send(
   result._body = std::string(sb.c_str(), sb.length());
   result._statusCode = response->getHttpReturnCode();
 
-  LOG(TRACE) << "request to agency returned status code " << result._statusCode
-             << ", message: '" << result._message << "', body: '"
-             << result._body << "'";
+  LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
+      << "request to agency returned status code " << result._statusCode
+      << ", message: '" << result._message << "', body: '"
+      << result._body << "'";
 
   if (result.successful()) {
     return result;

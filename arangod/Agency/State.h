@@ -134,6 +134,10 @@ private:
 
   bool compact (arangodb::consensus::index_t cind);
 
+  bool compactPersistedState (arangodb::consensus::index_t cind);
+  bool compactVolatileState (arangodb::consensus::index_t cind);
+  bool persistSpearhead (arangodb::consensus::index_t cind);
+
   Agent* _agent;
 
   TRI_vocbase_t* _vocbase;
