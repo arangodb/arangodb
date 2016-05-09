@@ -51,11 +51,11 @@ v3.0.0 (XXXX-XX-XX)
 
 * added new endpoint "srv://" for DNS service records
 
-* The result order of the AQL functions VALUES and KEYS has never been guaranteed
-and it only had the "correct" ordering by accident when iterating over objects that
-were not loaded from the database. This accidental behavior is now changed by
-introduction of VelocyPack. No ordering is guaranteed unless you specify
-the sort parameter.
+* The result order of the AQL functions VALUES and ATTRIBUTES has never been 
+  guaranteed and it only had the "correct" ordering by accident when iterating 
+  over objects that were not loaded from the database. This accidental behavior 
+  is now changed by introduction of VelocyPack. No ordering is guaranteed unless 
+  you specify the sort parameter.
 
 * removed configure option `--enable-logger`
 

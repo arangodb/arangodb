@@ -48,12 +48,8 @@ function AgencySuite () {
   return {
 
     setUp : function () {
-      //agency.setPrefix("UnitTestsAgency");
-      //assertEqual("UnitTestsAgency", agency.prefix(true));
-      
       try {
         agency.remove("UnitTestsAgency", true);
-        //agency.remove("UnitTestsAgency", true);
       }
       catch (err) {
         // dir may not exist. this is not a problem
@@ -68,9 +64,6 @@ function AgencySuite () {
       }
       catch (err) {
       }
-
-      //agency.setPrefix(oldPrefix);
-      //assertEqual(oldPrefix, agency.prefix(true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

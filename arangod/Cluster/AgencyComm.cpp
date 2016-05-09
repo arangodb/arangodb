@@ -1846,6 +1846,10 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, url,
       builder.slice().toJson(), false);
 
+  if (!result.successful()) {
+    return result;
+  }
+  
   try {
     result.setVPack(VPackParser::fromJson(result.body().c_str()));
 
@@ -1873,7 +1877,6 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
     }
     
     result._body.clear();
-    //result._statusCode = 200;
     
   } catch(std::exception &e) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM) 

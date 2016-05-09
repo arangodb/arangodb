@@ -818,7 +818,7 @@ void HttpCommTask::processRequest() {
     }
   }
 
-  LOG_TOPIC(INFO, Logger::REQUESTS)
+  LOG_TOPIC(DEBUG, Logger::REQUESTS)
       << "\"http-request-begin\",\"" << (void*)this << "\",\""
       << _connectionInfo.clientAddress << "\",\""
       << HttpRequest::translateMethod(_requestType) << "\",\""
