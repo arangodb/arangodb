@@ -164,13 +164,23 @@ std::string RestVocbaseBaseHandler::assembleDocumentId(
 
 void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type,
-    VPackOptions const* options) {
+    TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
   if (result.wasSynchronous) {
     createResponse(GeneralResponse::ResponseCode::CREATED);
   } else {
     createResponse(GeneralResponse::ResponseCode::ACCEPTED);
   }
+
+  if (isMultiple && !result.countErrorCodes.empty()) {
+    VPackBuilder errorBuilder;
+    errorBuilder.openObject();
+    for (auto const& it : result.countErrorCodes) {
+      errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
+    }
+    errorBuilder.close();
+    _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.toJson());
+  }
+
   generate20x(result, collectionName, type, options);
 }
 

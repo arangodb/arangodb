@@ -3,6 +3,49 @@
 It is recommended to check the following list of incompatible changes **before**
 upgrading to ArangoDB 3.0, and adjust any client programs if necessary.
 
+!SECTION Build system
+
+Building ArangoDB 3.0 from source now requires CMake. 
+
+The pre-3.0 build system used a configure-based approach. The steps to build 
+ArangoDB from source code in 2.8 were:
+
+```
+make setup
+./configure <options>
+make
+```
+
+These steps will not work anymore, as ArangoDB 3.0 does not come with a 
+configure script.
+
+To build 3.0 on Linux, create a separate build directory first:
+
+```
+mkdir -p build
+```
+
+and then create the initial build scripts once using CMake:
+
+```
+(cd build && cmake <options> ..)
+```
+
+The above command will configure the build and check for the required 
+dependencies. If everything works well the actual build can be started with
+
+```
+(cd build && make)
+```
+
+The binaries for the ArangoDB server and all client tools will then be created
+inside the `build` directory. To start ArangoDB locally from the `build` directory,
+use
+
+```
+build/bin/arangod <options>
+```
+
 !SECTION Datafiles and datafile names
 
 ArangoDB 3.0 uses a new VelocyPack-based format for storing data in WAL logfiles
@@ -159,6 +202,12 @@ The AQL optimizer rule "merge-traversal-filter" that already existed in 3.0 was 
 "optimize-traversals". This should be of no relevance to client applications except if 
 they programatically look for applied optimizer rules in the explain out of AQL queries.
 
+The order of results created by the AQL functions `VALUES()` and `ATTRIBUTES()` was never 
+guaranteed and it only had the "correct" ordering by accident when iterating over objects 
+that were not loaded from the database. As some of the function internals have changed, the
+"correct" ordering will not appear anymore, and still no result order is guaranteed by
+these functions unless the `sort` parameter is specified (for the `ATTRIBUTES()` function).
+
 !SECTION Upgraded V8 version
 
 The V8 engine that is used inside ArangoDB to execute JavaScript code has been upgraded from
@@ -213,6 +262,34 @@ without code changes, the application's manifest file needs to be edited.
 To enable the legacy mode for a Foxx application, add `"engines": {"arangodb": "^2.8.0"}` 
 (or similar version ranges that exclude 3.0 and up) to the service manifest file
 (named "manifest.json", located in the application's base directory).
+
+!SUBSECTION Require
+
+Modules shipped with ArangoDB can now be required using the pattern `@arangodb/<module>`
+instead of `org/arangodb/<module>`, e.g.
+
+```js
+var cluster = require("@arangodb/cluster"); 
+```
+
+The old format can still be used and is compatible:
+
+```js
+var cluster = require("org/arangodb/cluster"); 
+```
+
+ArangoDB prior to version 3.0 allowed a transparent use of CoffeeScript
+source files with the `require()` function. Files with a file name extension
+of `coffee` were automatically sent through a CoffeeScript parser and 
+transpiled into JavaScript on-the-fly. This support is gone with ArangoDB
+3.0. To run any CoffeeScript source files, they must be converted to JavaScript
+by the client application.
+
+!SUBSECTION Response object
+
+The `@arangodb/request` response object now stores the parsed JSON response
+body in a property `json` instead of `body` when the request was made using the
+`json` option. The `body` instead contains the response body as a string.
 
 !SUBSECTION Edges API
 
@@ -651,6 +728,12 @@ in 3.0 because the changes in server behavior controlled by this option were cha
 even before ArangoDB 2.0. This should have left enough time for client applications
 to adapt to the new behavior, making the option superfluous in 3.0.
 
+!SECTION Web Admin Interface
+
+The JavaScript shell has been removed from ArangoDB's web interface. The functionality
+it provided is still fully available in the ArangoShell (arangosh) binary shipped
+with ArangoDB.
+
 !SECTION ArangoShell and client tools
 
 The ArangoShell (arangosh) and the other client tools bundled with ArangoDB can only
@@ -684,3 +767,7 @@ Checksums calculated in 3.0 will differ from checksums calculated with 2.8 or be
 The ArangoDB server in 3.0 does not read a file `ENDPOINTS` containing a list of 
 additional endpoints on startup. In 2.8 this file was automatically read if present
 in the database directory.
+
+The names of the sub-threads started by ArangoDB have changed in 3.0. This is relevant
+on Linux only, where threads can be named and thread names may be visible to system
+tools such as *top* or monitoring solutions.
