@@ -280,8 +280,8 @@ module.exports = class FoxxService {
 
   toJSON() {
     const result = {
-      name: this.name,
-      version: this.version,
+      name: this.manifest.name,
+      version: this.manifest.version,
       manifest: this.manifest,
       path: this.path,
       options: this.options,
