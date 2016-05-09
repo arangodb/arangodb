@@ -807,22 +807,15 @@ bool AgencyComm::ensureStructureInitialized() {
       sleep(1);
     }
     
-    AgencyCommResult result = getValues("InitDone", false);
+    AgencyCommResult result = getValues2("InitDone");
  
     if (result.successful()) {
-      result.parse("", false);
-
-      std::map<std::string, AgencyCommResultEntry>::iterator it =
-          result._values.begin();
-      if (it != result._values.end()) {
-        auto value = (*it).second._vpack;
-
-        if (value->slice().isBoolean() && value->slice().getBoolean()) {
-          // expecting a value of "true"
-          LOG_TOPIC(TRACE, Logger::STARTUP) << "Found an initialized agency";
-          return true;
-        }
-        // fallthrough to sleeping
+      VPackSlice value = result.slice()[0].get(std::vector<std::string>(
+            {prefixStripped(), "InitDone"}));
+      if (value.isBoolean() && value.getBoolean()) {
+        // expecting a value of "true"
+        LOG_TOPIC(TRACE, Logger::STARTUP) << "Found an initialized agency";
+        return true;
       }
     }
           
@@ -1203,9 +1196,17 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::exists(std::string const& key) {
-  AgencyCommResult result = getValues(key, false);
-
-  return result.successful();  
+  AgencyCommResult result = getValues2(key);
+  if (!result.successful()) {
+    return false;
+  }
+  auto parts = arangodb::basics::StringUtils::split(key, "/");
+  std::vector<std::string> allParts;
+  allParts.reserve(parts.size() + 1);
+  allParts.push_back(prefixStripped());
+  allParts.insert(allParts.end(), parts.begin(), parts.end());
+  VPackSlice slice = result.slice()[0].get(allParts);
+  return !slice.isNone();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

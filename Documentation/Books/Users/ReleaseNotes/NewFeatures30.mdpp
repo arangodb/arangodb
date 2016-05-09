@@ -238,6 +238,25 @@ more efficiently carry out operations with multiple documents than their single-
 equivalents, which required one HTTP request per operation. With the batch operations,
 the HTTP request/response overhead can be amortized across multiple operations.
 
+!SECTION Persistent indexes
+
+ArangoDB 3.0 provides an experimental persistent index feature. Persistent indexes store
+the index values on disk instead of in-memory only. This means the indexes do not need
+to be rebuilt in-memory when a collection is loaded or reloaded, which should improve
+collection loading times. 
+
+The persistent indexes in ArangoDB are based on the RocksDB engine.
+To create a persistent index for a collection, create an index of type "rocksdb" as
+follows:
+
+```js
+db.mycollection.ensureIndex({ type: "rocksdb", fields: [ "fieldname" ]});
+```
+
+The persistent indexes are sorted, so they allow equality lookups and range queries.
+Note that the feature is still highly experimental and has some known deficiencies. It 
+will be finalized until the release of the 3.0 stable version.
+
 !SECTION Upgraded V8 version
 
 The V8 engine that is used inside ArangoDB to execute JavaScript code has been upgraded from

@@ -246,62 +246,60 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
 
   AgencyComm comm;
   AgencyCommResult result;
-  // mop: hmm...why is it below target? :S
-  result = comm.getValues("Target/MapLocalToID/" + StringUtils::urlEncode(_localInfo), false);
+  std::string localInfoEncoded = StringUtils::urlEncode(_localInfo);
+  result = comm.getValues2("Target/MapLocalToID/" + localInfoEncoded);
 
   std::string id;
+  bool found = true;
   if (!result.successful()) {
+    found = false;
+  } else {
+    VPackSlice idSlice = result.slice()[0].get(std::vector<std::string>(
+          {comm.prefixStripped(), "Target", "MapLocalToID", localInfoEncoded}));
+    if (!idSlice.isString()) {
+      found = false;
+    } else {
+      id = idSlice.copyString();
+    }
+  }
+  if (!found) {
     LOG(DEBUG) << "Determining id from localinfo failed. Continuing with registering ourselves for the first time";
     id = createIdForRole(comm, role);
-  } else {
-    result.parse("", false);
-
-    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-      result._values.begin();
-    
-    if (it != result._values.end()) {
-      VPackSlice slice = (*it).second._vpack->slice();
-      id = slice.copyString();
-    }
   }
   
   const std::string agencyKey = roleToAgencyKey(role);
   const std::string planKey = "Plan/" + agencyKey + "/" + id;
   const std::string currentKey = "Current/" + agencyKey + "/" + id;
   
-  std::shared_ptr<VPackBuilder> builder;
-  result = comm.getValues(planKey, false);
+  auto builder = std::make_shared<VPackBuilder>();
+  result = comm.getValues2(planKey);
+  found = true;
   if (!result.successful()) {
-    VPackSlice plan;
+    found = false;
+  } else {
+    VPackSlice plan = result.slice()[0].get(std::vector<std::string>(
+          { comm.prefixStripped(), "Plan", agencyKey, id }));
+    if (!plan.isString()) {
+      found = false;
+    } else {
+      builder->add(plan);
+    }
+  }
+  if (!found) {
     // mop: hmm ... we are registered but not part of the Plan :O
     // create a plan for ourselves :)
-    builder = std::make_shared<VPackBuilder>();
     builder->add(VPackValue("none"));
     
-    plan = builder->slice();
+    VPackSlice plan = builder->slice();
 
     comm.setValue(planKey, plan, 0.0);
     if (!result.successful()) {
       LOG(ERR) << "Couldn't create plan " << result.errorMessage();
       return false;
     }
-  } else {
-    result.parse("", false);
-    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-      result._values.begin();
-    
-    if (it != result._values.end()) {
-      builder = (*it).second._vpack;
-    }
-  }
-
-  if (!builder) {
-    LOG(ERR) << "Builder not set. Answer is not in correct format!";
-    return false;
   }
   
-  result =
-      comm.setValue(currentKey, builder->slice(), 0.0);
+  result = comm.setValue(currentKey, builder->slice(), 0.0);
   
   if (!result.successful()) {
     LOG(ERR) << "Could not talk to agency! " << result.errorMessage();
