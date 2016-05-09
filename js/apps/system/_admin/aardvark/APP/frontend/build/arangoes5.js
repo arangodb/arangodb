@@ -537,40 +537,7 @@ exports.log = function(level,msg){exports.output(level,': ',msg,'\n');}; ///////
 /// @brief sprintf wrapper
 ////////////////////////////////////////////////////////////////////////////////
 try{if(typeof window !== 'undefined'){exports.sprintf = function(format){var n=arguments.length;if(n === 0){return '';}if(n <= 1){return String(format);}var i;var args=[];for(i = 1;i < arguments.length;++i) {args.push(arguments[i]);}i = 0;return format.replace(/%[dfs]/,function(){return String(args[i++]);});};}}catch(e) { // noop
-}})(); /*eslint no-extend-native:0 */ /*eslint-disable */(function(){'use strict'; /*eslint-enable */ ////////////////////////////////////////////////////////////////////////////////
-/// @brief monkey-patches to built-in prototypes
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Lucas Dohmen
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shallow copies properties
-////////////////////////////////////////////////////////////////////////////////
-Object.defineProperty(Object.prototype,'_shallowCopy',{get:function get(){var self=this;return this.propertyKeys.reduce(function(previous,key){previous[key] = self[key];return previous;},{});}}); ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the property keys
-////////////////////////////////////////////////////////////////////////////////
-Object.defineProperty(Object.prototype,'propertyKeys',{get:function get(){return Object.keys(this).filter(function(key){return key.charAt(0) !== '_' && key.charAt(0) !== '$';});}});})();module.define("@arangodb/aql/queries",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
+}})();module.define("@arangodb/aql/queries",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL query management
 ///
 /// @file
@@ -927,7 +894,7 @@ if(requestResult !== null && requestResult.error === true && requestResult.error
 arangosh.checkRequestResult(requestResult);var name=requestResult.name;if(name !== undefined){this._registerCollection(name,new this._collectionConstructor(this,requestResult));return this[name];}return null;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
-ArangoDatabase.prototype._create = function(name,properties,type){var body={"name":name,"type":ArangoCollection.TYPE_DOCUMENT};if(properties !== undefined){["waitForSync","journalSize","isSystem","isVolatile","doCompact","keyOptions","shardKeys","numberOfShards","distributeShardsLike","indexBuckets","id","replicationFactor","replicationQuorum"].forEach(function(p){if(properties.hasOwnProperty(p)){body[p] = properties[p];}});}if(type !== undefined){body.type = type;}var requestResult=this._connection.POST(this._collectionurl(),JSON.stringify(body));arangosh.checkRequestResult(requestResult);var nname=requestResult.name;if(nname !== undefined){this._registerCollection(nname,new this._collectionConstructor(this,requestResult));return this[nname];}return undefined;}; ////////////////////////////////////////////////////////////////////////////////
+ArangoDatabase.prototype._create = function(name,properties,type){var body={"name":name,"type":ArangoCollection.TYPE_DOCUMENT};if(properties !== undefined){["waitForSync","journalSize","isSystem","isVolatile","doCompact","keyOptions","shardKeys","numberOfShards","distributeShardsLike","indexBuckets","id","replicationFactor"].forEach(function(p){if(properties.hasOwnProperty(p)){body[p] = properties[p];}});}if(type !== undefined){body.type = type;}var requestResult=this._connection.POST(this._collectionurl(),JSON.stringify(body));arangosh.checkRequestResult(requestResult);var nname=requestResult.name;if(nname !== undefined){this._registerCollection(nname,new this._collectionConstructor(this,requestResult));return this[nname];}return undefined;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document collection
 ////////////////////////////////////////////////////////////////////////////////
 ArangoDatabase.prototype._createDocumentCollection = function(name,properties){return this._create(name,properties,ArangoCollection.TYPE_DOCUMENT);}; ////////////////////////////////////////////////////////////////////////////////

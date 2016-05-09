@@ -1,11 +1,11 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=10895&chunkSize=400
+shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=10893&chunkSize=400
 
 HTTP/1.1 200 OK
+x-arango-replication-lastincluded: 10902
 content-type: application/x-arango-dump; charset=utf-8
-x-arango-replication-active: true
 x-arango-replication-checkmore: true
+x-arango-replication-lasttick: 10921
 x-arango-replication-frompresent: true
-x-arango-replication-lastincluded: 10903
-x-arango-replication-lasttick: 10917
+x-arango-replication-active: true
 
-"{\"tick\":\"10898\",\"type\":2100,\"database\":\"1\",\"cid\":\"10894\",\"cname\":\"IndexedCollection1\",\"data\":{\"fields\":[\"name\"],\"id\":\"10897\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"hash\",\"unique\":false}}\n{\"tick\":\"10901\",\"type\":2100,\"database\":\"1\",\"cid\":\"10894\",\"cname\":\"IndexedCollection1\",\"data\":{\"fields\":[\"a\",\"b\"],\"id\":\"10900\",\"sparse\":false,\"type\":\"skiplist\",\"unique\":true}}\n{\"tick\":\"10903\",\"type\":2000,\"database\":\"1\",\"cid\":\"10902\",\"cname\":\"products\",\"data\":{\"cid\":\"10902\",\"deleted\":false,\"doCompact\":true,\"indexBuckets\":8,\"isVolatile\":false,\"maximalSize\":33554432,\"name\":\"products\",\"type\":2,\"version\":5,\"waitForSync\":false}}\n"
+"{\"tick\":\"10897\",\"type\":2001,\"database\":\"1\",\"cid\":\"10890\",\"data\":{\"id\":\"10890\",\"name\":\"testCollection\"}}\n{\"tick\":\"10899\",\"type\":2000,\"database\":\"1\",\"cid\":\"10898\",\"cname\":\"IndexedCollection1\",\"data\":{\"cid\":\"10898\",\"deleted\":false,\"doCompact\":true,\"indexBuckets\":8,\"isVolatile\":false,\"maximalSize\":33554432,\"name\":\"IndexedCollection1\",\"type\":2,\"version\":5,\"waitForSync\":false}}\n{\"tick\":\"10902\",\"type\":2100,\"database\":\"1\",\"cid\":\"10898\",\"cname\":\"IndexedCollection1\",\"data\":{\"fields\":[\"name\"],\"id\":\"10901\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"hash\",\"unique\":false}}\n"

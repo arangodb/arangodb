@@ -80,7 +80,7 @@
 ///
 /// Using document handle:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocument}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocument1}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: true });
@@ -98,7 +98,7 @@
 ///
 /// Unknown document handle:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentUnknownHandle}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentUnknownHandle1}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: true });
@@ -117,7 +117,7 @@
 ///
 /// Revision conflict:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentIfMatchOther}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentIfMatchOther1}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);

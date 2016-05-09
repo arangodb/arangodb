@@ -10630,7 +10630,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       this.buildSubNavBar(menus);
     },
 
-    //nav for collection view
+    //nav for cluster/nodes view
     buildNodesSubNav: function(type) {
 
       var menus = {
@@ -13738,40 +13738,7 @@ exports.log = function(level,msg){exports.output(level,': ',msg,'\n');}; ///////
 /// @brief sprintf wrapper
 ////////////////////////////////////////////////////////////////////////////////
 try{if(typeof window !== 'undefined'){exports.sprintf = function(format){var n=arguments.length;if(n === 0){return '';}if(n <= 1){return String(format);}var i;var args=[];for(i = 1;i < arguments.length;++i) {args.push(arguments[i]);}i = 0;return format.replace(/%[dfs]/,function(){return String(args[i++]);});};}}catch(e) { // noop
-}})(); /*eslint no-extend-native:0 */ /*eslint-disable */(function(){'use strict'; /*eslint-enable */ ////////////////////////////////////////////////////////////////////////////////
-/// @brief monkey-patches to built-in prototypes
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Lucas Dohmen
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shallow copies properties
-////////////////////////////////////////////////////////////////////////////////
-Object.defineProperty(Object.prototype,'_shallowCopy',{get:function get(){var self=this;return this.propertyKeys.reduce(function(previous,key){previous[key] = self[key];return previous;},{});}}); ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the property keys
-////////////////////////////////////////////////////////////////////////////////
-Object.defineProperty(Object.prototype,'propertyKeys',{get:function get(){return Object.keys(this).filter(function(key){return key.charAt(0) !== '_' && key.charAt(0) !== '$';});}});})();module.define("@arangodb/aql/queries",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
+}})();module.define("@arangodb/aql/queries",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL query management
 ///
 /// @file
@@ -14128,7 +14095,7 @@ if(requestResult !== null && requestResult.error === true && requestResult.error
 arangosh.checkRequestResult(requestResult);var name=requestResult.name;if(name !== undefined){this._registerCollection(name,new this._collectionConstructor(this,requestResult));return this[name];}return null;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
-ArangoDatabase.prototype._create = function(name,properties,type){var body={"name":name,"type":ArangoCollection.TYPE_DOCUMENT};if(properties !== undefined){["waitForSync","journalSize","isSystem","isVolatile","doCompact","keyOptions","shardKeys","numberOfShards","distributeShardsLike","indexBuckets","id","replicationFactor","replicationQuorum"].forEach(function(p){if(properties.hasOwnProperty(p)){body[p] = properties[p];}});}if(type !== undefined){body.type = type;}var requestResult=this._connection.POST(this._collectionurl(),JSON.stringify(body));arangosh.checkRequestResult(requestResult);var nname=requestResult.name;if(nname !== undefined){this._registerCollection(nname,new this._collectionConstructor(this,requestResult));return this[nname];}return undefined;}; ////////////////////////////////////////////////////////////////////////////////
+ArangoDatabase.prototype._create = function(name,properties,type){var body={"name":name,"type":ArangoCollection.TYPE_DOCUMENT};if(properties !== undefined){["waitForSync","journalSize","isSystem","isVolatile","doCompact","keyOptions","shardKeys","numberOfShards","distributeShardsLike","indexBuckets","id","replicationFactor"].forEach(function(p){if(properties.hasOwnProperty(p)){body[p] = properties[p];}});}if(type !== undefined){body.type = type;}var requestResult=this._connection.POST(this._collectionurl(),JSON.stringify(body));arangosh.checkRequestResult(requestResult);var nname=requestResult.name;if(nname !== undefined){this._registerCollection(nname,new this._collectionConstructor(this,requestResult));return this[nname];}return undefined;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document collection
 ////////////////////////////////////////////////////////////////////////////////
 ArangoDatabase.prototype._createDocumentCollection = function(name,properties){return this._create(name,properties,ArangoCollection.TYPE_DOCUMENT);}; ////////////////////////////////////////////////////////////////////////////////
@@ -19739,22 +19706,52 @@ window.ArangoUsers = Backbone.Collection.extend({
   window.ApplicationDetailView = Backbone.View.extend({
     el: '#content',
 
+    divs: ['#readme', '#swagger', '#app-info', '#sideinformation', '#information', '#settings'],
+    navs: ['#service-info', '#service-api', '#service-readme', '#service-settings'],
+
     template: templateEngine.createTemplate('applicationDetailView.ejs'),
 
     events: {
       'click .open': 'openApp',
       'click .delete': 'deleteApp',
-      'click #app-config': 'showConfigDialog',
       'click #app-deps': 'showDepsDialog',
       'click #app-switch-mode': 'toggleDevelopment',
       'click #app-scripts [data-script]': 'runScript',
       'click #app-tests': 'runTests',
       'click #app-replace': 'replaceApp',
       'click #download-app': 'downloadApp',
-      'click #app-show-swagger': 'showSwagger',
-      'click #app-show-readme': 'showReadme',
+      'click .subMenuEntries li': 'changeSubview',
       'mouseenter #app-scripts': 'showDropdown',
       'mouseleave #app-scripts': 'hideDropdown'
+    },
+
+    changeSubview: function(e) {
+      _.each(this.navs, function(nav) {
+        $(nav).removeClass('active');
+      });
+
+      $(e.currentTarget).addClass('active');
+
+      _.each(this.divs, function(div) {
+        $('.headerButtonBar').hide();
+        $(div).hide();
+      });
+
+      if (e.currentTarget.id === 'service-readme') {
+        $('#readme').show();
+      }
+      else if (e.currentTarget.id === 'service-api') {
+        $('#swagger').show();
+      }
+      else if (e.currentTarget.id === 'service-info') {
+        $('#information').show();
+        $('#sideinformation').show();
+      }
+      else if (e.currentTarget.id === 'service-settings') {
+        this.showConfigDialog();
+        $('.headerButtonBar').show();
+        $('#settings').show();
+      }
     },
 
     downloadApp: function() {
@@ -19802,11 +19799,11 @@ window.ArangoUsers = Backbone.Collection.extend({
     toggleDevelopment: function() {
       this.model.toggleDevelopment(!this.model.isDevelopment(), function() {
         if (this.model.isDevelopment()) {
-          $('#app-switch-mode').val('Set Production');
+          $('.app-switch-mode').text('Set Production');
           $('#app-development-indicator').css('display', 'inline');
           $('#app-development-path').css('display', 'inline');
         } else {
-          $('#app-switch-mode').val('Set Development');
+          $('.app-switch-mode').text('Set Development');
           $('#app-development-indicator').css('display', 'none');
           $('#app-development-path').css('display', 'none');
         }
@@ -19953,22 +19950,46 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       arangoHelper.currentDatabase(callback);
 
+      if (_.isEmpty(this.model.get('config'))) {
+        $('#service-settings').attr('disabled', true);
+      }
       return $(this.el);
     },
 
     breadcrumb: function() {
       console.log(this.model.toJSON());
-      var string = 'Service: ' + this.model.get('name') + 
-      '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
-
-      if (this.model.get("mount")) {
-        string += 'Mount: ' + this.model.get("mount");
+      var string = 'Service: ' + this.model.get('name') + '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
+      
+      var contributors = '<p class="mount"><span>Contributors:</span>';
+      if (this.model.get('contributors') && this.model.get('contributors').length > 0) {
+        _.each(this.model.get('contributors'), function (contributor) {
+          contributors += '<a href="mailto:' + contributor.email + '">' + contributor.name + '</a>';
+        });
+      } 
+      else {
+        contributors += 'No contributors';
       }
+      contributors += '</p>';
+      $('.information').append(
+        contributors
+      );
 
+      //information box info tab
+      if (this.model.get("author")) {
+        $('.information').append(
+          '<p class="mount"><span>Author:</span>' + this.model.get("author") + '</p>'
+        );
+      }
+      if (this.model.get("mount")) {
+        $('.information').append(
+          '<p class="mount"><span>Mount:</span>' + this.model.get("mount") + '</p>'
+        );
+      }
       if (this.model.get("development")) {
         if (this.model.get("path")) {
-          string += '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
-          string += 'Path: <span class="small">' + this.model.get("path") + '</span>';
+          $('.information').append(
+            '<p class="path"><span>Path:</span>' + this.model.get("path") + '</p>'
+          );
         }
       }
       $('#subNavigationBar .breadcrumb').html(string);
@@ -20055,13 +20076,14 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
       });
       this.model.setConfiguration(cfg, function() {
-        window.modalView.hide();
         this.updateConfig();
+        arangoHelper.arangoNotification(this.model.get("name"), "Settings applied.");
       }.bind(this));
     },
 
     showConfigDialog: function() {
       if (_.isEmpty(this.model.get('config'))) {
+        $('#settings .buttons').html($('#hidden_buttons').html()); 
         return;
       }
       var tableContent = _.map(this.model.get('config'), function(obj, name) {
@@ -20121,13 +20143,15 @@ window.ArangoUsers = Backbone.Collection.extend({
           checks
         );
       });
+
       var buttons = [
         window.modalView.createSuccessButton('Apply', this.applyConfig.bind(this))
       ];
-      window.modalView.show(
-        'modalTable.ejs', 'Configuration', buttons, tableContent
-      );
 
+      window.modalView.show(
+        'modalTable.ejs', 'Configuration', buttons, tableContent, null, null, null, null, null, 'settings'
+      );
+      $('.modal-footer').prepend($('#hidden_buttons').html()); 
     },
 
     applyDeps: function() {
@@ -27204,38 +27228,40 @@ window.ArangoUsers = Backbone.Collection.extend({
         return;
       }
 
-      console.log(event);
       var callback = function(error) {
         if (error) {
           if (event.type === 'focusout') {
             //$('#loginForm input').addClass("form-error");
             $('.wrong-credentials').show();
+            $('#loginDatabase').html('');
+            $('#loginDatabase').append(
+              '<option>_system</option>'
+            ); 
+            $('#loginDatabase').prop('disabled', true);
+            $('#submitLogin').prop('disabled', true);
           }
         }
         else {
           $('.wrong-credentials').hide();
 
-          if (!self.loggedIn) {
-            self.loggedIn = true;
-            //get list of allowed dbs
-            $.ajax("/_api/database/user").success(function(data) {
-              //enable db select and login button
-              $('#loginDatabase').prop('disabled', false);
-              $('#submitLogin').prop('disabled', false);
-              $('#loginDatabase').html('');
-              //fill select with allowed dbs
-              _.each(data.result, function(db) {
-                $('#loginDatabase').append(
-                  '<option>' + db + '</option>'
-                ); 
-              });
+          self.loggedIn = true;
+          //get list of allowed dbs
+          $.ajax("/_api/database/user").success(function(data) {
+            //enable db select and login button
+            $('#loginDatabase').prop('disabled', false);
+            $('#submitLogin').prop('disabled', false);
+            $('#loginDatabase').html('');
+            //fill select with allowed dbs
+            _.each(data.result, function(db) {
+              $('#loginDatabase').append(
+                '<option>' + db + '</option>'
+              ); 
             });
-          }
+          });
         }
       }.bind(this);
 
       this.collection.login(username, password, callback);
-
     },
 
     goTo: function (e) {
@@ -28096,21 +28122,6 @@ window.ArangoUsers = Backbone.Collection.extend({
           name: '',
           view: undefined,
           active: false
-        }
-      ],
-      service: [
-        {
-          name: 'Info',
-          view: undefined,
-          active: true
-        },
-        {
-          name: 'API',
-          view: undefined,
-        },
-        {
-          name: 'Settings',
-          view: undefined,
         }
       ],
       queries: [
@@ -34945,6 +34956,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       $('#subNavigationBar .breadcrumb').html('');
       $('#subNavigationBar .bottom').html('');
       $('#loadingScreen').hide();
+      $('#content').show();
       if (callback) {
         callback.apply(this, args);
       }

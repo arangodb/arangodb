@@ -1,2 +1,2 @@
-shell> curl --dump - http://localhost:8529/_api/document/?collection=products&type=key
+shell> curl --dump - http://localhost:8529/_api/document/products&type=key
 

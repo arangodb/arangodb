@@ -31,14 +31,14 @@ arangosh&gt; db.five.save({ name : <span class="hljs-string">"five"</span> });
 arangosh&gt; db.five.all().limit(<span class="hljs-number">2</span>).toArray();
 [ 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/139"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"139"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/139"</span>, 
     <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"139"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"four"</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/142"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"142"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/142"</span>, 
     <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"142"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"five"</span> 
   } 
