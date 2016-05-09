@@ -1,78 +1,208 @@
-!CHAPTER Control flow functions
+!CHAPTER Miscellaneous functions
 
-AQL offers the following functions to let the user control the flow of operations:
+!SECTION Control flow functions
 
-- *NOT_NULL(alternative, ...)*: Returns the first alternative that is not *null*, 
-  and *null* if all alternatives are *null* themselves
+!SUBSECTION NOT_NULL()
 
-- *FIRST_LIST(alternative, ...)*: Returns the first alternative that is an array, and
-  *null* if none of the alternatives is an array
+`NOT_NULL(alternative, ...) → value`
 
-- *FIRST_DOCUMENT(alternative, ...)*: Returns the first alternative that is a document,
-  and *null* if none of the alternatives is a document
+Return the first alternative that is not *null*, and *null* if all alternatives
+are *null* themselves.
 
-!SECTION Miscellaneous functions
+- **alternative** (any, *repeatable*): input of arbitrary type
+- returns **value** (any):
 
-Finally, AQL supports the following functions that do not belong to any of the other
-function categories:
+!SUBSECTION FIRST_LIST()
 
-- *HASH(value)*: Calculates a hash value for *value*. *value* is not required to be a 
-  string, but can have any data type. The calculated hash value will take the data type
-  of *value* into account, so for example the number *1* and the string *"1"* will have 
-  different hash values. For arrays the hash values will be creared if the arrays contain
-  exactly the same values (including value types) in the same order. For objects the same 
-  hash values will be created if the objects have exactly the same attribute names and 
-  values (including value types). The order in which attributes appear inside objects
-  is not important for hashing.
-  The hash value returned by this function is a number. The hash algorithm is not guaranteed
-  to remain the same in future versions of ArangoDB. The hash values should therefore be
-  used only for temporary calculations, e.g. to compare if two documents are the same, or
-  for grouping values in queries.
+Return the first alternative that is an array, and *null* if none of the
+alternatives is an array.
 
-- *COLLECTIONS()*: Returns an array of collections. Each collection is returned as a document
-  with attributes *name* and *_id*
+- **alternative** (any, *repeatable*): input of arbitrary type
+- returns **list** (list|null): array / list or null
 
-- *CURRENT_USER()*: Returns the name of the current user. The current user is the user 
-  account name that was specified in the *Authorization* HTTP header of the request. It will
-  only be populated if authentication on the server is turned on, and if the query was executed
-  inside a request context. Otherwise, the return value of this function will be *null*.
+!SUBSECTION FIRST_DOCUMENT()
 
-- *DOCUMENT(collection, id)*: Returns the document which is uniquely identified by
-  the *id*. ArangoDB will try to find the document using the *_id* value of the document
-  in the specified collection. If there is a mismatch between the *collection* passed and
-  the collection specified in *id*, then *null* will be returned. Additionally, if the
-  *collection* matches the collection value specified in *id* but the document cannot be
-  found, *null* will be returned. This function also allows *id* to be an array of ids.
-  In this case, the function will return an array of all documents that could be found. 
+`FIRST_DOCUMENT(value) → doc`
 
-*Examples*
-  
-      DOCUMENT(users, "users/john")
-      DOCUMENT(users, "john")
+Return the first alternative that is a document, and *null* if none of the
+alternatives is a document.
 
-      DOCUMENT(users, [ "users/john", "users/amy" ])
-      DOCUMENT(users, [ "john", "amy" ])
+- **alternative** (any, *repeatable*): input of arbitrary type
+- returns **doc** (object|null): document / object or null
 
-  Note: The *DOCUMENT* function is polymorphic since ArangoDB 1.4. It can now be used with
-  a single parameter *id* as follows:
+!SUBSECTION Ternary operator
 
-- *DOCUMENT(id)*: In this case, *id* must either be a document handle string
-  (consisting of collection name and document key) or an array of document handle strings, e.g.
+For conditional evaluation, check out the
+[ternary operator](../Aql/Operators.md#ternary-operator).
 
-      DOCUMENT("users/john")
-      DOCUMENT([ "users/john", "users/amy" ])
+!SECTION Database functions
 
-- *CALL(function, arg1, ..., argN)*: Dynamically calls the function with name *function*
-  with the arguments specified. Both built-in and user-defined functions can be called. 
-  Arguments are passed as separate parameters to the called function.
+!SUBSECTION COLLECTION_COUNT()
 
-      /* "this" */
-      CALL('SUBSTRING', 'this is a test', 0, 4) 
+`COLLECTION_COUNT(coll) → count`
 
-- *APPLY(function, arguments)*: Dynamically calls the function with name *function* 
-  with the arguments specified. Both built-in and user-defined functions can be called. 
-  Arguments are passed as separate parameters to the called function.
+Determine the amount of documents in a collection. [LENGTH()](#length)
+is preferred.
 
-      /* "this is" */
-      APPLY('SUBSTRING', [ 'this is a test', 0, 7 ]) 
+!SUBSECTION COLLECTIONS()
 
+`COLLECTIONS() → docArray`
+
+Return an array of collections.
+
+- returns **docArray** (array): each collection as a document with attributes
+  *name* and *_id* in an array
+
+!SUBSECTION CURRENT_USER()
+
+`CURRENT_USER() → userName`
+
+Return the name of the current user.
+
+The current user is the user account name that was specified in the
+*Authorization* HTTP header of the request. It will only be populated if
+authentication on the server is turned on, and if the query was executed inside
+a request context. Otherwise, the return value of this function will be *null*.
+
+- returns **userName** (string|null): the current user name, or *null* if
+  authentication is disabled
+
+!SUBSECTION DOCUMENT()
+
+`DOCUMENT(collection, id) → doc`
+
+Return the document which is uniquely identified by its *id*. ArangoDB will
+try to find the document using the *_id* value of the document in the specified
+collection. 
+
+If there is a mismatch between the *collection* passed and the
+collection specified in *id*, then *null* will be returned. Additionally,
+if the *collection* matches the collection value specified in *id* but the
+document cannot be found, *null* will be returned.
+
+This function also allows *id* to be an array of ids. In this case, the
+function will return an array of all documents that could be found.
+
+It is also possible to specify a document key instead of an id, or an array
+of keys to return all documents that can be found.
+
+- **collection** (string): name of a collection
+- **id** (string|array): a document handle string (consisting of collection
+  name and document key), a document key, or an array of both document handle
+  strings and document keys
+- returns **doc** (document|array|null): the content of the found document,
+  an array of all found documents or *null* if nothing was found
+
+```js
+DOCUMENT( users, "users/john" )
+DOCUMENT( users, "john" )
+
+DOCUMENT( users, [ "users/john", "users/amy" ] )
+DOCUMENT( users, [ "john", "amy" ] )
+```
+
+`DOCUMENT(id) → doc`
+
+The function can also be used with a single parameter *id* as follows:
+
+- **id** (string|array): either a document handle string (consisting of
+  collection name and document key) or an array of document handle strings
+- returns **doc** (document|null): the content of the found document
+  or *null* if nothing was found
+
+```js
+DOCUMENT("users/john")
+DOCUMENT( [ "users/john", "users/amy" ] )
+```
+
+!SUBSECTION LENGTH()
+
+`LENGTH(coll) → documentCount`
+
+Determine the [number of elements](Array.md#length) in an array,
+the [number of attribute keys](Document.md#length) of an object / document,
+the amount of documents in a collection,
+or the [character length](String.md#length) of a string.
+
+It calls [COLLECTION_COUNT()](#collectioncount) internally.
+
+- **coll** (collection): a collection (not string)
+- returns **documentCount** (number): the total amount of documents in *coll*
+
+!SECTION Hash functions
+
+`HASH(value) → hashNumber`
+
+Calculate a hash value for *value*.
+
+- **value** (any): an element of arbitrary type
+- returns **hashNumber** (number): a hash value of *value*
+
+*value* is not required to be a string, but can have any data type. The calculated
+hash value will take the data type of *value* into account, so for example the
+number *1* and the string *"1"* will have different hash values. For arrays the
+hash values will be creared if the arrays contain exactly the same values
+(including value types) in the same order. For objects the same hash values will
+be created if the objects have exactly the same attribute names and values
+(including value types). The order in which attributes appear inside objects
+is not important for hashing.
+
+The hash value returned by this function is a number. The hash algorithm is not
+guaranteed to remain the same in future versions of ArangoDB. The hash values
+should therefore be used only for temporary calculations, e.g. to compare if two
+documents are the same, or for grouping values in queries.
+
+!SECTION Function calling
+
+!SUBSECTION APPLY()
+
+`APPLY(functionName, arguments) → retVal`
+
+Dynamically call the function *funcName* with the arguments specified.
+Arguments are given as array and are passed as separate parameters to
+the called function.
+
+Both built-in and user-defined functions can be called. 
+
+- **funcName** (string): a function name
+- **arguments** (array, *optional*): an array with elements of arbitrary type
+- returns **retVal** (any): the return value of the called function
+
+```js
+APPLY( "SUBSTRING", [ "this is a test", 0, 7 ] )
+// "this is"
+```
+
+!SUBSECTION CALL()
+
+`CALL(funcName, arg1, arg2, ... argN) → retVal`
+
+Dynamically call the function *funcName* with the arguments specified.
+Arguments are given as multiple parameters and passed as separate
+parameters to the called function.
+
+Both built-in and user-defined functions can be called.
+
+- **funcName** (string): a function name
+- **args** (any, *repeatable*): an arbitrary number of elements as
+  multiple arguments, can be omitted
+- returns **retVal** (any): the return value of the called function
+
+```js
+CALL( "SUBSTRING", "this is a test", 0, 4 )
+// "this"
+```
+
+!SECTION Internal functions
+
+!SUBSECTION FAIL()
+
+`FAIL(reason)`
+
+!SUBSECTION NOOP()
+
+`NOOP(value) → retVal`
+
+!SUBSECTION V8()
+
+`V8(value) → retVal`
