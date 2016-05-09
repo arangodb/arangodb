@@ -186,7 +186,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateSaved(arangodb::OperationResult const& result,
                      std::string const& collectionName, TRI_col_type_e type,
-                     arangodb::velocypack::Options const*);
+                     arangodb::velocypack::Options const*,
+                     bool isMultiple);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates deleted message

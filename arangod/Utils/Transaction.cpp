@@ -1502,7 +1502,9 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
   if (res == TRI_ERROR_NO_ERROR) {
     if (responseCode == GeneralResponse::ResponseCode::ACCEPTED ||
         responseCode == GeneralResponse::ResponseCode::CREATED) {
-      return OperationResult(resultBody->steal(), nullptr, "", TRI_ERROR_NO_ERROR, responseCode == GeneralResponse::ResponseCode::CREATED);
+      return OperationResult(
+          resultBody->steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+          responseCode == GeneralResponse::ResponseCode::CREATED, errorCounter);
     } else if (responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
       return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
     } else if (responseCode == GeneralResponse::ResponseCode::BAD) {
