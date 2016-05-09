@@ -1439,6 +1439,9 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
     operation._ttl = static_cast<uint32_t>(ttl);
   }
   
+  VPackBuilder preBuilder;
+  precondition.toVelocyPack(preBuilder);
+
   AgencyWriteTransaction transaction(operation, precondition);
   return sendTransactionWithFailover(transaction, timeout);
 }
@@ -1870,7 +1873,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
     }
     
     result._body.clear();
-    result._statusCode = 200;
+    //result._statusCode = 200;
     
   } catch(std::exception &e) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
@@ -1881,6 +1884,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
         << "Error transforming result. Out of memory";
     result.clear();
   }
+  
   return result;
 }
 
@@ -1934,6 +1938,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
       break;
     }
 
+//    LOG(WARN) << result._statusCode;
+    
     if (result._statusCode ==
         (int)arangodb::GeneralResponse::ResponseCode::TEMPORARY_REDIRECT) {
       // sometimes the agency will return a 307 (temporary redirect)
