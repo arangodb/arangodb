@@ -50,6 +50,16 @@
     width: 40px !important;
   }
 
+  .primary {
+    .version {
+      display: none;
+    }
+  }
+
+  .shortcut-icons {
+    display: none;
+  }
+
   .arango-collection-ul {
     .tab {
       font-size: 12pt;
@@ -73,6 +83,8 @@
       }
     }
   }
+
+
 
   //actions sub menu
   .headerButtonBar {

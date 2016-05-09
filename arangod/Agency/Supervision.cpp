@@ -93,14 +93,17 @@ std::vector<check_t> Supervision::check (std::string const& path) {
       } else {
         query_t report = std::make_shared<Builder>();
         report->openArray(); report->openArray();
-        report->add(std::string("/arango/Supervision/Health/" + serverID),
-                    VPackValue(VPackValueType::Object));
-        report->add("Status", VPackValue("GOOD"));
-        report->add("LastHearbeat", VPackValue("GOOD"));
-        report->close();
+        report->add(VPackValue(std::string("/arango/Supervision/Health/" + serverID)));
+        try {
+          VPackObjectBuilder c(&(*report));
+          report->add("Status", VPackValue("GOOD"));
+          report->add("LastHearbeat", VPackValue("GOOD"));
+        } catch (std::exception const& e) {
+          LOG(ERR) << e.what();
+        }
         report->close(); report->close();
-        LOG(DEBUG) << "GOOD:" << serverID<< it->second->serverTimestamp << ":" << it->second->serverStatus;
-        LOG(INFO) << report->toJson();
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "GOOD:" << serverID <<
+          it->second->serverTimestamp << ":" << it->second->serverStatus;
         it->second->update(lastHeartbeatStatus,lastHeartbeatTime);
       }
     } else {                          // New server
@@ -134,7 +137,6 @@ void Supervision::run() {
   TRI_ASSERT(_agent!=nullptr);
   bool timedout = false;
 
-  /*
   while (!this->isStopping()) {
     
     if (_agent->leading()) {
@@ -145,7 +147,7 @@ void Supervision::run() {
     
     doChecks(timedout);
     
-    }*/
+  }
   
 }
 
