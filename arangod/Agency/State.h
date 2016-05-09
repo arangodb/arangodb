@@ -145,6 +145,7 @@ private:
   bool _collectionsLoaded;
 
   size_t _compaction_step;
+  size_t _cur;
 
   OperationOptions _options;
 

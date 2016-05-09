@@ -55,7 +55,8 @@ State::State(std::string const& endpoint)
     _endpoint(endpoint),
     _collectionsChecked(false),
     _collectionsLoaded(false),
-    _compaction_step(1000) {
+    _compaction_step(1000),
+    _cur(0) {
   std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
   VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
   buf->append(value.startAs<char const>(), value.byteSize());
@@ -159,27 +160,47 @@ std::vector<log_t> State::get(arangodb::consensus::index_t start,
                               arangodb::consensus::index_t end) const {
   std::vector<log_t> entries;
   MUTEX_LOCKER(mutexLocker, _logLock);
-  if (end == (std::numeric_limits<uint64_t>::max)()) end = _log.size() - 1;
-  for (size_t i = start; i <= end; ++i) {  
+
+  if (end == (std::numeric_limits<uint64_t>::max)()) {
+    end = _log.size() - 1;
+  }
+
+  if (start < _log[0].index) {
+    start = _log[0].index;
+  }
+
+  for (size_t i = start-_cur; i <= end; ++i) {  
     entries.push_back(_log[i]);
   }
+
   return entries;
+
 }
 
 std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
                                       arangodb::consensus::index_t end) const {
   std::vector<VPackSlice> slices;
   MUTEX_LOCKER(mutexLocker, _logLock);
-  if (end == (std::numeric_limits<uint64_t>::max)()) end = _log.size() - 1;
-  for (size_t i = start; i <= end; ++i) {  // TODO:: Check bounds
+
+  if (end == (std::numeric_limits<uint64_t>::max)()) {
+    end = _log.size() - 1;
+  }
+
+  if (start < _log[0].index) {
+    start = _log[0].index;
+  }
+  
+  for (size_t i = start-_cur; i <= end; ++i) {  // TODO:: Check bounds
     slices.push_back(VPackSlice(_log[i].entry->data()));
   }
+  
   return slices;
+  
 }
 
 log_t const& State::operator[](arangodb::consensus::index_t index) const {
   MUTEX_LOCKER(mutexLocker, _logLock);
-  return _log[index];
+  return _log[index-_cur];
 }
 
 log_t const& State::lastLog() const {
@@ -327,7 +348,10 @@ bool State::compact (arangodb::consensus::index_t cind) {
     auto result = trx.insert("compact", store.slice(), _options);
     res = trx.finish(result.code);
 
-    return (res == TRI_ERROR_NO_ERROR);
+    /*if (res == TRI_ERROR_NO_ERROR) {
+      _log.erase(_log.begin(), _log.begin()+_compaction_step-1);
+      _cur = _log.begin()->index;
+      }*/
   }
 
   LOG_TOPIC (ERR, Logger::AGENCY) << "Compaction failed!";
