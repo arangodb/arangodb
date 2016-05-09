@@ -108,18 +108,17 @@ void HeartbeatThread::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runDBServer() {
-  LOG(TRACE) << "starting heartbeat thread (DBServer version)";
+  LOG_TOPIC(TRACE, Logger::HEARTBEAT) 
+      << "starting heartbeat thread (DBServer version)";
 
   // convert timeout to seconds
   double const interval = (double)_interval / 1000.0 / 1000.0;
 
-  // value of Sync/Commands/my-id at startup
-  uint64_t lastCommandIndex = getLastCommandIndex();
-
   std::function<bool(VPackSlice const& result)> updatePlan = [&](
       VPackSlice const& result) {
     if (!result.isNumber()) {
-      LOG(ERR) << "Plan Version is not a number! " << result.toJson();
+      LOG_TOPIC(ERR, Logger::HEARTBEAT) 
+          << "Plan Version is not a number! " << result.toJson();
       return false;
     }
     uint64_t version = result.getNumber<uint64_t>();
@@ -129,7 +128,8 @@ void HeartbeatThread::runDBServer() {
       MUTEX_LOCKER(mutexLocker, _statusLock);
       if (version > _desiredVersions.plan) {
         _desiredVersions.plan = version;
-        LOG(DEBUG) << "Desired Current Version is now " << _desiredVersions.plan;
+        LOG_TOPIC(DEBUG, Logger::HEARTBEAT) 
+            << "Desired Current Version is now " << _desiredVersions.plan;
         doSync = true;
       }
     }
@@ -148,7 +148,8 @@ void HeartbeatThread::runDBServer() {
   while (!registered) {
     registered = _agencyCallbackRegistry->registerCallback(planAgencyCallback);
     if (!registered) {
-      LOG(ERR) << "Couldn't register plan change in agency!";
+      LOG_TOPIC(ERR, Logger::HEARTBEAT) 
+          << "Couldn't register plan change in agency!";
       sleep(1);
     }
   }
@@ -158,7 +159,7 @@ void HeartbeatThread::runDBServer() {
   int currentCount = currentCountStart;
 
   while (!isStopping()) {
-    LOG(DEBUG) << "sending heartbeat to agency";
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
     double const start = TRI_microtime();
 
@@ -170,34 +171,37 @@ void HeartbeatThread::runDBServer() {
       break;
     }
 
-    {
-      // send an initial GET request to Sync/Commands/my-id
-    
-      AgencyCommResult result =
-        _agency.getValues("Sync/Commands/" + _myId, false);
-      
-      if (result.successful()) {
-        handleStateChange(result, lastCommandIndex);
-      }
-    }
-    
-    if (isStopping()) {
-      break;
-    }
-
     if (--currentCount == 0) {
       currentCount = currentCountStart;
-      LOG(TRACE) << "Refetching Current/Version...";
+
+      // send an initial GET request to Sync/Commands/my-id
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) 
+          << "Looking at Sync/Commands/" + _myId;
+
+      AgencyCommResult result =
+        _agency.getValues2("Sync/Commands/" + _myId);
+      
+      if (result.successful()) {
+        handleStateChange(result);
+      }
+    
+      if (isStopping()) {
+        break;
+      }
+
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Refetching Current/Version...";
       AgencyCommResult res = _agency.getValues2("Current/Version");
       if (!res.successful()) {
-        LOG(ERR) << "Could not read Current/Version from agency.";
+        LOG_TOPIC(ERR, Logger::HEARTBEAT) 
+            << "Could not read Current/Version from agency.";
       } else {
         VPackSlice s 
             = res.slice()[0].get(std::vector<std::string>(
                   {_agency.prefixStripped(), std::string("Current"), 
                    std::string("Version")}));
         if (!s.isInteger()) {
-          LOG(ERR) << "Current/Version in agency is not an integer.";
+          LOG_TOPIC(ERR, Logger::HEARTBEAT) 
+              << "Current/Version in agency is not an integer.";
         } else {
           uint64_t currentVersion = 0;
           try {
@@ -205,13 +209,15 @@ void HeartbeatThread::runDBServer() {
           } catch (...) {
           }
           if (currentVersion == 0) {
-            LOG(ERR) << "Current/Version in agency is 0.";
+            LOG_TOPIC(ERR, Logger::HEARTBEAT) 
+                << "Current/Version in agency is 0.";
           } else {
             {
               MUTEX_LOCKER(mutexLocker, _statusLock);
               if (currentVersion > _desiredVersions.current) {
                 _desiredVersions.current = currentVersion;
-                LOG(DEBUG) << "Found greater Current/Version in agency.";
+                LOG_TOPIC(DEBUG, Logger::HEARTBEAT) 
+                    << "Found greater Current/Version in agency.";
               }
             }
             syncDBServerStatusQuo();
@@ -227,7 +233,7 @@ void HeartbeatThread::runDBServer() {
     double remain = interval - (TRI_microtime() - start);
     // mop: execute at least once
     do {
-      LOG(TRACE) << "Entering update loop";
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Entering update loop";
       
       bool wasNotified;
       {
@@ -241,8 +247,8 @@ void HeartbeatThread::runDBServer() {
       }
 
       if (!wasNotified) {
-        LOG(TRACE) << "Lock reached timeout";
-        planAgencyCallback->refetchAndUpdate();
+        LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Lock reached timeout";
+        planAgencyCallback->refetchAndUpdate(true);
       } else {
         // mop: a plan change returned successfully...
         // recheck and redispatch in case our desired versions increased
@@ -266,7 +272,8 @@ void HeartbeatThread::runDBServer() {
     }
     usleep(1000);
   }
-  LOG(TRACE) << "stopped heartbeat thread (DBServer version)";
+  LOG_TOPIC(TRACE, Logger::HEARTBEAT) 
+      << "stopped heartbeat thread (DBServer version)";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +281,8 @@ void HeartbeatThread::runDBServer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runCoordinator() {
-  LOG(TRACE) << "starting heartbeat thread (coordinator version)";
+  LOG_TOPIC(TRACE, Logger::HEARTBEAT) 
+      << "starting heartbeat thread (coordinator version)";
 
   uint64_t oldUserVersion = 0;
 
@@ -286,13 +294,10 @@ void HeartbeatThread::runCoordinator() {
   // last value of current which we have noticed:
   uint64_t lastCurrentVersionNoticed = 0;
 
-  // value of Sync/Commands/my-id at startup
-  uint64_t lastCommandIndex = getLastCommandIndex();
-
   setReady();
 
   while (!isStopping()) {
-    LOG(TRACE) << "sending heartbeat to agency";
+    LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
     double const start = TRI_microtime();
     // send our state to the agency.
@@ -303,28 +308,22 @@ void HeartbeatThread::runCoordinator() {
       break;
     }
 
-    {
-    
-      // send an initial GET request to Sync/Commands/my-id
-      AgencyCommResult result =
-          _agency.getValues("Sync/Commands/" + _myId, false);
+    AgencyReadTransaction trx(std::vector<std::string>({ 
+        _agency.prefix() + "Plan/Version",
+        _agency.prefix() + "Current/Version",
+        _agency.prefix() + "Sync/Commands/" + _myId,
+        _agency.prefix() + "Sync/UserVersion"}));
+    AgencyCommResult result = _agency.sendTransactionWithFailover(trx);
 
-      if (result.successful()) {
-        handleStateChange(result, lastCommandIndex);
-      }
-    }
+    if (!result.successful()) {
+      LOG_TOPIC(WARN, Logger::HEARTBEAT) 
+          << "Heartbeat: Could not read from agency!";
+    } else {
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) 
+          << "Looking at Sync/Commands/" + _myId;
 
-    if (isStopping()) {
-      break;
-    }
+      handleStateChange(result);
 
-    bool shouldSleep = true;
-
-    // get the current version of the Plan
-  
-    AgencyCommResult result = _agency.getValues2("Plan/Version");
-
-    if (result.successful()) {
       VPackSlice versionSlice
           = result.slice()[0].get(std::vector<std::string>(
               {_agency.prefixStripped(), "Plan", "Version"}));
@@ -345,15 +344,8 @@ void HeartbeatThread::runCoordinator() {
           }
         }
       }
-    }
 
-    result.clear();
-
-  
-    result = _agency.getValues2("Sync/UserVersion");
-    if (result.successful()) {
-
-      velocypack::Slice slice =
+      VPackSlice slice =
         result.slice()[0].get(std::vector<std::string>(
               {_agency.prefixStripped(), "Sync", "UserVersion"}));
 
@@ -376,8 +368,9 @@ void HeartbeatThread::runCoordinator() {
                 TRI_UseCoordinatorDatabaseServer(_server, i->c_str());
 
             if (vocbase != nullptr) {
-              LOG(INFO) << "Reloading users for database " << vocbase->_name
-                        << ".";
+              LOG_TOPIC(INFO, Logger::HEARTBEAT) 
+                  << "Reloading users for database " << vocbase->_name
+                  << ".";
 
               if (!fetchUsers(vocbase)) {
                 // something is wrong... probably the database server
@@ -395,14 +388,9 @@ void HeartbeatThread::runCoordinator() {
           }
         }
       }
-    }
 
-    result = _agency.getValues2("Current/Version");
-    if (result.successful()) {
-      
-      VPackSlice versionSlice
-          = result.slice()[0].get(std::vector<std::string>(
-              {_agency.prefixStripped(), "Plan", "Version"}));
+      versionSlice = result.slice()[0].get(std::vector<std::string>(
+          {_agency.prefixStripped(), "Plan", "Version"}));
       if (versionSlice.isInteger()) {
 
         uint64_t currentVersion = 0;
@@ -419,25 +407,23 @@ void HeartbeatThread::runCoordinator() {
       }
     }
 
-    if (shouldSleep) {
-      double remain = interval - (TRI_microtime() - start);
+    double remain = interval - (TRI_microtime() - start);
 
-      // sleep for a while if appropriate, on some systems usleep does not
-      // like arguments greater than 1000000
-      while (remain > 0.0) {
-        if (remain >= 0.5) {
-          usleep(500000);
-          remain -= 0.5;
-        } else {
-          usleep((unsigned long)(remain * 1000.0 * 1000.0));
-          remain = 0.0;
-        }
+    // sleep for a while if appropriate, on some systems usleep does not
+    // like arguments greater than 1000000
+    while (remain > 0.0) {
+      if (remain >= 0.5) {
+        usleep(500000);
+        remain -= 0.5;
+      } else {
+        usleep((unsigned long)(remain * 1000.0 * 1000.0));
+        remain = 0.0;
       }
     }
     
   }
 
-  LOG(TRACE) << "stopped heartbeat thread";
+  LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "stopped heartbeat thread";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -459,14 +445,16 @@ bool HeartbeatThread::init() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::removeDispatchedJob(ServerJobResult result) {
-  LOG(TRACE) << "Dispatched job returned!";
+  LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Dispatched job returned!";
   {
     MUTEX_LOCKER(mutexLocker, _statusLock);
     if (result.success) {
-      LOG(DEBUG) << "Sync request successful. Now have Plan " << result.planVersion << ", Current " << result.currentVersion;
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) 
+          << "Sync request successful. Now have Plan " << result.planVersion 
+          << ", Current " << result.currentVersion;
       _currentVersions = AgencyVersions(result);
     } else {
-      LOG(DEBUG) << "Sync request failed!";
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Sync request failed!";
       // mop: we will retry immediately so wait at least a LITTLE bit
       usleep(10000);
     }
@@ -478,39 +466,6 @@ void HeartbeatThread::removeDispatchedJob(ServerJobResult result) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the index id of the value of Sync/Commands/my-id from the
-/// agency this index value is determined initially and it is passed to the
-/// watch command (we're waiting for an entry with a higher id)
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t HeartbeatThread::getLastCommandIndex() {
-  // get the initial command state
-
-  AgencyCommResult result = _agency.getValues("Sync/Commands/" + _myId, false);
-
-  if (result.successful()) {
-    result.parse("Sync/Commands/", false);
-
-    std::map<std::string, AgencyCommResultEntry>::iterator it =
-        result._values.find(_myId);
-
-    if (it != result._values.end()) {
-      // found something
-      LOG(TRACE) << "last command index was: '" << (*it).second._index << "'";
-      return (*it).second._index;
-    }
-  }
-
-  if (result._index > 0) {
-    // use the value returned in header X-Etcd-Index
-    return result._index;
-  }
-
-  // nothing found. this is not an error
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a plan version change, coordinator case
 /// this is triggered if the heartbeat thread finds a new plan version number
 ////////////////////////////////////////////////////////////////////////////////
@@ -519,7 +474,7 @@ static std::string const prefixPlanChangeCoordinator = "Plan/Databases";
 bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
   bool fetchingUsersFailed = false;
-  LOG(TRACE) << "found a plan update";
+  LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "found a plan update";
   AgencyCommResult result;
   
   {
@@ -550,7 +505,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       }
       auto nameSlice = options.value.get("name");
       if (nameSlice.isNone()) {
-        LOG (ERR) << "Missing name in agency database plan";
+        LOG_TOPIC(ERR, Logger::HEARTBEAT) 
+            << "Missing name in agency database plan";
         continue;      
       }
       
@@ -563,8 +519,9 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
           try {
             id = std::stoul(v.copyString());
           } catch (std::exception const& e) {
-            LOG(ERR) << "Failed to convert id string to number";
-            LOG(ERR) << e.what();
+            LOG_TOPIC(ERR, Logger::HEARTBEAT) 
+                << "Failed to convert id string to number";
+            LOG_TOPIC(ERR, Logger::HEARTBEAT) << e.what();
           }
         }
       }
@@ -640,7 +597,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   
   // turn on error logging now
   if (!ClusterComm::instance()->enableConnectionErrorLogging(true)) {
-    LOG(INFO) << "created coordinator databases for the first time";
+    LOG_TOPIC(INFO, Logger::HEARTBEAT) 
+        << "created coordinator databases for the first time";
   }
 
   return true;
@@ -648,7 +606,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a plan version change, DBServer case
-/// this is triggered if the heartbeat thread finds a new plan version number
+/// this is triggered if the heartbeat thread finds a new plan version number,
+/// and every few heartbeats if the Current/Version has changed.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::syncDBServerStatusQuo() {
@@ -663,15 +622,16 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
     }
 
     if (_desiredVersions.plan > _currentVersions.plan) {
-      LOG(DEBUG) << "Plan version " << _currentVersions.plan 
-                 << " is lower than desired version " << _desiredVersions.plan;
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) 
+          << "Plan version " << _currentVersions.plan 
+          << " is lower than desired version " << _desiredVersions.plan;
       _isDispatchingChange = true;
       becauseOfPlan = true;
     }
     if (_desiredVersions.current > _currentVersions.current) {
-      LOG(DEBUG) << "Current version " << _currentVersions.current 
-                 << " is lower than desired version " 
-                 << _desiredVersions.current;
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) 
+          << "Current version " << _currentVersions.current 
+          << " is lower than desired version " << _desiredVersions.current;
       _isDispatchingChange = true;
       becauseOfCurrent = true;
     }
@@ -688,22 +648,23 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
       ci->invalidateCurrent();
     }
 
-    LOG(TRACE) << "Dispatching Sync";
+    LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Dispatching Sync";
     // schedule a job for the change
     std::unique_ptr<arangodb::rest::Job> job(new ServerJob(this));
 
     auto dispatcher = DispatcherFeature::DISPATCHER;
     if (dispatcher == nullptr) {
-      LOG(ERR) << "could not schedule dbserver sync - dispatcher gone.";
+      LOG_TOPIC(ERR, Logger::HEARTBEAT) 
+          << "could not schedule dbserver sync - dispatcher gone.";
       return false;
     }
     if (dispatcher->addJob(job) == TRI_ERROR_NO_ERROR) {
-      LOG(TRACE) << "scheduled dbserver sync";
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "scheduled dbserver sync";
       return true;
     }
     MUTEX_LOCKER(mutexLocker, _statusLock);
     _isDispatchingChange = false;
-    LOG(ERR) << "could not schedule dbserver sync";
+    LOG_TOPIC(ERR, Logger::HEARTBEAT) << "could not schedule dbserver sync";
   }
   return false;
 }
@@ -716,21 +677,12 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
 /// notified about this particular change again).
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HeartbeatThread::handleStateChange(AgencyCommResult& result,
-                                        uint64_t& lastCommandIndex) {
-  result.parse("Sync/Commands/", false);
-
-  std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-      result._values.find(_myId);
-
-  if (it != result._values.end()) {
-    lastCommandIndex = (*it).second._index;
-
-    std::string command = "";
-    VPackSlice const slice = it->second._vpack->slice();
-    if (slice.isString()) {
-      command = slice.copyString();
-    }
+bool HeartbeatThread::handleStateChange(AgencyCommResult& result) {
+  VPackSlice const slice = result.slice()[0].get(
+      std::vector<std::string>({ AgencyComm::prefixStripped(), "Sync",
+                                 "Commands", _myId }));
+  if (slice.isString()) {
+    std::string command = slice.copyString();
     ServerState::StateEnum newState = ServerState::stringToState(command);
 
     if (newState != ServerState::STATE_UNDEFINED) {
@@ -759,9 +711,10 @@ bool HeartbeatThread::sendState() {
   if (++_numFails % _maxFailsBeforeWarning == 0) {
     std::string const endpoints = AgencyComm::getEndpointsString();
 
-    LOG(WARN) << "heartbeat could not be sent to agency endpoints ("
-              << endpoints << "): http code: " << result.httpCode()
-              << ", body: " << result.body();
+    LOG_TOPIC(WARN, Logger::HEARTBEAT) 
+        << "heartbeat could not be sent to agency endpoints ("
+        << endpoints << "): http code: " << result.httpCode()
+        << ", body: " << result.body();
     _numFails = 0;
   }
 
@@ -777,7 +730,8 @@ bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
   VPackBuilder builder;
   builder.openArray();
 
-  LOG(TRACE) << "fetching users for database '" << vocbase->_name << "'";
+  LOG_TOPIC(TRACE, Logger::HEARTBEAT) 
+      << "fetching users for database '" << vocbase->_name << "'";
 
   int res = usersOnCoordinator(std::string(vocbase->_name), builder, 10.0);
 
@@ -809,12 +763,13 @@ bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
   }
 
   if (result) {
-    LOG(TRACE) << "fetching users for database '" << vocbase->_name
-               << "' successful";
+    LOG_TOPIC(TRACE, Logger::HEARTBEAT) 
+        << "fetching users for database '" << vocbase->_name << "' successful";
     _refetchUsers.erase(vocbase);
   } else {
-    LOG(TRACE) << "fetching users for database '" << vocbase->_name
-               << "' failed with error: " << TRI_errno_string(res);
+    LOG_TOPIC(TRACE, Logger::HEARTBEAT) 
+        << "fetching users for database '" << vocbase->_name
+        << "' failed with error: " << TRI_errno_string(res);
     _refetchUsers.insert(vocbase);
   }
 

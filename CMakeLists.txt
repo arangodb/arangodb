@@ -315,10 +315,12 @@ else ()
 
   option(USE_OPTIMIZE_FOR_ARCHITECTURE "try to determine CPU architecture" ON)
 
-  if (USE_OPTIMIZE_FOR_ARCHITECTURE)
-    include(OptimizeForArchitecture)
-    OptimizeForArchitecture()
+  if (NOT USE_OPTIMIZE_FOR_ARCHITECTURE)
+    # mop: core2 (merom) is our absolute minimum!
+    SET(TARGET_ARCHITECTURE "merom")
   endif ()
+  include(OptimizeForArchitecture)
+  OptimizeForArchitecture()
 
   set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()

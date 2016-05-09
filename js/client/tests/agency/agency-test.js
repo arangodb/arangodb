@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+var wait = require("internal").wait;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -77,15 +78,6 @@ function agencyTestSuite () {
     assertEqual(res.statusCode, 200);
   }
 
-  function sleep(milliseconds) {
-    var start = new Date().getTime();
-    for (var i = 0; i < 1e7; i++) {
-      if ((new Date().getTime() - start) > milliseconds){
-        break;
-      }
-    }
-  }
-  
   return {
 
 
@@ -190,19 +182,19 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["a/z"]]), [{"a":{"z":12}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      sleep(1100);
+      wait(1.250);
       assertEqual(readAndCheck([["a/y"]]), [{a:{}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       writeAndCheck([[{"a/y":{"op":"set","new":12}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      sleep(1100);
+      wait(1.250);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":1}}]]);
-      sleep(1100);
+      wait(1.250);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);

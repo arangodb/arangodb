@@ -363,54 +363,57 @@ void ClusterFeature::start() {
             << ", role: " << ServerState::roleToString(role);
 
   if (!_disableHeartbeat) {
-    AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs", false);
+    AgencyCommResult result = comm.getValues2("Sync/HeartbeatIntervalMs");
 
     if (result.successful()) {
-      result.parse("", false);
-
-      std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-          result._values.begin();
-
-      if (it != result._values.end()) {
-
-        VPackSlice slice = (*it).second._vpack->slice();
-        _heartbeatInterval = slice.getUInt();
+      
+      velocypack::Slice HeartbeatIntervalMs =
+        result.slice()[0].get(std::vector<std::string>(
+          {AgencyComm::prefixStripped(), "Sync", "HeartbeatIntervalMs"}));
+          
+      if (HeartbeatIntervalMs.isInteger()) {
+        try {
+          _heartbeatInterval = HeartbeatIntervalMs.getUInt();
+          LOG(INFO) << "using heartbeat interval value '" << _heartbeatInterval
+                    << " ms' from agency";
+        }
+        catch (...) {
+          // Ignore if it is not a small int or uint
+        }
         
-        LOG(INFO) << "using heartbeat interval value '" << _heartbeatInterval
-                  << " ms' from agency";
       }
     }
-
+    
     // no value set in agency. use default
     if (_heartbeatInterval == 0) {
       _heartbeatInterval = 5000;  // 1/s
-
+      
       LOG(WARN) << "unable to read heartbeat interval from agency. Using "
-                   "default value '"
-                << _heartbeatInterval << " ms'";
+                << "default value '" << _heartbeatInterval << " ms'";
     }
+    
     // start heartbeat thread
     _heartbeatThread = new HeartbeatThread(DatabaseServerFeature::SERVER,
                                            _agencyCallbackRegistry.get(),
                                            _heartbeatInterval * 1000, 5);
-
+    
     if (_heartbeatThread == nullptr) {
       LOG(FATAL) << "unable to start cluster heartbeat thread";
       FATAL_ERROR_EXIT();
     }
-
+    
     if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
       LOG(FATAL) << "heartbeat could not connect to agency endpoints ("
                  << endpoints << ")";
       FATAL_ERROR_EXIT();
     }
-
+    
     while (!_heartbeatThread->isReady()) {
       // wait until heartbeat is ready
       usleep(10000);
     }
   }
-
+  
   AgencyCommResult result;
 
   while (true) {
@@ -471,6 +474,17 @@ void ClusterFeature::stop() {
 
     AgencyComm comm;
     comm.sendServerState(0.0);
+
+    if (_heartbeatThread != nullptr) {
+      int counter = 0;
+      while (_heartbeatThread->isRunning()) {
+        usleep(100000);
+        // emit warning after 5 seconds
+        if (++counter == 10 * 5) {
+          LOG(WARN) << "waiting for heartbeat thread to finish";
+        }
+      }
+    }
   }
 
   ClusterComm::cleanup();

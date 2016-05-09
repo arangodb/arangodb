@@ -33,41 +33,41 @@ describe ArangoDB do
         body = "{ \"collection\" : \"#{@cn}\" }"
         doc = ArangoDB.log_put("#{prefix}-first1", cmd, :body => body)
 
-        doc.code.should eq(501)
+        doc.code.should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(501)
-        doc.parsed_response['errorNum'].should eq(1470)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(17)
         
         cmd = api + "/first"
         body = "{ \"collection\" : \"#{@cn}\", \"count\" : 2 }"
         doc = ArangoDB.log_put("#{prefix}-first2", cmd, :body => body)
 
-        doc.code.should eq(501)
+        doc.code.should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(501)
-        doc.parsed_response['errorNum'].should eq(1470)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(17)
 
         cmd = api + "/last"
         body = "{ \"collection\" : \"#{@cn}\" }"
         doc = ArangoDB.log_put("#{prefix}-last1", cmd, :body => body)
 
-        doc.code.should eq(501)
+        doc.code.should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(501)
-        doc.parsed_response['errorNum'].should eq(1470)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(17)
         
         cmd = api + "/last"
         body = "{ \"collection\" : \"#{@cn}\", \"count\" : 2 }"
         doc = ArangoDB.log_put("#{prefix}-last2", cmd, :body => body)
 
-        doc.code.should eq(501)
+        doc.code.should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(501)
-        doc.parsed_response['errorNum'].should eq(1470)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(17)
       end
     end
 

@@ -36,6 +36,21 @@ namespace consensus {
 class Agent;
 class Store;
 
+/*
+struct JobCallback {
+  JobCallback() {}
+  virtual ~JobCallback() {};
+  virtual bool operator()(JobResult*) = 0;
+};
+
+class Job : public Thread {
+public:
+	virtual void execute(std::shared_ptr<JobCallback> callback)=0;
+  virtual double progress() {return _progress;}
+private:
+  double _progress;
+};
+*/
 struct check_t {
   bool good;
   std::string name;
@@ -102,7 +117,16 @@ public:
 
 private:
 
-  /// @Brief Check mahines under path in agency
+  /// @brief Move shard from one db server to other db server
+  bool moveShard (std::string const& from, std::string const& to);
+
+  /// @brief Move shard from one db server to other db server
+  bool replicateShard (std::string const& to);
+
+  /// @brief Move shard from one db server to other db server
+  bool removeShard (std::string const& from);
+
+  /// @Brief Check machines under path in agency
   std::vector<check_t> check (std::string const& path);
 
   /// @brief Read db
@@ -120,7 +144,7 @@ private:
   ///@brief last vital signs as reported through heartbeats to agency
   ///
   std::map<ServerID,
-           std::shared_ptr<VitalSign>> _vital_signs;
+           std::shared_ptr<VitalSign>> _vitalSigns;
 
   long _frequency;
   

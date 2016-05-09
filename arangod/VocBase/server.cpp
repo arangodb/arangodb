@@ -1712,7 +1712,7 @@ void TRI_EnableDeadlockDetectionDatabasesServer(TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer(
-    TRI_server_t* server) {
+    TRI_server_t* server, bool includeSystem) {
   std::vector<TRI_voc_tick_t> v;
   {
     auto unuser(server->_databasesProtector.use());
@@ -1722,7 +1722,7 @@ std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer(
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
 
-      if (!TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
+      if (includeSystem || !TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
         v.emplace_back(vocbase->_id);
       }
     }

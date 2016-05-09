@@ -37,7 +37,6 @@
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
-#include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -144,10 +143,7 @@ void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
 
 std::string AgencyWriteTransaction::toJson() const {
   VPackBuilder builder;
-  {
-    VPackArrayBuilder guard(&builder);
-    toVelocyPack(builder);
-  }
+  toVelocyPack(builder);
   return builder.toJson();
 }
 
@@ -177,10 +173,7 @@ void AgencyWriteTransaction::toVelocyPack(VPackBuilder& builder) const {
 
 std::string AgencyReadTransaction::toJson() const {
   VPackBuilder builder;
-  {
-    VPackArrayBuilder guard(&builder);
-    toVelocyPack(builder);
-  }
+  toVelocyPack(builder);
   return builder.toJson();
 }
 
@@ -189,12 +182,9 @@ std::string AgencyReadTransaction::toJson() const {
 //////////////////////////////////////////////////////////////////////////////
 
 void AgencyReadTransaction::toVelocyPack(VPackBuilder& builder) const {
-  VPackArrayBuilder guard(&builder);
-  {
-    VPackArrayBuilder guard2(&builder);
-    for (std::string const& key: keys) {
-      builder.add(VPackValue(key));
-    }
+  VPackArrayBuilder guard2(&builder);
+  for (std::string const& key: keys) {
+    builder.add(VPackValue(key));
   }
 }
 
@@ -225,7 +215,6 @@ AgencyCommResult::AgencyCommResult()
       _message(),
       _body(),
       _values(),
-      _index(0),
       _statusCode(0),
       _connected(false) {}
 
@@ -328,7 +317,6 @@ void AgencyCommResult::clear() {
   _location = "";
   _message = "";
   _body = "";
-  _index = 0;
   _statusCode = 0;
 }
 
@@ -604,7 +592,8 @@ bool AgencyComm::tryConnect() {
 
     // mop: not sure if a timeout makes sense here
     while (true) {
-      LOG(INFO) << "Trying to find an active agency. Checking " << endpointsStr;
+      LOG_TOPIC(INFO, Logger::AGENCYCOMM) 
+          << "Trying to find an active agency. Checking " << endpointsStr;
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
       while (it != _globalEndpoints.end()) {
@@ -658,7 +647,7 @@ bool AgencyComm::tryInitializeStructure() {
     builder.add(VPackValue("Sync"));
     {
       VPackObjectBuilder c(&builder);
-      builder.add("LatestID", VPackValue("1"));
+      builder.add("LatestID", VPackValue(1));
       addEmptyVPackObject("Problems", builder);
       builder.add("UserVersion", VPackValue(1));
       addEmptyVPackObject("ServerStates", builder);
@@ -818,22 +807,15 @@ bool AgencyComm::ensureStructureInitialized() {
       sleep(1);
     }
     
-    AgencyCommResult result = getValues("InitDone", false);
+    AgencyCommResult result = getValues2("InitDone");
  
     if (result.successful()) {
-      result.parse("", false);
-
-      std::map<std::string, AgencyCommResultEntry>::iterator it =
-          result._values.begin();
-      if (it != result._values.end()) {
-        auto value = (*it).second._vpack;
-
-        if (value->slice().isBoolean() && value->slice().getBoolean()) {
-          // expecting a value of "true"
-          LOG_TOPIC(TRACE, Logger::STARTUP) << "Found an initialized agency";
-          return true;
-        }
-        // fallthrough to sleeping
+      VPackSlice value = result.slice()[0].get(std::vector<std::string>(
+            {prefixStripped(), "InitDone"}));
+      if (value.isBoolean() && value.getBoolean()) {
+        // expecting a value of "true"
+        LOG_TOPIC(TRACE, Logger::STARTUP) << "Found an initialized agency";
+        return true;
       }
     }
           
@@ -873,8 +855,8 @@ void AgencyComm::disconnect() {
 
 bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
                              bool toFront) {
-  LOG(TRACE) << "adding global agency-endpoint '" << endpointSpecification
-             << "'";
+  LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
+      << "adding global agency-endpoint '" << endpointSpecification << "'";
 
   {
     WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
@@ -1059,7 +1041,8 @@ bool AgencyComm::setPrefix(std::string const& prefix) {
     }
   }
 
-  LOG(TRACE) << "setting agency-prefix to '" << prefix << "'";
+  LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
+      << "setting agency-prefix to '" << prefix << "'";
   return true;
 }
 
@@ -1213,9 +1196,17 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::exists(std::string const& key) {
-  AgencyCommResult result = getValues(key, false);
-
-  return result.successful();  
+  AgencyCommResult result = getValues2(key);
+  if (!result.successful()) {
+    return false;
+  }
+  auto parts = arangodb::basics::StringUtils::split(key, "/");
+  std::vector<std::string> allParts;
+  allParts.reserve(parts.size() + 1);
+  allParts.push_back(prefixStripped());
+  allParts.insert(allParts.end(), parts.begin(), parts.end());
+  VPackSlice slice = result.slice()[0].get(allParts);
+  return !slice.isNone();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1295,8 +1286,8 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
           }
         }
       } else if (node.isArray()) {
-        LOG(ERR) << node.toJson();
-        LOG(ERR) << "Oops...TODO array unexpected";
+        LOG_TOPIC(ERR, Logger::AGENCYCOMM) << node.toJson();
+        LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Oops...TODO array unexpected";
       } else {
         builder.add("value", node);
       }
@@ -1344,13 +1335,16 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
     VPackStringSink sink(&result._body);
     VPackDumper::dump(s, &sink, &dumperOptions);
 
-    LOG(TRACE) << "Created fake etcd node" << result._body;
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
+        << "Created fake etcd node" << result._body;
     result._statusCode = 200;
   } catch(std::exception &e) {
-    LOG(ERR) << "Error transforming result. " << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+        << "Error transforming result. " << e.what();
     result.clear();
   } catch(...) {
-    LOG(ERR) << "Error transforming result. Out of memory";
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+        << "Error transforming result. Out of memory";
     result.clear();
   }
 
@@ -1401,10 +1395,12 @@ AgencyCommResult AgencyComm::getValues2(std::string const& key) {
     result._statusCode = 200;
     
   } catch(std::exception &e) {
-    LOG(ERR) << "Error transforming result. " << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+        << "Error transforming result. " << e.what();
     result.clear();
   } catch(...) {
-    LOG(ERR) << "Error transforming result. Out of memory";
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+        << "Error transforming result. Out of memory";
     result.clear();
   }
 
@@ -1444,6 +1440,9 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
     operation._ttl = static_cast<uint32_t>(ttl);
   }
   
+  VPackBuilder preBuilder;
+  precondition.toVelocyPack(preBuilder);
+
   AgencyWriteTransaction transaction(operation, precondition);
   return sendTransactionWithFailover(transaction, timeout);
 }
@@ -1566,76 +1565,70 @@ bool AgencyComm::unlockWrite(std::string const& key, double timeout) {
 /// @brief get unique id
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
-                                    double timeout) {
-  static int const maxTries = 10;
+uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
+  static int const maxTries = 1000000;
+  // this is pretty much forever, but we simply cannot continue at all
+  // if we do not get a unique id from the agency.
   int tries = 0;
 
   AgencyCommResult result;
 
-  while (tries++ < maxTries) {
-    result.clear();
-    result = getValues(key, false);
+  uint64_t oldValue = 0;
 
-    if (result.httpCode() ==
-        (int)arangodb::GeneralResponse::ResponseCode::NOT_FOUND) {
+  while (tries++ < maxTries) {
+    result = getValues2("Sync/LatestID");
+    if (!result.successful()) {
+      usleep(500000);
+      continue;
+    }
+
+    VPackSlice oldSlice = result.slice()[0].get(std::vector<std::string>(
+          {prefixStripped(), "Sync", "LatestID"}));
+
+    if (!(oldSlice.isSmallInt() || oldSlice.isUInt())) {
+      LOG_TOPIC(WARN, Logger::AGENCYCOMM) 
+          << "Sync/LatestID in agency is not an unsigned integer, fixing...";
       try {
         VPackBuilder builder;
         builder.add(VPackValue(0));
 
         // create the key on the fly
-        setValue(key, builder.slice(), 0.0);
-        tries--;
+        setValue("Sync/LatestID", builder.slice(), 0.0);
 
-        continue;
       } catch (...) {
         // Could not build local key. Try again
       }
+      continue;
     }
 
-    if (!result.successful()) {
-      return result;
-    }
-
-    result.parse("", false);
-
-    std::shared_ptr<VPackBuilder> oldBuilder;
-
-    std::map<std::string, AgencyCommResultEntry>::iterator it =
-        result._values.begin();
-
+    // If we get here, slice is pointing to an unsigned integer, which
+    // is the value in the agency.
+    oldValue = 0;
     try {
-      if (it != result._values.end()) {
-        // steal the velocypack
-        oldBuilder.swap((*it).second._vpack);
-      } else {
-        oldBuilder->add(VPackValue(0));
-      }
-    } catch (...) {
-      return AgencyCommResult();
+      oldValue = oldSlice.getUInt();
     }
-
-    VPackSlice oldSlice = oldBuilder->slice();
-    uint64_t const oldValue = arangodb::basics::VelocyPackHelper::stringUInt64(oldSlice) + count;
+    catch (...) {
+    }
     uint64_t const newValue = oldValue + count;
 
     VPackBuilder newBuilder;
     try {
       newBuilder.add(VPackValue(newValue));
     } catch (...) {
-      return AgencyCommResult();
+      usleep(500000);
+      continue;
     }
 
-    result.clear();
-    result = casValue(key, oldSlice, newBuilder.slice(), 0.0, timeout);
+    result = casValue("Sync/LatestID", oldSlice, newBuilder.slice(), 
+                      0.0, timeout);
 
     if (result.successful()) {
-      result._index = oldValue + 1;
       break;
     }
+    // The cas did not work, simply try again!
   }
 
-  return result;
+  return oldValue;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1841,11 +1834,62 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
 
   std::string url(buildUrl());
 
-  url += "/write";
+  url += transaction.isWriteTransaction() ? "/write" : "/read";
 
-  return sendWithFailover(arangodb::GeneralRequest::RequestType::POST,
+  VPackBuilder builder;
+  {
+    VPackArrayBuilder guard(&builder);
+    transaction.toVelocyPack(builder);
+  }
+
+  AgencyCommResult result = sendWithFailover(
+      arangodb::GeneralRequest::RequestType::POST,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, url,
-      transaction.toJson(), false);
+      builder.slice().toJson(), false);
+
+  if (!result.successful()) {
+    return result;
+  }
+  
+  try {
+    result.setVPack(VPackParser::fromJson(result.body().c_str()));
+
+    if (transaction.isWriteTransaction()) {
+      if (!result.slice().isObject() || 
+          !result.slice().get("results").isArray()) {
+        result._statusCode = 500;
+        return result;
+      }
+
+      if (result.slice().get("results").length() != 1) {
+        result._statusCode = 500;
+        return result;
+      }
+    } else {
+      if (!result.slice().isArray()) {
+        result._statusCode = 500;
+        return result;
+      }
+
+      if (result.slice().length() != 1) {
+        result._statusCode = 500;
+        return result;
+      }
+    }
+    
+    result._body.clear();
+    
+  } catch(std::exception &e) {
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+        << "Error transforming result. " << e.what();
+    result.clear();
+  } catch(...) {
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+        << "Error transforming result. Out of memory";
+    result.clear();
+  }
+  
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1898,6 +1942,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
       break;
     }
 
+//    LOG(WARN) << result._statusCode;
+    
     if (result._statusCode ==
         (int)arangodb::GeneralResponse::ResponseCode::TEMPORARY_REDIRECT) {
       // sometimes the agency will return a 307 (temporary redirect)
@@ -1937,7 +1983,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
       if (!AgencyComm::hasEndpoint(endpoint)) {
         AgencyComm::addEndpoint(endpoint, true);
 
-        LOG(INFO) << "adding agency-endpoint '" << endpoint << "'";
+        LOG_TOPIC(INFO, Logger::AGENCYCOMM) 
+            << "adding agency-endpoint '" << endpoint << "'";
 
         // re-check the new endpoint
         if (AgencyComm::hasEndpoint(endpoint)) {
@@ -1945,8 +1992,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
           continue;
         }
 
-        LOG(ERR) << "found redirection to unknown endpoint '" << endpoint
-                 << "'. Will not follow!";
+        LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
+            << "found redirection to unknown endpoint '" << endpoint
+            << "'. Will not follow!";
 
         // this is an error
         break;
@@ -2002,10 +2050,11 @@ AgencyCommResult AgencyComm::send(
   result._connected = false;
   result._statusCode = 0;
 
-  LOG(TRACE) << "sending " << arangodb::HttpRequest::translateMethod(method)
-             << " request to agency at endpoint '"
-             << connection->getEndpoint()->specification() << "', url '" << url
-             << "': " << body;
+  LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
+      << "sending " << arangodb::HttpRequest::translateMethod(method)
+      << " request to agency at endpoint '"
+      << connection->getEndpoint()->specification() << "', url '" << url
+      << "': " << body;
 
   arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
 
@@ -2025,7 +2074,7 @@ AgencyCommResult AgencyComm::send(
   if (response == nullptr) {
     connection->disconnect();
     result._message = "could not send request to agency";
-    LOG(TRACE) << "sending request to agency failed";
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "sending request to agency failed";
 
     return result;
   }
@@ -2033,7 +2082,7 @@ AgencyCommResult AgencyComm::send(
   if (!response->isComplete()) {
     connection->disconnect();
     result._message = "sending request to agency failed";
-    LOG(TRACE) << "sending request to agency failed";
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "sending request to agency failed";
 
     return result;
   }
@@ -2047,7 +2096,8 @@ AgencyCommResult AgencyComm::send(
     bool found = false;
     result._location = response->getHeaderField("location", found);
 
-    LOG(TRACE) << "redirecting to location: '" << result._location << "'";
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
+        << "redirecting to location: '" << result._location << "'";
 
     if (!found) {
       // a 307 without a location header does not make any sense
@@ -2061,18 +2111,12 @@ AgencyCommResult AgencyComm::send(
   result._message = response->getHttpReturnMessage();
   basics::StringBuffer& sb = response->getBody();
   result._body = std::string(sb.c_str(), sb.length());
-  result._index = 0;
   result._statusCode = response->getHttpReturnCode();
 
-  bool found = false;
-  std::string lastIndex = response->getHeaderField("x-etcd-index", found);
-  if (found) {
-    result._index = arangodb::basics::StringUtils::uint64(lastIndex);
-  }
-
-  LOG(TRACE) << "request to agency returned status code " << result._statusCode
-             << ", message: '" << result._message << "', body: '"
-             << result._body << "'";
+  LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
+      << "request to agency returned status code " << result._statusCode
+      << ", message: '" << result._message << "', body: '"
+      << result._body << "'";
 
   if (result.successful()) {
     return result;

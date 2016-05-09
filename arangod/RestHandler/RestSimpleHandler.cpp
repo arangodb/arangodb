@@ -157,15 +157,11 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
       collectionName = value.copyString();
 
-      if (!collectionName.empty()) {
-        auto const* col =
-            TRI_LookupCollectionByNameVocBase(_vocbase, collectionName);
-
-        if (col != nullptr && collectionName.compare(col->_name) != 0) {
-          // user has probably passed in a numeric collection id.
-          // translate it into a "real" collection name
-          collectionName = std::string(col->_name);
-        }
+      if (!collectionName.empty() && collectionName[0] >= '0' &&
+          collectionName[0] <= '9') {
+        // If we have a numeric name we probably have to translate it.
+        CollectionNameResolver resolver(_vocbase);
+        collectionName = resolver.getCollectionName(collectionName);
       }
     }
 

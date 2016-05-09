@@ -29,6 +29,7 @@
 #include "Aql/Range.h"
 #include "Aql/types.h"
 #include "Basics/VelocyPackHelper.h"
+#include "VocBase/document-collection.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
@@ -94,12 +95,21 @@ struct AqlValue final {
   }
 
   // construct from document
-  explicit AqlValue(TRI_doc_mptr_t const* mptr);
+  explicit AqlValue(TRI_doc_mptr_t const* mptr) {
+    _data.pointer = mptr->vpack();
+    setType(AqlValueType::VPACK_SLICE_POINTER);
+    TRI_ASSERT(VPackSlice(_data.pointer).isObject());
+    TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
+  }
   
   // construct from pointer
   explicit AqlValue(uint8_t const* pointer) {
-    _data.pointer = pointer;
+    // we must get rid of Externals first here, because all
+    // methods that use VPACK_SLICE_POINTER expect its contents
+    // to be non-Externals
+    _data.pointer = VPackSlice(pointer).resolveExternals().begin();
     setType(AqlValueType::VPACK_SLICE_POINTER);
+    TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
   }
   
   // construct from docvec, taking over its ownership
@@ -110,7 +120,9 @@ struct AqlValue final {
 
   // construct boolean value type
   explicit AqlValue(bool value) {
-    initFromSlice(value ? arangodb::basics::VelocyPackHelper::TrueValue() : arangodb::basics::VelocyPackHelper::FalseValue());
+    VPackSlice slice(value ? arangodb::basics::VelocyPackHelper::TrueValue() : arangodb::basics::VelocyPackHelper::FalseValue());
+    memcpy(_data.internal, slice.begin(), slice.byteSize());
+    setType(AqlValueType::VPACK_INLINE);
   }
   
   // construct from std::string
@@ -213,6 +225,9 @@ struct AqlValue final {
   /// @brief get the _key attribute from an object/document
   AqlValue getKeyAttribute(arangodb::AqlTransaction* trx,
                            bool& mustDestroy, bool copy) const;
+  /// @brief get the _id attribute from an object/document
+  AqlValue getIdAttribute(arangodb::AqlTransaction* trx,
+                          bool& mustDestroy, bool copy) const;
   /// @brief get the _from attribute from an object/document
   AqlValue getFromAttribute(arangodb::AqlTransaction* trx,
                             bool& mustDestroy, bool copy) const;
@@ -310,12 +325,10 @@ struct AqlValue final {
   }
   
   /// @brief initializes value from a slice
-  void initFromSlice(arangodb::velocypack::Slice const& slice) {
+  void initFromSlice(arangodb::velocypack::Slice slice) {
     if (slice.isExternal()) {
       // recursively resolve externals
-      _data.pointer = slice.resolveExternals().start();
-      setType(AqlValueType::VPACK_SLICE_POINTER);
-      return;
+      slice = slice.resolveExternals();
     }
     arangodb::velocypack::ValueLength length = slice.byteSize();
     if (length < sizeof(_data.internal)) {

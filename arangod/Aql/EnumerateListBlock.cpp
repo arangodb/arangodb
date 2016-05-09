@@ -130,7 +130,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
 
       for (size_t j = 0; j < toSend; j++) {
         if (j > 0) {
-          // re-use already copied aqlvalues
+          // re-use already copied AqlValues
           for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
             res->setValue(j, i, res->getValueReference(0, i));
             // Note that if this throws, all values will be

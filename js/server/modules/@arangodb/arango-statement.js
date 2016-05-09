@@ -79,9 +79,8 @@ ArangoStatement.prototype.execute = function () {
       opts.cache = this._cache;
     } 
   }
-
+  
   var result = AQL_EXECUTE(this._query, this._bindVars, opts);
-
   return new GeneralArrayCursor(result.json, 0, null, result);
 };
 

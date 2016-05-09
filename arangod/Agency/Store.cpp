@@ -29,7 +29,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -37,7 +36,6 @@
 
 #include <ctime>
 #include <iomanip>
-#include <iostream>
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
@@ -214,7 +212,8 @@ std::vector<bool> Store::apply (
     std::string endpoint, path;
     if (endpointPathFromUrl (url,endpoint,path)) {
 
-      auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
+      auto headerFields = std::make_unique<std::unordered_map<std::string,
+                                                              std::string>>();
       
       ClusterCommResult res =
         arangodb::ClusterComm::instance()->asyncRequest(

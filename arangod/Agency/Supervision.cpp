@@ -31,7 +31,6 @@
 using namespace arangodb::consensus;
 
 
-
 Supervision::Supervision() : arangodb::Thread("Supervision"), _agent(nullptr),
                              _snapshot("Supervision"), _frequency(5000000) {
   
@@ -49,63 +48,84 @@ void Supervision::wakeUp () {
   
 }
 
-/*
-      "Sync": {
-        "UserVersion": 2,
-        "ServerStates": {
-          "DBServer2": {
-            "time": "2016-05-04T09:17:31Z",
-            "status": "SERVINGASYNC"
-          },
-          "DBServer1": {
-            "time": "2016-05-04T09:17:30Z",
-            "status": "SERVINGASYNC"
-          },
-          "Coordinator1": {
-            "time": "2016-05-04T09:17:31Z",
-            "status": "SERVING"
-          }
-        },
-        "Problems": null,
-        "LatestID": 2000001,
-        "HeartbeatIntervalMs": 1000,
-        "Commands": null
-      },
-*/
+std::string printTimestamp(Supervision::TimePoint const& t) {
+  time_t tt = std::chrono::system_clock::to_time_t(t);
+  struct tm tb;
+  char buffer[21];
+  TRI_gmtime(tt, &tb);
+  size_t len = ::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
+  return std::string(buffer, len);
+}
+
 static std::string const syncPrefix = "/arango/Sync/ServerStates/";
-static std::string const supervisionPrefix = "/arango/Supervision";
+static std::string const currentPrefix = "/arango/Current/DBServers/";
+static std::string const supervisionPrefix = "/arango/Supervision/Health/";
 std::vector<check_t> Supervision::check (std::string const& path) {
 
   std::vector<check_t> ret;
-  Node::Children const& machines = _snapshot(path).children();
+  Node::Children const& machinesPlanned = _snapshot(path).children();
 
-  for (auto const& machine : machines) {
+  for (auto const& machine : machinesPlanned) {
 
     ServerID const& serverID = machine.first;
-    auto it = _vital_signs.find(serverID);
+    auto it = _vitalSigns.find(serverID);
     std::string lastHeartbeatTime = _snapshot(syncPrefix + serverID + "/time").toJson();
     std::string lastHeartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
     
-    if (it != _vital_signs.end()) {   // Existing server
+    if (it != _vitalSigns.end()) {   // Existing server
+
+      query_t report = std::make_shared<Builder>();
+      report->openArray(); report->openArray(); report->openObject();
+      report->add(supervisionPrefix + serverID,
+                  VPackValue(VPackValueType::Object));
+
+      report->add("LastHearbeatReceived",
+                  VPackValue(printTimestamp(it->second->myTimestamp)));
+      report->add("LastHearbeatSent", VPackValue(lastHeartbeatTime));
+      report->add("LastHearbeatStatus", VPackValue(lastHeartbeatStatus));
+
       if (it->second->serverTimestamp == lastHeartbeatTime) {
-        LOG(WARN) << "NO GOOD:" << serverID << it->second->serverTimestamp << ":" << it->second->serverStatus;
-        continue;
+        report->add("Status", VPackValue("DOWN"));
+        std::chrono::seconds t{0};
+        t = std::chrono::duration_cast<std::chrono::seconds>(
+          std::chrono::system_clock::now() - it->second->myTimestamp);
+        if (t.count() > 60) {
+          report->add("Alert", VPackValue(true));
+        }
+
       } else {
-        query_t report = std::make_shared<Builder>();
-        report->openArray(); report->openArray(); report->openObject();
-        report->add("Status", VPackValue("GOOD"));
-        report->close(); report->close(); report->close();
-        LOG(DEBUG) << "GOOD:" << serverID<< it->second->serverTimestamp << ":" << it->second->serverStatus;
+        report->add("Status", VPackValue("UP"));
         it->second->update(lastHeartbeatStatus,lastHeartbeatTime);
       }
+
+      report->close();        
+      report->close();
+      report->close();
+      report->close();
+      _agent->write(report);
+      
     } else {                          // New server
-      _vital_signs[serverID] = 
+      _vitalSigns[serverID] = 
         std::make_shared<VitalSign>(lastHeartbeatStatus,lastHeartbeatTime);
     }
   }
-
+  
+  auto itr = _vitalSigns.begin();
+  while (itr != _vitalSigns.end()) {
+    if (machinesPlanned.find(itr->first)==machinesPlanned.end()) {
+      LOG(WARN) << itr->first << " shut down!"; 
+      itr = _vitalSigns.erase(itr);
+    } else {
+      ++itr;
+    }
+  }
+  
   return ret;
 
+}
+
+bool Supervision::moveShard (std::string const& from, std::string const& to) {
+  
 }
 
 bool Supervision::doChecks (bool timedout) {
@@ -117,7 +137,7 @@ bool Supervision::doChecks (bool timedout) {
   _snapshot = _agent->readDB().get("/");
   
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sanity checks";
-  std::vector<check_t> ret = check("/arango/Current/DBServers");
+  std::vector<check_t> ret = check("/arango/Plan/DBServers");
   
   return true;
   
@@ -128,7 +148,7 @@ void Supervision::run() {
   CONDITION_LOCKER(guard, _cv);
   TRI_ASSERT(_agent!=nullptr);
   bool timedout = false;
-  
+
   while (!this->isStopping()) {
     
     if (_agent->leading()) {
