@@ -230,6 +230,9 @@ module.exports = class FoxxService {
               code: error.statusCode
             };
             if (error.statusCode === 405 && error.methods) {
+              if (!res.headers) {
+                res.headers = {};
+              }
               res.headers.allow = error.methods.join(', ');
             }
             if (service.isDevelopment) {
