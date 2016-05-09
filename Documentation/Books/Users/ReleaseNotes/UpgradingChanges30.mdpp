@@ -159,11 +159,7 @@ The AQL optimizer rule "merge-traversal-filter" that already existed in 3.0 was 
 "optimize-traversals". This should be of no relevance to client applications except if 
 they programatically look for applied optimizer rules in the explain out of AQL queries.
 
-!SECTION JavaScript API changes
-
-The following incompatible changes have been made to the JavaScript API in ArangoDB 3.0:
-
-!SUBSECTION Upgraded V8 version
+!SECTION Upgraded V8 version
 
 The V8 engine that is used inside ArangoDB to execute JavaScript code has been upgraded from
 version 4.3.61 to 5.0.71.39. The new version should be mostly compatible to the old version,
@@ -203,6 +199,20 @@ Among others, the following V8 options change in the new version of ArangoDB:
   `--harmony_arrow_functions`, `--harmony_rest_parameters`, `--harmony_classes`, 
   `--harmony_object_literals`, `--harmony_numeric_literals`, `--harmony_unicode`:
    these option have been removed in V8 5.
+
+!SECTION JavaScript API changes
+
+The following incompatible changes have been made to the JavaScript API in ArangoDB 3.0:
+
+!SUBSECTION Foxx
+
+The Foxx framework has been completely rewritten for 3.0 with a new, simpler and more 
+familiar API. To make Foxx applications from earlier ArangoDB versions run in 3.0
+without code changes, the application's manifest file needs to be edited.
+
+To enable the legacy mode for a Foxx application, add `"engines": {"arangodb": "^2.8.0"}` 
+(or similar version ranges that exclude 3.0 and up) to the service manifest file
+(named "manifest.json", located in the application's base directory).
 
 !SUBSECTION Edges API
 
