@@ -214,7 +214,8 @@ std::vector<bool> Store::apply (
     std::string endpoint, path;
     if (endpointPathFromUrl (url,endpoint,path)) {
 
-      auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
+      auto headerFields = std::make_unique<std::unordered_map<std::string,
+                                                              std::string>>();
       
       ClusterCommResult res =
         arangodb::ClusterComm::instance()->asyncRequest(
