@@ -1,4 +1,17 @@
 .application-detail-view {
+
+  .headerBar {
+    .subMenuEntries {
+      margin-left: 5px;
+      margin-top: -2px;
+    }
+
+    .headerButtonBar {
+      position: absolute;
+      right: 5px;
+    }
+  }
+
   section.info {
     float: left;
     padding: 13px 0 0;
@@ -6,34 +19,56 @@
     .header {
       height: 200px;
       margin-bottom: 0;
-      position: relative;
+      position: absolute;
+      width: calc(100% - 20px);
 
       div.header-icon-container {
-        border-radius: 3px;
+        border: 2px solid $c-bluegrey-nontransp;
+        border-radius: 150px;
         height: 182px;
         left: 0;
-        margin: 0 0 4px;
-        position: absolute;
+        margin: 0 auto;
+        overflow: hidden;
         width: 182px;
 
         img.icon {
           background-color: $c-white;
-          border: 1px solid $c-content-border;
           border-radius: 3px;
           height: auto;
-          max-height: 160px;
-          max-width: 160px;
+          max-height: 162px;
+          max-width: 162px;
           padding: 10px;
           width: auto;
         }
 
       }
 
+      .information {
+        background-color: $c-white;
+        border: 1px solid $c-bluegrey-nontransp;
+        border-radius: 3px;
+        padding: 10px 10px 0;
+        position: relative;
+        top: 35px;
+        width: calc(100% - 30px);
+
+        span {
+          display: block;
+          float: left;
+          font-weight: 500;
+          width: 90px;
+        }
+
+        a {
+          margin-right: 10px;
+        }
+      }
+
       .header_right {
-        padding-top: 1px;
-        position: absolute;
-        right: -10px;
-        width: 150px;
+        left: 190px;
+        margin: 0 auto;
+        margin-top: 40px;
+        width: 137px;
 
         input.delete,
         input.upgrade,
@@ -50,10 +85,11 @@
       }
 
       .header_left {
-        margin-left: 190px;
-        margin-right: 145px;
+        margin: 0 auto;
         padding-left: 10px;
         padding-top: 1px;
+        text-align: center;
+        width: 33.3%;
 
         input {
           margin-left: 0;
@@ -61,31 +97,72 @@
         }
 
         .header_line {
+
+          margin-top: 10px;
+
+          p {
+            font-size: 14pt;
+            font-weight: 200;
+          }
+
           h3 {
             float: left;
             margin-bottom: 0;
             margin-top: 0;
             padding-right: 5px;
+            width: 100%;
           }
 
           .license,
+          .mode,
           .version {
             @include border-radius(3px);
 
-            background-color: $c-white;
+            background-color: $c-bluegrey-dark;
             border: 1px solid $c-content-border;
-            color: $c-editor-toolbar;
+            color: $c-white;
             font-size: .6em;
-            font-weight: 400;
+            font-weight: 300;
             padding: 0 8px 2px;
             position: relative;
             top: -3px;
+          }
+
+          .production {
+            color: $c-positive;
+          }
+
+          .development {
+            color: $c-warning;
           }
 
           &:after {
             clear: both;
             content: '';
             display: table;
+          }
+        }
+
+        .header_line_bottom {
+          > div {
+            display: table;
+            left: -3px;
+            margin: 0 auto;
+            margin-top: -10px;
+            position: absolute;
+            width: 100%;
+
+          }
+
+          h3 {
+            width: auto;
+          }
+
+          .inner {
+            display: table;
+            margin: 0 auto;
+            padding-left: 15px;
+            width: auto;
           }
         }
       }
@@ -131,7 +208,7 @@
 
 main {
   background-color: $c-white;
-  border: 1px solid $c-content-border;
+  //border: 1px solid $c-content-border;
   border-radius: 3px;
 
   .app-info {
@@ -160,6 +237,45 @@ main {
   .readme {
     background: $c-white;
     padding: 1em 2em;
+
+    .buttons {
+
+      background: $c-white;
+      height: 30px;
+      position: relative;
+      right: -15px;
+      width: 100%;
+
+      button {
+        float: right;
+      }
+    }
+
+    .modal-body {
+      border: {
+        bottom: 1px solid $c-content-border;
+        left: 0;
+        right: 0;
+        top: 0;
+      }
+      padding-bottom: 15px;
+    }
+
+    .modal-footer {
+      border: {
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: 1px solid $c-content-border;
+      }
+      padding-right: 0;
+    }
+
+    h1 {
+      float: left;
+      text-align: left;
+      width: 100%;
+    }
   }
 
 }
@@ -229,6 +345,22 @@ main {
 
   .pending {
     color: $c-darker-grey;
+  }
+
+}
+
+#swagger {
+  #jsonLink {
+    @extend %animated;
+    color: $c-bluegrey-light;
+    font-weight: 500;
+    opacity: .5;
+    position: absolute;
+    right: 20px;
+
+    &:hover {
+      opacity: 1;
+    }
   }
 
 }

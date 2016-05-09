@@ -174,11 +174,14 @@ v3.0.0 (XXXX-XX-XX)
 * added WorkMonitor to inspect server threads
 
 * when downloading a Foxx service from the web interface the suggested filename
-  now takes the form $name@$version.zip instead of simply "app.zip"
+  is now based on the service's mount path instead of simply "app.zip"
 
 * the `@arangodb/request` response object now stores the parsed JSON response
   body in a property `json` instead of `body` when the request was made using the
   `json` option. The `body` instead contains the response body as a string.
+
+* the Foxx API has changed significantly, 2.8 services are still supported
+  using a backwards-compatible "legacy mode"
 
 
 v2.8.9 (XXXX-XX-XX)

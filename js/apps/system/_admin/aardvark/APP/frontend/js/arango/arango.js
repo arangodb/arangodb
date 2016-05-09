@@ -279,7 +279,7 @@
       this.buildSubNavBar(menus);
     },
 
-    //nav for collection view
+    //nav for cluster/nodes view
     buildNodesSubNav: function(type) {
 
       var menus = {

@@ -36,7 +36,6 @@ var cluster = require("@arangodb/cluster");
 var internal = require("internal");
 var _ = require("lodash");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_cluster_test_GET
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +168,6 @@ function parseAuthorization (authorization) {
   return { username: auth.substr(0, pos),
            passwd: auth.substr(pos+1) || "" };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_cluster_statistics_GET
@@ -915,6 +913,3 @@ actions.defineHttp({
     }
   }
 });
-
-    
-

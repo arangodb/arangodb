@@ -14,7 +14,11 @@
       <img class="arangodbLogo" src="img/arangodb_logo_small.png"/>
       <img class="" src="img/arangodb_logo_letter.png"/>
     </div>
-    <p class="wrong-credentials" style="display:none" >Wrong credentials!</p>
+    <p class="wrong-credentials" style="display:none">Wrong credentials!</p>
+    <p class="checking-password" style="display:none">
+      <i class="fa fa-circle-o-notch fa-spin fa-fw"></i>
+      <span class="sr-only">Loading...</span>
+    </p>
     <form id="loginForm">
       <input class="login-input" placeholder="username" id="loginUsername" type="text" name="username"><i class="fa fa-user"></i>
       <input class="login-input" placeholder="password" id="loginPassword" type="password" name="password"><i class="fa fa-lock"></i>

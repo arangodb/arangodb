@@ -15,6 +15,9 @@
       </div>
     </nav>
 
+    <div id="modalPlaceholder">
+    </div>
+
     <div class="bodyWrapper">
 
       <div class="centralRow">
@@ -41,9 +44,6 @@
       </div>
 
     </div>
-
-  <div id="modalPlaceholder">
-  </div>
 
   <div id="progressPlaceholder" style="display:none">
   </div>

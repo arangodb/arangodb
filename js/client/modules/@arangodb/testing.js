@@ -1597,7 +1597,6 @@ function rubyTests(options, ssl) {
         }
 
         print("\n" + Date() + " rspec trying", te, "...");
-
         const res = executeAndWait(command, args, options);
 
         result[te] = {
