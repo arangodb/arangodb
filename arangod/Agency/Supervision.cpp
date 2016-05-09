@@ -125,7 +125,7 @@ std::vector<check_t> Supervision::check (std::string const& path) {
 }
 
 bool Supervision::moveShard (std::string const& from, std::string const& to) {
-  
+  return true;
 }
 
 bool Supervision::doChecks (bool timedout) {
