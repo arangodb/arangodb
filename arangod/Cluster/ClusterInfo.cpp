@@ -768,14 +768,14 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
     DatabaseID const& databaseID, CollectionID const& collectionID) {
   int tries = 0;
 
-  if (!_currentCollectionsProt.isValid) {
+  if (!_currentProt.isValid) {
     loadCurrent();
     ++tries;
   }
 
   while (true) {
     {
-      READ_LOCKER(readLocker, _currentCollectionsProt.lock);
+      READ_LOCKER(readLocker, _currentProt.lock);
       // look up database by id
       AllCollectionsCurrent::const_iterator it =
           _currentCollections.find(databaseID);
@@ -2209,14 +2209,14 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
 
   int tries = 0;
   
-  if (!_currentCollectionsProt.isValid) {
+  if (!_currentProt.isValid) {
     loadCurrent();
     tries++;
   }
 
   while (true) {
     {
-      READ_LOCKER(readLocker, _currentCollectionsProt.lock);
+      READ_LOCKER(readLocker, _currentProt.lock);
       // _shardIds is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardIds.find(shardID);
@@ -2502,10 +2502,6 @@ void ClusterInfo::invalidateCurrent() {
   {
     WRITE_LOCKER(writeLocker, _currentProt.lock);
     _currentProt.isValid = false;
-  }
-  {
-    WRITE_LOCKER(writeLocker, _currentCollectionsProt.lock);
-    _currentCollectionsProt.isValid = false;
   }
 }
 

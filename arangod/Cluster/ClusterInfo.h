@@ -951,7 +951,6 @@ class ClusterInfo {
 
   // The Current state:
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
-  ProtectionData _currentCollectionsProt;
   std::unordered_map<ShardID, std::shared_ptr<std::vector<ServerID>>>
       _shardIds;  // from Current/Collections/
 
