@@ -28,18 +28,20 @@ for storing and reading documents.
 
 !SUBSUBSECTION `LIKE` string-comparison operator
 
-AQL now provides a `LIKE` keyword. `LIKE` is now an operator and can be used to 
-compare strings like this, for example inside filter conditions:
+AQL now provides a `LIKE` operator and can be used to compare strings like this,
+for example inside filter conditions:
 
 ```
 value LIKE search
 ```
 
-The `LIKE` operator is currently implemented by calling the already existing AQL
-function `LIKE`, which also remains operational in 3.0.
-
 This change makes `LIKE` an AQL keyword. Using `LIKE` as an attribute or collection 
 name in AQL thus requires quoting the name from now on.
+
+The `LIKE` operator is currently implemented by calling the already existing AQL
+function `LIKE`, which also remains operational in 3.0. Use the `LIKE` function
+in case you want to search case-insensitive (optional parameter), as the `LIKE`
+operator always compares case-sensitive.
 
 !SUBSUBSECTION AQL array comparison operators
 
@@ -152,7 +154,7 @@ the query. This saves constructing edges and paths results that are not used lat
 AQL now uses VelocyPack internally for storing intermediate values. For many value types
 it can now get away without extra memory allocations and less internal conversions.
 Values can be passed into internal AQL functions without copying them. This can lead to
-reduced query execution times for queues that use C++-based AQL functions.
+reduced query execution times for queries that use C++-based AQL functions.
 
 !SUBSUBSECTION "replace-or-with-in" and "use-index-for-sort" rules
 
@@ -199,8 +201,8 @@ was dropped. The collection id stored in edges then became unusable, and when
 accessing such edge the collection name part of it was always translated to `_undefined`.
 
 In ArangoDB 3.0, the `_from` and `_to` values of edges are saved as regular strings.
-This allows using `_from` and `_to` in user-defined indexes. Additionally this allows
-updating the `_from` and `_to` values of existing edges. Furthermore, collections
+This allows using `_from` and `_to` in user-defined indexes. Additionally, this allows
+to update the `_from` and `_to` values of existing edges. Furthermore, collections
 referenced by `_from` and `_to` values may be dropped and re-created later. Any
 `_from` and `_to` values of edges pointing to such dropped collection are unaffected
 by the drop operation now.
@@ -273,7 +275,7 @@ default, including
 
 The ArangoDB 3.0 web interface is significantly improved. It now comes with a more
 responsive design, making it easier to use on different devices. Navigation and menus
-have been simplified, and related items have been regrouped to stay close together
+have been simplified, and related items have been regrouped to stay closer together
 and allow tighter workflows.
 
 The AQL query editor is now much easier to use. Multiple queries can be started and tracked 
@@ -288,7 +290,7 @@ longer-running operations are ongoing. It also keeps more state about user's cho
 windows sizes, whether the tree or the code view was last used in the document editor).
 
 Cluster statistics are now integrated into the web interface as well. Additionally, a
-"Feedback" menu item has been added to easily provide the ArangoDB team feedback about
+menu item "Help us" has been added to easily provide the ArangoDB team feedback about
 the product.
 
 !SECTION Foxx improvements
@@ -392,3 +394,14 @@ contributions harder than necessary. Now the build system is unified, and
 all targets (Linux, Windows, MacOS) are built from the same set of build 
 instructions. 
 
+!SECTION Documentation
+
+The documentation has been enhanced and re-organized to be more intuitive.
+
+A new introduction for beginners should bring you up to speed with ArangoDB
+in less than an hour. Additional topics have been introduced and will be
+extended with upcoming releases.
+
+The topics AQL and HTTP API are now separated from the manual for better
+searchability and less confusion. A version switcher makes it easier to
+jump to the version of the docs you are interested in.
