@@ -92,10 +92,15 @@ std::vector<check_t> Supervision::check (std::string const& path) {
         continue;
       } else {
         query_t report = std::make_shared<Builder>();
-        report->openArray(); report->openArray(); report->openObject();
+        report->openArray(); report->openArray();
+        report->add(std::string("/arango/Supervision/Health/" + serverID),
+                    VPackValue(VPackValueType::Object));
         report->add("Status", VPackValue("GOOD"));
-        report->close(); report->close(); report->close();
+        report->add("LastHearbeat", VPackValue("GOOD"));
+        report->close();
+        report->close(); report->close();
         LOG(DEBUG) << "GOOD:" << serverID<< it->second->serverTimestamp << ":" << it->second->serverStatus;
+        LOG(INFO) << report->toJson();
         it->second->update(lastHeartbeatStatus,lastHeartbeatTime);
       }
     } else {                          // New server
@@ -128,7 +133,8 @@ void Supervision::run() {
   CONDITION_LOCKER(guard, _cv);
   TRI_ASSERT(_agent!=nullptr);
   bool timedout = false;
-  
+
+  /*
   while (!this->isStopping()) {
     
     if (_agent->leading()) {
@@ -139,7 +145,7 @@ void Supervision::run() {
     
     doChecks(timedout);
     
-  }
+    }*/
   
 }
 
