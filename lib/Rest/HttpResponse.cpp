@@ -34,8 +34,8 @@ using namespace arangodb::basics;
 std::string const HttpResponse::BATCH_ERROR_HEADER = "x-arango-errors";
 bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
-HttpResponse::HttpResponse(ResponseCode code, uint32_t compatibility)
-    : GeneralResponse(code, compatibility),
+HttpResponse::HttpResponse(ResponseCode code)
+    : GeneralResponse(code),
       _isHeadResponse(false),
       _isChunked(false),
       _body(TRI_UNKNOWN_MEM_ZONE, false),
@@ -118,7 +118,7 @@ size_t HttpResponse::bodySize() const {
 }
 
 void HttpResponse::writeHeader(StringBuffer* output) {
-  bool const capitalizeHeaders = (_apiCompatibility >= 20100);
+  bool const capitalizeHeaders = true; 
 
   output->appendText(TRI_CHAR_LENGTH_PAIR("HTTP/1.1 "));
   output->appendText(responseString(_responseCode));

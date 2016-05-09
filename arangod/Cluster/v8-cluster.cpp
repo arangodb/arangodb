@@ -608,15 +608,13 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (args.Length() < 1 || args.Length() > 3) {
-    TRI_V8_THROW_EXCEPTION_USAGE("uniqid(<key>, <count>, <timeout>)");
+  if (args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("uniqid(<count>, <timeout>)");
   }
 
-  std::string const key = TRI_ObjectToString(args[0]);
-
   uint64_t count = 1;
-  if (args.Length() > 1) {
-    count = TRI_ObjectToUInt64(args[1], true);
+  if (args.Length() > 0) {
+    count = TRI_ObjectToUInt64(args[0], true);
   }
 
   if (count < 1 || count > 10000000) {
@@ -624,18 +622,14 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   double timeout = 0.0;
-  if (args.Length() > 2) {
-    timeout = TRI_ObjectToDouble(args[2]);
+  if (args.Length() > 1) {
+    timeout = TRI_ObjectToDouble(args[1]);
   }
 
   AgencyComm comm;
-  AgencyCommResult result = comm.uniqid(key, count, timeout);
+  uint64_t result = comm.uniqid(count, timeout);
 
-  if (!result.successful() || result._index == 0) {
-    THROW_AGENCY_EXCEPTION(result);
-  }
-
-  std::string const value = StringUtils::itoa(result._index);
+  std::string const value = StringUtils::itoa(result);
 
   TRI_V8_RETURN_STD_STRING(value);
   TRI_V8_TRY_CATCH_END
@@ -770,8 +764,6 @@ static void JS_GetCollectionInfoClusterInfo(
               v8::Number::New(isolate, ci->journalSize()));
   result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
               v8::Number::New(isolate, ci->replicationFactor()));
-  result->Set(TRI_V8_ASCII_STRING("replicationQuorum"),
-              v8::Number::New(isolate, ci->replicationQuorum()));
 
   std::vector<std::string> const& sks = ci->shardKeys();
   v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate, (int)sks.size());
@@ -792,7 +784,7 @@ static void JS_GetCollectionInfoClusterInfo(
   }
   result->Set(TRI_V8_ASCII_STRING("shards"), shardIds);
 
-  v8::Handle<v8::Value> indexes = TRI_ObjectJson(isolate, ci->getIndexes());
+  v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, ci->getIndexes());
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
 
   TRI_V8_RETURN(result);
@@ -1072,7 +1064,7 @@ static void JS_UniqidClusterInfo(
     TRI_V8_THROW_EXCEPTION_PARAMETER("<count> is invalid");
   }
 
-  uint64_t value = ClusterInfo::instance()->uniqid();
+  uint64_t value = ClusterInfo::instance()->uniqid(count);
 
   if (value == 0) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

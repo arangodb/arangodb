@@ -160,10 +160,10 @@ void TRI_EnableDeadlockDetectionDatabasesServer(TRI_server_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the ids of all local coordinator databases
-/// the caller is responsible for freeing the result
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer(TRI_server_t*);
+std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer(TRI_server_t*, 
+                                                                bool includeSystem = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing coordinator database

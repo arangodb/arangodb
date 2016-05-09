@@ -32,6 +32,7 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
 
  public:
   void start() override final;
+  void stop() override final;
 };
 }
 

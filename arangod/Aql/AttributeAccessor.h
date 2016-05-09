@@ -52,6 +52,7 @@ class AttributeAccessor {
  private:
   enum AccessorType {
     EXTRACT_KEY,
+    EXTRACT_ID,
     EXTRACT_FROM,
     EXTRACT_TO,
     EXTRACT_SINGLE,

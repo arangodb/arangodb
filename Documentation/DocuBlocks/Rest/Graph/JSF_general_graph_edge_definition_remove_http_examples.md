@@ -24,8 +24,13 @@ Collection will only be dropped if it is not used in other graphs.
 
 @RESTRETURNCODES
 
+@RESTRETURNCODE{201}
+Returned if the edge definition could be removed from the graph 
+and waitForSync is true.
+
 @RESTRETURNCODE{202}
-Returned if the edge definition could be removed from the graph.
+Returned if the edge definition could be removed from the graph and
+waitForSync is false.
 
 @RESTRETURNCODE{400}
 Returned if no edge definition with this name is found in the graph.

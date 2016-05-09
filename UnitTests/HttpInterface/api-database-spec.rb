@@ -67,28 +67,6 @@ describe ArangoDB do
       ArangoDB.delete(api + "/#{name}")
     end
     
-    it "creates a new database, old return code" do
-      body = "{\"name\" : \"#{name}\" }"
-      doc = ArangoDB.log_post("#{prefix}-create", api, :body => body, :headers => { "X-Arango-Version" => "1.4" })
-     
-      doc.code.should eq(200)
-      doc.headers['content-type'].should eq("application/json; charset=utf-8")
-      response = doc.parsed_response
-      response["result"].should eq(true)
-      response["error"].should eq(false)
-    end
-    
-    it "creates a new database, new return code" do
-      body = "{\"name\" : \"#{name}\" }"
-      doc = ArangoDB.log_post("#{prefix}-create", api, :body => body, :headers => { "X-Arango-Version" => "1.5" })
-     
-      doc.code.should eq(201)
-      doc.headers['content-type'].should eq("application/json; charset=utf-8")
-      response = doc.parsed_response
-      response["result"].should eq(true)
-      response["error"].should eq(false)
-    end
-
     it "creates a new database" do
       body = "{\"name\" : \"#{name}\" }"
       doc = ArangoDB.log_post("#{prefix}-create", api, :body => body)

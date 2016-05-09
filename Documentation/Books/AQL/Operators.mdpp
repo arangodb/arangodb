@@ -198,42 +198,39 @@ Some example arithmetic operations:
     -15
     +9.99
 
-The arithmetic operators accept operands of any type. This behavior has changed in 
-ArangoDB 2.3. Passing non-numeric values to an arithmetic operator is now allow.
-Any non-numeric operands will be casted to numbers implicitly by the operator,
-without making the query abort. 
+The arithmetic operators accept operands of any type. Passing non-numeric values to an 
+arithmetic operator will cast the operands to numbers using the type casting rules 
+applied by the `TO_NUMBER` function:
 
-The *conversion to a numeric value* works as follows:
 - `null` will be converted to `0`
 - `false` will be converted to `0`, true will be converted to `1`
-- a valid numeric value remains unchanged, but NaN and Infinity will be converted to `null`
+- a valid numeric value remains unchanged, but NaN and Infinity will be converted to `0`
 - string values are converted to a number if they contain a valid string representation
   of a number. Any whitespace at the start or the end of the string is ignored. Strings
-  with any other contents are converted to `null`
+  with any other contents are converted to the number `0`
 - an empty array is converted to `0`, an array with one member is converted to the numeric
-  representation of its sole member. Arrays with more members are converted 
-  to `null`
-- objects / documents are converted to `null`
+  representation of its sole member. Arrays with more members are converted to the number 
+  `0`.
+- objects / documents are converted to the number `0`.
 
-If the conversion to a number produces a value of `null` for one of the operands,
-the result of the whole arithmetic operation will also be `null`. An arithmetic operation
-that produces an invalid value, such as `1 / 0` will also produce a value of `null`.
+An arithmetic operation that produces an invalid value, such as `1 / 0` will also produce 
+a result value of `0`.
 
 Here are a few examples:
 
-    1 + "a"                 // null
+    1 + "a"                 // 1
     1 + "99"                // 100
     1 + null                // 1
     null + 1                // 1
     3 + [ ]                 // 3
     24 + [ 2 ]              // 26
-    24 + [ 2, 4 ]           // null
+    24 + [ 2, 4 ]           // 0
     25 - null               // 25
     17 - true               // 16
-    23 * { }                // null
+    23 * { }                // 0
     5 * [ 7 ]               // 35
     24 / "12"               // 2
-    1 / 0                   // null
+    1 / 0                   // 0
 
 
 !SUBSUBSECTION Ternary operator

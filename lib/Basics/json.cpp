@@ -446,22 +446,6 @@ int TRI_InitStringCopyJson(TRI_memory_zone_t* zone, TRI_json_t* result,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a string reference object with given length
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_CreateStringReferenceJson(TRI_memory_zone_t* zone,
-                                          char const* value, size_t length) {
-  TRI_json_t* result =
-      static_cast<TRI_json_t*>(TRI_Allocate(zone, sizeof(TRI_json_t), false));
-
-  if (result != nullptr) {
-    InitStringReference(result, value, length);
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a string reference object
 ////////////////////////////////////////////////////////////////////////////////
 

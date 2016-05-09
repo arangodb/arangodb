@@ -61,8 +61,10 @@ public:
   /// @brief Start thread
   bool start();
 
+  /// @brief My endpoint
+  std::string const& endpoint() const;
+
   /// @brief Verbose print of myself
-  ////
   void print(arangodb::LoggerStream&) const;
 
   /// @brief Are we fit to run?

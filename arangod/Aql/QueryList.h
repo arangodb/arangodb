@@ -150,6 +150,9 @@ class QueryList {
 
   /// @brief kills a query
   int kill(TRI_voc_tick_t);
+  
+  /// @brief kills all currently running queries
+  uint64_t killAll(bool silent);
 
   /// @brief return the list of running queries
   std::vector<QueryEntryCopy> listCurrent();

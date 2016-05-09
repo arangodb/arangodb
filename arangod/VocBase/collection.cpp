@@ -894,12 +894,13 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
   std::string const name = other.name();
   memset(_name, 0, sizeof(_name));
   memcpy(_name, name.c_str(), name.size());
+ 
+  VPackSlice keyOptionsSlice(other.keyOptions());
 
-  std::unique_ptr<TRI_json_t> otherOpts(other.keyOptions());
-  if (otherOpts != nullptr) {
-    std::shared_ptr<arangodb::velocypack::Builder> builder =
-        arangodb::basics::JsonHelper::toVelocyPack(otherOpts.get());
-    _keyOptions = builder->steal();
+  if (!keyOptionsSlice.isNone()) {
+    VPackBuilder builder;
+    builder.add(keyOptionsSlice);
+    _keyOptions = builder.steal();
   }
 }
 

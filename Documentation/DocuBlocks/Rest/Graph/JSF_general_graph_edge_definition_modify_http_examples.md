@@ -26,8 +26,8 @@ One or many edge collections that can contain target vertices.
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200}
-Returned if the edge definition could be replaced.
+@RESTRETURNCODE{201}
+Returned if the request was successful and waitForSync is true.
 
 @RESTRETURNCODE{202}
 Returned if the request was successful but waitForSync is false.

@@ -79,7 +79,6 @@ RestServerFeature::RestServerFeature(
     : ApplicationFeature(server, "RestServer"),
       _keepAliveTimeout(300.0),
       _authenticationRealm(authenticationRealm),
-      _defaultApiCompatibility(Version::getNumericServerVersion()),
       _allowMethodOverride(false),
       _authentication(true),
       _authenticationUnixSockets(true),
@@ -103,10 +102,6 @@ RestServerFeature::RestServerFeature(
 void RestServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
-
-  options->addHiddenOption("--server.default-api-compatibility",
-                           "default API compatibility version",
-                           new Int32Parameter(&_defaultApiCompatibility));
 
   options->addOption("--server.authentication",
                      "enable or disable authentication for ALL client requests",
@@ -140,12 +135,6 @@ void RestServerFeature::collectOptions(
 }
 
 void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (_defaultApiCompatibility < HttpRequest::MIN_COMPATIBILITY) {
-    LOG(FATAL) << "invalid value for --server.default-api-compatibility. "
-                  "minimum allowed value is "
-               << HttpRequest::MIN_COMPATIBILITY;
-    FATAL_ERROR_EXIT();
-  }
 }
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
@@ -197,15 +186,12 @@ void RestServerFeature::prepare() {
 }
 
 void RestServerFeature::start() {
-  LOG(DEBUG) << "using default API compatibility: "
-             << (long int)_defaultApiCompatibility;
-
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
   _httpOptions._vocbase = DatabaseFeature::DATABASE->vocbase();
 
   _handlerFactory.reset(new HttpHandlerFactory(
-      _authenticationRealm, _defaultApiCompatibility, _allowMethodOverride,
+      _authenticationRealm, _allowMethodOverride,
       &SetRequestContext, DatabaseServerFeature::SERVER));
 
   defineHandlers();
