@@ -29,7 +29,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -37,7 +36,6 @@
 
 #include <ctime>
 #include <iomanip>
-#include <iostream>
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;

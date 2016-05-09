@@ -371,11 +371,16 @@ void ClusterFeature::start() {
         result.slice()[0].get(std::vector<std::string>(
           {AgencyComm::prefixStripped(), "Sync", "HeartbeatIntervalMs"}));
           
-      if (HeartbeatIntervalMs.isUInt()) {
-        _heartbeatInterval = HeartbeatIntervalMs.getUInt();
+      if (HeartbeatIntervalMs.isInteger()) {
+        try {
+          _heartbeatInterval = HeartbeatIntervalMs.getUInt();
+          LOG(INFO) << "using heartbeat interval value '" << _heartbeatInterval
+                    << " ms' from agency";
+        }
+        catch (...) {
+          // Ignore if it is not a small int or uint
+        }
         
-        LOG(INFO) << "using heartbeat interval value '" << _heartbeatInterval
-                  << " ms' from agency";
       }
     }
     

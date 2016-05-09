@@ -32,8 +32,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-int32_t const GeneralRequest::MIN_COMPATIBILITY = 10300L;
-  
 static std::string const EMPTY_STR = "";
 
 std::string GeneralRequest::translateVersion(ProtocolVersion version) {

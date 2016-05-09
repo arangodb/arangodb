@@ -44,30 +44,30 @@ not not 1 // true
   - Strings are converted to their numeric equivalent if the string contains a
     valid representation of a number. Whitespace at the start and end of the string
     is allowed. String values that do not contain any valid representation of a number
-    will be converted to *null*.
+    will be converted to the number *0*.
   - An empty array is converted to *0*, an array with one member is converted into the
     result of `TO_NUMBER()` for its sole member. An array with two or more members is
-    converted to *null*.
-  - An object / document is converted to *null*.
+    converted to the number *0*.
+  - An object / document is converted to the number *0*.
   
     An unary plus will also try to cast to a number, but `TO_NUMBER()` is the preferred way:
     ```js
 +'5' // 5
 +[8] // 8
-+[8,9] // null
-+{} // null
++[8,9] // 0
++{} // 0
     ```
-    An unary minus works likewise, except that a numeric value is also negated:
+    A unary minus works likewise, except that a numeric value is also negated:
     ```js
 -'5' // -5
 -[8] // -8
--[8,9] // null
--{} // null
+-[8,9] // 0
+-{} // 0
     ```
 
 - *TO_STRING(value)*: Takes an input *value* of any type and converts it 
   into a string value as follows:
-  - *null* is converted to the string *"null"*
+  - *null* is converted to the the empty string *""*
   - *false* is converted to the string *"false"*, *true* to the string *"true"*
   - Numbers are converted to their string representations. This can also be a
     scientific notation: `TO_STRING(0.0000002) // "2e-7"`

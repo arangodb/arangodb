@@ -19,8 +19,14 @@ An array of additional vertex collections.
 
 @RESTRETURNCODES
 
+@RESTRETURNCODE{201}
+Is returned if the graph could be created and waitForSync is enabled
+for the `_graphs` collection.  The response body contains the
+graph configuration that has been stored.
+
 @RESTRETURNCODE{202}
-Is returned if the graph could be created.  The body contains the
+Is returned if the graph could be created and waitForSync is disabled
+for the `_graphs` collection. The response body contains the
 graph configuration that has been stored.
 
 @RESTRETURNCODE{409}

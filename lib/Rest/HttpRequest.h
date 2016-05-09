@@ -45,11 +45,8 @@ class HttpRequest : public GeneralRequest {
   static std::string const MULTI_PART_CONTENT_TYPE;
 
  public:
-  HttpRequest(ConnectionInfo const&, char const*, size_t, int32_t, bool);
+  HttpRequest(ConnectionInfo const&, char const*, size_t, bool);
   ~HttpRequest();
-
- public:
-  int32_t compatibility() override;
 
  public:
   // HTTP protocol version is 1.0

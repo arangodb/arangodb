@@ -90,15 +90,10 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
     // care of correct freeing:
     auto a = result->getValueReference(i, _inRegs[0]);
 
-    try {
-      TRI_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      result->setValue(i, _outReg, a);
-    } catch (...) {
-      a.destroy();
-      throw;
+    TRI_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+    result->setValue(i, _outReg, a);
   }
 }
 

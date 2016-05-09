@@ -52,7 +52,6 @@ class RestServerFeature final
  private:
   double _keepAliveTimeout;
   std::string const _authenticationRealm;
-  int32_t _defaultApiCompatibility;
   bool _allowMethodOverride;
   bool _authentication;
   bool _authenticationUnixSockets;

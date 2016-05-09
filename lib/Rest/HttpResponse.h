@@ -36,7 +36,7 @@ class HttpResponse : public GeneralResponse {
   static std::string const BATCH_ERROR_HEADER;
 
  public:
-  HttpResponse(ResponseCode code, uint32_t compatibility);
+  explicit HttpResponse(ResponseCode code);
 
  public:
   bool isHeadResponse() const { return _isHeadResponse; }

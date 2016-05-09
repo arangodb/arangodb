@@ -132,7 +132,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     LOG(TRACE) << "part header is: " << std::string(headerStart, headerLength);
     HttpRequest* request =
         new HttpRequest(_request->connectionInfo(), headerStart, headerLength,
-                        _request->compatibility(), false);
+                        false);
 
     if (request == nullptr) {
       generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
