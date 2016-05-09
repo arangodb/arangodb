@@ -41,7 +41,7 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
   }
   double v = node->getDoubleValue();
   double intpart;
-  if (modf(v, &intpart) != 0.0 || v < 1.0) {
+  if (modf(v, &intpart) != 0.0 || v < 0.0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                    "invalid traversal depth");
   }
