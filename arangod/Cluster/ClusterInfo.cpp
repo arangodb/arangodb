@@ -1547,7 +1547,6 @@ int ClusterInfo::ensureIndexCoordinator(
       "Plan/Collections/" + databaseName + "/" + collectionID;
 
   AgencyCommResult previous = ac.getValues2(key);
-  bool usePrevious = true;
 
   velocypack::Slice collection =
     previous.slice()[0].get(std::vector<std::string>(
@@ -1676,11 +1675,7 @@ int ClusterInfo::ensureIndexCoordinator(
     }
 
     AgencyCommResult result;
-    if (usePrevious) {
-      result = ac.casValue(key, collection, newBuilder.slice(), 0.0, 0.0);
-    } else {  // only when there is no previous value
-      result = ac.setValue(key, newBuilder.slice(), 0.0);
-    }
+    result = ac.casValue(key, collection, newBuilder.slice(), 0.0, 0.0);
 
     if (!result.successful()) {
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
