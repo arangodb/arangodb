@@ -70,7 +70,7 @@ inline HttpHandler::status_t RestAgencyPrivHandler::reportMethodNotAllowed() {
   generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
   return HttpHandler::status_t(HANDLER_DONE);
 }
-#include <iostream>
+
 HttpHandler::status_t RestAgencyPrivHandler::execute() {
   try {
     VPackBuilder result;

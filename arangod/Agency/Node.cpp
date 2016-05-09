@@ -133,7 +133,7 @@ Node& Node::operator= (Node const& rhs) {
   _children = rhs._children;
   return *this;
 }
-#include <iostream>
+
 // Comparison with slice
 bool Node::operator== (VPackSlice const& rhs) const {
   if (rhs.isObject()) {
