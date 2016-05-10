@@ -82,23 +82,32 @@ endif (ZLIB_FOUND)
 include(TestBigEndian)
 TEST_BIG_ENDIAN(WORDS_BIGENDIAN)
 
-# These are used by snappy-stubs-public.h.in.
-if (${HAVE_STDINT_H})
-  SET(ac_cv_have_stdint_h 1)
+include(CheckTypeSize)
+CHECK_TYPE_SIZE(ssize_t SSIZE_T)
+
+  # These are used by snappy-stubs-public.h.in.
+if (${HAVE_SSIZE_T} STREQUAL "TRUE")
+  SET(ac_cv_have_ssize_t "1")
 else()
-  SET(ac_cv_have_stdint_h 0)
+  SET(ac_cv_have_ssize_t "0")
+endif()
+
+if (${HAVE_STDINT_H})
+  SET(ac_cv_have_stdint_h "1")
+else()
+  SET(ac_cv_have_stdint_h "0")
 endif()
 
 if (${HAVE_STDDEF_H})
-  SET(ac_cv_have_stddef_h 1)
+  SET(ac_cv_have_stddef_h "1")
 else()
-  SET(ac_cv_have_stddef_h 0)
+  SET(ac_cv_have_stddef_h "0")
 endif()
 
 if (${HAVE_SYS_UIO_H})
-  SET(ac_cv_have_sys_uio_h 1)
+  SET(ac_cv_have_sys_uio_h "1")
 else()
-  SET(ac_cv_have_sys_uio_h 0)
+  SET(ac_cv_have_sys_uio_h "0")
 endif()
 
 
