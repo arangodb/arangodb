@@ -165,6 +165,12 @@ HttpHandler::status_t RestAgencyHandler::handleWrite () {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
+/*inline HttpHandler::status_t RestAgencyHandler::handleReplicate () {
+  if (_request->requestType() == GeneralRequest::RequestType::POST) {
+    
+  }  
+  }*/
+
 inline HttpHandler::status_t RestAgencyHandler::handleRead() {
   arangodb::velocypack::Options options;
   if (_request->requestType() == GeneralRequest::RequestType::POST) {
