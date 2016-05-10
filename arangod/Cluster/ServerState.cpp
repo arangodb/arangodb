@@ -336,10 +336,9 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
 /// @brief create an id for a specified role
 //////////////////////////////////////////////////////////////////////////////
 std::string ServerState::createIdForRole(AgencyComm comm, ServerState::RoleEnum role) {
-  const std::string agencyKey = roleToAgencyKey(role);
+  std::string const agencyKey = roleToAgencyKey(role);
   
-  std::map<std::string, AgencyCommResultEntry>::const_iterator it;
-  const std::string serverIdPrefix = agencyKey.substr(0, agencyKey.length() - 1);
+  std::string const serverIdPrefix = agencyKey.substr(0, agencyKey.length() - 1);
   std::string id;
 
   VPackBuilder builder;

@@ -61,8 +61,7 @@ IndexBlock::~IndexBlock() {
 arangodb::aql::AstNode* IndexBlock::makeUnique(
     arangodb::aql::AstNode* node) const {
   if (node->type != arangodb::aql::NODE_TYPE_ARRAY ||
-      (node->type == arangodb::aql::NODE_TYPE_ARRAY &&
-       node->numMembers() >= 2)) {
+      node->numMembers() >= 2) {
     // an non-array or an array with more than 1 member
     auto en = static_cast<IndexNode const*>(getPlanNode());
     auto ast = en->_plan->getAst();

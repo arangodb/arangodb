@@ -80,14 +80,14 @@ static uint64_t const Primes[251] = {
     2912386343ULL, 3136416067ULL, 3377678861ULL, 3637500323ULL, 3917308049ULL,
     4218639443ULL};
 
+static_assert(sizeof(Primes) / sizeof(Primes[0]) == 251, "invalid prime table size");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a prime number not lower than value
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_NearPrime(uint64_t value) {
-  unsigned int i;
-
-  for (i = 0; i < sizeof(Primes); ++i) {
+  for (unsigned int i = 0; i < sizeof(Primes) / sizeof(Primes[0]); ++i) {
     if (Primes[i] >= value) {
       return Primes[i];
     }

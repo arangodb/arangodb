@@ -48,8 +48,7 @@ Function::Function(std::string const& externalName,
   initializeArguments();
 
   // condition must only be set if we also have an implementation
-  TRI_ASSERT(implementation != nullptr ||
-             (implementation == nullptr && condition == nullptr));
+  TRI_ASSERT(implementation != nullptr || condition == nullptr);
 }
 
 /// @brief destroy the function
