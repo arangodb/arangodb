@@ -80,7 +80,7 @@ exports.Communication = function() {
 
         var value = ret;
         var currentKey = keys.shift();
-        while (typeof value == 'object' && value != null && typeof currentKey == 'string') {
+        while (typeof value === 'object' && value !== null && typeof currentKey === 'string') {
           value = value[currentKey];
           currentKey = keys.shift();
         }
