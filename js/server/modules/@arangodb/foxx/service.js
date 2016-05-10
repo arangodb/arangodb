@@ -120,7 +120,8 @@ module.exports = class FoxxService {
     const definitions = this.manifest.configuration;
     const warnings = [];
 
-    _.each(config, function (rawValue, name) {
+    for (const name of Object.keys(config)) {
+      const rawValue = config[name];
       const def = definitions[name];
       if (!def) {
         warnings.push(`Unexpected option "${name}"`);
@@ -158,7 +159,7 @@ module.exports = class FoxxService {
         this.options.configuration[name] = rawValue;
         this.configuration[name] = parsedValue;
       }
-    }, this);
+    }
 
     return warnings;
   }
@@ -262,14 +263,14 @@ module.exports = class FoxxService {
     const definitions = this.manifest.dependencies;
     const warnings = [];
 
-    _.each(deps, function (mount, name) {
+    for (const name of Object.keys(deps)) {
       const dfn = definitions[name];
       if (!dfn) {
         warnings.push(`Unexpected dependency "${name}"`);
       } else {
-        this.options.dependencies[name] = mount;
+        this.options.dependencies[name] = deps[name];
       }
-    }, this);
+    }
 
     return warnings;
   }
@@ -280,8 +281,8 @@ module.exports = class FoxxService {
 
   toJSON() {
     const result = {
-      name: this.name,
-      version: this.version,
+      name: this.manifest.name,
+      version: this.manifest.version,
       manifest: this.manifest,
       path: this.path,
       options: this.options,
@@ -325,13 +326,14 @@ module.exports = class FoxxService {
     const config = {};
     const definitions = this.manifest.configuration;
     const options = this.options.configuration;
-    _.each(definitions, function (dfn, name) {
+    for (const name of Object.keys(definitions)) {
+      const dfn = definitions[name];
       const value = options[name] === undefined ? dfn.default : options[name];
       config[name] = simple ? value : Object.assign({}, dfn, {
         title: getReadableName(name),
         current: value
       });
-    });
+    }
     return config;
   }
 
@@ -339,13 +341,14 @@ module.exports = class FoxxService {
     const deps = {};
     const definitions = this.manifest.dependencies;
     const options = this.options.dependencies;
-    _.each(definitions, function (dfn, name) {
+    for (const name of Object.keys(definitions)) {
+      const dfn = definitions[name];
       deps[name] = simple ? options[name] : {
         definition: dfn,
         title: getReadableName(name),
         current: options[name]
       };
-    });
+    }
     return deps;
   }
 
