@@ -213,11 +213,8 @@ HttpHandler::status_t RestBatchHandler::execute() {
       _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
 
       // remove some headers we don't need
-      static std::string const server = "server";
-      static std::string const empty = "";
-
       partResponse->setConnectionType(HttpResponse::CONNECTION_NONE);
-      partResponse->setHeaderNC(server, empty);
+      partResponse->setHeaderNC(StaticStrings::Server, "");
 
       // append the part response header
       partResponse->writeHeader(&_response->body());

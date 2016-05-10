@@ -174,10 +174,8 @@ bool VocbaseContext::useClusterAuthentication() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string VocbaseContext::realm() const {
-  static std::string EMPTY = "";
-
   if (_vocbase == nullptr) {
-    return EMPTY;
+    return std::string("");
   }
 
   return _vocbase->_name;

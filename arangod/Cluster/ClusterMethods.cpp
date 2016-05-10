@@ -277,7 +277,7 @@ static int distributeBabyOnShards(
     // attributes a bit further down the line when we have determined
     // the responsible shard.
 
-    VPackSlice keySlice = node.get(TRI_VOC_ATTRIBUTE_KEY);
+    VPackSlice keySlice = node.get(StaticStrings::KeyString);
     if (keySlice.isNone()) {
       // The user did not specify a key, let's create one:
       uint64_t uid = ci->uniqid();
@@ -410,7 +410,7 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
   std::vector<std::string> const& shardKeys = c->shardKeys();
 
   for (size_t i = 0; i < shardKeys.size(); ++i) {
-    if (shardKeys[i] == TRI_VOC_ATTRIBUTE_KEY) {
+    if (shardKeys[i] == StaticStrings::KeyString) {
       continue;
     }
 
@@ -1262,8 +1262,8 @@ int getDocumentOnCoordinator(
     for (auto const& it : shardMap) {
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
-        if (!options.ignoreRevs && slice.hasKey(TRI_VOC_ATTRIBUTE_REV)) {
-          headers->emplace("if-match", slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+        if (!options.ignoreRevs && slice.hasKey(StaticStrings::RevString)) {
+          headers->emplace("if-match", slice.get(StaticStrings::RevString).copyString());
         }
 
         // We send to single endpoint
@@ -1271,7 +1271,7 @@ int getDocumentOnCoordinator(
             "shard:" + it.first, reqType,
             baseUrl + StringUtils::urlEncode(it.first) + "/" +
                 StringUtils::urlEncode(
-                    slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()) +
+                    slice.get(StaticStrings::KeyString).copyString()) +
                 optsUrlPart,
             body);
         requests[0].setHeaders(headers);
@@ -1330,15 +1330,15 @@ int getDocumentOnCoordinator(
   auto shardList = ci->getShardList(collid);
   if (!useMultiple) {
 
-    if (!options.ignoreRevs && slice.hasKey(TRI_VOC_ATTRIBUTE_REV)) {
-      headers->emplace("if-match", slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+    if (!options.ignoreRevs && slice.hasKey(StaticStrings::RevString)) {
+      headers->emplace("if-match", slice.get(StaticStrings::RevString).copyString());
     }
     for (auto const& shard : *shardList) {
       ClusterCommRequest req(
           "shard:" + shard, reqType,
           baseUrl + StringUtils::urlEncode(shard) + "/" +
               StringUtils::urlEncode(
-                  slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()) +
+                  slice.get(StaticStrings::KeyString).copyString()) +
               optsUrlPart,
           nullptr);
       auto headersCopy =
@@ -1435,7 +1435,7 @@ static void insertIntoShardMap(
     // We only need add one resp. shard
     VPackBuilder partial;
     partial.openObject();
-    partial.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(splitId[1]));
+    partial.add(StaticStrings::KeyString, VPackValue(splitId[1]));
     partial.close();
     bool usesDefaultShardingAttributes;
     ShardID shardID;
@@ -1554,7 +1554,7 @@ int getFilteredDocumentsOnCoordinator(
       }
       for (auto const& element : VPackArrayIterator(documents)) {
         std::string id = arangodb::basics::VelocyPackHelper::getStringValue(
-            element, TRI_VOC_ATTRIBUTE_ID, "");
+            element, StaticStrings::IdString, "");
         VPackBuilder tmp;
         tmp.add(element);
         result.emplace(id, tmp.steal());
@@ -1815,7 +1815,7 @@ int modifyDocumentOnCoordinator(
         requests.emplace_back(
             "shard:" + it.first, reqType,
             baseUrl + StringUtils::urlEncode(it.first) + "/" +
-                slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString() + optsUrlPart,
+                slice.get(StaticStrings::KeyString).copyString() + optsUrlPart,
             body);
       } else {
         reqBuilder.clear();
@@ -1871,7 +1871,7 @@ int modifyDocumentOnCoordinator(
   auto body = std::make_shared<std::string>(slice.toJson());
   auto shardList = ci->getShardList(collid);
   if (!useMultiple) {
-    std::string key = slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+    std::string key = slice.get(StaticStrings::KeyString).copyString();
     for (auto const& shard : *shardList) {
       requests.emplace_back(
           "shard:" + shard, reqType,

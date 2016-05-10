@@ -39,11 +39,11 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/json-utilities.h"
+#include "Basics/StaticStrings.h"
 #include "Utils/Transaction.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
-using Json = arangodb::basics::Json;
 using EN = arangodb::aql::ExecutionNode;
 
 /// @brief adds a SORT operation for IN right-hand side operands
@@ -2794,7 +2794,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
           }
           // check the remove node's collection is sharded over _key
           std::vector<std::string> shardKeys = rn->collection()->shardKeys();
-          if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
+          if (shardKeys.size() != 1 || shardKeys[0] != StaticStrings::KeyString) {
             break;  // abort . . .
           }
 

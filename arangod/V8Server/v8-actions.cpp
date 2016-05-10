@@ -543,20 +543,16 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
         std::string name = TRI_ObjectToString(transformator);
 
         // check available transformations
-        static std::string const contentEncoding = "content-encoding";
-
         if (name == "base64encode") {
           // base64-encode the result
           out = StringUtils::encodeBase64(out);
           // set the correct content-encoding header
-          static std::string const base64 = "base64";
-          response->setHeaderNC(contentEncoding, base64);
+          response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::Base64);
         } else if (name == "base64decode") {
           // base64-decode the result
           out = StringUtils::decodeBase64(out);
           // set the correct content-encoding header
-          static std::string const binary = "binary";
-          response->setHeaderNC(contentEncoding, binary);
+          response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::Binary);
         }
       }
 

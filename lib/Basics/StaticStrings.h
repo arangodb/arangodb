@@ -31,6 +31,8 @@ class StaticStrings {
 
  public:
   // constants
+  static std::string const Base64;
+  static std::string const Binary;
   static std::string const N1800;
 
   // system attribute names
@@ -57,8 +59,10 @@ class StaticStrings {
   static std::string const Async;
   static std::string const AsyncId;
   static std::string const Authorization;
+  static std::string const CacheControl;
   static std::string const Close;
   static std::string const Connection;
+  static std::string const ContentEncoding;
   static std::string const ContentTypeHeader;
   static std::string const Coordinator;
   static std::string const CorsMethods;

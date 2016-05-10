@@ -2316,7 +2316,7 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
           shardKeysPtr = it2->second;
           usesDefaultShardingAttributes =
               shardKeysPtr->size() == 1 &&
-              shardKeysPtr->at(0) == TRI_VOC_ATTRIBUTE_KEY;
+              shardKeysPtr->at(0) == StaticStrings::KeyString;
           found = true;
           break;  // all OK
         }

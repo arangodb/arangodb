@@ -26,7 +26,7 @@
 #define ARANGOD_CLUSTER_CLUSTER_INFO_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
@@ -297,7 +297,7 @@ class CollectionInfo {
     TRI_ASSERT(firstElement.isString());
     std::string shardKey =
         arangodb::basics::VelocyPackHelper::getStringValue(firstElement, "");
-    return shardKey == TRI_VOC_ATTRIBUTE_KEY;
+    return shardKey == StaticStrings::KeyString;
   }
 
   //////////////////////////////////////////////////////////////////////////////
