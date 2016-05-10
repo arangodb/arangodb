@@ -87,9 +87,9 @@ CHECK_TYPE_SIZE(ssize_t SSIZE_T)
 
   # These are used by snappy-stubs-public.h.in.
 if (${HAVE_SSIZE_T} STREQUAL "TRUE")
-  SET(ac_cv_have_ssize_t "1")
-else()
   SET(ac_cv_have_ssize_t "0")
+else()
+  SET(ac_cv_have_ssize_t "1")
 endif()
 
 if (${HAVE_STDINT_H})

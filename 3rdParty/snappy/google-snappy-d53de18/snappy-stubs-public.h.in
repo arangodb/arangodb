@@ -95,7 +95,7 @@ struct iovec {
 
 }  // namespace snappy
 
-#if !@ac_cv_have_ssize_t@ 
+#if @ac_cv_have_ssize_t@ 
 typedef ssize_t uint64_t
 #endif
 
