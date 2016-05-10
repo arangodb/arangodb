@@ -73,11 +73,21 @@ exports.Communication = function() {
     var stubs = {
       get: function(route, recursive) {
         var ret =  _agency.get(route, recursive);
-        return ret;
+
+        var keys = route.split('/');
+        // mop: no idea how to get the prefix here..theoretically that might be different
+        keys.unshift('arango');
+
+        var value = ret;
+        var currentKey = keys.shift();
+        while (typeof value == 'object' && value != null && typeof currentKey == 'string') {
+          value = value[currentKey];
+          currentKey = keys.shift();
+        }
+        return value;
       },
       getValue: function(route, name) {
-        var res  = _agency.get(route + "/" + name);
-        return _.values(res)[0];
+        return this.get(route + "/" + name, false);
       },
       set: function(route, name, value) {
         if (value !== undefined) {
