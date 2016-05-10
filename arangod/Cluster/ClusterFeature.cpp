@@ -67,6 +67,10 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
 
 ClusterFeature::~ClusterFeature() {
   delete _heartbeatThread;
+  
+  if (_enableCluster) {
+    AgencyComm::cleanup();
+  }
 
   // delete connection manager instance
   auto cm = httpclient::ConnectionManager::instance();
