@@ -114,6 +114,7 @@ configure_file (
   NEWLINE_STYLE UNIX
 )
 
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 if(MSVC)
     # set(CMAKE_DEBUG_POSTFIX "d")
@@ -149,7 +150,7 @@ if (WINDOWS)
 
   list(APPEND LINK_DIRECTORIES "${snappystatic_BINARY_DIR}")
 else ()
-  set(ZLIB_LIBS
+  set(SNAPPY_LIBS
     snappy
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
