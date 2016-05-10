@@ -1325,14 +1325,14 @@ var isCoordinatorRequest = function (req) {
 /// @brief handlePlanChange
 ////////////////////////////////////////////////////////////////////////////////
 
-var handlePlanChange = function () {
+var handlePlanChange = function (plan, current) {
   if (! isCluster() || isCoordinator() || ! global.ArangoServerState.initialized()) {
     return;
   }
   
   let versions = {
-    plan: 0,
-    current: 0
+    plan: plan.Version,
+    current: current.Version,
   };
     
   ////////////////////////////////////////////////////////////////////////////////
@@ -1372,12 +1372,6 @@ var handlePlanChange = function () {
   }
 
   try {
-    var plan    = global.ArangoAgency.get("Plan", true).arango.Plan;
-    var current = global.ArangoAgency.get("Current", true).arango.Current;
-
-    versions.plan = plan.Version;
-    versions.current = current.Version;
-
     handleChanges(plan, current, writeLocked);
 
     console.info("plan change handling successful");

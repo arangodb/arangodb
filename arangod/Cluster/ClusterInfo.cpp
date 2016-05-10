@@ -525,10 +525,10 @@ void ClusterInfo::loadPlan() {
       }
       _planProt.version++;  // such that others notice our change
       _planProt.isValid = true;  // will never be reset to false
-      return;
     } else {
       LOG(ERR) << "\"Plan\" is not an object in agency";
     }
+    return;
   }
 
   LOG(DEBUG) << "Error while loading " << prefixPlan
@@ -636,19 +636,17 @@ void ClusterInfo::loadCurrent() {
 
 
       // Now set the new value:
-      {
-        WRITE_LOCKER(writeLocker, _currentProt.lock);
-        _current = currentBuilder;
-        if (swapDatabases) {
-          _currentDatabases.swap(newDatabases);
-        }
-        if (swapCollections) {
-          _currentCollections.swap(newCollections);
-          _shardIds.swap(newShardIds);
-        }
-        _currentProt.version++;  // such that others notice our change
-        _currentProt.isValid = true;  // will never be reset to false
+      WRITE_LOCKER(writeLocker, _currentProt.lock);
+      _current = currentBuilder;
+      if (swapDatabases) {
+        _currentDatabases.swap(newDatabases);
       }
+      if (swapCollections) {
+        _currentCollections.swap(newCollections);
+        _shardIds.swap(newShardIds);
+      }
+      _currentProt.version++;  // such that others notice our change
+      _currentProt.isValid = true;  // will never be reset to false
     } else {
       LOG(ERR) << "Current is not an object!";
     }
@@ -2503,6 +2501,30 @@ void ClusterInfo::invalidateCurrent() {
     WRITE_LOCKER(writeLocker, _currentProt.lock);
     _currentProt.isValid = false;
   }
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get current "Plan" structure
+//////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> ClusterInfo::getPlan() {
+  if (!_planProt.isValid) {
+    loadPlan();
+  }
+  READ_LOCKER(readLocker, _planProt.lock);
+  return _plan;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get current "Current" structure
+//////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent() {
+  if (!_currentProt.isValid) {
+    loadCurrent();
+  }
+  READ_LOCKER(readLocker, _currentProt.lock);
+  return _current;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
