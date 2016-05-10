@@ -95,4 +95,8 @@ struct iovec {
 
 }  // namespace snappy
 
+#if @ac_cv_have_ssize_t@ 
+typedef ssize_t uint64_t
+#endif
+
 #endif  // THIRD_PARTY_SNAPPY_OPENSOURCE_SNAPPY_STUBS_PUBLIC_H_

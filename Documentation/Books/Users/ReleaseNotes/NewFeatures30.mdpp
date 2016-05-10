@@ -2,7 +2,7 @@
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 3.0. ArangoDB 3.0 also contains several bugfixes that are not listed
-here. 
+here.
 
 !SECTION Internal data format changes
 
@@ -75,7 +75,7 @@ Examples:
 ["foo", "bar"] ANY == "foo"      // true
 ```
 
-!SUBSUBSECTION Enclosing identifiers in forward ticks 
+!SUBSUBSECTION Enclosing identifiers in forward ticks
 
 AQL identifiers can now optionally be enclosed in forward ticks in addition to using
 backward ticks. This allows convenient writing of AQL queries in JavaScript template 
@@ -91,45 +91,45 @@ var q = `FOR doc IN ´collection´ RETURN doc.´name´`;
 
 The AQL optimizer rule "inline-subqueries" has been added. This rule can pull out 
 certain subqueries that are used as an operand to a `FOR` loop one level higher, 
-eliminating the subquery completely. This reduces complexity of the query's 
+eliminating the subquery completely. This reduces complexity of the query's
 execution plan and will likely enable further optimizations. For example, the query
 
 ```
 FOR i IN (
-    FOR j IN [1,2,3] 
+    FOR j IN [1,2,3]
       RETURN j
-  ) 
+  )
   RETURN i
 ```
-      
+
 will be transformed by the rule to:
-   
+
 ```
-FOR i IN [1,2,3] 
+FOR i IN [1,2,3]
   RETURN i
 ```
-      
+
 The query
 
 ```
 FOR name IN (
-  FOR doc IN _users 
-    FILTER doc.status == 1 
+  FOR doc IN _users
+    FILTER doc.status == 1
     RETURN doc.name
-  ) 
-  LIMIT 2 
+  )
+  LIMIT 2
   RETURN name
 ```
-      
+
 will be transformed into
-  
+
 ```
-FOR tmp IN _users 
-  FILTER tmp.status == 1 
-  LIMIT 2 
+FOR tmp IN _users
+  FILTER tmp.status == 1
+  LIMIT 2
   RETURN tmp.name
 ```
-       
+
 The rule will only fire when the subquery is used as an operand to a `FOR` loop, and
 if the subquery does not contain a `COLLECT` with an `INTO` variable.
 
@@ -212,8 +212,8 @@ by the drop operation now.
 The CRUD APIs for documents and edge have been unified. Edges can now be inserted
 and modified via the same APIs as documents. `_from` and `_to` attribute values can
 be passed as regular document attributes now:
-  
-```js 
+
+```js
 db.myedges.insert({ _from: "myvertices/some", _to: "myvertices/other", ... });
 ```
 
@@ -226,7 +226,7 @@ db.myedges.insert("myvertices/some", "myvertices/other", { ... });
 
 The CRUD operations now also support batch variants that works on arrays of
 documents/edges, e.g.
-   
+
 ```js
 db.myedges.insert([
   { _from: "myvertices/some", _to: "myvertices/other", ... },
@@ -245,7 +245,7 @@ the HTTP request/response overhead can be amortized across multiple operations.
 ArangoDB 3.0 provides an experimental persistent index feature. Persistent indexes store
 the index values on disk instead of in-memory only. This means the indexes do not need
 to be rebuilt in-memory when a collection is loaded or reloaded, which should improve
-collection loading times. 
+collection loading times.
 
 The persistent indexes in ArangoDB are based on the RocksDB engine.
 To create a persistent index for a collection, create an index of type "rocksdb" as
@@ -324,7 +324,7 @@ more familiar API. The most notable changes are:
 
 * Routes can be named and reversed
 
-  No more memorizing URLs: add a name to your route like 
+  No more memorizing URLs: add a name to your route like
   `router.get('/hello/:name', function () {...}, 'hello')` and redirect to the full URL 
   with `res.redirect(req.resolve('hello', {name: 'world'}))`.
 
@@ -377,7 +377,7 @@ This also allows directing log output to different files based on topics. For
 example, to log all AQL queries to a file "queries.log" one can use the options:
 
 ```
---log.level queries=trace --log.output queries=file:///path/to/queries.log 
+--log.level queries=trace --log.output queries=file:///path/to/queries.log
 ```
 
 To additionally log HTTP request to a file named "requests.log" add the options:
@@ -391,8 +391,8 @@ To additionally log HTTP request to a file named "requests.log" add the options:
 ArangoDB now uses the cross-platform build system CMake for all its builds.
 Previous versions used two different build systems, making development and
 contributions harder than necessary. Now the build system is unified, and
-all targets (Linux, Windows, MacOS) are built from the same set of build 
-instructions. 
+all targets (Linux, Windows, MacOS) are built from the same set of build
+instructions.
 
 !SECTION Documentation
 
