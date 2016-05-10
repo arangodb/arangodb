@@ -439,7 +439,7 @@ void ClusterInfo::loadPlan() {
 
   if (result.successful()) {
     VPackSlice slice = result.slice()[0].get(
-        std::vector<std::string>({AgencyComm::prefixStripped(), "Plan"}));
+        std::vector<std::string>({AgencyComm::prefix(), "Plan"}));
     auto planBuilder = std::make_shared<VPackBuilder>();
     planBuilder->add(slice);
     
@@ -566,7 +566,7 @@ void ClusterInfo::loadCurrent() {
 
     velocypack::Slice slice =
       result.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Current"}));
+            {AgencyComm::prefix(), "Current"}));
 
     auto currentBuilder = std::make_shared<VPackBuilder>();
     currentBuilder->add(slice);
@@ -1298,7 +1298,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
 
     velocypack::Slice collection =
       res.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Plan", "Collections",
+            {AgencyComm::prefix(), "Plan", "Collections",
              databaseName, collectionID}));
 
     if (!collection.isObject()) {
@@ -1367,7 +1367,7 @@ int ClusterInfo::setCollectionStatusCoordinator(
     }
 
     VPackSlice col = res.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Plan", "Collections",
+            {AgencyComm::prefix(), "Plan", "Collections",
              databaseName, collectionID}));
 
     if (!col.isObject()) {
@@ -1550,7 +1550,7 @@ int ClusterInfo::ensureIndexCoordinator(
 
   velocypack::Slice collection =
     previous.slice()[0].get(std::vector<std::string>(
-          { AgencyComm::prefixStripped(), "Plan", "Collections",
+          { AgencyComm::prefix(), "Plan", "Collections",
             databaseName, collectionID }));
 
   if (!collection.isObject()) {
@@ -1733,7 +1733,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
   velocypack::Slice previous =
     res.slice()[0].get(std::vector<std::string>(
-    { AgencyComm::prefixStripped(), "Plan", "Collections", databaseName, collectionID }
+    { AgencyComm::prefix(), "Plan", "Collections", databaseName, collectionID }
   ));
   TRI_ASSERT(VPackObjectIterator(previous).size()>0);
   
@@ -1940,7 +1940,7 @@ void ClusterInfo::loadServers() {
     
     velocypack::Slice serversRegistered =
       result.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Current", "ServersRegistered"}));
+            {AgencyComm::prefix(), "Current", "ServersRegistered"}));
 
     if (!serversRegistered.isNone()) {
       decltype(_servers) newServers;
@@ -2072,7 +2072,7 @@ void ClusterInfo::loadCurrentCoordinators() {
 
     velocypack::Slice currentCoordinators =
       result.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Current", "Coordinators"}));
+            {AgencyComm::prefix(), "Current", "Coordinators"}));
 
     if (!currentCoordinators.isNone()) {
       decltype(_coordinators) newCoordinators;
@@ -2129,7 +2129,7 @@ void ClusterInfo::loadCurrentDBServers() {
 
     velocypack::Slice currentDBServers =
       result.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Current", "DBServers"}));
+            {AgencyComm::prefix(), "Current", "DBServers"}));
 
     if (!currentDBServers.isNone()) {
       decltype(_DBServers) newDBServers;
@@ -2516,7 +2516,7 @@ void FollowerInfo::add(ServerID const& sid) {
       
       velocypack::Slice currentEntry =
         res.slice()[0].get(std::vector<std::string>(
-          {AgencyComm::prefixStripped(), "Current", "Collections",
+          {AgencyComm::prefix(), "Current", "Collections",
               _docColl->_vocbase->_name,
               std::to_string(_docColl->_info.planId()),
               _docColl->_info.name()}));
@@ -2585,7 +2585,7 @@ void FollowerInfo::remove(ServerID const& sid) {
 
       velocypack::Slice currentEntry =
         res.slice()[0].get(std::vector<std::string>(
-          {AgencyComm::prefixStripped(), "Current", "Collections",
+          {AgencyComm::prefix(), "Current", "Collections",
               _docColl->_vocbase->_name,
               std::to_string(_docColl->_info.planId()),
               _docColl->_info.name()}));

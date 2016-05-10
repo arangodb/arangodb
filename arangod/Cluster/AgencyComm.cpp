@@ -57,7 +57,7 @@ static void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) 
 //////////////////////////////////////////////////////////////////////////////
 
 AgencyOperation::AgencyOperation(std::string const& key, AgencySimpleOperationType opType)
-    : _key(AgencyComm::prefix() + key), _opType() {
+    : _key(AgencyComm::prefixPath() + key), _opType() {
   _opType.type = AgencyOperationType::SIMPLE;
   _opType.simple = opType;
 }
@@ -68,7 +68,7 @@ AgencyOperation::AgencyOperation(std::string const& key, AgencySimpleOperationTy
 
 AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationType opType,
     VPackSlice value)
-    : _key(AgencyComm::prefix() + key), _opType(), _value(value) {
+    : _key(AgencyComm::prefixPath() + key), _opType(), _value(value) {
   _opType.type = AgencyOperationType::VALUE;
   _opType.value = opType;
 }
@@ -101,7 +101,7 @@ void AgencyOperation::toVelocyPack(VPackBuilder& builder) const {
 //////////////////////////////////////////////////////////////////////////////
 
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
-    : key(AgencyComm::prefix() + key), type(t), empty(e) {
+    : key(AgencyComm::prefixPath() + key), type(t), empty(e) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -110,7 +110,7 @@ AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
 
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t,
                                        VPackSlice s)
-    : key(AgencyComm::prefix() + key), type(t), empty(false), value(s) {
+    : key(AgencyComm::prefixPath() + key), type(t), empty(false), value(s) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -435,7 +435,7 @@ bool AgencyCommResult::parse(std::string const& stripKeyPrefix, bool withDirs) {
 }
 
 VPackSlice AgencyCommResult::parse(std::string const& path) {
-  std::vector<std::string> pv (1,AgencyComm::prefixStripped());
+  std::vector<std::string> pv (1,AgencyComm::prefix());
   std::vector<std::string> tmp = basics::StringUtils::split(path,'/');
   pv.insert(pv.end(), tmp.begin(), tmp.end());
   return _vpack->slice()[0].get(pv);
@@ -811,7 +811,7 @@ bool AgencyComm::ensureStructureInitialized() {
  
     if (result.successful()) {
       VPackSlice value = result.slice()[0].get(std::vector<std::string>(
-            {prefixStripped(), "InitDone"}));
+            {prefix(), "InitDone"}));
       if (value.isBoolean() && value.getBoolean()) {
         // expecting a value of "true"
         LOG_TOPIC(TRACE, Logger::STARTUP) << "Found an initialized agency";
@@ -1050,8 +1050,8 @@ bool AgencyComm::setPrefix(std::string const& prefix) {
 /// @brief gets the global prefix for all operations
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyComm::prefix() { return _globalPrefix; }
-std::string AgencyComm::prefixStripped() { return _globalPrefixStripped; }
+std::string AgencyComm::prefixPath() { return _globalPrefix; }
+std::string AgencyComm::prefix() { return _globalPrefixStripped; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a timestamp
@@ -1203,7 +1203,7 @@ bool AgencyComm::exists(std::string const& key) {
   auto parts = arangodb::basics::StringUtils::split(key, "/");
   std::vector<std::string> allParts;
   allParts.reserve(parts.size() + 1);
-  allParts.push_back(prefixStripped());
+  allParts.push_back(prefix());
   allParts.insert(allParts.end(), parts.begin(), parts.end());
   VPackSlice slice = result.slice()[0].get(allParts);
   return !slice.isNone();
@@ -1235,7 +1235,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
     VPackArrayBuilder root(&builder);
     {
       VPackArrayBuilder keys(&builder);
-      builder.add(VPackValue(AgencyComm::prefix() + key));
+      builder.add(VPackValue(AgencyComm::prefixPath() + key));
     }
   }
 
@@ -1454,7 +1454,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
     }
 
     VPackSlice oldSlice = result.slice()[0].get(std::vector<std::string>(
-          {prefixStripped(), "Sync", "LatestID"}));
+          {prefix(), "Sync", "LatestID"}));
 
     if (!(oldSlice.isSmallInt() || oldSlice.isUInt())) {
       LOG_TOPIC(WARN, Logger::AGENCYCOMM) 

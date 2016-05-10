@@ -68,7 +68,7 @@ static void raceForClusterBootstrap() {
       continue;
     }
     VPackSlice value = result.slice()[0].get(std::vector<std::string>(
-          {agency.prefixStripped(), "Bootstrap"}));
+          {agency.prefix(), "Bootstrap"}));
     if (value.isString()) {
       // key was found and is a string
       if (value.isEqualString("done")) {

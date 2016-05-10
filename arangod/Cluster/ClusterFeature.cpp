@@ -373,7 +373,7 @@ void ClusterFeature::start() {
       
       velocypack::Slice HeartbeatIntervalMs =
         result.slice()[0].get(std::vector<std::string>(
-          {AgencyComm::prefixStripped(), "Sync", "HeartbeatIntervalMs"}));
+          {AgencyComm::prefix(), "Sync", "HeartbeatIntervalMs"}));
           
       if (HeartbeatIntervalMs.isInteger()) {
         try {

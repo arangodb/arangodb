@@ -548,8 +548,8 @@ class AgencyComm {
   /// @brief returns the global prefix for all operations
   //////////////////////////////////////////////////////////////////////////////
 
+  static std::string prefixPath();
   static std::string prefix();
-  static std::string prefixStripped();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate a timestamp

@@ -181,7 +181,7 @@ static void JS_IsEnabledAgency(
     TRI_V8_THROW_EXCEPTION_USAGE("isEnabled()");
   }
 
-  std::string const prefix = AgencyComm::prefix();
+  std::string const prefix = AgencyComm::prefixPath();
 
   if (!prefix.empty()) {
     TRI_V8_RETURN_TRUE();
@@ -499,7 +499,7 @@ static void JS_PrefixAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     strip = TRI_ObjectToBoolean(args[0]);
   }
 
-  std::string const prefix = AgencyComm::prefix();
+  std::string const prefix = AgencyComm::prefixPath();
 
   if (strip && prefix.size() > 2) {
     TRI_V8_RETURN_PAIR_STRING(prefix.c_str() + 1, (int)prefix.size() - 2);
