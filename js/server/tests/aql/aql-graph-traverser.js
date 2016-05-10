@@ -281,6 +281,41 @@ function namedGraphSuite () {
       });
     },
 
+    testZeroSteps: function () {
+      // We only include the start vertex
+      var query = "FOR x IN 0 OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id";
+      var bindVars = {
+        graph: gn,
+        startId: vertex.B
+      };
+      var result = db._query(query, bindVars).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0], vertex.B);
+      var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
+      plans.forEach(function(plan) {
+        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
+        assertEqual(jsonResult, result, query);
+      });
+    },
+
+    testZeroStartRangeSteps: function () {
+      // We only include the start vertex
+      var query = "FOR x IN 0..1 OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id";
+      var bindVars = {
+        graph: gn,
+        startId: vertex.B
+      };
+      var result = db._query(query, bindVars).toArray();
+      assertEqual(result.length, 2);
+      assertEqual(result[0], vertex.B);
+      assertEqual(result[1], vertex.C);
+      var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
+      plans.forEach(function(plan) {
+        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
+        assertEqual(jsonResult, result, query);
+      });
+    },
+
     testSort: function () {
       var query = "FOR x IN OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id";
       var bindVars = {

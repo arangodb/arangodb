@@ -287,12 +287,12 @@ arangodb::traverser::TraversalPath* ClusterTraverser::next() {
   TRI_ASSERT(!_pruneNext);
   const arangodb::basics::EnumeratedPath<std::string, std::string>& path =
       _enumerator->next();
-  size_t countEdges = path.edges.size();
-  if (countEdges == 0) {
+  if (path.vertices.empty()) {
     _done = true;
     // Done traversing
     return nullptr;
   }
+  size_t countEdges = path.edges.size();
 
   auto p = std::make_unique<ClusterTraversalPath>(this, path);
   if (countEdges >= _opts.maxDepth) {
