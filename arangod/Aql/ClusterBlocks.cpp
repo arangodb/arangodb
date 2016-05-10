@@ -1054,13 +1054,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   auto const planId =
       arangodb::basics::StringUtils::itoa(_collection->getPlanId());
 
-  std::unique_ptr<TRI_json_t> json(arangodb::basics::VelocyPackHelper::velocyPackToJson(value));
-
-  if (json == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  int res = clusterInfo->getResponsibleShard(planId, json.get(), true, shardId,
+  int res = clusterInfo->getResponsibleShard(planId, value, true, shardId,
                                              usesDefaultShardingAttributes);
 
   // std::cout << "SHARDID: " << shardId << "\n";

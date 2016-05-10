@@ -256,75 +256,6 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lists a directory from the agency
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_ListAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate)
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("list(<key>, <recursive>, <flat>)");
-  }
-
-  std::string const key = TRI_ObjectToString(args[0]);
-  bool recursive = false;
-
-  if (args.Length() > 1) {
-    recursive = TRI_ObjectToBoolean(args[1]);
-  }
-
-  bool flat = false;
-  if (args.Length() > 2) {
-    flat = TRI_ObjectToBoolean(args[2]);
-  }
-
-  AgencyComm comm;
-  AgencyCommResult result = comm.getValues(key, recursive);
-
-  if (!result.successful()) {
-    THROW_AGENCY_EXCEPTION(result);
-  }
-
-  // return just the value for each key
-  result.parse("", true);
-  std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-      result._values.begin();
-
-  // skip first entry
-  if (it != result._values.end()) {
-    ++it;
-  }
-
-  if (flat) {
-    v8::Handle<v8::Array> l = v8::Array::New(isolate);
-
-    uint32_t i = 0;
-    while (it != result._values.end()) {
-      std::string const key = (*it).first;
-
-      l->Set(i++, TRI_V8_STD_STRING(key));
-      ++it;
-    }
-    TRI_V8_RETURN(l);
-  }
-
-  else {
-    v8::Handle<v8::Object> l = v8::Object::New(isolate);
-
-    while (it != result._values.end()) {
-      std::string const key = (*it).first;
-      bool const isDirectory = (*it).second._isDir;
-
-      l->Set(TRI_V8_STD_STRING(key), v8::Boolean::New(isolate, isDirectory));
-      ++it;
-    }
-    TRI_V8_RETURN(l);
-  }
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief acquires a read-lock in the agency
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -903,17 +834,18 @@ static void JS_GetResponsibleShardClusterInfo(
     documentIsComplete = TRI_ObjectToBoolean(args[2]);
   }
 
-  std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, args[1]));
+  VPackBuilder builder;
+  int res = TRI_V8ToVPack(isolate, builder, args[1], false);
 
-  if (json == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   ShardID shardId;
   CollectionID collectionId = TRI_ObjectToString(args[0]);
   bool usesDefaultShardingAttributes;
-  int res = ClusterInfo::instance()->getResponsibleShard(
-      collectionId, json.get(), documentIsComplete, shardId,
+  res = ClusterInfo::instance()->getResponsibleShard(
+      collectionId, builder.slice(), documentIsComplete, shardId,
       usesDefaultShardingAttributes);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2008,7 +1940,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_IsEnabledAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("increaseVersion"),
                        JS_IncreaseVersionAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("list"), JS_ListAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("lockRead"),
                        JS_LockReadAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("lockWrite"),
