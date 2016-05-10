@@ -44,7 +44,7 @@ using namespace arangodb::basics;
 /// @brief check if a marker appears to be created by ArangoDB 28
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_voc_crc_t Crc28(TRI_voc_cid_t crc, void const* data, size_t length) {
+static TRI_voc_crc_t Crc28(TRI_voc_crc_t crc, void const* data, size_t length) {
   static TRI_voc_crc_t const CrcPolynomial = 0xEDB88320; 
   unsigned char* current = (unsigned char*) data;   
   while (length--) {

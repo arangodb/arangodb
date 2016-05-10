@@ -32,8 +32,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-static std::string const EMPTY_STR = "";
-
 std::string GeneralRequest::translateVersion(ProtocolVersion version) {
   switch (version) {
     case ProtocolVersion::VSTREAM_1_0:
@@ -222,7 +220,7 @@ std::string const& GeneralRequest::header(std::string const& key) const {
   auto it = _headers.find(key);
 
   if (it == _headers.end()) {
-    return EMPTY_STR;
+    return StaticStrings::Empty;
   }
 
   return it->second;
@@ -233,7 +231,7 @@ std::string const& GeneralRequest::header(std::string const& key, bool& found) c
 
   if (it == _headers.end()) {
     found = false;
-    return EMPTY_STR;
+    return StaticStrings::Empty;
   }
 
   found = true;
@@ -244,7 +242,7 @@ std::string const& GeneralRequest::value(std::string const& key) const {
   auto it = _values.find(key);
 
   if (it == _values.end()) {
-    return EMPTY_STR;
+    return StaticStrings::Empty;
   }
 
   return it->second;
@@ -255,7 +253,7 @@ std::string const& GeneralRequest::value(std::string const& key, bool& found) co
 
   if (it == _values.end()) {
     found = false;
-    return EMPTY_STR;
+    return StaticStrings::Empty;
   }
 
   found = true;

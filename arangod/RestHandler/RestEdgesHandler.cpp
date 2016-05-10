@@ -106,9 +106,9 @@ bool RestEdgesHandler::getEdgesForVertexList(
     TRI_ASSERT(edges.isArray());
 
     // generate result
-    scannedIndex += edges.length();
+    scannedIndex += static_cast<size_t>(edges.length());
 
-    for (auto const& edge : VPackArrayIterator(edges)) {
+    for (auto const& edge : VPackArrayIterator(edges, true)) {
       bool add = true;
       if (!expressions.empty()) {
         for (auto& exp : expressions) {
@@ -162,9 +162,9 @@ bool RestEdgesHandler::getEdgesForVertex(
     TRI_ASSERT(edges.isArray());
 
     // generate result
-    scannedIndex += edges.length();
+    scannedIndex += static_cast<size_t>(edges.length());
 
-    for (auto const& edge : VPackArrayIterator(edges)) {
+    for (auto const& edge : VPackArrayIterator(edges, true)) {
       bool add = true;
       if (!expressions.empty()) {
         for (auto& exp : expressions) {
@@ -518,7 +518,7 @@ bool RestEdgesHandler::readFilteredEdges() {
     return false;
   }
 
-  expressions.reserve(body.length());
+  expressions.reserve(static_cast<size_t>(body.length()));
 
   for (auto const& exp : VPackArrayIterator(body)) {
     if (exp.isObject()) {

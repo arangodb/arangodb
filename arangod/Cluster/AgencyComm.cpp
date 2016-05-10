@@ -1965,7 +1965,7 @@ AgencyCommResult AgencyComm::send(
     // temporary redirect. now save location header
 
     bool found = false;
-    result._location = response->getHeaderField("location", found);
+    result._location = response->getHeaderField(StaticStrings::Location, found);
 
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
         << "redirecting to location: '" << result._location << "'";

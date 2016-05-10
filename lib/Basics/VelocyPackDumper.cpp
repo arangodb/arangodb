@@ -327,7 +327,7 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
         res = TRI_AppendString2StringBuffer(buffer, "\"\"", 2);
       } else {
         res = TRI_AppendCharStringBuffer(buffer, '"');
-        res |= TRI_AppendJsonEncodedStringStringBuffer(buffer, p, len, options->escapeForwardSlashes);
+        res |= TRI_AppendJsonEncodedStringStringBuffer(buffer, p, static_cast<size_t>(len), options->escapeForwardSlashes);
         res |= TRI_AppendCharStringBuffer(buffer, '"');
       }
       if (res != TRI_ERROR_NO_ERROR) {

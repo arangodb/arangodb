@@ -162,7 +162,7 @@ void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice,
                                   VPackOptions const& options) {
   if (returnVelocypack()) {
     _response->setContentType(HttpResponse::CONTENT_TYPE_VPACK);
-    _response->body().appendText(slice.startAs<const char>(), slice.byteSize());
+    _response->body().appendText(slice.startAs<const char>(), static_cast<size_t>(slice.byteSize()));
   } else {
     _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
     dumpResponse(slice, &options);

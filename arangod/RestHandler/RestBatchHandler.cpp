@@ -201,7 +201,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
 
       // append the boundary for this subpart
       _response->body().appendText(boundary + "\r\nContent-Type: ");
-      _response->body().appendText(HttpRequest::BATCH_CONTENT_TYPE);
+      _response->body().appendText(StaticStrings::BatchContentType);
 
       // append content-id if it is present
       if (helper.contentId != 0) {
@@ -234,8 +234,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
   _response->body().appendText(boundary + "--");
 
   if (errors > 0) {
-    _response->setHeaderNC(HttpResponse::BATCH_ERROR_HEADER,
-                           StringUtils::itoa(errors));
+    _response->setHeaderNC(StaticStrings::Errors, StringUtils::itoa(errors));
   }
 
   // success
@@ -295,7 +294,7 @@ bool RestBatchHandler::getBoundaryHeader(std::string* result) {
   // "Content-Type: multipart/form-data; boundary=<boundary goes here>"
   std::vector<std::string> parts = StringUtils::split(contentType, ';');
 
-  if (parts.size() != 2 || parts[0] != HttpRequest::MULTI_PART_CONTENT_TYPE) {
+  if (parts.size() != 2 || parts[0] != StaticStrings::MultiPartContentType) {
     // content-type is not formatted as expected
     return false;
   }
@@ -454,17 +453,17 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
         ++colon;
       }
 
-      if ("content-type" == key) {
+      if (key == StaticStrings::ContentTypeHeader) {
         // extract the value, too
         std::string value(colon, eol - colon);
         StringUtils::trimInPlace(value);
 
-        if (HttpRequest::BATCH_CONTENT_TYPE == value) {
+        if (value == StaticStrings::BatchContentType) {
           hasTypeHeader = true;
         } else {
           LOG(WARN) << "unexpected content-type '" << value
                     << "' for multipart-message. expected: '"
-                    << HttpRequest::BATCH_CONTENT_TYPE << "'";
+                    << StaticStrings::BatchContentType << "'";
         }
       } else if ("content-id" == key) {
         helper->contentId = colon;

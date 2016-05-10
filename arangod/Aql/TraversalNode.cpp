@@ -418,7 +418,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 
       std::vector<arangodb::traverser::TraverserExpression*> oneExpressionSet;
       oneExpressionSet.reserve(oneSetLength);
-      size_t n = std::stoull(k);
+      size_t n = static_cast<size_t>(std::stoull(k));
       _expressions.emplace(n, oneExpressionSet);
       auto it = _expressions.find(n);
 

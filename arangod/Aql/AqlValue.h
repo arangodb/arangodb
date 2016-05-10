@@ -126,7 +126,7 @@ struct AqlValue final {
   // construct boolean value type
   explicit AqlValue(bool value) {
     VPackSlice slice(value ? arangodb::basics::VelocyPackHelper::TrueValue() : arangodb::basics::VelocyPackHelper::FalseValue());
-    memcpy(_data.internal, slice.begin(), slice.byteSize());
+    memcpy(_data.internal, slice.begin(), static_cast<size_t>(slice.byteSize()));
     setType(AqlValueType::VPACK_INLINE);
   }
   
@@ -339,7 +339,7 @@ struct AqlValue final {
     arangodb::velocypack::ValueLength length = slice.byteSize();
     if (length < sizeof(_data.internal)) {
       // Use inline value
-      memcpy(_data.internal, slice.begin(), length);
+      memcpy(_data.internal, slice.begin(), static_cast<size_t>(length));
       setType(AqlValueType::VPACK_INLINE);
     } else {
       // Use managed buffer

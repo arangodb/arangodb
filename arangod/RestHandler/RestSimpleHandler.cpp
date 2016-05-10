@@ -367,8 +367,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
                                              }};
 
           VPackValueLength length = postFilter.length();
-
-          expressions.reserve(length);
+          expressions.reserve(static_cast<size_t>(length));
 
           for (auto const& it : VPackArrayIterator(postFilter)) {
             if (it.isObject()) {

@@ -193,7 +193,7 @@ static void extractErrorCodes(ClusterCommResult const& res,
       VPackValueLength codeLength;
       char const* codeString = code.key.getString(codeLength);
       int codeNr = static_cast<int>(
-          arangodb::basics::StringUtils::int64(codeString, codeLength));
+          arangodb::basics::StringUtils::int64(codeString, static_cast<size_t>(codeLength)));
       if (includeNotFound || codeNr != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         errorCounter[codeNr] += code.value.getNumericValue<size_t>();
       }

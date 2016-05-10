@@ -156,7 +156,7 @@ class Slice {
   // hashes the binary representation of a String slice. No check
   // is done if the Slice value is actually of type String
   inline uint64_t hashString(uint64_t seed = 0xdeadbeef) const throw() {
-    return VELOCYPACK_HASH(start(), stringSliceLength(), seed);
+    return VELOCYPACK_HASH(start(), static_cast<size_t>(stringSliceLength()), seed);
   }
 
   // check if slice is of the specified type

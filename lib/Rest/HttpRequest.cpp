@@ -30,21 +30,15 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/conversions.h"
-#include "Logger/Logger.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
   
-static std::string const EMPTY_STR = "";
-
-std::string const HttpRequest::BATCH_CONTENT_TYPE =
-    "application/x-arango-batchpart";
-
-std::string const HttpRequest::MULTI_PART_CONTENT_TYPE = "multipart/form-data";
-
 HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
                          char const* header, size_t length,
                          bool allowMethodOverride)
@@ -645,7 +639,7 @@ std::string const& HttpRequest::cookieValue(std::string const& key) const {
   auto it = _cookies.find(key);
 
   if (it == _cookies.end()) {
-    return EMPTY_STR;
+    return StaticStrings::Empty;
   }
 
   return it->second;
@@ -656,7 +650,7 @@ std::string const& HttpRequest::cookieValue(std::string const& key, bool& found)
 
   if (it == _cookies.end()) {
     found = false;
-    return EMPTY_STR;
+    return StaticStrings::Empty; 
   }
 
   found = true;
