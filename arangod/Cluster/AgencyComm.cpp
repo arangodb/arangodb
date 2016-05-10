@@ -807,7 +807,7 @@ bool AgencyComm::ensureStructureInitialized() {
       sleep(1);
     }
     
-    AgencyCommResult result = getValues2("InitDone");
+    AgencyCommResult result = getValues("InitDone");
  
     if (result.successful()) {
       VPackSlice value = result.slice()[0].get(std::vector<std::string>(
@@ -1196,7 +1196,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::exists(std::string const& key) {
-  AgencyCommResult result = getValues2(key);
+  AgencyCommResult result = getValues(key);
   if (!result.successful()) {
     return false;
   }
@@ -1226,7 +1226,7 @@ AgencyCommResult AgencyComm::increment(std::string const& key) {
 /// @brief gets one or multiple values from the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::getValues2(std::string const& key) {
+AgencyCommResult AgencyComm::getValues(std::string const& key) {
   std::string url(buildUrl());
   
   url += "/read";
@@ -1447,7 +1447,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   uint64_t oldValue = 0;
 
   while (tries++ < maxTries) {
-    result = getValues2("Sync/LatestID");
+    result = getValues("Sync/LatestID");
     if (!result.successful()) {
       usleep(500000);
       continue;

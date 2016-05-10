@@ -247,7 +247,7 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
   AgencyComm comm;
   AgencyCommResult result;
   std::string localInfoEncoded = StringUtils::urlEncode(_localInfo);
-  result = comm.getValues2("Target/MapLocalToID/" + localInfoEncoded);
+  result = comm.getValues("Target/MapLocalToID/" + localInfoEncoded);
 
   std::string id;
   bool found = true;
@@ -272,7 +272,7 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
   const std::string currentKey = "Current/" + agencyKey + "/" + id;
   
   auto builder = std::make_shared<VPackBuilder>();
-  result = comm.getValues2(planKey);
+  result = comm.getValues(planKey);
   found = true;
   if (!result.successful()) {
     found = false;
@@ -348,7 +348,7 @@ std::string ServerState::createIdForRole(AgencyComm comm, ServerState::RoleEnum 
   VPackSlice idValue = builder.slice();
   AgencyCommResult createResult; 
   do {
-    AgencyCommResult result = comm.getValues2("Plan/" + agencyKey);
+    AgencyCommResult result = comm.getValues("Plan/" + agencyKey);
     if (!result.successful()) {
       LOG(FATAL) << "Couldn't fetch Plan/" << agencyKey
           << " from agency. Agency is not initialized?";
@@ -790,7 +790,7 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList(
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = comm.getValues2(key);
+      result = comm.getValues(key);
     }
   }
 
@@ -839,7 +839,7 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
       AgencyCommLocker locker("Target", "READ");
 
       if (locker.successful()) {
-        result = comm.getValues2(key);
+        result = comm.getValues(key);
       }
     }
 
@@ -898,7 +898,7 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = comm.getValues2(key);
+      result = comm.getValues(key);
     }
   }
 

@@ -367,7 +367,7 @@ void ClusterFeature::start() {
             << ", role: " << ServerState::roleToString(role);
 
   if (!_disableHeartbeat) {
-    AgencyCommResult result = comm.getValues2("Sync/HeartbeatIntervalMs");
+    AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
 
     if (result.successful()) {
       

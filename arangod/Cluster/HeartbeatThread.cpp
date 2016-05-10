@@ -179,7 +179,7 @@ void HeartbeatThread::runDBServer() {
           << "Looking at Sync/Commands/" + _myId;
 
       AgencyCommResult result =
-        _agency.getValues2("Sync/Commands/" + _myId);
+        _agency.getValues("Sync/Commands/" + _myId);
       
       if (result.successful()) {
         handleStateChange(result);
@@ -190,7 +190,7 @@ void HeartbeatThread::runDBServer() {
       }
 
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Refetching Current/Version...";
-      AgencyCommResult res = _agency.getValues2("Current/Version");
+      AgencyCommResult res = _agency.getValues("Current/Version");
       if (!res.successful()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) 
             << "Could not read Current/Version from agency.";
@@ -480,7 +480,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   {
     AgencyCommLocker locker("Plan", "READ");
     if (locker.successful()) {
-      result = _agency.getValues2(prefixPlanChangeCoordinator);
+      result = _agency.getValues(prefixPlanChangeCoordinator);
     }
   }
   

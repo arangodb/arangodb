@@ -229,7 +229,7 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const key = TRI_ObjectToString(args[0]);
   AgencyComm comm;
-  AgencyCommResult result = comm.getValues2(key);
+  AgencyCommResult result = comm.getValues(key);
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);

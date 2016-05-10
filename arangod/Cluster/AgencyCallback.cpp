@@ -61,7 +61,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex) {
     return;
   }
 
-  AgencyCommResult result = _agency.getValues2(key);
+  AgencyCommResult result = _agency.getValues(key);
 
   if (!result.successful()) {
     return;

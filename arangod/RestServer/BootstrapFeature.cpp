@@ -59,7 +59,7 @@ static void raceForClusterBootstrap() {
   auto ci = ClusterInfo::instance();
 
   while (true) {
-    AgencyCommResult result = agency.getValues2("Bootstrap");
+    AgencyCommResult result = agency.getValues("Bootstrap");
     if (!result.successful()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::STARTUP) 

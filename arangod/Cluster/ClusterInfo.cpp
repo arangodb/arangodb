@@ -433,7 +433,7 @@ void ClusterInfo::loadPlan() {
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixPlan);
+      result = _agency.getValues(prefixPlan);
     }
   }
 
@@ -558,7 +558,7 @@ void ClusterInfo::loadCurrent() {
   {
     AgencyCommLocker locker("Plan", "READ");
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrent);
+      result = _agency.getValues(prefixCurrent);
     }
   }
   
@@ -1290,7 +1290,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
 
-    res = ac.getValues2("Plan/Collections/" + databaseName+"/" + collectionID);
+    res = ac.getValues("Plan/Collections/" + databaseName+"/" + collectionID);
 
     if (!res.successful()) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -1360,7 +1360,7 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
 
-    res = ac.getValues2("Plan/Collections/" + databaseName +"/" + collectionID);
+    res = ac.getValues("Plan/Collections/" + databaseName +"/" + collectionID);
 
     if (!res.successful()) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -1546,7 +1546,7 @@ int ClusterInfo::ensureIndexCoordinator(
   std::string const key =
       "Plan/Collections/" + databaseName + "/" + collectionID;
 
-  AgencyCommResult previous = ac.getValues2(key);
+  AgencyCommResult previous = ac.getValues(key);
 
   velocypack::Slice collection =
     previous.slice()[0].get(std::vector<std::string>(
@@ -1729,7 +1729,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   std::string const key =
       "Plan/Collections/" + databaseName + "/" + collectionID;
   
-  AgencyCommResult res = ac.getValues2(key);
+  AgencyCommResult res = ac.getValues(key);
 
   velocypack::Slice previous =
     res.slice()[0].get(std::vector<std::string>(
@@ -1932,7 +1932,7 @@ void ClusterInfo::loadServers() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixServers);
+      result = _agency.getValues(prefixServers);
     }
   }
 
@@ -2064,7 +2064,7 @@ void ClusterInfo::loadCurrentCoordinators() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrentCoordinators);
+      result = _agency.getValues(prefixCurrentCoordinators);
     }
   }
 
@@ -2121,7 +2121,7 @@ void ClusterInfo::loadCurrentDBServers() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrentDBServers);
+      result = _agency.getValues(prefixCurrentDBServers);
     }
   }
 
@@ -2510,7 +2510,7 @@ void FollowerInfo::add(ServerID const& sid) {
   bool success = false;
   do {
 
-    AgencyCommResult res = ac.getValues2(path);
+    AgencyCommResult res = ac.getValues(path);
 
     if (res.successful()) {
       
@@ -2580,7 +2580,7 @@ void FollowerInfo::remove(ServerID const& sid) {
   bool success = false;
   do {
     
-    AgencyCommResult res = ac.getValues2(path);
+    AgencyCommResult res = ac.getValues(path);
     if (res.successful()) {
 
       velocypack::Slice currentEntry =

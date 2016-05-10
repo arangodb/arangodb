@@ -614,7 +614,7 @@ class AgencyComm {
   /// @brief gets one or multiple values from the back end
   //////////////////////////////////////////////////////////////////////////////
 
-  AgencyCommResult getValues2(std::string const&);
+  AgencyCommResult getValues(std::string const&);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increment a value
