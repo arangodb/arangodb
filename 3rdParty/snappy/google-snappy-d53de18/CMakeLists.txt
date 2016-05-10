@@ -151,7 +151,7 @@ if (WINDOWS)
   list(APPEND LINK_DIRECTORIES "${snappystatic_BINARY_DIR}")
 else ()
   set(SNAPPY_LIBS
-    snappy
+    snappystatic
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
