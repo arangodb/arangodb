@@ -101,8 +101,10 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
 ################################################################################
 
 if (USE_ROCKSDB)
+  if (${JEMALLOC_FOUND})
+#    set(USE_JEMALLOC_DEFAULT 1)
+  endif()
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb/)
-  #add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
 endif ()
 
 ################################################################################
