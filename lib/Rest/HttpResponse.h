@@ -40,7 +40,6 @@ class HttpResponse : public GeneralResponse {
 
  public:
   bool isHeadResponse() const { return _isHeadResponse; }
-  bool isChunked() const { return _isChunked; }
 
   enum ConnectionType {
     CONNECTION_NONE,
@@ -105,7 +104,6 @@ class HttpResponse : public GeneralResponse {
   ConnectionType _connectionType;
   ContentType _contentType;
   bool _isHeadResponse;
-  bool _isChunked; // TODO: remove
   std::vector<std::string> _cookies;
   basics::StringBuffer _body;
   size_t _bodySize;

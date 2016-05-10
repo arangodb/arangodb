@@ -40,7 +40,6 @@ HttpResponse::HttpResponse(ResponseCode code)
       _connectionType(CONNECTION_KEEP_ALIVE),
       _contentType(CONTENT_TYPE_TEXT),
       _isHeadResponse(false),
-      _isChunked(false), // TODO: remove
       _body(TRI_UNKNOWN_MEM_ZONE, false),
       _bodySize(0) {
 
@@ -213,6 +212,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
     }
   }
 
+  // add "Content-Type" header
   switch (_contentType) {
     case CONTENT_TYPE_JSON:
       output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: application/json; charset=utf-8\r\n"));

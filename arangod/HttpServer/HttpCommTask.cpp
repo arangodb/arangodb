@@ -113,13 +113,8 @@ HttpCommTask::~HttpCommTask() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::handleResponse(HttpResponse* response) {
-  if (response->isChunked()) {
-    _requestPending = true;
-    _isChunked = true;
-  } else {
-    _requestPending = false;
-    _isChunked = false;
-  }
+  _requestPending = false;
+  _isChunked = false;
 
   addResponse(response);
 }
