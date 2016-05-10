@@ -41,7 +41,7 @@ ArangoClientHelper::ArangoClientHelper() : _httpClient(nullptr) {}
 // helper to rewrite HTTP location
 std::string ArangoClientHelper::rewriteLocation(void* data,
                                                 std::string const& location) {
-  if (location.substr(0, 5) == "/_db/") {
+  if (location.compare(0, 5, "/_db/") == 0) {
     return location;
   }
 

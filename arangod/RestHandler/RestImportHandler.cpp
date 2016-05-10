@@ -779,7 +779,7 @@ void RestImportHandler::generateDocumentsCreated(
     RestImportResult const& result) {
   // TODO: is it necessary to create a response object here already
   createResponse(GeneralResponse::ResponseCode::CREATED);
-  _response->setContentType(StaticStrings::MimeTypeJson);
+  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
   try {
     VPackBuilder json;

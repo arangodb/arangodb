@@ -943,7 +943,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
         createResponse(GeneralResponse::ResponseCode::OK);
       }
 
-      _response->setContentType("application/x-arango-dump; charset=utf-8");
+      _response->setContentType(HttpResponse::CONTENT_TYPE_DUMP);
 
       // set headers
       _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
@@ -1037,7 +1037,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
         createResponse(GeneralResponse::ResponseCode::OK);
       }
 
-      _response->setContentType("application/x-arango-dump; charset=utf-8");
+      _response->setContentType(HttpResponse::CONTENT_TYPE_DUMP);
 
       _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                              dump._fromTickIncluded ? "true" : "false");
@@ -1148,13 +1148,13 @@ void RestReplicationHandler::handleCommandClusterInventory() {
       generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN);
     } else {
-      result = _agency.getValues2(prefix);
+      result = _agency.getValues(prefix);
       if (!result.successful()) {
         generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                       TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
       } else {
         VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
-              {_agency.prefixStripped(), "Plan", "Collections", dbName}));
+              {_agency.prefix(), "Plan", "Collections", dbName}));
         if (!colls.isObject()) {
           generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
@@ -2928,7 +2928,7 @@ void RestReplicationHandler::handleCommandDump() {
       createResponse(GeneralResponse::ResponseCode::OK);
     }
 
-    _response->setContentType("application/x-arango-dump; charset=utf-8");
+    _response->setContentType(HttpResponse::CONTENT_TYPE_DUMP);
 
     // set headers
     _response->setHeaderNC(

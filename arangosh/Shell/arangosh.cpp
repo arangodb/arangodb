@@ -67,7 +67,17 @@ int main(int argc, char* argv[]) {
   server.addFeature(new V8ShellFeature(&server, name));
   server.addFeature(new VersionFeature(&server));
 
-  server.run(argc, argv);
+  try {
+    server.run(argc, argv);
+  } catch (std::exception const& ex) {
+    LOG(ERR) << "arangosh terminated because of an unhandled exception: "
+             << ex.what();
+    ret = EXIT_FAILURE;
+  } catch (...) {
+    LOG(ERR) << "arangosh terminated because of an unhandled exception of "
+                "unknown type";
+    ret = EXIT_FAILURE;
+  }
 
   return context.exit(ret);
 }

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Collection.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterInfo.h"
@@ -34,6 +35,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief create a collection wrapper
@@ -137,7 +139,7 @@ bool Collection::usesDefaultSharding() const {
   // check if collection shard keys are only _key
   std::vector<std::string> sk(shardKeys());
 
-  if (sk.size() != 1 || sk[0] != TRI_VOC_ATTRIBUTE_KEY) {
+  if (sk.size() != 1 || sk[0] != StaticStrings::KeyString) {
     return false;
   }
   return true;

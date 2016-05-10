@@ -548,8 +548,8 @@ class AgencyComm {
   /// @brief returns the global prefix for all operations
   //////////////////////////////////////////////////////////////////////////////
 
+  static std::string prefixPath();
   static std::string prefix();
-  static std::string prefixStripped();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate a timestamp
@@ -614,8 +614,7 @@ class AgencyComm {
   /// @brief gets one or multiple values from the back end
   //////////////////////////////////////////////////////////////////////////////
 
-  AgencyCommResult getValues(std::string const&, bool);
-  AgencyCommResult getValues2(std::string const&);
+  AgencyCommResult getValues(std::string const&);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increment a value

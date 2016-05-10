@@ -368,11 +368,11 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   if (generateBody) {
     writeResult(document, *options);
   } else {
-    if (returnVelocypack()){
-      _response->setContentType(StaticStrings::MimeTypeVPack);
+    if (returnVelocypack()) {
+      _response->setContentType(HttpResponse::CONTENT_TYPE_VPACK);
       _response->headResponse(document.byteSize());
     } else {
-      _response->setContentType(StaticStrings::MimeTypeJson);
+      _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
       // TODO can we optimize this?
       // Just dump some where else to find real length

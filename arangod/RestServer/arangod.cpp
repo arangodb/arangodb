@@ -193,10 +193,6 @@ static int runServer(int argc, char** argv) {
 
   try {
     server.run(argc, argv);
-  } catch (arangodb::basics::Exception const& ex) {
-    LOG(ERR) << "arangod terminated because of an unhandled exception: "
-             << ex.what();
-    ret = EXIT_FAILURE;
   } catch (std::exception const& ex) {
     LOG(ERR) << "arangod terminated because of an unhandled exception: "
              << ex.what();

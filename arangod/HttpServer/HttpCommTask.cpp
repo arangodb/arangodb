@@ -113,13 +113,8 @@ HttpCommTask::~HttpCommTask() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::handleResponse(HttpResponse* response) {
-  if (response->isChunked()) {
-    _requestPending = true;
-    _isChunked = true;
-  } else {
-    _requestPending = false;
-    _isChunked = false;
-  }
+  _requestPending = false;
+  _isChunked = false;
 
   addResponse(response);
 }
@@ -500,7 +495,7 @@ bool HttpCommTask::processRead() {
   // not found
   else if (authResult == GeneralResponse::ResponseCode::NOT_FOUND) {
     HttpResponse response(authResult);
-    response.setContentType(StaticStrings::MimeTypeJson);
+    response.setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
     response.body()
         .appendText(TRI_CHAR_LENGTH_PAIR("{\"error\":true,\"errorMessage\":\""))
@@ -518,7 +513,7 @@ bool HttpCommTask::processRead() {
   // forbidden
   else if (authResult == GeneralResponse::ResponseCode::FORBIDDEN) {
     HttpResponse response(authResult);
-    response.setContentType(StaticStrings::MimeTypeJson);
+    response.setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
     response.body()
         .appendText(TRI_CHAR_LENGTH_PAIR(
@@ -620,9 +615,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   // set "connection" header
   // keep-alive is the default
-  response->setHeaderNC(
-      StaticStrings::Connection,
-      (_closeRequested ? StaticStrings::Close : StaticStrings::KeepAlive));
+  response->setConnectionType(_closeRequested ? HttpResponse::CONNECTION_CLOSE : HttpResponse::CONNECTION_KEEP_ALIVE);
 
   size_t const responseBodyLength = response->bodySize();
 
@@ -632,7 +625,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     response->headResponse(responseBodyLength);
   }
   // else {
-  //   // to enable automatic deflating of responses, active this.
+  //   // to enable automatic deflating of responses, activate this.
   //   // deflate takes a lot of CPU time so it should only be enabled for
   //   // dedicated purposes and not generally
   //   if (responseBodyLength > 16384  && _acceptDeflate) {

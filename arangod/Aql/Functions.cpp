@@ -1970,12 +1970,12 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
       splitCollection = true;
     }
   } else if (vertexInfo.isObject()) {
-    if (!vertexInfo.hasKey(trx, TRI_VOC_ATTRIBUTE_ID)) {
+    if (!vertexInfo.hasKey(trx, StaticStrings::IdString)) {
       THROW_ARANGO_EXCEPTION_PARAMS(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
     }
     bool localMustDestroy;
-    AqlValue id = vertexInfo.get(trx, TRI_VOC_ATTRIBUTE_ID, localMustDestroy, false);
+    AqlValue id = vertexInfo.get(trx, StaticStrings::IdString, localMustDestroy, false);
     AqlValueGuard guard(id, localMustDestroy);
 
     if (!id.isString()) {
@@ -2310,9 +2310,9 @@ AqlValue Functions::ParseIdentifier(
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   std::string identifier;
-  if (value.isObject() && value.hasKey(trx, TRI_VOC_ATTRIBUTE_ID)) {
+  if (value.isObject() && value.hasKey(trx, StaticStrings::IdString)) {
     bool localMustDestroy;
-    AqlValue s = value.get(trx, TRI_VOC_ATTRIBUTE_ID, localMustDestroy, false);
+    AqlValue s = value.get(trx, StaticStrings::IdString, localMustDestroy, false);
     AqlValueGuard guard(s, localMustDestroy);
 
     if (s.isString()) {
@@ -3666,9 +3666,9 @@ AqlValue Functions::IsSameCollection(
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 1);
   std::string identifier;
 
-  if (value.isObject() && value.hasKey(trx, TRI_VOC_ATTRIBUTE_ID)) {
+  if (value.isObject() && value.hasKey(trx, StaticStrings::IdString)) {
     bool localMustDestroy;
-    value = value.get(trx, TRI_VOC_ATTRIBUTE_ID, localMustDestroy, false);
+    value = value.get(trx, StaticStrings::IdString, localMustDestroy, false);
     AqlValueGuard guard(value, localMustDestroy);
 
     if (value.isString()) {

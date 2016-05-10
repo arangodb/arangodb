@@ -173,16 +173,15 @@ class BenchmarkThread : public arangodb::Thread {
 
     TRI_ASSERT(t != nullptr);
 
-    if (location.substr(0, 5) == "/_db/") {
+    if (location.compare(0, 5, "/_db/") == 0) {
       // location already contains /_db/
       return location;
     }
 
     if (location[0] == '/') {
       return std::string("/_db/" + t->_databaseName + location);
-    } else {
-      return std::string("/_db/" + t->_databaseName + "/" + location);
-    }
+    } 
+    return std::string("/_db/" + t->_databaseName + "/" + location);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -248,7 +247,6 @@ class BenchmarkThread : public arangodb::Thread {
     batchPayload.appendText(boundary, blen);
     batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("--\r\n"));
 
-    _headers.erase("Content-Type");
     _headers["Content-Type"] =
         HttpRequest::MULTI_PART_CONTENT_TYPE + "; boundary=" + boundary;
 

@@ -25,6 +25,8 @@
 using namespace arangodb;
 
 // constants
+std::string const StaticStrings::Base64("base64");
+std::string const StaticStrings::Binary("binary");
 std::string const StaticStrings::N1800("1800");
 
 // system attribute names
@@ -51,8 +53,10 @@ std::string const StaticStrings::Allow("allow");
 std::string const StaticStrings::Async("x-arango-async");
 std::string const StaticStrings::AsyncId("x-arango-async-id");
 std::string const StaticStrings::Authorization("authorization");
+std::string const StaticStrings::CacheControl("cache-control");
 std::string const StaticStrings::Close("Close");
 std::string const StaticStrings::Connection("connection");
+std::string const StaticStrings::ContentEncoding("content-encoding");
 std::string const StaticStrings::ContentTypeHeader("content-type");
 std::string const StaticStrings::Coordinator("x-arango-coordinator");
 std::string const StaticStrings::CorsMethods("DELETE, GET, HEAD, PATCH, POST, PUT");

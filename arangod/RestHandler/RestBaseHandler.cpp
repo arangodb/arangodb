@@ -161,10 +161,10 @@ bool RestBaseHandler::returnVelocypack() const {
 void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice, 
                                   VPackOptions const& options) {
   if (returnVelocypack()) {
-    _response->setContentType(StaticStrings::MimeTypeVPack);
+    _response->setContentType(HttpResponse::CONTENT_TYPE_VPACK);
     _response->body().appendText(slice.startAs<const char>(), slice.byteSize());
   } else {
-    _response->setContentType(StaticStrings::MimeTypeJson);
+    _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
     dumpResponse(slice, &options);
   }
 }

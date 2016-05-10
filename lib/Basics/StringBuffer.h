@@ -204,6 +204,9 @@ int TRI_AppendStringStringBuffer(TRI_string_buffer_t* self, char const* str);
 int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str,
                                   size_t len);
 
+void TRI_AppendString2UnsafeStringBuffer(TRI_string_buffer_t* self, char const* str,
+                                         size_t len);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters but does not check buffer bounds
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,6 +225,11 @@ static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
                                                       size_t len) {
   memcpy(self->_current, str, len);
   self->_current += len;
+}
+
+static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, std::string const& str) {
+  memcpy(self->_current, str.c_str(), str.size());
+  self->_current += str.size();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -778,6 +786,10 @@ class StringBuffer {
     return *this;
   }
   
+  void appendCharUnsafe(char chr) {
+    TRI_AppendCharUnsafeStringBuffer(&_buffer, chr);
+  }
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief appends as json-encoded
   //////////////////////////////////////////////////////////////////////////////
@@ -804,6 +816,10 @@ class StringBuffer {
     TRI_AppendString2StringBuffer(&_buffer, str, len);
     return *this;
   }
+  
+  void appendTextUnsafe(char const* str, size_t len) {
+    TRI_AppendStringUnsafeStringBuffer(&_buffer, str, len);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief appends characters
@@ -821,6 +837,10 @@ class StringBuffer {
   StringBuffer& appendText(std::string const& str) {
     TRI_AppendString2StringBuffer(&_buffer, str.c_str(), str.length());
     return *this;
+  }
+  
+  void appendTextUnsafe(std::string const& str) {
+    TRI_AppendStringUnsafeStringBuffer(&_buffer, str.c_str(), str.length());
   }
 
   //////////////////////////////////////////////////////////////////////////////

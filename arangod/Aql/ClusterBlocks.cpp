@@ -26,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -981,7 +982,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
       static_cast<DistributeNode const*>(_exeNode)
           ->_allowKeyConversionToObject) {
     builder.openObject();
-    builder.add(TRI_VOC_ATTRIBUTE_KEY, input);
+    builder.add(StaticStrings::KeyString, input);
     builder.close();
     
     // clear the previous value
@@ -1004,12 +1005,12 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
     if (_usesDefaultSharding) {
       // the collection is sharded by _key...
 
-      if (!hasCreatedKeyAttribute && !value.hasKey(TRI_VOC_ATTRIBUTE_KEY)) {
+      if (!hasCreatedKeyAttribute && !value.hasKey(StaticStrings::KeyString)) {
         // there is no _key attribute present, so we are responsible for
         // creating one
         VPackBuilder temp;
         temp.openObject();
-        temp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(createKey()));
+        temp.add(StaticStrings::KeyString, VPackValue(createKey()));
         temp.close();
 
         builder2 = VPackCollection::merge(input, temp.slice(), true);
@@ -1024,14 +1025,14 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
     } else {
       // the collection is not sharded by _key
 
-      if (hasCreatedKeyAttribute || value.hasKey(TRI_VOC_ATTRIBUTE_KEY)) {
+      if (hasCreatedKeyAttribute || value.hasKey(StaticStrings::KeyString)) {
         // a _key was given, but user is not allowed to specify _key
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
       }
         
       VPackBuilder temp;
       temp.openObject();
-      temp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(createKey()));
+      temp.add(StaticStrings::KeyString, VPackValue(createKey()));
       temp.close();
 
       builder2 = VPackCollection::merge(input, temp.slice(), true);
@@ -1054,13 +1055,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   auto const planId =
       arangodb::basics::StringUtils::itoa(_collection->getPlanId());
 
-  std::unique_ptr<TRI_json_t> json(arangodb::basics::VelocyPackHelper::velocyPackToJson(value));
-
-  if (json == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  int res = clusterInfo->getResponsibleShard(planId, json.get(), true, shardId,
+  int res = clusterInfo->getResponsibleShard(planId, value, true, shardId,
                                              usesDefaultShardingAttributes);
 
   // std::cout << "SHARDID: " << shardId << "\n";
