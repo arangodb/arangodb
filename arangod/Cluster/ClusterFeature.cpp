@@ -367,13 +367,13 @@ void ClusterFeature::start() {
             << ", role: " << ServerState::roleToString(role);
 
   if (!_disableHeartbeat) {
-    AgencyCommResult result = comm.getValues2("Sync/HeartbeatIntervalMs");
+    AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
 
     if (result.successful()) {
       
       velocypack::Slice HeartbeatIntervalMs =
         result.slice()[0].get(std::vector<std::string>(
-          {AgencyComm::prefixStripped(), "Sync", "HeartbeatIntervalMs"}));
+          {AgencyComm::prefix(), "Sync", "HeartbeatIntervalMs"}));
           
       if (HeartbeatIntervalMs.isInteger()) {
         try {

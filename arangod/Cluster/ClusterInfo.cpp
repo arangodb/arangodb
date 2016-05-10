@@ -433,13 +433,13 @@ void ClusterInfo::loadPlan() {
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixPlan);
+      result = _agency.getValues(prefixPlan);
     }
   }
 
   if (result.successful()) {
     VPackSlice slice = result.slice()[0].get(
-        std::vector<std::string>({AgencyComm::prefixStripped(), "Plan"}));
+        std::vector<std::string>({AgencyComm::prefix(), "Plan"}));
     auto planBuilder = std::make_shared<VPackBuilder>();
     planBuilder->add(slice);
     
@@ -558,7 +558,7 @@ void ClusterInfo::loadCurrent() {
   {
     AgencyCommLocker locker("Plan", "READ");
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrent);
+      result = _agency.getValues(prefixCurrent);
     }
   }
   
@@ -566,7 +566,7 @@ void ClusterInfo::loadCurrent() {
 
     velocypack::Slice slice =
       result.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Current"}));
+            {AgencyComm::prefix(), "Current"}));
 
     auto currentBuilder = std::make_shared<VPackBuilder>();
     currentBuilder->add(slice);
@@ -1290,7 +1290,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
 
-    res = ac.getValues2("Plan/Collections/" + databaseName+"/" + collectionID);
+    res = ac.getValues("Plan/Collections/" + databaseName+"/" + collectionID);
 
     if (!res.successful()) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -1298,7 +1298,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
 
     velocypack::Slice collection =
       res.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Plan", "Collections",
+            {AgencyComm::prefix(), "Plan", "Collections",
              databaseName, collectionID}));
 
     if (!collection.isObject()) {
@@ -1360,14 +1360,14 @@ int ClusterInfo::setCollectionStatusCoordinator(
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
 
-    res = ac.getValues2("Plan/Collections/" + databaseName +"/" + collectionID);
+    res = ac.getValues("Plan/Collections/" + databaseName +"/" + collectionID);
 
     if (!res.successful()) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
     VPackSlice col = res.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Plan", "Collections",
+            {AgencyComm::prefix(), "Plan", "Collections",
              databaseName, collectionID}));
 
     if (!col.isObject()) {
@@ -1546,11 +1546,11 @@ int ClusterInfo::ensureIndexCoordinator(
   std::string const key =
       "Plan/Collections/" + databaseName + "/" + collectionID;
 
-  AgencyCommResult previous = ac.getValues2(key);
+  AgencyCommResult previous = ac.getValues(key);
 
   velocypack::Slice collection =
     previous.slice()[0].get(std::vector<std::string>(
-          { AgencyComm::prefixStripped(), "Plan", "Collections",
+          { AgencyComm::prefix(), "Plan", "Collections",
             databaseName, collectionID }));
 
   if (!collection.isObject()) {
@@ -1729,11 +1729,11 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   std::string const key =
       "Plan/Collections/" + databaseName + "/" + collectionID;
   
-  AgencyCommResult res = ac.getValues2(key);
+  AgencyCommResult res = ac.getValues(key);
 
   velocypack::Slice previous =
     res.slice()[0].get(std::vector<std::string>(
-    { AgencyComm::prefixStripped(), "Plan", "Collections", databaseName, collectionID }
+    { AgencyComm::prefix(), "Plan", "Collections", databaseName, collectionID }
   ));
   TRI_ASSERT(VPackObjectIterator(previous).size()>0);
   
@@ -1932,7 +1932,7 @@ void ClusterInfo::loadServers() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixServers);
+      result = _agency.getValues(prefixServers);
     }
   }
 
@@ -1940,7 +1940,7 @@ void ClusterInfo::loadServers() {
     
     velocypack::Slice serversRegistered =
       result.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Current", "ServersRegistered"}));
+            {AgencyComm::prefix(), "Current", "ServersRegistered"}));
 
     if (!serversRegistered.isNone()) {
       decltype(_servers) newServers;
@@ -2064,7 +2064,7 @@ void ClusterInfo::loadCurrentCoordinators() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrentCoordinators);
+      result = _agency.getValues(prefixCurrentCoordinators);
     }
   }
 
@@ -2072,7 +2072,7 @@ void ClusterInfo::loadCurrentCoordinators() {
 
     velocypack::Slice currentCoordinators =
       result.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Current", "Coordinators"}));
+            {AgencyComm::prefix(), "Current", "Coordinators"}));
 
     if (!currentCoordinators.isNone()) {
       decltype(_coordinators) newCoordinators;
@@ -2121,7 +2121,7 @@ void ClusterInfo::loadCurrentDBServers() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues2(prefixCurrentDBServers);
+      result = _agency.getValues(prefixCurrentDBServers);
     }
   }
 
@@ -2129,7 +2129,7 @@ void ClusterInfo::loadCurrentDBServers() {
 
     velocypack::Slice currentDBServers =
       result.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Current", "DBServers"}));
+            {AgencyComm::prefix(), "Current", "DBServers"}));
 
     if (!currentDBServers.isNone()) {
       decltype(_DBServers) newDBServers;
@@ -2510,13 +2510,13 @@ void FollowerInfo::add(ServerID const& sid) {
   bool success = false;
   do {
 
-    AgencyCommResult res = ac.getValues2(path);
+    AgencyCommResult res = ac.getValues(path);
 
     if (res.successful()) {
       
       velocypack::Slice currentEntry =
         res.slice()[0].get(std::vector<std::string>(
-          {AgencyComm::prefixStripped(), "Current", "Collections",
+          {AgencyComm::prefix(), "Current", "Collections",
               _docColl->_vocbase->_name,
               std::to_string(_docColl->_info.planId()),
               _docColl->_info.name()}));
@@ -2580,12 +2580,12 @@ void FollowerInfo::remove(ServerID const& sid) {
   bool success = false;
   do {
     
-    AgencyCommResult res = ac.getValues2(path);
+    AgencyCommResult res = ac.getValues(path);
     if (res.successful()) {
 
       velocypack::Slice currentEntry =
         res.slice()[0].get(std::vector<std::string>(
-          {AgencyComm::prefixStripped(), "Current", "Collections",
+          {AgencyComm::prefix(), "Current", "Collections",
               _docColl->_vocbase->_name,
               std::to_string(_docColl->_info.planId()),
               _docColl->_info.name()}));

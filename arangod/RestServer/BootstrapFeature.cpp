@@ -59,7 +59,7 @@ static void raceForClusterBootstrap() {
   auto ci = ClusterInfo::instance();
 
   while (true) {
-    AgencyCommResult result = agency.getValues2("Bootstrap");
+    AgencyCommResult result = agency.getValues("Bootstrap");
     if (!result.successful()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::STARTUP) 
@@ -68,7 +68,7 @@ static void raceForClusterBootstrap() {
       continue;
     }
     VPackSlice value = result.slice()[0].get(std::vector<std::string>(
-          {agency.prefixStripped(), "Bootstrap"}));
+          {agency.prefix(), "Bootstrap"}));
     if (value.isString()) {
       // key was found and is a string
       if (value.isEqualString("done")) {

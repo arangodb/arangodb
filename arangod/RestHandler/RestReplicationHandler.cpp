@@ -1148,13 +1148,13 @@ void RestReplicationHandler::handleCommandClusterInventory() {
       generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN);
     } else {
-      result = _agency.getValues2(prefix);
+      result = _agency.getValues(prefix);
       if (!result.successful()) {
         generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                       TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
       } else {
         VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
-              {_agency.prefixStripped(), "Plan", "Collections", dbName}));
+              {_agency.prefix(), "Plan", "Collections", dbName}));
         if (!colls.isObject()) {
           generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);

@@ -247,7 +247,7 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
   AgencyComm comm;
   AgencyCommResult result;
   std::string localInfoEncoded = StringUtils::urlEncode(_localInfo);
-  result = comm.getValues2("Target/MapLocalToID/" + localInfoEncoded);
+  result = comm.getValues("Target/MapLocalToID/" + localInfoEncoded);
 
   std::string id;
   bool found = true;
@@ -255,7 +255,7 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
     found = false;
   } else {
     VPackSlice idSlice = result.slice()[0].get(std::vector<std::string>(
-          {comm.prefixStripped(), "Target", "MapLocalToID", localInfoEncoded}));
+          {comm.prefix(), "Target", "MapLocalToID", localInfoEncoded}));
     if (!idSlice.isString()) {
       found = false;
     } else {
@@ -272,13 +272,13 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
   const std::string currentKey = "Current/" + agencyKey + "/" + id;
   
   auto builder = std::make_shared<VPackBuilder>();
-  result = comm.getValues2(planKey);
+  result = comm.getValues(planKey);
   found = true;
   if (!result.successful()) {
     found = false;
   } else {
     VPackSlice plan = result.slice()[0].get(std::vector<std::string>(
-          { comm.prefixStripped(), "Plan", agencyKey, id }));
+          { comm.prefix(), "Plan", agencyKey, id }));
     if (!plan.isString()) {
       found = false;
     } else {
@@ -348,14 +348,14 @@ std::string ServerState::createIdForRole(AgencyComm comm, ServerState::RoleEnum 
   VPackSlice idValue = builder.slice();
   AgencyCommResult createResult; 
   do {
-    AgencyCommResult result = comm.getValues2("Plan/" + agencyKey);
+    AgencyCommResult result = comm.getValues("Plan/" + agencyKey);
     if (!result.successful()) {
       LOG(FATAL) << "Couldn't fetch Plan/" << agencyKey
           << " from agency. Agency is not initialized?";
       FATAL_ERROR_EXIT();
     }
     VPackSlice servers = result.slice()[0].get(std::vector<std::string>(
-          {comm.prefixStripped(), "Plan", agencyKey}));
+          {comm.prefix(), "Plan", agencyKey}));
     if (!servers.isObject()) {
       LOG(FATAL) << "Plan/" << agencyKey << " in agency is no object. "
           << "Agency not initialized?";
@@ -790,7 +790,7 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList(
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = comm.getValues2(key);
+      result = comm.getValues(key);
     }
   }
 
@@ -803,7 +803,7 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList(
   }
 
   VPackSlice coordinators = result.slice()[0].get(std::vector<std::string>(
-        {comm.prefixStripped(), "Plan", "Coordinators"}));
+        {comm.prefix(), "Plan", "Coordinators"}));
   if (!coordinators.isObject()) {
     LOG(TRACE) << "Got an invalid JSON response for Plan/Coordinators";
     return ServerState::ROLE_UNDEFINED;
@@ -839,7 +839,7 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
       AgencyCommLocker locker("Target", "READ");
 
       if (locker.successful()) {
-        result = comm.getValues2(key);
+        result = comm.getValues(key);
       }
     }
 
@@ -852,7 +852,7 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
           << ", message: " << result.errorMessage() << ", key: " << key;
     } else {
       VPackSlice slice = result.slice()[0].get(std::vector<std::string>(
-            {comm.prefixStripped(), "Target", "MapLocalToID"}));
+            {comm.prefix(), "Target", "MapLocalToID"}));
 
       if (!slice.isObject()) {
         LOG_TOPIC(DEBUG, Logger::STARTUP) << "Target/MapLocalToID corrupt: "
@@ -898,7 +898,7 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = comm.getValues2(key);
+      result = comm.getValues(key);
     }
   }
 
@@ -913,7 +913,7 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
   ServerState::RoleEnum role = ServerState::ROLE_UNDEFINED;
 
   VPackSlice dbservers = result.slice()[0].get(std::vector<std::string>(
-        {comm.prefixStripped(), "Plan", "DBServers"}));
+        {comm.prefix(), "Plan", "DBServers"}));
   if (!dbservers.isObject()) {
     LOG(TRACE) << "Got an invalid JSON response for Plan/DBServers";
     return ServerState::ROLE_UNDEFINED;
