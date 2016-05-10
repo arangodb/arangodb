@@ -943,7 +943,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
         createResponse(GeneralResponse::ResponseCode::OK);
       }
 
-      _response->setContentType("application/x-arango-dump; charset=utf-8");
+      _response->setContentType(HttpResponse::CONTENT_TYPE_DUMP);
 
       // set headers
       _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
@@ -1037,7 +1037,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
         createResponse(GeneralResponse::ResponseCode::OK);
       }
 
-      _response->setContentType("application/x-arango-dump; charset=utf-8");
+      _response->setContentType(HttpResponse::CONTENT_TYPE_DUMP);
 
       _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                              dump._fromTickIncluded ? "true" : "false");
@@ -2928,7 +2928,7 @@ void RestReplicationHandler::handleCommandDump() {
       createResponse(GeneralResponse::ResponseCode::OK);
     }
 
-    _response->setContentType("application/x-arango-dump; charset=utf-8");
+    _response->setContentType(HttpResponse::CONTENT_TYPE_DUMP);
 
     // set headers
     _response->setHeaderNC(

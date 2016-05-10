@@ -79,9 +79,8 @@ HttpHandler::status_t PathHandler::execute() {
 
     createResponse(GeneralResponse::ResponseCode::MOVED_PERMANENTLY);
 
-    static std::string const location = "location";
-    _response->setHeaderNC(location, url);
-    _response->setContentType("text/html");
+    _response->setHeaderNC(StaticStrings::Location, url);
+    _response->setContentType(HttpResponse::CONTENT_TYPE_HTML);
 
     _response->body().appendText(
         "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This "
