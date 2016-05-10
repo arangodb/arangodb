@@ -350,7 +350,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     {
       VPackObjectBuilder guard(&result);
       createResponse(GeneralResponse::ResponseCode::OK);
-      _response->setContentType(StaticStrings::MimeTypeJson);
+      _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
       if (qResult.isArray()) {
 

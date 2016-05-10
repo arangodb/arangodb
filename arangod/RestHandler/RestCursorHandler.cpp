@@ -138,7 +138,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
   {
     createResponse(GeneralResponse::ResponseCode::CREATED);
-    _response->setContentType(StaticStrings::MimeTypeJson);
+    _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
     std::shared_ptr<VPackBuilder> extra = buildExtra(queryResult);
     VPackSlice opts = options->slice();
@@ -454,7 +454,7 @@ void RestCursorHandler::modifyCursor() {
 
   try {
     createResponse(GeneralResponse::ResponseCode::OK);
-    _response->setContentType(StaticStrings::MimeTypeJson);
+    _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
     _response->body().appendChar('{');
     cursor->dump(_response->body());

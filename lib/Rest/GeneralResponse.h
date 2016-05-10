@@ -109,10 +109,6 @@ class GeneralResponse {
     _responseCode = responseCode;
   }
 
-  void setContentType(std::string const& contentType) {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
-  }
-
   // Returns the value of a header field with given name. If no header field
   // with the given name was specified by the client, the empty string is
   // returned.
@@ -125,10 +121,6 @@ class GeneralResponse {
   // the header field name must already be trimmed and lower-cased
   void setHeaderNC(std::string const& key, std::string const& value);
   void setHeaderNC(std::string const& key, std::string&& value);
-
- private:
-  // checks for special headers
-  virtual void checkHeader(std::string const& key, std::string const& value) {}
 
  protected:
   ResponseCode _responseCode;
