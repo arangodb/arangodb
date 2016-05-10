@@ -88,7 +88,7 @@ static void AddCollectionId(v8::Isolate* isolate, v8::Handle<v8::Object> self,
 
   size_t len = trx->resolver()->getCollectionName(buffer, cid);
   buffer[len] = '/';
-  memcpy(buffer + len + 1,  key, keyLength);
+  memcpy(buffer + len + 1,  key, static_cast<size_t>(keyLength));
   
   self->ForceSet(TRI_V8_STRING(TRI_VOC_ATTRIBUTE_ID), 
                  TRI_V8_PAIR_STRING(buffer, (int)(len + keyLength + 1)));

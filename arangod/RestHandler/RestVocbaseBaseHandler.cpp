@@ -370,7 +370,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   } else {
     if (returnVelocypack()) {
       _response->setContentType(HttpResponse::CONTENT_TYPE_VPACK);
-      _response->headResponse(document.byteSize());
+      _response->headResponse(static_cast<size_t>(document.byteSize()));
     } else {
       _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 

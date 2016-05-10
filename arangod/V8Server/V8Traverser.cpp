@@ -1153,7 +1153,7 @@ void DepthFirstTraverser::EdgeGetter::nextEdge(
         *last = 0;
         edge = opRes->slice();
         TRI_ASSERT(edge.isArray());
-        _traverser->_readDocuments += edge.length();
+        _traverser->_readDocuments += static_cast<size_t>(edge.length());
         continue;
       }
       eColIdx++;

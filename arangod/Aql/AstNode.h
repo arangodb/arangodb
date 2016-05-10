@@ -680,7 +680,7 @@ struct AstNodeValueLess {
 
 struct AstNodeValueHash {
   inline size_t operator()(AstNode const* value) const {
-    return value->hashValue(0x12345678);
+    return static_cast<size_t>(value->hashValue(0x12345678));
   }
 };
 

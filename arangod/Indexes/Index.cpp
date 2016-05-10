@@ -664,7 +664,7 @@ void Index::expandInSearchValues(VPackSlice const base,
         std::unordered_set<VPackSlice, 
                            arangodb::basics::VelocyPackHelper::VPackHash, 
                            arangodb::basics::VelocyPackHelper::VPackEqual> 
-          tmp(inList.length(), arangodb::basics::VelocyPackHelper::VPackHash(), 
+          tmp(static_cast<size_t>(inList.length()), arangodb::basics::VelocyPackHelper::VPackHash(), 
               arangodb::basics::VelocyPackHelper::VPackEqual());
 
         TRI_ASSERT(inList.isArray());

@@ -671,10 +671,7 @@ int InitialSyncer::handleCollectionDump(
     // use async mode for first batch
     if (batch == 1) {
       bool found = false;
-      std::string jobId = response->getHeaderField("X-Arango-Async-Id", found);
-      if (!found) {
-        jobId = response->getHeaderField("x-arango-async-id", found);
-      }
+      std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
 
       if (!found) {
         errorMsg = "got invalid response from master at " +
@@ -865,10 +862,7 @@ int InitialSyncer::handleCollectionSync(
   }
 
   bool found = false;
-  std::string jobId = response->getHeaderField("X-Arango-Async-Id", found);
-  if (!found) {
-    jobId = response->getHeaderField("x-arango-async-id", found);
-  }
+  std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
 
   if (!found) {
     errorMsg = "got invalid response from master at " +
@@ -1112,7 +1106,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
           char const* lKey = l.get(StaticStrings::KeyString).getString(lLength);
           char const* rKey = r.get(StaticStrings::KeyString).getString(rLength);
 
-          size_t const length = (lLength < rLength ? lLength : rLength);
+          size_t const length = static_cast<size_t>(lLength < rLength ? lLength : rLength);
           int res = memcmp(lKey, rKey, length);
 
           if (res < 0) {
@@ -1194,7 +1188,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
   options.isRestore = true;
 
   VPackBuilder keyBuilder;
-  size_t const n = slice.length();
+  size_t const n = static_cast<size_t>(slice.length());
 
   // remove all keys that are below first remote key or beyond last remote key
   if (n > 0) {
@@ -1415,7 +1409,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
       toFetch.clear();
 
-      size_t const n = slice.length();
+      size_t const n = static_cast<size_t>(slice.length());
       TRI_ASSERT(n > 0);
   
       for (size_t i = 0; i < n; ++i) {

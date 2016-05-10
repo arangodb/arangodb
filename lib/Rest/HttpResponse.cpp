@@ -32,7 +32,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-std::string const HttpResponse::BATCH_ERROR_HEADER = "x-arango-errors";
 bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
 HttpResponse::HttpResponse(ResponseCode code)

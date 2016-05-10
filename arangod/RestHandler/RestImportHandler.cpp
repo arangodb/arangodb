@@ -524,7 +524,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       VPackSlice const slice = documents.at(i);
 
       res = handleSingleDocument(trx, result, tempBuilder, nullptr, slice, collectionName,
-                                 isEdgeCollection, opOptions, i + 1);
+                                 isEdgeCollection, opOptions, static_cast<size_t>(i + 1));
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {

@@ -71,7 +71,7 @@ class BenchmarkThread : public arangodb::Thread {
         _time(0.0),
         _verbose(verbose) {
     _errorHeader =
-        basics::StringUtils::tolower(HttpResponse::BATCH_ERROR_HEADER);
+        basics::StringUtils::tolower(StaticStrings::Errors);
   }
 
   ~BenchmarkThread() { shutdown(); }
@@ -207,7 +207,7 @@ class BenchmarkThread : public arangodb::Thread {
       batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
       // append content-type, this will also begin the body
       batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: "));
-      batchPayload.appendText(HttpRequest::BATCH_CONTENT_TYPE);
+      batchPayload.appendText(StaticStrings::BatchContentType);
       batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
 
       // everything else (i.e. part request header & body) will get into the
@@ -247,8 +247,8 @@ class BenchmarkThread : public arangodb::Thread {
     batchPayload.appendText(boundary, blen);
     batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("--\r\n"));
 
-    _headers["Content-Type"] =
-        HttpRequest::MULTI_PART_CONTENT_TYPE + "; boundary=" + boundary;
+    _headers[StaticStrings::ContentTypeHeader] =
+        StaticStrings::MultiPartContentType + "; boundary=" + boundary;
 
     double start = TRI_microtime();
     httpclient::SimpleHttpResult* result = _httpClient->request(

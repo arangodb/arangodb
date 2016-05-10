@@ -39,6 +39,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -830,7 +831,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       if (followRedirects &&
           (returnCode == 301 || returnCode == 302 || returnCode == 307)) {
         bool found;
-        url = response->getHeaderField(std::string("location"), found);
+        url = response->getHeaderField(StaticStrings::Location, found);
 
         if (!found) {
           TRI_V8_THROW_EXCEPTION_INTERNAL("caught invalid redirect URL");

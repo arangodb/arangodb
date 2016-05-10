@@ -128,7 +128,7 @@ void OperationCursor::getMoreMptr(std::vector<TRI_doc_mptr_t*>& result,
     batchSize = _batchSize;
   }
 
-  size_t atMost = batchSize > _limit ? _limit : batchSize;
+  size_t atMost = static_cast<size_t>(batchSize > _limit ? _limit : batchSize);
   _indexIterator->nextBabies(result, atMost);
 
   size_t got = result.size();

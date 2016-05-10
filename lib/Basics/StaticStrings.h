@@ -33,6 +33,7 @@ class StaticStrings {
   // constants
   static std::string const Base64;
   static std::string const Binary;
+  static std::string const Empty;
   static std::string const N1800;
 
   // system attribute names
@@ -59,6 +60,7 @@ class StaticStrings {
   static std::string const Async;
   static std::string const AsyncId;
   static std::string const Authorization;
+  static std::string const BatchContentType;
   static std::string const CacheControl;
   static std::string const Close;
   static std::string const Connection;
@@ -66,12 +68,14 @@ class StaticStrings {
   static std::string const ContentTypeHeader;
   static std::string const Coordinator;
   static std::string const CorsMethods;
+  static std::string const Errors;
   static std::string const ErrorCodes;
   static std::string const Etag;
   static std::string const Expect;
   static std::string const ExposedCorsHeaders;
   static std::string const KeepAlive;
   static std::string const Location;
+  static std::string const MultiPartContentType;
   static std::string const OmitWwwAuthenticate;
   static std::string const Origin;
   static std::string const Queue;

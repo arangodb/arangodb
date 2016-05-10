@@ -113,6 +113,7 @@ class GeneralRequest {
   // the authenticated user
   std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }
+  void setUser(std::string&& user) { _user = std::move(user); }
 
   RequestContext* requestContext() const { return _requestContext; }
   void setRequestContext(RequestContext*, bool);

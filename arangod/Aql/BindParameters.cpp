@@ -89,12 +89,12 @@ VPackBuilder BindParameters::StripCollectionNames(VPackSlice const& keys,
     if (element.isString()) {
       VPackValueLength l;
       char const* s = element.getString(l);
-      auto p = static_cast<char const*>(memchr(s, '/', l));
+      auto p = static_cast<char const*>(memchr(s, '/', static_cast<size_t>(l)));
       if (p != nullptr && strncmp(s, collectionName, p - s) == 0) {
         // key begins with collection name + '/', now strip it in place for
         // further comparisons
         result.add(VPackValue(
-            std::string(p + 1, l - static_cast<ptrdiff_t>(p - s) - 1)));
+            std::string(p + 1, static_cast<size_t>(l - static_cast<ptrdiff_t>(p - s) - 1))));
         continue;
       }
     }

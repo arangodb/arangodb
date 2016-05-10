@@ -38,13 +38,6 @@ struct Options;
 
 class HttpRequest : public GeneralRequest {
  public:
-  // hard-coded minetype for batch requests
-  static std::string const BATCH_CONTENT_TYPE;
-
-  // hard-coded minetype for multipart/form-data
-  static std::string const MULTI_PART_CONTENT_TYPE;
-
- public:
   HttpRequest(ConnectionInfo const&, char const*, size_t, bool);
   ~HttpRequest();
 

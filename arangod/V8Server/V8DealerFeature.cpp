@@ -203,11 +203,11 @@ void V8DealerFeature::start() {
   // setup instances
   {
     CONDITION_LOCKER(guard, _contextCondition);
-    _contexts.resize(_nrContexts, nullptr);
+    _contexts.resize(static_cast<size_t>(_nrContexts), nullptr);
 
-    _busyContexts.reserve(_nrContexts);
-    _freeContexts.reserve(_nrContexts);
-    _dirtyContexts.reserve(_nrContexts);
+    _busyContexts.reserve(static_cast<size_t>(_nrContexts));
+    _freeContexts.reserve(static_cast<size_t>(_nrContexts));
+    _dirtyContexts.reserve(static_cast<size_t>(_nrContexts));
   }
 
   for (size_t i = 0; i < _nrContexts; ++i) {

@@ -381,7 +381,7 @@ static bool ListContainsElement(arangodb::AqlTransaction* trx,
   VPackArrayIterator it(slice, true);
   while (it.valid()) {
     if (arangodb::basics::VelocyPackHelper::compare(testeeSlice, it.value(), false, options) == 0) {
-      index = it.index();
+      index = static_cast<size_t>(it.index());
       return true;
     }
     it.next();
@@ -2166,7 +2166,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
   TRI_ASSERT(index != nullptr);
 
   GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->nearQuery(
-      trx, latitude.toDouble(), longitude.toDouble(), limitValue);
+      trx, latitude.toDouble(), longitude.toDouble(), static_cast<size_t>(limitValue));
 
   return buildGeoResult(trx, query, cors, cid, attributeName);
 }
@@ -2870,7 +2870,7 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
     VPackSlice slice = materializer.slice(toAppend, false);
     if (unique) {
       std::unordered_set<VPackSlice> added;
-      added.reserve(slice.length());
+      added.reserve(static_cast<size_t>(slice.length()));
       for (auto const& it : VPackArrayIterator(slice, true)) {
         if (added.find(it) == added.end() &&
             !ListContainsElement(&options, l, it)) {

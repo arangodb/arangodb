@@ -2324,7 +2324,7 @@ VPackSlice TRI_vpack_sub_t::slice(TRI_doc_mptr_t const* mptr) const {
 void TRI_FillVPackSub(TRI_vpack_sub_t* sub,
                       VPackSlice const base, VPackSlice const value) noexcept {
   if (value.byteSize() <= TRI_vpack_sub_t::maxValueLength()) {
-    sub->setValue(value.start(), value.byteSize());
+    sub->setValue(value.start(), static_cast<size_t>(value.byteSize()));
   } else {
     size_t off = value.start() - base.start();
     TRI_ASSERT(off <= UINT32_MAX);
@@ -2344,7 +2344,7 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
   if (r.isString()) {
     VPackValueLength length;
     char const* p = r.getString(length);
-    return arangodb::basics::StringUtils::uint64(p, length);
+    return arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
   }
   if (r.isInteger()) {
     return r.getNumber<TRI_voc_rid_t>();

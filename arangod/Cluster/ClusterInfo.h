@@ -349,7 +349,7 @@ class CollectionInfo {
     auto shardsSlice = _slice.get("shards");
 
     if (shardsSlice.isObject()) {
-      return shardsSlice.length();
+      return static_cast<int>(shardsSlice.length());
     }
     return 0;
   }
