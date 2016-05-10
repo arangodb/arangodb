@@ -13,6 +13,10 @@
     <% } %>
     <h5 class="collectionName">
       <%= model.get("mount") %>
+       
+      <% if(model.get("name")) { %>
+        (<%= model.get("name") %>)
+      <% } %>
     </h5>
   </div>
 </script>

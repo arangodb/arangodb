@@ -130,7 +130,7 @@ set(LIB_ARANGO_VPACK
 
 if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
   SET(LIB_ASM_SOURCES
-    Basics/crc1.s
+    Basics/crc4.s
   )
   add_definitions("-DENABLE_ASM_CRC32=1")
   message("-- Will compile in hand-optimized assembler code for CRC32.")

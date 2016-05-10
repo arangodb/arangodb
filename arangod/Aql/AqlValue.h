@@ -107,7 +107,12 @@ struct AqlValue final {
     // we must get rid of Externals first here, because all
     // methods that use VPACK_SLICE_POINTER expect its contents
     // to be non-Externals
-    _data.pointer = VPackSlice(pointer).resolveExternals().begin();
+    if (*pointer == '\x1d') {
+      // an external
+      _data.pointer = VPackSlice(pointer).resolveExternals().begin();
+    } else {
+      _data.pointer = pointer;
+    }
     setType(AqlValueType::VPACK_SLICE_POINTER);
     TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
   }
@@ -325,18 +330,19 @@ struct AqlValue final {
   }
   
   /// @brief initializes value from a slice
-  void initFromSlice(arangodb::velocypack::Slice slice) {
-    if (slice.isExternal()) {
-      // recursively resolve externals
-      slice = slice.resolveExternals();
-    }
+  void initFromSlice(arangodb::velocypack::Slice const& slice) {
+    // intentionally do not resolve externals here
+    // if (slice.isExternal()) {
+    //   // recursively resolve externals
+    //   slice = slice.resolveExternals();
+    // }
     arangodb::velocypack::ValueLength length = slice.byteSize();
     if (length < sizeof(_data.internal)) {
-      // Use internal
+      // Use inline value
       memcpy(_data.internal, slice.begin(), length);
       setType(AqlValueType::VPACK_INLINE);
     } else {
-      // Use external
+      // Use managed buffer
       _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length);
       _data.buffer->append(reinterpret_cast<char const*>(slice.begin()), length);
       setType(AqlValueType::VPACK_MANAGED);
