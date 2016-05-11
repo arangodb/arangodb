@@ -1,12 +1,2 @@
-shell> curl --dump - http://localhost:8529/_api/document/?collection=products
+shell> curl --dump - http://localhost:8529/_api/document/products
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-
-{ 
-  <span class="hljs-string">"documents"</span> : [ 
-    <span class="hljs-string">"/_db/_system/_api/document/products/737417938"</span>, 
-    <span class="hljs-string">"/_db/_system/_api/document/products/738073298"</span>, 
-    <span class="hljs-string">"/_db/_system/_api/document/products/737745618"</span> 
-  ] 
-}

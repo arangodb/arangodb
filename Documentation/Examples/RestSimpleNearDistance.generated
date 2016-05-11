@@ -15,37 +15,37 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/831003346"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"831003346"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"831003346"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span>, 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.38985328911744</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11242"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11242"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"11242"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">-0.002</span>, 
         <span class="hljs-number">0</span> 
       ], 
-      <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.38985328911744</span> 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span> 
     }, 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/831396562"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"831396562"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"831396562"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.002/"</span>, 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.38985328911744</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11248"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11248"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"11248"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">0.002</span>, 
         <span class="hljs-number">0</span> 
       ], 
-      <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.38985328911744</span> 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.002/"</span> 
     }, 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/830806738"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"830806738"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"830806738"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.004/"</span>, 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">444.779706578235</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11239"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11239"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"11239"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">-0.004</span>, 
         <span class="hljs-number">0</span> 
       ], 
-      <span class="hljs-string">"distance"</span> : <span class="hljs-number">444.779706578235</span> 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.004/"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 

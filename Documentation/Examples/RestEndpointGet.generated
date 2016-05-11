@@ -5,7 +5,6 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 [ 
   { 
-    <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:36494"</span>, 
-    <span class="hljs-string">"databases"</span> : [ ] 
+    <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"http://127.0.0.1:30089"</span> 
   } 
 ]

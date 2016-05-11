@@ -7,9 +7,9 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_TRAVERSAL('rout
   [ 
     { 
       <span class="hljs-string">"vertex"</span> : { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Hamburg"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1046105672"</span>, 
+        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"26056"</span>, 
         <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"loc"</span> : [ 
           <span class="hljs-number">53.5653</span>, 
@@ -20,9 +20,9 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_TRAVERSAL('rout
     }, 
     { 
       <span class="hljs-string">"vertex"</span> : { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1045909064"</span>, 
+        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"26053"</span>, 
         <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"loc"</span> : [ 
           <span class="hljs-number">50.9364</span>, 
@@ -33,9 +33,9 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_TRAVERSAL('rout
     }, 
     { 
       <span class="hljs-string">"vertex"</span> : { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Paris"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1046826568"</span>, 
+        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"26063"</span>, 
         <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"loc"</span> : [ 
           <span class="hljs-number">48.856700000000004</span>, 
@@ -46,9 +46,9 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_TRAVERSAL('rout
     }, 
     { 
       <span class="hljs-string">"vertex"</span> : { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1046629960"</span>, 
+        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"26059"</span>, 
         <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"loc"</span> : [ 
           <span class="hljs-number">45.76</span>, 
