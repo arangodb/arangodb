@@ -1025,7 +1025,7 @@ char* Query::registerEscapedString(char const* p, size_t length,
   }
 
   char* copy =
-      TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength);
+      TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength, false);
 
   if (copy == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

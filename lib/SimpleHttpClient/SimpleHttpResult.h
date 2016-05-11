@@ -214,7 +214,7 @@ class SimpleHttpResult {
   /// @brief returns whether the result is JSON-encoded
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isJson() const;
+  bool isJson() const { return _isJson; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -229,6 +229,7 @@ class SimpleHttpResult {
   size_t _contentLength;
   int _returnCode;
   bool _foundHeader;
+  bool _isJson;
   bool _hasContentLength;
   bool _chunked;
   bool _deflated;
