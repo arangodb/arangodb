@@ -24,7 +24,6 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-const _ = require('lodash');
 const dd = require('dedent');
 const cluster = require('@arangodb/cluster');
 const createRouter = require('@arangodb/foxx/router');
@@ -44,124 +43,50 @@ router.use((req, res, next) => {
 router.get('/amICoordinator', function(req, res) {
   res.json(cluster.isCoordinator());
 })
-.summary('Plan and start a new cluster')
-.description('This will plan a new cluster with the information given in the body');
+.summary('Ask the server whether it is a coordinator')
+.description('This will return true if and only if the server is a coordinator.');
 
 
 if (cluster.isCluster()) {
-  // only make these functions available in cluster mode!
-  const Communication = require('@arangodb/cluster/agency-communication');
-  const comm = new Communication.Communication();
-  const beats = comm.sync.Heartbeats();
-  const diff = comm.diff.current;
-  const servers = comm.current.DBServers();
-  const dbs = comm.current.Databases();
-  const coords = comm.current.Coordinators();
-
-  router.get('/ClusterType', function(req, res) {
-    // Not yet implemented
-    res.json({type: 'symmetricSetup'});
-  })
-  .summary('Get the type of the cluster')
-  .description(dd`
-     Returns a string containing the cluster type
-     Possible anwers:
-     - testSetup
-     - symmetricalSetup
-     - asymmetricalSetup
-  `);
-
   router.get('/DBServers', function(req, res) {
-    const resList = [];
-    const list = servers.getList();
-    const diffList = diff.DBServers();
-    const didBeat = beats.didBeat();
-    const serving = beats.getServing();
-
-    _.each(list, function(v, k) {
-      v.name = k;
-      resList.push(v);
-      if (!_.contains(didBeat, k)) {
-        v.status = 'critical';
-        return;
-      }
-      if (v.role === 'primary' && !_.contains(serving, k)) {
-        v.status = 'warning';
-        return;
-      }
-      v.status = 'ok';
-    });
-
-    _.each(diffList.missing, function(v) {
-      v.status = 'missing';
-      resList.push(v);
-    });
-
-    res.json(resList);
+    const list = global.ArangoClusterInfo.getDBServers();
+    res.json(list.map(n => { 
+        var r = { "name": n, "role": "primary" };
+        r.status = "ok";
+        const endpoint = global.ArangoClusterInfo.getServerEndpoint(n);
+        const proto = endpoint.substr(0, 6);
+        if (proto === "tcp://") {
+          r.protocol = "http";
+          r.address = endpoint.substr(6);
+        } else if (proto === "ssl://") {
+          r.protocol = "https";
+          r.address = endpoint.substr(6);
+        } else {
+          r.endpoint = endpoint;
+        }
+        return r;
+      }));
   })
   .summary('Get all DBServers')
   .description('Get a list of all running and expected DBServers within the cluster');
 
   router.get('/Coordinators', function(req, res) {
-    const resList = [];
-    const list = coords.getList();
-    const diffList = diff.Coordinators();
-    const didBeat = beats.didBeat();
-
-    _.each(list, (v, k) => {
-      v.name = k;
-      resList.push(v);
-      if (!_.contains(didBeat, k)) {
-        v.status = 'critical';
-        return;
-      }
-      v.status = 'ok';
-    });
-
-    _.each(diffList.missing, (v) => {
-      v.status = 'missing';
-      resList.push(v);
-    });
-
-    res.json(resList);
-  });
-
-  router.get('/Databases', function(req, res) {
-    res.json(
-      dbs.getList()
-      .map((name) => ({name}))
-    );
-  });
-
-  router.get('/:dbname/Collections', function(req, res) {
-    try {
-      res.json(
-        dbs
-        .select(req.pathParams.dbname)
-        .getCollections()
-        .map((name) => ({name}))
-      );
-    } catch (e) {
-      res.json([]);
-    }
-  });
-
-  router.get('/:dbname/:colname/Shards', function(req, res) {
-    res.json(
-      dbs
-      .select(req.pathParams.dbname)
-      .collection(req.pathParams.colname)
-      .getShardsByServers()
-    );
-  });
-
-  router.get('/:dbname/:colname/Shards/:servername', function(req, res) {
-    res.json(
-      dbs
-      .select(req.pathParams.dbname)
-      .collection(req.pathParams.colname)
-      .getShardsForServer(req.pathParams.servername)
-      .map((c) => ({id: c}))
-    );
+    const list = global.ArangoClusterInfo.getCoordinators();
+    res.json(list.map(n => { 
+        var r = { "name": n, "role": "coordinator" };
+        r.status = "ok";
+        const endpoint = global.ArangoClusterInfo.getServerEndpoint(n);
+        const proto = endpoint.substr(0, 6);
+        if (proto === "tcp://") {
+          r.protocol = "http";
+          r.address = endpoint.substr(6);
+        } else if (proto === "ssl://") {
+          r.protocol = "https";
+          r.address = endpoint.substr(6);
+        } else {
+          r.endpoint = endpoint;
+        }
+        return r;
+      }));
   });
 }

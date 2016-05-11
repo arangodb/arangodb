@@ -354,7 +354,6 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
                                               bool generateBody,
                                               VPackOptions const* options) {
   VPackSlice document = input.resolveExternal();
-  TRI_ASSERT(document.isObject());
 
   std::string rev;
   if (document.isObject()) {

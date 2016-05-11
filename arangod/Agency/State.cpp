@@ -306,7 +306,7 @@ bool State::loadCollection(std::string const& name) {
     return true;
   } 
   
-  LOG_TOPIC (INFO, Logger::AGENCY) << "Couldn't find persisted log";
+  LOG_TOPIC (DEBUG, Logger::AGENCY) << "Couldn't find persisted log";
   createCollections();
 
   return false;

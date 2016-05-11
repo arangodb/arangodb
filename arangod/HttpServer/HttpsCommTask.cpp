@@ -41,12 +41,12 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpsCommTask::HttpsCommTask(HttpsServer* server, TRI_socket_t socket,
-                             ConnectionInfo const& info,
+                             ConnectionInfo&& info,
                              double keepAliveTimeout, SSL_CTX* ctx,
                              int verificationMode,
                              int (*verificationCallback)(int, X509_STORE_CTX*))
     : Task("HttpsCommTask"),
-      HttpCommTask(server, socket, info, keepAliveTimeout),
+      HttpCommTask(server, socket, std::move(info), keepAliveTimeout),
       _accepted(false),
       _readBlockedOnWrite(false),
       _writeBlockedOnRead(false),

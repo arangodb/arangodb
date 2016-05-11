@@ -157,7 +157,8 @@ HttpHandler::status_t RestBatchHandler::execute() {
 
     if (!authorization.empty()) {
       // inject Authorization header of multipart message into part message
-      request->setHeader(StaticStrings::Authorization.c_str(), StaticStrings::Authorization.size(), authorization.c_str());
+      request->setHeader(StaticStrings::Authorization.c_str(), StaticStrings::Authorization.size(), 
+                         authorization.c_str(), authorization.size());
     }
 
     HttpHandler* handler = _server->createHandler(request);

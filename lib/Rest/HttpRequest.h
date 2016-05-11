@@ -63,13 +63,16 @@ class HttpRequest : public GeneralRequest {
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
       arangodb::velocypack::Options const*);
   
-  void setHeader(char const* key, size_t keyLength, char const* value);
+  /// @brief sets a key/value header
+  void setHeader(char const* key, size_t keyLength, char const* value, size_t valueLength);
+  /// @brief sets a key-only header
+  void setHeader(char const* key, size_t keyLength);
 
  private:
   void parseHeader(size_t length);
   void setValues(char* buffer, char* end);
   void setCookie(char* key, size_t length, char const* value);
-  void parseCookies(char const* buffer);
+  void parseCookies(char const* buffer, size_t length);
 
  private:
   std::unordered_map<std::string, std::string> _cookies;

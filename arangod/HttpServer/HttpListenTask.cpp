@@ -37,7 +37,7 @@ HttpListenTask::HttpListenTask(HttpServer* server, Endpoint* endpoint)
     : Task("HttpListenTask"), ListenTask(endpoint), _server(server) {}
 
 bool HttpListenTask::handleConnected(TRI_socket_t s,
-                                     const ConnectionInfo& info) {
-  _server->handleConnected(s, info);
+                                     ConnectionInfo&& info) {
+  _server->handleConnected(s, std::move(info));
   return true;
 }

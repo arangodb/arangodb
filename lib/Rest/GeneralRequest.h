@@ -82,6 +82,7 @@ class GeneralRequest {
  public:
   explicit GeneralRequest(ConnectionInfo const& connectionInfo)
       : _version(ProtocolVersion::UNKNOWN),
+        _protocol(""),
         _connectionInfo(connectionInfo),
         _clientTaskId(0),
         _requestContext(nullptr),
@@ -94,8 +95,8 @@ class GeneralRequest {
   ProtocolVersion protocolVersion() const { return _version; }
 
   // http, https or vpp
-  std::string const& protocol() const { return _protocol; }
-  void setProtocol(std::string const& protocol) { _protocol = protocol; }
+  char const* protocol() const { return _protocol; }
+  void setProtocol(char const* protocol) { _protocol = protocol; }
 
   ConnectionInfo const& connectionInfo() const { return _connectionInfo; }
   void setConnectionInfo(ConnectionInfo const& connectionInfo) {
@@ -136,6 +137,7 @@ class GeneralRequest {
   // with all the remaining arguments.
   std::string prefix() const { return _prefix; }
   void setPrefix(std::string const& prefix) { _prefix = prefix; }
+  void setPrefix(std::string&& prefix) { _prefix = std::move(prefix); }
 
   std::vector<std::string> const& suffix() const { return _suffix; }
   void addSuffix(std::string&& part);
@@ -162,7 +164,7 @@ class GeneralRequest {
 
  protected:
   ProtocolVersion _version;
-  std::string _protocol;
+  char const* _protocol;
 
   // connection info
   ConnectionInfo _connectionInfo;

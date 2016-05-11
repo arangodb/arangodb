@@ -260,7 +260,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
     info.endpoint = _endpoint->specification();
     info.endpointType = _endpoint->domainType();
 
-    return handleConnected(connectionSocket, info);
+    return handleConnected(connectionSocket, std::move(info));
   }
 
   return true;

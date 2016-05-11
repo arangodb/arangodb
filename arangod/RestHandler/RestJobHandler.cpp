@@ -39,7 +39,9 @@ using namespace arangodb::rest;
 
 RestJobHandler::RestJobHandler(HttpRequest* request,
                                AsyncJobManager* jobManager)
-    : RestBaseHandler(request), _jobManager(jobManager) {}
+    : RestBaseHandler(request), _jobManager(jobManager) {
+  TRI_ASSERT(jobManager != nullptr);
+}
 
 bool RestJobHandler::isDirect() const { return true; }
 
@@ -184,6 +186,7 @@ void RestJobHandler::getJobById(std::string const& value) {
 
   // numeric job id, just pull the job status and return it
   AsyncJobResult::Status status;
+  TRI_ASSERT(_jobManager != nullptr);
   _jobManager->getJobResult(jobId, status, false);
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
