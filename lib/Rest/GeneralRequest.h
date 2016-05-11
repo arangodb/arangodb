@@ -82,6 +82,7 @@ class GeneralRequest {
  public:
   explicit GeneralRequest(ConnectionInfo const& connectionInfo)
       : _version(ProtocolVersion::UNKNOWN),
+        _protocol(""),
         _connectionInfo(connectionInfo),
         _clientTaskId(0),
         _requestContext(nullptr),

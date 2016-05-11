@@ -232,6 +232,8 @@ void RestServerFeature::stop() {
 }
 
 void RestServerFeature::buildServers() {
+  TRI_ASSERT(_jobManager != nullptr);
+
   EndpointFeature* endpoint =
       application_features::ApplicationServer::getFeature<EndpointFeature>(
           "Endpoint");
@@ -272,6 +274,8 @@ void RestServerFeature::buildServers() {
 }
 
 void RestServerFeature::defineHandlers() {
+  TRI_ASSERT(_jobManager != nullptr);
+
   AgencyFeature* agency =
       application_features::ApplicationServer::getFeature<AgencyFeature>(
           "Agency");

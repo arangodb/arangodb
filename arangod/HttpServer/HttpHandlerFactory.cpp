@@ -236,10 +236,9 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
       }
 
       modifiedPath = &prefix;
-
-      i = ii.find(prefix);
       
-      request->setPrefix(std::move(prefix));
+      i = ii.find(prefix);
+      request->setPrefix(prefix);
     }
   }
 
