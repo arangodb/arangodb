@@ -155,10 +155,11 @@ option(USE_ROCKSDB
 
 if (USE_ROCKSDB)
   add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
+  add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+  include_directories(${ROCKSDB_INCLUDE_DIR})
 else ()
   set(ROCKSDB_LIBS "")
 endif ()
-
 
 ################################################################################
 ## EXTERNAL PROGRAMS
@@ -671,15 +672,6 @@ include_directories(${Boost_INCLUDE_DIR})
 add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
 
 ################################################################################
-## ROCKSDB
-################################################################################
-
-if (USE_ROCKSDB)
-include_directories(${ROCKSDB_INCLUDE_DIR})
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
-endif ()
-
-################################################################################
 ## ICU
 ################################################################################
 
@@ -799,7 +791,6 @@ endif ()
 list(INSERT SYSTEM_LIBRARIES 0
   ${BT_LIBS}
   ${ZLIB_LIBS}
-  ${SNAPPY_STATIC_LIB}
   ${ICU_LIBS}
   ${OPENSSL_LIBRARIES}
   ${BASE_LIBS}
