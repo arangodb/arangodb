@@ -241,7 +241,6 @@ set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 set(CPACK_STRIP_FILES "ON")
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
 set(CPACK_DEBIAN_PACKAGE_SECTION "database")
-
 set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "a multi-purpose NoSQL database
  A distributed free and open-source database with a flexible data model for documents,
  graphs, and key-values. Build high performance applications using a convenient
@@ -253,6 +252,7 @@ set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "a multi-purpose NoSQL database
  www.arangodb.com
 ")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://www.arangodb.com/")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/postinst;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/preinst;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/postrm;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/prerm;")
 set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
@@ -317,7 +317,7 @@ if (NOT(MSVC))
   install(
     FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
     PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-    DESTINATION etc/init.d
+    DESTINATION ${ETCDIR}/init.d
     RENAME arangodb3
     COMPONENT debian-extras
   )

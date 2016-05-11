@@ -49,7 +49,7 @@ class HttpListenTask : public ListenTask {
   HttpListenTask(HttpServer* server, Endpoint* endpoint);
 
  protected:
-  bool handleConnected(TRI_socket_t s, ConnectionInfo const& info) override ;
+  bool handleConnected(TRI_socket_t s, ConnectionInfo&& info) override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

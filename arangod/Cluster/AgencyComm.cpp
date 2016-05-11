@@ -23,7 +23,6 @@
 
 #include "AgencyComm.h"
 
-#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
@@ -57,7 +56,7 @@ static void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) 
 //////////////////////////////////////////////////////////////////////////////
 
 AgencyOperation::AgencyOperation(std::string const& key, AgencySimpleOperationType opType)
-    : _key(AgencyComm::prefix() + key), _opType() {
+    : _key(AgencyComm::prefixPath() + key), _opType() {
   _opType.type = AgencyOperationType::SIMPLE;
   _opType.simple = opType;
 }
@@ -68,7 +67,7 @@ AgencyOperation::AgencyOperation(std::string const& key, AgencySimpleOperationTy
 
 AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationType opType,
     VPackSlice value)
-    : _key(AgencyComm::prefix() + key), _opType(), _value(value) {
+    : _key(AgencyComm::prefixPath() + key), _opType(), _value(value) {
   _opType.type = AgencyOperationType::VALUE;
   _opType.value = opType;
 }
@@ -101,7 +100,7 @@ void AgencyOperation::toVelocyPack(VPackBuilder& builder) const {
 //////////////////////////////////////////////////////////////////////////////
 
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
-    : key(AgencyComm::prefix() + key), type(t), empty(e) {
+    : key(AgencyComm::prefixPath() + key), type(t), empty(e) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -110,7 +109,7 @@ AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
 
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t,
                                        VPackSlice s)
-    : key(AgencyComm::prefix() + key), type(t), empty(false), value(s) {
+    : key(AgencyComm::prefixPath() + key), type(t), empty(false), value(s) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -321,127 +320,6 @@ void AgencyCommResult::clear() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief recursively flatten the JSON response into a map
-///
-/// stripKeyPrefix is decoded, as is the _globalPrefix
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
-                                           std::string const& stripKeyPrefix,
-                                           bool withDirs) {
-  if (!node.isObject()) {
-    return true;
-  }
-
-  // get "key" attribute
-  VPackSlice const key = node.get("key");
-
-  if (!key.isString()) {
-    return false;
-  }
-
-  std::string keydecoded = key.copyString();
-
-  // make sure we don't strip more bytes than the key is long
-  size_t const offset =
-      AgencyComm::_globalPrefix.size() + stripKeyPrefix.size();
-  size_t const length = keydecoded.size();
-
-  std::string prefix;
-  if (offset < length) {
-    prefix = keydecoded.substr(offset);
-  }
-
-  // get "dir" attribute
-  bool isDir =
-      arangodb::basics::VelocyPackHelper::getBooleanValue(node, "dir", false);
-
-  if (isDir) {
-    if (withDirs) {
-      AgencyCommResultEntry entry;
-
-      entry._index = 0;
-      entry._vpack = std::make_shared<VPackBuilder>();
-      entry._isDir = true;
-      _values.emplace(prefix, entry);
-    }
-
-    // is a directory, so there may be a "nodes" attribute
-    if (!node.hasKey("nodes")) {
-      // if directory is empty...
-      return true;
-    }
-    VPackSlice const nodes = node.get("nodes");
-
-    if (!nodes.isArray()) {
-      // if directory is empty...
-      return true;
-    }
-
-    for (auto const& subNode : VPackArrayIterator(nodes)) {
-      if (!parseVelocyPackNode(subNode, stripKeyPrefix, withDirs)) {
-        return false;
-      }
-    }
-  } else {
-    // not a directory
-
-    // get "value" attribute
-    VPackSlice const value = node.get("value");
-
-    if (!prefix.empty()) {
-      AgencyCommResultEntry entry;
-      
-      // get "modifiedIndex"
-      entry._index = arangodb::basics::VelocyPackHelper::stringUInt64(
-        node.get("modifiedIndex"));
-      entry._vpack = std::make_shared<VPackBuilder>();
-      entry._isDir = false;
-      
-      entry._vpack->add(value);
-      
-      _values.emplace(prefix, entry);
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// parse an agency result
-/// note that stripKeyPrefix is a decoded, normal key!
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyCommResult::parse(std::string const& stripKeyPrefix, bool withDirs) {
-  std::shared_ptr<VPackBuilder> parsedBody;
-  try {
-    parsedBody = VPackParser::fromJson(_body.c_str());
-  } catch (...) {
-    return false;
-  }
-  
-  VPackSlice slice = parsedBody->slice();
-  
-  if (!slice.isObject()) {
-    return false;
-  }
-
-  // get "node" attribute
-  VPackSlice const node = slice.get("node");
-
-  bool const result = parseVelocyPackNode(node, stripKeyPrefix, withDirs);
-
-  return result;
-}
-
-VPackSlice AgencyCommResult::parse(std::string const& path) {
-  std::vector<std::string> pv (1,AgencyComm::prefixStripped());
-  std::vector<std::string> tmp = basics::StringUtils::split(path,'/');
-  pv.insert(pv.end(), tmp.begin(), tmp.end());
-  return _vpack->slice()[0].get(pv);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// get results of query as slice
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -592,7 +470,7 @@ bool AgencyComm::tryConnect() {
 
     // mop: not sure if a timeout makes sense here
     while (true) {
-      LOG_TOPIC(INFO, Logger::AGENCYCOMM) 
+      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) 
           << "Trying to find an active agency. Checking " << endpointsStr;
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
@@ -772,9 +650,7 @@ bool AgencyComm::shouldInitializeStructure() {
   // "InitDone" key should not previously exist
   auto result = casValue("InitDone", builder.slice(), false, 60.0, timeout);
     
-  if (!result.successful() &&
-      result.httpCode() ==
-          (int)arangodb::GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
+  if (!result.successful()) {
     // somebody else has or is initializing the agency
     LOG_TOPIC(TRACE, Logger::STARTUP) 
         << "someone else is initializing the agency";
@@ -807,11 +683,11 @@ bool AgencyComm::ensureStructureInitialized() {
       sleep(1);
     }
     
-    AgencyCommResult result = getValues2("InitDone");
+    AgencyCommResult result = getValues("InitDone");
  
     if (result.successful()) {
       VPackSlice value = result.slice()[0].get(std::vector<std::string>(
-            {prefixStripped(), "InitDone"}));
+            {prefix(), "InitDone"}));
       if (value.isBoolean() && value.getBoolean()) {
         // expecting a value of "true"
         LOG_TOPIC(TRACE, Logger::STARTUP) << "Found an initialized agency";
@@ -1050,8 +926,8 @@ bool AgencyComm::setPrefix(std::string const& prefix) {
 /// @brief gets the global prefix for all operations
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AgencyComm::prefix() { return _globalPrefix; }
-std::string AgencyComm::prefixStripped() { return _globalPrefixStripped; }
+std::string AgencyComm::prefixPath() { return _globalPrefix; }
+std::string AgencyComm::prefix() { return _globalPrefixStripped; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a timestamp
@@ -1132,9 +1008,9 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
 
 std::string AgencyComm::getVersion() {
   AgencyCommResult result
-      =sendWithFailover(arangodb::GeneralRequest::RequestType::GET,
-			_globalConnectionOptions._requestTimeout, "version",
-			"", false);
+      = sendWithFailover(arangodb::GeneralRequest::RequestType::GET,
+                         _globalConnectionOptions._requestTimeout, "version",
+                         "", false);
 
   if (result.successful()) {
     return result._body;
@@ -1196,14 +1072,14 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::exists(std::string const& key) {
-  AgencyCommResult result = getValues2(key);
+  AgencyCommResult result = getValues(key);
   if (!result.successful()) {
     return false;
   }
   auto parts = arangodb::basics::StringUtils::split(key, "/");
   std::vector<std::string> allParts;
   allParts.reserve(parts.size() + 1);
-  allParts.push_back(prefixStripped());
+  allParts.push_back(prefix());
   allParts.insert(allParts.end(), parts.begin(), parts.end());
   VPackSlice slice = result.slice()[0].get(allParts);
   return !slice.isNone();
@@ -1226,7 +1102,7 @@ AgencyCommResult AgencyComm::increment(std::string const& key) {
 /// @brief gets one or multiple values from the backend
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
+AgencyCommResult AgencyComm::getValues(std::string const& key) {
   std::string url(buildUrl());
   
   url += "/read";
@@ -1235,136 +1111,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
     VPackArrayBuilder root(&builder);
     {
       VPackArrayBuilder keys(&builder);
-      builder.add(VPackValue(AgencyComm::prefix() + key));
-    }
-  }
-
-  AgencyCommResult result
-      = sendWithFailover(arangodb::GeneralRequest::RequestType::POST,
-			 _globalConnectionOptions._requestTimeout, url,
-			 builder.toJson(), false);
-
-  if (!result.successful()) {
-    return result;
-  }
-  
-  try {
-    std::shared_ptr<VPackBuilder> parsedBody;
-    std::string const body = result.body();
-   
-    parsedBody = VPackParser::fromJson(body.c_str());
-    VPackSlice agencyResult = parsedBody->slice();
-    VPackSlice resultNode;
-    if (!agencyResult.isArray()) {
-      result._statusCode = 500;
-      return result;
-    }
-
-    if (agencyResult.length() != 1) {
-      result._statusCode = 500;
-      return result;
-    }
-    resultNode = agencyResult.at(0);
-    
-    std::function<void (std::string const&, VPackSlice, VPackBuilder&, int)>
-      fakeEtcdNode = [&] (std::string const& key, VPackSlice node,
-                          VPackBuilder& builder, int level) {
-      VPackObjectBuilder nodeValue(&builder);
-      builder.add("key", VPackValue(key));
-      builder.add("modifiedIndex", VPackValue(1));
-      builder.add("createdIndex", VPackValue(1));
-      if (node.isObject()) {
-        builder.add("dir", VPackValue(true));
-
-        if (node.length() > 0 && (recursive || level < 1)) {
-          builder.add(VPackValue("nodes"));
-          VPackArrayBuilder objectStructure(&builder);
-          for (auto const& it : VPackObjectIterator(node)) {
-            std::string subKey;
-            subKey = key + "/" + it.key.copyString();
-            fakeEtcdNode(subKey, it.value, builder, level + 1);
-          }
-        }
-      } else if (node.isArray()) {
-        LOG_TOPIC(ERR, Logger::AGENCYCOMM) << node.toJson();
-        LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Oops...TODO array unexpected";
-      } else {
-        builder.add("value", node);
-      }
-    };
-    
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder nodeRoot(&builder);
-      builder.add("action", VPackValue("get"));
-      builder.add(VPackValue("node"));
-
-      const std::string fullKey = AgencyComm::prefix() + key;
-      // mop: need to remove all parents... key requested: /arango/hans/mann/wurst.
-      // instead of just the result of wurst we will get the full tree
-      // but only if there is something inside this object
-
-      TRI_ASSERT(fullKey.size() > 0);
-      //TRI_ASSERT(fullkey[0] == '/');
-      size_t currentKeyStart = fullKey.size() > 1 ? 1 : std::string::npos;
-      while (currentKeyStart != std::string::npos) {
-        // at least one further step to go down
-        size_t found = fullKey.find_first_of('/', currentKeyStart);
-        std::string currentKey 
-            = (found == std::string::npos) ?
-              fullKey.substr(currentKeyStart) :
-              fullKey.substr(currentKeyStart, found - currentKeyStart);
-        if (!resultNode.isObject() || !resultNode.hasKey(currentKey)) {
-          result.clear();
-          result._statusCode = 404;
-          return result;
-        }
-        resultNode = resultNode.get(currentKey);
-
-        currentKeyStart 
-            = (found == std::string::npos) ? found : found + 1;
-      }
-      
-      fakeEtcdNode(AgencyComm::prefix() + key, resultNode, builder, 0);
-    }
-    
-    result._body.clear();
-    VPackSlice s = builder.slice();
-    
-    VPackOptions dumperOptions;
-    VPackStringSink sink(&result._body);
-    VPackDumper::dump(s, &sink, &dumperOptions);
-
-    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
-        << "Created fake etcd node" << result._body;
-    result._statusCode = 200;
-  } catch(std::exception &e) {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
-        << "Error transforming result. " << e.what();
-    result.clear();
-  } catch(...) {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM) 
-        << "Error transforming result. Out of memory";
-    result.clear();
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets one or multiple values from the backend
-////////////////////////////////////////////////////////////////////////////////
-
-AgencyCommResult AgencyComm::getValues2(std::string const& key) {
-  std::string url(buildUrl());
-  
-  url += "/read";
-  VPackBuilder builder;
-  {
-    VPackArrayBuilder root(&builder);
-    {
-      VPackArrayBuilder keys(&builder);
-      builder.add(VPackValue(AgencyComm::prefix() + key));
+      builder.add(VPackValue(AgencyComm::prefixPath() + key));
     }
   }
 
@@ -1576,14 +1323,14 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   uint64_t oldValue = 0;
 
   while (tries++ < maxTries) {
-    result = getValues2("Sync/LatestID");
+    result = getValues("Sync/LatestID");
     if (!result.successful()) {
       usleep(500000);
       continue;
     }
 
     VPackSlice oldSlice = result.slice()[0].get(std::vector<std::string>(
-          {prefixStripped(), "Sync", "LatestID"}));
+          {prefix(), "Sync", "LatestID"}));
 
     if (!(oldSlice.isSmallInt() || oldSlice.isUInt())) {
       LOG_TOPIC(WARN, Logger::AGENCYCOMM) 
@@ -1983,7 +1730,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       if (!AgencyComm::hasEndpoint(endpoint)) {
         AgencyComm::addEndpoint(endpoint, true);
 
-        LOG_TOPIC(INFO, Logger::AGENCYCOMM) 
+        LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) 
             << "adding agency-endpoint '" << endpoint << "'";
 
         // re-check the new endpoint
@@ -2094,7 +1841,7 @@ AgencyCommResult AgencyComm::send(
     // temporary redirect. now save location header
 
     bool found = false;
-    result._location = response->getHeaderField("location", found);
+    result._location = response->getHeaderField(StaticStrings::Location, found);
 
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
         << "redirecting to location: '" << result._location << "'";

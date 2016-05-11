@@ -516,7 +516,7 @@ void SimpleHttpClient::setRequest(
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(" HTTP/1.1\r\n"));
 
   // append hostname
-  std::string&& hostname = _connection->getEndpoint()->host();
+  std::string hostname = _connection->getEndpoint()->host();
 
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Host: "));
   _writeBuffer.appendText(hostname);

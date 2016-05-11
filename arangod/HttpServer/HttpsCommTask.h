@@ -53,7 +53,7 @@ class HttpsCommTask : public HttpCommTask {
   /// @brief constructs a new task with a given socket
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpsCommTask(HttpsServer*, TRI_socket_t, ConnectionInfo const&,
+  HttpsCommTask(HttpsServer*, TRI_socket_t, ConnectionInfo&&,
                 double keepAliveTimeout, SSL_CTX* ctx, int verificationMode,
                 int (*verificationCallback)(int, X509_STORE_CTX*));
 

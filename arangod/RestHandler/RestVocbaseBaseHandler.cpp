@@ -354,6 +354,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
                                               bool generateBody,
                                               VPackOptions const* options) {
   VPackSlice document = input.resolveExternal();
+
   std::string rev;
   if (document.isObject()) {
     rev = VelocyPackHelper::getStringValue(document, StaticStrings::RevString, "");
@@ -367,30 +368,32 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
 
   if (generateBody) {
     writeResult(document, *options);
+    return;
+  }
+
+  // no body, i.e. a HEAD response
+  if (returnVelocypack()) {
+    _response->setContentType(HttpResponse::CONTENT_TYPE_VPACK);
+    _response->headResponse(static_cast<size_t>(document.byteSize()));
   } else {
-    if (returnVelocypack()){
-      _response->setContentType(StaticStrings::MimeTypeVPack);
-      _response->headResponse(document.byteSize());
-    } else {
-      _response->setContentType(StaticStrings::MimeTypeJson);
+    _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
-      // TODO can we optimize this?
-      // Just dump some where else to find real length
-      StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
-      // convert object to string
-      VPackStringBufferAdapter buffer(tmp.stringBuffer());
+    // TODO can we optimize this?
+    // Just dump some where else to find real length
+    StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
+    // convert object to string
+    VPackStringBufferAdapter buffer(tmp.stringBuffer());
 
-      //usual dumping -  but not to the response body
-      VPackDumper dumper(&buffer, options);
-      try {
-        dumper.dump(document);
-      } catch (...) {
-        generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                      "cannot generate output");
-      }
-      // set the length of what would have been written
-      _response->headResponse(tmp.length());
+    //usual dumping -  but not to the response body
+    VPackDumper dumper(&buffer, options);
+    try {
+      dumper.dump(document);
+    } catch (...) {
+      generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    "cannot generate output");
     }
+    // set the length of what would have been written
+    _response->headResponse(tmp.length());
   }
 }
 

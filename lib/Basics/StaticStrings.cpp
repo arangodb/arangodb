@@ -25,6 +25,9 @@
 using namespace arangodb;
 
 // constants
+std::string const StaticStrings::Base64("base64");
+std::string const StaticStrings::Binary("binary");
+std::string const StaticStrings::Empty("");
 std::string const StaticStrings::N1800("1800");
 
 // system attribute names
@@ -51,17 +54,22 @@ std::string const StaticStrings::Allow("allow");
 std::string const StaticStrings::Async("x-arango-async");
 std::string const StaticStrings::AsyncId("x-arango-async-id");
 std::string const StaticStrings::Authorization("authorization");
+std::string const StaticStrings::BatchContentType("application/x-arango-batchpart");
+std::string const StaticStrings::CacheControl("cache-control");
 std::string const StaticStrings::Close("Close");
 std::string const StaticStrings::Connection("connection");
+std::string const StaticStrings::ContentEncoding("content-encoding");
 std::string const StaticStrings::ContentTypeHeader("content-type");
 std::string const StaticStrings::Coordinator("x-arango-coordinator");
 std::string const StaticStrings::CorsMethods("DELETE, GET, HEAD, PATCH, POST, PUT");
+std::string const StaticStrings::Errors("x-arango-errors");
 std::string const StaticStrings::ErrorCodes("x-arango-error-codes");
 std::string const StaticStrings::Etag("etag");
 std::string const StaticStrings::Expect("expect");
 std::string const StaticStrings::ExposedCorsHeaders("etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id");
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::Location("location");
+std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 std::string const StaticStrings::OmitWwwAuthenticate("x-omit-www-authenticate");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::Queue("x-arango-queue");

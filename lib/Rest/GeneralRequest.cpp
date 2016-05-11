@@ -32,8 +32,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-static std::string const EMPTY_STR = "";
-
 std::string GeneralRequest::translateVersion(ProtocolVersion version) {
   switch (version) {
     case ProtocolVersion::VSTREAM_1_0:
@@ -204,25 +202,15 @@ void GeneralRequest::setFullUrl(char const* begin, char const* end) {
   _fullUrl = std::string(begin, end - begin);
 }
 
-void GeneralRequest::addSuffix(std::string const& part) {
-  std::string decoded = StringUtils::urlDecode(part);
-  size_t tmpLength = 0;
-  char* utf8_nfc = TRI_normalize_utf8_to_NFC(
-      TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
-
-  if (utf8_nfc != nullptr) {
-    _suffix.emplace_back(utf8_nfc);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8_nfc);
-  } else {
-    _suffix.emplace_back(std::move(decoded));
-  }
+void GeneralRequest::addSuffix(std::string&& part) {
+  _suffix.emplace_back(StringUtils::urlDecode(part));
 }
 
 std::string const& GeneralRequest::header(std::string const& key) const {
   auto it = _headers.find(key);
 
   if (it == _headers.end()) {
-    return EMPTY_STR;
+    return StaticStrings::Empty;
   }
 
   return it->second;
@@ -233,7 +221,7 @@ std::string const& GeneralRequest::header(std::string const& key, bool& found) c
 
   if (it == _headers.end()) {
     found = false;
-    return EMPTY_STR;
+    return StaticStrings::Empty;
   }
 
   found = true;
@@ -244,7 +232,7 @@ std::string const& GeneralRequest::value(std::string const& key) const {
   auto it = _values.find(key);
 
   if (it == _values.end()) {
-    return EMPTY_STR;
+    return StaticStrings::Empty;
   }
 
   return it->second;
@@ -255,7 +243,7 @@ std::string const& GeneralRequest::value(std::string const& key, bool& found) co
 
   if (it == _values.end()) {
     found = false;
-    return EMPTY_STR;
+    return StaticStrings::Empty;
   }
 
   found = true;

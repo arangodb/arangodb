@@ -108,7 +108,7 @@ function recoverySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testLeftoverDatabaseDirectory : function () {
-      assertEqual([ "_system" ], db._listDatabases());
+      assertEqual([ "_system" ], db._databases());
     }
         
   };

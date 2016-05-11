@@ -50,8 +50,8 @@ struct config_t {
     supervisionFrequency(5.0) {}
   
   config_t (uint32_t i, double minp, double maxp, std::string ep,
-	    std::vector<std::string> const& eps, bool n,
-	    bool s, bool w, double f) :
+            std::vector<std::string> const& eps, bool n,
+            bool s, bool w, double f) :
     id(i),
     minPing(minp),
     maxPing(maxp),

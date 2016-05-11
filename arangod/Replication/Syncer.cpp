@@ -625,7 +625,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
       _client->retryRequest(GeneralRequest::RequestType::GET, url, nullptr, 0));
 
   // restore old settings
-  _client->_maxRetries = maxRetries;
+  _client->_maxRetries = static_cast<size_t>(maxRetries);
   _client->_retryWaitTime = retryWaitTime;
 
   if (response == nullptr || !response->isComplete()) {

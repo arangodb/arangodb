@@ -176,7 +176,7 @@ void DispatcherFeature::buildAqlQueue() {
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "setting up the AQL standard queue with "
                                     << _nrAqlThreads << " threads";
 
-  _dispatcher->addAQLQueue(_nrAqlThreads, _queueSize);
+  _dispatcher->addAQLQueue(static_cast<size_t>(_nrAqlThreads), static_cast<size_t>(_queueSize));
 }
 
 void DispatcherFeature::setProcessorAffinity(std::vector<size_t> const& cores) {

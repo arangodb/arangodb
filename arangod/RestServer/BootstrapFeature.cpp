@@ -59,7 +59,7 @@ static void raceForClusterBootstrap() {
   auto ci = ClusterInfo::instance();
 
   while (true) {
-    AgencyCommResult result = agency.getValues2("Bootstrap");
+    AgencyCommResult result = agency.getValues("Bootstrap");
     if (!result.successful()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::STARTUP) 
@@ -68,7 +68,7 @@ static void raceForClusterBootstrap() {
       continue;
     }
     VPackSlice value = result.slice()[0].get(std::vector<std::string>(
-          {agency.prefixStripped(), "Bootstrap"}));
+          {agency.prefix(), "Bootstrap"}));
     if (value.isString()) {
       // key was found and is a string
       if (value.isEqualString("done")) {
@@ -77,7 +77,7 @@ static void raceForClusterBootstrap() {
             << "raceForClusterBootstrap: bootstrap already done";
         return;
       }
-      LOG_TOPIC(INFO, Logger::STARTUP) 
+      LOG_TOPIC(DEBUG, Logger::STARTUP) 
           << "raceForClusterBootstrap: somebody else does the bootstrap";
       sleep(1);
       continue;
@@ -88,7 +88,7 @@ static void raceForClusterBootstrap() {
     b.add(VPackValue(arangodb::ServerState::instance()->getId()));
     result = agency.casValue("Bootstrap", b.slice(), false, 300, 15);
     if (!result.successful()) {
-      LOG_TOPIC(INFO, Logger::STARTUP) 
+      LOG_TOPIC(DEBUG, Logger::STARTUP) 
           << "raceForClusterBootstrap: lost race, somebody else will bootstrap";
       // Cannot get foot into the door, try again later:
       sleep(1);
@@ -105,12 +105,12 @@ static void raceForClusterBootstrap() {
       continue;
     }
 
-    LOG_TOPIC(INFO, Logger::STARTUP) 
+    LOG_TOPIC(DEBUG, Logger::STARTUP) 
         << "raceForClusterBootstrap: race won, we do the bootstrap";
     auto vocbase = DatabaseFeature::DATABASE->vocbase();
     V8DealerFeature::DEALER->loadJavascriptFiles(vocbase, "server/bootstrap/cluster-bootstrap.js", 0);
 
-    LOG_TOPIC(INFO, Logger::STARTUP) 
+    LOG_TOPIC(DEBUG, Logger::STARTUP) 
         << "raceForClusterBootstrap: bootstrap done";
 
     b.clear();
@@ -132,15 +132,15 @@ void BootstrapFeature::start() {
 
   auto ss = ServerState::instance();
   if (ss->isCoordinator()) {
-    LOG_TOPIC(INFO, Logger::STARTUP) << "Racing for cluster bootstrap...";
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
     raceForClusterBootstrap();
-    LOG_TOPIC(INFO, Logger::STARTUP) << "Running server/bootstrap/coordinator.js";
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/bootstrap/coordinator.js";
     V8DealerFeature::DEALER->loadJavascript(vocbase, "server/bootstrap/coordinator.js");
   } else if (ss->isDBServer()) {
-    LOG_TOPIC(INFO, Logger::STARTUP) << "Running server/bootstrap/db-server.js";
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/bootstrap/db-server.js";
     V8DealerFeature::DEALER->loadJavascript(vocbase, "server/bootstrap/db-server.js");
   } else {
-    LOG_TOPIC(INFO, Logger::STARTUP) << "Running server/server.js";
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
     V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
   }
 

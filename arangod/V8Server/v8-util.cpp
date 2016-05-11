@@ -190,7 +190,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
       if (key.get() == nullptr) {
         return false;
       }
-      builder.add(TRI_VOC_ATTRIBUTE_KEY,
+      builder.add(StaticStrings::KeyString,
                   VPackValue(reinterpret_cast<char*>(key.get())));
     }
     return res;
@@ -223,7 +223,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
       return false;
     }
     // If we get here we have a valid key
-    builder.add(TRI_VOC_ATTRIBUTE_KEY,
+    builder.add(StaticStrings::KeyString,
                 VPackValue(reinterpret_cast<char*>(key.get())));
 
     if (!includeRev) {
@@ -241,7 +241,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
     if (rid == 0) {
       return false;
     }
-    builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(rid)));
+    builder.add(StaticStrings::RevString, VPackValue(std::to_string(rid)));
     return true;
   }
 

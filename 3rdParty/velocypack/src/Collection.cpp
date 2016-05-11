@@ -506,7 +506,7 @@ Builder Collection::sort(
   }
   std::vector<Slice> subValues;
   ValueLength len = array.length();
-  subValues.reserve(len);
+  subValues.reserve(checkOverflow(len));
   for (ValueLength i = 0; i < len; i++) {
     subValues.push_back(array[i]);
   }

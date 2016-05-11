@@ -171,7 +171,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     }
   }
 
-  size_t available = _iterator.size() - _iterator.index();
+  size_t available = static_cast<size_t>(_iterator.size() - _iterator.index());
   size_t toSend = (std::min)(atMost, available);
   RegisterId nrRegs =
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
@@ -239,7 +239,7 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
     if (_iterator.index() < _iterator.size()) {
       // We still have unread documents in the _documents buffer
       // Just skip them
-      size_t couldSkip = _iterator.size() - _iterator.index();
+      size_t couldSkip = static_cast<size_t>(_iterator.size() - _iterator.index());
       if (atMost <= couldSkip) {
         // More in buffer than to skip.
 

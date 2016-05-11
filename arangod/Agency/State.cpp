@@ -34,6 +34,7 @@
 #include <thread>
 
 #include "Aql/Query.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
@@ -295,7 +296,7 @@ bool State::loadCollection(std::string const& name) {
         VPackSlice req = i.get("request");
         tmp->append(req.startAs<char const>(), req.byteSize());
         _log.push_back(
-          log_t(std::stoi(i.get(TRI_VOC_ATTRIBUTE_KEY).copyString()),
+          log_t(std::stoi(i.get(StaticStrings::KeyString).copyString()),
                 static_cast<term_t>(i.get("term").getUInt()),
                 static_cast<arangodb::consensus::id_t>(
                   i.get("leader").getUInt()), tmp));
@@ -305,7 +306,7 @@ bool State::loadCollection(std::string const& name) {
     return true;
   } 
   
-  LOG_TOPIC (INFO, Logger::AGENCY) << "Couldn't find persisted log";
+  LOG_TOPIC (DEBUG, Logger::AGENCY) << "Couldn't find persisted log";
   createCollections();
 
   return false;

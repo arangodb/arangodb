@@ -32,6 +32,8 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+  
+static std::string const ROOT_PATH = "/";
 
 namespace {
 sig_atomic_t MaintenanceMode = 0;
@@ -153,8 +155,6 @@ HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
-  static std::string const ROOT_PATH = "/";
-
   std::string const& path = request->requestPath();
 
   // In the bootstrap phase, we would like that coordinators answer the 
@@ -236,9 +236,9 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
       }
 
       modifiedPath = &prefix;
-      request->setPrefix(prefix);
-
+      
       i = ii.find(prefix);
+      request->setPrefix(prefix);
     }
   }
 
@@ -251,10 +251,10 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
       notFoundHandler->setServer(this);
 
       return notFoundHandler;
-    } else {
-      LOG(TRACE) << "no not-found handler, giving up";
-      return nullptr;
     }
+
+    LOG(TRACE) << "no not-found handler, giving up";
+    return nullptr;
   }
 
   // look up data

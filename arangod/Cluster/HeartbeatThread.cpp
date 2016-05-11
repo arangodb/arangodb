@@ -179,7 +179,7 @@ void HeartbeatThread::runDBServer() {
           << "Looking at Sync/Commands/" + _myId;
 
       AgencyCommResult result =
-        _agency.getValues2("Sync/Commands/" + _myId);
+        _agency.getValues("Sync/Commands/" + _myId);
       
       if (result.successful()) {
         handleStateChange(result);
@@ -190,14 +190,14 @@ void HeartbeatThread::runDBServer() {
       }
 
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Refetching Current/Version...";
-      AgencyCommResult res = _agency.getValues2("Current/Version");
+      AgencyCommResult res = _agency.getValues("Current/Version");
       if (!res.successful()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) 
             << "Could not read Current/Version from agency.";
       } else {
         VPackSlice s 
             = res.slice()[0].get(std::vector<std::string>(
-                  {_agency.prefixStripped(), std::string("Current"), 
+                  {_agency.prefix(), std::string("Current"), 
                    std::string("Version")}));
         if (!s.isInteger()) {
           LOG_TOPIC(ERR, Logger::HEARTBEAT) 
@@ -309,10 +309,10 @@ void HeartbeatThread::runCoordinator() {
     }
 
     AgencyReadTransaction trx(std::vector<std::string>({ 
-        _agency.prefix() + "Plan/Version",
-        _agency.prefix() + "Current/Version",
-        _agency.prefix() + "Sync/Commands/" + _myId,
-        _agency.prefix() + "Sync/UserVersion"}));
+        _agency.prefixPath() + "Plan/Version",
+        _agency.prefixPath() + "Current/Version",
+        _agency.prefixPath() + "Sync/Commands/" + _myId,
+        _agency.prefixPath() + "Sync/UserVersion"}));
     AgencyCommResult result = _agency.sendTransactionWithFailover(trx);
 
     if (!result.successful()) {
@@ -326,7 +326,7 @@ void HeartbeatThread::runCoordinator() {
 
       VPackSlice versionSlice
           = result.slice()[0].get(std::vector<std::string>(
-              {_agency.prefixStripped(), "Plan", "Version"}));
+              {_agency.prefix(), "Plan", "Version"}));
 
       if (versionSlice.isInteger()) {
         // there is a plan version
@@ -347,7 +347,7 @@ void HeartbeatThread::runCoordinator() {
 
       VPackSlice slice =
         result.slice()[0].get(std::vector<std::string>(
-              {_agency.prefixStripped(), "Sync", "UserVersion"}));
+              {_agency.prefix(), "Sync", "UserVersion"}));
 
       if (slice.isInteger()) {
         // there is a UserVersion
@@ -360,7 +360,7 @@ void HeartbeatThread::runCoordinator() {
         if (userVersion > 0 && userVersion != oldUserVersion) {
           // reload user cache for all databases
           std::vector<DatabaseID> dbs =
-              ClusterInfo::instance()->listDatabases(true);
+              ClusterInfo::instance()->databases(true);
           std::vector<DatabaseID>::iterator i;
           bool allOK = true;
           for (i = dbs.begin(); i != dbs.end(); ++i) {
@@ -368,7 +368,7 @@ void HeartbeatThread::runCoordinator() {
                 TRI_UseCoordinatorDatabaseServer(_server, i->c_str());
 
             if (vocbase != nullptr) {
-              LOG_TOPIC(INFO, Logger::HEARTBEAT) 
+              LOG_TOPIC(DEBUG, Logger::HEARTBEAT) 
                   << "Reloading users for database " << vocbase->_name
                   << ".";
 
@@ -390,7 +390,7 @@ void HeartbeatThread::runCoordinator() {
       }
 
       versionSlice = result.slice()[0].get(std::vector<std::string>(
-          {_agency.prefixStripped(), "Plan", "Version"}));
+          {_agency.prefix(), "Plan", "Version"}));
       if (versionSlice.isInteger()) {
 
         uint64_t currentVersion = 0;
@@ -480,7 +480,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   {
     AgencyCommLocker locker("Plan", "READ");
     if (locker.successful()) {
-      result = _agency.getValues2(prefixPlanChangeCoordinator);
+      result = _agency.getValues(prefixPlanChangeCoordinator);
     }
   }
   
@@ -489,7 +489,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     std::vector<TRI_voc_tick_t> ids;
     velocypack::Slice databases =
       result.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefixStripped(), "Plan", "Databases"}));
+            {AgencyComm::prefix(), "Plan", "Databases"}));
     
     if (!databases.isObject()) {
       return false;
@@ -597,7 +597,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   
   // turn on error logging now
   if (!ClusterComm::instance()->enableConnectionErrorLogging(true)) {
-    LOG_TOPIC(INFO, Logger::HEARTBEAT) 
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT) 
         << "created coordinator databases for the first time";
   }
 
@@ -679,7 +679,7 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
 
 bool HeartbeatThread::handleStateChange(AgencyCommResult& result) {
   VPackSlice const slice = result.slice()[0].get(
-      std::vector<std::string>({ AgencyComm::prefixStripped(), "Sync",
+      std::vector<std::string>({ AgencyComm::prefix(), "Sync",
                                  "Commands", _myId }));
   if (slice.isString()) {
     std::string command = slice.copyString();

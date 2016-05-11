@@ -797,7 +797,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   bool dummy;
   createResponse(static_cast<GeneralResponse::ResponseCode>(
       res->result->getHttpReturnCode()));
-  _response->setContentType(res->result->getHeaderField("content-type", dummy));
+  _response->setContentType(res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
   _response->body().swap(&(res->result->getBody()));
 
   auto const& resultHeaders = res->result->getHeaderFields();
@@ -943,7 +943,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
         createResponse(GeneralResponse::ResponseCode::OK);
       }
 
-      _response->setContentType("application/x-arango-dump; charset=utf-8");
+      _response->setContentType(HttpResponse::CONTENT_TYPE_DUMP);
 
       // set headers
       _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
@@ -1037,7 +1037,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
         createResponse(GeneralResponse::ResponseCode::OK);
       }
 
-      _response->setContentType("application/x-arango-dump; charset=utf-8");
+      _response->setContentType(HttpResponse::CONTENT_TYPE_DUMP);
 
       _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                              dump._fromTickIncluded ? "true" : "false");
@@ -1148,13 +1148,13 @@ void RestReplicationHandler::handleCommandClusterInventory() {
       generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN);
     } else {
-      result = _agency.getValues2(prefix);
+      result = _agency.getValues(prefix);
       if (!result.successful()) {
         generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                       TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
       } else {
         VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
-              {_agency.prefixStripped(), "Plan", "Collections", dbName}));
+              {_agency.prefix(), "Plan", "Collections", dbName}));
         if (!colls.isObject()) {
           generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
@@ -1869,7 +1869,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  size_t const n = indexes.length();
+  size_t const n = static_cast<size_t>(indexes.length());
 
   if (n == 0) {
     // nothing to do
@@ -2580,15 +2580,15 @@ void RestReplicationHandler::handleCommandGetKeys() {
     return;
   }
 
-  static TRI_voc_tick_t const DefaultChunkSize = 5000;
-  TRI_voc_tick_t chunkSize = DefaultChunkSize;
+  static uint64_t const DefaultChunkSize = 5000;
+  uint64_t chunkSize = DefaultChunkSize;
 
   // determine chunk size
   bool found;
   std::string const& value = _request->value("chunkSize", found);
 
   if (found) {
-    chunkSize = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+    chunkSize = StringUtils::uint64(value);
     if (chunkSize < 100) {
       chunkSize = DefaultChunkSize;
     } else if (chunkSize > 20000) {
@@ -2628,7 +2628,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
           to = max;
         }
 
-        auto result = collectionKeys->hashChunk(from, to);
+        auto result = collectionKeys->hashChunk(static_cast<size_t>(from), static_cast<size_t>(to));
 
         // Add a chunk
         b.add(VPackValue(VPackValueType::Object));
@@ -2672,15 +2672,15 @@ void RestReplicationHandler::handleCommandFetchKeys() {
     return;
   }
 
-  static TRI_voc_tick_t const DefaultChunkSize = 5000;
-  TRI_voc_tick_t chunkSize = DefaultChunkSize;
+  static uint64_t const DefaultChunkSize = 5000;
+  uint64_t chunkSize = DefaultChunkSize;
 
   // determine chunk size
   bool found;
   std::string const& value1 = _request->value("chunkSize", found);
 
   if (found) {
-    chunkSize = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value1));
+    chunkSize = StringUtils::uint64(value1);
     if (chunkSize < 100) {
       chunkSize = DefaultChunkSize;
     } else if (chunkSize > 20000) {
@@ -2735,7 +2735,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
       resultBuilder.openArray();
 
       if (keys) {
-        collectionKeys->dumpKeys(resultBuilder, chunk, chunkSize);
+        collectionKeys->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize));
       } else {
         bool success;
         std::shared_ptr<VPackBuilder> parsedIds =
@@ -2745,7 +2745,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
           collectionKeys->release();
           return;
         }
-        collectionKeys->dumpDocs(resultBuilder, chunk, chunkSize, parsedIds->slice());
+        collectionKeys->dumpDocs(resultBuilder, chunk, static_cast<size_t>(chunkSize), parsedIds->slice());
       }
 
       resultBuilder.close();
@@ -2928,7 +2928,7 @@ void RestReplicationHandler::handleCommandDump() {
       createResponse(GeneralResponse::ResponseCode::OK);
     }
 
-    _response->setContentType("application/x-arango-dump; charset=utf-8");
+    _response->setContentType(HttpResponse::CONTENT_TYPE_DUMP);
 
     // set headers
     _response->setHeaderNC(

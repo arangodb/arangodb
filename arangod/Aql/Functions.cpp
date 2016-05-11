@@ -22,35 +22,36 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Functions.h"
+
+#include <velocypack/Collection.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Basics/fpconv.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/fpconv.h"
+#include "Basics/tri-strings.h"
 #include "FulltextIndex/fulltext-index.h"
-#include "FulltextIndex/fulltext-result.h"
 #include "FulltextIndex/fulltext-query.h"
-#include "Indexes/Index.h"
+#include "FulltextIndex/fulltext-result.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
-#include "Rest/SslInterface.h"
+#include "Indexes/Index.h"
+#include "Ssl/SslInterface.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/Transaction.h"
 #include "V8Server/V8Traverser.h"
 #include "VocBase/KeyGenerator.h"
-
-#include <velocypack/Collection.h>
-#include <velocypack/Dumper.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -381,7 +382,7 @@ static bool ListContainsElement(arangodb::AqlTransaction* trx,
   VPackArrayIterator it(slice, true);
   while (it.valid()) {
     if (arangodb::basics::VelocyPackHelper::compare(testeeSlice, it.value(), false, options) == 0) {
-      index = it.index();
+      index = static_cast<size_t>(it.index());
       return true;
     }
     it.next();
@@ -1970,12 +1971,12 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
       splitCollection = true;
     }
   } else if (vertexInfo.isObject()) {
-    if (!vertexInfo.hasKey(trx, TRI_VOC_ATTRIBUTE_ID)) {
+    if (!vertexInfo.hasKey(trx, StaticStrings::IdString)) {
       THROW_ARANGO_EXCEPTION_PARAMS(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
     }
     bool localMustDestroy;
-    AqlValue id = vertexInfo.get(trx, TRI_VOC_ATTRIBUTE_ID, localMustDestroy, false);
+    AqlValue id = vertexInfo.get(trx, StaticStrings::IdString, localMustDestroy, false);
     AqlValueGuard guard(id, localMustDestroy);
 
     if (!id.isString()) {
@@ -2166,7 +2167,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
   TRI_ASSERT(index != nullptr);
 
   GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->nearQuery(
-      trx, latitude.toDouble(), longitude.toDouble(), limitValue);
+      trx, latitude.toDouble(), longitude.toDouble(), static_cast<size_t>(limitValue));
 
   return buildGeoResult(trx, query, cors, cid, attributeName);
 }
@@ -2310,9 +2311,9 @@ AqlValue Functions::ParseIdentifier(
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   std::string identifier;
-  if (value.isObject() && value.hasKey(trx, TRI_VOC_ATTRIBUTE_ID)) {
+  if (value.isObject() && value.hasKey(trx, StaticStrings::IdString)) {
     bool localMustDestroy;
-    AqlValue s = value.get(trx, TRI_VOC_ATTRIBUTE_ID, localMustDestroy, false);
+    AqlValue s = value.get(trx, StaticStrings::IdString, localMustDestroy, false);
     AqlValueGuard guard(s, localMustDestroy);
 
     if (s.isString()) {
@@ -2870,7 +2871,7 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
     VPackSlice slice = materializer.slice(toAppend, false);
     if (unique) {
       std::unordered_set<VPackSlice> added;
-      added.reserve(slice.length());
+      added.reserve(static_cast<size_t>(slice.length()));
       for (auto const& it : VPackArrayIterator(slice, true)) {
         if (added.find(it) == added.end() &&
             !ListContainsElement(&options, l, it)) {
@@ -3666,9 +3667,9 @@ AqlValue Functions::IsSameCollection(
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 1);
   std::string identifier;
 
-  if (value.isObject() && value.hasKey(trx, TRI_VOC_ATTRIBUTE_ID)) {
+  if (value.isObject() && value.hasKey(trx, StaticStrings::IdString)) {
     bool localMustDestroy;
-    value = value.get(trx, TRI_VOC_ATTRIBUTE_ID, localMustDestroy, false);
+    value = value.get(trx, StaticStrings::IdString, localMustDestroy, false);
     AqlValueGuard guard(value, localMustDestroy);
 
     if (value.isString()) {

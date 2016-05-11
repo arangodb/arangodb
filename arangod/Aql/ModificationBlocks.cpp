@@ -337,7 +337,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
             ++dstRow;
           }
         } else {
-          handleBabyResult(opRes.countErrorCodes, toRemove.length(), ep->_options.ignoreErrors);
+          handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toRemove.length()), ep->_options.ignoreErrors);
         }
       } else {
         errorCode = opRes.code;
@@ -465,7 +465,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         }
       }
 
-      handleBabyResult(opRes.countErrorCodes, toSend.length(),
+      handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toSend.length()),
                        ep->_options.ignoreErrors);
     }
     // now free it already
@@ -636,9 +636,9 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
           dstRow++;
         }
       } else {
-        dstRow += toUpdate.length();
+        dstRow += static_cast<size_t>(toUpdate.length());
       }
-      handleBabyResult(opRes.countErrorCodes, toUpdate.length(),
+      handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
                        ep->_options.ignoreErrors);
     }
     // done with a block
@@ -821,7 +821,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
               ++i;
             }
           }
-          handleBabyResult(opRes.countErrorCodes, toInsert.length(),
+          handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toInsert.length()),
                            ep->_options.ignoreErrors);
         }
       } else {
@@ -862,7 +862,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
               ++i;
             }
           }
-          handleBabyResult(opRes.countErrorCodes, toUpdate.length(),
+          handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
                            ep->_options.ignoreErrors);
         }
       } else {
@@ -1051,9 +1051,9 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
           dstRow++;
         }
       } else {
-        dstRow += toUpdate.length();
+        dstRow += static_cast<size_t>(toUpdate.length());
       }
-      handleBabyResult(opRes.countErrorCodes, toUpdate.length(),
+      handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
                        ep->_options.ignoreErrors);
     }
 

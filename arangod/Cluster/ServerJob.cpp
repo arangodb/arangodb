@@ -30,6 +30,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/server.h"
@@ -101,7 +102,11 @@ ServerJobResult ServerJob::execute() {
   if (vocbase == nullptr) {
     return result;
   }
-
+  
+  auto clusterInfo = ClusterInfo::instance();
+  auto plan = clusterInfo->getPlan();
+  auto current = clusterInfo->getCurrent();
+  
   TRI_UseVocBase(vocbase);
   TRI_DEFER(TRI_ReleaseVocBase(vocbase));
 
@@ -112,17 +117,17 @@ ServerJobResult ServerJob::execute() {
   }
 
   auto isolate = context->_isolate;
-
+  
   try {
     v8::HandleScope scope(isolate);
 
     // execute script inside the context
     auto file = TRI_V8_ASCII_STRING("handle-plan-change");
     auto content =
-        TRI_V8_ASCII_STRING("require('@arangodb/cluster').handlePlanChange();");
+        TRI_V8_ASCII_STRING("require('@arangodb/cluster').handlePlanChange");
     
     v8::TryCatch tryCatch;
-    v8::Handle<v8::Value> res = TRI_ExecuteJavaScriptString(
+    v8::Handle<v8::Value> handlePlanChange = TRI_ExecuteJavaScriptString(
         isolate, isolate->GetCurrentContext(), content, file, false);
     
     if (tryCatch.HasCaught()) {
@@ -130,6 +135,27 @@ ServerJobResult ServerJob::execute() {
       return result;
     }
 
+    if (!handlePlanChange->IsFunction()) {
+      LOG(ERR) << "handlePlanChange is not a function";
+      return result;
+    }
+
+    v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(handlePlanChange);
+    v8::Handle<v8::Value> args[2];
+    // Keep the shared_ptr to the builder while we run TRI_VPackToV8 on the
+    // slice(), just to be on the safe side:
+    auto builder = clusterInfo->getPlan();
+    args[0] = TRI_VPackToV8(isolate, builder->slice());
+    builder = clusterInfo->getCurrent();
+    args[1] = TRI_VPackToV8(isolate, builder->slice());
+    
+    v8::Handle<v8::Value> res = func->Call(isolate->GetCurrentContext()->Global(), 2, args);
+    
+    if (tryCatch.HasCaught()) {
+      TRI_LogV8Exception(isolate, &tryCatch);
+      return result;
+    }
+    
     if (res->IsObject()) {
       v8::Handle<v8::Object> o = res->ToObject();
 
@@ -150,10 +176,13 @@ ServerJobResult ServerJob::execute() {
           }
         }
       }
+    } else {
+      LOG(ERR) << "handlePlanChange returned a non-object";
+      return result;
     }
     result.success = true;
     // invalidate our local cache, even if an error occurred
-    ClusterInfo::instance()->flush();
+    clusterInfo->flush();
   } catch (...) {
   }
 

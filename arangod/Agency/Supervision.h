@@ -36,21 +36,19 @@ namespace consensus {
 class Agent;
 class Store;
 
-/*
+struct JobResult {
+  JobResult() {}
+};
+
 struct JobCallback {
   JobCallback() {}
   virtual ~JobCallback() {};
   virtual bool operator()(JobResult*) = 0;
 };
 
-class Job : public Thread {
-public:
-	virtual void execute(std::shared_ptr<JobCallback> callback)=0;
-  virtual double progress() {return _progress;}
-private:
-  double _progress;
-};
-*/
+enum JOB_CASE {FAILED_LEADER};
+template<enum arangodb::consensus::JOB_CASE> struct Job {};
+
 struct check_t {
   bool good;
   std::string name;
@@ -80,17 +78,27 @@ public:
 
     VitalSign(ServerStatus s, ServerTimestamp t) :
       myTimestamp(std::chrono::system_clock::now()),
-      serverStatus(s), serverTimestamp(t) {} 
+      serverStatus(s), serverTimestamp(t), jobId(0) {} 
 
     void update (ServerStatus s, ServerTimestamp t) {
       myTimestamp = std::chrono::system_clock::now();
       serverStatus = s;
       serverTimestamp = t;
+      jobId = 0;
+    }
+
+    void maintenance (uint64_t jid) {
+      jobId = jid;
+    }
+
+    uint64_t maintenance () {
+      return jobId;
     }
       
     TimePoint myTimestamp;
     ServerStatus serverStatus;
     ServerTimestamp serverTimestamp;
+    uint64_t jobId;
     
   };
   
@@ -127,7 +135,8 @@ private:
   bool removeShard (std::string const& from);
 
   /// @Brief Check machines under path in agency
-  std::vector<check_t> check (std::string const& path);
+  std::vector<check_t> checkDBServers ();
+  std::vector<check_t> checkShards ();
 
   /// @brief Read db
   Store const& store () const;
@@ -147,6 +156,7 @@ private:
            std::shared_ptr<VitalSign>> _vitalSigns;
 
   long _frequency;
+  long _gracePeriod;
   
 };
 

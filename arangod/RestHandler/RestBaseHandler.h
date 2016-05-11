@@ -104,9 +104,6 @@ class RestBaseHandler : public rest::HttpHandler {
   void writeResult(arangodb::velocypack::Slice const& slice, 
                    arangodb::velocypack::Options const& options);
 
- private:
-  void dumpResponse(arangodb::velocypack::Slice const& slice,
-                    arangodb::velocypack::Options const* options);
 };
 }
 

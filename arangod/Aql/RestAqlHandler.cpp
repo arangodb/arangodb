@@ -339,7 +339,7 @@ void RestAqlHandler::createQueryFromString() {
   }
 
   createResponse(GeneralResponse::ResponseCode::ACCEPTED);
-  _response->setContentType(StaticStrings::MimeTypeJson);
+  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
   arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 2);
   answerBody("queryId",
              arangodb::basics::Json(arangodb::basics::StringUtils::itoa(_qId)))(
@@ -550,7 +550,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
   _queryRegistry->close(_vocbase, _qId);
 
   createResponse(GeneralResponse::ResponseCode::OK);
-  _response->setContentType(StaticStrings::MimeTypeJson);
+  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
   answerBody("error", arangodb::basics::Json(false));
   _response->body().appendText(answerBody.toString());
 }
@@ -903,7 +903,7 @@ void RestAqlHandler::sendResponse(
     arangodb::TransactionContext* transactionContext) {
   // TODO: use RestBaseHandler
   createResponse(code);
-  _response->setContentType(StaticStrings::MimeTypeJson);
+  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
   arangodb::basics::VPackStringBufferAdapter buffer(
       _response->body().stringBuffer());
   VPackDumper dumper(&buffer, transactionContext->getVPackOptions());

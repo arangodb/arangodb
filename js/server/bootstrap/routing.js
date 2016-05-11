@@ -41,7 +41,7 @@
       var dbName = db._name();
 
       db._useDatabase("_system");
-      var databases = db._listDatabases();
+      var databases = db._databases();
 
       for (var i = 0; i < databases.length; ++i) {
         var name = databases[i];

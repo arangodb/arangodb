@@ -71,7 +71,7 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
   VPackSlice raw = slice.get("raw");
 
   std::vector<AqlValue> madeHere;
-  madeHere.reserve(raw.length());
+  madeHere.reserve(static_cast<size_t>(raw.length()));
   madeHere.emplace_back();  // an empty AqlValue
   madeHere.emplace_back();  // another empty AqlValue, indices start w. 2
 

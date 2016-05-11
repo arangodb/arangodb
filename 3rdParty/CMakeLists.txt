@@ -19,15 +19,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libev)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/OpenSSL)
 
 ################################################################################
-## ROCKSDB
-################################################################################
-
-if (USE_ROCKSDB)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb/)
-  #add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
-endif ()
-
-################################################################################
 ## V8 and ICU
 ################################################################################
 
@@ -97,6 +88,19 @@ endif ()
 
 set(SKIP_INSTALL_ALL ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.8)
+
+################################################################################
+## ROCKSDB
+################################################################################
+
+if (USE_ROCKSDB)
+  if (${JEMALLOC_FOUND})
+#   set(USE_JEMALLOC_DEFAULT 1)
+  endif()
+  set(SKIP_INSTALL_ALL ON)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb)
+endif ()
 
 ################################################################################
 ## LINK_DIRECTORIES

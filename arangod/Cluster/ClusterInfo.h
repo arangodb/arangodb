@@ -26,7 +26,7 @@
 #define ARANGOD_CLUSTER_CLUSTER_INFO_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
@@ -38,8 +38,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
-struct TRI_json_t;
 
 namespace arangodb {
 namespace velocypack {
@@ -299,7 +297,7 @@ class CollectionInfo {
     TRI_ASSERT(firstElement.isString());
     std::string shardKey =
         arangodb::basics::VelocyPackHelper::getStringValue(firstElement, "");
-    return shardKey == TRI_VOC_ATTRIBUTE_KEY;
+    return shardKey == StaticStrings::KeyString;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -351,7 +349,7 @@ class CollectionInfo {
     auto shardsSlice = _slice.get("shards");
 
     if (shardsSlice.isObject()) {
-      return shardsSlice.length();
+      return static_cast<int>(shardsSlice.length());
     }
     return 0;
   }
@@ -602,7 +600,7 @@ class ClusterInfo {
   /// @brief get list of databases in the cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<DatabaseID> listDatabases(bool = false);
+  std::vector<DatabaseID> databases(bool = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
@@ -726,16 +724,6 @@ class ClusterInfo {
       arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief ensure an index in coordinator.
-  //////////////////////////////////////////////////////////////////////////////
-
-  int ensureIndexCoordinator(
-      std::string const& databaseName, std::string const& collectionID,
-      TRI_json_t const* json, bool create,
-      bool (*compare)(TRI_json_t const*, TRI_json_t const*),
-      TRI_json_t*& resultJson, std::string& errorMsg, double timeout) = delete;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
 
@@ -814,14 +802,6 @@ class ClusterInfo {
 
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief find the shard that is responsible for a document
-  //////////////////////////////////////////////////////////////////////////////
-
-  int getResponsibleShard(CollectionID const&, TRI_json_t const*,
-                          bool docComplete, ShardID& shardID,
-                          bool& usesDefaultShardingAttributes);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the list of coordinator server names
   //////////////////////////////////////////////////////////////////////////////
 
@@ -839,15 +819,20 @@ class ClusterInfo {
   
   void invalidateCurrent();
 
- private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get current "Plan" structure
+  //////////////////////////////////////////////////////////////////////////////
+  
+  std::shared_ptr<VPackBuilder> getPlan();
   
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief actually clears a list of current databases
+  /// @brief get current "Current" structure
   //////////////////////////////////////////////////////////////////////////////
-
-  void clearCurrentDatabases(std::unordered_map<
-      DatabaseID, std::unordered_map<ServerID, TRI_json_t*>>& databases);
-
+  
+  std::shared_ptr<VPackBuilder> getCurrent();
+  
+ private:
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
   //////////////////////////////////////////////////////////////////////////////

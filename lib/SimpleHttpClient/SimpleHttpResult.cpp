@@ -228,15 +228,16 @@ bool SimpleHttpResult::isJson() const {
   if (find == _headerFields.end()) {
     return false;
   }
-
+  
   // header found
   // return partial match before first semicolon
   size_t const length = strlen("application/json");
 
-  if (strncmp(find->second.c_str(), "application/json", length) != 0) {
+  if (find->second.compare(0, length, "application/json") != 0) {
     return false;
   }
 
+  // match
   char const* ptr = find->second.c_str() + length;
   return (*ptr == '\0' || *ptr == ';' || *ptr == ' ');
 }

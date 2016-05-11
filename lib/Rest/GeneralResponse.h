@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 
 namespace arangodb {
 class GeneralResponse {
@@ -109,26 +110,22 @@ class GeneralResponse {
     _responseCode = responseCode;
   }
 
-  void setContentType(std::string const& contentType) {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
-  }
-
-  // Returns the value of a header field with given name. If no header field
-  // with the given name was specified by the client, the empty string is
-  // returned.
-  std::string const& header(std::string const& field) const;
-  std::string const& header(std::string const&, bool& found) const;
   std::unordered_map<std::string, std::string> headers() const { return _headers; }
 
-  void setHeader(std::string const& key, std::string const& value);
+  /// @brief adds a header. the header field name will be lower-cased
+  void setHeader(std::string const& key, std::string const& value) {
+    _headers[basics::StringUtils::tolower(key)] = value;
+  }
 
-  // the header field name must already be trimmed and lower-cased
-  void setHeaderNC(std::string const& key, std::string const& value);
-  void setHeaderNC(std::string const& key, std::string&& value);
-
- private:
-  // checks for special headers
-  virtual void checkHeader(std::string const& key, std::string const& value) {}
+  /// @brief adds a header. the header field name must be lower-cased
+  void setHeaderNC(std::string const& key, std::string const& value) {
+    _headers[key] = value;
+  }
+  
+  /// @brief adds a header. the header field name must be lower-cased
+  void setHeaderNC(std::string const& key, std::string&& value) {
+    _headers[key] = std::move(value);
+  }
 
  protected:
   ResponseCode _responseCode;

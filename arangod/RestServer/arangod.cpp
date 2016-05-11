@@ -31,7 +31,6 @@
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/SslFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
@@ -60,6 +59,8 @@
 #include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Ssl/SslFeature.h"
+#include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
@@ -136,7 +137,7 @@ static int runServer(int argc, char** argv) {
       "Cluster",    "Daemon",     "Dispatcher",
       "Endpoint",   "FoxxQueues", "LoggerBufferFeature",
       "RestServer", "Server",     "Scheduler",
-      "Ssl",        "Statistics", "Supervisor"};
+      "SslServer",  "Statistics", "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -173,6 +174,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new ServerFeature(&server, &ret));
   server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
   server.addFeature(new SslFeature(&server));
+  server.addFeature(new SslServerFeature(&server));
   server.addFeature(new StatisticsFeature(&server));
   server.addFeature(new TempFeature(&server, name));
   server.addFeature(new UnitTestsFeature(&server, &ret));
@@ -193,10 +195,6 @@ static int runServer(int argc, char** argv) {
 
   try {
     server.run(argc, argv);
-  } catch (arangodb::basics::Exception const& ex) {
-    LOG(ERR) << "arangod terminated because of an unhandled exception: "
-             << ex.what();
-    ret = EXIT_FAILURE;
   } catch (std::exception const& ex) {
     LOG(ERR) << "arangod terminated because of an unhandled exception: "
              << ex.what();

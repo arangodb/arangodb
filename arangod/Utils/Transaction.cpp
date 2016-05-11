@@ -657,8 +657,8 @@ std::string Transaction::makeIdFromCustom(CollectionNameResolver const* resolver
   if (p == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid _key value");
   }
-  memcpy(&buffer[len + 1], p, keyLength);
-  return std::string(&buffer[0], len + 1 + keyLength);
+  memcpy(&buffer[len + 1], p, static_cast<size_t>(keyLength));
+  return std::string(&buffer[0], static_cast<size_t>(len + 1 + keyLength));
 }
 
 //////////////////////////////////////////////////////////////////////////////

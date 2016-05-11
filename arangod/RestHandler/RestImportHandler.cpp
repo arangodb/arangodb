@@ -524,7 +524,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       VPackSlice const slice = documents.at(i);
 
       res = handleSingleDocument(trx, result, tempBuilder, nullptr, slice, collectionName,
-                                 isEdgeCollection, opOptions, i + 1);
+                                 isEdgeCollection, opOptions, static_cast<size_t>(i + 1));
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
@@ -779,7 +779,7 @@ void RestImportHandler::generateDocumentsCreated(
     RestImportResult const& result) {
   // TODO: is it necessary to create a response object here already
   createResponse(GeneralResponse::ResponseCode::CREATED);
-  _response->setContentType(StaticStrings::MimeTypeJson);
+  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
   try {
     VPackBuilder json;

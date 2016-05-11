@@ -265,7 +265,7 @@ class HangupTask : public SignalTask {
 #endif
 
 void SchedulerFeature::buildScheduler() {
-  _scheduler = new SchedulerLibev(_nrSchedulerThreads, static_cast<int>(_backend));
+  _scheduler = new SchedulerLibev(static_cast<size_t>(_nrSchedulerThreads), static_cast<int>(_backend));
   SCHEDULER = _scheduler;
 }
 

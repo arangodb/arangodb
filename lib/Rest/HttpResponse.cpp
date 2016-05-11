@@ -24,6 +24,7 @@
 
 #include "HttpResponse.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -31,21 +32,20 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-std::string const HttpResponse::BATCH_ERROR_HEADER = "x-arango-errors";
 bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
 HttpResponse::HttpResponse(ResponseCode code)
     : GeneralResponse(code),
+      _connectionType(CONNECTION_KEEP_ALIVE),
+      _contentType(CONTENT_TYPE_TEXT),
       _isHeadResponse(false),
-      _isChunked(false),
       _body(TRI_UNKNOWN_MEM_ZONE, false),
       _bodySize(0) {
-  if (!HIDE_PRODUCT_HEADER) {
-    _headers[StaticStrings::Server] = "ArangoDB";
-  }
 
-  _headers[StaticStrings::Connection] = StaticStrings::KeepAlive;
-  _headers[StaticStrings::ContentTypeHeader] = StaticStrings::MimeTypeText;
+  if (_body.c_str() == nullptr) {
+    // no buffer could be reserved. out of memory!
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY); 
+  }
 }
 
 void HttpResponse::setCookie(std::string const& name, std::string const& value,
@@ -118,13 +118,13 @@ size_t HttpResponse::bodySize() const {
 }
 
 void HttpResponse::writeHeader(StringBuffer* output) {
-  bool const capitalizeHeaders = true; 
-
   output->appendText(TRI_CHAR_LENGTH_PAIR("HTTP/1.1 "));
   output->appendText(responseString(_responseCode));
-  output->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-
-  bool seenTransferEncoding = false;
+  output->appendText("\r\n", 2);
+ 
+  bool seenServerHeader = false;
+  bool seenConnectionHeader = false;
+  bool seenTransferEncodingHeader = false;
   std::string transferEncoding;
 
   for (auto const& it : _headers) {
@@ -140,80 +140,117 @@ void HttpResponse::writeHeader(StringBuffer* output) {
     // save transfer encoding
     if (keyLength == 17 && key[0] == 't' &&
         memcmp(key.c_str(), "transfer-encoding", keyLength) == 0) {
-      seenTransferEncoding = true;
+      seenTransferEncodingHeader = true;
       transferEncoding = it.second;
       continue;
     }
 
-    if (capitalizeHeaders) {
-      char const* p = key.c_str();
-      char const* end = p + keyLength;
-      int capState = 1;
-
-      while (p < end) {
-        if (capState == 1) {
-          // upper case
-          output->appendChar(::toupper(*p));
-          capState = 0;
-        } else if (capState == 0) {
-          // normal case
-          output->appendChar(::tolower(*p));
-          if (*p == '-') {
-            capState = 1;
-          } else if (*p == ':') {
-            capState = 2;
-          }
-        } else {
-          // output as is
-          output->appendChar(*p);
-        }
-        ++p;
-      }
-    } else {
-      output->appendText(key);
+    if (keyLength == 6 && key[0] == 's' && 
+        memcmp(key.c_str(), "server", keyLength) == 0) {
+      // this ensures we don't print two "Server" headers
+      seenServerHeader = true; 
+      // go on and use the user-defined "Server" header value
+    } else if (keyLength == 10 && key[0] == 'c' && 
+        memcmp(key.c_str(), "connection", keyLength) == 0) {
+      // this ensures we don't print two "Connection" headers
+      seenConnectionHeader = true; 
+      // go on and use the user-defined "Connection" header value
     }
 
-    output->appendText(TRI_CHAR_LENGTH_PAIR(": "));
-    output->appendText(it.second);
-    output->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+    // reserve enough space for header name + ": " + value + "\r\n"
+    if (output->reserve(keyLength + 2 + it.second.size() + 2) != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    char const* p = key.c_str();
+    char const* end = p + keyLength;
+    int capState = 1;
+
+    while (p < end) {
+      if (capState == 1) {
+        // upper case
+        output->appendCharUnsafe(::toupper(*p));
+        capState = 0;
+      } else if (capState == 0) {
+        // normal case
+        output->appendCharUnsafe(::tolower(*p));
+        if (*p == '-') {
+          capState = 1;
+        } else if (*p == ':') {
+          capState = 2;
+        }
+      } else {
+        // output as is
+        output->appendCharUnsafe(*p);
+      }
+      ++p;
+    }
+
+    output->appendTextUnsafe(": ", 2);
+    output->appendTextUnsafe(it.second);
+    output->appendTextUnsafe("\r\n", 2);
+  }
+  
+  // add "Server" response header
+  if (!seenServerHeader && !HIDE_PRODUCT_HEADER) {
+    output->appendText("Server: ArangoDB\r\n");
+  }
+
+  // add "Connection" response header
+  if (!seenConnectionHeader) {
+    switch (_connectionType) {
+      case CONNECTION_KEEP_ALIVE:
+        output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
+        break;
+      case CONNECTION_CLOSE:
+        output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
+        break;
+      case CONNECTION_NONE:
+        output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: \r\n"));
+        break;
+    }
+  }
+
+  // add "Content-Type" header
+  switch (_contentType) {
+    case CONTENT_TYPE_JSON:
+      output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: application/json; charset=utf-8\r\n"));
+      break;
+    case CONTENT_TYPE_VPACK:
+      output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: application/x-velocypack\r\n"));
+      break;
+    case CONTENT_TYPE_TEXT:
+      output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: text/plain; charset=utf-8\r\n"));
+      break;
+    case CONTENT_TYPE_HTML:
+      output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: text/html; charset=utf-8\r\n"));
+      break;
+    case CONTENT_TYPE_DUMP:
+      output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: application/x-arango-dump; charset=utf-8\r\n"));
+      break;
+    case CONTENT_TYPE_CUSTOM: {
+      // intentionally don't print anything here
+      // the header should have been in _headers already, and should have been handled above
+    }
   }
 
   for (auto const& it : _cookies) {
-    if (capitalizeHeaders) {
-      output->appendText(TRI_CHAR_LENGTH_PAIR("Set-Cookie: "));
-    } else {
-      output->appendText(TRI_CHAR_LENGTH_PAIR("set-cookie: "));
-    }
-
+    output->appendText(TRI_CHAR_LENGTH_PAIR("Set-Cookie: "));
     output->appendText(it);
-    output->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+    output->appendText("\r\n", 2);
   }
 
-  if (seenTransferEncoding && transferEncoding == "chunked") {
-    if (capitalizeHeaders) {
-      output->appendText(
-          TRI_CHAR_LENGTH_PAIR("Transfer-Encoding: chunked\r\n\r\n"));
-    } else {
-      output->appendText(
-          TRI_CHAR_LENGTH_PAIR("transfer-encoding: chunked\r\n\r\n"));
-    }
+  if (seenTransferEncodingHeader && transferEncoding == "chunked") {
+    output->appendText(
+        TRI_CHAR_LENGTH_PAIR("Transfer-Encoding: chunked\r\n\r\n"));
   } else {
-    if (seenTransferEncoding) {
-      if (capitalizeHeaders) {
-        output->appendText(TRI_CHAR_LENGTH_PAIR("Transfer-Encoding: "));
-      } else {
-        output->appendText(TRI_CHAR_LENGTH_PAIR("transfer-encoding: "));
-      }
-
+    if (seenTransferEncodingHeader) {
+      output->appendText(TRI_CHAR_LENGTH_PAIR("Transfer-Encoding: "));
       output->appendText(transferEncoding);
-      output->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+      output->appendText("\r\n", 2);
     }
 
-    if (capitalizeHeaders) {
-      output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
-    } else {
-      output->appendText(TRI_CHAR_LENGTH_PAIR("content-length: "));
-    }
+    output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
 
     if (_isHeadResponse) {
       // From http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.13
@@ -231,18 +268,8 @@ void HttpResponse::writeHeader(StringBuffer* output) {
       output->appendInteger(_body.length());
     }
 
-    output->appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
+    output->appendText("\r\n\r\n", 4);
   }
   // end of header, body to follow
 }
 
-void HttpResponse::checkHeader(std::string const& key,
-                               std::string const& value) {
-  if (key[0] == 't' && key == "transfer-encoding") {
-    if (TRI_CaseEqualString(value.c_str(), "chunked")) {
-      _isChunked = true;
-    } else {
-      _isChunked = false;
-    }
-  }
-}

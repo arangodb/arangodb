@@ -1,8 +1,8 @@
 shell> curl --dump - http://localhost:8529/_api/document/products/10313
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 etag: <span class="hljs-string">"10313"</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10313"</span>, 
@@ -26,8 +26,8 @@ EOF
 shell> curl --dump - http://localhost:8529/_api/document/products/10313
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 etag: <span class="hljs-string">"10318"</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10313"</span>, 
@@ -63,8 +63,8 @@ location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-b
 shell> curl --dump - http://localhost:8529/_api/document/products/10313
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 etag: <span class="hljs-string">"10322"</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10313"</span>, 

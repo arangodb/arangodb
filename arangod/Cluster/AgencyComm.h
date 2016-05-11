@@ -410,16 +410,16 @@ struct AgencyCommResult {
   /// stripKeyPrefix is decoded, as is the _globalPrefix
   //////////////////////////////////////////////////////////////////////////////
 
-  bool parseVelocyPackNode(arangodb::velocypack::Slice const&,
-                           std::string const&, bool);
+  //bool parseVelocyPackNode(arangodb::velocypack::Slice const&,
+  //                         std::string const&, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// parse an agency result
   /// note that stripKeyPrefix is a decoded, normal key!
   //////////////////////////////////////////////////////////////////////////////
 
-  bool parse(std::string const&, bool);
-  VPackSlice parse(std::string const&);
+  //bool parse(std::string const&, bool);
+  //VPackSlice parse(std::string const&);
 
   VPackSlice slice();
   void setVPack(std::shared_ptr<velocypack::Builder> vpack) {
@@ -548,8 +548,8 @@ class AgencyComm {
   /// @brief returns the global prefix for all operations
   //////////////////////////////////////////////////////////////////////////////
 
+  static std::string prefixPath();
   static std::string prefix();
-  static std::string prefixStripped();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate a timestamp
@@ -614,8 +614,7 @@ class AgencyComm {
   /// @brief gets one or multiple values from the back end
   //////////////////////////////////////////////////////////////////////////////
 
-  AgencyCommResult getValues(std::string const&, bool);
-  AgencyCommResult getValues2(std::string const&);
+  AgencyCommResult getValues(std::string const&);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increment a value

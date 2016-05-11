@@ -110,7 +110,7 @@ exports.manage = function() {
   var expires = global.KEY_GET('queue-control', 'databases-expire') || 0;
 
   if (expires < now || databases.length === 0) {
-    databases = db._listDatabases();
+    databases = db._databases();
     global.KEY_SET('queue-control', 'databases', databases);
     // make list of databases expire in 30 seconds from now 
     global.KEY_SET('queue-control', 'databases-expire', Date.now() + 30 * 1000);
@@ -163,7 +163,7 @@ exports.run = function() {
   global.KEYSPACE_CREATE('queue-control', 1, true);
 
   var initialDatabase = db._name();
-  db._listDatabases().forEach(function(name) {
+  db._databases().forEach(function(name) {
     try {
       db._useDatabase(name);
       db._jobs.updateByExample({

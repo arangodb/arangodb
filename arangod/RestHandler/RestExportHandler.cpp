@@ -262,7 +262,7 @@ void RestExportHandler::createCursor() {
           options, "count", false);
 
       createResponse(GeneralResponse::ResponseCode::CREATED);
-      _response->setContentType(StaticStrings::MimeTypeJson);
+      _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
       auto cursors =
           static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
@@ -330,7 +330,7 @@ void RestExportHandler::modifyCursor() {
 
   try {
     createResponse(GeneralResponse::ResponseCode::OK);
-    _response->setContentType(StaticStrings::MimeTypeJson);
+    _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
     _response->body().appendChar('{');
     cursor->dump(_response->body());
@@ -381,7 +381,7 @@ void RestExportHandler::deleteCursor() {
 
   // TODO: use RestBaseHandler
   createResponse(GeneralResponse::ResponseCode::ACCEPTED);
-  _response->setContentType(StaticStrings::MimeTypeJson);
+  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
   VPackBuilder result;
   result.openObject();
   result.add("id", VPackValue(id));

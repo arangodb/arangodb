@@ -38,13 +38,6 @@ struct Options;
 
 class HttpRequest : public GeneralRequest {
  public:
-  // hard-coded minetype for batch requests
-  static std::string const BATCH_CONTENT_TYPE;
-
-  // hard-coded minetype for multipart/form-data
-  static std::string const MULTI_PART_CONTENT_TYPE;
-
- public:
   HttpRequest(ConnectionInfo const&, char const*, size_t, bool);
   ~HttpRequest();
 
@@ -69,15 +62,17 @@ class HttpRequest : public GeneralRequest {
   // the request body as VelocyPackBuilder
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
       arangodb::velocypack::Options const*);
-
-  using GeneralRequest::setHeader;
+  
+  /// @brief sets a key/value header
+  void setHeader(char const* key, size_t keyLength, char const* value, size_t valueLength);
+  /// @brief sets a key-only header
+  void setHeader(char const* key, size_t keyLength);
 
  private:
   void parseHeader(size_t length);
-  void setHeader(char const* key, size_t keyLength, char const* value);
   void setValues(char* buffer, char* end);
   void setCookie(char* key, size_t length, char const* value);
-  void parseCookies(char const* buffer);
+  void parseCookies(char const* buffer, size_t length);
 
  private:
   std::unordered_map<std::string, std::string> _cookies;

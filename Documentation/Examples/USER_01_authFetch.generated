@@ -6,8 +6,8 @@ arangosh&gt; db._users.toArray()
     <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"16"</span>, 
     <span class="hljs-string">"authData"</span> : { 
       <span class="hljs-string">"simple"</span> : { 
-        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"1709897631c99196c19d9b0a1bcb7e300bb879f9ff15c9aa4d92227a6d1edeff"</span>, 
-        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"eB0kaRx4IpUIAOjy"</span>, 
+        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"c4a5863476bed023b0625c98fd4d750e83a50614fbd6b67750f3d3c5478eb056"</span>, 
+        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"JkPSfZDYKx7FLQ1j"</span>, 
         <span class="hljs-string">"method"</span> : <span class="hljs-string">"sha256"</span> 
       }, 
       <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 

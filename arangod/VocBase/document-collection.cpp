@@ -2321,7 +2321,7 @@ static int PathBasedIndexFromVelocyPack(
   // Initialize the vector in which we store the fields on which the hashing
   // will be based.
   std::vector<std::string> attributes;
-  attributes.reserve(fieldCount);
+  attributes.reserve(static_cast<size_t>(fieldCount));
 
   // find fields
   for (auto const& fieldStr : VPackArrayIterator(fld)) {
@@ -3488,7 +3488,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     VPackValueLength len;
     char const* docId = fromSlice.getString(len);
     size_t split;
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, len, &split)) {
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len), &split)) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
     // _to:
@@ -3497,7 +3497,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
     docId = toSlice.getString(len);
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, len, &split)) {
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len), &split)) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
   }
@@ -3624,7 +3624,7 @@ int TRI_document_collection_t::update(Transaction* trx,
     }
     VPackValueLength length;
     char const* p = oldRev.getString(length);
-    revisionId = arangodb::basics::StringUtils::uint64(p, length);
+    revisionId = arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
   } else {
     revisionId = TRI_NewTickServer();
   }
@@ -3779,7 +3779,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     }
     VPackValueLength length;
     char const* p = oldRev.getString(length);
-    revisionId = arangodb::basics::StringUtils::uint64(p, length);
+    revisionId = arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
   } else {
     revisionId = TRI_NewTickServer();
   }
@@ -3896,7 +3896,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     } else {
       VPackValueLength length;
       char const* p = oldRev.getString(length);
-      revisionId = arangodb::basics::StringUtils::uint64(p, length);
+      revisionId = arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
     }
   } else {
     revisionId = TRI_NewTickServer();

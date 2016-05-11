@@ -32,6 +32,10 @@
 #include "Rest/HttpResponse.h"
 
 using namespace arangodb::basics;
+  
+static std::string const AllowedChars =
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890. +-_=";
+
 
 namespace arangodb {
 namespace rest {
@@ -62,12 +66,9 @@ PathHandler::PathHandler(HttpRequest* request, Options const* options)
 // -----------------------------------------------------------------------------
 
 HttpHandler::status_t PathHandler::execute() {
-  static std::string const allowed =
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890. +-_=";
-
-  std::vector<std::string> names = _request->suffix();
+  std::vector<std::string> const& names = _request->suffix();
   std::string name = path;
-  std::string last = "";
+  std::string last;
 
   if (names.empty() && !defaultFile.empty()) {
     std::string url = _request->requestPath();
@@ -79,9 +80,8 @@ HttpHandler::status_t PathHandler::execute() {
 
     createResponse(GeneralResponse::ResponseCode::MOVED_PERMANENTLY);
 
-    static std::string const location = "location";
-    _response->setHeaderNC(location, url);
-    _response->setContentType("text/html");
+    _response->setHeaderNC(StaticStrings::Location, url);
+    _response->setContentType(HttpResponse::CONTENT_TYPE_HTML);
 
     _response->body().appendText(
         "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This "
@@ -114,7 +114,7 @@ HttpHandler::status_t PathHandler::execute() {
       return status_t(HANDLER_DONE);
     }
 
-    std::string::size_type sc = next.find_first_not_of(allowed);
+    std::string::size_type sc = next.find_first_not_of(AllowedChars);
 
     if (sc != std::string::npos) {
       LOG(WARN) << "file '" << name << "' contains illegal character";
@@ -171,8 +171,7 @@ HttpHandler::status_t PathHandler::execute() {
   if (cacheMaxAge > 0 &&
       _request->requestType() == GeneralRequest::RequestType::GET) {
     // yes, then set a pro-caching header
-    static std::string const cacheControl = "cache-control";
-    _response->setHeaderNC(cacheControl, maxAgeHeader);
+    _response->setHeaderNC(StaticStrings::CacheControl, maxAgeHeader);
   }
 
   std::string::size_type d = last.find_last_of('.');
