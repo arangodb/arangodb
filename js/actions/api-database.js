@@ -57,13 +57,13 @@ function get_api_database (req, res) {
   var result;
   if (req.suffix.length === 0) {
     // list of all databases
-    result = arangodb.db._listDatabases();
+    result = arangodb.db._databases();
   }
   else {
     if (req.suffix[0] === 'user') {
       // fetch all databases for the current user
       // note: req.user may be null if authentication is turned off
-      result = arangodb.db._listDatabases(req.user);
+      result = arangodb.db._databases(req.user);
     }
     else if (req.suffix[0] === 'current') {
       if (cluster.isCoordinator()) {

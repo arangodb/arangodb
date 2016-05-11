@@ -612,15 +612,15 @@ static void JS_DoesDatabaseExistClusterInfo(
 /// @brief get the list of databases in the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ListDatabases(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("listDatabases()");
+    TRI_V8_THROW_EXCEPTION_USAGE("databases()");
   }
 
-  std::vector<DatabaseID> res = ClusterInfo::instance()->listDatabases(true);
+  std::vector<DatabaseID> res = ClusterInfo::instance()->databases(true);
   v8::Handle<v8::Array> a = v8::Array::New(isolate, (int)res.size());
   std::vector<DatabaseID>::iterator it;
   int count = 0;
@@ -1988,8 +1988,8 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("doesDatabaseExist"),
                        JS_DoesDatabaseExistClusterInfo);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("listDatabases"),
-                       JS_ListDatabases);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("databases"),
+                       JS_Databases);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("flush"),
                        JS_FlushClusterInfo, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getCollectionInfo"),

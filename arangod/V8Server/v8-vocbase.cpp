@@ -2801,7 +2801,7 @@ static void ListDatabasesCoordinator(
   ClusterInfo* ci = ClusterInfo::instance();
 
   if (args.Length() == 0) {
-    std::vector<DatabaseID> list = ci->listDatabases(true);
+    std::vector<DatabaseID> list = ci->databases(true);
     v8::Handle<v8::Array> result = v8::Array::New(isolate);
     for (size_t i = 0; i < list.size(); ++i) {
       result->Set((uint32_t)i, TRI_V8_STD_STRING(list[i]));
@@ -2860,13 +2860,13 @@ static void ListDatabasesCoordinator(
 /// @brief was docuBlock databaseListDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ListDatabases(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
   uint32_t const argc = args.Length();
   if (argc > 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("db._listDatabases()");
+    TRI_V8_THROW_EXCEPTION_USAGE("db._databases()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -3492,8 +3492,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                        JS_CreateDatabase);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_dropDatabase"),
                        JS_DropDatabase);
-  TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_listDatabases"),
-                       JS_ListDatabases);
+  TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_databases"),
+                       JS_Databases);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_useDatabase"),
                        JS_UseDatabase);
 

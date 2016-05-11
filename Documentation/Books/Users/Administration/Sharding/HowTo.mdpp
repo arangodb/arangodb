@@ -103,7 +103,7 @@ shell window):
 ```js
 $ arangosh --server.endpoint tcp://localhost:8530
 [... some output omitted]
-arangosh [_system]> db._listDatabases();
+arangosh [_system]> db._databases();
 [ 
   "_system" 
 ]

@@ -48,7 +48,7 @@
 
       try {
         db._useDatabase('_system');
-        const databases = db._listDatabases();
+        const databases = db._databases();
 
         // loop over all databases
         for (const database of databases) {

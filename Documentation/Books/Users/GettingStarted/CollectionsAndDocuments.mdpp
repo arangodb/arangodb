@@ -61,7 +61,7 @@ advantage that you can use autocompletion.
      > db._query(<query>).toArray()         execute an AQL query       
      > db._useDatabase(<name>)              switch database            
      > db._createDatabase(<name>)           create a new database      
-     > db._listDatabases()                  list existing databases    
+     > db._databases()                      list existing databases    
      > help                                 show help pages            
      > exit                                         
     arangosh>

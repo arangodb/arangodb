@@ -360,7 +360,7 @@ void HeartbeatThread::runCoordinator() {
         if (userVersion > 0 && userVersion != oldUserVersion) {
           // reload user cache for all databases
           std::vector<DatabaseID> dbs =
-              ClusterInfo::instance()->listDatabases(true);
+              ClusterInfo::instance()->databases(true);
           std::vector<DatabaseID>::iterator i;
           bool allOK = true;
           for (i = dbs.begin(); i != dbs.end(); ++i) {
