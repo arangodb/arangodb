@@ -136,14 +136,18 @@ ServerJobResult ServerJob::execute() {
     }
 
     if (!handlePlanChange->IsFunction()) {
-      LOG(ERR) << "handlePlanChange is not a funtion";
+      LOG(ERR) << "handlePlanChange is not a function";
       return result;
     }
 
     v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(handlePlanChange);
     v8::Handle<v8::Value> args[2];
-    args[0] = TRI_VPackToV8(isolate, clusterInfo->getPlan()->slice());
-    args[1] = TRI_VPackToV8(isolate, clusterInfo->getCurrent()->slice());
+    // Keep the shared_ptr to the builder while we run TRI_VPackToV8 on the
+    // slice(), just to be on the safe side:
+    auto builder = clusterInfo->getPlan();
+    args[0] = TRI_VPackToV8(isolate, builder->slice());
+    builder = clusterInfo->getCurrent();
+    args[1] = TRI_VPackToV8(isolate, builder->slice());
     
     v8::Handle<v8::Value> res = func->Call(isolate->GetCurrentContext()->Global(), 2, args);
     

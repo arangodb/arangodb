@@ -46,11 +46,9 @@
 	.text
 	.globl	TRI_BlockCrc32_SSE42
 	.globl	_TRI_BlockCrc32_SSE42
-#ifndef  __APPLE__
 	.type	TRI_BlockCrc32_SSE42, @function
 	.type	_TRI_BlockCrc32_SSE42, @function
         .align  32        /* primarily to stabilize times   */
-#endif
 TRI_BlockCrc32_SSE42:     /* entry point                    */
 _TRI_BlockCrc32_SSE42:
 
@@ -149,9 +147,7 @@ x0:     ret
 /* inline (branch to one of the yNN lables) in a simple way */
 /* (it then drops into main triple-stream loop)             */
 
-#ifndef __APPLE__
         .align 32
-#endif
         .8byte 0,0                /* not sure this matters  */
 y120:   crc32q  -120(%rsi),%rax 
 y112:   crc32q  -112(%rsi),%rax 
@@ -332,9 +328,7 @@ crca9:
 /* crct1 is used to do the initial 8-15 bytes.  It consists */
 /* of two <shift,length> pairs.  It ends up in %ecx in the  */
 /* sixth instruction executed.                              */
-#ifndef __APPLE__
         .align 64
-#endif
 crct1:
         .byte 0x20, 0x04, 0x20, 0x04
         .byte 0x20, 0x04, 0x18, 0x05
@@ -406,9 +400,7 @@ crctj:
 
 /* This table is 4K long                                  */
 
-#ifndef __APPLE__
         .align 64
-#endif
 crct2:
       .4byte 0x00000000, 0x6992cea2, 0xd3259d44, 0xbab753e6
       .4byte 0xa3a74c79, 0xca3582db, 0x7082d13d, 0x19101f9f
@@ -667,9 +659,7 @@ crct2:
       .4byte 0x05ff89e4, 0x6b7beb64, 0xd8f74ce4, 0xb6732e64
       .4byte 0xba027515, 0xd4861795, 0x670ab015, 0x098ed295
 
-#ifndef  __APPLE__
 	.size	TRI_BlockCrc32_SSE42, .-TRI_BlockCrc32_SSE42
 	.size	_TRI_BlockCrc32_SSE42, .-_TRI_BlockCrc32_SSE42
-#endif
 /* end of TRI_BlockCrc32_SSE42  */
 

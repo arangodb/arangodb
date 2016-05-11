@@ -68,7 +68,7 @@ State const& Agent::state () const {
 
 //  Start all agent thread
 bool Agent::start() {
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting agency comm worker.";
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency comm worker.";
   Thread::start();
   return true;
 }
@@ -219,8 +219,8 @@ bool Agent::recvAppendEntriesRPC (term_t term, arangodb::consensus::id_t leaderI
   //    follow it ($5.3)
   // 4. Append any new entries not already in the log
   if (queries->slice().length()) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Appending "<< queries->slice().length()
-                                    << " entries to state machine.";
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Appending "<< queries->slice().length()
+                                     << " entries to state machine.";
     /* bool success = */
     _state.log (queries, term, leaderId, prevIndex, prevTerm);
   } else { 
@@ -271,7 +271,7 @@ append_entries_t Agent::sendAppendEntriesRPC (arangodb::consensus::id_t follower
 
   // Send request
   if (unconfirmed.size() > 1) {
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Appending " << unconfirmed.size()-1 << " entries up to index " << last
       << " to follower " << follower_id;
   }
@@ -298,28 +298,28 @@ bool Agent::load() {
     FATAL_ERROR_EXIT();
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading persistent state.";
   if (!_state.loadCollections(vocbase, 
                               _config.waitForSync)) {
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Failed to load persistent state on startup.";
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
   _spearhead.apply(_state.slices(_lastCommitIndex+1));
   reportIn(id(),_state.lastLog().index);
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
   _spearhead.start(this);
   _readDB.start(this);
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting constituent personality.";
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   TRI_ASSERT(queryRegistry != nullptr);
   _constituent.start(vocbase, queryRegistry);
 
   if (_config.supervision) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Starting cluster sanity facilities";
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting cluster sanity facilities";
     _supervision.start(this);
   }
   

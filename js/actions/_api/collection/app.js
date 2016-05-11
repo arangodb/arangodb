@@ -182,9 +182,6 @@ function parseBodyForCreateCollection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_collection (req, res) {
-
-  require("internal").print(req);
-  
   var r = parseBodyForCreateCollection(req, res);
 
   if (r.bodyIsEmpty) {

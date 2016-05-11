@@ -368,7 +368,7 @@ void HeartbeatThread::runCoordinator() {
                 TRI_UseCoordinatorDatabaseServer(_server, i->c_str());
 
             if (vocbase != nullptr) {
-              LOG_TOPIC(INFO, Logger::HEARTBEAT) 
+              LOG_TOPIC(DEBUG, Logger::HEARTBEAT) 
                   << "Reloading users for database " << vocbase->_name
                   << ".";
 
@@ -597,7 +597,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   
   // turn on error logging now
   if (!ClusterComm::instance()->enableConnectionErrorLogging(true)) {
-    LOG_TOPIC(INFO, Logger::HEARTBEAT) 
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT) 
         << "created coordinator databases for the first time";
   }
 

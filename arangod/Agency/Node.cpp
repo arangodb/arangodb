@@ -497,7 +497,7 @@ bool Node::applieOp (VPackSlice const& slice) {
   } else if (oper == "unobserve") { // "op":"unobserve"
     return handle<UNOBSERVE>(slice);
   } else {                          // "op" might not be a key word after all
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC(WARN, Logger::AGENCY)
       << "Keyword 'op' without known operation. Handling as regular key.";
   }
   

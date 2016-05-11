@@ -66,9 +66,9 @@ PathHandler::PathHandler(HttpRequest* request, Options const* options)
 // -----------------------------------------------------------------------------
 
 HttpHandler::status_t PathHandler::execute() {
-  std::vector<std::string> names = _request->suffix();
+  std::vector<std::string> const& names = _request->suffix();
   std::string name = path;
-  std::string last = "";
+  std::string last;
 
   if (names.empty() && !defaultFile.empty()) {
     std::string url = _request->requestPath();
