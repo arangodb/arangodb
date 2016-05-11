@@ -88,10 +88,10 @@ function recoverySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testCreateDatabaseFail : function () {
-      assertEqual(-1, db._listDatabases().indexOf("UnitTestsRecovery1")); 
-      assertEqual(-1, db._listDatabases().indexOf("UnitTestsRecovery2")); 
-      assertNotEqual(-1, db._listDatabases().indexOf("UnitTestsRecovery3")); 
-      assertNotEqual(-1, db._listDatabases().indexOf("UnitTestsRecovery4")); 
+      assertEqual(-1, db._databases().indexOf("UnitTestsRecovery1")); 
+      assertEqual(-1, db._databases().indexOf("UnitTestsRecovery2")); 
+      assertNotEqual(-1, db._databases().indexOf("UnitTestsRecovery3")); 
+      assertNotEqual(-1, db._databases().indexOf("UnitTestsRecovery4")); 
     }
         
   };

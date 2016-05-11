@@ -370,7 +370,7 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
 /// @brief get list of databases in the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<DatabaseID> ClusterInfo::listDatabases(bool reload) {
+std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
   std::vector<DatabaseID> result;
 
   if (reload || !_planProt.isValid ||

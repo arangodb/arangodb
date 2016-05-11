@@ -600,7 +600,7 @@ class ClusterInfo {
   /// @brief get list of databases in the cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<DatabaseID> listDatabases(bool = false);
+  std::vector<DatabaseID> databases(bool = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan

@@ -14207,7 +14207,7 @@ ArangoDatabase.prototype._createDatabase = function(name,options,users){var data
 ArangoDatabase.prototype._dropDatabase = function(name){var requestResult=this._connection.DELETE("/_api/database/" + encodeURIComponent(name));if(requestResult !== null && requestResult.error === true){throw new ArangoError(requestResult);}arangosh.checkRequestResult(requestResult);return requestResult.result;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief list all existing databases
 ////////////////////////////////////////////////////////////////////////////////
-ArangoDatabase.prototype._listDatabases = function(){var requestResult=this._connection.GET("/_api/database");if(requestResult !== null && requestResult.error === true){throw new ArangoError(requestResult);}arangosh.checkRequestResult(requestResult);return requestResult.result;}; ////////////////////////////////////////////////////////////////////////////////
+ArangoDatabase.prototype._databases = function(){var requestResult=this._connection.GET("/_api/database");if(requestResult !== null && requestResult.error === true){throw new ArangoError(requestResult);}arangosh.checkRequestResult(requestResult);return requestResult.result;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief uses a database
 ////////////////////////////////////////////////////////////////////////////////
 ArangoDatabase.prototype._useDatabase = function(name){if(internal.printBrowser){throw new ArangoError({error:true,code:internal.errors.ERROR_NOT_IMPLEMENTED.code,errorNum:internal.errors.ERROR_NOT_IMPLEMENTED.code,errorMessage:"_useDatabase() is not supported in the web interface"});}var old=this._connection.getDatabaseName(); // no change
