@@ -72,5 +72,5 @@ void LanguageFeature::start() {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
-  LOG(INFO) << "using default language '" << languageName << "'";
+  LOG(DEBUG) << "using default language '" << languageName << "'";
 }
