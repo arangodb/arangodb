@@ -32,10 +32,10 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
-#include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Ssl/SslInterface.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

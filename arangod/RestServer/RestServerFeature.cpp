@@ -22,11 +22,10 @@
 
 #include "RestServerFeature.h"
 
-#include "ApplicationFeatures/SslFeature.h"
-#include "Aql/RestAqlHandler.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"
 #include "Agency/RestAgencyPrivHandler.h"
+#include "Aql/RestAqlHandler.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
@@ -66,6 +65,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Ssl/SslFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/server.h"
 
