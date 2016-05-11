@@ -189,6 +189,7 @@ class ProgramOptions {
   // the special search string "." will show help for all sections, even if
   // hidden
   void printHelp(std::string const& search) const {
+    bool const colors = (isatty(STDOUT_FILENO) != 0);
     printUsage();
 
     size_t const tw = _terminalWidth();
@@ -196,7 +197,7 @@ class ProgramOptions {
 
     for (auto const& it : _sections) {
       if (search == "*" || search == "." || search == it.second.name) {
-        it.second.printHelp(search, tw, ow);
+        it.second.printHelp(search, tw, ow, colors);
       }
     }
 

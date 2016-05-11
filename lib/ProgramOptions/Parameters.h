@@ -115,10 +115,7 @@ struct Parameter {
   virtual std::string set(std::string const&) = 0;
 
   virtual std::string typeDescription() const {
-    if (requiresValue()) {
-      return std::string("<") + name() + std::string(">");
-    }
-    return "";
+    return std::string("<") + name() + std::string(">");
   }
 
   virtual void toVPack(VPackBuilder&) const = 0;

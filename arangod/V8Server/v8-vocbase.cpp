@@ -999,7 +999,7 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <querystring>");
   }
 
-  std::string const&& queryString = TRI_ObjectToString(args[0]);
+  std::string const queryString(TRI_ObjectToString(args[0]));
 
   arangodb::aql::Query query(true, vocbase, queryString.c_str(),
                              queryString.size(), nullptr, nullptr,
@@ -1238,7 +1238,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto transactionContext =
       std::make_shared<StandaloneTransactionContext>(vocbase);
-  // return the array value as it is. this is a performance optimisation
+  // return the array value as it is. this is a performance optimization
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (queryResult.result != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("json"),
@@ -1346,7 +1346,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
   }
 
-  // return the array value as it is. this is a performance optimisation
+  // return the array value as it is. this is a performance optimization
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   result->ForceSet(TRI_V8_ASCII_STRING("json"), queryResult.result);

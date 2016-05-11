@@ -146,7 +146,7 @@ LogfileManager::~LogfileManager() {
 
 void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection(
-      Section("wal", "Configure the WAL", "wal options", false, false));
+      Section("wal", "Configure the WAL", "wal", false, false));
 
   options->addHiddenOption(
       "--wal.allow-oversize-entries",
