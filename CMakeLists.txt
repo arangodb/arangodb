@@ -403,7 +403,8 @@ endif ()
 ## JEMALLOC
 ################################################################################
 
-set(JEMALLOC_DEFAULT_VALUE ON)
+find_package(jemalloc)
+set(JEMALLOC_DEFAULT_VALUE ${JEMALLOC_FOUND})
 
 if (WINDOWS OR SOLARIS OR USE_TCMALLOC)
   set(JEMALLOC_DEFAULT_VALUE OFF)
@@ -415,15 +416,11 @@ option(USE_JEMALLOC
 )
 
 if (USE_JEMALLOC)
-  find_package(jemalloc)
-
-  if (JEMALLOC_FOUND)
-    add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
-    set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
-    message(STATUS "Found JEMALLOC")
-  else ()
-    message(STATUS "Missing JEMALLOC")
+  if (NOT JEMALLOC_FOUND)
+    message(FATAL_ERROR "jemalloc build was requested but jemalloc not found")
   endif ()
+  add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
 endif ()
 
 ################################################################################
