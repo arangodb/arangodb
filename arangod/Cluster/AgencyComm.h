@@ -410,16 +410,16 @@ struct AgencyCommResult {
   /// stripKeyPrefix is decoded, as is the _globalPrefix
   //////////////////////////////////////////////////////////////////////////////
 
-  bool parseVelocyPackNode(arangodb::velocypack::Slice const&,
-                           std::string const&, bool);
+  //bool parseVelocyPackNode(arangodb::velocypack::Slice const&,
+  //                         std::string const&, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// parse an agency result
   /// note that stripKeyPrefix is a decoded, normal key!
   //////////////////////////////////////////////////////////////////////////////
 
-  bool parse(std::string const&, bool);
-  VPackSlice parse(std::string const&);
+  //bool parse(std::string const&, bool);
+  //VPackSlice parse(std::string const&);
 
   VPackSlice slice();
   void setVPack(std::shared_ptr<velocypack::Builder> vpack) {
