@@ -43,7 +43,7 @@ inline void makeReport (query_t& envelope, Builder const& report) {
   envelope->close();
 }
 
-template<> struct Job<FAILED_LEADER> {
+template<> struct Job<arangodb::consensus::FAILED_LEADER> {
 
   Job (Node const& snapshot, Agent* agent, uint64_t jobId,
        std::string const& failed) {
