@@ -150,7 +150,7 @@ endif ()
 
 option(USE_ROCKSDB
   "whether RocksDB is enabled"
-  OFF
+  ON
 )
 
 if (USE_ROCKSDB)
