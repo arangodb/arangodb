@@ -202,18 +202,8 @@ void GeneralRequest::setFullUrl(char const* begin, char const* end) {
   _fullUrl = std::string(begin, end - begin);
 }
 
-void GeneralRequest::addSuffix(std::string const& part) {
-  std::string decoded = StringUtils::urlDecode(part);
-  size_t tmpLength = 0;
-  char* utf8_nfc = TRI_normalize_utf8_to_NFC(
-      TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
-
-  if (utf8_nfc != nullptr) {
-    _suffix.emplace_back(utf8_nfc);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8_nfc);
-  } else {
-    _suffix.emplace_back(std::move(decoded));
-  }
+void GeneralRequest::addSuffix(std::string&& part) {
+  _suffix.emplace_back(StringUtils::urlDecode(part));
 }
 
 std::string const& GeneralRequest::header(std::string const& key) const {

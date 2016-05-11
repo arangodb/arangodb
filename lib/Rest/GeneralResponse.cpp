@@ -29,8 +29,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-static std::string const EMPTY_STR = "";
-
 std::string GeneralResponse::responseString(ResponseCode code) {
   switch (code) {
     //  Informational 1xx
@@ -417,44 +415,4 @@ GeneralResponse::ResponseCode GeneralResponse::responseCode(int code) {
 
 GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode) {}
-
-std::string const& GeneralResponse::header(std::string const& key) const {
-  std::string k = StringUtils::tolower(key);
-  auto it = _headers.find(k);
-
-  if (it == _headers.end()) {
-    return EMPTY_STR;
-  }
-
-  return it->second;
-}
-
-std::string const& GeneralResponse::header(std::string const& key,
-                                           bool& found) const {
-  std::string k = StringUtils::tolower(key);
-  auto it = _headers.find(k);
-
-  if (it == _headers.end()) {
-    found = false;
-    return EMPTY_STR;
-  }
-
-  found = true;
-  return it->second;
-}
-
-void GeneralResponse::setHeader(std::string const& key,
-                                std::string const& value) {
-  _headers[StringUtils::tolower(key)] = value;
-}
-
-void GeneralResponse::setHeaderNC(std::string const& key,
-                                  std::string const& value) {
-  _headers[key] = value;
-}
-
-void GeneralResponse::setHeaderNC(std::string const& key,
-                                  std::string&& value) {
-  _headers[key] = std::move(value);
-}
 

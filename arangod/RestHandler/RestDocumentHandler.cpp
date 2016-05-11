@@ -267,14 +267,17 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     return false;
   }
 
-  TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
-  if (ifNoneRid != 0 && ifNoneRid == rid) {
-    generateNotModified(rid);
-  } else {
-    // copy default options
-    generateDocument(result.slice(), generateBody,
-                     transactionContext->getVPackOptions());
+  if (ifNoneRid != 0) {
+    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
+    if (ifNoneRid == rid) {
+      generateNotModified(rid);
+      return true;
+    }
   }
+    
+  // use default options
+  generateDocument(result.slice(), generateBody,
+                   transactionContext->getVPackOptions());
   return true;
 }
 

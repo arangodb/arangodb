@@ -138,15 +138,12 @@ class GeneralRequest {
   void setPrefix(std::string const& prefix) { _prefix = prefix; }
 
   std::vector<std::string> const& suffix() const { return _suffix; }
-  void addSuffix(std::string const& part);
+  void addSuffix(std::string&& part);
 
   // The key must be lowercase.
   std::string const& header(std::string const& key) const;
   std::string const& header(std::string const& key, bool& found) const;
   std::unordered_map<std::string, std::string> const& headers() const { return _headers; }
-  void setHeader(std::string const& key, std::string const& value) {
-    _headers[key] = value;
-  }
 
   std::string const& value(std::string const& key) const;
   std::string const& value(std::string const& key, bool& found) const;

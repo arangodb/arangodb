@@ -331,12 +331,15 @@ class Builder {
   
   // Add a subvalue into an object from a Value:
   uint8_t* add(std::string const& attrName, Value const& sub);
+  uint8_t* add(char const* attrName, Value const& sub);
 
   // Add a subvalue into an object from a Slice:
   uint8_t* add(std::string const& attrName, Slice const& sub);
+  uint8_t* add(char const* attrName, Slice const& sub);
 
   // Add a subvalue into an object from a ValuePair:
   uint8_t* add(std::string const& attrName, ValuePair const& sub);
+  uint8_t* add(char const* attrName, ValuePair const& sub);
   
   // Add all subkeys and subvalues into an object from an ObjectIterator
   // and leaves open the object intentionally
@@ -611,6 +614,53 @@ private:
       }
 
       set(Value(attrName, ValueType::String));
+      _keyWritten = true;
+      return set(sub);
+    } catch (...) {
+      // clean up in case of an exception
+      if (haveReported) {
+        cleanupAdd();
+      }
+      throw;
+    }
+  }
+  
+  template <typename T>
+  uint8_t* addInternal(char const* attrName, T const& sub) {
+    bool haveReported = false;
+    if (!_stack.empty()) {
+      ValueLength& tos = _stack.back();
+      if (_start[tos] != 0x0b && _start[tos] != 0x14) {
+        throw Exception(Exception::BuilderNeedOpenObject);
+      }
+      if (_keyWritten) {
+        throw Exception(Exception::BuilderKeyAlreadyWritten);
+      }
+      reportAdd();
+      haveReported = true;
+    }
+
+    ValueLength attrLength = strlen(attrName);
+
+    try {
+      if (options->attributeTranslator != nullptr) {
+        // check if a translation for the attribute name exists
+        uint8_t const* translated =
+            options->attributeTranslator->translate(attrName, attrLength);
+
+        if (translated != nullptr) {
+          Slice item(translated);
+          ValueLength const l = item.byteSize();
+          reserveSpace(l);
+          memcpy(_start + _pos, translated, checkOverflow(l));
+          _pos += l;
+          _keyWritten = true;
+          return set(sub);
+        }
+        // otherwise fall through to regular behavior
+      }
+
+      set(ValuePair(attrName, attrLength, ValueType::String));
       _keyWritten = true;
       return set(sub);
     } catch (...) {
