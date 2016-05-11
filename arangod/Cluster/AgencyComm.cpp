@@ -1008,9 +1008,9 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
 
 std::string AgencyComm::getVersion() {
   AgencyCommResult result
-      =sendWithFailover(arangodb::GeneralRequest::RequestType::GET,
-			_globalConnectionOptions._requestTimeout, "version",
-			"", false);
+      = sendWithFailover(arangodb::GeneralRequest::RequestType::GET,
+                         _globalConnectionOptions._requestTimeout, "version",
+                         "", false);
 
   if (result.successful()) {
     return result._body;

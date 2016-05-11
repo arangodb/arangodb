@@ -201,7 +201,7 @@ void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpServer::handleRequestAsync(HttpCommTask* task,
-				    WorkItem::uptr<HttpHandler>& handler,
+                                    WorkItem::uptr<HttpHandler>& handler,
                                     uint64_t* jobId) {
   // extract the coordinator flag
   bool found;

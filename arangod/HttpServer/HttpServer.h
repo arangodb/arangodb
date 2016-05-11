@@ -166,7 +166,7 @@ class HttpServer : protected TaskManager {
   //////////////////////////////////////////////////////////////////////////////
 
   bool handleRequestAsync(HttpCommTask*,
-			  arangodb::WorkItem::uptr<HttpHandler>&,
+                          arangodb::WorkItem::uptr<HttpHandler>&,
                           uint64_t* jobId);
 
   //////////////////////////////////////////////////////////////////////////////
