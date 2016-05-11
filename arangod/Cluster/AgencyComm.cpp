@@ -592,7 +592,7 @@ bool AgencyComm::tryConnect() {
 
     // mop: not sure if a timeout makes sense here
     while (true) {
-      LOG_TOPIC(INFO, Logger::AGENCYCOMM) 
+      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) 
           << "Trying to find an active agency. Checking " << endpointsStr;
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
@@ -1854,7 +1854,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       if (!AgencyComm::hasEndpoint(endpoint)) {
         AgencyComm::addEndpoint(endpoint, true);
 
-        LOG_TOPIC(INFO, Logger::AGENCYCOMM) 
+        LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) 
             << "adding agency-endpoint '" << endpoint << "'";
 
         // re-check the new endpoint
