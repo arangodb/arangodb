@@ -132,9 +132,31 @@ struct AqlValue final {
   
   // construct from std::string
   explicit AqlValue(std::string const& value) {
-    VPackBuilder builder;
-    builder.add(VPackValue(value));
-    initFromSlice(builder.slice());
+    if (value.empty()) {
+      // empty string
+      _data.internal[0] = 0x40;
+      setType(AqlValueType::VPACK_INLINE);
+      return;
+    }
+    size_t const length = value.size();
+    if (length < sizeof(_data.internal) - 1) {
+      // short string... can store it inline
+      _data.internal[0] = 0x40 + length;
+      memcpy(_data.internal + 1, value.c_str(), value.size());
+      setType(AqlValueType::VPACK_INLINE);
+    } else if (length <= 126) {
+      // short string... cannot store inline, but we don't need to
+      // create a full-features Builder object here
+      _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
+      _data.buffer->push_back(0x40 + length);
+      _data.buffer->append(value.c_str(), length);
+      setType(AqlValueType::VPACK_MANAGED);
+    } else {
+      // long string
+      VPackBuilder builder;
+      builder.add(VPackValue(value));
+      initFromSlice(builder.slice());
+    }
   }
   
   // construct from Buffer, taking over its ownership
@@ -149,7 +171,10 @@ struct AqlValue final {
     initFromSlice(builder.slice());
   }
   
-  explicit AqlValue(arangodb::velocypack::Builder const* builder) : AqlValue(*builder) {}
+  explicit AqlValue(arangodb::velocypack::Builder const* builder) {
+    TRI_ASSERT(builder->isClosed());
+    initFromSlice(builder->slice());
+  }
 
   // construct from Slice
   explicit AqlValue(arangodb::velocypack::Slice const& slice) {

@@ -484,7 +484,7 @@ int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
 
 int TRI_V8ToVPackSimple(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
                         v8::Handle<v8::Value> const value) {
-  v8::HandleScope scope(isolate);
+  // a HandleScope must have been created by the caller already
   BuilderContext context(isolate, builder, false);
   return V8ToVPack<false>(context, value, NoAttribute, false);
 }
