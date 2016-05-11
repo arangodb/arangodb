@@ -3,12 +3,13 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<s
 arangosh&gt; graph.male.save({neym: <span class="hljs-string">"Jon"</span>, _key: <span class="hljs-string">"john"</span>});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/john"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1071205960"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"john"</span> 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"john"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"26410"</span> 
 }
 arangosh&gt; graph.male.replace(<span class="hljs-string">"male/john"</span>, {name: <span class="hljs-string">"John"</span>});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/john"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1071402568"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"john"</span> 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"john"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"26410"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"26414"</span> 
 }

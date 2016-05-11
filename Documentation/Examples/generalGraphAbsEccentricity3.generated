@@ -5,8 +5,8 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_ABSOLUTE_ECCENTRI
 ........&gt; <span class="hljs-string">"direction : 'outbound', weight : 'distance'})"</span>).toArray();
 [ 
   { 
-    <span class="hljs-string">"germanCity/Berlin"</span> : <span class="hljs-number">1200</span>, 
     <span class="hljs-string">"germanCity/Cologne"</span> : <span class="hljs-number">700</span>, 
-    <span class="hljs-string">"germanCity/Hamburg"</span> : <span class="hljs-number">1200</span> 
+    <span class="hljs-string">"germanCity/Hamburg"</span> : <span class="hljs-number">1200</span>, 
+    <span class="hljs-string">"germanCity/Berlin"</span> : <span class="hljs-number">1200</span> 
   } 
 ]
