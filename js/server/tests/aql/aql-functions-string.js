@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:5000 */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertNotEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, functions
@@ -1320,6 +1320,101 @@ function ahuacatlStringFunctionsTestSuite () {
         assertEqual([ "y" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", true")));
         assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", [ ]")));
         assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", { }")));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test hash function
+////////////////////////////////////////////////////////////////////////////////
+
+    testHash : function () {
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN HASH(${input})`; 
+          case 1:
+            return `RETURN NOOPT(HASH(${input}))`; 
+          case 2:
+            return `RETURN NOOPT(V8(HASH(${input})))`; 
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+      var i;
+      for (i = 0; i < 3; ++i) {
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "1, 2")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "1, 2, 3"));
+        assertEqual([ 675717317264138 ], getQueryResults(buildQuery(i, "null")));
+        assertEqual([ 1217335385489389 ], getQueryResults(buildQuery(i, "false")));
+        assertEqual([ 57801618404459 ], getQueryResults(buildQuery(i, "true")));
+        assertEqual([ 2964198978643 ], getQueryResults(buildQuery(i, "1 / 0")));
+        assertEqual([ 2964198978643 ], getQueryResults(buildQuery(i, "0")));
+        assertEqual([ 2964198978643 ], getQueryResults(buildQuery(i, "0.0")));
+        assertEqual([ 464020872367562 ], getQueryResults(buildQuery(i, "0.00001")));
+        assertEqual([ 652971229830707 ], getQueryResults(buildQuery(i, "1")));
+        assertEqual([ 510129580600084 ], getQueryResults(buildQuery(i, "-1")));
+        assertEqual([ 24372339383975 ], getQueryResults(buildQuery(i, "-10.5")));
+        assertEqual([ 1041198105137773 ], getQueryResults(buildQuery(i, "123452532322453")));
+        assertEqual([ 876255539722551 ], getQueryResults(buildQuery(i, "123452532322454")));
+        assertEqual([ 1277486662998285 ], getQueryResults(buildQuery(i, "123452532322454.434")));
+        assertEqual([ 210539478145939 ], getQueryResults(buildQuery(i, "-123452532322454")));
+        assertEqual([ 261745517313272 ], getQueryResults(buildQuery(i, "-9999999999999.999")));
+        assertEqual([ 441814588996558 ], getQueryResults(buildQuery(i, "''")));
+        assertEqual([ 1112732548475941 ], getQueryResults(buildQuery(i, "' '")));
+        assertEqual([ 246233608921999 ], getQueryResults(buildQuery(i, "'  '")));
+        assertEqual([ 1542381651001813 ], getQueryResults(buildQuery(i, "'a'")));
+        assertEqual([ 843602980995939 ], getQueryResults(buildQuery(i, "'A'")));
+        assertEqual([ 1618092585478118 ], getQueryResults(buildQuery(i, "' a'")));
+        assertEqual([ 725364078947946 ], getQueryResults(buildQuery(i, "' A'")));
+        assertEqual([ 736233736371291 ], getQueryResults(buildQuery(i, "' foobar'")));
+        assertEqual([ 360657200843601 ], getQueryResults(buildQuery(i, "'this is a string test. please ignore.'")));
+        assertEqual([ 828085160327326 ], getQueryResults(buildQuery(i, "'this is a string test. please Ignore.'")));
+        assertEqual([ 2072438876063292 ], getQueryResults(buildQuery(i, "'a string is a string is a string of course. even longer strings can be hashed. isn\\'t this fantastic? let\\'s see if we can cross the short-string bounds with it...'")));
+        assertEqual([ 181227890622943 ], getQueryResults(buildQuery(i, "[]")));
+        assertEqual([ 346113245898278 ], getQueryResults(buildQuery(i, "[0]")));
+        assertEqual([ 785599515440277 ], getQueryResults(buildQuery(i, "[1]")));
+        assertEqual([ 1295855700045140 ], getQueryResults(buildQuery(i, "[1,2]")));
+        assertEqual([ 1295855700045140 ], getQueryResults(buildQuery(i, "1..2")));
+        assertEqual([ 1255602544875390 ], getQueryResults(buildQuery(i, "[2,1]")));
+        assertEqual([ 1255602544875390 ], getQueryResults(buildQuery(i, "2..1")));
+        assertEqual([ 1625466870434085 ], getQueryResults(buildQuery(i, "[1,2,3]")));
+        assertEqual([ 1625466870434085 ], getQueryResults(buildQuery(i, "1..3")));
+        assertEqual([ 1657598895986170 ], getQueryResults(buildQuery(i, "[1,2,3,4]")));
+        assertEqual([ 1657598895986170 ], getQueryResults(buildQuery(i, "1..4")));
+        assertEqual([ 1580543009747638 ], getQueryResults(buildQuery(i, "[1,2,4,3]")));
+        assertEqual([ 157821093310761 ], getQueryResults(buildQuery(i, "[1,2,3,2]")));
+        assertEqual([ 1032992608692014 ], getQueryResults(buildQuery(i, "[1,2,3,2,1]")));
+        assertEqual([ 2051766968908771 ], getQueryResults(buildQuery(i, "1..1000")));
+        assertEqual([ 1954991255293719 ], getQueryResults(buildQuery(i, "{}")));
+        assertEqual([ 1270059518310386 ], getQueryResults(buildQuery(i, "{a:1}")));
+        assertEqual([ 1462532781001381 ], getQueryResults(buildQuery(i, "{a:2}")));
+        assertEqual([ 1872109801523384 ], getQueryResults(buildQuery(i, "{a:1,b:1}")));
+        assertEqual([ 599770551193312 ], getQueryResults(buildQuery(i, "{a:1,b:2}")));
+        assertEqual([ 1872109801523384 ], getQueryResults(buildQuery(i, "{b:1,a:1}")));
+        assertEqual([ 599770551193312 ], getQueryResults(buildQuery(i, "{b:2,a:1}")));
+        assertEqual([ 876136767628139 ], getQueryResults(buildQuery(i, "{b:1,a:2}")));
+        assertEqual([ 876136767628139 ], getQueryResults(buildQuery(i, "{a:2,b:1}")));
+        assertEqual([ 92631926086363 ], getQueryResults(buildQuery(i, "{a:2,b:'1'}")));
+        assertEqual([ 2054068497715740 ], getQueryResults(buildQuery(i, "{a:2,b:null}")));
+        assertEqual([ 550542031834779 ], getQueryResults(buildQuery(i, "{A:1,B:2}")));
+        assertEqual([ 2125993103279620 ], getQueryResults(buildQuery(i, "{a:'A',b:'B'}")));
+        assertEqual([ 878459260153284 ], getQueryResults(buildQuery(i, "{a:'a',b:'b'}")));
+        assertEqual([ 1454594333033579 ], getQueryResults(buildQuery(i, "{a:['a'],b:['b']}")));
+        assertEqual([ 296899533959594 ], getQueryResults(buildQuery(i, "{a:1,b:-1}")));
+        assertEqual([ 944398530367049 ], getQueryResults(buildQuery(i, "{_id:'foo',_key:'bar',_rev:'baz'}")));
+      }
+      
+      for (i = 0; i < 3; ++i) {
+        // order does not matter
+        assertEqual(getQueryResults(buildQuery(i, "{a:1,b:2}")), getQueryResults(buildQuery(i, "{b:2,a:1}")));
+        assertNotEqual(getQueryResults(buildQuery(i, "{a:1,b:2}")), getQueryResults(buildQuery(i, "{a:2,b:1}")));
+        // order matters
+        assertNotEqual(getQueryResults(buildQuery(i, "[1,2,3]")), getQueryResults(buildQuery(i, "[3,2,1]")));
+        // arrays and ranges
+        assertEqual(getQueryResults(buildQuery(i, "[1,2,3]")), getQueryResults(buildQuery(i, "1..3")));
+        // arrays and subqueries
+        assertEqual(getQueryResults(buildQuery(i, "[1,2,3]")), getQueryResults(buildQuery(i, "FOR i IN [1,2,3] RETURN i")));
       }
     },
 

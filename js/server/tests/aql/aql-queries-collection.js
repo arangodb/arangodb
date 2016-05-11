@@ -854,6 +854,47 @@ function ahuacatlQueryCollectionTestSuite () {
       var expected = [ [ "riding", "skating", "swimming", null, "swimming" ] ];
       var actual = getQueryResults("FOR u in " + users.name() + " FILTER HAS(u, 'hobbies') RETURN [ u.hobbies[0], u.hobbies[1], u.hobbies[2], u.hobbies[3], u.hobbies[-1] ]");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test hashing the documents
+////////////////////////////////////////////////////////////////////////////////
+    
+    testHashes : function () {
+      var expected = [
+        1089385960271542, 
+        1549718497690202, 
+        560358553578052, 
+        1642812332573238, 
+        435359225373270, 
+        408295336378511, 
+        1897938296916959, 
+        713554280722917, 
+        369118524423277, 
+        1548261017980441, 
+        541971611858512, 
+        1804578553815548, 
+        976161958841139, 
+        259242346857309, 
+        671328068995257, 
+        2154779012539123, 
+        1413254027041724, 
+        854175714643442, 
+        178243611496212, 
+        791314881371364 
+      ];
+      var actual = getQueryResults("FOR u in " + users.name() + " SORT u.id RETURN HASH(UNSET(u, ['_key', '_rev', '_id']))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test hashing the documents
+////////////////////////////////////////////////////////////////////////////////
+    
+    testHashSubquery : function () {
+      var expected = [ 1866655274639415 ];
+      var actual = getQueryResults("RETURN HASH(FOR u in " + users.name() + " SORT u.id RETURN UNSET(u, ['_key', '_rev', '_id']))");
+      assertEqual(expected, actual);
     }
 
   };

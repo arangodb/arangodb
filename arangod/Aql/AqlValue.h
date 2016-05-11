@@ -130,6 +130,34 @@ struct AqlValue final {
     setType(AqlValueType::VPACK_INLINE);
   }
   
+  // construct from char* and length
+  AqlValue(char const* value, size_t length) {
+    if (length == 0) {
+      // empty string
+      _data.internal[0] = 0x40;
+      setType(AqlValueType::VPACK_INLINE);
+      return;
+    }
+    if (length < sizeof(_data.internal) - 1) {
+      // short string... can store it inline
+      _data.internal[0] = 0x40 + length;
+      memcpy(_data.internal + 1, value, length);
+      setType(AqlValueType::VPACK_INLINE);
+    } else if (length <= 126) {
+      // short string... cannot store inline, but we don't need to
+      // create a full-features Builder object here
+      _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
+      _data.buffer->push_back(0x40 + length);
+      _data.buffer->append(value, length);
+      setType(AqlValueType::VPACK_MANAGED);
+    } else {
+      // long string
+      VPackBuilder builder;
+      builder.add(VPackValue(value));
+      initFromSlice(builder.slice());
+    }
+  }
+  
   // construct from std::string
   explicit AqlValue(std::string const& value) {
     if (value.empty()) {
