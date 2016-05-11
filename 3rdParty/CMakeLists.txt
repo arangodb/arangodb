@@ -93,8 +93,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.8)
 ## SNAPPY
 ################################################################################
 
-set(SKIP_INSTALL_ALL ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
 
 ################################################################################
 ## ROCKSDB
@@ -104,6 +102,8 @@ if (USE_ROCKSDB)
   if (${JEMALLOC_FOUND})
 #    set(USE_JEMALLOC_DEFAULT 1)
   endif()
+  set(SKIP_INSTALL_ALL ON)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb/)
 endif ()
 

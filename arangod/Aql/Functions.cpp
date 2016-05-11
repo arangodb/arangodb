@@ -22,35 +22,36 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Functions.h"
+
+#include <velocypack/Collection.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Basics/fpconv.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/fpconv.h"
+#include "Basics/tri-strings.h"
 #include "FulltextIndex/fulltext-index.h"
-#include "FulltextIndex/fulltext-result.h"
 #include "FulltextIndex/fulltext-query.h"
-#include "Indexes/Index.h"
+#include "FulltextIndex/fulltext-result.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
-#include "Rest/SslInterface.h"
+#include "Indexes/Index.h"
+#include "Ssl/SslInterface.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/Transaction.h"
 #include "V8Server/V8Traverser.h"
 #include "VocBase/KeyGenerator.h"
-
-#include <velocypack/Collection.h>
-#include <velocypack/Dumper.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;

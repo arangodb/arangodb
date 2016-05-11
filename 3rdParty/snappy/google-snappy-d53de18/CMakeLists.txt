@@ -148,30 +148,3 @@ set(SNAPPY_SRCS
 )
 
 add_library(snappystatic STATIC ${SNAPPY_SRCS} ${SNAPPY_PUBLIC_HDRS} ${SNAPPY_PRIVATE_HDRS})
-
-
-if (WINDOWS)
-  set(SNAPPY_LIBS
-    snappystatic
-    CACHE INTERNAL
-    "${PROJECT_NAME}: Libraries"
-  )
-
-  list(APPEND LINK_DIRECTORIES "${snappystatic_BINARY_DIR}")
-else ()
-  set(SNAPPY_LIBS
-    snappystatic
-    CACHE INTERNAL
-    "${PROJECT_NAME}: Libraries"
-  )
-
-  list(APPEND LINK_DIRECTORIES "${snappystatic_BINARY_DIR}")
-endif ()
-
-set(SNAPPY_INCLUDE_DIR
-  ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR}
-  CACHE INTERNAL
-  "${PROJECT_NAME}: Include Directories"
-)
-
-set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)

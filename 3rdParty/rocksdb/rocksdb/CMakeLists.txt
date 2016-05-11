@@ -29,6 +29,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(rocksdb)
 
+SET(SNAPPY 1)
 include(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty.inc)
 IF (WIN32)
   execute_process(COMMAND powershell -Command "Get-Date -format MM_dd_yyyy" OUTPUT_VARIABLE DATE)
