@@ -1045,6 +1045,16 @@ void tolowerInPlace(std::string* str) {
   }
 }
 
+std::string tolower(std::string&& str) {
+  size_t const len = str.size();
+
+  for (size_t i = 0; i < len; ++i) {
+    str[i] = static_cast<char>(::tolower(str[i]));
+  }
+
+  return str;
+}
+
 std::string tolower(std::string const& str) {
   size_t len = str.length();
 
