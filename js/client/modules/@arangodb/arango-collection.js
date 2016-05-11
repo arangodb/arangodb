@@ -31,7 +31,6 @@
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add options from arguments to index specification
 ////////////////////////////////////////////////////////////////////////////////
@@ -785,9 +784,8 @@ ArangoCollection.prototype.document = function (id) {
     });
   }
 
-  var url;
   if (Array.isArray(id)) {
-    url = this._documentcollectionurl() + "?onlyget=true&ignoreRevs=false";
+    var url = this._documentcollectionurl() + "?onlyget=true&ignoreRevs=false";
     var body = JSON.stringify(id);
     requestResult = this._database._connection.PUT(url, body); 
   } else {
@@ -801,7 +799,6 @@ ArangoCollection.prototype.document = function (id) {
         id = id._key;
       }
     }
-    url = this._documenturl(id);
     if (rev === null) {
       requestResult = this._database._connection.GET(this._documenturl(id));
     }

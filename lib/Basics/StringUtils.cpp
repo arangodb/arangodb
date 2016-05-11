@@ -1121,17 +1121,18 @@ bool isSuffix(std::string const& str, std::string const& postfix) {
 }
 
 std::string urlDecode(std::string const& str) {
+  std::string result;
+  // reserve enough room so we do not need to re-alloc
+  result.reserve(str.size() + 16); 
+
   char const* src = str.c_str();
   char const* end = src + str.size();
 
-  char* buffer = new char[str.size() + 1];
-  char* ptr = buffer;
-
   for (; src < end && *src != '%'; ++src) {
     if (*src == '+') {
-      *ptr++ = ' ';
+      result.push_back(' ');
     } else {
-      *ptr++ = *src;
+      result.push_back(*src);
     }
   }
 
@@ -1144,10 +1145,10 @@ std::string urlDecode(std::string const& str) {
         src += 1;
       } else {
         if (h2 == -1) {
-          *ptr++ = h1;
+          result.push_back(h1);
           src += 2;
         } else {
-          *ptr++ = h1 << 4 | h2;
+          result.push_back(h1 << 4 | h2);
           src += 3;
         }
       }
@@ -1157,7 +1158,7 @@ std::string urlDecode(std::string const& str) {
       if (h1 == -1) {
         src += 1;
       } else {
-        *ptr++ = h1;
+        result.push_back(h1);
         src += 2;
       }
     } else {
@@ -1166,17 +1167,12 @@ std::string urlDecode(std::string const& str) {
 
     for (; src < end && *src != '%'; ++src) {
       if (*src == '+') {
-        *ptr++ = ' ';
+        result.push_back(' ');
       } else {
-        *ptr++ = *src;
+        result.push_back(*src);
       }
     }
   }
-
-  *ptr = '\0';
-  std::string result(buffer, ptr - buffer);
-
-  delete[] buffer;
 
   return result;
 }
