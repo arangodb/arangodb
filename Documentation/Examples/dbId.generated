@@ -1,2 +1,2 @@
 arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).db._id();
-<span class="hljs-number">85576</span>
+<span class="hljs-number">1</span>

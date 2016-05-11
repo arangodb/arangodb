@@ -4,27 +4,27 @@ arangosh&gt; <span class="hljs-keyword">var</span> query = graph._vertices({name
 arangosh&gt; query.edges().vertices().toArray();
 [ 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"689655368"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"21011"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"689983048"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"21015"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"689655368"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"21011"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"690179656"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"21019"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
   } 
 ]

@@ -11,9 +11,9 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> N
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
-  <span class="hljs-string">"exception"</span> : <span class="hljs-string">"[ArangoError 1203: collection not found]"</span>, 
+  <span class="hljs-string">"exception"</span> : <span class="hljs-string">"ArangoError 1203: collection not found"</span>, 
   <span class="hljs-string">"stacktrace"</span> : [ 
-    <span class="hljs-string">"Error: collection not found"</span>, 
+    <span class="hljs-string">"ArangoError: collection not found"</span>, 
     <span class="hljs-string">"    at Error (native)"</span>, 
     <span class="hljs-string">"    at post_api_transaction (js/actions/api-transaction.js:49:16)"</span>, 
     <span class="hljs-string">"    at Function.actions.defineHttp.callback (js/actions/api-transaction.js:66:11)"</span> 

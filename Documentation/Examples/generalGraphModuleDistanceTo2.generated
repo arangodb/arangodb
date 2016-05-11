@@ -4,8 +4,8 @@ arangosh&gt; g._distanceTo([{_id: <span class="hljs-string">'germanCity/Cologne'
 ........&gt; {weight : <span class="hljs-string">'distance'</span>});
 [ 
   { 
-    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
-    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"frenchCity/Lyon"</span> 
+    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
   } 
 ]

@@ -15,13 +15,12 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
-content-type: application/json
-etag: <span class="hljs-number">555817682</span>
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+etag: <span class="hljs-number">8161</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span>, 
   <span class="hljs-string">"graph"</span> : { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"myGraph"</span>, 
     <span class="hljs-string">"edgeDefinitions"</span> : [ 
@@ -37,6 +36,7 @@ etag: <span class="hljs-number">555817682</span>
     ], 
     <span class="hljs-string">"orphanCollections"</span> : [ ], 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/myGraph"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"555817682"</span> 
-  } 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"8161"</span> 
+  }, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

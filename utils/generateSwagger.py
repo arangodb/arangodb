@@ -997,7 +997,7 @@ def example_arangosh_run(cargo, r=Regexen()):
     exampleHeader = brTrim(operation['x-examples'][currentExample]).strip()
 
     # new examples code TODO should include for each example own object in json file
-    fn = os.path.join(os.path.dirname(__file__), '../Examples/' + parameters(last) + '.generated')
+    fn = os.path.join(os.path.dirname(__file__), '../Documentation/Examples/' + parameters(last) + '.generated')
     try:
         examplefile = open(fn)
     except:
