@@ -155,7 +155,10 @@ option(USE_ROCKSDB
 
 if (USE_ROCKSDB)
   add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
+else ()
+  set(ROCKSDB_LIBS "")
 endif ()
+
 
 ################################################################################
 ## EXTERNAL PROGRAMS
@@ -165,13 +168,6 @@ if (SOLARIS)
   set(MAKE gmake)
 else ()
   set(MAKE make)
-endif ()
-
-if (USE_ROCKSDB)
-  find_package(Snappy)
-else ()
-  set(SNAPPY_STATIC_LIB "")
-  set(ROCKSDB_LIBS "")
 endif ()
 
 find_package(PythonInterp 2 REQUIRED)
