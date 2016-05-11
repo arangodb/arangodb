@@ -215,6 +215,7 @@ add_library(${LIB_ARANGO} STATIC
   SimpleHttpClient/SslClientConnection.cpp
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
+  Ssl/SslServerFeature.cpp
   Ssl/ssl-helper.cpp
   Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
