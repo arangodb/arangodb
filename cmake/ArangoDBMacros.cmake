@@ -317,7 +317,7 @@ if (NOT(MSVC))
   install(
     FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
     PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-    DESTINATION etc/init.d
+    DESTINATION ${ETCDIR}/init.d
     RENAME arangodb3
     COMPONENT debian-extras
   )
