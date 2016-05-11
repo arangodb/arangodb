@@ -33,30 +33,8 @@ class SslFeature final : public application_features::ApplicationFeature {
   explicit SslFeature(application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
   void stop() override final;
-
- public:
-  SSL_CTX* sslContext() const { return _sslContext; }
-
- public:
-  std::string _cafile;
-  std::string _keyfile;
-  bool _sessionCache;
-  std::string _cipherList;
-  uint64_t _protocol;
-  uint64_t _options;
-  std::string _ecdhCurve;
-
- private:
-  void createSslContext();
-  std::string stringifySslOptions(uint64_t opts) const;
-
- private:
-  SSL_CTX* _sslContext;
-  std::string _rctx;
 };
 }
 

@@ -65,7 +65,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Ssl/SslFeature.h"
+#include "Ssl/SslServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/server.h"
 
@@ -250,8 +250,8 @@ void RestServerFeature::buildServers() {
 
   // ssl endpoints
   if (endpointList.hasSsl()) {
-    SslFeature* ssl =
-        application_features::ApplicationServer::getFeature<SslFeature>("Ssl");
+    SslServerFeature* ssl =
+        application_features::ApplicationServer::getFeature<SslServerFeature>("SslServer");
 
     // check the ssl context
     if (ssl->sslContext() == nullptr) {
