@@ -126,25 +126,6 @@ void RestBaseHandler::generateCanceled() {
   return generateError(GeneralResponse::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dumps the response as JSON into the response string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::dumpResponse(VPackSlice const& slice,
-                                   VPackOptions const* options) {
-  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-
-  VPackDumper dumper(&buffer, options);
-  try {
-    dumper.dump(slice);
-  } catch (std::exception const& ex) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "cannot generate output");
-  }
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief checks if velocypack is expected as answer
 //////////////////////////////////////////////////////////////////////////////
@@ -163,8 +144,20 @@ void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice,
   if (returnVelocypack()) {
     _response->setContentType(HttpResponse::CONTENT_TYPE_VPACK);
     _response->body().appendText(slice.startAs<const char>(), static_cast<size_t>(slice.byteSize()));
-  } else {
-    _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
-    dumpResponse(slice, &options);
+    return;
+  }
+
+  // JSON
+
+  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
+  try {
+    VPackStringBufferAdapter buffer(_response->body().stringBuffer());
+    VPackDumper dumper(&buffer, &options);
+    dumper.dump(slice);
+  } catch (std::exception const& ex) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "cannot generate output");
   }
 }
