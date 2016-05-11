@@ -321,6 +321,10 @@ ids will now make the edge ids unique before returning the connected edges. This
 desired anyway, as results will be returned only once per distinct input edge id. However, 
 it may break client applications that rely on the old behavior.
 
+!SUBSECTION Databases API
+
+`_listDatabases()` has been renamed to `_databases()` (making it consistent with `_collections()`)
+
 !SUBSECTION Collection API
 
 !SUBSUBSECTION Example matching
