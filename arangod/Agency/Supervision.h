@@ -46,7 +46,7 @@ struct JobCallback {
   virtual bool operator()(JobResult*) = 0;
 };
 
-enum JOB_CASE {FAILED_LEADER};
+enum JOB_CASE {FAILED_DBSERVER};
 template<enum JOB_CASE> struct Job {};
 
 struct check_t {
