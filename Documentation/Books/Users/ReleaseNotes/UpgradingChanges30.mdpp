@@ -637,6 +637,8 @@ in 3.0:
   `--server.authentication-unix-sockets`. Note that the meaning of the option 
   `--server.authentication-unix-sockets` is the opposite of the previous 
   `--server.disable-authentication-unix-sockets`.
+- `--server.authenticate-system-only` was renamed to `--server.authentication-system-only`.
+  The meaning of the option in unchanged.
 - `--server.disable-statistics` was renamed to `--server.statistics`. Note that the
   meaning of the option `--server.statistics` is the opposite of the previous
   `--server.disable-statistics`.
