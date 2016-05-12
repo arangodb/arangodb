@@ -46,13 +46,8 @@ struct JobCallback {
   virtual bool operator()(JobResult*) = 0;
 };
 
-<<<<<<< HEAD
 enum JOB_CASE {FAILED_DBSERVER};
-template<enum JOB_CASE> struct Job {};
-=======
-enum JOB_CASE {FAILED_LEADER};
 template<enum arangodb::consensus::JOB_CASE> struct Job {};
->>>>>>> 7e16f1ffd93ffd1f7b94dff9ad6c02d0e283165e
 
 struct check_t {
   bool good;

@@ -163,9 +163,9 @@ function agencyTestSuite () {
       res = writeAgency([[{"/a":13},{"/a":{"oldEmpty":false},"/a":{"oldEmpty":true}}]]);
       assertEqual(res.statusCode, 412);
       assertEqual(readAndCheck([["/a"]]), [{a:12}]);
-      //res = writeAgency([[{"/a":13},{"/a":{"oldEmpty":true},"/a":{"oldEmpty":false}}]]);
-      //assertEqual(res.statusCode, 412);
-      //assertEqual(readAndCheck([["/a"]]), [{a:12}]);
+      res = writeAgency([[{"/a":13},{"/a":{"oldEmpty":true},"/a":{"oldEmpty":false}}]]);
+      assertEqual(res.statusCode, 412);
+      assertEqual(readAndCheck([["/a"]]), [{a:12}]);
     },
 
 
