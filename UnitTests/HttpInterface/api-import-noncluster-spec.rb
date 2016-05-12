@@ -23,18 +23,6 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "createCollection=true" do
-        cmd = api + "?collection=#{@cn}&createCollection=true&type=array"
-        body =  "[ { \"foo\" : true } ]";
-        doc = ArangoDB.log_post("#{prefix}-create", cmd, :body => body)
-
-        doc.code.should eq(201)
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['created'].should eq(1)
-        doc.parsed_response['errors'].should eq(0)
-        doc.parsed_response['empty'].should eq(0)
-      end
-
       it "createCollection=false" do
         cmd = api + "?collection=#{@cn}&createCollection=false&type=array"
         body =  "[ { \"foo\" : true } ]";
@@ -43,42 +31,6 @@ describe ArangoDB do
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['errorNum'].should eq(1203)
-      end
-
-      it "createCollection=true&createCollectionType=document" do
-        cmd = api + "?collection=#{@cn}&createCollection=true&createCollectionType=document&type=array"
-        body =  "[ { \"foo\" : true } ]";
-        doc = ArangoDB.log_post("#{prefix}-create", cmd, :body => body)
-
-        doc.code.should eq(201)
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['created'].should eq(1)
-        doc.parsed_response['errors'].should eq(0)
-        doc.parsed_response['empty'].should eq(0)
-
-        cmd = "/_api/collection/#{@cn}"
-        doc = ArangoDB.log_get("#{prefix}-create", cmd, :body => "")
-        doc.code.should eq(200)
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['type'].should eq(2) # 2 = document
-      end
-
-      it "createCollection=true&createCollectionType=edge" do
-        cmd = api + "?collection=#{@cn}&createCollection=true&createCollectionType=edge&type=array"
-        body =  "[ { \"foo\" : true } ]";
-        doc = ArangoDB.log_post("#{prefix}-create", cmd, :body => body)
-
-        doc.code.should eq(201) # missing _from & _to
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['created'].should eq(0)
-        doc.parsed_response['errors'].should eq(1)
-        doc.parsed_response['empty'].should eq(0)
-
-        cmd = "/_api/collection/#{@cn}"
-        doc = ArangoDB.log_get("#{prefix}-create", cmd, :body => "")
-        doc.code.should eq(200)
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['type'].should eq(3) # 3 = edge
       end
     end
 
@@ -589,26 +541,6 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
 
-      it "multiple docs, creating edge collection" do
-        ArangoDB.drop_collection(@en)
-
-        cmd = api + "?collection=#{@en}&createCollection=true&createCollectionType=edge&type=array"
-        body = "[\n"
-        body += "{ \"a\" : 1, \"_from\" : \"" + @vn + "/vertex1\", \"_to\" : \"" + @vn + "/vertex2\" },\n"
-        body += "{ \"foo\" : true, \"bar\": \"baz\", \"_from\" : \"" + @vn + "/vertex1\", \"_to\" : \"" + @vn + "/vertex2\" },\n"
-        body += "{ \"from\" : \"" + @vn + "/vertex1\", \"to\" : \"" + @vn + "/vertex2\" }\n"
-        body += "]";
-        doc = ArangoDB.log_post("#{prefix}-edge-json-fromto", cmd, :body => body)
-
-        doc.code.should eq(201)
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['created'].should eq(2)
-        doc.parsed_response['errors'].should eq(1)
-        doc.parsed_response['empty'].should eq(0)
-        doc.parsed_response['updated'].should eq(0)
-        doc.parsed_response['ignored'].should eq(0)
-      end
-      
       it "multiple docs, with wrong fromPrefix" do
         cmd = api + "?collection=#{@en}&createCollection=false&type=array&fromPrefix=a+b"
         body = "[\n"

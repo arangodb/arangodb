@@ -2,7 +2,7 @@
 @startDocuBlock API_EDGE_CREATE
 @brief creates an edge
 
-@RESTHEADER{POST /_api/edge,Create edge}
+@RESTHEADER{POST /_api/document,Create edge}
 
 @RESTALLBODYPARAM{edge-document,json,required}
 A JSON representation of the edge document must be passed as the body of
@@ -13,14 +13,6 @@ the *_key* attribute if needed.
 
 @RESTQUERYPARAM{collection,string,required}
 Creates a new edge in the collection identified by *collection* name.
-
-@RESTQUERYPARAM{createCollection,boolean,optional}
-If this parameter has a value of *true* or *yes*, then the collection is
-created if it does not yet exist. Other values will be ignored so the
-collection must be present for the operation to succeed.
-
-**Note**: This flag is not supported in a cluster. Using it will result in an
-error.
 
 @RESTQUERYPARAM{waitForSync,boolean,optional}
 Wait until the edge document has been synced to disk.
@@ -36,9 +28,8 @@ Creates a new edge document in the collection named *collection*. A JSON
 representation of the document must be passed as the body of the POST
 request.
 
-The *from* and *to* handles are immutable once the edge has been created.
-
-In all other respects the method works like *POST /document*.
+In all other respects the method works like *POST /_api/document* for
+documents.
 
 @RESTRETURNCODES
 
@@ -68,7 +59,7 @@ Create an edge and read it back:
     var g = new Graph("graph", "vertices", "edges");
     g.addVertex(1);
     g.addVertex(2);
-    var url = "/_api/edge/?collection=edges&from=vertices/1&to=vertices/2";
+    var url = "/_api/document/?collection=edges&from=vertices/1&to=vertices/2";
 
     var response = logCurlRequest("POST", url, { "name": "Emil" });
 
@@ -77,7 +68,7 @@ Create an edge and read it back:
     logJsonResponse(response);
     var body = response.body.replace(/\\/g, '');
     var edge_id = JSON.parse(body)._id;
-    var response2 = logCurlRequest("GET", "/_api/edge/" + edge_id);
+    var response2 = logCurlRequest("GET", "/_api/document/" + edge_id);
 
     assert(response2.code === 200);
 

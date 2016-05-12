@@ -62,6 +62,8 @@ class VelocyPackDumper {
   void appendUInt(uint64_t);
 
   void appendDouble(double);
+  
+  void appendString(char const* src, velocypack::ValueLength length);
 
   void handleUnsupportedType(velocypack::Slice const* slice);
 

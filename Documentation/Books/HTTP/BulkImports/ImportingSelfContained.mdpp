@@ -42,7 +42,7 @@ the data are line-wise JSON documents (type = documents) or a JSON array (type =
 *Examples*
 
 ```js
-curl --data-binary @- -X POST --dump - "http://localhost:8529/_api/import?type=documents&collection=test&createCollection=true"
+curl --data-binary @- -X POST --dump - "http://localhost:8529/_api/import?type=documents&collection=test"
 { "name" : "test", "gender" : "male", "age" : 39 }
 { "type" : "bird", "name" : "robin" }
 

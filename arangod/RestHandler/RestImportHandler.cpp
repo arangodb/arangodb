@@ -117,23 +117,6 @@ HttpHandler::status_t RestImportHandler::execute() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the collection type from the request
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_col_type_e RestImportHandler::getCollectionType() {
-  // extract the collection type from the request
-  bool found;
-  std::string const& collectionType =
-      _request->value("createCollectionType", found);
-
-  if (found && !collectionType.empty() && collectionType == "edge") {
-    return TRI_COL_TYPE_EDGE;
-  }
-
-  return TRI_COL_TYPE_DOCUMENT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a position string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -352,10 +335,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
-    return false;
-  }
-
-  if (!checkCreateCollection(collectionName, getCollectionType())) {
     return false;
   }
 
@@ -585,10 +564,6 @@ bool RestImportHandler::createFromKeyValueList() {
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
-    return false;
-  }
-
-  if (!checkCreateCollection(collectionName, getCollectionType())) {
     return false;
   }
 
