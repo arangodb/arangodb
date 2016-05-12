@@ -14321,7 +14321,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     initialize: function(models, options) {
       this.host = options.host;
-      window.App.registerForUpdate(this);
+      //window.App.registerForUpdate(this);
     },
 
     statusClass: function(s) {
@@ -14378,6 +14378,9 @@ window.ArangoUsers = Backbone.Collection.extend({
           res[addr].dbs.push(m);
         });
         callback(res);
+      }).error(function(e) {
+        console.log("error");
+        console.log(e);
       });
     },
 
@@ -15521,6 +15524,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     events: {
     },
 
+    statsEnabled: false,
     historyInit: false,
     initDone: false,
     interval: 5000,
@@ -15872,13 +15876,18 @@ window.ArangoUsers = Backbone.Collection.extend({
     initGraphs: function() {
       var self = this;
 
+      var noData = 'Fetching data...';
+      if (self.statsEnabled === false) {
+        noData = 'Statistics disabled.';
+      }
+
       _.each(self.chartsOptions, function(c) {
         nv.addGraph(function() {
           self.charts[c.id] = nv.models.stackedAreaChart()
           .options({
             useInteractiveGuideline: true,
             showControls: false,
-            noData: 'Fetching data...',
+            noData: noData,
             duration: 0
           });
 
@@ -15958,6 +15967,11 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     rerenderGraphs: function(input) {
+
+      if (!this.statsEnabled) {
+        return;
+      }
+
       var self = this, data, lines;
       this.formatDataForGraph(input);
 
@@ -16033,6 +16047,13 @@ window.ArangoUsers = Backbone.Collection.extend({
         var counter = 0, counter2;
 
         _.each(data, function(stat) {
+          if (stat.enabled) {
+            self.statsEnabled = true;
+          }
+          else {
+            self.statsEnabled = false;
+          }
+
           if (typeof stat === 'object') {
             if (counter === 0) {
               //one time value
@@ -18044,7 +18065,13 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       $.ajax(
         url + urlParams,
-        {async: true}
+        { 
+          async: true,
+          xhrFields: {
+            withCredentials: true
+          },
+          crossDomain: true
+        }
       ).done(
         function (d) {
           if (d.times.length > 0) {
@@ -18058,6 +18085,9 @@ window.ArangoUsers = Backbone.Collection.extend({
             callback(d.enabled, modalView);
           }
           self.updateCharts();
+      }).error(function(e) {
+        console.log("stat fetch req error");
+        console.log(e);
       });
 
       this.getReplicationStatistics();
@@ -18362,9 +18392,16 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       if (!enabled) {
         $(this.el).html('');
+        if (this.server) {
+          $(this.el).append(
+            '<div style="color: red">Server statistics (' + this.server + ') are disabled.</div>'
+          );
+        }
+        else {
           $(this.el).append(
             '<div style="color: red">Server statistics are disabled.</div>'
           );
+        }
         return;
       }
 
@@ -23453,12 +23490,12 @@ window.ArangoUsers = Backbone.Collection.extend({
       var callback = function() {
         this.continueRender();
         this.breadcrumb(this.coordname);
-        window.arangoHelper.buildNodeSubNav(this.coordname, 'Dashboard', 'Logs');
+        //window.arangoHelper.buildNodeSubNav(this.coordname, 'Dashboard', 'Logs');
         $(window).trigger('resize');
       }.bind(this);
 
-      var cb =function() {
-        console.log("dummy");
+      var cb = function() {
+        console.log("node complete");
       };
 
       if (!this.initCoordDone) {
@@ -23527,7 +23564,6 @@ window.ArangoUsers = Backbone.Collection.extend({
             }
           });
 
-          console.log(self.dbServer.toJSON());
           callback();
         }
       }, 200);
@@ -23554,6 +23590,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     knownServers: [],
 
     events: {
+      "click .pure-table-body .pure-table-row" : "navigateToNode"
     },
 
     initialize: function (options) {
@@ -23563,10 +23600,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.coordinators = options.coordinators;
         this.updateServerTime();
         this.toRender = options.toRender;
-
-        if (this.toRender !== 'coordinator') {
-          this.events["click .pure-table-body .pure-table-row"] = "navigateToNode";
-        }
 
         //start polling with interval
         window.setInterval(function() {
@@ -23581,11 +23614,17 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     navigateToNode: function(elem) {
+
+      if (window.location.hash === '#dNodes') {
+        return;
+      }
+
       var name = $(elem.currentTarget).attr('node');
       window.App.navigate("#node/" + encodeURIComponent(name), {trigger: true});
     },
 
     render: function () {
+
       window.arangoHelper.buildNodesSubNav(this.toRender);
 
       var callback = function() {
