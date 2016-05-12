@@ -10,7 +10,7 @@ are needed or allowed in this data section.
 *Examples*
 
 ```js
-curl --data-binary @- -X POST --dump - "http://localhost:8529/_api/import?collection=test&createCollection=true"
+curl --data-binary @- -X POST --dump - "http://localhost:8529/_api/import?collection=test"
 [ "firstName", "lastName", "age", "gender" ]
 [ "Joe", "Public", 42, "male" ]
 [ "Jane", "Doe", 31, "female" ]
@@ -36,9 +36,6 @@ errors occurred.
 
 !SECTION Importing into Edge Collections
 
-Please note that when importing documents into an [edge collection](../Glossary/README.md#edge-collection), it is 
-mandatory that all imported documents contain the *_from* and *_to* attributes,
+Please note that when importing documents into an [edge collection](../Glossary/README.md#edge-collection), 
+it is mandatory that all imported documents contain the *_from* and *_to* attributes,
 and that these contain references to existing collections.
-
-Please also note that it is not possible to create a new edge collection on the
-fly using the *createCollection* parameter.

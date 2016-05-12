@@ -12,6 +12,7 @@
     knownServers: [],
 
     events: {
+      "click .pure-table-body .pure-table-row" : "navigateToNode"
     },
 
     initialize: function (options) {
@@ -21,10 +22,6 @@
         this.coordinators = options.coordinators;
         this.updateServerTime();
         this.toRender = options.toRender;
-
-        if (this.toRender !== 'coordinator') {
-          this.events["click .pure-table-body .pure-table-row"] = "navigateToNode";
-        }
 
         //start polling with interval
         window.setInterval(function() {
@@ -39,11 +36,17 @@
     },
 
     navigateToNode: function(elem) {
+
+      if (window.location.hash === '#dNodes') {
+        return;
+      }
+
       var name = $(elem.currentTarget).attr('node');
       window.App.navigate("#node/" + encodeURIComponent(name), {trigger: true});
     },
 
     render: function () {
+
       window.arangoHelper.buildNodesSubNav(this.toRender);
 
       var callback = function() {

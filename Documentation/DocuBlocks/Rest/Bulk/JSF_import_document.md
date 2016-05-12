@@ -15,16 +15,6 @@ subsequent lines.
 @RESTQUERYPARAM{collection,string,required}
 The collection name.
 
-@RESTQUERYPARAM{createCollection,boolean,optional}
-If this parameter has a value of `true` or `yes`, then the collection is
-created if it does not yet exist. Other values will be ignored so the
-collection must be present for the operation to succeed.
-
-@RESTQUERYPARAM{createCollectionType,string,optional}
-If this parameter has a value of `document` or `edge`, it will determine
-the type of collection that is going to be created when the `createCollection`
-option is set to `true`. The default value is `document`.
-
 @RESTQUERYPARAM{fromPrefix,string,optional}
 An optional prefix for the values in `_from` attributes. If specified, the
 value is automatically prepended to each `_from` input value. This allows
@@ -153,30 +143,6 @@ line in the import data is empty
     assert(r.created === 2);
     assert(r.errors === 0);
     assert(r.empty === 1);
-
-    logJsonResponse(response);
-    db._drop(cn);
-@END_EXAMPLE_ARANGOSH_RUN
-
-Importing two documents into a new collection
-
-@EXAMPLE_ARANGOSH_RUN{RestImportCsvCreate}
-    var cn = "products";
-    db._drop(cn);
-    db._create(cn);
-
-    var body = '[ "value1", "value2" ]\n' + 
-               '[ 1234, null ]\n' + 
-               '[ "foo", "bar" ]\n' + 
-               '[534.55, true ]';
-
-    var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&createCollection=true", body);
-
-    assert(response.code === 201);
-    var r = JSON.parse(response.body)
-    assert(r.created === 3);
-    assert(r.errors === 0);
-    assert(r.empty === 0);
 
     logJsonResponse(response);
     db._drop(cn);

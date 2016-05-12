@@ -17,7 +17,7 @@
 
     initialize: function(models, options) {
       this.host = options.host;
-      window.App.registerForUpdate(this);
+      //window.App.registerForUpdate(this);
     },
 
     statusClass: function(s) {
@@ -74,6 +74,9 @@
           res[addr].dbs.push(m);
         });
         callback(res);
+      }).error(function(e) {
+        console.log("error");
+        console.log(e);
       });
     },
 

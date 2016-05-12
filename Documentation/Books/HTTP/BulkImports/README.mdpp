@@ -19,10 +19,7 @@ sent to this URL using an HTTP POST request. The data to import must be
 contained in the body of the POST request.
 
 The *collection* query parameter must be used to specify the target collection for
-the import. The optional query parameter *createCollection* can be used to create
-a non-existing collection during the import. If not used, importing data into a
-non-existing collection will produce an error. Please note that the *createCollection*
-flag can only be used to create document collections, not [edge collections](../Glossary/README.md#edge-collection).
+the import. Importing data into a non-existing collection will produce an error. 
 
 The *waitForSync* query parameter can be set to *true* to make the import only 
 return if all documents have been synced to disk.
