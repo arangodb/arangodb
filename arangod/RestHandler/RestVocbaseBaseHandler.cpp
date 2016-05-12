@@ -200,49 +200,6 @@ void RestVocbaseBaseHandler::generateDeleted(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a collection needs to be created on the fly
-///
-/// this method will check the "createCollection" attribute of the request. if
-/// it is set to true, it will verify that the named collection actually exists.
-/// if the collection does not yet exist, it will create it on the fly.
-/// if the "createCollection" attribute is not set or set to false, nothing will
-/// happen, and the collection name will not be checked
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
-                                                   TRI_col_type_e type) {
-  bool found;
-  std::string const& valueStr = _request->value("createCollection", found);
-
-  if (!found) {
-    // "createCollection" parameter not specified
-    return true;
-  }
-
-  if (!StringUtils::boolean(valueStr)) {
-    // "createCollection" parameter specified, but with non-true value
-    return true;
-  }
-
-  if (ServerState::instance()->isCoordinator() ||
-      ServerState::instance()->isDBServer()) {
-    // create-collection is not supported in a cluster
-    generateTransactionError(name, TRI_ERROR_CLUSTER_UNSUPPORTED, "");
-    return false;
-  }
-
-  TRI_vocbase_col_t* collection =
-      TRI_FindCollectionByNameOrCreateVocBase(_vocbase, name, type);
-
-  if (collection == nullptr) {
-    generateTransactionError(name, TRI_errno(), "");
-    return false;
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a HTTP 20x response
 ////////////////////////////////////////////////////////////////////////////////
 

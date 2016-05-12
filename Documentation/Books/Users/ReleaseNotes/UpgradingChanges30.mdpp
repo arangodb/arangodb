@@ -321,6 +321,10 @@ ids will now make the edge ids unique before returning the connected edges. This
 desired anyway, as results will be returned only once per distinct input edge id. However, 
 it may break client applications that rely on the old behavior.
 
+!SUBSECTION Databases API
+
+`_listDatabases()` has been renamed to `_databases()` (making it consistent with `_collections()`)
+
 !SUBSECTION Collection API
 
 !SUBSUBSECTION Example matching
@@ -409,6 +413,7 @@ not support the URL parameter "createCollection" anymore. In previous versions o
 ArangoDB this parameter could be used to automatically create a collection upon 
 insertion of the first document. It is now required that the target collection already
 exists when using this API, otherwise it will return an HTTP 404 error.
+The same is true for the import API at POST `/_api/import`.
 
 Collections can still be created easily via a separate call to POST `/_api/collection`
 as before.
@@ -637,6 +642,8 @@ in 3.0:
   `--server.authentication-unix-sockets`. Note that the meaning of the option 
   `--server.authentication-unix-sockets` is the opposite of the previous 
   `--server.disable-authentication-unix-sockets`.
+- `--server.authenticate-system-only` was renamed to `--server.authentication-system-only`.
+  The meaning of the option in unchanged.
 - `--server.disable-statistics` was renamed to `--server.statistics`. Note that the
   meaning of the option `--server.statistics` is the opposite of the previous
   `--server.disable-statistics`.

@@ -43,25 +43,28 @@ class ArrayIterator {
   ArrayIterator() = delete;
 
   ArrayIterator(Slice const& slice, bool allowRandomIteration = false)
-      : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr) {
+      : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr), 
+        _allowRandomIteration(allowRandomIteration) {
     if (slice.type() != ValueType::Array) {
       throw Exception(Exception::InvalidValueType, "Expecting Array slice");
     }
    
-    reset(allowRandomIteration);   
+    reset();   
   }
 
   ArrayIterator(ArrayIterator const& other)
       : _slice(other._slice),
         _size(other._size),
         _position(other._position),
-        _current(other._current) {}
+        _current(other._current),
+        _allowRandomIteration(other._allowRandomIteration) {}
 
   ArrayIterator& operator=(ArrayIterator const& other) {
     _slice = other._slice;
     _size = other._size;
     _position = other._position;
     _current = other._current;
+    _allowRandomIteration = other._allowRandomIteration;
     return *this;
   }
 
@@ -94,18 +97,18 @@ class ArrayIterator {
     return _slice.at(_position);
   }
 
-  ArrayIterator begin() { return ArrayIterator(_slice); }
+  ArrayIterator begin() { return ArrayIterator(_slice, _allowRandomIteration); }
 
-  ArrayIterator begin() const { return ArrayIterator(_slice); }
+  ArrayIterator begin() const { return ArrayIterator(_slice, _allowRandomIteration); }
 
   ArrayIterator end() {
-    auto it = ArrayIterator(_slice);
+    auto it = ArrayIterator(_slice, _allowRandomIteration);
     it._position = it._size;
     return it;
   }
 
   ArrayIterator end() const {
-    auto it = ArrayIterator(_slice);
+    auto it = ArrayIterator(_slice, _allowRandomIteration);
     it._position = it._size;
     return it;
   }
@@ -151,14 +154,14 @@ class ArrayIterator {
     }
   }
     
-  inline void reset(bool allowRandomIteration) {
+  inline void reset() {
     _position = 0;
     _current = nullptr;
     if (_size > 0) {
       auto h = _slice.head();
       if (h == 0x13) {
         _current = _slice.at(0).start();
-      } else if (allowRandomIteration) {
+      } else if (_allowRandomIteration) {
         _current = _slice.begin() + _slice.findDataOffset(h);
       }
     }
@@ -169,6 +172,7 @@ class ArrayIterator {
   ValueLength _size;
   ValueLength _position;
   uint8_t const* _current;
+  bool _allowRandomIteration;
 };
 
 class ObjectIterator {
@@ -182,7 +186,8 @@ class ObjectIterator {
   ObjectIterator() = delete;
 
   ObjectIterator(Slice const& slice, bool allowRandomIteration = false)
-      : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr) {
+      : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr),
+        _allowRandomIteration(allowRandomIteration) {
     if (slice.type() != ValueType::Object) {
       throw Exception(Exception::InvalidValueType, "Expecting Object slice");
     }
@@ -201,13 +206,15 @@ class ObjectIterator {
       : _slice(other._slice),
         _size(other._size),
         _position(other._position),
-        _current(other._current) {}
+        _current(other._current),
+        _allowRandomIteration(other._allowRandomIteration) {}
 
   ObjectIterator& operator=(ObjectIterator const& other) {
     _slice = other._slice;
     _size = other._size;
     _position = other._position;
     _current = other._current;
+    _allowRandomIteration = other._allowRandomIteration;
     return *this;
   }
 
@@ -244,18 +251,18 @@ class ObjectIterator {
     return ObjectPair(_slice.getNthKey(_position, true), _slice.getNthValue(_position));
   }
 
-  ObjectIterator begin() { return ObjectIterator(_slice); }
+  ObjectIterator begin() { return ObjectIterator(_slice, _allowRandomIteration); }
 
-  ObjectIterator begin() const { return ObjectIterator(_slice); }
+  ObjectIterator begin() const { return ObjectIterator(_slice, _allowRandomIteration); }
 
   ObjectIterator end() {
-    auto it = ObjectIterator(_slice);
+    auto it = ObjectIterator(_slice, _allowRandomIteration);
     it._position = it._size;
     return it;
   }
 
   ObjectIterator end() const {
-    auto it = ObjectIterator(_slice);
+    auto it = ObjectIterator(_slice, _allowRandomIteration);
     it._position = it._size;
     return it;
   }
@@ -301,6 +308,7 @@ class ObjectIterator {
   ValueLength _size;
   ValueLength _position;
   uint8_t const* _current;
+  bool _allowRandomIteration;
 };
 
 }  // namespace arangodb::velocypack

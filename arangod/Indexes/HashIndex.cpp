@@ -138,7 +138,7 @@ TRI_doc_mptr_t* HashIndexIterator::next() {
 void HashIndexIterator::reset() {
   _buffer.clear();
   _posInBuffer = 0;
-  _iterator.reset(true);
+  _iterator.reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

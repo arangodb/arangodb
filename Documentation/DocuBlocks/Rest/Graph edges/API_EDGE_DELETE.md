@@ -2,7 +2,7 @@
 @startDocuBlock API_EDGE_DELETE
 @brief deletes an edge
 
-@RESTHEADER{DELETE /_api/edge/{document-handle}, Deletes edge}
+@RESTHEADER{DELETE /_api/document/{document-handle}, Deletes edge}
 
 @RESTURLPARAMETERS
 

@@ -76,14 +76,12 @@ struct Option {
 
   // print help for an option
   // the special search string "." will show help for all sections, even if hidden
-  void printHelp(std::string const& search, size_t tw, size_t ow) const {
+  void printHelp(std::string const& search, size_t tw, size_t ow, bool) const {
     if (search == "." || !hidden) {
       std::cout << "  " << pad(nameWithType(), ow) << "   ";
 
       std::string value = description;
-      if (parameter->requiresValue()) {
-        value += " (default: " + parameter->valueString() + ")";
-      }
+      value += " (default: " + parameter->valueString() + ")";
       auto parts = wordwrap(value, tw - ow - 6);
       size_t const n = parts.size();
       for (size_t i = 0; i < n; ++i) {

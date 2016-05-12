@@ -319,6 +319,7 @@ function computeStatisticsShort (start, clusterId) {
 
   computeStatisticsRaw(result, start, clusterId);
   computeStatisticsRaw15M(result, start, clusterId);
+  result.enabled = internal.enabledStatistics();
 
   return result;
 }

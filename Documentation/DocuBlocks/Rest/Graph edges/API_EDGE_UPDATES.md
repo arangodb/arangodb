@@ -2,7 +2,7 @@
 @startDocuBlock API_EDGE_UPDATES
 @brief updates an edge
 
-@RESTHEADER{PATCH /_api/edge/{document-handle}, Patches edge}
+@RESTHEADER{PATCH /_api/document/{document-handle}, Patches edge}
 
 @RESTALLBODYPARAM{document,json,required}
 A JSON representation of the edge update.

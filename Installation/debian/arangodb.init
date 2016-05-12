@@ -111,7 +111,7 @@ case "$1" in
     ;;
 
   *)
-    log_success_msg "Usage: /etc/init.d/arangodb {start|stop|restart|force-reload|status|upgrade}"
+    log_success_msg "Usage: /etc/init.d/arangodb3 {start|stop|restart|force-reload|status|upgrade}"
     exit 1
     ;;
 esac

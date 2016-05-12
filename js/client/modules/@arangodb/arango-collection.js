@@ -168,11 +168,12 @@ ArangoCollection.prototype._baseurl = function (suffix) {
 
 ArangoCollection.prototype._documenturl = function (id) {
   var s = id.split("/"), url;
+  var name = this.name();
   if (s.length === 1) {
-    url = this._database._documenturl(this.name() + "/" + id, this.name());
+    url = this._database._documenturl(name + "/" + id, name);
   }
   else {
-    url = this._database._documenturl(id, this.name());
+    url = this._database._documenturl(id, name);
   }
 
   return this._prefixurl(url);

@@ -232,7 +232,7 @@ char* TRI_EscapeUtf8String(TRI_memory_zone_t*, char const* in, size_t inLength,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_UnescapeUtf8String(TRI_memory_zone_t*, char const* in,
-                             size_t inLength, size_t* outLength);
+                             size_t inLength, size_t* outLength, bool normalize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the number of characters in a UTF-8 string

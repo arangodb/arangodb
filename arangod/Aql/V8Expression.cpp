@@ -26,11 +26,13 @@
 #include "Aql/Executor.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
-#include "Basics/json.h"
-#include "Basics/json-utilities.h"
+#include "Basics/VelocyPackHelper.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -139,26 +141,32 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
   }
 
   // no exception was thrown if we get here
-  VPackBuilder builder;
 
   if (result->IsUndefined()) {
     // expression does not have any (defined) value. replace with null
-    builder.add(VPackValue(VPackValueType::Null));
+    mustDestroy = false;
+    return AqlValue(basics::VelocyPackHelper::NullValue());
+  } 
+  
+  // expression had a result. convert it to JSON
+  if (_builder == nullptr) {
+    _builder.reset(new VPackBuilder);
   } else {
-    // expression had a result. convert it to JSON
-    int res;
-    if (_isSimple) {
-      res = TRI_V8ToVPackSimple(isolate, builder, result);
-    } else {
-      res = TRI_V8ToVPack(isolate, builder, result, false);
-    }
+    _builder->clear();
+  }
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
+  int res;
+  if (_isSimple) {
+    res = TRI_V8ToVPackSimple(isolate, *_builder.get(), result);
+  } else {
+    res = TRI_V8ToVPack(isolate, *_builder.get(), result, false);
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   mustDestroy = true; // builder = dynamic data
-  return AqlValue(builder);
+  return AqlValue(_builder.get());
 }
 

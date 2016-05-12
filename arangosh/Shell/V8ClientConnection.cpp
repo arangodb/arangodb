@@ -1359,7 +1359,6 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Isolate* isolate, GeneralRequest::RequestType method,
     std::string const& location, std::string const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
-  v8::EscapableHandleScope scope(isolate);
 
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
@@ -1371,6 +1370,8 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
     _httpResult.reset(_client->request(method, location, body.c_str(),
                                        body.size(), headerFields));
   }
+    
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   if (!_httpResult->isComplete()) {
     // not complete
@@ -1380,13 +1381,12 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
       _lastErrorMessage = "Unknown error";
     }
 
-    _lastHttpReturnCode = (int)GeneralResponse::ResponseCode::SERVER_ERROR;
+    _lastHttpReturnCode = static_cast<int>(GeneralResponse::ResponseCode::SERVER_ERROR);
 
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
     result->ForceSet(
         TRI_V8_ASCII_STRING("code"),
         v8::Integer::New(isolate,
-                         (int)GeneralResponse::ResponseCode::SERVER_ERROR));
+                         static_cast<int>(GeneralResponse::ResponseCode::SERVER_ERROR)));
 
     int errorNumber = 0;
 
@@ -1413,7 +1413,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
     result->ForceSet(TRI_V8_ASCII_STRING("errorMessage"),
                      TRI_V8_STD_STRING(_lastErrorMessage));
 
-    return scope.Escape<v8::Value>(result);
+    return result;
   }
 
   // complete
@@ -1421,8 +1421,6 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   _lastHttpReturnCode = _httpResult->getHttpReturnCode();
 
   // create raw response
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
   result->ForceSet(TRI_V8_ASCII_STRING("code"),
                    v8::Integer::New(isolate, _lastHttpReturnCode));
 
@@ -1462,14 +1460,12 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   result->ForceSet(TRI_V8_ASCII_STRING("headers"), headers);
 
   // and returns
-  return scope.Escape<v8::Value>(result);
+  return result;
 }
 
 v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
-  v8::EscapableHandleScope scope(isolate);
-
   if (_httpResult.get() == nullptr) {
-    return scope.Escape<v8::Value>(v8::Undefined(isolate));
+    return v8::Undefined(isolate);
   }
 
   // not complete
@@ -1515,7 +1511,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
     result->ForceSet(TRI_V8_ASCII_STRING("errorMessage"),
                      TRI_V8_STD_STRING(_lastErrorMessage));
 
-    return scope.Escape<v8::Value>(result);
+    return result;
   }
 
   // complete
@@ -1529,12 +1525,11 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
 
     if (_httpResult->isJson()) {
       // TODO: check if we can use the VPack parser here...
-      return scope.Escape<v8::Value>(
-          TRI_FromJsonString(isolate, sb.c_str(), nullptr));
+      return TRI_FromJsonString(isolate, sb.c_str(), nullptr);
     }
 
     // return body as string
-    return scope.Escape<v8::Value>(TRI_V8_STD_STRING(sb));
+    return TRI_V8_STD_STRING(sb);
   }
 
   // no body
@@ -1558,7 +1553,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
                      v8::Boolean::New(isolate, false));
   }
 
-  return scope.Escape<v8::Value>(result);
+  return result;
 }
 
 void V8ClientConnection::initServer(v8::Isolate* isolate,

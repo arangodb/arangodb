@@ -120,6 +120,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
                              false, true, true, &Functions::IsObject)},
     {"IS_DATESTRING", Function("IS_DATESTRING", "AQL_IS_DATESTRING", ".", true,
                                true, false, true, true)},
+    {"TYPENAME", Function("TYPENAME", "AQL_TYPENAME", ".", true,
+                               true, false, true, true)},
 
     // type cast functions
     {"TO_NUMBER", Function("TO_NUMBER", "AQL_TO_NUMBER", ".", true, true, false,
@@ -173,6 +175,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
                      &Functions::Md5)},
     {"SHA1", Function("SHA1", "AQL_SHA1", "s", true, true, false, true, true,
                       &Functions::Sha1)},
+    {"HASH", Function("HASH", "AQL_HASH", ".", true, true, false, true, true,
+                      &Functions::Hash)},
     {"RANDOM_TOKEN", Function("RANDOM_TOKEN", "AQL_RANDOM_TOKEN", "n", false,
                               false, true, true, true)},
 
@@ -481,9 +485,6 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
 /// @brief minimum number of array members / object attributes for considering
 /// an array / object literal "big" and pulling it out of the expression
 size_t const Executor::DefaultLiteralSizeThreshold = 32;
-
-/// @brief maxmium number of array members created from range accesses
-int64_t const Executor::MaxRangeAccessArraySize = 1024 * 1024 * 32;
 
 /// @brief creates an executor
 Executor::Executor(int64_t literalSizeThreshold)

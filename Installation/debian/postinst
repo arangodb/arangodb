@@ -11,19 +11,13 @@ ArangoDB 3 (http://www.arangodb.org)
 First Steps with ArangoDB:
   http:/www.arangodb.org/quickstart
 
-Upgrading ArangoDB:
-  http://www.arangodb.org/manuals/current/Upgrading.html
-
-Upgrading ArangoDB database files:
-  > /etc/init.d/arangodb upgrade
-
 Configuration file:
-  /etc/arangodb/arangod.conf
+  /etc/arangodb3/arangod.conf
 
 Start ArangoDB shell client:
   > /usr/bin/arangosh
 
 Start ArangoDB service:
-  > /etc/init.d/arangodb start
+  > /etc/init.d/arangodb3 start
 "
 

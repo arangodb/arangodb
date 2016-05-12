@@ -884,7 +884,7 @@ AqlValue Functions::IsNull(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isNull(true)));
+  return AqlValue(a.isNull(true));
 }
 
 /// @brief function IS_BOOL
@@ -892,7 +892,7 @@ AqlValue Functions::IsBool(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isBoolean()));
+  return AqlValue(a.isBoolean());
 }
 
 /// @brief function IS_NUMBER
@@ -900,7 +900,7 @@ AqlValue Functions::IsNumber(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isNumber()));
+  return AqlValue(a.isNumber());
 }
 
 /// @brief function IS_STRING
@@ -908,7 +908,7 @@ AqlValue Functions::IsString(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isString()));
+  return AqlValue(a.isString());
 }
 
 /// @brief function IS_ARRAY
@@ -916,7 +916,7 @@ AqlValue Functions::IsArray(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isArray()));
+  return AqlValue(a.isArray());
 }
 
 /// @brief function IS_OBJECT
@@ -924,7 +924,31 @@ AqlValue Functions::IsObject(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isObject()));
+  return AqlValue(a.isObject());
+}
+
+/// @brief function TYPENAME
+AqlValue Functions::Typename(arangodb::aql::Query* query,
+                             arangodb::AqlTransaction* trx,
+                             VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (value.isObject()) {
+    return AqlValue(TRI_CHAR_LENGTH_PAIR("object"));
+  }
+  if (value.isArray()) {
+    return AqlValue(TRI_CHAR_LENGTH_PAIR("array"));
+  }
+  if (value.isString()) {
+    return AqlValue(TRI_CHAR_LENGTH_PAIR("string"));
+  }
+  if (value.isNumber()) {
+    return AqlValue(TRI_CHAR_LENGTH_PAIR("number"));
+  }
+  if (value.isBoolean()) {
+    return AqlValue(TRI_CHAR_LENGTH_PAIR("bool"));
+  }
+  return AqlValue(TRI_CHAR_LENGTH_PAIR("null"));
 }
 
 /// @brief function TO_NUMBER
@@ -968,7 +992,7 @@ AqlValue Functions::ToBool(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.toBoolean()));
+  return AqlValue(a.toBoolean());
 }
 
 /// @brief function TO_ARRAY
@@ -1639,9 +1663,7 @@ AqlValue Functions::Md5(arangodb::aql::Query* query,
 
   arangodb::rest::SslInterface::sslHEX(hash, 16, p, length);
 
-  TransactionBuilderLeaser builder(trx);
-  builder->add(VPackValue(std::string(hex, 32)));
-  return AqlValue(builder.get());
+  return AqlValue(std::string(hex, 32));
 }
 
 /// @brief function SHA1
@@ -1669,8 +1691,21 @@ AqlValue Functions::Sha1(arangodb::aql::Query* query,
 
   arangodb::rest::SslInterface::sslHEX(hash, 20, p, length);
 
+  return AqlValue(std::string(hex, 40));
+}
+
+/// @brief function HASH
+AqlValue Functions::Hash(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  // throw away the top bytes so the hash value can safely be used
+  // without precision loss when storing in JavaScript etc.
+  uint64_t hash = value.hash(trx) & 0x0007ffffffffffffULL;
+
   TransactionBuilderLeaser builder(trx);
-  builder->add(VPackValue(std::string(hex, 40)));
+  builder->add(VPackValue(hash));
   return AqlValue(builder.get());
 }
 
