@@ -251,7 +251,7 @@ void EdgeIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& buffer, size_t 
 void EdgeIndexIterator::reset() {
   _posInBuffer = 0;
   _buffer.clear();
-  _iterator.reset(true);
+  _iterator.reset();
 }
 
 TRI_doc_mptr_t* AnyDirectionEdgeIndexIterator::next() {

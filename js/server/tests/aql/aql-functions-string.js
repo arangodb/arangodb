@@ -1387,22 +1387,23 @@ function ahuacatlStringFunctionsTestSuite () {
         assertEqual([ 1032992608692014 ], getQueryResults(buildQuery(i, "[1,2,3,2,1]")));
         assertEqual([ 2051766968908771 ], getQueryResults(buildQuery(i, "1..1000")));
         assertEqual([ 1954991255293719 ], getQueryResults(buildQuery(i, "{}")));
-        assertEqual([ 1270059518310386 ], getQueryResults(buildQuery(i, "{a:1}")));
-        assertEqual([ 1462532781001381 ], getQueryResults(buildQuery(i, "{a:2}")));
-        assertEqual([ 1872109801523384 ], getQueryResults(buildQuery(i, "{a:1,b:1}")));
-        assertEqual([ 599770551193312 ], getQueryResults(buildQuery(i, "{a:1,b:2}")));
-        assertEqual([ 1872109801523384 ], getQueryResults(buildQuery(i, "{b:1,a:1}")));
-        assertEqual([ 599770551193312 ], getQueryResults(buildQuery(i, "{b:2,a:1}")));
-        assertEqual([ 876136767628139 ], getQueryResults(buildQuery(i, "{b:1,a:2}")));
-        assertEqual([ 876136767628139 ], getQueryResults(buildQuery(i, "{a:2,b:1}")));
-        assertEqual([ 92631926086363 ], getQueryResults(buildQuery(i, "{a:2,b:'1'}")));
-        assertEqual([ 2054068497715740 ], getQueryResults(buildQuery(i, "{a:2,b:null}")));
-        assertEqual([ 550542031834779 ], getQueryResults(buildQuery(i, "{A:1,B:2}")));
-        assertEqual([ 2125993103279620 ], getQueryResults(buildQuery(i, "{a:'A',b:'B'}")));
-        assertEqual([ 878459260153284 ], getQueryResults(buildQuery(i, "{a:'a',b:'b'}")));
-        assertEqual([ 1454594333033579 ], getQueryResults(buildQuery(i, "{a:['a'],b:['b']}")));
-        assertEqual([ 296899533959594 ], getQueryResults(buildQuery(i, "{a:1,b:-1}")));
-        assertEqual([ 944398530367049 ], getQueryResults(buildQuery(i, "{_id:'foo',_key:'bar',_rev:'baz'}")));
+        assertEqual([ 1294634865089389 ], getQueryResults(buildQuery(i, "{a:1}")));
+        assertEqual([ 1451630758438458 ], getQueryResults(buildQuery(i, "{a:2}")));
+        assertEqual([ 402003666669761 ], getQueryResults(buildQuery(i, "{a:1,b:1}")));
+        assertEqual([ 529935412783457 ], getQueryResults(buildQuery(i, "{a:1,b:2}")));
+        assertEqual([ 402003666669761 ], getQueryResults(buildQuery(i, "{b:1,a:1}")));
+        assertEqual([ 529935412783457 ], getQueryResults(buildQuery(i, "{b:2,a:1}")));
+        assertEqual([ 1363279506864914 ], getQueryResults(buildQuery(i, "{b:1,a:2}")));
+        assertEqual([ 1363279506864914 ], getQueryResults(buildQuery(i, "{a:2,b:1}")));
+        assertEqual([ 1685918180496814 ], getQueryResults(buildQuery(i, "{a:2,b:'1'}")));
+        assertEqual([ 874128984798182 ], getQueryResults(buildQuery(i, "{a:2,b:null}")));
+        assertEqual([ 991653416476703 ], getQueryResults(buildQuery(i, "{A:1,B:2}")));
+        assertEqual([ 502569457877206 ], getQueryResults(buildQuery(i, "{a:'A',b:'B'}")));
+        assertEqual([ 1154380811055928 ], getQueryResults(buildQuery(i, "{a:'a',b:'b'}")));
+        assertEqual([ 416732334603048 ], getQueryResults(buildQuery(i, "{a:['a'],b:['b']}")));
+        assertEqual([ 176300349653218 ], getQueryResults(buildQuery(i, "{a:1,b:-1}")));
+        assertEqual([ 1460607510107728 ], getQueryResults(buildQuery(i, "{_id:'foo',_key:'bar',_rev:'baz'}")));
+        assertEqual([ 1271501175803754 ], getQueryResults(buildQuery(i, "{_id:'foo',_key:'bar',_rev:'baz',bar:'bark'}")));
       }
       
       for (i = 0; i < 3; ++i) {

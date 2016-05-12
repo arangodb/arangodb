@@ -433,8 +433,9 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
     uint64_t seed2 = VELOCYPACK_HASH(&n, sizeof(n), seed);
     value = seed2;
     for (auto const& it : ObjectIterator(*this, true)) {
-      seed2 = it.key.normalizedHash(seed2);
-      value ^= it.value.normalizedHash(seed2);
+      uint64_t seed3 = it.key.makeKey().normalizedHash(seed2);
+      value ^= seed3;
+      value ^= it.value.normalizedHash(seed3);
     }
   } else {
     // fall back to regular hash function
