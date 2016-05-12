@@ -322,7 +322,7 @@ bool State::find (arangodb::consensus::index_t prevIndex, term_t prevTerm) {
 
 bool State::compact (arangodb::consensus::index_t cind) {
 
-  bool saved = persistSpearhead(cind);
+  bool saved = true;//persistSpearhead(cind);
 
   if (saved) {
     compactPersistedState(cind);
@@ -333,10 +333,13 @@ bool State::compact (arangodb::consensus::index_t cind) {
   }
 
 }
-
+#warning <iostream>
+#include <iostream>
 bool State::compactVolatileState (arangodb::consensus::index_t cind) {
+  std::cout << cind << std::endl;
   _log.erase(_log.begin(), _log.begin()+_compaction_step-1);
   _cur = _log.begin()->index;
+  std::cout << _cur << std::endl;
   return true;
 }
 
@@ -346,9 +349,13 @@ bool State::compactPersistedState (arangodb::consensus::index_t cind) {
   bindVars->openObject();
   bindVars->close();
   
+  std::stringstream i_str;
+  i_str << std::setw(20) << std::setfill('0') << cind;
+  
   std::string const aql(
     std::string(
-      "FOR l IN log FILTER u._key < 'deleted' REMOVE l IN log"));
+      "FOR l IN log FILTER l._key < ") + i_str.str() + "REMOVE l IN log");
+  
   arangodb::aql::Query query(false, _vocbase,
                              aql.c_str(), aql.size(), bindVars, nullptr,
                              arangodb::aql::PART_MAIN);

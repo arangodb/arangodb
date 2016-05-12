@@ -206,8 +206,8 @@ std::vector<check_t> Supervision::checkDBServers () {
         if (t.count() > _gracePeriod) {               // Failure
           if (it->second->maintenance() == 0) {
             it->second->maintenance(TRI_NewTickServer());
-            Job<FAILED_DBSERVER> jfl(_snapshot, _agent, it->second->maintenance(),
-                                   serverID);
+            Job<FAILED_DBSERVER> jfl(_snapshot, _agent,
+                                     it->second->maintenance(), serverID);
           }
         }
 
@@ -266,14 +266,22 @@ void Supervision::run() {
 
   while (!this->isStopping()) {
     
-    doChecks(timedout);
-
     if (_agent->leading()) {
       timedout = _cv.wait(_frequency*1000000);//quarter second
     } else {
       _cv.wait();
     }
+
+    if (_jobId == 0 || _jobId==_jobIdMax) {
+      if (!getUniqueIds()) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Cannot get unique IDs from Agency. Stopping supervision for good.";
+        break;
+      }
+    }
     
+    doChecks(timedout);
+  
   }
   
 }
@@ -286,19 +294,26 @@ bool Supervision::start () {
 
 // Start thread with agent
 bool Supervision::start (Agent* agent) {
+
   _agent = agent;
   _frequency = static_cast<long>(_agent->config().supervisionFrequency);
   _snapshot = _agent->readDB().get("/");
 
-  getUniqueIds();
   updateFromAgency();
-  
+
   return start();
 }
 
-void Supervision::getUniqueIds () {
+bool Supervision::getUniqueIds () {
 
-  uint64_t latestId = _snapshot("/arango/Sync/LatestID").slice().getUInt();
+  uint64_t latestId;
+
+  try {
+    latestId = _snapshot("/arango/Sync/LatestID").slice().getUInt();
+  } catch (std::exception const& e) {
+    return false;
+  }
+
   bool success = false;
 
   while (!success) {
@@ -322,6 +337,8 @@ void Supervision::getUniqueIds () {
     latestId = _agent->readDB().get("/arango/Sync/LatestID").slice().getUInt();
 
   }
+
+  return success;
   
 }
 

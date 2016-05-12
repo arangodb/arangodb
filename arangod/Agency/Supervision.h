@@ -139,7 +139,7 @@ private:
   std::vector<check_t> checkShards ();
 
   /// @brief Get unique ids from agency
-  void getUniqueIds ();
+  bool getUniqueIds ();
 
   /// @brief Update local cache from agency
   void updateFromAgency ();
