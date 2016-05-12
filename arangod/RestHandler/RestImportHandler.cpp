@@ -117,23 +117,6 @@ HttpHandler::status_t RestImportHandler::execute() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the collection type from the request
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_col_type_e RestImportHandler::getCollectionType() {
-  // extract the collection type from the request
-  bool found;
-  std::string const& collectionType =
-      _request->value("createCollectionType", found);
-
-  if (found && !collectionType.empty() && collectionType == "edge") {
-    return TRI_COL_TYPE_EDGE;
-  }
-
-  return TRI_COL_TYPE_DOCUMENT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a position string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -355,10 +338,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     return false;
   }
 
-  if (!checkCreateCollection(collectionName, getCollectionType())) {
-    return false;
-  }
-
   bool linewise;
 
   if (type == "documents") {
@@ -524,7 +503,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       VPackSlice const slice = documents.at(i);
 
       res = handleSingleDocument(trx, result, tempBuilder, nullptr, slice, collectionName,
-                                 isEdgeCollection, opOptions, i + 1);
+                                 isEdgeCollection, opOptions, static_cast<size_t>(i + 1));
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
@@ -585,10 +564,6 @@ bool RestImportHandler::createFromKeyValueList() {
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
-    return false;
-  }
-
-  if (!checkCreateCollection(collectionName, getCollectionType())) {
     return false;
   }
 
@@ -779,7 +754,7 @@ void RestImportHandler::generateDocumentsCreated(
     RestImportResult const& result) {
   // TODO: is it necessary to create a response object here already
   createResponse(GeneralResponse::ResponseCode::CREATED);
-  _response->setContentType(StaticStrings::MimeTypeJson);
+  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
   try {
     VPackBuilder json;

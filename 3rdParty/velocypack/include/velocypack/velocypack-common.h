@@ -82,7 +82,7 @@ bool assemblerFunctionsDisabled();
 std::size_t checkOverflow(ValueLength);
 #else
 // on a 64 bit platform, the following function is probably a no-op
-static inline std::size_t checkOverflow(ValueLength length) {
+static constexpr std::size_t checkOverflow(ValueLength length) {
   return static_cast<std::size_t>(length);
 }
 #endif

@@ -741,7 +741,7 @@ bool RocksDBIndex::supportsFilterCondition(
   }
 
   if (attributesCovered > 0 &&
-      (!_sparse || (_sparse && attributesCovered == _fields.size()))) {
+      (!_sparse || attributesCovered == _fields.size())) {
     // if the condition contains at least one index attribute and is not sparse,
     // or the index is sparse and all attributes are covered by the condition,
     // then it can be used (note: additional checks for condition parts in

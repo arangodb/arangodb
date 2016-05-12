@@ -457,7 +457,7 @@ class AssocMulti {
             }
 
             // we're responsible for this bucket!
-            Bucket& b = _buckets[bucketId];
+            Bucket& b = _buckets[static_cast<size_t>(bucketId)];
 
             for (auto const& it2 : it.second) {
               for (auto const& it3 : it2) {

@@ -43,6 +43,7 @@ SimpleHttpResult::SimpleHttpResult()
       _contentLength(0),
       _returnCode(0),
       _foundHeader(false),
+      _isJson(false),
       _hasContentLength(false),
       _chunked(false),
       _deflated(false),
@@ -183,6 +184,16 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
           (value[6] == 'e' || value[6] == 'E')) {
         _deflated = true;
       }
+    } else if (keyLength == strlen("content-type") &&
+               keyString == "content-type") {
+      size_t const length = strlen("application/json");
+
+      if (valueLength >= length && memcmp(value, "application/json", length) == 0) {
+        // content-type is JSON
+        char const* ptr = value + length;
+        // but only if not followed by anything unexpected
+        _isJson = (*ptr == '\0' || *ptr == ';' || *ptr == ' ' || *ptr == '\r');
+      }
     }
   }
 
@@ -211,7 +222,7 @@ std::string SimpleHttpResult::getHeaderField(std::string const& name,
 
   if (find == _headerFields.end()) {
     found = false;
-    return std::string("");
+    return StaticStrings::Empty;
   }
 
   found = true;
@@ -222,23 +233,5 @@ bool SimpleHttpResult::hasHeaderField(std::string const& name) const {
   return _headerFields.find(name) != _headerFields.end();
 }
 
-bool SimpleHttpResult::isJson() const {
-  auto const& find = _headerFields.find(StaticStrings::ContentTypeHeader);
-
-  if (find == _headerFields.end()) {
-    return false;
-  }
-
-  // header found
-  // return partial match before first semicolon
-  size_t const length = strlen("application/json");
-
-  if (strncmp(find->second.c_str(), "application/json", length) != 0) {
-    return false;
-  }
-
-  char const* ptr = find->second.c_str() + length;
-  return (*ptr == '\0' || *ptr == ';' || *ptr == ' ');
-}
 }
 }

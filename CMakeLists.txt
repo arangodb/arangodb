@@ -10,6 +10,10 @@ if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
 endif ()
 
+if (POLICY CMP0017)
+  cmake_policy(SET CMP0017 NEW)
+endif ()
+
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
 if (WIN32)
@@ -146,11 +150,15 @@ endif ()
 
 option(USE_ROCKSDB
   "whether RocksDB is enabled"
-  OFF
+  ON
 )
 
 if (USE_ROCKSDB)
   add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
+  add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+  include_directories(${ROCKSDB_INCLUDE_DIR})
+else ()
+  set(ROCKSDB_LIBS "")
 endif ()
 
 ################################################################################
@@ -161,13 +169,6 @@ if (SOLARIS)
   set(MAKE gmake)
 else ()
   set(MAKE make)
-endif ()
-
-if (USE_ROCKSDB)
-  find_package(Snappy)
-else ()
-  set(SNAPPY_STATIC_LIB "")
-  set(ROCKSDB_LIBS "")
 endif ()
 
 find_package(PythonInterp 2 REQUIRED)
@@ -399,7 +400,8 @@ endif ()
 ## JEMALLOC
 ################################################################################
 
-set(JEMALLOC_DEFAULT_VALUE ON)
+find_package(jemalloc)
+set(JEMALLOC_DEFAULT_VALUE ${JEMALLOC_FOUND})
 
 if (WINDOWS OR SOLARIS OR USE_TCMALLOC)
   set(JEMALLOC_DEFAULT_VALUE OFF)
@@ -411,15 +413,11 @@ option(USE_JEMALLOC
 )
 
 if (USE_JEMALLOC)
-  find_package(jemalloc)
-
-  if (JEMALLOC_FOUND)
-    add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
-    set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
-    message(STATUS "Found JEMALLOC")
-  else ()
-    message(STATUS "Missing JEMALLOC")
+  if (NOT JEMALLOC_FOUND)
+    message(FATAL_ERROR "jemalloc build was requested but jemalloc not found")
   endif ()
+  add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
 endif ()
 
 ################################################################################
@@ -672,15 +670,6 @@ endif ()
 
 include_directories(${Boost_INCLUDE_DIR})
 add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
-
-################################################################################
-## ROCKSDB
-################################################################################
-
-if (USE_ROCKSDB)
-include_directories(${ROCKSDB_INCLUDE_DIR})
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
-endif ()
 
 ################################################################################
 ## ICU

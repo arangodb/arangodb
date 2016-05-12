@@ -66,7 +66,7 @@ static bool BinarySearch(std::vector<void const*> const& markers,
 
     TRI_ASSERT(position < markers.size());
     VPackSlice const otherSlice(reinterpret_cast<char const*>(markers.at(position)));
-    VPackSlice const otherKey = otherSlice.get(TRI_VOC_ATTRIBUTE_KEY);
+    VPackSlice const otherKey = otherSlice.get(StaticStrings::KeyString);
 
     int res = key.compare(otherKey.copyString());
 
@@ -539,12 +539,12 @@ int InitialSyncer::applyCollectionDump(
     }
       
     if (!doc.isNone()) {
-      VPackSlice value = doc.get(TRI_VOC_ATTRIBUTE_KEY);
+      VPackSlice value = doc.get(StaticStrings::KeyString);
       if (value.isString()) {
         key = value.copyString();
       }
       
-      value = doc.get(TRI_VOC_ATTRIBUTE_REV);
+      value = doc.get(StaticStrings::RevString);
       
       if (value.isString()) {
         rev = value.copyString();
@@ -562,9 +562,9 @@ int InitialSyncer::applyCollectionDump(
 
     VPackBuilder oldBuilder;
     oldBuilder.openObject();
-    oldBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+    oldBuilder.add(StaticStrings::KeyString, VPackValue(key));
     if (!rev.empty()) {
-      oldBuilder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
+      oldBuilder.add(StaticStrings::RevString, VPackValue(rev));
     }
     oldBuilder.close();
 
@@ -671,10 +671,7 @@ int InitialSyncer::handleCollectionDump(
     // use async mode for first batch
     if (batch == 1) {
       bool found = false;
-      std::string jobId = response->getHeaderField("X-Arango-Async-Id", found);
-      if (!found) {
-        jobId = response->getHeaderField("x-arango-async-id", found);
-      }
+      std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
 
       if (!found) {
         errorMsg = "got invalid response from master at " +
@@ -865,10 +862,7 @@ int InitialSyncer::handleCollectionSync(
   }
 
   bool found = false;
-  std::string jobId = response->getHeaderField("X-Arango-Async-Id", found);
-  if (!found) {
-    jobId = response->getHeaderField("x-arango-async-id", found);
-  }
+  std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
 
   if (!found) {
     errorMsg = "got invalid response from master at " +
@@ -1109,10 +1103,10 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
           VPackSlice const r(reinterpret_cast<char const*>(rhs));
 
           VPackValueLength lLength, rLength;
-          char const* lKey = l.get(TRI_VOC_ATTRIBUTE_KEY).getString(lLength);
-          char const* rKey = r.get(TRI_VOC_ATTRIBUTE_KEY).getString(rLength);
+          char const* lKey = l.get(StaticStrings::KeyString).getString(lLength);
+          char const* rKey = r.get(StaticStrings::KeyString).getString(rLength);
 
-          size_t const length = (lLength < rLength ? lLength : rLength);
+          size_t const length = static_cast<size_t>(lLength < rLength ? lLength : rLength);
           int res = memcmp(lKey, rKey, length);
 
           if (res < 0) {
@@ -1194,7 +1188,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
   options.isRestore = true;
 
   VPackBuilder keyBuilder;
-  size_t const n = slice.length();
+  size_t const n = static_cast<size_t>(slice.length());
 
   // remove all keys that are below first remote key or beyond last remote key
   if (n > 0) {
@@ -1219,7 +1213,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     for (size_t i = 0; i < markers.size(); ++i) {
       VPackSlice const k(reinterpret_cast<char const*>(markers[i]));
      
-      std::string const key(k.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+      std::string const key(k.get(StaticStrings::KeyString).copyString());
 
       if (key.compare(lowKey) >= 0) { 
         break;
@@ -1227,7 +1221,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
       keyBuilder.clear();
       keyBuilder.openObject();
-      keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+      keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
       keyBuilder.close();
 
       trx.remove(collectionName, keyBuilder.slice(), options);
@@ -1245,7 +1239,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     for (size_t i = markers.size(); i >= 1; --i) {
       VPackSlice const k(reinterpret_cast<char const*>(markers[i - 1]));
 
-      std::string const key(k.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+      std::string const key(k.get(StaticStrings::KeyString).copyString());
 
       if (key.compare(highKey) <= 0) { 
         break;
@@ -1253,7 +1247,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
       
       keyBuilder.clear();
       keyBuilder.openObject();
-      keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+      keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
       keyBuilder.close();
 
       trx.remove(collectionName, keyBuilder.slice(), options);
@@ -1329,8 +1323,8 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
       for (size_t i = localFrom; i <= localTo; ++i) {
         TRI_ASSERT(i < markers.size());
         VPackSlice const current(reinterpret_cast<char const*>(markers.at(i)));
-        hash ^= current.get(TRI_VOC_ATTRIBUTE_KEY).hash();
-        hash ^= current.get(TRI_VOC_ATTRIBUTE_REV).hash();
+        hash ^= current.get(StaticStrings::KeyString).hash();
+        hash ^= current.get(StaticStrings::RevString).hash();
       }
 
       if (std::to_string(hash) != hashSlice.copyString()) {
@@ -1397,13 +1391,13 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
       // delete all keys at start of the range
       while (nextStart < markers.size()) {
         VPackSlice const keySlice(reinterpret_cast<char const*>(markers[nextStart]));
-        std::string const localKey(keySlice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+        std::string const localKey(keySlice.get(StaticStrings::KeyString).copyString());
 
         if (localKey.compare(lowString) < 0) {
           // we have a local key that is not present remotely
           keyBuilder.clear();
           keyBuilder.openObject();
-          keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(localKey));
+          keyBuilder.add(StaticStrings::KeyString, VPackValue(localKey));
           keyBuilder.close();
 
           trx.remove(collectionName, keyBuilder.slice(), options);
@@ -1415,7 +1409,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
       toFetch.clear();
 
-      size_t const n = slice.length();
+      size_t const n = static_cast<size_t>(slice.length());
       TRI_ASSERT(n > 0);
   
       for (size_t i = 0; i < n; ++i) {
@@ -1451,7 +1445,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
         while (nextStart < markers.size()) {
           VPackSlice const localKeySlice(reinterpret_cast<char const*>(markers[nextStart]));
-          std::string const localKey(localKeySlice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+          std::string const localKey(localKeySlice.get(StaticStrings::KeyString).copyString());
 
           int res = localKey.compare(keyString);
 
@@ -1459,7 +1453,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
             // we have a local key that is not present remotely
             keyBuilder.clear();
             keyBuilder.openObject();
-            keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(localKey));
+            keyBuilder.add(StaticStrings::KeyString, VPackValue(localKey));
             keyBuilder.close();
 
             trx.remove(collectionName, keyBuilder.slice(), options);
@@ -1491,7 +1485,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
         while (nextStart < markers.size()) {
           VPackSlice const localKeySlice(reinterpret_cast<char const*>(markers[nextStart]));
-          std::string const localKey(localKeySlice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+          std::string const localKey(localKeySlice.get(StaticStrings::KeyString).copyString());
           
           int res = localKey.compare(highString);
 
@@ -1573,7 +1567,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
           }
 
-          VPackSlice const keySlice = it.get(TRI_VOC_ATTRIBUTE_KEY);
+          VPackSlice const keySlice = it.get(StaticStrings::KeyString);
 
           if (!keySlice.isString()) {
             errorMsg = "got invalid response from master at " +
@@ -1583,7 +1577,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
           }
 
-          VPackSlice const revSlice = it.get(TRI_VOC_ATTRIBUTE_REV);
+          VPackSlice const revSlice = it.get(StaticStrings::RevString);
 
           if (!revSlice.isString()) {
             errorMsg = "got invalid response from master at " +

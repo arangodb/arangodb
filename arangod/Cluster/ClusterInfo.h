@@ -26,7 +26,7 @@
 #define ARANGOD_CLUSTER_CLUSTER_INFO_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
@@ -38,8 +38,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
-struct TRI_json_t;
 
 namespace arangodb {
 namespace velocypack {
@@ -299,7 +297,7 @@ class CollectionInfo {
     TRI_ASSERT(firstElement.isString());
     std::string shardKey =
         arangodb::basics::VelocyPackHelper::getStringValue(firstElement, "");
-    return shardKey == TRI_VOC_ATTRIBUTE_KEY;
+    return shardKey == StaticStrings::KeyString;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -329,7 +327,7 @@ class CollectionInfo {
           for (auto const& serverSlice: VPackArrayIterator(shardSlice.value)) {
             servers.push_back(serverSlice.copyString());
           }
-          (*res).insert(make_pair(shardSlice.key.copyString(), servers));
+          (*res).insert(make_pair(shard, servers));
         }
       }
     }
@@ -351,7 +349,7 @@ class CollectionInfo {
     auto shardsSlice = _slice.get("shards");
 
     if (shardsSlice.isObject()) {
-      return shardsSlice.length();
+      return static_cast<int>(shardsSlice.length());
     }
     return 0;
   }
@@ -384,7 +382,7 @@ class CollectionInfoCurrent {
  public:
   CollectionInfoCurrent();
 
-  CollectionInfoCurrent(ShardID const&, struct TRI_json_t*);
+  CollectionInfoCurrent(ShardID const&, VPackSlice);
 
   CollectionInfoCurrent(CollectionInfoCurrent const&);
 
@@ -397,21 +395,15 @@ class CollectionInfoCurrent {
   ~CollectionInfoCurrent();
 
  private:
-  void freeAllJsons();
-
-  void copyAllJsons();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief add a new shardID and JSON pair, returns true if OK and false
-  /// if the shardID already exists. In the latter case nothing happens.
-  /// The CollectionInfoCurrent object takes ownership of the TRI_json_t*.
-  //////////////////////////////////////////////////////////////////////////////
+  void copyAllVPacks();
 
  public:
-  bool add(ShardID const& shardID, TRI_json_t* json) {
-    auto it = _jsons.find(shardID);
-    if (it == _jsons.end()) {
-      _jsons.insert(std::make_pair(shardID, json));
+  bool add(ShardID const& shardID, VPackSlice slice) {
+    auto it = _vpacks.find(shardID);
+    if (it == _vpacks.end()) {
+      auto builder = std::make_shared<VPackBuilder>();
+      builder->add(slice);
+      _vpacks.insert(std::make_pair(shardID, builder));
       return true;
     }
     return false;
@@ -421,13 +413,13 @@ class CollectionInfoCurrent {
   /// @brief returns the indexes
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t const* getIndexes(ShardID const& shardID) const {
-    auto it = _jsons.find(shardID);
-    if (it != _jsons.end()) {
-      TRI_json_t* json = it->second;
-      return arangodb::basics::JsonHelper::getObjectElement(json, "indexes");
+  VPackSlice const getIndexes(ShardID const& shardID) const {
+    auto it = _vpacks.find(shardID);
+    if (it != _vpacks.end()) {
+      VPackSlice slice = it->second->slice();
+      return slice.get("indexes");
     }
-    return nullptr;
+    return VPackSlice::noneSlice();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -447,10 +439,10 @@ class CollectionInfoCurrent {
   //////////////////////////////////////////////////////////////////////////////
 
   int errorNum(ShardID const& shardID) const {
-    auto it = _jsons.find(shardID);
-    if (it != _jsons.end()) {
-      TRI_json_t* json = it->second;
-      return arangodb::basics::JsonHelper::getNumericValue<int>(json,
+    auto it = _vpacks.find(shardID);
+    if (it != _vpacks.end()) {
+      VPackSlice slice = it->second->slice();
+      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(slice,
                                                                 "errorNum", 0);
     }
     return 0;
@@ -463,11 +455,11 @@ class CollectionInfoCurrent {
   std::unordered_map<ShardID, int> errorNum() const {
     std::unordered_map<ShardID, int> m;
     TRI_voc_size_t s;
-    for (auto it = _jsons.begin(); it != _jsons.end(); ++it) {
-      TRI_json_t* json = it->second;
-      s = arangodb::basics::JsonHelper::getNumericValue<int>(json, "errorNum",
+
+    for (auto const& it: _vpacks) {
+      s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum",
                                                              0);
-      m.insert(std::make_pair(it->first, s));
+      m.insert(std::make_pair(it.first, s));
     }
     return m;
   }
@@ -478,12 +470,18 @@ class CollectionInfoCurrent {
 
   std::vector<ServerID> servers(ShardID const& shardID) const {
     std::vector<ServerID> v;
-    auto it = _jsons.find(shardID);
-    if (it != _jsons.end()) {
-      TRI_json_t const* json =
-          arangodb::basics::JsonHelper::getObjectElement(it->second, "servers");
-      if (json != nullptr) {
-        v = arangodb::basics::JsonHelper::stringArray(json);
+
+    auto it = _vpacks.find(shardID);
+    if (it != _vpacks.end()) {
+      VPackSlice slice = it->second->slice();
+      
+      VPackSlice servers = slice.get("servers");
+      if (servers.isArray()) {
+        for (auto const& server: VPackArrayIterator(servers)) {
+          if (server.isString()) {
+            v.push_back(server.copyString());
+          }
+        }
       }
     }
     return v;
@@ -494,11 +492,12 @@ class CollectionInfoCurrent {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string errorMessage(ShardID const& shardID) const {
-    auto it = _jsons.find(shardID);
-    if (it != _jsons.end()) {
-      TRI_json_t* json = it->second;
-      return arangodb::basics::JsonHelper::getStringValue(json, "errorMessage",
-                                                          "");
+    auto it = _vpacks.find(shardID);
+    if (it != _vpacks.end()) {
+      VPackSlice slice = it->second->slice();
+      if (slice.isObject() && slice.hasKey("errorMessage")) {
+        return slice.get("errorMessage").copyString();
+      }
     }
     return std::string();
   }
@@ -509,10 +508,10 @@ class CollectionInfoCurrent {
 
  private:
   bool getFlag(char const* name, ShardID const& shardID) const {
-    auto it = _jsons.find(shardID);
-    if (it != _jsons.end()) {
-      TRI_json_t* json = it->second;
-      return arangodb::basics::JsonHelper::getBooleanValue(json, name, false);
+    auto it = _vpacks.find(shardID);
+    if (it != _vpacks.end()) {
+      return arangodb::basics::VelocyPackHelper::getBooleanValue(it->second->slice(), "errorMessage",
+                                                          "");
     }
     return false;
   }
@@ -523,16 +522,16 @@ class CollectionInfoCurrent {
 
   std::unordered_map<ShardID, bool> getFlag(char const* name) const {
     std::unordered_map<ShardID, bool> m;
-    for (auto it = _jsons.begin(); it != _jsons.end(); ++it) {
-      TRI_json_t* json = it->second;
-      bool b = arangodb::basics::JsonHelper::getBooleanValue(json, name, false);
-      m.insert(std::make_pair(it->first, b));
+    for (auto const& it: _vpacks) {
+      auto vpack = it.second;
+      bool b = arangodb::basics::VelocyPackHelper::getBooleanValue(vpack->slice(), name, false);
+      m.insert(std::make_pair(it.first, b));
     }
     return m;
   }
 
  private:
-  std::unordered_map<ShardID, TRI_json_t*> _jsons;
+  std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> _vpacks;
 };
 
 class ClusterInfo {
@@ -601,7 +600,7 @@ class ClusterInfo {
   /// @brief get list of databases in the cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<DatabaseID> listDatabases(bool = false);
+  std::vector<DatabaseID> databases(bool = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
@@ -725,16 +724,6 @@ class ClusterInfo {
       arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief ensure an index in coordinator.
-  //////////////////////////////////////////////////////////////////////////////
-
-  int ensureIndexCoordinator(
-      std::string const& databaseName, std::string const& collectionID,
-      TRI_json_t const* json, bool create,
-      bool (*compare)(TRI_json_t const*, TRI_json_t const*),
-      TRI_json_t*& resultJson, std::string& errorMsg, double timeout) = delete;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
 
@@ -813,14 +802,6 @@ class ClusterInfo {
 
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief find the shard that is responsible for a document
-  //////////////////////////////////////////////////////////////////////////////
-
-  int getResponsibleShard(CollectionID const&, TRI_json_t const*,
-                          bool docComplete, ShardID& shardID,
-                          bool& usesDefaultShardingAttributes);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the list of coordinator server names
   //////////////////////////////////////////////////////////////////////////////
 
@@ -838,15 +819,20 @@ class ClusterInfo {
   
   void invalidateCurrent();
 
- private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get current "Plan" structure
+  //////////////////////////////////////////////////////////////////////////////
+  
+  std::shared_ptr<VPackBuilder> getPlan();
   
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief actually clears a list of current databases
+  /// @brief get current "Current" structure
   //////////////////////////////////////////////////////////////////////////////
-
-  void clearCurrentDatabases(std::unordered_map<
-      DatabaseID, std::unordered_map<ServerID, TRI_json_t*>>& databases);
-
+  
+  std::shared_ptr<VPackBuilder> getCurrent();
+  
+ private:
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
   //////////////////////////////////////////////////////////////////////////////
@@ -950,7 +936,6 @@ class ClusterInfo {
 
   // The Current state:
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
-  ProtectionData _currentCollectionsProt;
   std::unordered_map<ShardID, std::shared_ptr<std::vector<ServerID>>>
       _shardIds;  // from Current/Collections/
 

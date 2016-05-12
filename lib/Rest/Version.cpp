@@ -92,6 +92,8 @@ void Version::initialize() {
   Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
+  Values["compiler"] = getCompiler();
+  Values["endianness"] = getEndianness();
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
   Values["icu-version"] = getICUVersion();
   Values["libev-version"] = getLibevVersion();
@@ -102,6 +104,12 @@ void Version::initialize() {
   Values["v8-version"] = getV8Version();
   Values["vpack-version"] = getVPackVersion();
   Values["zlib-version"] = getZLibVersion();
+
+#ifdef __cplusplus
+  Values["cplusplus"] = std::to_string(__cplusplus);
+#else
+  Values["cplusplus"] = "unknown";
+#endif
 
 #ifdef __SANITIZE_ADDRESS__
   Values["asan"] = "true";
@@ -260,6 +268,40 @@ std::string Version::getICUVersion() {
   u_versionToString(icuVersion, icuVersionString);
 
   return icuVersionString;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get compiler
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Version::getCompiler() {
+#if defined(__clang__)
+  return "clang";
+#elif defined(__GNUC__) || defined(__GNUG__)
+  return "gcc";
+#elif defined(_MSC_VER)
+  return "msvc";
+#endif
+  return "unknown";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get endianness
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Version::getEndianness() {
+  uint64_t value = 0x12345678abcdef99;
+  static_assert(sizeof(value) == 8, "unexpected uint64_t size");
+
+  unsigned char const* p = reinterpret_cast<unsigned char const*>(&value);
+  if (p[0] == 0x12 && p[1] == 0x34 && p[2] == 0x56 && p[3] == 0x78 && p[4] == 0xab && p[5] == 0xcd && p[6] == 0xef && p[7] == 0x99) {
+    return "big";
+  }
+  
+  if (p[0] == 0x99 && p[1] == 0xef && p[2] == 0xcd && p[3] == 0xab && p[4] == 0x78 && p[5] == 0x56 && p[6] == 0x34 && p[7] == 0x12) {
+    return "little";
+  }
+  return "unknown";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

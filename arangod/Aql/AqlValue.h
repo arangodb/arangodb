@@ -107,7 +107,12 @@ struct AqlValue final {
     // we must get rid of Externals first here, because all
     // methods that use VPACK_SLICE_POINTER expect its contents
     // to be non-Externals
-    _data.pointer = VPackSlice(pointer).resolveExternals().begin();
+    if (*pointer == '\x1d') {
+      // an external
+      _data.pointer = VPackSlice(pointer).resolveExternals().begin();
+    } else {
+      _data.pointer = pointer;
+    }
     setType(AqlValueType::VPACK_SLICE_POINTER);
     TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
   }
@@ -121,15 +126,65 @@ struct AqlValue final {
   // construct boolean value type
   explicit AqlValue(bool value) {
     VPackSlice slice(value ? arangodb::basics::VelocyPackHelper::TrueValue() : arangodb::basics::VelocyPackHelper::FalseValue());
-    memcpy(_data.internal, slice.begin(), slice.byteSize());
+    memcpy(_data.internal, slice.begin(), static_cast<size_t>(slice.byteSize()));
     setType(AqlValueType::VPACK_INLINE);
+  }
+  
+  // construct from char* and length
+  AqlValue(char const* value, size_t length) {
+    if (length == 0) {
+      // empty string
+      _data.internal[0] = 0x40;
+      setType(AqlValueType::VPACK_INLINE);
+      return;
+    }
+    if (length < sizeof(_data.internal) - 1) {
+      // short string... can store it inline
+      _data.internal[0] = 0x40 + length;
+      memcpy(_data.internal + 1, value, length);
+      setType(AqlValueType::VPACK_INLINE);
+    } else if (length <= 126) {
+      // short string... cannot store inline, but we don't need to
+      // create a full-features Builder object here
+      _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
+      _data.buffer->push_back(0x40 + length);
+      _data.buffer->append(value, length);
+      setType(AqlValueType::VPACK_MANAGED);
+    } else {
+      // long string
+      VPackBuilder builder;
+      builder.add(VPackValue(value));
+      initFromSlice(builder.slice());
+    }
   }
   
   // construct from std::string
   explicit AqlValue(std::string const& value) {
-    VPackBuilder builder;
-    builder.add(VPackValue(value));
-    initFromSlice(builder.slice());
+    if (value.empty()) {
+      // empty string
+      _data.internal[0] = 0x40;
+      setType(AqlValueType::VPACK_INLINE);
+      return;
+    }
+    size_t const length = value.size();
+    if (length < sizeof(_data.internal) - 1) {
+      // short string... can store it inline
+      _data.internal[0] = 0x40 + length;
+      memcpy(_data.internal + 1, value.c_str(), value.size());
+      setType(AqlValueType::VPACK_INLINE);
+    } else if (length <= 126) {
+      // short string... cannot store inline, but we don't need to
+      // create a full-features Builder object here
+      _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
+      _data.buffer->push_back(0x40 + length);
+      _data.buffer->append(value.c_str(), length);
+      setType(AqlValueType::VPACK_MANAGED);
+    } else {
+      // long string
+      VPackBuilder builder;
+      builder.add(VPackValue(value));
+      initFromSlice(builder.slice());
+    }
   }
   
   // construct from Buffer, taking over its ownership
@@ -144,7 +199,10 @@ struct AqlValue final {
     initFromSlice(builder.slice());
   }
   
-  explicit AqlValue(arangodb::velocypack::Builder const* builder) : AqlValue(*builder) {}
+  explicit AqlValue(arangodb::velocypack::Builder const* builder) {
+    TRI_ASSERT(builder->isClosed());
+    initFromSlice(builder->slice());
+  }
 
   // construct from Slice
   explicit AqlValue(arangodb::velocypack::Slice const& slice) {
@@ -325,18 +383,19 @@ struct AqlValue final {
   }
   
   /// @brief initializes value from a slice
-  void initFromSlice(arangodb::velocypack::Slice slice) {
-    if (slice.isExternal()) {
-      // recursively resolve externals
-      slice = slice.resolveExternals();
-    }
+  void initFromSlice(arangodb::velocypack::Slice const& slice) {
+    // intentionally do not resolve externals here
+    // if (slice.isExternal()) {
+    //   // recursively resolve externals
+    //   slice = slice.resolveExternals();
+    // }
     arangodb::velocypack::ValueLength length = slice.byteSize();
     if (length < sizeof(_data.internal)) {
-      // Use internal
-      memcpy(_data.internal, slice.begin(), length);
+      // Use inline value
+      memcpy(_data.internal, slice.begin(), static_cast<size_t>(length));
       setType(AqlValueType::VPACK_INLINE);
     } else {
-      // Use external
+      // Use managed buffer
       _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length);
       _data.buffer->append(reinterpret_cast<char const*>(slice.begin()), length);
       setType(AqlValueType::VPACK_MANAGED);

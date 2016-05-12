@@ -133,7 +133,7 @@ size_t AqlValue::length() const {
     case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
     case VPACK_MANAGED: {
-      return slice().length();
+      return static_cast<size_t>(slice().length());
     }
     case DOCVEC: {
       return docvecSize();
@@ -189,9 +189,9 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy,
             // found the correct vector
             if (doCopy) {
               mustDestroy = true;
-              return it->getValueReference(position - total, 0).clone();
+              return it->getValueReference(static_cast<size_t>(position - total), 0).clone();
             }
-            return it->getValue(position - total, 0);
+            return it->getValue(static_cast<size_t>(position - total), 0);
           }
           total += it->size();
         }

@@ -423,7 +423,7 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
     // over all array members
     uint64_t const n = length() ^ 0xba5bedf00d;
     value = VELOCYPACK_HASH(&n, sizeof(n), seed);
-    for (auto const& it : ArrayIterator(*this)) {
+    for (auto const& it : ArrayIterator(*this, true)) {
       value ^= it.normalizedHash(value);
     }
   } else if (isObject()) {
@@ -432,9 +432,10 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
     uint64_t const n = length() ^ 0xf00ba44ba5;
     uint64_t seed2 = VELOCYPACK_HASH(&n, sizeof(n), seed);
     value = seed2;
-    for (auto const& it : ObjectIterator(*this)) {
-      value ^= it.key.normalizedHash(seed2);
-      value ^= it.value.normalizedHash(seed2);
+    for (auto const& it : ObjectIterator(*this, true)) {
+      uint64_t seed3 = it.key.makeKey().normalizedHash(seed2);
+      value ^= seed3;
+      value ^= it.value.normalizedHash(seed3);
     }
   } else {
     // fall back to regular hash function

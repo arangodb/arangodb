@@ -143,6 +143,11 @@ bool Node::operator== (VPackSlice const& rhs) const {
   }
 }
 
+// Comparison with slice
+bool Node::operator!= (VPackSlice const& rhs) const {
+  return !(*this == rhs);
+}
+
 // Remove this node from store
 bool Node::remove () {
   Node& parent = *_parent;
@@ -492,7 +497,7 @@ bool Node::applieOp (VPackSlice const& slice) {
   } else if (oper == "unobserve") { // "op":"unobserve"
     return handle<UNOBSERVE>(slice);
   } else {                          // "op" might not be a key word after all
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC(WARN, Logger::AGENCY)
       << "Keyword 'op' without known operation. Handling as regular key.";
   }
   
@@ -591,5 +596,7 @@ std::string Node::toJson() const {
   builder.openArray();
   toBuilder(builder);
   builder.close();
-  return builder.slice()[0].toJson();
+  std::string strval = builder.slice()[0].isString() ?
+    builder.slice()[0].copyString() : builder.slice()[0].toJson();
+  return strval;
 }

@@ -164,13 +164,23 @@ std::string RestVocbaseBaseHandler::assembleDocumentId(
 
 void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type,
-    VPackOptions const* options) {
+    TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
   if (result.wasSynchronous) {
     createResponse(GeneralResponse::ResponseCode::CREATED);
   } else {
     createResponse(GeneralResponse::ResponseCode::ACCEPTED);
   }
+
+  if (isMultiple && !result.countErrorCodes.empty()) {
+    VPackBuilder errorBuilder;
+    errorBuilder.openObject();
+    for (auto const& it : result.countErrorCodes) {
+      errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
+    }
+    errorBuilder.close();
+    _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.toJson());
+  }
+
   generate20x(result, collectionName, type, options);
 }
 
@@ -187,49 +197,6 @@ void RestVocbaseBaseHandler::generateDeleted(
     createResponse(GeneralResponse::ResponseCode::ACCEPTED);
   }
   generate20x(result, collectionName, type, options);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a collection needs to be created on the fly
-///
-/// this method will check the "createCollection" attribute of the request. if
-/// it is set to true, it will verify that the named collection actually exists.
-/// if the collection does not yet exist, it will create it on the fly.
-/// if the "createCollection" attribute is not set or set to false, nothing will
-/// happen, and the collection name will not be checked
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
-                                                   TRI_col_type_e type) {
-  bool found;
-  std::string const& valueStr = _request->value("createCollection", found);
-
-  if (!found) {
-    // "createCollection" parameter not specified
-    return true;
-  }
-
-  if (!StringUtils::boolean(valueStr)) {
-    // "createCollection" parameter specified, but with non-true value
-    return true;
-  }
-
-  if (ServerState::instance()->isCoordinator() ||
-      ServerState::instance()->isDBServer()) {
-    // create-collection is not supported in a cluster
-    generateTransactionError(name, TRI_ERROR_CLUSTER_UNSUPPORTED, "");
-    return false;
-  }
-
-  TRI_vocbase_col_t* collection =
-      TRI_FindCollectionByNameOrCreateVocBase(_vocbase, name, type);
-
-  if (collection == nullptr) {
-    generateTransactionError(name, TRI_errno(), "");
-    return false;
-  }
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -344,6 +311,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
                                               bool generateBody,
                                               VPackOptions const* options) {
   VPackSlice document = input.resolveExternal();
+
   std::string rev;
   if (document.isObject()) {
     rev = VelocyPackHelper::getStringValue(document, StaticStrings::RevString, "");
@@ -357,30 +325,32 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
 
   if (generateBody) {
     writeResult(document, *options);
+    return;
+  }
+
+  // no body, i.e. a HEAD response
+  if (returnVelocypack()) {
+    _response->setContentType(HttpResponse::CONTENT_TYPE_VPACK);
+    _response->headResponse(static_cast<size_t>(document.byteSize()));
   } else {
-    if (returnVelocypack()){
-      _response->setContentType(StaticStrings::MimeTypeVPack);
-      _response->headResponse(document.byteSize());
-    } else {
-      _response->setContentType(StaticStrings::MimeTypeJson);
+    _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
-      // TODO can we optimize this?
-      // Just dump some where else to find real length
-      StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
-      // convert object to string
-      VPackStringBufferAdapter buffer(tmp.stringBuffer());
+    // TODO can we optimize this?
+    // Just dump some where else to find real length
+    StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
+    // convert object to string
+    VPackStringBufferAdapter buffer(tmp.stringBuffer());
 
-      //usual dumping -  but not to the response body
-      VPackDumper dumper(&buffer, options);
-      try {
-        dumper.dump(document);
-      } catch (...) {
-        generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                      "cannot generate output");
-      }
-      // set the length of what would have been written
-      _response->headResponse(tmp.length());
+    //usual dumping -  but not to the response body
+    VPackDumper dumper(&buffer, options);
+    try {
+      dumper.dump(document);
+    } catch (...) {
+      generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    "cannot generate output");
     }
+    // set the length of what would have been written
+    _response->headResponse(tmp.length());
   }
 }
 

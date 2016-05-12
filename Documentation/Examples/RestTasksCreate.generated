@@ -14,15 +14,15 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> O
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"862984914"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"11668"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"SampleTask"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
   <span class="hljs-string">"period"</span> : <span class="hljs-number">2</span>, 
-  <span class="hljs-string">"created"</span> : <span class="hljs-number">1452621383.407514</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">1462973695.328756</span>, 
   <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function(params) { require('internal').print(params); })(params)"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }
-shell> curl -X DELETE --dump - http://localhost:8529/_api/tasks/862984914
+shell> curl -X DELETE --dump - http://localhost:8529/_api/tasks/11668
 

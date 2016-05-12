@@ -30,21 +30,15 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/conversions.h"
-#include "Logger/Logger.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
   
-static std::string const EMPTY_STR = "";
-
-std::string const HttpRequest::BATCH_CONTENT_TYPE =
-    "application/x-arango-batchpart";
-
-std::string const HttpRequest::MULTI_PART_CONTENT_TYPE = "multipart/form-data";
-
 HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
                          char const* header, size_t length,
                          bool allowMethodOverride)
@@ -52,6 +46,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
       _contentLength(0),
       _header(nullptr),
       _allowMethodOverride(allowMethodOverride) {
+
   if (0 < length) {
     _header = new char[length + 1];
     memcpy(_header, header, length);
@@ -368,7 +363,7 @@ void HttpRequest::parseHeader(size_t length) {
         }
 
         if (keyBegin < keyEnd) {
-          setHeader(keyBegin, keyEnd - keyBegin, valueBegin);
+          setHeader(keyBegin, keyEnd - keyBegin, valueBegin, valueEnd - valueBegin);
         }
       }
 
@@ -388,7 +383,7 @@ void HttpRequest::parseHeader(size_t length) {
 
         // use empty value
         if (keyBegin < keyEnd) {
-          setHeader(keyBegin, keyEnd - keyBegin, keyEnd);
+          setHeader(keyBegin, keyEnd - keyBegin);
         }
       }
     }
@@ -504,45 +499,56 @@ void HttpRequest::setValues(char* buffer, char* end) {
   }
 }
 
+/// @brief sets a key/value header
 void HttpRequest::setHeader(char const* key, size_t keyLength,
-                            char const* value) {
+                            char const* value, size_t valueLength) {
   if (keyLength == 14 &&
       memcmp(key, "content-length", keyLength) ==
           0) {  // 14 = strlen("content-length")
-    _contentLength = StringUtils::int64(value);
-  } else if (keyLength == 6 &&
-             memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
-    parseCookies(value);
-  } else {
-    if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
-        *(key + 1) == '-') {
-      // handle x-... headers
-
-      // override HTTP method?
-      if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
-          (keyLength == 17 &&
-           memcmp(key, "x-method-override", keyLength) == 0) ||
-          (keyLength == 22 &&
-           memcmp(key, "x-http-method-override", keyLength) == 0)) {
-        std::string overriddenType(value);
-        StringUtils::tolowerInPlace(&overriddenType);
-
-        _type = findRequestType(overriddenType.c_str(), overriddenType.size());
-
-        // don't insert this header!!
-        return;
-      }
-    }
-
-    _headers[std::string(key, keyLength)] = value;
+    _contentLength = StringUtils::int64(value, valueLength);
+    // do not store this header
+    return;
+  } 
+  
+  if (keyLength == 6 &&
+      memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
+    parseCookies(value, valueLength);
+    return;
   }
+
+  if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
+      *(key + 1) == '-') {
+    // handle x-... headers
+
+    // override HTTP method?
+    if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
+        (keyLength == 17 &&
+          memcmp(key, "x-method-override", keyLength) == 0) ||
+        (keyLength == 22 &&
+          memcmp(key, "x-http-method-override", keyLength) == 0)) {
+      std::string overriddenType(value, valueLength);
+      StringUtils::tolowerInPlace(&overriddenType);
+
+      _type = findRequestType(overriddenType.c_str(), overriddenType.size());
+
+      // don't insert this header!!
+      return;
+    }
+  }
+
+  _headers[std::string(key, keyLength)] = std::string(value, valueLength);
+}
+
+/// @brief sets a key-only header
+void HttpRequest::setHeader(char const* key, size_t keyLength) {
+  _headers[std::string(key, keyLength)] = StaticStrings::Empty;
 }
 
 void HttpRequest::setCookie(char* key, size_t length, char const* value) {
   _cookies[std::string(key, length)] = value;
 }
 
-void HttpRequest::parseCookies(char const* buffer) {
+void HttpRequest::parseCookies(char const* buffer, size_t length) {
   char* keyBegin = nullptr;
   char* key = nullptr;
 
@@ -560,7 +566,7 @@ void HttpRequest::parseCookies(char const* buffer) {
   char const SPACE = ' ';
 
   char* buffer2 = (char*)buffer;
-  char* end = buffer2 + strlen(buffer);
+  char* end = buffer2 + length;
 
   for (keyBegin = key = buffer2; buffer2 < end; buffer2++) {
     char next = *buffer2;
@@ -645,7 +651,7 @@ std::string const& HttpRequest::cookieValue(std::string const& key) const {
   auto it = _cookies.find(key);
 
   if (it == _cookies.end()) {
-    return EMPTY_STR;
+    return StaticStrings::Empty;
   }
 
   return it->second;
@@ -656,7 +662,7 @@ std::string const& HttpRequest::cookieValue(std::string const& key, bool& found)
 
   if (it == _cookies.end()) {
     found = false;
-    return EMPTY_STR;
+    return StaticStrings::Empty; 
   }
 
   found = true;

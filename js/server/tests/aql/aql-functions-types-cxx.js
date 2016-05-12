@@ -42,6 +42,47 @@ function ahuacatlTypesFunctionsTestSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test typename function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTypename : function () {
+      assertEqual([ "null" ], getQueryResults("RETURN NOOPT(TYPENAME(null))"));
+      assertEqual([ "bool" ], getQueryResults("RETURN NOOPT(TYPENAME(false))"));
+      assertEqual([ "bool" ], getQueryResults("RETURN NOOPT(TYPENAME(true))"));
+      assertEqual([ "number" ], getQueryResults("RETURN NOOPT(TYPENAME(0))"));
+      assertEqual([ "number" ], getQueryResults("RETURN NOOPT(TYPENAME(1))"));
+      assertEqual([ "number" ], getQueryResults("RETURN NOOPT(TYPENAME(-99999))"));
+      assertEqual([ "number" ], getQueryResults("RETURN NOOPT(TYPENAME(0.005))"));
+      assertEqual([ "number" ], getQueryResults("RETURN NOOPT(TYPENAME(1334540.005))"));
+      assertEqual([ "number" ], getQueryResults("RETURN NOOPT(TYPENAME(3e32))"));
+      assertEqual([ "array" ], getQueryResults("RETURN NOOPT(TYPENAME(1..2))"));
+      assertEqual([ "array" ], getQueryResults("RETURN NOOPT(TYPENAME(99..0))"));
+      assertEqual([ "array" ], getQueryResults("RETURN NOOPT(TYPENAME(FOR i IN 1..10 RETURN i))"));
+      assertEqual([ "array" ], getQueryResults("RETURN NOOPT(TYPENAME([ ]))"));
+      assertEqual([ "array" ], getQueryResults("RETURN NOOPT(TYPENAME([ 'foo ' ]))"));
+      assertEqual([ "object" ], getQueryResults("RETURN NOOPT(TYPENAME({ }))"));
+      assertEqual([ "object" ], getQueryResults("RETURN NOOPT(TYPENAME({ 'foo': 'bar' }))"));
+      assertEqual([ "string" ], getQueryResults("RETURN NOOPT(TYPENAME('foo'))"));
+      assertEqual([ "string" ], getQueryResults("RETURN NOOPT(TYPENAME(''))"));
+      assertEqual([ "string" ], getQueryResults("RETURN NOOPT(TYPENAME(' '))"));
+      assertEqual([ "string" ], getQueryResults("RETURN NOOPT(TYPENAME('0'))"));
+      assertEqual([ "string" ], getQueryResults("RETURN NOOPT(TYPENAME('1'))"));
+      assertEqual([ "string" ], getQueryResults("RETURN NOOPT(TYPENAME('true'))"));
+      assertEqual([ "string" ], getQueryResults("RETURN NOOPT(TYPENAME('false'))"));
+      assertEqual([ "number", "number" ], getQueryResults("FOR i IN 1..2 RETURN NOOPT(TYPENAME(i))"));
+      assertEqual([ "string", "string", "string", "number" ], getQueryResults("FOR i IN [ 'foo', 'bar', 'baz', 42 ] RETURN NOOPT(TYPENAME(i))"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test typename function, invalid arguments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTypenameInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(TYPENAME())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(TYPENAME('a', 'b'))"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test is_string function
 ////////////////////////////////////////////////////////////////////////////////
     

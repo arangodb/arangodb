@@ -999,7 +999,7 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <querystring>");
   }
 
-  std::string const&& queryString = TRI_ObjectToString(args[0]);
+  std::string const queryString(TRI_ObjectToString(args[0]));
 
   arangodb::aql::Query query(true, vocbase, queryString.c_str(),
                              queryString.size(), nullptr, nullptr,
@@ -1238,7 +1238,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto transactionContext =
       std::make_shared<StandaloneTransactionContext>(vocbase);
-  // return the array value as it is. this is a performance optimisation
+  // return the array value as it is. this is a performance optimization
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (queryResult.result != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("json"),
@@ -1346,7 +1346,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
   }
 
-  // return the array value as it is. this is a performance optimisation
+  // return the array value as it is. this is a performance optimization
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   result->ForceSet(TRI_V8_ASCII_STRING("json"), queryResult.result);
@@ -2448,6 +2448,34 @@ static void JS_QuerySleepAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes a V8 object
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ObjectHash(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("hash(<object>)");
+  }
+
+  VPackBuilder builder;
+  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  // throw away the top bytes so the hash value can safely be used
+  // without precision loss when storing in JavaScript etc.
+  uint64_t hash = builder.slice().normalizedHash() & 0x0007ffffffffffffULL;
+
+  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(hash)));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_t
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2801,7 +2829,7 @@ static void ListDatabasesCoordinator(
   ClusterInfo* ci = ClusterInfo::instance();
 
   if (args.Length() == 0) {
-    std::vector<DatabaseID> list = ci->listDatabases(true);
+    std::vector<DatabaseID> list = ci->databases(true);
     v8::Handle<v8::Array> result = v8::Array::New(isolate);
     for (size_t i = 0; i < list.size(); ++i) {
       result->Set((uint32_t)i, TRI_V8_STD_STRING(list[i]));
@@ -2860,13 +2888,13 @@ static void ListDatabasesCoordinator(
 /// @brief was docuBlock databaseListDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ListDatabases(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
   uint32_t const argc = args.Length();
   if (argc > 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("db._listDatabases()");
+    TRI_V8_THROW_EXCEPTION_USAGE("db._databases()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -3492,8 +3520,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                        JS_CreateDatabase);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_dropDatabase"),
                        JS_DropDatabase);
-  TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_listDatabases"),
-                       JS_ListDatabases);
+  TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_databases"),
+                       JS_Databases);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_useDatabase"),
                        JS_UseDatabase);
 
@@ -3556,6 +3584,10 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_CACHE_INVALIDATE"),
       JS_QueryCacheInvalidateAql, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("OBJECT_HASH"),
+                               JS_ObjectHash, true);
 
   TRI_AddGlobalFunctionVocbase(
       isolate, context, TRI_V8_ASCII_STRING("THROW_COLLECTION_NOT_LOADED"),

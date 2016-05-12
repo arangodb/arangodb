@@ -490,7 +490,7 @@ function CheckCollection (collection, issues, details) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
-  var databases = internal.db._listDatabases();
+  var databases = internal.db._databases();
   var i;
 
   var collectionSorter = function (l, r) {

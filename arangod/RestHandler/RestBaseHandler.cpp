@@ -25,6 +25,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackDumper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -126,25 +127,6 @@ void RestBaseHandler::generateCanceled() {
   return generateError(GeneralResponse::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dumps the response as JSON into the response string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::dumpResponse(VPackSlice const& slice,
-                                   VPackOptions const* options) {
-  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-
-  VPackDumper dumper(&buffer, options);
-  try {
-    dumper.dump(slice);
-  } catch (std::exception const& ex) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "cannot generate output");
-  }
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief checks if velocypack is expected as answer
 //////////////////////////////////////////////////////////////////////////////
@@ -161,10 +143,24 @@ bool RestBaseHandler::returnVelocypack() const {
 void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice, 
                                   VPackOptions const& options) {
   if (returnVelocypack()) {
-    _response->setContentType(StaticStrings::MimeTypeVPack);
-    _response->body().appendText(slice.startAs<const char>(), slice.byteSize());
-  } else {
-    _response->setContentType(StaticStrings::MimeTypeJson);
-    dumpResponse(slice, &options);
+    _response->setContentType(HttpResponse::CONTENT_TYPE_VPACK);
+    _response->body().appendText(slice.startAs<const char>(), static_cast<size_t>(slice.byteSize()));
+    return;
+  }
+
+  // JSON
+
+  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
+  try {
+    //arangodb::basics::VelocyPackDumper dumper(&(_response->body()), &options);
+    //dumper.dumpValue(slice);
+    VPackStringBufferAdapter buffer(_response->body().stringBuffer());
+    VPackDumper dumper(&buffer, &options);
+    dumper.dump(slice);
+  } catch (std::exception const& ex) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "cannot generate output");
   }
 }

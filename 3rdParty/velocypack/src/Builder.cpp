@@ -783,11 +783,23 @@ uint8_t* Builder::add(std::string const& attrName, Value const& sub) {
   return addInternal<Value>(attrName, sub);
 }
 
+uint8_t* Builder::add(char const* attrName, Value const& sub) {
+  return addInternal<Value>(attrName, sub);
+}
+
 uint8_t* Builder::add(std::string const& attrName, ValuePair const& sub) {
   return addInternal<ValuePair>(attrName, sub);
 }
 
+uint8_t* Builder::add(char const* attrName, ValuePair const& sub) {
+  return addInternal<ValuePair>(attrName, sub);
+}
+
 uint8_t* Builder::add(std::string const& attrName, Slice const& sub) {
+  return addInternal<Slice>(attrName, sub);
+}
+
+uint8_t* Builder::add(char const* attrName, Slice const& sub) {
   return addInternal<Slice>(attrName, sub);
 }
   

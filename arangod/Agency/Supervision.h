@@ -36,6 +36,19 @@ namespace consensus {
 class Agent;
 class Store;
 
+struct JobResult {
+  JobResult() {}
+};
+
+struct JobCallback {
+  JobCallback() {}
+  virtual ~JobCallback() {};
+  virtual bool operator()(JobResult*) = 0;
+};
+
+enum JOB_CASE {FAILED_DBSERVER};
+template<enum arangodb::consensus::JOB_CASE> struct Job {};
+
 struct check_t {
   bool good;
   std::string name;
@@ -65,17 +78,27 @@ public:
 
     VitalSign(ServerStatus s, ServerTimestamp t) :
       myTimestamp(std::chrono::system_clock::now()),
-      serverStatus(s), serverTimestamp(t) {} 
+      serverStatus(s), serverTimestamp(t), jobId(0) {} 
 
     void update (ServerStatus s, ServerTimestamp t) {
       myTimestamp = std::chrono::system_clock::now();
       serverStatus = s;
       serverTimestamp = t;
+      jobId = 0;
+    }
+
+    void maintenance (uint64_t jid) {
+      jobId = jid;
+    }
+
+    uint64_t maintenance () {
+      return jobId;
     }
       
     TimePoint myTimestamp;
     ServerStatus serverStatus;
     ServerTimestamp serverTimestamp;
+    uint64_t jobId;
     
   };
   
@@ -102,8 +125,18 @@ public:
 
 private:
 
-  /// @Brief Check mahines under path in agency
-  std::vector<check_t> check (std::string const& path);
+  /// @brief Move shard from one db server to other db server
+  bool moveShard (std::string const& from, std::string const& to);
+
+  /// @brief Move shard from one db server to other db server
+  bool replicateShard (std::string const& to);
+
+  /// @brief Move shard from one db server to other db server
+  bool removeShard (std::string const& from);
+
+  /// @Brief Check machines under path in agency
+  std::vector<check_t> checkDBServers ();
+  std::vector<check_t> checkShards ();
 
   /// @brief Read db
   Store const& store () const;
@@ -120,9 +153,10 @@ private:
   ///@brief last vital signs as reported through heartbeats to agency
   ///
   std::map<ServerID,
-           std::shared_ptr<VitalSign>> _vital_signs;
+           std::shared_ptr<VitalSign>> _vitalSigns;
 
   long _frequency;
+  long _gracePeriod;
   
 };
 

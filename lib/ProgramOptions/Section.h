@@ -24,6 +24,7 @@
 #define ARANGODB_PROGRAM_OPTIONS_SECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/shell-colors.h"
 
 #include "ProgramOptions/Option.h"
 
@@ -62,17 +63,22 @@ struct Section {
 
   // print help for a section
   // the special search string "." will show help for all sections, even if hidden
-  void printHelp(std::string const& search, size_t tw, size_t ow) const {
+  void printHelp(std::string const& search, size_t tw, size_t ow, bool colors) const {
     if (search != "." && (hidden || !hasOptions())) {
       return;
     }
 
-    std::cout << "Section '" << displayName() << "' (" << description << ")"
-              << std::endl;
+    if (colors) {
+      std::cout << "Section '" << TRI_SHELL_COLOR_BRIGHT << displayName() << TRI_SHELL_COLOR_RESET << "' (" << description << ")"
+                << std::endl;
+    } else {
+      std::cout << "Section '" << displayName() << "' (" << description << ")"
+                << std::endl;
+    }
 
     // propagate print command to options
     for (auto const& it : options) {
-      it.second.printHelp(search, tw, ow);
+      it.second.printHelp(search, tw, ow, colors);
     }
 
     std::cout << std::endl;

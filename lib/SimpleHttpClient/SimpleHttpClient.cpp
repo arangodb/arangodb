@@ -50,7 +50,7 @@ std::unordered_map<std::string, std::string> const SimpleHttpClient::NO_HEADERS 
 SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
                                    double requestTimeout, bool warn)
     : _connection(connection),
-      _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
+      _writeBuffer(TRI_UNKNOWN_MEM_ZONE, false),
       _readBuffer(TRI_UNKNOWN_MEM_ZONE),
       _readBufferOffset(0),
       _requestTimeout(requestTimeout),
@@ -516,7 +516,7 @@ void SimpleHttpClient::setRequest(
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(" HTTP/1.1\r\n"));
 
   // append hostname
-  std::string&& hostname = _connection->getEndpoint()->host();
+  std::string hostname = _connection->getEndpoint()->host();
 
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Host: "));
   _writeBuffer.appendText(hostname);
@@ -582,6 +582,8 @@ void SimpleHttpClient::setRequest(
   if (body != nullptr) {
     _writeBuffer.appendText(body, bodyLength);
   }
+
+  _writeBuffer.ensureNullTerminated();
 
   LOG(TRACE) << "Request: " << std::string(_writeBuffer.c_str(), _writeBuffer.length());
 

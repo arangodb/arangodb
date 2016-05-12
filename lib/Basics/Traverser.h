@@ -1137,6 +1137,13 @@ class PathEnumerator {
   std::function<bool(edgeIdentifier const&, vertexIdentifier const&, size_t,
                      vertexIdentifier&)> _getVertex;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Indicates if we issue next() the first time.
+  ///        It shall return an empty path in this case.
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool _isFirst;
+
  public:
   PathEnumerator(
       std::function<void(vertexIdentifier const&, std::vector<edgeIdentifier>&,
@@ -1144,7 +1151,7 @@ class PathEnumerator {
       std::function<bool(edgeIdentifier const&, vertexIdentifier const&, size_t,
                          vertexIdentifier&)> getVertex,
       vertexIdentifier const& startVertex)
-      : _getEdge(getEdge), _getVertex(getVertex) {
+      : _getEdge(getEdge), _getVertex(getVertex), _isFirst(true) {
     _enumeratedPath.vertices.push_back(startVertex);
     _lastEdges.push(nullptr);
     _lastEdgesDir.push(false);
@@ -1161,6 +1168,10 @@ class PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next() {
+    if (_isFirst) {
+      _isFirst = false;
+      return _enumeratedPath;
+    }
     // Avoid tail recusion. May crash on high search depth
     while (true) {
       if (_lastEdges.empty()) {

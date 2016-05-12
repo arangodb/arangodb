@@ -2669,11 +2669,11 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
       p = _query->registerString(p, static_cast<size_t>(length));
     }
     // we can get away without copying string values
-    return createNodeValueString(p, length);
+    return createNodeValueString(p, static_cast<size_t>(length));
   }
 
   if (slice.isArray()) {
-    auto node = createNodeArray(slice.length());
+    auto node = createNodeArray(static_cast<size_t>(slice.length()));
  
     for (auto const& it : VPackArrayIterator(slice)) {
       node->addMember(nodeFromVPack(it, copyStringValues)); 
@@ -2684,7 +2684,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
 
   if (slice.isObject()) {
     auto node = createNodeObject();
-    node->members.reserve(slice.length());
+    node->members.reserve(static_cast<size_t>(slice.length()));
 
     for (auto const& it : VPackObjectIterator(slice)) {
       VPackValueLength nameLength;
@@ -2697,7 +2697,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
       }
 
       node->addMember(createNodeObjectElement(
-          attributeName, nameLength, nodeFromVPack(it.value, copyStringValues)));
+          attributeName, static_cast<size_t>(nameLength), nodeFromVPack(it.value, copyStringValues)));
     }
 
     return node;

@@ -6,9 +6,9 @@ Query string:
 Execution plan:
  Id   NodeType          Est.   Comment
   1   SingletonNode        1   * ROOT
-  2   TraversalNode        1     - FOR v  /* vertex */  , e  /* edge */  , p  /* paths */  IN 1..3  /* min..maxPathDepth */  OUTBOUND 'circles/A' /* startnode */  GRAPH 'traversalGraph'
-  3   CalculationNode      1     - LET localScopeVar = RAND() &gt; 0.5   /* simple expression */
-  4   CalculationNode      1     - LET #4 = p.`edges`[0].`theTruth` != localScopeVar   /* simple expression */
+  2   TraversalNode        1     - FOR v  /* vertex */, p  /* paths */ IN 1..3  /* min..maxPathDepth */ OUTBOUND 'circles/A' /* startnode */  GRAPH 'traversalGraph'
+  3   CalculationNode      1     - LET localScopeVar = (RAND() &gt; 0.5)   /* simple expression */
+  4   CalculationNode      1     - LET #4 = (p.`edges`[0].`theTruth` != localScopeVar)   /* simple expression */
   5   FilterNode           1     - FILTER #4
   6   CalculationNode      1     - LET #6 = v.`_key`   /* attribute expression */
   7   ReturnNode           1     - RETURN #6
@@ -23,7 +23,8 @@ Traversals on graphs:
 Optimization rules applied:
  Id   RuleName
   1   move-calculations-up
-  2   move-calculations-down
+  2   optimize-traversals
+  3   move-calculations-down
 
 
 arangosh&gt; db._explain("FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.edges[0].label == 'right_foo' RETURN v._key", {}, {colors: false});
@@ -34,8 +35,8 @@ Query string:
 Execution plan:
  Id   NodeType          Est.   Comment
   1   SingletonNode        1   * ROOT
-  2   TraversalNode        1     - FOR v  /* vertex */  , e  /* edge */  , p  /* paths */  IN 1..3  /* min..maxPathDepth */  OUTBOUND 'circles/A' /* startnode */  GRAPH 'traversalGraph'
-  3   CalculationNode      1     - LET #3 = p.`edges`[0].`label` == "right_foo"   /* simple expression */
+  2   TraversalNode        1     - FOR v  /* vertex */, p  /* paths */ IN 1..3  /* min..maxPathDepth */ OUTBOUND 'circles/A' /* startnode */  GRAPH 'traversalGraph'
+  3   CalculationNode      1     - LET #3 = (p.`edges`[0].`label` == "right_foo")   /* simple expression */
   4   FilterNode           1     - FILTER #3
   5   CalculationNode      1     - LET #5 = v.`_key`   /* attribute expression */
   6   ReturnNode           1     - RETURN #5
@@ -45,7 +46,7 @@ Indexes used:
 
 Traversals on graphs:
  Id   Depth   Vertex collections   Edge collections   Filter conditions
-  2   1..3    circles              edges              `Path`.`edges`[0] -&gt; e.`label` == "right_foo"
+  2   1..3    circles              edges              `Path`.`edges`[0] -&gt; v.`label` == "right_foo"
 
 Optimization rules applied:
  Id   RuleName
@@ -53,6 +54,6 @@ Optimization rules applied:
   2   move-filters-up
   3   move-calculations-up-2
   4   move-filters-up-2
-  5   merge-traversal-filter
+  5   optimize-traversals
 
 

@@ -86,7 +86,7 @@ class V8GcThread : public Thread {
 V8DealerFeature::V8DealerFeature(
     application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "V8Dealer"),
-      _gcFrequency(15.0),
+      _gcFrequency(30.0),
       _gcInterval(1000),
       _nrContexts(0),
       _ok(false),
@@ -203,11 +203,11 @@ void V8DealerFeature::start() {
   // setup instances
   {
     CONDITION_LOCKER(guard, _contextCondition);
-    _contexts.resize(_nrContexts, nullptr);
+    _contexts.resize(static_cast<size_t>(_nrContexts), nullptr);
 
-    _busyContexts.reserve(_nrContexts);
-    _freeContexts.reserve(_nrContexts);
-    _dirtyContexts.reserve(_nrContexts);
+    _busyContexts.reserve(static_cast<size_t>(_nrContexts));
+    _freeContexts.reserve(static_cast<size_t>(_nrContexts));
+    _dirtyContexts.reserve(static_cast<size_t>(_nrContexts));
   }
 
   for (size_t i = 0; i < _nrContexts; ++i) {
@@ -262,10 +262,10 @@ void V8DealerFeature::collectGarbage() {
   bool preferFree = false;
 
   // the time we'll wait for a signal
-  uint64_t const regularWaitTime = (uint64_t)(_gcFrequency * 1000.0 * 1000.0);
+  uint64_t const regularWaitTime = static_cast<uint64_t>(_gcFrequency * 1000.0 * 1000.0);
 
   // the time we'll wait for a signal when the previous wait timed out
-  uint64_t const reducedWaitTime = (uint64_t)(_gcFrequency * 1000.0 * 200.0);
+  uint64_t const reducedWaitTime = static_cast<uint64_t>(_gcFrequency * 1000.0 * 200.0);
 
   while (_stopping == 0) {
     V8Context* context = nullptr;
@@ -292,7 +292,7 @@ void V8DealerFeature::collectGarbage() {
         _dirtyContexts.pop_back();
         if (context->_numExecutions < 50 && !context->_hasActiveExternals) {
           // don't collect this one yet. it doesn't have externals, so there
-          // is urge for garbage collection
+          // is no urge for garbage collection
           _freeContexts.emplace_back(context);
           context = nullptr;
         } else {

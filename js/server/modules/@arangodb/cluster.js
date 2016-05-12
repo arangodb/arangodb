@@ -233,7 +233,7 @@ function getLocalDatabases () {
   var result = { };
   var db = require("internal").db;
 
-  db._listDatabases().forEach(function (database) {
+  db._databases().forEach(function (database) {
     result[database] = { name: database };
   });
 
@@ -1035,7 +1035,7 @@ function setupReplication () {
 
   var db = require("internal").db;
   var rep = require("@arangodb/replication");
-  var dbs = db._listDatabases();
+  var dbs = db._databases();
   var i;
   var ok = true;
   for (i = 0; i < dbs.length; i++) {
@@ -1077,7 +1077,7 @@ function secondaryToPrimary () {
   console.info("Switching role from secondary to primary...");
   var db = require("internal").db;
   var rep = require("@arangodb/replication");
-  var dbs = db._listDatabases();
+  var dbs = db._databases();
   var i;
   try {
     for (i = 0; i < dbs.length; i++) {
@@ -1325,14 +1325,14 @@ var isCoordinatorRequest = function (req) {
 /// @brief handlePlanChange
 ////////////////////////////////////////////////////////////////////////////////
 
-var handlePlanChange = function () {
+var handlePlanChange = function (plan, current) {
   if (! isCluster() || isCoordinator() || ! global.ArangoServerState.initialized()) {
     return;
   }
   
   let versions = {
-    plan: 0,
-    current: 0
+    plan: plan.Version,
+    current: current.Version,
   };
     
   ////////////////////////////////////////////////////////////////////////////////
@@ -1372,12 +1372,6 @@ var handlePlanChange = function () {
   }
 
   try {
-    var plan    = global.ArangoAgency.get("Plan", true).arango.Plan;
-    var current = global.ArangoAgency.get("Current", true).arango.Current;
-
-    versions.plan = plan.Version;
-    versions.current = current.Version;
-
     handleChanges(plan, current, writeLocked);
 
     console.info("plan change handling successful");

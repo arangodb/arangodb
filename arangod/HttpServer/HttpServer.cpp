@@ -86,8 +86,8 @@ HttpServer::~HttpServer() { stopListening(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpCommTask* HttpServer::createCommTask(TRI_socket_t s,
-                                         ConnectionInfo const& info) {
-  return new HttpCommTask(this, s, info, _keepAliveTimeout);
+                                         ConnectionInfo&& info) {
+  return new HttpCommTask(this, s, std::move(info), _keepAliveTimeout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,8 +161,8 @@ void HttpServer::stop() {
 /// @brief handles connection request
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info) {
-  HttpCommTask* task = createCommTask(s, info);
+void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo&& info) {
+  HttpCommTask* task = createCommTask(s, std::move(info));
 
   try {
     MUTEX_LOCKER(mutexLocker, _commTasksLock);
@@ -201,7 +201,7 @@ void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpServer::handleRequestAsync(HttpCommTask* task,
-				    WorkItem::uptr<HttpHandler>& handler,
+                                    WorkItem::uptr<HttpHandler>& handler,
                                     uint64_t* jobId) {
   // extract the coordinator flag
   bool found;
@@ -226,8 +226,10 @@ bool HttpServer::handleRequestAsync(HttpCommTask* task,
   if (res != TRI_ERROR_NO_ERROR) {
     job->requestStatisticsAgentSetExecuteError();
     job->RequestStatisticsAgent::transferTo(task);
-    LOG(WARN) << "unable to add job to the job queue: "
-              << TRI_errno_string(res);
+    if (res != TRI_ERROR_DISPATCHER_IS_STOPPING) {
+      LOG(WARN) << "unable to add job to the job queue: "
+                << TRI_errno_string(res);
+    }
     // todo send info to async work manager?
     return false;
   }

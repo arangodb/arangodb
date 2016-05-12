@@ -60,7 +60,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   /// @brief constructs a new task
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpCommTask(HttpServer*, TRI_socket_t, const ConnectionInfo&,
+  HttpCommTask(HttpServer*, TRI_socket_t, ConnectionInfo&&,
                double keepAliveTimeout);
 
   //////////////////////////////////////////////////////////////////////////////

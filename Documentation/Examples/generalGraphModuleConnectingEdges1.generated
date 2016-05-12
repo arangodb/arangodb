@@ -3,11 +3,11 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<s
 arangosh&gt; graph._getConnectingEdges({isCapital : <span class="hljs-literal">true</span>}, {isCapital : <span class="hljs-literal">true</span>});
 [ 
   { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"23336"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/23336"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/856772168"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"856772168"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"856772168"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"23336"</span>, 
     <span class="hljs-string">"distance"</span> : <span class="hljs-number">1200</span> 
   } 
 ]

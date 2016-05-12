@@ -82,6 +82,7 @@ class GeneralRequest {
  public:
   explicit GeneralRequest(ConnectionInfo const& connectionInfo)
       : _version(ProtocolVersion::UNKNOWN),
+        _protocol(""),
         _connectionInfo(connectionInfo),
         _clientTaskId(0),
         _requestContext(nullptr),
@@ -94,8 +95,8 @@ class GeneralRequest {
   ProtocolVersion protocolVersion() const { return _version; }
 
   // http, https or vpp
-  std::string const& protocol() const { return _protocol; }
-  void setProtocol(std::string const& protocol) { _protocol = protocol; }
+  char const* protocol() const { return _protocol; }
+  void setProtocol(char const* protocol) { _protocol = protocol; }
 
   ConnectionInfo const& connectionInfo() const { return _connectionInfo; }
   void setConnectionInfo(ConnectionInfo const& connectionInfo) {
@@ -113,6 +114,7 @@ class GeneralRequest {
   // the authenticated user
   std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }
+  void setUser(std::string&& user) { _user = std::move(user); }
 
   RequestContext* requestContext() const { return _requestContext; }
   void setRequestContext(RequestContext*, bool);
@@ -135,17 +137,15 @@ class GeneralRequest {
   // with all the remaining arguments.
   std::string prefix() const { return _prefix; }
   void setPrefix(std::string const& prefix) { _prefix = prefix; }
+  void setPrefix(std::string&& prefix) { _prefix = std::move(prefix); }
 
   std::vector<std::string> const& suffix() const { return _suffix; }
-  void addSuffix(std::string const& part);
+  void addSuffix(std::string&& part);
 
   // The key must be lowercase.
   std::string const& header(std::string const& key) const;
   std::string const& header(std::string const& key, bool& found) const;
   std::unordered_map<std::string, std::string> const& headers() const { return _headers; }
-  void setHeader(std::string const& key, std::string const& value) {
-    _headers[key] = value;
-  }
 
   std::string const& value(std::string const& key) const;
   std::string const& value(std::string const& key, bool& found) const;
@@ -164,7 +164,7 @@ class GeneralRequest {
 
  protected:
   ProtocolVersion _version;
-  std::string _protocol;
+  char const* _protocol;
 
   // connection info
   ConnectionInfo _connectionInfo;

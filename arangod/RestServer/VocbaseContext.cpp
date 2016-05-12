@@ -174,10 +174,8 @@ bool VocbaseContext::useClusterAuthentication() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string VocbaseContext::realm() const {
-  static std::string EMPTY = "";
-
   if (_vocbase == nullptr) {
-    return EMPTY;
+    return std::string("");
   }
 
   return _vocbase->_name;
@@ -303,8 +301,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
       return GeneralResponse::ResponseCode::BAD;
     }
 
-    std::string const username = up.substr(0, n);
-    _request->setUser(username);
+    _request->setUser(up.substr(0, n));
 
     return GeneralResponse::ResponseCode::OK;
   }
@@ -336,8 +333,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
     }
   }
 
-  // TODO: create a user object for the VocbaseContext
-  _request->setUser(username);
+  _request->setUser(std::move(username));
 
   if (mustChange) {
     if ((_request->requestType() == GeneralRequest::RequestType::PUT ||

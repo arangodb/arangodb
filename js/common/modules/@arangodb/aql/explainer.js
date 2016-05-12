@@ -1,4 +1,5 @@
 /*jshint strict: false, maxlen: 300 */
+/*global arango */
 
 var db = require("@arangodb").db,
   internal = require("internal"),
@@ -360,7 +361,7 @@ function printTraversalDetails (traversals) {
 
 }
 
-/* analzye and print execution plan */
+/* analyze and print execution plan */
 function processQuery (query, explain) {
   'use strict';
   var nodes = { }, 
@@ -372,13 +373,20 @@ function processQuery (query, explain) {
     maxEstimateLen = String("Est.").length,
     plan = explain.plan;
 
-
-  var isOnServer = (typeof ArangoClusterComm === "object");
-  var cluster;
-  if (isOnServer) {
-    cluster = require("@arangodb/cluster");
+  var isCoordinator = false;
+  if (typeof ArangoClusterComm === "object") {
+    isCoordinator = require("@arangodb/cluster").isCoordinator();
   } else {
-    cluster = {};
+    try {
+      if (arango) {
+        var result = arango.GET("/_admin/server/role");
+        if (result.role === "COORDINATOR") {
+          isCoordinator = true;
+        }
+      }
+    } catch (err) {
+      // ignore error
+    }
   }
   
   var recursiveWalk = function (n, level) {
@@ -388,6 +396,7 @@ function processQuery (query, explain) {
         rootNode = node.id;
       }
       if (node.type === "SubqueryNode") {
+        // enter subquery
         recursiveWalk(node.subquery.nodes, level + 1);
       }
       node.dependencies.forEach(function(d) {
@@ -415,6 +424,7 @@ function processQuery (query, explain) {
     while (count > 0) {
       --count;
       var node = n[count];
+      // get location of execution node in cluster
       node.site = site;
 
       if (node.type === "RemoteNode") {
@@ -962,7 +972,7 @@ function processQuery (query, explain) {
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " +
       keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   ";
 
-    if (cluster && cluster.isCluster && cluster.isCluster()) { 
+    if (isCoordinator) {
       line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + "  ";
     }
 
@@ -983,7 +993,7 @@ function processQuery (query, explain) {
     pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " +
     header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   ";
 
-  if (cluster && cluster.isCluster && cluster.isCluster()) { 
+  if (isCoordinator) {
     line += header("Site") + pad(1 + maxSiteLen - String("Site").length) + "  ";
   }
 

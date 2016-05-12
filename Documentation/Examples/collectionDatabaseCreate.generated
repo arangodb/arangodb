@@ -1,9 +1,9 @@
 arangosh&gt; c = db._create(<span class="hljs-string">"users"</span>);
-[ArangoCollection <span class="hljs-number">1081547474</span>, <span class="hljs-string">"users"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">14983</span>, <span class="hljs-string">"users"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; c.properties();
 { 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">1048576</span>, 
+  <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 

@@ -194,6 +194,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
   reportServerProgress(_state);
   start();
 
+
   // wait until we get signaled the shutdown request
   _state = ServerState::IN_WAIT;
   reportServerProgress(_state);
@@ -467,7 +468,15 @@ void ApplicationServer::prepare() {
         LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::prepare";
         feature->prepare();
         feature->state(FeatureState::PREPARED);
+      } catch (std::exception const& ex) {
+        LOG(ERR) << "caught exception during prepare of feature " << feature->name() << ": " << ex.what();
+        // restore original privileges
+        if (!privilegesElevated) {
+          raisePrivilegesTemporarily();
+        }
+        throw;
       } catch (...) {
+        LOG(ERR) << "caught unknown exception during prepare of feature " << feature->name();
         // restore original privileges
         if (!privilegesElevated) {
           raisePrivilegesTemporarily();
@@ -483,11 +492,40 @@ void ApplicationServer::prepare() {
 void ApplicationServer::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::start";
 
+  bool abortStartup = false;
+
   for (auto feature : _orderedFeatures) {
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::start";
-    feature->start();
-    feature->state(FeatureState::STARTED);
-    reportFeatureProgress(_state, feature->name());
+
+    try {
+      feature->start();
+      feature->state(FeatureState::STARTED);
+      reportFeatureProgress(_state, feature->name());
+    } catch (std::exception const& ex) {
+      LOG(ERR) << "caught exception during start of feature " << feature->name() << ": " << ex.what() << ". shutting down";
+      abortStartup = true;
+    } catch (...) {
+      LOG(ERR) << "caught unknown exception during start of feature " << feature->name() << ". shutting down";
+      abortStartup = true;
+    }
+
+    if (abortStartup) {
+      // try to stop all feature that we just started
+      for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+        auto feature = *it;
+        if (feature->state() == FeatureState::STARTED) {
+          LOG(TRACE) << "forcefully stopping feature " << feature->name();
+          try {
+            feature->stop();
+          } catch (...) {
+            // ignore errors on shutdown
+          }
+        }
+      }
+
+      // throw exception so the startup aborts
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "startup aborted");
+    }
   }
 }
 

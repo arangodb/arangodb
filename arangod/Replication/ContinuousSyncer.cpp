@@ -511,7 +511,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
   }
 
   // extract "key"
-  VPackSlice const key = doc.get(TRI_VOC_ATTRIBUTE_KEY);
+  VPackSlice const key = doc.get(StaticStrings::KeyString);
 
   if (!key.isString()) {
     errorMsg = "invalid document key format";
@@ -519,7 +519,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
   }
 
   // extract "rev"
-  VPackSlice const rev = doc.get(TRI_VOC_ATTRIBUTE_REV);
+  VPackSlice const rev = doc.get(StaticStrings::RevString);
   
   if (!rev.isString()) {
     errorMsg = "invalid document revision format";
@@ -528,8 +528,8 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(TRI_VOC_ATTRIBUTE_KEY, key);
-  builder.add(TRI_VOC_ATTRIBUTE_REV, rev);
+  builder.add(StaticStrings::KeyString, key);
+  builder.add(StaticStrings::RevString, rev);
   builder.close();
 
   VPackSlice const old = builder.slice();

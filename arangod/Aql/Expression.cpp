@@ -396,8 +396,8 @@ void Expression::buildExpression() {
     VPackBuilder builder;
     _node->toVelocyPackValue(builder);
 
-    _data = new uint8_t[builder.size()];
-    memcpy(_data, builder.data(), builder.size());
+    _data = new uint8_t[static_cast<size_t>(builder.size())];
+    memcpy(_data, builder.data(), static_cast<size_t>(builder.size()));
   } else if (_type == V8) {
     // generate a V8 expression
     _func = _executor->generateExpression(_node);

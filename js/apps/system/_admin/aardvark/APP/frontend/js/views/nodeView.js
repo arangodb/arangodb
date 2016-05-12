@@ -44,12 +44,12 @@
       var callback = function() {
         this.continueRender();
         this.breadcrumb(this.coordname);
-        window.arangoHelper.buildNodeSubNav(this.coordname, 'Dashboard', 'Logs');
+        //window.arangoHelper.buildNodeSubNav(this.coordname, 'Dashboard', 'Logs');
         $(window).trigger('resize');
       }.bind(this);
 
-      var cb =function() {
-        console.log("dummy");
+      var cb = function() {
+        console.log("node complete");
       };
 
       if (!this.initCoordDone) {
@@ -118,7 +118,6 @@
             }
           });
 
-          console.log(self.dbServer.toJSON());
           callback();
         }
       }, 200);

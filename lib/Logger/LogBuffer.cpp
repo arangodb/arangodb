@@ -59,7 +59,7 @@ std::vector<LogBuffer> LogBuffer::entries(LogLevel level, uint64_t start,
   if (LogBuffer::_ringBufferId >= LogBuffer::RING_BUFFER_SIZE) {
     s = e = (LogBuffer::_ringBufferId + 1) % LogBuffer::RING_BUFFER_SIZE;
   } else {
-    e = LogBuffer::_ringBufferId;
+    e = static_cast<size_t>(LogBuffer::_ringBufferId);
   }
 
   for (size_t i = s; i != e;) {

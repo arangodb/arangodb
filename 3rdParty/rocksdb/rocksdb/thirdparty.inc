@@ -3,13 +3,34 @@
 #
 # Edit these lines to set defaults for use of external libraries
 #
-set(USE_GFLAGS_DEFAULT 0)        # GFLAGS is disabled by default, enable with -DGFLAGS=1 cmake command line agrument
-set(USE_SNAPPY_DEFAULT 0)        # SNAPPY is disabled by default, enable with -DSNAPPY=1 cmake command line agrument
-set(USE_LZ4_DEFAULT 0)           # LZ4 is disabled by default, enable with -DLZ4=1 cmake command line agrument
-set(USE_ZLIB_DEFAULT 0)          # ZLIB is disabled by default, enable with -DZLIB=1 cmake command line agrument
-set(USE_XPRESS_DEFAULT 0)        # XPRESS is disabled by default, enable with -DXPRESS=1 cmake command line agrument
-set(USE_JEMALLOC_DEFAULT 0)      # JEMALLOC is disabled by default, enable with -DJEMALLOC=1 cmake command line agrument
-set(USE_JENONINIT_DEFAULT 1)     # Default is enabled do not call je_init/je_uninit as the newer versions do not have it disable with -DJENONINIT=0
+
+if (NOT "${USE_GFLAGS_DEFAULT}")
+  set(USE_GFLAGS_DEFAULT 0)        # GFLAGS is disabled by default, enable with -DGFLAGS=1 cmake command line agrument
+endif()
+
+if (NOT "${USE_SNAPPY_DEFAULT}")
+  set(USE_SNAPPY_DEFAULT 0)        # SNAPPY is disabled by default, enable with -DSNAPPY=1 cmake command line agrument
+endif()
+
+if (NOT "${USE_LZ4_DEFAULT}")
+  set(USE_LZ4_DEFAULT 0)           # LZ4 is disabled by default, enable with -DLZ4=1 cmake command line agrument
+endif()
+
+if (NOT "${USE_ZLIB_DEFAULT}")
+  set(USE_ZLIB_DEFAULT 0)          # ZLIB is disabled by default, enable with -DZLIB=1 cmake command line agrument
+endif()
+
+if (NOT "${USE_XPRESS_DEFAULT}")
+  set(USE_XPRESS_DEFAULT 0)        # XPRESS is disabled by default, enable with -DXPRESS=1 cmake command line agrument
+endif()
+
+if (NOT "${USE_JEMALLOC_DEFAULT}")
+  set(USE_JEMALLOC_DEFAULT 0)      # JEMALLOC is disabled by default, enable with -DJEMALLOC=1 cmake command line agrument
+endif()
+
+if (NOT "${USE_JENONINIT_DEFAULT}")
+  set(USE_JENONINIT_DEFAULT 1)     # Default is enabled do not call je_init/je_uninit as the newer versions do not have it disable with -DJENONINIT=0
+endif()
 
 #
 # This example assumes all the libraries locate in directories under THIRDPARTY_HOME environment variable
@@ -65,10 +86,11 @@ endif ()
 #
 # Edit these 4 lines to define paths to Snappy
 #
-set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
-set(SNAPPY_INCLUDE ${SNAPPY_HOME}/inc/inc)
-set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/bin/debug/amd64/snappy.lib)
-set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/bin/retail/amd64/snappy.lib)
+set(SNAPPY_HOME ${CMAKE_SOURCE_DIR}/3rdParty/snappy/google-snappy-d53de18/)
+set(SNAPPY_INCLUDE ${SNAPPY_HOME})
+list(APPEND SNAPPY_INCLUDE ${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/)
+set(SNAPPY_LIB_DEBUG snappystatic)
+set(SNAPPY_LIB_RELEASE snappystatic)
 
 #
 # Don't touch these lines

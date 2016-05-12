@@ -1073,12 +1073,12 @@ TraversalPath* DepthFirstTraverser::next() {
   }
   TRI_ASSERT(!_pruneNext);
   EnumeratedPath<std::string, std::string> const& path = _enumerator->next();
-  size_t countEdges = path.edges.size();
-  if (countEdges == 0) {
+  if (path.vertices.empty()) {
     _done = true;
     // Done traversing
     return nullptr;
   }
+  size_t countEdges = path.edges.size();
 
   auto p = std::make_unique<SingleServerTraversalPath>(path, this);
   if (countEdges >= _opts.maxDepth) {
@@ -1153,7 +1153,7 @@ void DepthFirstTraverser::EdgeGetter::nextEdge(
         *last = 0;
         edge = opRes->slice();
         TRI_ASSERT(edge.isArray());
-        _traverser->_readDocuments += edge.length();
+        _traverser->_readDocuments += static_cast<size_t>(edge.length());
         continue;
       }
       eColIdx++;

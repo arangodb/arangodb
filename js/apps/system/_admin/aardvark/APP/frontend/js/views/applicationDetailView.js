@@ -6,22 +6,52 @@
   window.ApplicationDetailView = Backbone.View.extend({
     el: '#content',
 
+    divs: ['#readme', '#swagger', '#app-info', '#sideinformation', '#information', '#settings'],
+    navs: ['#service-info', '#service-api', '#service-readme', '#service-settings'],
+
     template: templateEngine.createTemplate('applicationDetailView.ejs'),
 
     events: {
       'click .open': 'openApp',
       'click .delete': 'deleteApp',
-      'click #app-config': 'showConfigDialog',
       'click #app-deps': 'showDepsDialog',
       'click #app-switch-mode': 'toggleDevelopment',
       'click #app-scripts [data-script]': 'runScript',
       'click #app-tests': 'runTests',
       'click #app-replace': 'replaceApp',
       'click #download-app': 'downloadApp',
-      'click #app-show-swagger': 'showSwagger',
-      'click #app-show-readme': 'showReadme',
+      'click .subMenuEntries li': 'changeSubview',
       'mouseenter #app-scripts': 'showDropdown',
       'mouseleave #app-scripts': 'hideDropdown'
+    },
+
+    changeSubview: function(e) {
+      _.each(this.navs, function(nav) {
+        $(nav).removeClass('active');
+      });
+
+      $(e.currentTarget).addClass('active');
+
+      _.each(this.divs, function(div) {
+        $('.headerButtonBar').hide();
+        $(div).hide();
+      });
+
+      if (e.currentTarget.id === 'service-readme') {
+        $('#readme').show();
+      }
+      else if (e.currentTarget.id === 'service-api') {
+        $('#swagger').show();
+      }
+      else if (e.currentTarget.id === 'service-info') {
+        $('#information').show();
+        $('#sideinformation').show();
+      }
+      else if (e.currentTarget.id === 'service-settings') {
+        this.showConfigDialog();
+        $('.headerButtonBar').show();
+        $('#settings').show();
+      }
     },
 
     downloadApp: function() {
@@ -69,11 +99,11 @@
     toggleDevelopment: function() {
       this.model.toggleDevelopment(!this.model.isDevelopment(), function() {
         if (this.model.isDevelopment()) {
-          $('#app-switch-mode').val('Set Production');
+          $('.app-switch-mode').text('Set Production');
           $('#app-development-indicator').css('display', 'inline');
           $('#app-development-path').css('display', 'inline');
         } else {
-          $('#app-switch-mode').val('Set Development');
+          $('.app-switch-mode').text('Set Development');
           $('#app-development-indicator').css('display', 'none');
           $('#app-development-path').css('display', 'none');
         }
@@ -220,22 +250,46 @@
 
       arangoHelper.currentDatabase(callback);
 
+      if (_.isEmpty(this.model.get('config'))) {
+        $('#service-settings').attr('disabled', true);
+      }
       return $(this.el);
     },
 
     breadcrumb: function() {
       console.log(this.model.toJSON());
-      var string = 'Service: ' + this.model.get('name') + 
-      '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
-
-      if (this.model.get("mount")) {
-        string += 'Mount: ' + this.model.get("mount");
+      var string = 'Service: ' + this.model.get('name') + '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
+      
+      var contributors = '<p class="mount"><span>Contributors:</span>';
+      if (this.model.get('contributors') && this.model.get('contributors').length > 0) {
+        _.each(this.model.get('contributors'), function (contributor) {
+          contributors += '<a href="mailto:' + contributor.email + '">' + contributor.name + '</a>';
+        });
+      } 
+      else {
+        contributors += 'No contributors';
       }
+      contributors += '</p>';
+      $('.information').append(
+        contributors
+      );
 
+      //information box info tab
+      if (this.model.get("author")) {
+        $('.information').append(
+          '<p class="mount"><span>Author:</span>' + this.model.get("author") + '</p>'
+        );
+      }
+      if (this.model.get("mount")) {
+        $('.information').append(
+          '<p class="mount"><span>Mount:</span>' + this.model.get("mount") + '</p>'
+        );
+      }
       if (this.model.get("development")) {
         if (this.model.get("path")) {
-          string += '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
-          string += 'Path: <span class="small">' + this.model.get("path") + '</span>';
+          $('.information').append(
+            '<p class="path"><span>Path:</span>' + this.model.get("path") + '</p>'
+          );
         }
       }
       $('#subNavigationBar .breadcrumb').html(string);
@@ -322,13 +376,14 @@
         }
       });
       this.model.setConfiguration(cfg, function() {
-        window.modalView.hide();
         this.updateConfig();
+        arangoHelper.arangoNotification(this.model.get("name"), "Settings applied.");
       }.bind(this));
     },
 
     showConfigDialog: function() {
       if (_.isEmpty(this.model.get('config'))) {
+        $('#settings .buttons').html($('#hidden_buttons').html()); 
         return;
       }
       var tableContent = _.map(this.model.get('config'), function(obj, name) {
@@ -388,13 +443,15 @@
           checks
         );
       });
+
       var buttons = [
         window.modalView.createSuccessButton('Apply', this.applyConfig.bind(this))
       ];
-      window.modalView.show(
-        'modalTable.ejs', 'Configuration', buttons, tableContent
-      );
 
+      window.modalView.show(
+        'modalTable.ejs', 'Configuration', buttons, tableContent, null, null, null, null, null, 'settings'
+      );
+      $('.modal-footer').prepend($('#hidden_buttons').html()); 
     },
 
     applyDeps: function() {

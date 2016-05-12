@@ -132,7 +132,7 @@ class AssocUnique {
         b._table = nullptr;
 
         // may fail...
-        b._table = new Element* [b._nrAlloc];
+        b._table = new Element*[static_cast<size_t>(b._nrAlloc)];
 
         for (uint64_t i = 0; i < b._nrAlloc; i++) {
           b._table[i] = nullptr;
@@ -207,7 +207,7 @@ class AssocUnique {
     targetSize = TRI_NearPrime(targetSize);
 
     // This might throw, is catched outside
-    b._table = new Element* [targetSize];
+    b._table = new Element*[static_cast<size_t>(targetSize)];
 
     b._nrAlloc = targetSize;
 
@@ -449,7 +449,7 @@ class AssocUnique {
     uint64_t hash = _hashKey(userData, key);
     uint64_t i = hash;
     uint64_t bucketId = i & _bucketsMask;
-    Bucket const& b = _buckets[bucketId];
+    Bucket const& b = _buckets[static_cast<size_t>(bucketId)];
 
     uint64_t const n = b._nrAlloc;
     i = i % n;
@@ -485,7 +485,7 @@ class AssocUnique {
     hash = _hashKey(userData, key);
     uint64_t i = hash;
     uint64_t bucketId = i & _bucketsMask;
-    Bucket const& b = _buckets[bucketId];
+    Bucket const& b = _buckets[static_cast<size_t>(bucketId)];
 
     uint64_t const n = b._nrAlloc;
     i = i % n;
@@ -504,7 +504,7 @@ class AssocUnique {
 
     // if requested, pass the position of the found element back
     // to the caller
-    position.bucketId = bucketId;
+    position.bucketId = static_cast<size_t>(bucketId);
     position.position = i;
 
     // ...........................................................................
@@ -665,7 +665,7 @@ class AssocUnique {
             }
 
             // we're responsible for this bucket!
-            Bucket& b = _buckets[bucketId];
+            Bucket& b = _buckets[static_cast<size_t>(bucketId)];
             uint64_t expected = 0;
 
             for (auto const& it2 : it.second) {

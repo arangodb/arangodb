@@ -67,6 +67,10 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
 
 ClusterFeature::~ClusterFeature() {
   delete _heartbeatThread;
+  
+  if (_enableCluster) {
+    AgencyComm::cleanup();
+  }
 
   // delete connection manager instance
   auto cm = httpclient::ConnectionManager::instance();
@@ -363,13 +367,13 @@ void ClusterFeature::start() {
             << ", role: " << ServerState::roleToString(role);
 
   if (!_disableHeartbeat) {
-    AgencyCommResult result = comm.getValues2("Sync/HeartbeatIntervalMs");
+    AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
 
     if (result.successful()) {
       
       velocypack::Slice HeartbeatIntervalMs =
         result.slice()[0].get(std::vector<std::string>(
-          {AgencyComm::prefixStripped(), "Sync", "HeartbeatIntervalMs"}));
+          {AgencyComm::prefix(), "Sync", "HeartbeatIntervalMs"}));
           
       if (HeartbeatIntervalMs.isInteger()) {
         try {
@@ -474,6 +478,17 @@ void ClusterFeature::stop() {
 
     AgencyComm comm;
     comm.sendServerState(0.0);
+
+    if (_heartbeatThread != nullptr) {
+      int counter = 0;
+      while (_heartbeatThread->isRunning()) {
+        usleep(100000);
+        // emit warning after 5 seconds
+        if (++counter == 10 * 5) {
+          LOG(WARN) << "waiting for heartbeat thread to finish";
+        }
+      }
+    }
   }
 
   ClusterComm::cleanup();

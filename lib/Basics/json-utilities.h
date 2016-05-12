@@ -57,13 +57,4 @@ TRI_json_t* TRI_MergeJson(TRI_memory_zone_t*, TRI_json_t const*,
 
 uint64_t TRI_FastHashJson(TRI_json_t const* json);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute a hash value for a JSON document depending on a list
-/// of attributes.
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_HashJsonByAttributes(TRI_json_t const* json,
-                                  char const* attributes[], int nrAttributes,
-                                  bool docComplete, int& error);
-
 #endif

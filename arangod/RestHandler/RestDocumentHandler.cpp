@@ -154,17 +154,10 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)), transactionContext->getVPackOptions());
+  generateSaved(result, collectionName,
+                TRI_col_type_e(trx.getCollectionType(collectionName)),
+                transactionContext->getVPackOptions(), isMultiple);
 
-  if (isMultiple && !result.countErrorCodes.empty()) {
-    VPackBuilder errorBuilder;
-    errorBuilder.openObject();
-    for (auto const& it : result.countErrorCodes) {
-      errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
-    }
-    errorBuilder.close();
-    _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.slice().toJson());
-  }
   return true;
 }
 
@@ -274,14 +267,17 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     return false;
   }
 
-  TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
-  if (ifNoneRid != 0 && ifNoneRid == rid) {
-    generateNotModified(rid);
-  } else {
-    // copy default options
-    generateDocument(result.slice(), generateBody,
-                     transactionContext->getVPackOptions());
+  if (ifNoneRid != 0) {
+    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
+    if (ifNoneRid == rid) {
+      generateNotModified(rid);
+      return true;
+    }
   }
+    
+  // use default options
+  generateDocument(result.slice(), generateBody,
+                   transactionContext->getVPackOptions());
   return true;
 }
 
@@ -461,17 +457,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     return false;
   }
 
-  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)), transactionContext->getVPackOptions());
-
-  if (isArrayCase && !result.countErrorCodes.empty()) {
-    VPackBuilder errorBuilder;
-    errorBuilder.openObject();
-    for (auto const& it : result.countErrorCodes) {
-      errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
-    }
-    errorBuilder.close();
-    _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.slice().toJson());
-  }
+  generateSaved(result, collectionName,
+                TRI_col_type_e(trx.getCollectionType(collectionName)),
+                transactionContext->getVPackOptions(), isArrayCase);
 
   return true;
 }

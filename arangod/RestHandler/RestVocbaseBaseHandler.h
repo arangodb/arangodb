@@ -146,20 +146,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   std::string assembleDocumentId(std::string const&, std::string const&, bool);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief check if a collection needs to be created on the fly
-  ///
-  /// this method will check the "createCollection" attribute of the request. if
-  /// it is set to true, it will verify that the named collection actually
-  /// exists.
-  /// if the collection does not yet exist, it will create it on the fly.
-  /// if the "createCollection" attribute is not set or set to false, nothing
-  /// will
-  /// happen, and the collection name will not be checked
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool checkCreateCollection(std::string const&, TRI_col_type_e);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a HTTP 201 or 202 response
   //////////////////////////////////////////////////////////////////////////////
 
@@ -186,7 +172,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateSaved(arangodb::OperationResult const& result,
                      std::string const& collectionName, TRI_col_type_e type,
-                     arangodb::velocypack::Options const*);
+                     arangodb::velocypack::Options const*,
+                     bool isMultiple);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates deleted message

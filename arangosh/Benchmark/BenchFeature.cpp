@@ -228,7 +228,7 @@ void BenchFeature::start() {
     guard.broadcast();
   }
 
-  size_t const stepValue = _operations / 20;
+  size_t const stepValue = static_cast<size_t>(_operations / 20);
   size_t nextReportValue = stepValue;
 
   if (nextReportValue < 100) {
@@ -253,7 +253,7 @@ void BenchFeature::start() {
   double time = TRI_microtime() - start;
   double requestTime = 0.0;
 
-  for (uint64_t i = 0; i < _concurreny; ++i) {
+  for (size_t i = 0; i < static_cast<size_t>(_concurreny); ++i) {
     requestTime += threads[i]->getTime();
   }
 
@@ -302,7 +302,7 @@ void BenchFeature::start() {
 
   benchmark->tearDown();
 
-  for (uint64_t i = 0; i < _concurreny; ++i) {
+  for (size_t i = 0; i < static_cast<size_t>(_concurreny); ++i) {
     delete threads[i];
     delete endpoints[i];
   }

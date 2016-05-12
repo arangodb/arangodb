@@ -657,8 +657,8 @@ std::string Transaction::makeIdFromCustom(CollectionNameResolver const* resolver
   if (p == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid _key value");
   }
-  memcpy(&buffer[len + 1], p, keyLength);
-  return std::string(&buffer[0], len + 1 + keyLength);
+  memcpy(&buffer[len + 1], p, static_cast<size_t>(keyLength));
+  return std::string(&buffer[0], static_cast<size_t>(len + 1 + keyLength));
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1502,7 +1502,9 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
   if (res == TRI_ERROR_NO_ERROR) {
     if (responseCode == GeneralResponse::ResponseCode::ACCEPTED ||
         responseCode == GeneralResponse::ResponseCode::CREATED) {
-      return OperationResult(resultBody->steal(), nullptr, "", TRI_ERROR_NO_ERROR, responseCode == GeneralResponse::ResponseCode::CREATED);
+      return OperationResult(
+          resultBody->steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+          responseCode == GeneralResponse::ResponseCode::CREATED, errorCounter);
     } else if (responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
       return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
     } else if (responseCode == GeneralResponse::ResponseCode::BAD) {

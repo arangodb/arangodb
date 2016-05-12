@@ -3,7 +3,7 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<s
 arangosh&gt; graph._absoluteEccentricity({}, {startVertexCollectionRestriction : <span class="hljs-string">'germanCity'</span>,
 ........&gt; direction : <span class="hljs-string">'outbound'</span>, weight : <span class="hljs-string">'distance'</span>});
 { 
-  <span class="hljs-string">"germanCity/Berlin"</span> : <span class="hljs-number">1200</span>, 
   <span class="hljs-string">"germanCity/Cologne"</span> : <span class="hljs-number">700</span>, 
-  <span class="hljs-string">"germanCity/Hamburg"</span> : <span class="hljs-number">1200</span> 
+  <span class="hljs-string">"germanCity/Hamburg"</span> : <span class="hljs-number">1200</span>, 
+  <span class="hljs-string">"germanCity/Berlin"</span> : <span class="hljs-number">1200</span> 
 }

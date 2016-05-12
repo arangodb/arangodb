@@ -167,6 +167,11 @@ function parseBodyForCreateCollection (req, res) {
     if (body.hasOwnProperty("replicationFactor")) {
       r.parameters.replicationFactor = body.replicationFactor || "";
     }
+
+    if (body.hasOwnProperty("servers")) {
+      r.parameters.servers = body.servers || "";
+    }
+
   }
 
   return r;

@@ -157,15 +157,11 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
       collectionName = value.copyString();
 
-      if (!collectionName.empty()) {
-        auto const* col =
-            TRI_LookupCollectionByNameVocBase(_vocbase, collectionName);
-
-        if (col != nullptr && collectionName.compare(col->_name) != 0) {
-          // user has probably passed in a numeric collection id.
-          // translate it into a "real" collection name
-          collectionName = std::string(col->_name);
-        }
+      if (!collectionName.empty() && collectionName[0] >= '0' &&
+          collectionName[0] <= '9') {
+        // If we have a numeric name we probably have to translate it.
+        CollectionNameResolver resolver(_vocbase);
+        collectionName = resolver.getCollectionName(collectionName);
       }
     }
 
@@ -354,7 +350,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     {
       VPackObjectBuilder guard(&result);
       createResponse(GeneralResponse::ResponseCode::OK);
-      _response->setContentType(StaticStrings::MimeTypeJson);
+      _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
       if (qResult.isArray()) {
 
@@ -371,8 +367,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
                                              }};
 
           VPackValueLength length = postFilter.length();
-
-          expressions.reserve(length);
+          expressions.reserve(static_cast<size_t>(length));
 
           for (auto const& it : VPackArrayIterator(postFilter)) {
             if (it.isObject()) {

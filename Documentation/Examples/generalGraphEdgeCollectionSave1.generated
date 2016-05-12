@@ -3,6 +3,6 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<s
 arangosh&gt; graph.relation.save(<span class="hljs-string">"male/bob"</span>, <span class="hljs-string">"female/alice"</span>, {type: <span class="hljs-string">"married"</span>, _key: <span class="hljs-string">"bobAndAlice"</span>});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/bobAndAlice"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"536104520"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bobAndAlice"</span> 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bobAndAlice"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"18602"</span> 
 }

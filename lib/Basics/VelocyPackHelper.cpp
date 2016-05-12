@@ -62,10 +62,10 @@ struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
     }
 
     // exclude these attributes (but not _key!)
-    if ((keyLength == 3 && memcmp(p, "_id", keyLength) == 0) ||
-        (keyLength == 4 && memcmp(p, "_rev", keyLength) == 0) ||
-        (keyLength == 3 && memcmp(p, "_to", keyLength) == 0) ||
-        (keyLength == 5 && memcmp(p, "_from", keyLength) == 0)) {
+    if ((keyLength == 3 && memcmp(p, "_id", static_cast<size_t>(keyLength)) == 0) ||
+        (keyLength == 4 && memcmp(p, "_rev", static_cast<size_t>(keyLength)) == 0) ||
+        (keyLength == 3 && memcmp(p, "_to", static_cast<size_t>(keyLength)) == 0) ||
+        (keyLength == 5 && memcmp(p, "_from", static_cast<size_t>(keyLength)) == 0)) {
       return true;
     }
 
@@ -160,11 +160,11 @@ bool VelocyPackHelper::AttributeSorterBinary::operator()(std::string const& l,
 }
 
 size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
-  return slice.normalizedHash();
+  return static_cast<size_t>(slice.normalizedHash());
 };
 
 size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) const noexcept {
-  return slice.hashString();
+  return static_cast<size_t>(slice.hashString());
 };
 
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
@@ -630,7 +630,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
 
       int res;
       if (useUTF8) {
-        res = TRI_compare_utf8(left, nl, right, nr);
+        res = TRI_compare_utf8(left, static_cast<size_t>(nl), right, static_cast<size_t>(nr));
       } else {
         size_t len = static_cast<size_t>(nl < nr ? nl : nr);
         res = memcmp(left, right, len);

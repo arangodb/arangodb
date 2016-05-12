@@ -51,11 +51,11 @@ v3.0.0 (XXXX-XX-XX)
 
 * added new endpoint "srv://" for DNS service records
 
-* The result order of the AQL functions VALUES and KEYS has never been guaranteed
-and it only had the "correct" ordering by accident when iterating over objects that
-were not loaded from the database. This accidental behavior is now changed by
-introduction of VelocyPack. No ordering is guaranteed unless you specify
-the sort parameter.
+* The result order of the AQL functions VALUES and ATTRIBUTES has never been 
+  guaranteed and it only had the "correct" ordering by accident when iterating 
+  over objects that were not loaded from the database. This accidental behavior 
+  is now changed by introduction of VelocyPack. No ordering is guaranteed unless 
+  you specify the sort parameter.
 
 * removed configure option `--enable-logger`
 
@@ -174,11 +174,14 @@ the sort parameter.
 * added WorkMonitor to inspect server threads
 
 * when downloading a Foxx service from the web interface the suggested filename
-  now takes the form $name@$version.zip instead of simply "app.zip"
+  is now based on the service's mount path instead of simply "app.zip"
 
 * the `@arangodb/request` response object now stores the parsed JSON response
   body in a property `json` instead of `body` when the request was made using the
   `json` option. The `body` instead contains the response body as a string.
+
+* the Foxx API has changed significantly, 2.8 services are still supported
+  using a backwards-compatible "legacy mode"
 
 
 v2.8.9 (XXXX-XX-XX)

@@ -54,7 +54,7 @@ class Buffer {
   Buffer(Buffer const& that) : Buffer() {
     if (that._pos > 0) {
       if (that._pos > sizeof(_local)) {
-        _buffer = new T[that._pos];
+        _buffer = new T[checkOverflow(that._pos)];
         _alloc = that._pos;
       }
       else {
@@ -74,7 +74,7 @@ class Buffer {
       }
       else {
         // our own buffer is not big enough to hold the data
-        auto buffer = new T[that._pos];
+        auto buffer = new T[checkOverflow(that._pos)];
         initWithNone();
         memcpy(buffer, that._buffer, checkOverflow(that._pos));
 

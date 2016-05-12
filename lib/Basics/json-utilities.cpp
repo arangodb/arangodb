@@ -411,33 +411,3 @@ TRI_json_t* TRI_MergeJson(TRI_memory_zone_t* zone, TRI_json_t const* lhs,
   return MergeRecursive(zone, lhs, rhs, nullMeansRemove, mergeObjects);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute a hash value for a JSON document depending on a list
-/// of attributes. This is used for sharding to map documents to shards.
-///
-/// The attributes array `attributes` has to contain exactly `nrAttributes`
-/// pointers to zero-terminated strings.
-/// Note that all JSON values given for `json` that are not JSON arrays
-/// hash to the same value, which is not the same value a JSON array gets
-/// that does not contain any of the specified attributes.
-/// If the flag `docComplete` is false, it is an error if the document
-/// does not contain explicit values for all attributes. An error
-/// is reported by setting *error to
-/// TRI_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN instead of
-/// TRI_ERROR_NO_ERROR. It is allowed to give NULL as error in which
-/// case no error is reported.
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_HashJsonByAttributes(TRI_json_t const* json,
-                                  char const* attributes[], int nrAttributes,
-                                  bool docComplete, int& error) {
-  error = TRI_ERROR_NO_ERROR;
-  std::shared_ptr<VPackBuilder> transformed = arangodb::basics::JsonHelper::toVelocyPack(json);
-  std::vector<std::string> attr;
-
-  for (int i = 0; i < nrAttributes; i++) {
-    attr.emplace_back(attributes[i]);
-  }
-  return arangodb::basics::VelocyPackHelper::hashByAttributes(
-      transformed->slice(), attr, docComplete, error);
-}

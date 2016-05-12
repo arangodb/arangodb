@@ -345,7 +345,7 @@ struct hash<arangodb::traverser::VertexId> {
  public:
   size_t operator()(arangodb::traverser::VertexId const& s) const {
     size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
-    size_t h2 = TRI_FnvHashString(s.key);
+    size_t h2 = static_cast<size_t>(TRI_FnvHashString(s.key));
     return h1 ^ (h2 << 1);
   }
 };

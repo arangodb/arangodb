@@ -77,7 +77,7 @@ void DatabaseServerFeature::prepare() {
 void DatabaseServerFeature::start() {
   // create the index thread pool
   if (_indexThreads > 0) {
-    _indexPool.reset(new ThreadPool(_indexThreads, "IndexBuilder"));
+    _indexPool.reset(new ThreadPool(static_cast<size_t>(_indexThreads), "IndexBuilder"));
     INDEX_POOL = _indexPool.get();
   }
 }
