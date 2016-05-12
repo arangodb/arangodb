@@ -92,7 +92,7 @@ class HttpServer : protected TaskManager {
   /// @brief generates a suitable communication task
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual HttpCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&);
+  virtual HttpCommTask* createCommTask(TRI_socket_t, ConnectionInfo&&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -147,7 +147,7 @@ class HttpServer : protected TaskManager {
   /// @brief handles connection request
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleConnected(TRI_socket_t s, const ConnectionInfo& info);
+  void handleConnected(TRI_socket_t s, ConnectionInfo&& info);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a connection close
@@ -166,7 +166,7 @@ class HttpServer : protected TaskManager {
   //////////////////////////////////////////////////////////////////////////////
 
   bool handleRequestAsync(HttpCommTask*,
-			  arangodb::WorkItem::uptr<HttpHandler>&,
+                          arangodb::WorkItem::uptr<HttpHandler>&,
                           uint64_t* jobId);
 
   //////////////////////////////////////////////////////////////////////////////

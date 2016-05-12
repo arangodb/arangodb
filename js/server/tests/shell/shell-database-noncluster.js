@@ -81,7 +81,7 @@ function DatabaseSuite () {
       // drop the database 
       internal.db._dropDatabase("UnitTestsDatabase0");
       // should be dropped
-      internal.db._listDatabases().forEach(function (d) {
+      internal.db._databases().forEach(function (d) {
         if (d === "UnitTestsDatabase0") {
           fail();
         }
@@ -133,7 +133,7 @@ function DatabaseSuite () {
       // drop the database 
       internal.db._dropDatabase("UnitTestsDatabase0");
       // should be dropped
-      internal.db._listDatabases().forEach(function (d) {
+      internal.db._databases().forEach(function (d) {
         if (d === "UnitTestsDatabase0") {
           fail();
         }

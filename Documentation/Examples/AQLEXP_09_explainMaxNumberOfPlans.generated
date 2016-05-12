@@ -188,9 +188,9 @@ arangosh&gt; stmt.explain({ maxNumberOfPlans: <span class="hljs-number">1</span>
   }, 
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"stats"</span> : { 
-    <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">25</span> 
+    <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">26</span>, 
+    <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span> 
   }, 
   <span class="hljs-string">"cacheable"</span> : <span class="hljs-literal">true</span> 
 }

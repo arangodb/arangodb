@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ### BEGIN INIT INFO
-# Provides:          arangodb
+# Provides:          arangodb3
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
@@ -36,15 +36,15 @@ start () {
     ( cd $PIDDIR && chown arangodb:arangodb . ) || exit 1
 
     if [ "$1" = "--upgrade" ]; then
-      $DAEMON -c $CONF --uid arangodb --gid arangodb --server.rest-server no $@
+      $DAEMON -c $CONF --server.uid arangodb --server.gid arangodb --server.rest-server false $@
       RETVAL=$?
       log_end_msg $RETVAL
     else
-      $DAEMON -c $CONF --uid arangodb --gid arangodb --server.rest-server no --log.foreground-tty no --database.check-version
+      $DAEMON -c $CONF --server.uid arangodb --server.gid arangodb --server.rest-server false --log.foreground-tty false --database.check-version true
       RETVAL=$?
 
       if [ "$RETVAL" -eq 0 ];  then
-        $DAEMON -c $CONF --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --log.foreground-tty no --supervisor $@
+        $DAEMON -c $CONF --server.uid arangodb --server.gid arangodb --pid-file "$PIDFILE" --temp.path "/var/tmp/arangod" --log.foreground-tty false --supervisor true $@
 	RETVAL=$?
 	log_end_msg $RETVAL
       else

@@ -171,7 +171,7 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test _listDatabases function
+/// @brief test _databases function
 ////////////////////////////////////////////////////////////////////////////////
 
     testListDatabases : function () {
@@ -179,7 +179,7 @@ function DatabaseSuite () {
 
       assertEqual("_system", internal.db._name());
 
-      actual = internal.db._listDatabases();
+      actual = internal.db._databases();
       assertTrue(Array.isArray(actual));
       n = actual.length;
       assertTrue(n > 0);
@@ -200,7 +200,7 @@ function DatabaseSuite () {
 
       internal.db._createDatabase("UnitTestsDatabase0");
 
-      actual = internal.db._listDatabases();
+      actual = internal.db._databases();
       assertTrue(Array.isArray(actual));
       assertEqual(n + 1, actual.length);
       assertTrue( ( function () {
@@ -550,7 +550,7 @@ function DatabaseSuite () {
       }
 
       var isContained = function (name) {
-        var l = internal.db._listDatabases();
+        var l = internal.db._databases();
         for (var i = 0; i < l.length; ++i) {
           if (l[i] === name) {
             return true;

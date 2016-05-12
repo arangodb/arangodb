@@ -27,42 +27,7 @@ if (USE_MAINTAINER_MODE)
 
   add_custom_command(
     OUTPUT
-      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser.cpp
-    WORKING_DIRECTORY
-      ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND
-      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
-      ${FLEX_EXECUTABLE}
-      V8/v8-json.ll
-      V8/v8-json.cpp
-    MAIN_DEPENDENCY
-      ${CMAKE_CURRENT_SOURCE_DIR}/V8/v8-json.ll
-    VERBATIM
-  )
-endif ()
-
-# note that we check-in the generated FLEX/BISON files, therefore they are
-# generate inside the source tree
-
-if (USE_MAINTAINER_MODE)
-  add_custom_command(
-    OUTPUT
-      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.cpp
-    WORKING_DIRECTORY
-      ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND
-      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
-      ${FLEX_EXECUTABLE}
-      lib/JsonParser/json-parser.ll
-      lib/JsonParser/json-parser.cpp
-    MAIN_DEPENDENCY
-      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.ll
-    VERBATIM
-  )
-
-  add_custom_command(
-    OUTPUT
-      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/V8/v8-json.cpp
     WORKING_DIRECTORY
       ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND
@@ -161,7 +126,6 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
-  ApplicationFeatures/SslFeature.cpp
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
@@ -207,7 +171,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/prime-numbers.cpp
   Basics/process-utils.cpp
   Basics/socket-utils.cpp
-  Basics/ssl-helper.cpp
   Basics/structures.cpp
   Basics/system-functions.cpp
   Basics/terminal-utils.cpp
@@ -243,7 +206,6 @@ add_library(${LIB_ARANGO} STATIC
   Rest/HttpRequest.cpp
   Rest/HttpResponse.cpp
   Rest/InitializeRest.cpp
-  Rest/SslInterface.cpp
   Rest/Version.cpp
   SimpleHttpClient/ClientConnection.cpp
   SimpleHttpClient/ConnectionManager.cpp
@@ -251,6 +213,10 @@ add_library(${LIB_ARANGO} STATIC
   SimpleHttpClient/SimpleHttpClient.cpp
   SimpleHttpClient/SimpleHttpResult.cpp
   SimpleHttpClient/SslClientConnection.cpp
+  Ssl/SslFeature.cpp
+  Ssl/SslInterface.cpp
+  Ssl/SslServerFeature.cpp
+  Ssl/ssl-helper.cpp
   Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
   Utilities/ShellBase.cpp

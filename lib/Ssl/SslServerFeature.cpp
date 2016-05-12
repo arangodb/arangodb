@@ -20,23 +20,22 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/SslFeature.h"
-
-#include <openssl/err.h>
+#include "SslServerFeature.h"
 
 #include "Basics/FileUtils.h"
-#include "Basics/ssl-helper.h"
+#include "Basics/locks.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/UniformCharacter.h"
+#include "Ssl/ssl-helper.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-SslFeature::SslFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Ssl"),
+SslServerFeature::SslServerFeature(application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "SslServer"),
       _cafile(),
       _keyfile(),
       _sessionCache(false),
@@ -48,10 +47,11 @@ SslFeature::SslFeature(application_features::ApplicationServer* server)
       _sslContext(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Ssl");
   startsAfter("Logger");
 }
 
-void SslFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("ssl", "Configure SSL communication");
 
   options->addOption("--ssl.cafile", "ca file used for secure connections",
@@ -85,11 +85,11 @@ void SslFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new StringParameter(&_ecdhCurve));
 }
 
-void SslFeature::prepare() {
+void SslServerFeature::prepare() {
   createSslContext();
 }
 
-void SslFeature::start() {
+void SslServerFeature::start() {
   LOG(INFO) << "using SSL options: " << stringifySslOptions(_options);
 
   if (!_cipherList.empty()) {
@@ -97,7 +97,7 @@ void SslFeature::start() {
   }
 }
 
-void SslFeature::stop() {
+void SslServerFeature::stop() {
   if (_sslContext != nullptr) {
     SSL_CTX_free(_sslContext);
     _sslContext = nullptr;
@@ -116,7 +116,7 @@ class BIOGuard {
 };
 }
 
-void SslFeature::createSslContext() {
+void SslServerFeature::createSslContext() {
   // check keyfile
   if (_keyfile.empty()) {
     return;
@@ -248,7 +248,7 @@ void SslFeature::createSslContext() {
   }
 }
 
-std::string SslFeature::stringifySslOptions(
+std::string SslServerFeature::stringifySslOptions(
     uint64_t opts) const {
   std::string result;
 

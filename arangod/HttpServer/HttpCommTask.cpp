@@ -51,10 +51,10 @@ size_t const HttpCommTask::RunCompactEvery = 500;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
-                           ConnectionInfo const& info, double keepAliveTimeout)
+                           ConnectionInfo&& info, double keepAliveTimeout)
     : Task("HttpCommTask"),
       SocketTask(socket, keepAliveTimeout),
-      _connectionInfo(info),
+      _connectionInfo(std::move(info)),
       _server(server),
       _writeBuffers(),
       _writeBuffersStats(),
@@ -83,7 +83,7 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
              << _connectionInfo.serverPort << ", client ip "
              << _connectionInfo.clientAddress << ", client port "
              << _connectionInfo.clientPort;
-
+  
   connectionStatisticsAgentSetHttp();
 }
 

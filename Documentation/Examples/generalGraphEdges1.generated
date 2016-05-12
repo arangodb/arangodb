@@ -4,5 +4,5 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_EDGES("</span>
 ........&gt; +<span class="hljs-string">"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"</span>
 ........&gt; ).toArray();
 [ 
-  <span class="hljs-string">"internationalHighway/549539400"</span> 
+  <span class="hljs-string">"internationalHighway/18796"</span> 
 ]

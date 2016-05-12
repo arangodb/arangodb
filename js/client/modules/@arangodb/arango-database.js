@@ -928,7 +928,7 @@ ArangoDatabase.prototype._dropDatabase = function (name) {
 /// @brief list all existing databases
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._listDatabases = function () {
+ArangoDatabase.prototype._databases = function () {
   var requestResult = this._connection.GET("/_api/database");
 
   if (requestResult !== null && requestResult.error === true) {

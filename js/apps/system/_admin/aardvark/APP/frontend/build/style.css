@@ -68,8 +68,8 @@ body {
           body #offlinePlaceholder .offline-div .offline-window .offline-body .animation_state {
             padding-top: 20px; }
           body #offlinePlaceholder .offline-div .offline-window .offline-body > p {
-            text-align: center;
-            margin-bottom: 0; }
+            margin-bottom: 0;
+            text-align: center; }
         body #offlinePlaceholder .offline-div .offline-window .offline-header,
         body #offlinePlaceholder .offline-div .offline-window .offline-body {
           padding-left: 20px;
@@ -2167,7 +2167,7 @@ textarea,
 .dropdownImport.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus {
   cursor: pointer; }
 
-.arangoToolbar span.clickable:hover, .login-window button {
+.arangoToolbar span.clickable:hover, .login-window button, #swagger #jsonLink {
   -moz-transition: all .2s ease-in;
   -o-transition: all .2s ease-in;
   -webkit-transition: all .2s ease-in;
@@ -2197,18 +2197,6 @@ textarea,
   -webkit-transition: .3s ease all;
   transition: .3s ease all;
   width: 100%; }
-  .login-window select.blue {
-    background-color: #3498DB; }
-  .login-window select.blue:hover {
-    background-color: #2980B9; }
-  .login-window select.green {
-    background-color: #2ECC71; }
-  .login-window select.green:hover {
-    background-color: #27AE60; }
-  .login-window select.red {
-    background-color: #E74C3C; }
-  .login-window select.red:hover {
-    background-color: #C0392B; }
   .login-window select:disabled {
     opacity: .5; }
   .login-window select:focus, .login-window select:active {
@@ -6829,7 +6817,15 @@ div.headerBar {
       display: block;
       margin: 0 auto;
       width: 150px; }
-  .login-window .fa {
+  .login-window .checking-password {
+    box-sizing: border-box;
+    color: rgba(0, 0, 0, 0.5);
+    margin-left: -21px;
+    margin-top: -25px;
+    position: absolute;
+    text-align: center;
+    width: 100%; }
+  .login-window form .fa {
     color: rgba(0, 0, 0, 0.2);
     float: left;
     font-size: 14pt;
@@ -7380,11 +7376,19 @@ div.headerBar {
 .accordion-body {
   height: auto !important; }
 
-.accordion-heading a {
-  border: 1px solid #ccc;
-  color: #000;
-  font-weight: 400;
-  width: 397px !important; }
+.accordion-heading {
+  padding-top: 15px; }
+  .accordion-heading a {
+    border: 1px solid #ccc;
+    color: #000;
+    font-weight: 400;
+    width: 397px !important; }
+  .accordion-heading .accordion-toggle {
+    border-radius: 3px;
+    box-sizing: border-box;
+    display: block;
+    padding: 8px 15px;
+    width: 100% !important; }
 
 .shell_workspace {
   margin-top: 13px; }
@@ -7935,6 +7939,10 @@ input.gv-radio-button {
   .navlist li,
   .primary li {
     width: 40px !important; }
+  .primary .version {
+    display: none; }
+  .shortcut-icons {
+    display: none; }
   .arango-collection-ul .tab {
     font-size: 12pt;
     height: 30px;
@@ -8313,34 +8321,58 @@ input.gv-radio-button {
     .cluster-values > div .valueWrapper div:first-child {
       height: 150px; }
 
+.application-detail-view .headerBar .subMenuEntries {
+  margin-left: 5px;
+  margin-top: -2px; }
+
+.application-detail-view .headerBar .headerButtonBar {
+  position: absolute;
+  right: 5px; }
+
 .application-detail-view section.info {
   float: left;
   padding: 13px 0 0; }
   .application-detail-view section.info .header {
     height: 200px;
     margin-bottom: 0;
-    position: relative; }
+    position: absolute;
+    width: calc(100% - 20px); }
     .application-detail-view section.info .header div.header-icon-container {
-      border-radius: 3px;
+      border: 2px solid #d9dbdc;
+      border-radius: 150px;
       height: 182px;
       left: 0;
-      margin: 0 0 4px;
-      position: absolute;
+      margin: 0 auto;
+      overflow: hidden;
       width: 182px; }
       .application-detail-view section.info .header div.header-icon-container img.icon {
         background-color: #fff;
-        border: 1px solid rgba(140, 138, 137, 0.25);
         border-radius: 3px;
         height: auto;
-        max-height: 160px;
-        max-width: 160px;
+        max-height: 162px;
+        max-width: 162px;
         padding: 10px;
         width: auto; }
+    .application-detail-view section.info .header .information {
+      background-color: #fff;
+      border: 1px solid #d9dbdc;
+      border-radius: 3px;
+      padding: 10px 10px 0;
+      position: relative;
+      top: 35px;
+      width: calc(100% - 30px); }
+      .application-detail-view section.info .header .information span {
+        display: block;
+        float: left;
+        font-weight: 500;
+        width: 90px; }
+      .application-detail-view section.info .header .information a {
+        margin-right: 10px; }
     .application-detail-view section.info .header .header_right {
-      padding-top: 1px;
-      position: absolute;
-      right: -10px;
-      width: 150px; }
+      left: 190px;
+      margin: 0 auto;
+      margin-top: 40px;
+      width: 137px; }
       .application-detail-view section.info .header .header_right input.delete,
       .application-detail-view section.info .header .header_right input.upgrade,
       .application-detail-view section.info .header .header_right input.switch-docu,
@@ -8351,35 +8383,61 @@ input.gv-radio-button {
       .application-detail-view section.info .header .header_right input {
         width: 130px; }
     .application-detail-view section.info .header .header_left {
-      margin-left: 190px;
-      margin-right: 145px;
+      margin: 0 auto;
       padding-left: 10px;
-      padding-top: 1px; }
+      padding-top: 1px;
+      text-align: center;
+      width: 33.3%; }
       .application-detail-view section.info .header .header_left input {
         margin-left: 0;
         margin-top: -4px; }
-      .application-detail-view section.info .header .header_left .header_line h3 {
-        float: left;
-        margin-bottom: 0;
-        margin-top: 0;
-        padding-right: 5px; }
-      .application-detail-view section.info .header .header_left .header_line .license,
-      .application-detail-view section.info .header .header_left .header_line .version {
-        -moz-border-radius: 3px;
-        -webkit-border-radius: 3px;
-        border-radius: 3px;
-        background-color: #fff;
-        border: 1px solid rgba(140, 138, 137, 0.25);
-        color: #a0a0a0;
-        font-size: .6em;
-        font-weight: 400;
-        padding: 0 8px 2px;
-        position: relative;
-        top: -3px; }
-      .application-detail-view section.info .header .header_left .header_line:after {
-        clear: both;
-        content: '';
-        display: table; }
+      .application-detail-view section.info .header .header_left .header_line {
+        margin-top: 10px; }
+        .application-detail-view section.info .header .header_left .header_line p {
+          font-size: 14pt;
+          font-weight: 200; }
+        .application-detail-view section.info .header .header_left .header_line h3 {
+          float: left;
+          margin-bottom: 0;
+          margin-top: 0;
+          padding-right: 5px;
+          width: 100%; }
+        .application-detail-view section.info .header .header_left .header_line .license,
+        .application-detail-view section.info .header .header_left .header_line .mode,
+        .application-detail-view section.info .header .header_left .header_line .version {
+          -moz-border-radius: 3px;
+          -webkit-border-radius: 3px;
+          border-radius: 3px;
+          background-color: #404a53;
+          border: 1px solid rgba(140, 138, 137, 0.25);
+          color: #fff;
+          font-size: .6em;
+          font-weight: 300;
+          padding: 0 8px 2px;
+          position: relative;
+          top: -3px; }
+        .application-detail-view section.info .header .header_left .header_line .production {
+          color: #2ecc71; }
+        .application-detail-view section.info .header .header_left .header_line .development {
+          color: #f1c40f; }
+        .application-detail-view section.info .header .header_left .header_line:after {
+          clear: both;
+          content: '';
+          display: table; }
+      .application-detail-view section.info .header .header_left .header_line_bottom > div {
+        display: table;
+        left: -3px;
+        margin: 0 auto;
+        margin-top: -10px;
+        position: absolute;
+        width: 100%; }
+      .application-detail-view section.info .header .header_left .header_line_bottom h3 {
+        width: auto; }
+      .application-detail-view section.info .header .header_left .header_line_bottom .inner {
+        display: table;
+        margin: 0 auto;
+        padding-left: 15px;
+        width: auto; }
     .application-detail-view section.info .header .app-warning {
       -moz-border-radius: 3px;
       -webkit-border-radius: 3px;
@@ -8413,7 +8471,6 @@ input.gv-radio-button {
 
 main {
   background-color: #fff;
-  border: 1px solid rgba(140, 138, 137, 0.25);
   border-radius: 3px; }
   main .app-info {
     -moz-border-radius: 3px;
@@ -8435,6 +8492,30 @@ main {
   main .readme {
     background: #fff;
     padding: 1em 2em; }
+    main .readme .buttons {
+      background: #fff;
+      height: 30px;
+      position: relative;
+      right: -15px;
+      width: 100%; }
+      main .readme .buttons button {
+        float: right; }
+    main .readme .modal-body {
+      border-bottom: 1px solid rgba(140, 138, 137, 0.25);
+      border-left: 0;
+      border-right: 0;
+      border-top: 0;
+      padding-bottom: 15px; }
+    main .readme .modal-footer {
+      border-bottom: 0;
+      border-left: 0;
+      border-right: 0;
+      border-top: 1px solid rgba(140, 138, 137, 0.25);
+      padding-right: 0; }
+    main .readme h1 {
+      float: left;
+      text-align: left;
+      width: 100%; }
 
 .tests-result .stack {
   border-color: #e74c3c;
@@ -8476,6 +8557,15 @@ main {
 
 .tests-result .pending {
   color: #666; }
+
+#swagger #jsonLink {
+  color: rgba(64, 74, 83, 0.8);
+  font-weight: 500;
+  opacity: .5;
+  position: absolute;
+  right: 20px; }
+  #swagger #jsonLink:hover {
+    opacity: 1; }
 
 #indexHeaderContent {
   padding: 0; }

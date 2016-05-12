@@ -66,7 +66,7 @@ class HttpsServer : public HttpServer {
     return Endpoint::EncryptionType::SSL;
   }
 
-  HttpCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&) override;
+  HttpCommTask* createCommTask(TRI_socket_t, ConnectionInfo&&) override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

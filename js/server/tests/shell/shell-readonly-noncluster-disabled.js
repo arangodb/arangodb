@@ -93,7 +93,7 @@ function databaseTestSuite () {
     testDropDatabase: function () {
       try {
         db._dropDatabase("testDB");
-        assertEqual(-1, db._listDatabases().indexOf("testDb"));
+        assertEqual(-1, db._databases().indexOf("testDb"));
       }
       catch (e) {
         fail();

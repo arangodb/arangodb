@@ -3,12 +3,8 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<s
 arangosh&gt; graph.relation.save(<span class="hljs-string">"female/alice"</span>, <span class="hljs-string">"female/diana"</span>, {typo: <span class="hljs-string">"nose"</span>, _key: <span class="hljs-string">"aliceAndDiana"</span>});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndDiana"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"531910216"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndDiana"</span> 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndDiana"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"18545"</span> 
 }
 arangosh&gt; graph.relation.replace(<span class="hljs-string">"relation/aliceAndDiana"</span>, {type: <span class="hljs-string">"knows"</span>});
-{ 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndDiana"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"532106824"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndDiana"</span> 
-}
+[ArangoError <span class="hljs-number">1233</span>: invalid edge attribute]

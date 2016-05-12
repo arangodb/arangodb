@@ -362,7 +362,7 @@ void HttpRequest::parseHeader(size_t length) {
         }
 
         if (keyBegin < keyEnd) {
-          setHeader(keyBegin, keyEnd - keyBegin, valueBegin);
+          setHeader(keyBegin, keyEnd - keyBegin, valueBegin, valueEnd - valueBegin);
         }
       }
 
@@ -382,7 +382,7 @@ void HttpRequest::parseHeader(size_t length) {
 
         // use empty value
         if (keyBegin < keyEnd) {
-          setHeader(keyBegin, keyEnd - keyBegin, keyEnd);
+          setHeader(keyBegin, keyEnd - keyBegin);
         }
       }
     }
@@ -498,15 +498,17 @@ void HttpRequest::setValues(char* buffer, char* end) {
   }
 }
 
+/// @brief sets a key/value header
 void HttpRequest::setHeader(char const* key, size_t keyLength,
-                            char const* value) {
+                            char const* value, size_t valueLength) {
   if (keyLength == 14 &&
       memcmp(key, "content-length", keyLength) ==
           0) {  // 14 = strlen("content-length")
-    _contentLength = StringUtils::int64(value);
+    _contentLength = StringUtils::int64(value, valueLength);
+    // do not store this header
   } else if (keyLength == 6 &&
              memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
-    parseCookies(value);
+    parseCookies(value, valueLength);
   } else {
     if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
         *(key + 1) == '-') {
@@ -518,7 +520,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
            memcmp(key, "x-method-override", keyLength) == 0) ||
           (keyLength == 22 &&
            memcmp(key, "x-http-method-override", keyLength) == 0)) {
-        std::string overriddenType(value);
+        std::string overriddenType(value, valueLength);
         StringUtils::tolowerInPlace(&overriddenType);
 
         _type = findRequestType(overriddenType.c_str(), overriddenType.size());
@@ -528,15 +530,20 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
       }
     }
 
-    _headers[std::string(key, keyLength)] = value;
+    _headers[std::string(key, keyLength)] = std::string(value, valueLength);
   }
+}
+
+/// @brief sets a key-only header
+void HttpRequest::setHeader(char const* key, size_t keyLength) {
+  _headers[std::string(key, keyLength)] = StaticStrings::Empty;
 }
 
 void HttpRequest::setCookie(char* key, size_t length, char const* value) {
   _cookies[std::string(key, length)] = value;
 }
 
-void HttpRequest::parseCookies(char const* buffer) {
+void HttpRequest::parseCookies(char const* buffer, size_t length) {
   char* keyBegin = nullptr;
   char* key = nullptr;
 
@@ -554,7 +561,7 @@ void HttpRequest::parseCookies(char const* buffer) {
   char const SPACE = ' ';
 
   char* buffer2 = (char*)buffer;
-  char* end = buffer2 + strlen(buffer);
+  char* end = buffer2 + length;
 
   for (keyBegin = key = buffer2; buffer2 < end; buffer2++) {
     char next = *buffer2;

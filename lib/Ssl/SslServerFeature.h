@@ -20,17 +20,17 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_SSL_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_SSL_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_SSL_SERVER_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_SSL_SERVER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include <openssl/ssl.h>
 
 namespace arangodb {
-class SslFeature final : public application_features::ApplicationFeature {
+class SslServerFeature final : public application_features::ApplicationFeature {
  public:
-  explicit SslFeature(application_features::ApplicationServer* server);
+  explicit SslServerFeature(application_features::ApplicationServer* server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

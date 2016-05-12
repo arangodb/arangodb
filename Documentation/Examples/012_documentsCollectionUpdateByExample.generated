@@ -1,19 +1,19 @@
 arangosh&gt; db.example.save({ Hello : <span class="hljs-string">"world"</span>, foo : <span class="hljs-string">"bar"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/33312328"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"33312328"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"33312328"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6612"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6612"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"6612"</span> 
 }
 arangosh&gt; db.example.updateByExample({ Hello: <span class="hljs-string">"world"</span> }, { Hello: <span class="hljs-string">"foo"</span>, World: <span class="hljs-string">"bar"</span> }, <span class="hljs-literal">false</span>);
 <span class="hljs-number">1</span>
 arangosh&gt; db.example.byExample({ Hello: <span class="hljs-string">"foo"</span> }).toArray()
 [ 
   { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6612"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6612"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"6616"</span>, 
     <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"foo"</span>, 
-    <span class="hljs-string">"World"</span> : <span class="hljs-string">"bar"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/33312328"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"33312328"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"33640008"</span>, 
-    <span class="hljs-string">"foo"</span> : <span class="hljs-string">"bar"</span> 
+    <span class="hljs-string">"foo"</span> : <span class="hljs-string">"bar"</span>, 
+    <span class="hljs-string">"World"</span> : <span class="hljs-string">"bar"</span> 
   } 
 ]

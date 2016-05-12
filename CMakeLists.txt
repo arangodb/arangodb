@@ -155,6 +155,10 @@ option(USE_ROCKSDB
 
 if (USE_ROCKSDB)
   add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
+  add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+  include_directories(${ROCKSDB_INCLUDE_DIR})
+else ()
+  set(ROCKSDB_LIBS "")
 endif ()
 
 ################################################################################
@@ -165,13 +169,6 @@ if (SOLARIS)
   set(MAKE gmake)
 else ()
   set(MAKE make)
-endif ()
-
-if (USE_ROCKSDB)
-  find_package(Snappy)
-else ()
-  set(SNAPPY_STATIC_LIB "")
-  set(ROCKSDB_LIBS "")
 endif ()
 
 find_package(PythonInterp 2 REQUIRED)
@@ -675,15 +672,6 @@ include_directories(${Boost_INCLUDE_DIR})
 add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
 
 ################################################################################
-## ROCKSDB
-################################################################################
-
-if (USE_ROCKSDB)
-include_directories(${ROCKSDB_INCLUDE_DIR})
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
-endif ()
-
-################################################################################
 ## ICU
 ################################################################################
 
@@ -803,7 +791,6 @@ endif ()
 list(INSERT SYSTEM_LIBRARIES 0
   ${BT_LIBS}
   ${ZLIB_LIBS}
-  ${SNAPPY_LIBS}
   ${ICU_LIBS}
   ${OPENSSL_LIBRARIES}
   ${BASE_LIBS}

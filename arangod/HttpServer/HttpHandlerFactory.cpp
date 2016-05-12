@@ -236,9 +236,9 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
       }
 
       modifiedPath = &prefix;
-      request->setPrefix(prefix);
-
+      
       i = ii.find(prefix);
+      request->setPrefix(prefix);
     }
   }
 

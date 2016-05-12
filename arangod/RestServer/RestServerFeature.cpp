@@ -22,11 +22,10 @@
 
 #include "RestServerFeature.h"
 
-#include "ApplicationFeatures/SslFeature.h"
-#include "Aql/RestAqlHandler.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"
 #include "Agency/RestAgencyPrivHandler.h"
+#include "Aql/RestAqlHandler.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
@@ -66,6 +65,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Ssl/SslServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/server.h"
 
@@ -232,6 +232,8 @@ void RestServerFeature::stop() {
 }
 
 void RestServerFeature::buildServers() {
+  TRI_ASSERT(_jobManager != nullptr);
+
   EndpointFeature* endpoint =
       application_features::ApplicationServer::getFeature<EndpointFeature>(
           "Endpoint");
@@ -248,8 +250,8 @@ void RestServerFeature::buildServers() {
 
   // ssl endpoints
   if (endpointList.hasSsl()) {
-    SslFeature* ssl =
-        application_features::ApplicationServer::getFeature<SslFeature>("Ssl");
+    SslServerFeature* ssl =
+        application_features::ApplicationServer::getFeature<SslServerFeature>("SslServer");
 
     // check the ssl context
     if (ssl->sslContext() == nullptr) {
@@ -272,6 +274,8 @@ void RestServerFeature::buildServers() {
 }
 
 void RestServerFeature::defineHandlers() {
+  TRI_ASSERT(_jobManager != nullptr);
+
   AgencyFeature* agency =
       application_features::ApplicationServer::getFeature<AgencyFeature>(
           "Agency");

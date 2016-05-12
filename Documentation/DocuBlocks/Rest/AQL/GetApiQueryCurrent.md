@@ -1,29 +1,29 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock GetApiQueryCurrent
-/// @brief returns a list of currently running AQL queries
-///
-/// @RESTHEADER{GET /_api/query/current, Returns the currently running AQL queries}
-///
-/// @RESTDESCRIPTION
-/// Returns an array containing the AQL queries currently running in the selected
-/// database. Each query is a JSON object with the following attributes:
-///
-/// - *id*: the query's id
-///
-/// - *query*: the query string (potentially truncated)
-///
-/// - *started*: the date and time when the query was started
-///
-/// - *runTime*: the query's run time up to the point the list of queries was
-///   queried
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Is returned when the list of queries can be retrieved successfully.
-///
-/// @RESTRETURNCODE{400}
-/// The server will respond with *HTTP 400* in case of a malformed request,
-///
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+@startDocuBlock GetApiQueryCurrent
+@brief returns a list of currently running AQL queries
+
+@RESTHEADER{GET /_api/query/current, Returns the currently running AQL queries}
+
+@RESTDESCRIPTION
+Returns an array containing the AQL queries currently running in the selected
+database. Each query is a JSON object with the following attributes:
+
+- *id*: the query's id
+
+- *query*: the query string (potentially truncated)
+
+- *started*: the date and time when the query was started
+
+- *runTime*: the query's run time up to the point the list of queries was
+  queried
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Is returned when the list of queries can be retrieved successfully.
+
+@RESTRETURNCODE{400}
+The server will respond with *HTTP 400* in case of a malformed request,
+
+@endDocuBlock
+

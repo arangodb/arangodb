@@ -1,12 +1,15 @@
 <!DOCTYPE html><html lang="en" xmlns="http://www.w3.org/1999/html"><head><meta charset="utf-8"><title>ArangoDB Web Interface</title><meta name="description" content="ArangoDB Admin Web Interface"><meta name="author" content="Heiko Kernbach, Michael Hackstein"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="css/style.css" rel="stylesheet"><link href="css/sass.css" rel="stylesheet"><link rel="shortcut icon" type="image/x-icon" href="favicon.ico"><link href="https://fonts.googleapis.com/css?family=Roboto:400,300,500,700" rel="stylesheet" type="text/css"><script id="applicationDetailView.ejs" type="text/template"><div class="application-detail-view">
-    <div class="headerBar">
-      <div class="headerButtonBar">
+    <div class="headerBar" style="width: 100%">
+
+      <ul class="subMenuEntries subViewNavbar pull-left">
+        <li id="service-info" class="subMenuEntry active"><a>Info</a></li>
+        <li id="service-api" class="subMenuEntry "><a>API</a></li>
+        <li id="service-readme" class="subMenuEntry "><a>Readme</a></li>
+        <li id="service-settings" class="subMenuEntry "><a>Settings</a></li>
+      </ul>
+
+      <div class="headerButtonBar" style="display: none">
         <ul class="headerButtonList">
-          <li>
-            <a id="app-config" class="headerButton <%= _.isEmpty(app.get('config')) ? 'disabled' : '' %> <%= app.needsConfiguration() ? 'error' : '' %>">
-              <span class="icon_arangodb_settings2" title="Configure"></span>
-            </a>
-          </li>
           <li>
             <a id="app-deps" class="headerButton <%= _.isEmpty(app.get('deps')) ? 'disabled' : '' %> <%= app.hasUnconfiguredDependencies() ? 'error' : '' %>">
               <span class="fa fa-cubes" title="Dependencies"></span>
@@ -37,25 +40,15 @@
         </ul>
       </div>
     </div>
-    <section class="info">
+    <section class="info" id="information">
       <div class="header">
         <div class="header-icon-container">
           <img src="foxxes/thumbnail?mount=<%= app.encodedMount() %>" alt="Icon for Service" class="icon" />
         </div>
-        <div class="header_right">
-          <input type="button" class="open button-success" disabled="true" value="Open" />
-          <input id="app-replace" type="button" class="upgrade button-warning" value="Replace" <%=app.isSystem()?"disabled":"" %>/>
-          <input id="app-switch-mode" type="button" class="switch-mode button-warning" value="<%=app.get('development')?'Set Production':'Set Development'%>" />
-          <input type="button" class="delete button-danger" value="Delete" <%=app.isSystem()?"disabled":""%> />
-          <% if (mode !== 'swagger') { %>
-            <input id="app-show-swagger" type="button" class="switch-docu button-success" value="Show API" />
-          <% } %>
-          <% if (mode !== 'readme' && app.attributes.readme) { %>
-            <input id="app-show-readme" type="button" class="switch-docu button-success" value="Show README" />
-          <% } %>
-          <% if (mode !== 'readme' && !app.attributes.readme) { %>
-            <input id="app-show-readme" type="button" class="switch-docu button-success" disabled value="Show README" />
-          <% } %>
+        <div id="hidden_buttons" style="display: none">
+          <button class="delete button-danger" <%=app.isSystem()?"disabled":""%> >Delete</button>
+          <button id="app-replace" class="app-replace upgrade button-warning" <%=app.isSystem()?"disabled":"" %>>Replace</button>
+          <button id="app-switch-mode" class="app-switch-mode switch-mode button-warning"><%=app.get('development')?'Set Production':'Set Development'%></button>
         </div>
         <div class="header_left">
           <div id="app-warning" class="app-warning" style="display:<%=app.needsAttention()?'block':'none' %>;">
@@ -68,20 +61,59 @@
             <h3>
               <%= app.attributes.name %>
             </h3>
-            <h3>
-              <% if (app.attributes.license) { %>
-                <span class="license"><%= app.attributes.license %></span>
-              <% } %>
-            </h3>
-            <h3>
-              <span class="version"><%= app.attributes.version %></span>
-            </h3>
           </div>
-          <p class="description"><%= app.attributes.description %></p>
+          <div class="header_line header_line_bottom">
+            <p class="description"><%= app.attributes.description %></p>
+            <div>
+              <div class="inner">
+                <h3>
+                  <% if (app.attributes.license) { %>
+                    <span class="license"><%= app.attributes.license %></span>
+                  <% } %>
+                </h3>
+                <h3>
+                  <span class="version"><%= app.attributes.version %></span>
+                </h3>
+                <h3>
+                  <span class="mode <%=app.get('development')?'development':'production'%>"><%=app.get('development')?'Development':'Production'%></span>
+                </h3>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="header_right">
+          <input type="button" class="open button-success" disabled="true" value="Show Interface" />
+        </div>
+        <div class="information">
         </div>
       </div>
     </section>
-    <aside class="meta">
+    <main>
+      <div id="app-info" class="app-info" style="display: none;">
+        <h4>Info</h4>
+        <p id="app-info-swagger">Documentation for this service is not yet configured.</p>
+      </div>
+      <div id="swagger" class="swagger" style="display: none;">
+        <a id="jsonLink" href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+          SHOW JSON
+        </a>
+        <iframe src="/_db/<%= db %>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
+      </div>
+      <div id="settings" class="readme" style="display: none;">
+        <% if (_.isEmpty(app.get('config'))) { %>
+          <p>No configurable settings available.</p>
+        <% } %>
+        <div class="buttons"></div>
+      </div>
+      <div id="readme" class="readme" style="display: none;">
+        <% if (app.get('readme')) { %>
+        <%= app.get('readme') %>
+        <% } else { %>
+        <p>No README data found.</p>
+        <% } %>
+      </div>
+    </main>
+    <!--<aside class="meta" id="sideinformation">
       <dl>
         <dt>Author</dt>
         <dd><%= app.attributes.author %></dd>
@@ -107,7 +139,7 @@
             </li>
             <li>
               <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
-                Swagger JSON
+                API as JSON
               </a>
             </li>
             <% if (app.attributes.repository && app.attributes.repository.type == 'git') { %>
@@ -116,26 +148,7 @@
           </ul>
         </dd>
       </dl>
-    </aside>
-    <main>
-      <div id="app-info" class="app-info" style="display: none;">
-        <h4>Info</h4>
-        <p id="app-info-swagger">Documentation for this service is not yet configured.</p>
-      </div>
-      <% if (mode === 'swagger') { %>
-      <div class="swagger">
-        <iframe src="/_db/<%= db %>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
-      </div>
-      <% } else if (mode === 'readme') { %>
-      <div class="readme">
-        <% if (app.get('readme')) { %>
-        <%= app.get('readme') %>
-        <% } else { %>
-        <p>ERROR: No README data found!</p>
-        <% } %>
-      </div>
-      <% } %>
-    </main>
+    </aside>-->
   </div></script><script id="applicationListView.ejs" type="text/template"><tr class="foxx-store-row">
     <td class="foxx-store-main">
       <div class="foxx-name"><%=name%></div>
@@ -1054,6 +1067,10 @@ if (list.length > 0) {
     <% } %>
     <h5 class="collectionName">
       <%= model.get("mount") %>
+       
+      <% if(model.get("name")) { %>
+        (<%= model.get("name") %>)
+      <% } %>
     </h5>
   </div></script><script id="foxxEditView.ejs" type="text/template"><%var appInfos = attributes.app.split(":"); %>
 <div id="change-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
@@ -1483,7 +1500,11 @@ if (list.length > 0) {
       <img class="arangodbLogo" src="img/arangodb_logo_small.png"/>
       <img class="" src="img/arangodb_logo_letter.png"/>
     </div>
-    <p class="wrong-credentials" style="display:none" >Wrong credentials!</p>
+    <p class="wrong-credentials" style="display:none">Wrong credentials!</p>
+    <p class="checking-password" style="display:none">
+      <i class="fa fa-circle-o-notch fa-spin fa-fw"></i>
+      <span class="sr-only">Loading...</span>
+    </p>
     <form id="loginForm">
       <input class="login-input" placeholder="username" id="loginUsername" type="text" name="username"><i class="fa fa-user"></i>
       <input class="login-input" placeholder="password" id="loginPassword" type="password" name="password"><i class="fa fa-lock"></i>
@@ -3009,4 +3030,4 @@ var cutByResolution = function (str) {
   </div>
 
   <div id="workMonitorContent" class="innerContent">
-  </div></script></head><body><nav class="navbar"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a> <a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a> <a class="version"><span>VERSION:</span><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="bodyWrapper"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1462290447850"></script><script src="app.js?version=1462290447850"></script></body></html>
+  </div></script></head><body><nav class="navbar"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a> <a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a> <a class="version"><span>VERSION:</span><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1462977807593"></script><script src="app.js?version=1462977807593"></script></body></html>

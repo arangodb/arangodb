@@ -37,6 +37,7 @@
 #include "Random/RandomFeature.h"
 #include "Shell/ShellFeature.h"
 #include "Shell/V8ShellFeature.h"
+#include "Ssl/SslFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -62,6 +63,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new ShellFeature(&server, &ret));
   server.addFeature(new ShutdownFeature(&server, {"Shell"}));
+  server.addFeature(new SslFeature(&server));
   server.addFeature(new TempFeature(&server, name));
   server.addFeature(new V8PlatformFeature(&server));
   server.addFeature(new V8ShellFeature(&server, name));

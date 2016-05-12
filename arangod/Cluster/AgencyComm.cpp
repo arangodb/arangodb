@@ -23,7 +23,6 @@
 
 #include "AgencyComm.h"
 
-#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
@@ -318,127 +317,6 @@ void AgencyCommResult::clear() {
   _message = "";
   _body = "";
   _statusCode = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief recursively flatten the JSON response into a map
-///
-/// stripKeyPrefix is decoded, as is the _globalPrefix
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
-                                           std::string const& stripKeyPrefix,
-                                           bool withDirs) {
-  if (!node.isObject()) {
-    return true;
-  }
-
-  // get "key" attribute
-  VPackSlice const key = node.get("key");
-
-  if (!key.isString()) {
-    return false;
-  }
-
-  std::string keydecoded = key.copyString();
-
-  // make sure we don't strip more bytes than the key is long
-  size_t const offset =
-      AgencyComm::_globalPrefix.size() + stripKeyPrefix.size();
-  size_t const length = keydecoded.size();
-
-  std::string prefix;
-  if (offset < length) {
-    prefix = keydecoded.substr(offset);
-  }
-
-  // get "dir" attribute
-  bool isDir =
-      arangodb::basics::VelocyPackHelper::getBooleanValue(node, "dir", false);
-
-  if (isDir) {
-    if (withDirs) {
-      AgencyCommResultEntry entry;
-
-      entry._index = 0;
-      entry._vpack = std::make_shared<VPackBuilder>();
-      entry._isDir = true;
-      _values.emplace(prefix, entry);
-    }
-
-    // is a directory, so there may be a "nodes" attribute
-    if (!node.hasKey("nodes")) {
-      // if directory is empty...
-      return true;
-    }
-    VPackSlice const nodes = node.get("nodes");
-
-    if (!nodes.isArray()) {
-      // if directory is empty...
-      return true;
-    }
-
-    for (auto const& subNode : VPackArrayIterator(nodes)) {
-      if (!parseVelocyPackNode(subNode, stripKeyPrefix, withDirs)) {
-        return false;
-      }
-    }
-  } else {
-    // not a directory
-
-    // get "value" attribute
-    VPackSlice const value = node.get("value");
-
-    if (!prefix.empty()) {
-      AgencyCommResultEntry entry;
-      
-      // get "modifiedIndex"
-      entry._index = arangodb::basics::VelocyPackHelper::stringUInt64(
-        node.get("modifiedIndex"));
-      entry._vpack = std::make_shared<VPackBuilder>();
-      entry._isDir = false;
-      
-      entry._vpack->add(value);
-      
-      _values.emplace(prefix, entry);
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// parse an agency result
-/// note that stripKeyPrefix is a decoded, normal key!
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyCommResult::parse(std::string const& stripKeyPrefix, bool withDirs) {
-  std::shared_ptr<VPackBuilder> parsedBody;
-  try {
-    parsedBody = VPackParser::fromJson(_body.c_str());
-  } catch (...) {
-    return false;
-  }
-  
-  VPackSlice slice = parsedBody->slice();
-  
-  if (!slice.isObject()) {
-    return false;
-  }
-
-  // get "node" attribute
-  VPackSlice const node = slice.get("node");
-
-  bool const result = parseVelocyPackNode(node, stripKeyPrefix, withDirs);
-
-  return result;
-}
-
-VPackSlice AgencyCommResult::parse(std::string const& path) {
-  std::vector<std::string> pv (1,AgencyComm::prefix());
-  std::vector<std::string> tmp = basics::StringUtils::split(path,'/');
-  pv.insert(pv.end(), tmp.begin(), tmp.end());
-  return _vpack->slice()[0].get(pv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -772,9 +650,7 @@ bool AgencyComm::shouldInitializeStructure() {
   // "InitDone" key should not previously exist
   auto result = casValue("InitDone", builder.slice(), false, 60.0, timeout);
     
-  if (!result.successful() &&
-      result.httpCode() ==
-          (int)arangodb::GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
+  if (!result.successful()) {
     // somebody else has or is initializing the agency
     LOG_TOPIC(TRACE, Logger::STARTUP) 
         << "someone else is initializing the agency";
@@ -1132,9 +1008,9 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
 
 std::string AgencyComm::getVersion() {
   AgencyCommResult result
-      =sendWithFailover(arangodb::GeneralRequest::RequestType::GET,
-			_globalConnectionOptions._requestTimeout, "version",
-			"", false);
+      = sendWithFailover(arangodb::GeneralRequest::RequestType::GET,
+                         _globalConnectionOptions._requestTimeout, "version",
+                         "", false);
 
   if (result.successful()) {
     return result._body;
