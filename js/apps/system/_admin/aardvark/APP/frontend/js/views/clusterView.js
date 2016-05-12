@@ -12,6 +12,7 @@
     events: {
     },
 
+    statsEnabled: false,
     historyInit: false,
     initDone: false,
     interval: 5000,
@@ -363,13 +364,18 @@
     initGraphs: function() {
       var self = this;
 
+      var noData = 'Fetching data...';
+      if (self.statsEnabled === false) {
+        noData = 'Statistics disabled.';
+      }
+
       _.each(self.chartsOptions, function(c) {
         nv.addGraph(function() {
           self.charts[c.id] = nv.models.stackedAreaChart()
           .options({
             useInteractiveGuideline: true,
             showControls: false,
-            noData: 'Fetching data...',
+            noData: noData,
             duration: 0
           });
 
@@ -449,6 +455,11 @@
     },
 
     rerenderGraphs: function(input) {
+
+      if (!this.statsEnabled) {
+        return;
+      }
+
       var self = this, data, lines;
       this.formatDataForGraph(input);
 
@@ -524,6 +535,13 @@
         var counter = 0, counter2;
 
         _.each(data, function(stat) {
+          if (stat.enabled) {
+            self.statsEnabled = true;
+          }
+          else {
+            self.statsEnabled = false;
+          }
+
           if (typeof stat === 'object') {
             if (counter === 0) {
               //one time value
