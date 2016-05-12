@@ -232,12 +232,14 @@ std::vector<bool> Store::apply (
 
 // Check precondition
 bool Store::check (VPackSlice const& slice) const {
-  if (!slice.isObject()) {
+
+  if (!slice.isObject()) { // Must be object
     LOG_TOPIC(WARN, Logger::AGENCY)
       << "Cannot check precondition: " << slice.toJson();
     return false;
   }
-  for (auto const& precond : VPackObjectIterator(slice)) {
+
+  for (auto const& precond : VPackObjectIterator(slice)) { // Preconditions
     std::string path = precond.key.copyString();
     bool found = false;
     Node node ("precond");
@@ -251,25 +253,35 @@ bool Store::check (VPackSlice const& slice) const {
       for (auto const& op : VPackObjectIterator(precond.value)) {
         std::string const& oper = op.key.copyString();
         if (oper == "old") {                           // old
-          return (node == op.value);
+          if (node != op.value) {
+            return false;
+          }
         } else if (oper == "isArray") {                // isArray
           if (!op.value.isBoolean()) {
-            LOG (FATAL) << "Non boolsh expression for 'isArray' precondition";
+            LOG_TOPIC(ERR, Logger::AGENCY)
+              << "Non boolsh expression for 'isArray' precondition";
             return false;
           }
           bool isArray =
             (node.type() == LEAF && node.slice().isArray());
-          return op.value.getBool() ? isArray : !isArray;
-        } else if (oper == "oldEmpty") {              // isEmpty
-          if (!op.value.isBoolean()) {
-            LOG (FATAL) << "Non boolsh expression for 'oldEmpty' precondition";
+          if(op.value.getBool() ? !isArray : isArray) {
             return false;
           }
-          return op.value.getBool() ? !found : found;
+        } else if (oper == "oldEmpty") {              // isEmpty
+          if (!op.value.isBoolean()) {
+            LOG_TOPIC(ERR, Logger::AGENCY)
+              << "Non boolsh expression for 'oldEmpty' precondition";
+            return false;
+          }
+          if (op.value.getBool() ? found : !found) {
+            return false;
+          }
         }
       }
     } else {
-      return node == precond.value;
+      if (node != precond.value) {
+        return false;
+      }
     }
   }
   

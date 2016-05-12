@@ -6,6 +6,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
@@ -68,7 +69,7 @@
 #if defined (__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 
 /* C99 says to define __STDC_LIMIT_MACROS before including stdint.h,
- * if you want the limit (max/min) macros for int types.
+ * if you want the limit (max/min) macros for int types. 
  */
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS 1
@@ -85,7 +86,7 @@ typedef uint32_t flex_uint32_t;
 typedef signed char flex_int8_t;
 typedef short int flex_int16_t;
 typedef int flex_int32_t;
-typedef unsigned char flex_uint8_t;
+typedef unsigned char flex_uint8_t; 
 typedef unsigned short int flex_uint16_t;
 typedef unsigned int flex_uint32_t;
 
@@ -224,7 +225,7 @@ typedef size_t yy_size_t;
 
     #define YY_LESS_LINENO(n)
     #define YY_LINENO_REWIND_TO(ptr)
-
+    
 /* Return all but the first "n" matched characters back to the input stream. */
 #define yyless(n) \
 	do \
@@ -281,7 +282,7 @@ struct yy_buffer_state
 
     int yy_bs_lineno; /**< The line count. */
     int yy_bs_column; /**< The column count. */
-
+    
 	/* Whether to try to fill the input buffer when we reach the
 	 * end of it.
 	 */
@@ -881,7 +882,7 @@ case 4:
 YY_RULE_SETUP
 {
   // performance optimisation for all-ASCII strings without escape characters
-  // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f),
+  // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f), 
   // plus space (32) and ! (33) but no quotation marks (34, x22) and backslashes (92, x5c)
   return STRING_CONSTANT_ASCII;
 }
@@ -1443,7 +1444,7 @@ static void tri_v8__load_buffer_state  (yyscan_t yyscanner)
     YY_BUFFER_STATE tri_v8__create_buffer  (FILE * file, int  size , yyscan_t yyscanner)
 {
 	YY_BUFFER_STATE b;
-
+    
 	b = (YY_BUFFER_STATE) tri_v8_alloc(sizeof( struct yy_buffer_state ) ,yyscanner );
 	if ( ! b )
 		YY_FATAL_ERROR( "out of dynamic memory in tri_v8__create_buffer()" );
@@ -1509,7 +1510,7 @@ static void tri_v8__load_buffer_state  (yyscan_t yyscanner)
     }
 
         b->yy_is_interactive = file ? (isatty( fileno(file) ) > 0) : 0;
-
+    
 	errno = oerrno;
 }
 
@@ -1615,9 +1616,9 @@ static void tri_v8_ensure_buffer_stack (yyscan_t yyscanner)
 								, yyscanner);
 		if ( ! yyg->yy_buffer_stack )
 			YY_FATAL_ERROR( "out of dynamic memory in tri_v8_ensure_buffer_stack()" );
-
+								  
 		memset(yyg->yy_buffer_stack, 0, num_to_alloc * sizeof(struct yy_buffer_state*));
-
+				
 		yyg->yy_buffer_stack_max = num_to_alloc;
 		yyg->yy_buffer_stack_top = 0;
 		return;
@@ -1646,12 +1647,12 @@ static void tri_v8_ensure_buffer_stack (yyscan_t yyscanner)
  * @param base the character buffer
  * @param size the size in bytes of the character buffer
  * @param yyscanner The scanner object.
- * @return the newly allocated buffer state object.
+ * @return the newly allocated buffer state object. 
  */
 YY_BUFFER_STATE tri_v8__scan_buffer  (char * base, yy_size_t  size , yyscan_t yyscanner)
 {
 	YY_BUFFER_STATE b;
-
+    
 	if ( size < 2 ||
 	     base[size-2] != YY_END_OF_BUFFER_CHAR ||
 	     base[size-1] != YY_END_OF_BUFFER_CHAR )
@@ -1687,7 +1688,7 @@ YY_BUFFER_STATE tri_v8__scan_buffer  (char * base, yy_size_t  size , yyscan_t yy
  */
 YY_BUFFER_STATE tri_v8__scan_string (yyconst char * yystr , yyscan_t yyscanner)
 {
-
+    
 	return tri_v8__scan_bytes(yystr,strlen(yystr) ,yyscanner);
 }
 
@@ -1704,7 +1705,7 @@ YY_BUFFER_STATE tri_v8__scan_bytes  (yyconst char * yybytes, yy_size_t  _yybytes
 	char *buf;
 	yy_size_t n;
 	yy_size_t i;
-
+    
 	/* Get memory for full buffer, including space for trailing EOB's. */
 	n = _yybytes_len + 2;
 	buf = (char *) tri_v8_alloc(n ,yyscanner );
@@ -1772,10 +1773,10 @@ YY_EXTRA_TYPE tri_v8_get_extra  (yyscan_t yyscanner)
 int tri_v8_get_lineno  (yyscan_t yyscanner)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
-
+    
         if (! YY_CURRENT_BUFFER)
             return 0;
-
+    
     return yylineno;
 }
 
@@ -1785,10 +1786,10 @@ int tri_v8_get_lineno  (yyscan_t yyscanner)
 int tri_v8_get_column  (yyscan_t yyscanner)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
-
+    
         if (! YY_CURRENT_BUFFER)
             return 0;
-
+    
     return yycolumn;
 }
 
@@ -1850,7 +1851,7 @@ void tri_v8_set_lineno (int  line_number , yyscan_t yyscanner)
         /* lineno is only valid if an input buffer exists. */
         if (! YY_CURRENT_BUFFER )
            YY_FATAL_ERROR( "tri_v8_set_lineno called with no buffer" );
-
+    
     yylineno = line_number;
 }
 
@@ -1865,7 +1866,7 @@ void tri_v8_set_column (int  column_no , yyscan_t yyscanner)
         /* column is only valid if an input buffer exists. */
         if (! YY_CURRENT_BUFFER )
            YY_FATAL_ERROR( "tri_v8_set_column called with no buffer" );
-
+    
     yycolumn = column_no;
 }
 
@@ -1948,20 +1949,20 @@ int tri_v8_lex_init_extra(YY_EXTRA_TYPE yy_user_defined,yyscan_t* ptr_yy_globals
         errno = EINVAL;
         return 1;
     }
-
+	
     *ptr_yy_globals = (yyscan_t) tri_v8_alloc ( sizeof( struct yyguts_t ), &dummy_yyguts );
-
+	
     if (*ptr_yy_globals == NULL){
         errno = ENOMEM;
         return 1;
     }
-
+    
     /* By setting to 0xAA, we expose bugs in
     yy_init_globals. Leave at 0x00 for releases. */
     memset(*ptr_yy_globals,0x00,sizeof(struct yyguts_t));
-
+    
     tri_v8_set_extra (yy_user_defined, *ptr_yy_globals);
-
+    
     return yy_init_globals ( *ptr_yy_globals );
 }
 
@@ -2093,7 +2094,6 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate, yyscan_t scanner,
 
 static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
                                          yyscan_t scanner) {
-  v8::EscapableHandleScope scope(isolate);
   struct yyguts_t* yyg = (struct yyguts_t*) scanner;
 
   v8::Handle<v8::Array> array = v8::Array::New(isolate);
@@ -2103,13 +2103,13 @@ static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
 
   while (c != END_OF_FILE) {
     if (c == CLOSE_BRACKET) {
-      return scope.Escape<v8::Value>(array);
+      return array;
     }
 
     if (pos > 0) {
       if (c != COMMA) {
         yyextra._message = "expecting comma";
-        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+        return v8::Undefined(isolate);
       }
 
       c = tri_v8_lex(scanner);
@@ -2119,7 +2119,7 @@ static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
 
     if (sub->IsUndefined()) {
       yyextra._message = "cannot create value";
-      return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      return v8::Undefined(isolate);
     }
 
     array->Set(pos++, sub);
@@ -2129,7 +2129,7 @@ static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
 
   yyextra._message = "expecting an array element, got end-of-file";
 
-  return scope.Escape<v8::Value>(v8::Undefined(isolate));
+  return v8::Undefined(isolate);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2138,7 +2138,6 @@ static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
 
 static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
                                          yyscan_t scanner) {
-  v8::EscapableHandleScope scope(isolate);
   struct yyguts_t* yyg = (struct yyguts_t*) scanner;
 
   v8::Handle<v8::Object> object = v8::Object::New(isolate);
@@ -2148,13 +2147,13 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
 
   while (c != END_OF_FILE) {
     if (c == CLOSE_BRACE) {
-      return scope.Escape<v8::Value>(object);
+      return object;
     }
 
     if (comma) {
       if (c != COMMA) {
         yyextra._message = "expecting comma";
-        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+        return v8::Undefined(isolate);
       }
 
       c = tri_v8_lex(scanner);
@@ -2169,11 +2168,11 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
     if (c == STRING_CONSTANT) {
       // utf-8 attribute name
       size_t outLength;
-      char* name = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
-
+      char* name = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength, true);
+    
       if (name == nullptr) {
         yyextra._message = "out-of-memory";
-        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+        return v8::Undefined(isolate);
       }
 
       attributeName = TRI_V8_PAIR_STRING(name, outLength);
@@ -2185,7 +2184,7 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
     }
     else {
       yyextra._message = "expecting attribute name";
-      return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      return v8::Undefined(isolate);
     }
 
     // followed by a colon
@@ -2193,7 +2192,7 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
 
     if (c != COLON) {
       yyextra._message = "expecting colon";
-      return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      return v8::Undefined(isolate);
     }
 
     // followed by an object
@@ -2202,7 +2201,7 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
 
     if (sub->IsUndefined()) {
       yyextra._message = "cannot create value";
-      return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      return v8::Undefined(isolate);
     }
 
     object->ForceSet(attributeName, sub);
@@ -2211,7 +2210,7 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
   }
 
   yyextra._message = "expecting an object attribute name or element, got end-of-file";
-  return scope.Escape<v8::Value>(v8::Undefined(isolate));
+  return v8::Undefined(isolate);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2219,27 +2218,26 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
-                                         yyscan_t scanner,
+                                         yyscan_t scanner, 
                                          int c) {
-  v8::EscapableHandleScope scope(isolate);
   struct yyguts_t* yyg = (struct yyguts_t*) scanner;
 
   switch (c) {
     case END_OF_FILE: {
       yyextra._message = "expecting atom, got end-of-file";
-      return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      return v8::Undefined(isolate);
     }
 
     case FALSE_CONSTANT: {
-      return scope.Escape<v8::Value>(v8::False(isolate));
+      return v8::False(isolate);
     }
 
     case TRUE_CONSTANT: {
-      return scope.Escape<v8::Value>(v8::True(isolate));
+      return v8::True(isolate);
     }
 
     case NULL_CONSTANT: {
-      return scope.Escape<v8::Value>(v8::Null(isolate));
+      return v8::Null(isolate);
     }
 
     case NUMBER_CONSTANT: {
@@ -2247,7 +2245,7 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
 
       if ((size_t) yyleng >= 512) {
         yyextra._message = "number too big";
-        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+        return v8::Undefined(isolate);
       }
 
       // need to reset errno because return value of 0 is not distinguishable from an error on Linux
@@ -2258,89 +2256,89 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
 
       if (d == HUGE_VAL && errno == ERANGE) {
         yyextra._message = "number too big";
-        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+        return v8::Undefined(isolate);
       }
 
       if (d == 0.0 && errno == ERANGE) {
         yyextra._message = "number too small";
-        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+        return v8::Undefined(isolate);
       }
 
       if (ep != yytext + yyleng) {
         yyextra._message = "cannot parse number";
-        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+        return v8::Undefined(isolate);
       }
 
-      return scope.Escape<v8::Value>(v8::Number::New(isolate, d));
+      return v8::Number::New(isolate, d);
     }
 
     case STRING_CONSTANT: {
       if (yyleng <= 2) {
         // string is empty
-        return scope.Escape<v8::Value>(v8::String::Empty(isolate));
+        return v8::String::Empty(isolate);
       }
 
       // string is not empty
       size_t outLength;
-      char* ptr = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+      char* ptr = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength, true);
 
       if (ptr == nullptr || outLength == 0) {
         yyextra._message = "out-of-memory";
-        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+        return v8::Undefined(isolate);
       }
 
       v8::Handle<v8::String> str = TRI_V8_PAIR_STRING(ptr, outLength);
       TRI_FreeString(yyextra._memoryZone, ptr);
 
-      return scope.Escape<v8::Value>(str);
+      return str;
     }
-
+    
     case STRING_CONSTANT_ASCII: {
       if (yyleng <= 2) {
         // string is empty
-        return scope.Escape<v8::Value>(v8::String::Empty(isolate));
+        return v8::String::Empty(isolate);
       }
 
       // string is not empty
-      return scope.Escape<v8::Value>(TRI_V8_ASCII_PAIR_STRING(yytext + 1, yyleng - 2));
+      return TRI_V8_ASCII_PAIR_STRING(yytext + 1, yyleng - 2);
     }
 
     case OPEN_BRACE: {
-      return scope.Escape<v8::Value>(ParseObject(isolate, scanner));
+      return ParseObject(isolate, scanner);
     }
 
     case CLOSE_BRACE: {
       yyextra._message = "expected value, got '}'";
-      return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      return v8::Undefined(isolate);
     }
 
     case OPEN_BRACKET: {
-      return scope.Escape<v8::Value>(ParseArray(isolate, scanner));
+      return ParseArray(isolate, scanner);
     }
 
     case CLOSE_BRACKET: {
       yyextra._message = "expected value, got ']'";
-      return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      return v8::Undefined(isolate);
     }
 
     case COMMA: {
       yyextra._message = "expected value, got ','";
-      return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      return v8::Undefined(isolate);
     }
 
     case COLON: {
       yyextra._message = "expected value, got ':'";
-      return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      return v8::Undefined(isolate);
     }
 
     case UNQUOTED_STRING: {
       yyextra._message = "expected value, got unquoted string";
-      return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      return v8::Undefined(isolate);
     }
   }
 
   yyextra._message = "unknown atom";
-  return scope.Escape<v8::Value>(v8::Undefined(isolate));
+  return v8::Undefined(isolate);
 }
 
 // -----------------------------------------------------------------------------
@@ -2354,8 +2352,6 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
 v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
                                           char const* text,
                                           char** error) {
-  v8::EscapableHandleScope scope(isolate);
-
   yyscan_t scanner;
   tri_v8_lex_init(&scanner);
   struct yyguts_t* yyg = (struct yyguts_t*) scanner;
@@ -2386,6 +2382,16 @@ v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
   tri_v8__delete_buffer(buf,scanner);
   tri_v8_lex_destroy(scanner);
 
-  return scope.Escape<v8::Value>(value);
+  return value;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: C
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// End:
 

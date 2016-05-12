@@ -31,6 +31,10 @@
 #include <v8.h>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
 
 class AqlItemBlock;
@@ -71,6 +75,9 @@ struct V8Expression {
 
   /// @brief constants
   v8::Persistent<v8::Object> _constantValues;
+
+  /// @brief a Builder object, shared across calls
+  std::unique_ptr<arangodb::velocypack::Builder> _builder;
 
   /// @brief restrictions for creating the input values
   std::unordered_map<Variable const*, std::unordered_set<std::string>>

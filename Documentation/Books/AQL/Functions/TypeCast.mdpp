@@ -50,7 +50,7 @@ not not 1 // true
     converted to the number *0*.
   - An object / document is converted to the number *0*.
   
-    An unary plus will also try to cast to a number, but `TO_NUMBER()` is the preferred way:
+    A unary plus will also cast to a number, but `TO_NUMBER()` is the preferred way:
     ```js
 +'5' // 5
 +[8] // 8
@@ -122,3 +122,6 @@ The following type check functions are available:
   in a date function. This includes partial dates such as *2015* or *2015-10* and
   strings containing invalid dates such as *2015-02-31*. The function will return 
   false for all non-string values, even if some of them may be usable in date functions.
+
+- *TYPENAME(value)*: Returns the data type name of *value*. The data type name can
+  be either *null*, *bool*, *number*, *string*, *array* or *object*.

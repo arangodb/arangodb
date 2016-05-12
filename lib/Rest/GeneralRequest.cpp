@@ -229,25 +229,29 @@ std::string const& GeneralRequest::header(std::string const& key, bool& found) c
 }
 
 std::string const& GeneralRequest::value(std::string const& key) const {
-  auto it = _values.find(key);
+  if (!_values.empty()) {
+    auto it = _values.find(key);
 
-  if (it == _values.end()) {
-    return StaticStrings::Empty;
+    if (it != _values.end()) {
+      return it->second;
+    }
   }
 
-  return it->second;
+  return StaticStrings::Empty;
 }
 
 std::string const& GeneralRequest::value(std::string const& key, bool& found) const {
-  auto it = _values.find(key);
+  if (!_values.empty()) {
+    auto it = _values.find(key);
 
-  if (it == _values.end()) {
-    found = false;
-    return StaticStrings::Empty;
+    if (it != _values.end()) {
+      found = true;
+      return it->second;
+    }
   }
 
-  found = true;
-  return it->second;
+  found = false;
+  return StaticStrings::Empty;
 }
 
 void GeneralRequest::setArrayValue(char* key, size_t length, char const* value) {

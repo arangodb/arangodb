@@ -46,6 +46,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
       _contentLength(0),
       _header(nullptr),
       _allowMethodOverride(allowMethodOverride) {
+
   if (0 < length) {
     _header = new char[length + 1];
     memcpy(_header, header, length);
@@ -506,32 +507,36 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
           0) {  // 14 = strlen("content-length")
     _contentLength = StringUtils::int64(value, valueLength);
     // do not store this header
-  } else if (keyLength == 6 &&
-             memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
+    return;
+  } 
+  
+  if (keyLength == 6 &&
+      memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
     parseCookies(value, valueLength);
-  } else {
-    if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
-        *(key + 1) == '-') {
-      // handle x-... headers
-
-      // override HTTP method?
-      if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
-          (keyLength == 17 &&
-           memcmp(key, "x-method-override", keyLength) == 0) ||
-          (keyLength == 22 &&
-           memcmp(key, "x-http-method-override", keyLength) == 0)) {
-        std::string overriddenType(value, valueLength);
-        StringUtils::tolowerInPlace(&overriddenType);
-
-        _type = findRequestType(overriddenType.c_str(), overriddenType.size());
-
-        // don't insert this header!!
-        return;
-      }
-    }
-
-    _headers[std::string(key, keyLength)] = std::string(value, valueLength);
+    return;
   }
+
+  if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
+      *(key + 1) == '-') {
+    // handle x-... headers
+
+    // override HTTP method?
+    if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
+        (keyLength == 17 &&
+          memcmp(key, "x-method-override", keyLength) == 0) ||
+        (keyLength == 22 &&
+          memcmp(key, "x-http-method-override", keyLength) == 0)) {
+      std::string overriddenType(value, valueLength);
+      StringUtils::tolowerInPlace(&overriddenType);
+
+      _type = findRequestType(overriddenType.c_str(), overriddenType.size());
+
+      // don't insert this header!!
+      return;
+    }
+  }
+
+  _headers[std::string(key, keyLength)] = std::string(value, valueLength);
 }
 
 /// @brief sets a key-only header

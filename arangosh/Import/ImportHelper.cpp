@@ -202,7 +202,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   size_t separatorLength;
   char* separator =
       TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, _separator.c_str(),
-                             _separator.size(), &separatorLength);
+                             _separator.size(), &separatorLength, true);
 
   if (separator == nullptr) {
     if (fd != STDIN_FILENO) {

@@ -175,8 +175,6 @@ class Executor {
   /// an array / object literal "big" and pulling it out of the expression
   static size_t const DefaultLiteralSizeThreshold;
 
-  /// @brief maxmium number of array members created from range accesses
-  static int64_t const MaxRangeAccessArraySize;
 };
 }
 }

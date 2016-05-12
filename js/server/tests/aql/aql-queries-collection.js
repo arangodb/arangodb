@@ -854,6 +854,51 @@ function ahuacatlQueryCollectionTestSuite () {
       var expected = [ [ "riding", "skating", "swimming", null, "swimming" ] ];
       var actual = getQueryResults("FOR u in " + users.name() + " FILTER HAS(u, 'hobbies') RETURN [ u.hobbies[0], u.hobbies[1], u.hobbies[2], u.hobbies[3], u.hobbies[-1] ]");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test hashing the documents
+////////////////////////////////////////////////////////////////////////////////
+    
+    testHashes : function () {
+      var expected = [
+        438613548108819, 
+        736577518779056, 
+        1997321613449496, 
+        1350231173529518, 
+        1270199420722049, 
+        317879879725550, 
+        722866072919463, 
+        1206291785257135, 
+        1552225485422317, 
+        961337730609982, 
+        369117059618668, 
+        1882233601916968, 
+        528406878048694, 
+        1954958029766941, 
+        1081655675871352, 
+        1244560085281213, 
+        2210430228027913, 
+        1550995730612121, 
+        621907927620752, 
+        957121224257198 
+      ];
+      var actual = getQueryResults("FOR u in " + users.name() + " SORT u.id RETURN HASH(UNSET(u, ['_key', '_rev', '_id']))");
+      assertEqual(expected, actual);
+      actual = getQueryResults("FOR u in " + users.name() + " SORT u.id RETURN V8(HASH(UNSET(u, ['_key', '_rev', '_id'])))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test hashing the documents
+////////////////////////////////////////////////////////////////////////////////
+    
+    testHashSubquery : function () {
+      var expected = [ 1815371496337334 ];
+      var actual = getQueryResults("RETURN HASH(FOR u in " + users.name() + " SORT u.id RETURN UNSET(u, ['_key', '_rev', '_id']))");
+      assertEqual(expected, actual);
+      actual = getQueryResults("RETURN V8(HASH(FOR u in " + users.name() + " SORT u.id RETURN UNSET(u, ['_key', '_rev', '_id'])))");
+      assertEqual(expected, actual);
     }
 
   };

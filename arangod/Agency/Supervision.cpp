@@ -43,7 +43,7 @@ inline void makeReport (query_t& envelope, Builder const& report) {
   envelope->close();
 }
 
-template<> struct Job<FAILED_LEADER> {
+template<> struct Job<arangodb::consensus::FAILED_DBSERVER> {
 
   Job (Node const& snapshot, Agent* agent, uint64_t jobId,
        std::string const& failed) {
@@ -59,32 +59,68 @@ template<> struct Job<FAILED_LEADER> {
         Node const& replicationFactor = collection("replicationFactor");
         if (replicationFactor.slice().getUInt() > 1) {
           for (auto const& shard : collection("shards").children()) {
-            for (auto const& dbserver :
-                   VPackArrayIterator(shard.second->slice())) {
+
+            std::vector<std::string> bad, reordered;
+            VPackArrayIterator dbsit (shard.second->slice());
+
+            if ((*dbsit.begin()).copyString() != failed) { // Cannot do much
+              continue;
+            }
+            
+            for (auto const& dbserver : dbsit) {
+              std::string serverID = dbserver.copyString();
               if (dbserver.copyString() == failed) {
-                std::string path ("/arango/Supervision/Jobs/Pending/");
-                path += arangodb::basics::StringUtils::itoa(jobId);
-                LOG(WARN) << path;
-                query_t envelope = std::make_shared<Builder>();
-                Builder report;
-                report.openObject();
-                report.add(path, VPackValue(VPackValueType::Object));
-                report.add("shard", VPackValue(shard.first));
-                report.add("dbservers", VPackValue(failed));
-                report.close();
-                report.close();
-                makeReport(envelope, report);
-                envelope->clear();
-                report.clear();
-                report.openObject();
-                path = std::string("/arango/Plan/Collections")
-                  + database.first + "/" + collptr.first;
-                report.close();
-                agent->write(envelope);
+                bad.push_back(serverID);
+              } else {
+                reordered.push_back(serverID);
               }
             }
+
+            // Put into supervision
+            std::string path ("/arango/Supervision/Jobs/Pending/");
+            path += arangodb::basics::StringUtils::itoa(jobId);
+            LOG(WARN) << path;
+            query_t envelope = std::make_shared<Builder>();
+            Builder report;
+            report.openObject();
+            report.add(path, VPackValue(VPackValueType::Object));
+            report.add("shard", VPackValue(shard.first));
+            report.add("dbservers", VPackValue(failed));
+            report.add("old", shard.second->slice());
+            report.add("new", VPackValue(VPackValueType::Array));
+            for (auto const& server : reordered) {
+              report.add(VPackValue(server));
+            }
+            for (auto const& server : bad) {
+              report.add(VPackValue(server));
+            }
+            report.close();
+            report.close();
+            report.close();
+            LOG(WARN) << report.toJson();
+            makeReport(envelope, report);
+
+            envelope->clear();
+            report.clear();
+
+            // Put into plan
+            path = std::string("/arango/Plan/Collections/")
+              + database.first + "/" + collptr.first + "/shards/" + shard.first;
+
+            LOG(WARN) << path;
+              
+            /*report.openObject();
+              path = std::string("/arango/Plan/Collections")
+              + database.first + "/" + collptr.first + "/" + shard.first;
+              report.close();
+              LOG(WARN) << report.toJson();
+              makeReport(envelope, report);
+              LOG(WARN) << envelope->toJson();*/
+            //agent->write(envelope);
+            // }
+            //}
           }
-        }
+        } 
       }
     }
     
@@ -99,7 +135,7 @@ using namespace arangodb::consensus;
 
 Supervision::Supervision() : arangodb::Thread("Supervision"), _agent(nullptr),
                              _snapshot("Supervision"), _frequency(5),
-                             _gracePeriod(60) {
+                             _gracePeriod(10) {
   
 }
 
@@ -150,7 +186,7 @@ std::vector<check_t> Supervision::checkDBServers () {
                   VPackValue(VPackValueType::Object));
       report->add("LastHearbeatReceived",
                   VPackValue(printTimestamp(it->second->myTimestamp)));
-      report->add("LastHearbeatSent", VPackValue(lastHeartbeatTime));
+      report->add("LastHearbeatSent", VPackValue(it->second->serverTimestamp));
       report->add("LastHearbeatStatus", VPackValue(lastHeartbeatStatus));
 
       if (it->second->serverTimestamp == lastHeartbeatTime) {
@@ -161,10 +197,9 @@ std::vector<check_t> Supervision::checkDBServers () {
         if (t.count() > _gracePeriod) {               // Failure
           if (it->second->maintenance() == 0) {
             it->second->maintenance(TRI_NewTickServer());
-            Job<FAILED_LEADER> jfl(_snapshot, _agent, it->second->maintenance(),
+            Job<FAILED_DBSERVER> jfl(_snapshot, _agent, it->second->maintenance(),
                                    serverID);
           }
-          report->add("Alert", VPackValue(true));
         }
 
       } else {

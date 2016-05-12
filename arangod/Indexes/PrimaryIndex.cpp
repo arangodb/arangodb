@@ -93,7 +93,7 @@ TRI_doc_mptr_t* PrimaryIndexIterator::next() {
   return nullptr;
 }
 
-void PrimaryIndexIterator::reset() { _iterator.reset(true); }
+void PrimaryIndexIterator::reset() { _iterator.reset(); }
 
 TRI_doc_mptr_t* AllIndexIterator::next() {
   if (_reverse) {

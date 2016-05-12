@@ -9,34 +9,34 @@ include_directories(.)
 # note that we check-in the generated FLEX/BISON files, therefore they are
 # generate inside the source tree
 
-if (USE_MAINTAINER_MODE)
+if (USE_MAINTAINER_MODE AND NOT MSVC)
   add_custom_command(
     OUTPUT
-      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.cpp
+      ${CMAKE_SOURCE_DIR}/lib/JsonParser/json-parser.cpp
     WORKING_DIRECTORY
-      ${CMAKE_CURRENT_SOURCE_DIR}
+      ${CMAKE_SOURCE_DIR}
     COMMAND
       ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
       ${FLEX_EXECUTABLE}
-      lib/JsonParser/json-parser.ll
       lib/JsonParser/json-parser.cpp
+      lib/JsonParser/json-parser.ll
     MAIN_DEPENDENCY
-      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.ll
+      ${CMAKE_SOURCE_DIR}/lib/JsonParser/json-parser.ll
     VERBATIM
   )
-
+  
   add_custom_command(
     OUTPUT
-      ${CMAKE_CURRENT_SOURCE_DIR}/lib/V8/v8-json.cpp
+      ${CMAKE_SOURCE_DIR}/lib/V8/v8-json.cpp
     WORKING_DIRECTORY
-      ${CMAKE_CURRENT_SOURCE_DIR}
+      ${CMAKE_SOURCE_DIR}
     COMMAND
       ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
       ${FLEX_EXECUTABLE}
-      V8/v8-json.ll
-      V8/v8-json.cpp
+      lib/V8/v8-json.cpp
+      lib/V8/v8-json.ll
     MAIN_DEPENDENCY
-      ${CMAKE_CURRENT_SOURCE_DIR}/V8/v8-json.ll
+      ${CMAKE_SOURCE_DIR}/lib/V8/v8-json.ll
     VERBATIM
   )
 endif ()

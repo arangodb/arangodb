@@ -66,6 +66,47 @@ function ahuacatlTypesFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test typename function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTypename : function () {
+      assertEqual([ "null" ], getQueryResults("RETURN TYPENAME(null)"));
+      assertEqual([ "bool" ], getQueryResults("RETURN TYPENAME(false)"));
+      assertEqual([ "bool" ], getQueryResults("RETURN TYPENAME(true)"));
+      assertEqual([ "number" ], getQueryResults("RETURN TYPENAME(0)"));
+      assertEqual([ "number" ], getQueryResults("RETURN TYPENAME(1)"));
+      assertEqual([ "number" ], getQueryResults("RETURN TYPENAME(-99999)"));
+      assertEqual([ "number" ], getQueryResults("RETURN TYPENAME(0.005)"));
+      assertEqual([ "number" ], getQueryResults("RETURN TYPENAME(1334540.005)"));
+      assertEqual([ "number" ], getQueryResults("RETURN TYPENAME(3e32)"));
+      assertEqual([ "array" ], getQueryResults("RETURN TYPENAME(1..2)"));
+      assertEqual([ "array" ], getQueryResults("RETURN TYPENAME(99..0)"));
+      assertEqual([ "array" ], getQueryResults("RETURN TYPENAME(FOR i IN 1..10 RETURN i)"));
+      assertEqual([ "array" ], getQueryResults("RETURN TYPENAME([ ])"));
+      assertEqual([ "array" ], getQueryResults("RETURN TYPENAME([ 'foo ' ])"));
+      assertEqual([ "object" ], getQueryResults("RETURN TYPENAME({ })"));
+      assertEqual([ "object" ], getQueryResults("RETURN TYPENAME({ 'foo': 'bar' })"));
+      assertEqual([ "string" ], getQueryResults("RETURN TYPENAME('foo')"));
+      assertEqual([ "string" ], getQueryResults("RETURN TYPENAME('')"));
+      assertEqual([ "string" ], getQueryResults("RETURN TYPENAME(' ')"));
+      assertEqual([ "string" ], getQueryResults("RETURN TYPENAME('0')"));
+      assertEqual([ "string" ], getQueryResults("RETURN TYPENAME('1')"));
+      assertEqual([ "string" ], getQueryResults("RETURN TYPENAME('true')"));
+      assertEqual([ "string" ], getQueryResults("RETURN TYPENAME('false')"));
+      assertEqual([ "number", "number" ], getQueryResults("FOR i IN 1..2 RETURN TYPENAME(i)"));
+      assertEqual([ "string", "string", "string", "number" ], getQueryResults("FOR i IN [ 'foo', 'bar', 'baz', 42 ] RETURN TYPENAME(i)"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test typename function, invalid arguments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTypenameInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN TYPENAME()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN TYPENAME('a', 'b')"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test is_string function
 ////////////////////////////////////////////////////////////////////////////////
     

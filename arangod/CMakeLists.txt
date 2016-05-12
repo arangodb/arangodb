@@ -11,7 +11,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 # note that we check-in the generated FLEX/BISON files, therefore they are
 # generate inside the source tree
 
-if (USE_MAINTAINER_MODE)
+if (USE_MAINTAINER_MODE AND NOT MSVC)
   add_custom_command(
     OUTPUT
       ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.cpp
