@@ -409,6 +409,7 @@ not support the URL parameter "createCollection" anymore. In previous versions o
 ArangoDB this parameter could be used to automatically create a collection upon 
 insertion of the first document. It is now required that the target collection already
 exists when using this API, otherwise it will return an HTTP 404 error.
+The same is true for the import API at POST `/_api/import`.
 
 Collections can still be created easily via a separate call to POST `/_api/collection`
 as before.

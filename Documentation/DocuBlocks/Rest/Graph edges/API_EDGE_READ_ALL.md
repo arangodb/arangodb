@@ -2,7 +2,7 @@
 @startDocuBlock API_EDGE_READ_ALL
 @brief reads all edges from collection
 
-@RESTHEADER{GET /_api/edge, Read all edges from collection}
+@RESTHEADER{GET /_api/document, Read all edges from collection}
 
 @RESTQUERYPARAMETERS
 

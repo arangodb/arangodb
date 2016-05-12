@@ -2,7 +2,7 @@
 @startDocuBlock API_EDGE_READ
 @brief reads a single edge
 
-@RESTHEADER{GET /_api/edge/{document-handle}, Read edge}
+@RESTHEADER{GET /_api/document/{document-handle}, Read edge}
 
 @RESTURLPARAMETERS
 

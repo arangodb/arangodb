@@ -203,12 +203,13 @@ class ImportHelper {
 
   void reportProgress(int64_t, int64_t, double&);
 
-  std::string getCollectionUrlPart();
+  std::string getCollectionUrlPart() const;
   void beginLine(size_t row);
   void addField(char const*, size_t, size_t row, size_t column, bool escaped);
   void addLastField(char const*, size_t, size_t row, size_t column,
                     bool escaped);
 
+  bool checkCreateCollection();
   void sendCsvBuffer();
   void sendJsonBuffer(char const* str, size_t len, bool isObject);
   void handleResult(httpclient::SimpleHttpResult* result);

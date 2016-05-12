@@ -63,7 +63,7 @@ creation operations. The boundary used in this example is
 Content-type: application/x-arango-batchpart
 Content-Id: 1
 
-POST /_api/document?collection=xyz&createCollection=true HTTP/1.1
+POST /_api/document?collection=xyz HTTP/1.1
 
 {"a":1,"b":2,"c":3}
 --XXXsubpartXXX
