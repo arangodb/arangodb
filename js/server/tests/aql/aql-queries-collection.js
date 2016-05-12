@@ -862,28 +862,30 @@ function ahuacatlQueryCollectionTestSuite () {
     
     testHashes : function () {
       var expected = [
-        1089385960271542, 
-        1549718497690202, 
-        560358553578052, 
-        1642812332573238, 
-        435359225373270, 
-        408295336378511, 
-        1897938296916959, 
-        713554280722917, 
-        369118524423277, 
-        1548261017980441, 
-        541971611858512, 
-        1804578553815548, 
-        976161958841139, 
-        259242346857309, 
-        671328068995257, 
-        2154779012539123, 
-        1413254027041724, 
-        854175714643442, 
-        178243611496212, 
-        791314881371364 
+        438613548108819, 
+        736577518779056, 
+        1997321613449496, 
+        1350231173529518, 
+        1270199420722049, 
+        317879879725550, 
+        722866072919463, 
+        1206291785257135, 
+        1552225485422317, 
+        961337730609982, 
+        369117059618668, 
+        1882233601916968, 
+        528406878048694, 
+        1954958029766941, 
+        1081655675871352, 
+        1244560085281213, 
+        2210430228027913, 
+        1550995730612121, 
+        621907927620752, 
+        957121224257198 
       ];
       var actual = getQueryResults("FOR u in " + users.name() + " SORT u.id RETURN HASH(UNSET(u, ['_key', '_rev', '_id']))");
+      assertEqual(expected, actual);
+      actual = getQueryResults("FOR u in " + users.name() + " SORT u.id RETURN V8(HASH(UNSET(u, ['_key', '_rev', '_id'])))");
       assertEqual(expected, actual);
     },
 
@@ -892,8 +894,10 @@ function ahuacatlQueryCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testHashSubquery : function () {
-      var expected = [ 1866655274639415 ];
+      var expected = [ 1815371496337334 ];
       var actual = getQueryResults("RETURN HASH(FOR u in " + users.name() + " SORT u.id RETURN UNSET(u, ['_key', '_rev', '_id']))");
+      assertEqual(expected, actual);
+      actual = getQueryResults("RETURN V8(HASH(FOR u in " + users.name() + " SORT u.id RETURN UNSET(u, ['_key', '_rev', '_id'])))");
       assertEqual(expected, actual);
     }
 
