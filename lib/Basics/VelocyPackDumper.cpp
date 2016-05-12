@@ -425,14 +425,7 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
     case VPackValueType::String: {
       VPackValueLength len;
       char const* p = slice->getString(len);
-      if (len == 0) {
-        int res = TRI_AppendString2StringBuffer(buffer, "\"\"", 2);
-        if (res != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-        }
-      } else {
-        appendString(p, len); 
-      }
+      appendString(p, len); 
       break;
     }
     
