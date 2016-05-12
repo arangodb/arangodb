@@ -233,6 +233,8 @@ std::vector<bool> Store::apply (
 // Check precondition
 bool Store::check (VPackSlice const& slice) const {
 
+  LOG(WARN) << slice.toJson();
+
   if (!slice.isObject()) { // Must be object
     LOG_TOPIC(WARN, Logger::AGENCY)
       << "Cannot check precondition: " << slice.toJson();
@@ -240,6 +242,7 @@ bool Store::check (VPackSlice const& slice) const {
   }
 
   for (auto const& precond : VPackObjectIterator(slice)) { // Preconditions
+    LOG(WARN) << precond.value.toJson();
     std::string path = precond.key.copyString();
     bool found = false;
     Node node ("precond");
@@ -251,6 +254,7 @@ bool Store::check (VPackSlice const& slice) const {
     
     if (precond.value.isObject()) {
       for (auto const& op : VPackObjectIterator(precond.value)) {
+        LOG(WARN) << node.slice().toJson() << " " << op.key.copyString() << ":" << op.value.toJson();
         std::string const& oper = op.key.copyString();
         if (oper == "old") {                           // old
           if (node != op.value) {
@@ -273,13 +277,16 @@ bool Store::check (VPackSlice const& slice) const {
               << "Non boolsh expression for 'oldEmpty' precondition";
             return false;
           }
+          LOG(WARN) << found;
           if (op.value.getBool() ? found : !found) {
             return false;
           }
         }
       }
     } else {
-      return node == precond.value;
+      if (node != precond.value) {
+        return false;
+      }
     }
   }
   

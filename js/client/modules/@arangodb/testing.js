@@ -1385,7 +1385,7 @@ function startInstanceAgency(instanceInfo, protocol, options,
 
   const N = options.agencySize;
   if (options.agencyWaitForSync === undefined) {
-    options.agencyWaitForSync = true;
+    options.agencyWaitForSync = false;
   }
   const wfs = options.agencyWaitForSync;
 
