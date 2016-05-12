@@ -1,13 +1,13 @@
-Source: arangodb
+Source: arangodb3
 Section: database
 Priority: optional
 Maintainer: ArangoDB GmbH <info@arangodb.com>
 Build-Depends: debhelper (>= 5), libreadline-dev, libssl-dev, python, libicu-dev, libtool, autoconf, automake
 
-Package: arangodb
+Package: arangodb3
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Conflicts: arangodb-client
+Conflicts: arangodb3-client
 Description: a multi-purpose NoSQL database
  A distributed free and open-source database with a flexible data model for documents,
  graphs, and key-values. Build high performance applications using a convenient
@@ -18,7 +18,7 @@ Description: a multi-purpose NoSQL database
  ArangoDB Software
  www.arangodb.com
 
-Package: arangodb-client
+Package: arangodb3-client
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Conflicts: arangodb
