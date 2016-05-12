@@ -267,11 +267,11 @@ if (DH_INSTALLINIT)
     copy "${PROJECT_SOURCE_DIR}/Installation/debian/compat" "${PROJECT_BINARY_DIR}/debian/compat"
   )
   add_custom_command(TARGET prepare_debian POST_BUILD
-    COMMAND "${DH_INSTALLINIT}" -o 2>/dev/null
+    COMMAND fakeroot "${DH_INSTALLINIT}" -o 2>/dev/null
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
   )
   add_custom_command(TARGET prepare_debian POST_BUILD
-    COMMAND "dh_installdeb"
+    COMMAND fakeroot dh_installdeb
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
   )
 endif()
@@ -403,7 +403,7 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb3
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
   DESTINATION ${VARDIR_INSTALL}/log)
 
 ################################################################################
