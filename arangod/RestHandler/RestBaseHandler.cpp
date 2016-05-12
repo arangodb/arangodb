@@ -152,11 +152,11 @@ void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice,
 
   _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
   try {
-    //arangodb::basics::VelocyPackDumper dumper(&(_response->body()), &options);
-    //dumper.dumpValue(slice);
-    VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-    VPackDumper dumper(&buffer, &options);
-    dumper.dump(slice);
+    arangodb::basics::VelocyPackDumper dumper(&(_response->body()), &options);
+    dumper.dumpValue(slice);
+    //VPackStringBufferAdapter buffer(_response->body().stringBuffer());
+    //VPackDumper dumper(&buffer, &options);
+    //dumper.dump(slice);
   } catch (std::exception const& ex) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
