@@ -204,9 +204,6 @@ int TRI_AppendStringStringBuffer(TRI_string_buffer_t* self, char const* str);
 int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str,
                                   size_t len);
 
-void TRI_AppendString2UnsafeStringBuffer(TRI_string_buffer_t* self, char const* str,
-                                         size_t len);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters but does not check buffer bounds
 ////////////////////////////////////////////////////////////////////////////////
