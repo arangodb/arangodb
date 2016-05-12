@@ -267,14 +267,13 @@ if (DH_INSTALLINIT)
     copy "${PROJECT_SOURCE_DIR}/Installation/debian/compat" "${PROJECT_BINARY_DIR}/debian/compat"
   )
   add_custom_command(TARGET prepare_debian POST_BUILD
-    COMMAND "${DH_INSTALLINIT}" -o 2>/dev/null
+    COMMAND fakeroot "${DH_INSTALLINIT}" -o 2>/dev/null
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
   )
   add_custom_command(TARGET prepare_debian POST_BUILD
-    COMMAND "dh_installdeb"
+    COMMAND fakeroot dh_installdeb
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
   )
-  set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_BINARY_DIR}/debian/${CPACK_PACKAGE_NAME}/DEBIAN/postinst;${PROJECT_BINARY_DIR}/debian/${CPACK_PACKAGE_NAME}/DEBIAN/preinst;${PROJECT_BINARY_DIR}/debian/${CPACK_PACKAGE_NAME}/DEBIAN/postrm;${PROJECT_BINARY_DIR}/debian/${CPACK_PACKAGE_NAME}/DEBIAN/prerm;")
 endif()
 
 # General
@@ -302,6 +301,7 @@ SET(CPACK_DEBIAN_PACKAGE_CONFLICTS "arangodb")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://www.arangodb.com/")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_BINARY_DIR}/debian/${CPACK_PACKAGE_NAME}/DEBIAN/postinst;${PROJECT_BINARY_DIR}/debian/${CPACK_PACKAGE_NAME}/DEBIAN/preinst;${PROJECT_BINARY_DIR}/debian/${CPACK_PACKAGE_NAME}/DEBIAN/postrm;${PROJECT_BINARY_DIR}/debian/${CPACK_PACKAGE_NAME}/DEBIAN/prerm;")
 set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
 configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
 set(CPACK_BUNDLE_PLIST           "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
@@ -403,7 +403,7 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb3
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
   DESTINATION ${VARDIR_INSTALL}/log)
 
 ################################################################################
