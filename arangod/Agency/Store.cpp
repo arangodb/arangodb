@@ -279,7 +279,9 @@ bool Store::check (VPackSlice const& slice) const {
         }
       }
     } else {
-      return node == precond.value;
+      if (node != precond.value) {
+        return false;
+      }
     }
   }
   
