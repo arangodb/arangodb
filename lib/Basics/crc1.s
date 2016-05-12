@@ -31,7 +31,7 @@
 	.text
 	.globl	TRI_BlockCrc32_SSE42
 	.globl	_TRI_BlockCrc32_SSE42
-#ifndef  __APPLE__
+#ifndef __APPLE__
 	.type	TRI_BlockCrc32_SSE42, @function
 	.type	_TRI_BlockCrc32_SSE42, @function
 #endif
@@ -55,8 +55,9 @@ crca4:
         addq    $1,%rsi
         jmp     crca4
 crca9:
-        ret
-#ifndef  __APPLE__
+  ret
+
+#ifndef __APPLE__
 	.size	TRI_BlockCrc32_SSE42, .-TRI_BlockCrc32_SSE42
 	.size	_TRI_BlockCrc32_SSE42, .-_TRI_BlockCrc32_SSE42
 #endif

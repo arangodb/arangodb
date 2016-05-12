@@ -103,6 +103,9 @@ public:
   /// @brief Check equality with slice
   bool operator== (arangodb::velocypack::Slice const&) const;
 
+  /// @brief Check equality with slice
+  bool operator!= (arangodb::velocypack::Slice const&) const;
+
   /// @brief Type of this node (LEAF / NODE)
   NodeType type() const;
 
