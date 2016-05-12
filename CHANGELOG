@@ -1,6 +1,12 @@
 v2.8.9 (XXXX-XX-XX)
 -------------------
 
+* fixed escaping and quoting of extra parameters for executables in Mac OS X App
+
+* added "waiting for" status variable to web interface collection figures view
+
+* fixed undefined behavior in query cache invaldation
+
 * fixed access to /_admin/statistics API in case statistics are disable via option
   `--server.disable-statistics`
 
