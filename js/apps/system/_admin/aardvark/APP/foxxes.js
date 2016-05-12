@@ -366,7 +366,11 @@
    *
    */
   controller.get('/fishbowl', function (req, res) {
-    FoxxManager.update();
+    try {
+      FoxxManager.update();
+    } catch (e) {
+      console.warnLines(`Failed to update Foxx store: ${e.stack}`);
+    }
     res.json(FoxxManager.availableJson());
   }).summary("List of all foxx apps submitted to the fishbowl store.")
   .notes("This function contacts the fishbowl and reports which apps are available for install")

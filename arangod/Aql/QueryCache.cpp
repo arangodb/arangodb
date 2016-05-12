@@ -210,9 +210,10 @@ void QueryCacheDatabaseEntry::store (uint64_t hash,
     // remove previous entry
     auto it = _entriesByHash.find(hash);
     TRI_ASSERT(it != _entriesByHash.end());
-    unlink((*it).second);
+    auto previous = (*it).second;
+    unlink(previous);
     _entriesByHash.erase(it);
-    tryDelete((*it).second);
+    tryDelete(previous);
 
     // and insert again
     _entriesByHash.emplace(hash, entry);
@@ -247,9 +248,10 @@ void QueryCacheDatabaseEntry::store (uint64_t hash,
     // finally remove entry itself from hash table
     auto it = _entriesByHash.find(hash);
     TRI_ASSERT(it != _entriesByHash.end());
+    auto previous = (*it).second;
     _entriesByHash.erase(it);
-    unlink((*it).second);
-    tryDelete((*it).second);
+    unlink(previous);
+    tryDelete(previous);
     throw;
   }
 
