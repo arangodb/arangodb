@@ -115,7 +115,8 @@
         }
       };
 
-      var path = window.location.protocol + "//" + window.location.host + "/_db/" + database + "/_admin/aardvark/index.html";
+      var path = window.location.protocol + "//" +
+        window.location.host + "/_db/" + database + "/_admin/aardvark/index.html";
 
       window.location.href = path;
 
