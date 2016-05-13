@@ -1,4 +1,4 @@
-v2.8.9 (XXXX-XX-XX)
+v2.8.9 (2016-05-13)
 -------------------
 
 * fixed escaping and quoting of extra parameters for executables in Mac OS X App

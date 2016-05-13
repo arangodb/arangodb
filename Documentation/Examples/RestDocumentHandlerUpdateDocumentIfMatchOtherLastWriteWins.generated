@@ -1,15 +1,15 @@
-shell> curl -X PUT --header 'If-Match: "739316750"' --data-binary @- --dump - http://localhost:8529/_api/document/products/738989070?policy=last &lt;&lt;EOF
+shell> curl -X PUT --header 'If-Match: "737547319"' --data-binary @- --dump - http://localhost:8529/_api/document/products/737219639?policy=last &lt;&lt;EOF
 {}
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-string">"739578894"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">738989070</span>
+etag: <span class="hljs-string">"737809463"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">737219639</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/738989070"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"739578894"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"738989070"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/737219639"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"737809463"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"737219639"</span> 
 }
