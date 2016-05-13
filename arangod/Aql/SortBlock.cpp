@@ -28,9 +28,6 @@
 
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
-using JsonHelper = arangodb::basics::JsonHelper;
-
 SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
     : ExecutionBlock(engine, en), _sortRegisters(), _stable(en->_stable) {
   for (auto const& p : en->_elements) {

@@ -24,7 +24,6 @@
 #include "InitialSyncer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"

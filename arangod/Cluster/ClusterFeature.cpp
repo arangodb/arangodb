@@ -25,7 +25,6 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Basics/FileUtils.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterComm.h"

@@ -44,7 +44,6 @@
 
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
-using JsonHelper = arangodb::basics::JsonHelper;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief register warning
