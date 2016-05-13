@@ -80,7 +80,7 @@ class IndexBlock : public ExecutionBlock {
   arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
 
   /// @brief create an iterator object
-  std::shared_ptr<arangodb::OperationCursor> createCursor();
+  void createCursor();
 
   /// @brief Forwards _cursor to the next available index
   void startNextCursor();
@@ -134,7 +134,7 @@ class IndexBlock : public ExecutionBlock {
   /// @brief _cursor: holds the index cursor found using
   /// getIndexCursor (if any) so that it can be read in chunks and not
   /// necessarily all at once.
-  std::shared_ptr<arangodb::OperationCursor> _cursor;
+  std::unique_ptr<arangodb::OperationCursor> _cursor;
 
   /// @brief _condition: holds the complete condition this Block can serve for
   AstNode const* _condition;
