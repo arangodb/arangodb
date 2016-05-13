@@ -6786,6 +6786,10 @@ div.headerBar {
   top: 0;
   width: 100%;
   z-index: 9999; }
+  .loginFixedWindow #databases {
+    height: 140px; }
+    .loginFixedWindow #databases #logout {
+      margin-top: 20px; }
   .loginFixedWindow .resizecontainer {
     position: relative;
     top: 0; }
