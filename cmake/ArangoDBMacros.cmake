@@ -231,8 +231,9 @@ if (NOT(MSVC))
 endif()
 
 find_program(DH_INSTALLINIT dh_installinit)
+find_program(FAKEROOT fakeroot)
 
-if (DH_INSTALLINIT)
+if (DH_INSTALLINIT AND FAKEROOT)
   add_custom_target(prepare_debian)
   SET(DEBIAN_CONTROL_EXTRA_BASENAMES
     postinst

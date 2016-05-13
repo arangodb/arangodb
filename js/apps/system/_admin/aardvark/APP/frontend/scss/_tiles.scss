@@ -177,9 +177,10 @@ $iconsize: 50px;
     cursor: pointer;
     fill: $c-icon-grey;
     height: $iconsize;
-    margin-left: 97px;
+    margin-left: auto;
+    margin-right: auto;
     margin-top: -63px;
-    position: absolute;
+    position: relative;
     width: $iconsize;
   }
 
