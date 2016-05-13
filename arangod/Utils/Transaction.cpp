@@ -3339,6 +3339,32 @@ void Transaction::freeTransaction() {
     this->_transactionContext->unregisterTransaction();
   }
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, leases a StringBuffer
+//////////////////////////////////////////////////////////////////////////////
+
+StringBufferLeaser::StringBufferLeaser(arangodb::Transaction* trx) 
+      : _transactionContext(trx->transactionContext().get()), 
+        _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, leases a StringBuffer
+//////////////////////////////////////////////////////////////////////////////
+
+StringBufferLeaser::StringBufferLeaser(arangodb::TransactionContext* transactionContext) 
+      : _transactionContext(transactionContext), 
+        _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief destructor, returns a StringBuffer
+//////////////////////////////////////////////////////////////////////////////
+
+StringBufferLeaser::~StringBufferLeaser() { 
+  _transactionContext->returnStringBuffer(_stringBuffer);
+}
   
 //////////////////////////////////////////////////////////////////////////////
 /// @brief constructor, leases a builder
