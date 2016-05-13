@@ -85,6 +85,8 @@ class HashIndexIterator final : public IndexIterator {
 };
 
 class HashIndex final : public PathBasedIndex {
+  friend class HashIndexIterator;
+
  public:
   HashIndex() = delete;
 
@@ -128,16 +130,6 @@ class HashIndex final : public PathBasedIndex {
 
   bool hasBatchInsert() const override final { return true; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief locates entries in the hash index given a velocypack slice
-  //////////////////////////////////////////////////////////////////////////////
-
-  int lookup(arangodb::Transaction*, arangodb::velocypack::Slice,
-             std::vector<TRI_doc_mptr_t*>&) const;
-
-  int lookup(arangodb::Transaction*, arangodb::velocypack::Slice,
-             std::vector<TRI_doc_mptr_t>&,
-             TRI_index_element_t*& next, size_t batchSize) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
@@ -166,6 +158,13 @@ class HashIndex final : public PathBasedIndex {
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
  private:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief locates entries in the hash index given a velocypack slice
+  //////////////////////////////////////////////////////////////////////////////
+  int lookup(arangodb::Transaction*, arangodb::velocypack::Slice,
+             std::vector<TRI_doc_mptr_t*>&) const;
+
   int insertUnique(arangodb::Transaction*, struct TRI_doc_mptr_t const*, bool);
 
   int batchInsertUnique(arangodb::Transaction*,

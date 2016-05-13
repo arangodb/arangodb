@@ -54,12 +54,22 @@
     },
 
     checkUser: function () {
+      if (window.location.hash === '#login') {
+        return;
+      }
+
       var callback = function(error, user) {
         if (error || user === null) {
-          this.navigate("login", {trigger: true});
+          if (window.location.hash !== '#login') {
+            this.navigate("login", {trigger: true});
+          }
         }
         else {
           this.initOnce();
+
+          //show hidden by default divs
+          $('.bodyWrapper').show();
+          $('.navbar').show();
         }
       }.bind(this);
 
@@ -396,7 +406,8 @@
       }
     },
 
-    login: function (initialized) {
+    login: function () {
+
       var callback = function(error, user) {
         if (error || user === null) {
           if (!this.loginView) {
@@ -410,6 +421,7 @@
           this.navigate("", {trigger: true});
         }
       }.bind(this);
+
       this.userCollection.whoAmI(callback);
     },
 

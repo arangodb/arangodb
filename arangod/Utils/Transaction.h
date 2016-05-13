@@ -558,7 +558,7 @@ class Transaction {
   /// calling this method
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<OperationCursor> indexScanForCondition(
+  OperationCursor* indexScanForCondition(
       std::string const& collectionName, IndexHandle const& indexId,
       arangodb::aql::Ast*, arangodb::aql::AstNode const*,
       arangodb::aql::Variable const*, uint64_t, uint64_t, bool);
