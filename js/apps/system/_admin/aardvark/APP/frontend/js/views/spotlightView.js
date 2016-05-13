@@ -236,6 +236,7 @@
 
     hide: function() {
       $(this.el).hide();
+      this.typeahead = $('#spotlight .typeahead').typeahead('destroy');
     }
 
   });
