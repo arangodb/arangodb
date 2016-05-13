@@ -61,12 +61,11 @@ static bool IsEqualElementElement(void*,
 
 static uint64_t HashKey(void*,
                         VPackSlice const* key) {
+  TRI_ASSERT(key->isArray());
   uint64_t hash = 0x0123456789abcdef;
-
-  if (!key->isArray()) {
-    return hash;
-  }
-  for (size_t j = 0; j < key->length(); ++j) {
+  size_t const n = key->length();
+ 
+  for (size_t j = 0; j < n; ++j) {
     // must use normalized hash here, to normalize different representations 
     // of arrays/objects/numbers
     hash = (*key)[j].normalizedHash(hash);
@@ -82,11 +81,12 @@ static uint64_t HashKey(void*,
 static bool IsEqualKeyElement(void*,
                               VPackSlice const* left,
                               TRI_index_element_t const* right) {
+  TRI_ASSERT(left->isArray());
   TRI_ASSERT(right->document() != nullptr);
-  if (!left->isArray()) {
-    return false;
-  }
-  for (size_t j = 0; j < left->length(); ++j) {
+  
+  size_t const n = left->length();
+  
+  for (size_t j = 0; j < n; ++j) {
     VPackSlice const leftVPack = (*left)[j];
     TRI_vpack_sub_t* rightSub = right->subObjects() + j;
     VPackSlice const rightVPack = rightSub->slice(right->document());
@@ -393,7 +393,7 @@ void HashIndex::transformSearchValues(VPackSlice const values,
   VPackArrayBuilder guard(&result);
   for (auto const& v : VPackArrayIterator(values)) {
     if (!v.isObject() || !v.hasKey(TRI_SLICE_KEY_EQUAL)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Hash index only allows == comparisson.");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Hash index only allows == comparison.");
     }
     result.add(v.get(TRI_SLICE_KEY_EQUAL));
   }
@@ -422,22 +422,18 @@ int HashIndex::lookup(arangodb::Transaction* trx,
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::vector<TRI_index_element_t*>* results = nullptr;
+  std::vector<TRI_index_element_t*> results;
   try {
-    results = _multiArray->_hashArray->lookupByKey(trx, &key);
+    _multiArray->_hashArray->lookupByKey(trx, &key, results);
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  if (results != nullptr) {
-    try {
-      for (size_t i = 0; i < results->size(); i++) {
-        documents.emplace_back((*results)[i]->document());
-      }
-      delete results;
-    } catch (...) {
-      delete results;
-      return TRI_ERROR_OUT_OF_MEMORY;
+  try {
+    for (size_t i = 0; i < results.size(); i++) {
+      documents.emplace_back(results[i]->document());
     }
+  } catch (...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
   return TRI_ERROR_NO_ERROR;
 }
