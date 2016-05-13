@@ -38,7 +38,7 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-  
+
 HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
                          char const* header, size_t length,
                          bool allowMethodOverride)
@@ -46,7 +46,6 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
       _contentLength(0),
       _header(nullptr),
       _allowMethodOverride(allowMethodOverride) {
-
   if (0 < length) {
     _header = new char[length + 1];
     memcpy(_header, header, length);
@@ -55,9 +54,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
   }
 }
 
-HttpRequest::~HttpRequest() {
-  delete[] _header;
-}
+HttpRequest::~HttpRequest() { delete[] _header; }
 
 void HttpRequest::parseHeader(size_t length) {
   char* start = _header;
@@ -363,7 +360,8 @@ void HttpRequest::parseHeader(size_t length) {
         }
 
         if (keyBegin < keyEnd) {
-          setHeader(keyBegin, keyEnd - keyBegin, valueBegin, valueEnd - valueBegin);
+          setHeader(keyBegin, keyEnd - keyBegin, valueBegin,
+                    valueEnd - valueBegin);
         }
       }
 
@@ -508,8 +506,8 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
     _contentLength = StringUtils::int64(value, valueLength);
     // do not store this header
     return;
-  } 
-  
+  }
+
   if (keyLength == 6 &&
       memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
     parseCookies(value, valueLength);
@@ -522,10 +520,9 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
 
     // override HTTP method?
     if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
-        (keyLength == 17 &&
-          memcmp(key, "x-method-override", keyLength) == 0) ||
+        (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
         (keyLength == 22 &&
-          memcmp(key, "x-http-method-override", keyLength) == 0)) {
+         memcmp(key, "x-http-method-override", keyLength) == 0)) {
       std::string overriddenType(value, valueLength);
       StringUtils::tolowerInPlace(&overriddenType);
 
@@ -657,21 +654,20 @@ std::string const& HttpRequest::cookieValue(std::string const& key) const {
   return it->second;
 }
 
-std::string const& HttpRequest::cookieValue(std::string const& key, bool& found) const {
+std::string const& HttpRequest::cookieValue(std::string const& key,
+                                            bool& found) const {
   auto it = _cookies.find(key);
 
   if (it == _cookies.end()) {
     found = false;
-    return StaticStrings::Empty; 
+    return StaticStrings::Empty;
   }
 
   found = true;
   return it->second;
 }
 
-std::string const& HttpRequest::body() const {
-  return _body;
-}
+std::string const& HttpRequest::body() const { return _body; }
 
 void HttpRequest::setBody(char const* body, size_t length) {
   _body = std::string(body, length);
@@ -683,4 +679,3 @@ std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack(
   parser.parse(body());
   return parser.steal();
 }
-

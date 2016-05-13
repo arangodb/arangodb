@@ -2865,7 +2865,6 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
 
       // Now collect the Iterator
       IndexIteratorContext ctxt(_vocbase, resolver());
-      // iterator.reset(idx->iteratorForSlice(this, &ctxt, expander.slice(), reverse));
       iterator.reset(idx->iteratorForSlice(this, &ctxt, search, reverse));
     }
   }
