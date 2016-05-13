@@ -104,8 +104,6 @@ module.exports = function collectionStorage(cfg) {
             // test if key is already present in collection
             const meta = collection.save(payload);
             session._key = meta._key;
-            console.log(2);
-            console.log(session._key);
             break;
           } catch (e) {
             if (!e.isArangoError || e.errorNum !== UNIQUE_CONSTRAINT) {

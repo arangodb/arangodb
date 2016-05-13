@@ -97,8 +97,6 @@ module.exports = function systemStorage(cfg) {
             const meta = db._sessions.save(payload);
             sid = meta._key;
             session._key = sid;
-            console.log(1);
-            console.log(session._key);
             break;
           } catch (e) {
             if (!e.isArangoError || e.errorNum !== UNIQUE_CONSTRAINT) {
