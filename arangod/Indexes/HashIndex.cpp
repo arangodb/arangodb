@@ -442,69 +442,6 @@ int HashIndex::lookup(arangodb::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locates entries in the hash index given a VelocyPack search Array
-////////////////////////////////////////////////////////////////////////////////
-
-int HashIndex::lookup(arangodb::Transaction* trx,
-                      arangodb::velocypack::Slice searchValue,
-                      std::vector<TRI_doc_mptr_t>& documents,
-                      TRI_index_element_t*& next, size_t batchSize) const {
-  VPackBuilder keyBuilder;
-  transformSearchValues(searchValue, keyBuilder);
-  VPackSlice key = keyBuilder.slice();
-
-  if (_unique) {
-    next = nullptr;
-    TRI_index_element_t* found =
-        _uniqueArray->_hashArray->findByKey(trx, &key);
-
-    if (found != nullptr) {
-      // unique hash index: maximum number is 1
-      documents.emplace_back(*(found->document()));
-    }
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  std::vector<TRI_index_element_t*>* results = nullptr;
-
-  if (next == nullptr) {
-    try {
-      results =
-          _multiArray->_hashArray->lookupByKey(trx, &key, batchSize);
-    } catch (...) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-  } else {
-    try {
-      results =
-          _multiArray->_hashArray->lookupByKeyContinue(trx, next, batchSize);
-    } catch (...) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-  }
-
-  if (results != nullptr) {
-    if (results->size() > 0) {
-      next = results->back();  // for continuation the next time
-      try {
-        for (size_t i = 0; i < results->size(); i++) {
-          documents.emplace_back(*((*results)[i]->document()));
-        }
-      } catch (...) {
-        delete results;
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
-    } else {
-      next = nullptr;
-    }
-    delete results;
-  } else {
-    next = nullptr;
-  }
-  return TRI_ERROR_NO_ERROR;
-}
-
 int HashIndex::insertUnique(arangodb::Transaction* trx,
                             TRI_doc_mptr_t const* doc, bool isRollback) {
   std::vector<TRI_index_element_t*> elements;
@@ -817,37 +754,37 @@ IndexIterator* HashIndex::iteratorForCondition(
   }
 
   bool needNormalize = false;
-  VPackBuilder searchValues;
-  searchValues.openArray();
+  auto searchValues = std::make_unique<VPackBuilder>();
+  searchValues->openArray();
   {
     // Create the search Values for the lookup
-    VPackArrayBuilder guard(&searchValues);
+    VPackArrayBuilder guard(searchValues.get());
     for (size_t i = 0; i < n; ++i) {
-      VPackObjectBuilder searchGuard(&searchValues);
+      VPackObjectBuilder searchGuard(searchValues.get());
       auto pair = valueAccess[i];
       if (pair.first) {
         // x IN [] Case
-        searchValues.add(VPackValue(TRI_SLICE_KEY_IN));
+        searchValues->add(VPackValue(TRI_SLICE_KEY_IN));
         needNormalize = true;
       } else {
         // x == val Case
-        searchValues.add(VPackValue(TRI_SLICE_KEY_EQUAL));
+        searchValues->add(VPackValue(TRI_SLICE_KEY_EQUAL));
       }
-      pair.second->toVelocyPackValue(searchValues);
+      pair.second->toVelocyPackValue(*searchValues);
     }
   }
-  searchValues.close();
+  searchValues->close();
 
   TRI_IF_FAILURE("HashIndex::noIterator")  {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
   if (needNormalize) {
-    VPackBuilder expandedSearchValues;
-    expandInSearchValues(searchValues.slice(), expandedSearchValues);
-    return iteratorForSlice(trx, nullptr, expandedSearchValues.slice(), false);
+    auto expandedSearchValues = std::make_unique<VPackBuilder>();
+    expandInSearchValues(searchValues->slice(), *expandedSearchValues);
+    return new HashIndexIterator(trx, this, expandedSearchValues);
   }
-  return iteratorForSlice(trx, nullptr, searchValues.slice(), false);
+  return new HashIndexIterator(trx, this, searchValues);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
