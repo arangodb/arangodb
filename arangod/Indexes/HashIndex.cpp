@@ -391,7 +391,7 @@ void HashIndex::transformSearchValues(VPackSlice const values,
   }
 
   VPackArrayBuilder guard(&result);
-  for (auto const& v : VPackArrayIterator(values)) {
+  for (auto const& v : VPackArrayIterator(values, true)) {
     if (!v.isObject() || !v.hasKey(TRI_SLICE_KEY_EQUAL)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Hash index only allows == comparison.");
     }
