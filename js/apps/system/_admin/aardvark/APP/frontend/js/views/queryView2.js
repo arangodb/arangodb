@@ -1529,6 +1529,17 @@
 
         self.setEditorAutoHeight(outputEditor);
         self.deselect(outputEditor);
+
+        //when finished send a delete req to api (free db space)
+        if (data.id) {
+          $.ajax({
+            url: '/_api/cursor/' + encodeURIComponent(data.id),
+            type: 'DELETE',
+            error: function(error) {
+              console.log(error);
+            }
+          });
+        }
       };
 
       //check if async query is finished
