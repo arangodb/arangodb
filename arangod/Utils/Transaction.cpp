@@ -2754,7 +2754,7 @@ std::pair<bool, bool> Transaction::getIndexForSortCondition(
 /// calling this method
 //////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
+OperationCursor* Transaction::indexScanForCondition(
     std::string const& collectionName, IndexHandle const& indexId,
     arangodb::aql::Ast* ast, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, uint64_t limit, uint64_t batchSize,
@@ -2767,7 +2767,7 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
 
   if (limit == 0) {
     // nothing to do
-    return std::make_shared<OperationCursor>(TRI_ERROR_NO_ERROR);
+    return new OperationCursor(TRI_ERROR_NO_ERROR);
   }
 
   // Now collect the Iterator
@@ -2783,10 +2783,10 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
 
   if (iterator == nullptr) {
     // We could not create an ITERATOR and it did not throw an error itself
-    return std::make_shared<OperationCursor>(TRI_ERROR_OUT_OF_MEMORY);
+    return new OperationCursor(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  return std::make_shared<OperationCursor>(
+  return new OperationCursor(
       transactionContext()->orderCustomTypeHandler(), iterator.release(), limit,
       batchSize);
 }

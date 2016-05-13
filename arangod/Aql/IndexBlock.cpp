@@ -284,7 +284,7 @@ bool IndexBlock::initIndexes() {
     _currentIndex = 0;
   }
 
-  _cursor = createCursor();
+  createCursor();
   if (_cursor->failed()) {
     THROW_ARANGO_EXCEPTION(_cursor->code);
   }
@@ -297,7 +297,7 @@ bool IndexBlock::initIndexes() {
     }
     if (_currentIndex < _indexes.size()) {
       // This check will work as long as _indexes.size() < MAX_SIZE_T
-      _cursor = createCursor();
+      createCursor();
       if (_cursor->failed()) {
         THROW_ARANGO_EXCEPTION(_cursor->code);
       }
@@ -312,7 +312,7 @@ bool IndexBlock::initIndexes() {
 }
 
 /// @brief create an OperationCursor object
-std::shared_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
+void IndexBlock::createCursor() {
   DEBUG_BEGIN_BLOCK();
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   auto outVariable = node->outVariable();
@@ -328,10 +328,10 @@ std::shared_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
   
   TRI_ASSERT(_indexes.size() > _currentIndex);
 
-  return ast->query()->trx()->indexScanForCondition(
+  _cursor.reset(ast->query()->trx()->indexScanForCondition(
           _collection->getName(), _indexes[_currentIndex], ast,
           conditionNode, outVariable, UINT64_MAX,
-          Transaction::defaultBatchSize(), node->_reverse);
+          Transaction::defaultBatchSize(), node->_reverse));
   DEBUG_END_BLOCK();
 }
 
@@ -347,9 +347,9 @@ void IndexBlock::startNextCursor() {
   }
   if (_currentIndex < _indexes.size()) {
     // This check will work as long as _indexes.size() < MAX_SIZE_T
-    _cursor = createCursor();
+    createCursor();
   } else {
-    _cursor = nullptr;
+    _cursor.reset(nullptr);
   }
   DEBUG_END_BLOCK();
 }
