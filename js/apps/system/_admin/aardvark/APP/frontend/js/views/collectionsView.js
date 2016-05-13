@@ -327,10 +327,15 @@
         else {
           var collName = $('#new-collection-name').val(),
           collSize = $('#new-collection-size').val(),
+          replicationFactor = $('#new-replication-factor').val(),
           collType = $('#new-collection-type').val(),
           collSync = $('#new-collection-sync').val(),
           shards = 1,
           shardBy = [];
+
+          if (replicationFactor === '') {
+            replicationFactor = 1;
+          }
 
           if (isCoordinator) {
             shards = $('#new-collection-shards').val();
@@ -393,6 +398,7 @@
             wfs: wfs,
             isSystem: isSystem,
             collSize: collSize,
+            replicationFactor: replicationFactor,
             collType: collType,
             shards: shards,
             shardBy: shardBy
@@ -496,6 +502,24 @@
               ]
             )
           );
+          if (window.App.isCluster) {
+            advancedTableContent.push(
+              window.modalView.createTextEntry(
+                "new-replication-factor",
+                "Replication factor",
+                "",
+                "Numeric value. Default is '1'. Description: TODO",
+                "",
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                    msg: "Must be a number."
+                  }
+                ]
+              )
+            );
+          }
           advancedTableContent.push(
             window.modalView.createSelectEntry(
               "new-collection-sync",
