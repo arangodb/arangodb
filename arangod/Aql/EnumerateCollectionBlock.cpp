@@ -77,9 +77,9 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
 /// @brief continue fetching of documents
 bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
   DEBUG_BEGIN_BLOCK(); 
-  if (hint < DefaultBatchSize()) {
-  //  hint = DefaultBatchSize();
-  }
+  // if (hint < DefaultBatchSize()) {
+  //   hint = DefaultBatchSize();
+  // }
 
   throwIfKilled();  // check if we were aborted
 
