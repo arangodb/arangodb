@@ -21,6 +21,9 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGODB_BASICS_VPACKSTRING_H
+#define ARANGODB_BASICS_VPACKSTRING_H
+
 #include "Basics/StringBuffer.h"
 #include "Basics/Exceptions.h"
 
@@ -74,3 +77,5 @@ class VPackStringBufferAdapter final : public VPackSink {
 };
 }
 }
+
+#endif

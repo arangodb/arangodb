@@ -24,10 +24,18 @@
 
 #include "HttpResponse.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/VelocyPackDumper.h"
 #include "Basics/tri-strings.h"
+#include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -41,10 +49,9 @@ HttpResponse::HttpResponse(ResponseCode code)
       _isHeadResponse(false),
       _body(TRI_UNKNOWN_MEM_ZONE, false),
       _bodySize(0) {
-
   if (_body.c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY); 
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 }
 
@@ -121,7 +128,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   output->appendText(TRI_CHAR_LENGTH_PAIR("HTTP/1.1 "));
   output->appendText(responseString(_responseCode));
   output->appendText("\r\n", 2);
- 
+
   bool seenServerHeader = false;
   bool seenConnectionHeader = false;
   bool seenTransferEncodingHeader = false;
@@ -145,20 +152,21 @@ void HttpResponse::writeHeader(StringBuffer* output) {
       continue;
     }
 
-    if (keyLength == 6 && key[0] == 's' && 
+    if (keyLength == 6 && key[0] == 's' &&
         memcmp(key.c_str(), "server", keyLength) == 0) {
       // this ensures we don't print two "Server" headers
-      seenServerHeader = true; 
+      seenServerHeader = true;
       // go on and use the user-defined "Server" header value
-    } else if (keyLength == 10 && key[0] == 'c' && 
-        memcmp(key.c_str(), "connection", keyLength) == 0) {
+    } else if (keyLength == 10 && key[0] == 'c' &&
+               memcmp(key.c_str(), "connection", keyLength) == 0) {
       // this ensures we don't print two "Connection" headers
-      seenConnectionHeader = true; 
+      seenConnectionHeader = true;
       // go on and use the user-defined "Connection" header value
     }
 
     // reserve enough space for header name + ": " + value + "\r\n"
-    if (output->reserve(keyLength + 2 + it.second.size() + 2) != TRI_ERROR_NO_ERROR) {
+    if (output->reserve(keyLength + 2 + it.second.size() + 2) !=
+        TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
@@ -190,7 +198,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
     output->appendTextUnsafe(it.second);
     output->appendTextUnsafe("\r\n", 2);
   }
-  
+
   // add "Server" response header
   if (!seenServerHeader && !HIDE_PRODUCT_HEADER) {
     output->appendText("Server: ArangoDB\r\n");
@@ -214,23 +222,29 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // add "Content-Type" header
   switch (_contentType) {
     case CONTENT_TYPE_JSON:
-      output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: application/json; charset=utf-8\r\n"));
+      output->appendText(TRI_CHAR_LENGTH_PAIR(
+          "Content-Type: application/json; charset=utf-8\r\n"));
       break;
     case CONTENT_TYPE_VPACK:
-      output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: application/x-velocypack\r\n"));
+      output->appendText(
+          TRI_CHAR_LENGTH_PAIR("Content-Type: application/x-velocypack\r\n"));
       break;
     case CONTENT_TYPE_TEXT:
-      output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: text/plain; charset=utf-8\r\n"));
+      output->appendText(
+          TRI_CHAR_LENGTH_PAIR("Content-Type: text/plain; charset=utf-8\r\n"));
       break;
     case CONTENT_TYPE_HTML:
-      output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: text/html; charset=utf-8\r\n"));
+      output->appendText(
+          TRI_CHAR_LENGTH_PAIR("Content-Type: text/html; charset=utf-8\r\n"));
       break;
     case CONTENT_TYPE_DUMP:
-      output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Type: application/x-arango-dump; charset=utf-8\r\n"));
+      output->appendText(TRI_CHAR_LENGTH_PAIR(
+          "Content-Type: application/x-arango-dump; charset=utf-8\r\n"));
       break;
     case CONTENT_TYPE_CUSTOM: {
       // intentionally don't print anything here
-      // the header should have been in _headers already, and should have been handled above
+      // the header should have been in _headers already, and should have been
+      // handled above
     }
   }
 
@@ -273,3 +287,41 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
+void HttpResponse::fillBody(GeneralRequest const* request,
+                            arangodb::velocypack::Slice const& slice,
+                            bool generateBody, VPackOptions const& options) {
+  // VELOCYPACK
+  if (request->velocyPackResponse()) {
+    setContentType(HttpResponse::CONTENT_TYPE_VPACK);
+    size_t length = static_cast<size_t>(slice.byteSize());
+
+    if (generateBody) {
+      _body.appendText(slice.startAs<const char>(), length);
+    } else {
+      headResponse(length);
+    }
+  }
+
+  // JSON
+  else {
+    setContentType(HttpResponse::CONTENT_TYPE_JSON);
+
+    if (generateBody) {
+      arangodb::basics::VelocyPackDumper dumper(&_body, &options);
+      dumper.dumpValue(slice);
+    } else {
+      // TODO can we optimize this?
+      // Just dump some where else to find real length
+      StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
+
+      // convert object to string
+      VPackStringBufferAdapter buffer(tmp.stringBuffer());
+
+      // usual dumping -  but not to the response body
+      VPackDumper dumper(&buffer, &options);
+      dumper.dump(slice);
+
+      headResponse(tmp.length());
+    }
+  }
+}

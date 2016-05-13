@@ -30,6 +30,13 @@
 #include "Basics/StringUtils.h"
 
 namespace arangodb {
+namespace velocypack {
+struct Options;
+class Slice;
+}
+
+class GeneralRequest;
+
 class GeneralResponse {
   GeneralResponse() = delete;
   GeneralResponse(GeneralResponse const&) = delete;
@@ -110,22 +117,31 @@ class GeneralResponse {
     _responseCode = responseCode;
   }
 
-  std::unordered_map<std::string, std::string> headers() const { return _headers; }
+  std::unordered_map<std::string, std::string> headers() const {
+    return _headers;
+  }
 
-  /// @brief adds a header. the header field name will be lower-cased
+  // adds a header. the header field name will be lower-cased
   void setHeader(std::string const& key, std::string const& value) {
     _headers[basics::StringUtils::tolower(key)] = value;
   }
 
-  /// @brief adds a header. the header field name must be lower-cased
+  // adds a header. the header field name must be lower-cased
   void setHeaderNC(std::string const& key, std::string const& value) {
     _headers[key] = value;
   }
-  
-  /// @brief adds a header. the header field name must be lower-cased
+
+  // adds a header. the header field name must be lower-cased
   void setHeaderNC(std::string const& key, std::string&& value) {
     _headers[key] = std::move(value);
   }
+
+ public:
+  // generates the response body, sets the content type; this might
+  // throw an error
+  virtual void fillBody(GeneralRequest const*,
+                        arangodb::velocypack::Slice const&, bool generateBody,
+                        arangodb::velocypack::Options const&) = 0;
 
  protected:
   ResponseCode _responseCode;

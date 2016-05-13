@@ -158,6 +158,8 @@ class GeneralRequest {
   }
   void setArrayValue(std::string const& key, std::string const& value);
 
+  bool velocyPackResponse () const;
+
  protected:
   void setValue(char const* key, char const* value);
   void setArrayValue(char* key, size_t length, char const* value);

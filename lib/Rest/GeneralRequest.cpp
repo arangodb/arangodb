@@ -258,3 +258,7 @@ void GeneralRequest::setArrayValue(char* key, size_t length, char const* value) 
   _arrayValues[std::string(key, length)].emplace_back(value);
 }
 
+bool GeneralRequest::velocyPackResponse () const {
+  std::string const& result = header(StaticStrings::Accept);
+  return (std::string::npos != result.find(StaticStrings::MimeTypeVPack));
+}
