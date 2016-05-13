@@ -45,14 +45,14 @@ class HttpResponse : public GeneralResponse {
     CONNECTION_KEEP_ALIVE,
     CONNECTION_CLOSE
   };
-  
+
   enum ContentType {
-    CONTENT_TYPE_CUSTOM, // use Content-Type from _headers
-    CONTENT_TYPE_JSON,   // application/json
-    CONTENT_TYPE_VPACK,  // application/x-velocypack
-    CONTENT_TYPE_TEXT,   // text/plain
-    CONTENT_TYPE_HTML,   // text/html
-    CONTENT_TYPE_DUMP    // application/x-arango-dump
+    CONTENT_TYPE_CUSTOM,  // use Content-Type from _headers
+    CONTENT_TYPE_JSON,    // application/json
+    CONTENT_TYPE_VPACK,   // application/x-velocypack
+    CONTENT_TYPE_TEXT,    // text/plain
+    CONTENT_TYPE_HTML,    // text/html
+    CONTENT_TYPE_DUMP     // application/x-arango-dump
   };
 
  public:
@@ -76,7 +76,7 @@ class HttpResponse : public GeneralResponse {
 
   /// @brief set type of connection
   void setConnectionType(ConnectionType type) { _connectionType = type; }
-  
+
   /// @brief set content-type
   void setContentType(ContentType type) { _contentType = type; }
 
@@ -86,14 +86,20 @@ class HttpResponse : public GeneralResponse {
     _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
     _contentType = CONTENT_TYPE_CUSTOM;
   }
-  
+
   void setContentType(std::string&& contentType) {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] = std::move(contentType);
+    _headers[arangodb::StaticStrings::ContentTypeHeader] =
+        std::move(contentType);
     _contentType = CONTENT_TYPE_CUSTOM;
   }
 
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);
+
+ public:
+  void fillBody(GeneralRequest const*, arangodb::velocypack::Slice const&,
+                bool generateBody,
+                arangodb::velocypack::Options const&) override final;
 
  private:
   // the body must already be set. deflate is then run on the existing body
