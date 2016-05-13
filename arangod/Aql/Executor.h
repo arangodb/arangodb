@@ -68,6 +68,9 @@ class Executor {
   static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&);
 
  private:
+  /// @brief traverse the expression and note all user-defined functions
+  void detectUserFunctions(AstNode const*);
+
   /// @brief traverse the expression and note all (big) array/object literals
   void detectConstantValues(AstNode const*, AstNodeType);
 
@@ -160,6 +163,9 @@ class Executor {
 
   /// @brief mapping from literal array/objects to register ids
   std::unordered_map<AstNode const*, size_t> _constantRegisters;
+  
+  /// @brief mapping from user-defined function names to register ids
+  std::unordered_map<std::string, size_t> _userFunctions;
 
   /// @brief local value for literal object size threshold
   size_t const _literalSizeThreshold;
