@@ -514,8 +514,7 @@ void ExecutionNode::invalidateCost() {
     dep->invalidateCost();
 
     // no need to virtualize this function too, as getType(), estimateCost()
-    // etc.
-    // are already virtual
+    // etc. are already virtual
     if (dep->getType() == SUBQUERY) {
       // invalid cost of subqueries, too
       static_cast<SubqueryNode*>(dep)->getSubquery()->invalidateCost();

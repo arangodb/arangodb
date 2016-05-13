@@ -211,7 +211,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
       // The result is in the first variable of this depth,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
-      res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), AqlValue(_iterator.value().begin()));
+      res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), AqlValue(_iterator.value()));
       // No harm done, if the setValue throws!
     }
 
