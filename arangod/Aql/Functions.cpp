@@ -1255,9 +1255,7 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   } 
   
-  TransactionBuilderLeaser builder(trx);
-  builder->add(VPackValue(result));
-  return AqlValue(builder.get());
+  return AqlValue(result);
 }
 
 /// @brief function PASSTHRU
