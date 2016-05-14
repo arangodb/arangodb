@@ -56,7 +56,6 @@ State::State(std::string const& endpoint)
     _endpoint(endpoint),
     _collectionsChecked(false),
     _collectionsLoaded(false),
-    _compaction_step(1000),
     _cur(0) {
   std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
   VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
@@ -72,6 +71,7 @@ State::~State() {}
 bool State::persist(arangodb::consensus::index_t index, term_t term,
                     arangodb::consensus::id_t lid,
                     arangodb::velocypack::Slice const& entry) {
+
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
   std::ostringstream i_str;
@@ -89,15 +89,14 @@ bool State::persist(arangodb::consensus::index_t index, term_t term,
     transactionContext, "log", TRI_TRANSACTION_WRITE);
   
   int res = trx.begin();
-
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
   OperationResult result = trx.insert("log", body.slice(), _options);
   res = trx.finish(result.code);
 
   return (res == TRI_ERROR_NO_ERROR);
+  
 }
 
 //Leader
@@ -118,13 +117,12 @@ std::vector<arangodb::consensus::index_t> State::log (
       idx[j] = _log.back().index + 1;
       _log.push_back(log_t(idx[j], term, lid, buf));  // log to RAM
       persist(idx[j], term, lid, i[0]);                  // log to disk
-      if (idx[j] > 0 && (idx[j] % _compaction_step) == 0) {
-        //compact(idx[j]);
-      }
       ++j;
     }
   }
+  
   return idx;
+  
 }
 
 // Follower
@@ -132,9 +130,11 @@ bool State::log(query_t const& queries, term_t term,
                 arangodb::consensus::id_t lid,
                 arangodb::consensus::index_t prevLogIndex,
                 term_t prevLogTerm) {  // TODO: Throw exc
+  
   if (queries->slice().type() != VPackValueType::Array) {
     return false;
   }
+
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
   for (auto const& i : VPackArrayIterator(queries->slice())) {
     try {
@@ -145,11 +145,8 @@ bool State::log(query_t const& queries, term_t term,
                   i.get("query").byteSize());
       _log.push_back(log_t(idx, term, lid, buf));
       persist(idx, term, lid, i.get("query")); // to disk
-      if (idx > 0 && (idx % _compaction_step) == 0) {
-        //compact(idx);
-      }
     } catch (std::exception const& e) {
-      LOG(ERR) << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
     }
   
   }
@@ -191,7 +188,7 @@ std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
     start = _log[0].index;
   }
   
-  for (size_t i = start-_cur; i <= end; ++i) {  // TODO:: Check bounds
+  for (size_t i = start-_cur; i <= end-_cur; ++i) {  // TODO:: Check bounds
     slices.push_back(VPackSlice(_log[i].entry->data()));
   }
   
@@ -322,24 +319,26 @@ bool State::find (arangodb::consensus::index_t prevIndex, term_t prevTerm) {
 
 bool State::compact (arangodb::consensus::index_t cind) {
 
-  bool saved = true;//persistSpearhead(cind);
+  bool saved = persistReadDB(cind);
 
   if (saved) {
-    compactPersistedState(cind);
     compactVolatileState(cind);
+    try {
+      compactPersistedState(cind);
+    } catch (std::exception const& e) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to compact persisted store.";
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+    }
     return true;
   } else {
     return false;
   }
 
 }
-#warning <iostream>
-#include <iostream>
+
 bool State::compactVolatileState (arangodb::consensus::index_t cind) {
-  std::cout << cind << std::endl;
-  _log.erase(_log.begin(), _log.begin()+_compaction_step-1);
+  _log.erase(_log.begin(), _log.begin()+cind-_cur);
   _cur = _log.begin()->index;
-  std::cout << _cur << std::endl;
   return true;
 }
 
@@ -354,8 +353,8 @@ bool State::compactPersistedState (arangodb::consensus::index_t cind) {
   
   std::string const aql(
     std::string(
-      "FOR l IN log FILTER l._key < ") + i_str.str() + "REMOVE l IN log");
-  
+      "FOR l IN log FILTER l._key < \"") + i_str.str() + "\" REMOVE l IN log");
+
   arangodb::aql::Query query(false, _vocbase,
                              aql.c_str(), aql.size(), bindVars, nullptr,
                              arangodb::aql::PART_MAIN);
@@ -368,21 +367,19 @@ bool State::compactPersistedState (arangodb::consensus::index_t cind) {
   
   VPackSlice result = queryResult.result->slice();
 
-  LOG(INFO) << result.toJson();
-  
   return true;
   
 }
 
 
-bool State::persistSpearhead (arangodb::consensus::index_t cind) {
+bool State::persistReadDB (arangodb::consensus::index_t cind) {
   
   if (checkCollection("compact")) {
     
     Builder store;
     store.openObject();
-    store.add("spearhead", VPackValue(VPackValueType::Array));
-    _agent->spearhead().dumpToBuilder(store);
+    store.add("readDB", VPackValue(VPackValueType::Array));
+    _agent->readDB().dumpToBuilder(store);
     store.close();
     std::stringstream i_str;
     i_str << std::setw(20) << std::setfill('0') << cind;
@@ -408,7 +405,7 @@ bool State::persistSpearhead (arangodb::consensus::index_t cind) {
 
   }
 
-  LOG_TOPIC (ERR, Logger::AGENCY) << "Compaction failed!";
+  LOG_TOPIC (ERR, Logger::AGENCY) << "Failed to persist read DB for compaction!";
   return false;
 
 }

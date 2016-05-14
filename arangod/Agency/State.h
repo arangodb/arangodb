@@ -109,6 +109,8 @@ public:
     return os;
   }
 
+  bool compact (arangodb::consensus::index_t cind);
+
 private:
 
   bool snapshot ();
@@ -132,11 +134,9 @@ private:
   /// @brief Create collection
   bool createCollection(std::string const& name);
 
-  bool compact (arangodb::consensus::index_t cind);
-
   bool compactPersistedState (arangodb::consensus::index_t cind);
   bool compactVolatileState (arangodb::consensus::index_t cind);
-  bool persistSpearhead (arangodb::consensus::index_t cind);
+  bool persistReadDB (arangodb::consensus::index_t cind);
 
   Agent* _agent;
 
