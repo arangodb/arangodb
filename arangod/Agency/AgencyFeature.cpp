@@ -44,7 +44,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _notify(false),
       _supervision(false),
       _waitForSync(true),
-      _supervisionFrequency(5.0) {
+      _supervisionFrequency(5.0),
+      _compactionStepSize(1000) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
@@ -92,10 +93,15 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "arangodb cluster supervision frequency [s]",
                      new DoubleParameter(&_supervisionFrequency));
   
+  options->addOption("--agency.compaction-step-size",
+                     "step size between state machine compactions",
+                     new UInt64Parameter(&_compactionStepSize));
+
   options->addHiddenOption("--agency.wait-for-sync",
                            "wait for hard disk syncs on every persistence call "
                            "(required in production)",
                            new BooleanParameter(&_waitForSync));
+
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -176,9 +182,10 @@ void AgencyFeature::start() {
   endpoint = std::string("tcp://localhost:" + port);
   
   _agent.reset( new consensus::Agent(
-    consensus::config_t(_agentId, _minElectionTimeout, _maxElectionTimeout,
-                        endpoint, _agencyEndpoints, _notify, _supervision,
-                        _waitForSync, _supervisionFrequency)));
+    consensus::config_t(
+      _agentId, _minElectionTimeout, _maxElectionTimeout, endpoint,
+      _agencyEndpoints, _notify, _supervision, _waitForSync,
+      _supervisionFrequency, _compactionStepSize)));
   
   _agent->start();
   _agent->load();

@@ -29,20 +29,29 @@
 #include "Basics/ConditionLocker.h"
 #include "VocBase/server.h"
 
-
 using namespace arangodb;
 
 namespace arangodb {
 namespace consensus {
 
-inline void makeReport (query_t& envelope, Builder const& report) {
-  envelope->openArray();
-  envelope->openArray();
-  envelope->add(report.slice());
-  envelope->close();
-  envelope->close();
+inline arangodb::consensus::write_ret_t makeReport (Agent* _agent,
+                                                    Builder const& report) {
+
+  query_t envelope = std::make_shared<Builder>();
+  try {
+    envelope->openArray();
+    envelope->add(report.slice());
+    envelope->close();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Supervision failed to make report.";
+    LOG_TOPIC(ERR, Logger::AGENCY) <<  e.what();
+  }
+  return _agent->write(envelope);
 }
 
+  static std::string const pendingPrefix = "/arango/Supervision/Jobs/Pending/";
+  static std::string const collectionsPrefix = "/arango/Plan/Collections/";
+    
 template<> struct Job<arangodb::consensus::FAILED_DBSERVER> {
 
   Job (Node const& snapshot, Agent* agent, uint64_t jobId,
@@ -60,70 +69,70 @@ template<> struct Job<arangodb::consensus::FAILED_DBSERVER> {
         if (replicationFactor.slice().getUInt() > 1) {
           for (auto const& shard : collection("shards").children()) {
 
-            std::vector<std::string> bad, reordered;
             VPackArrayIterator dbsit (shard.second->slice());
 
             if ((*dbsit.begin()).copyString() != failed) { // Cannot do much
               continue;
             }
             
-            for (auto const& dbserver : dbsit) {
-              std::string serverID = dbserver.copyString();
-              if (dbserver.copyString() == failed) {
-                bad.push_back(serverID);
-              } else {
-                reordered.push_back(serverID);
-              }
-            }
+            reportJobInSupervision(jobId, shard, failed);
+            planChanges(collptr, database, shard);
 
-            // Put into supervision
-            std::string path ("/arango/Supervision/Jobs/Pending/");
-            path += arangodb::basics::StringUtils::itoa(jobId);
-            LOG(WARN) << path;
-            query_t envelope = std::make_shared<Builder>();
-            Builder report;
-            report.openObject();
-            report.add(path, VPackValue(VPackValueType::Object));
-            report.add("shard", VPackValue(shard.first));
-            report.add("dbservers", VPackValue(failed));
-            report.add("old", shard.second->slice());
-            report.add("new", VPackValue(VPackValueType::Array));
-            for (auto const& server : reordered) {
-              report.add(VPackValue(server));
-            }
-            for (auto const& server : bad) {
-              report.add(VPackValue(server));
-            }
-            report.close();
-            report.close();
-            report.close();
-            LOG(WARN) << report.toJson();
-            makeReport(envelope, report);
-
-            envelope->clear();
-            report.clear();
-
-            // Put into plan
-            path = std::string("/arango/Plan/Collections/")
-              + database.first + "/" + collptr.first + "/shards/" + shard.first;
-
-            LOG(WARN) << path;
               
-            /*report.openObject();
-              path = std::string("/arango/Plan/Collections")
-              + database.first + "/" + collptr.first + "/" + shard.first;
-              report.close();
-              LOG(WARN) << report.toJson();
-              makeReport(envelope, report);
-              LOG(WARN) << envelope->toJson();*/
-            //agent->write(envelope);
-            // }
-            //}
           }
         } 
       }
     }
     
+  }
+
+  void reportJobInSupervision (
+    uint64_t jobId, std::pair<std::string, std::shared_ptr<Node>> const& shard,
+    std::string const& serverID) {
+
+    std::string const& shardId = shard.first;
+    VPackSlice const& dbservers = shard.second->slice();
+    std::string path =
+      pendingPrefix + arangodb::basics::StringUtils::itoa(jobId);
+    query_t envelope = std::make_shared<Builder>();
+
+
+    Builder report;
+    report.openArray();
+    report.openObject();
+    report.add(path, VPackValue(VPackValueType::Object));
+    report.add("type", VPackValue("shard"));
+    report.add("action", VPackValue("DB server fail"));
+    report.add("failed", VPackValue(serverID));
+    report.add("shard", VPackValue(shardId));
+    report.add("dbservers", VPackValue(serverID));
+    report.add("old", dbservers);                  // old order
+
+    report.add("new", VPackValue(VPackValueType::Array));
+    for (size_t i = 1; i < dbservers.length(); ++i) { // new order
+      report.add(dbservers[i]);
+    }
+    report.add(dbservers[0]);
+    report.close();
+
+    report.close(); report.close(); report.close();
+    //makeReport(envelope, report);
+
+    LOG(WARN) << report.toJson();
+    
+  }
+
+  
+  void planChanges (
+    std::pair<std::string, std::shared_ptr<Node>> const& database,
+    std::pair<std::string, std::shared_ptr<Node>> const& collection,
+    std::pair<std::string, std::shared_ptr<Node>> const& shard) {
+    
+    std::string path = collectionsPrefix + database.first + "/"
+      + collection.first + "/shards/" + shard.first;
+
+    LOG(WARN) << path;
+
   }
   
 };
@@ -135,7 +144,7 @@ using namespace arangodb::consensus;
 
 Supervision::Supervision() : arangodb::Thread("Supervision"), _agent(nullptr),
                              _snapshot("Supervision"), _frequency(5),
-                             _gracePeriod(10) {
+                             _gracePeriod(10), _jobId(0), _jobIdMax(0) {
   
 }
 
@@ -197,8 +206,8 @@ std::vector<check_t> Supervision::checkDBServers () {
         if (t.count() > _gracePeriod) {               // Failure
           if (it->second->maintenance() == 0) {
             it->second->maintenance(TRI_NewTickServer());
-            Job<FAILED_DBSERVER> jfl(_snapshot, _agent, it->second->maintenance(),
-                                   serverID);
+            Job<FAILED_DBSERVER> jfl(_snapshot, _agent,
+                                     it->second->maintenance(), serverID);
           }
         }
 
@@ -257,14 +266,22 @@ void Supervision::run() {
 
   while (!this->isStopping()) {
     
-    doChecks(timedout);
-
     if (_agent->leading()) {
       timedout = _cv.wait(_frequency*1000000);//quarter second
     } else {
       _cv.wait();
     }
+
+    if (_jobId == 0 || _jobId==_jobIdMax) {
+      if (!getUniqueIds()) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Cannot get unique IDs from Agency. Stopping supervision for good.";
+        break;
+      }
+    }
     
+    doChecks(timedout);
+  
   }
   
 }
@@ -277,9 +294,68 @@ bool Supervision::start () {
 
 // Start thread with agent
 bool Supervision::start (Agent* agent) {
+
   _agent = agent;
   _frequency = static_cast<long>(_agent->config().supervisionFrequency);
+  _snapshot = _agent->readDB().get("/");
+
+  updateFromAgency();
+
   return start();
+}
+
+#include <iostream>
+bool Supervision::getUniqueIds () {
+
+  uint64_t latestId;
+
+  try {
+    latestId = std::stoul(
+      _agent->readDB().get("/arango/Sync/LatestID").slice().toJson());
+  } catch (std::exception const& e) {
+    LOG(WARN) << e.what();
+    return false;
+  }
+
+  bool success = false;
+  while (!success) {
+
+    Builder uniq;
+    uniq.openArray(); uniq.openObject();
+    uniq.add("/arango/Sync/LatestID", VPackValue(latestId+100000)); // new val
+    uniq.close();
+    uniq.openObject();
+    uniq.add("/arango/Sync/LatestID", VPackValue(latestId));        // precond
+    uniq.close(); uniq.close();
+    
+    auto result = makeReport(_agent,uniq);
+    if (result.indices[0]) {
+      _agent->waitFor(result.indices[0]);
+      success = true;
+      _jobId = latestId;
+      _jobIdMax = latestId+100000;
+    } 
+
+    latestId = std::stoul(
+      _agent->readDB().get("/arango/Sync/LatestID").slice().toJson());
+    
+  }
+
+  return success;
+  
+}
+
+void Supervision::updateFromAgency () {
+  
+  auto const& jobsPending =
+    _snapshot("/arango/Supervision/Jobs/Pending").children();
+  
+  for (auto const& jobent : jobsPending) {
+    auto const& job = *(jobent.second);
+    
+    LOG(WARN) << job.name() << " " << job("failed").toJson() << job(""); 
+  }
+    
 }
 
 void Supervision::beginShutdown() {
