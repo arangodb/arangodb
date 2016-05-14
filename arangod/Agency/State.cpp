@@ -264,52 +264,100 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
   _options.waitForSync = waitForSync;
   _options.silent = true;
 
-  return loadCollection("log");
+  return loadPersisted ();
 }
 
-bool State::loadCollection(std::string const& name) {
+bool State::loadPersisted() {
+  
   TRI_ASSERT(_vocbase != nullptr);
-  
-  if (checkCollection(name)) {
-    auto bindVars = std::make_shared<VPackBuilder>();
-    bindVars->openObject();
-    bindVars->close();
-    
-    std::string const aql(std::string("FOR l IN ") + name
-                          + " SORT l._key RETURN l");
-    arangodb::aql::Query query(false, _vocbase,
-                               aql.c_str(), aql.size(), bindVars, nullptr,
-                               arangodb::aql::PART_MAIN);
-    
-    auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
-    
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
-    }
-    
-    VPackSlice result = queryResult.result->slice();
-        
-    if (result.isArray()) {
-      for (auto const& i : VPackArrayIterator(result)) {
-        buffer_t tmp =
-              std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-        VPackSlice req = i.get("request");
-        tmp->append(req.startAs<char const>(), req.byteSize());
-        _log.push_back(
-          log_t(std::stoi(i.get(StaticStrings::KeyString).copyString()),
-                static_cast<term_t>(i.get("term").getUInt()),
-                static_cast<arangodb::consensus::id_t>(
-                  i.get("leader").getUInt()), tmp));
-      }
-    }
 
-    return true;
+  if (checkCollection("log") && checkCollection("compact")) {
+    return (loadCompacted() && loadRemaining());
   } 
-  
+
   LOG_TOPIC (DEBUG, Logger::AGENCY) << "Couldn't find persisted log";
   createCollections();
 
-  return false;
+  return true;
+}
+
+bool State::loadCompacted () {
+
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->close();
+  
+  std::string const aql(
+    std::string("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c"));
+  arangodb::aql::Query query(
+    false, _vocbase, aql.c_str(), aql.size(), bindVars, nullptr,
+    arangodb::aql::PART_MAIN);
+  
+  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
+  
+  auto result = queryResult.result->slice();
+
+  LOG(WARN) << result.toJson();
+  
+  if (result.isArray()) {
+    for (auto const& i : VPackArrayIterator(result)) {
+      buffer_t tmp =
+        std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+      auto req = i.get("request");
+      tmp->append(req.startAs<char const>(), req.byteSize());
+      _log.push_back(
+        log_t(
+          std::stoi(i.get(StaticStrings::KeyString).copyString()),
+          static_cast<term_t>(i.get("term").getUInt()),
+          static_cast<arangodb::consensus::id_t>(i.get("leader").getUInt()),
+          tmp));
+    }
+  }
+  
+  return true;
+  
+}
+
+bool State::loadRemaining () {
+
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->close();
+  
+  std::string const aql(std::string("FOR l IN log SORT l._key RETURN l"));
+  arangodb::aql::Query query(
+      false, _vocbase, aql.c_str(), aql.size(), bindVars, nullptr,
+      arangodb::aql::PART_MAIN);
+  
+  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
+  
+  auto result = queryResult.result->slice();
+  
+  if (result.isArray()) {
+    for (auto const& i : VPackArrayIterator(result)) {
+      buffer_t tmp =
+        std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+      auto req = i.get("request");
+      tmp->append(req.startAs<char const>(), req.byteSize());
+      _log.push_back(
+        log_t(
+          std::stoi(i.get(StaticStrings::KeyString).copyString()),
+          static_cast<term_t>(i.get("term").getUInt()),
+          static_cast<arangodb::consensus::id_t>(i.get("leader").getUInt()),
+          tmp));
+    }
+  }
+  
+  return true;
+
 }
 
 bool State::find (arangodb::consensus::index_t prevIndex, term_t prevTerm) {
@@ -326,6 +374,7 @@ bool State::compact (arangodb::consensus::index_t cind) {
 
   if (saved) {
     compactPersistedState(cind);
+    removeObsolete
     compactVolatileState(cind);
     return true;
   } else {

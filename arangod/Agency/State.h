@@ -118,7 +118,9 @@ private:
                 arangodb::velocypack::Slice const& entry);
 
   /// @brief Load collection from persistent store
-  bool loadCollection (std::string const& name);
+  bool loadPersisted ();
+  bool loadCompacted ();
+  bool loadRemaining ();
 
   /// @brief Check collections
   bool checkCollections();
