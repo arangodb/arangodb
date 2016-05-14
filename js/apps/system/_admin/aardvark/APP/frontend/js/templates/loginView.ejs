@@ -23,13 +23,20 @@
       <input class="login-input" placeholder="username" id="loginUsername" type="text" name="username"><i class="fa fa-user"></i>
       <input class="login-input" placeholder="password" id="loginPassword" type="password" name="password"><i class="fa fa-lock"></i>
 
-      <i class="fa fa-database"></i>
-      <select id="loginDatabase" disabled>
-        <option>database</option>
-      </select>
 
-      <button id="submitLogin" class="button-success pull-right" disabled>Login</button>
+      <button id="submitLogin" class="button-success pull-right">Login</button>
     </form>
+
+    <div id="databases" style="display: none">
+      <form id="dbForm">
+          <i class="fa fa-database"></i>
+          <select id="loginDatabase">
+            <option>database</option>
+          </select>
+          <button id="goToDatabase" class="button-success pull-right">Select</button>
+      </form>
+      <button id="logout" class="button-danger pull-right">Logout</button>
+    </div>
   </div>
 </div>
 </script>

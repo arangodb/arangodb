@@ -16,13 +16,13 @@
 .arangoToolbar {
   background-color: $c-white;
   border: 1px solid $c-content-border;
-  height: 40px;
+  height: 45px;
   width: 100%;
 
   .pull-right,
   .pull-left {
     height: 30px;
-    margin-top: 5px;
+    margin-top: 8px;
 
     i {
       &.positive {
@@ -37,14 +37,14 @@
 
   .pull-left {
     button {
-      margin-left: 5px;
+      margin-left: 8px;
     }
   }
 
   .pull-right {
     select:first-child,
     button:first-child {
-      margin-right: 5px;
+      margin-right: 8px;
     }
   }
 
@@ -71,6 +71,7 @@
     font-style: normal;
 
     &.fa {
+      font-size: 12pt;
       margin-right: 5px;
     }
   }
@@ -79,7 +80,7 @@
     background: $c-info-blue;
     border-radius: 3px;
     color: $c-white;
-    margin-left: 5px;
+    margin-left: 8px;
   }
 
   .styled-select {
@@ -98,7 +99,7 @@
   clear: both;
 
   #executeQuery {
-    margin-right: 5px;
+    margin-right: 8px;
   }
 
   .button-close {

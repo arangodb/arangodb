@@ -47,6 +47,7 @@ namespace arangodb {
 
 namespace basics {
 struct AttributeName;
+class StringBuffer;
 }
 
 namespace velocypack {
@@ -558,7 +559,7 @@ class Transaction {
   /// calling this method
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<OperationCursor> indexScanForCondition(
+  OperationCursor* indexScanForCondition(
       std::string const& collectionName, IndexHandle const& indexId,
       arangodb::aql::Ast*, arangodb::aql::AstNode const*,
       arangodb::aql::Variable const*, uint64_t, uint64_t, bool);
@@ -947,6 +948,19 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
+};
+
+class StringBufferLeaser {
+ public:
+  explicit StringBufferLeaser(arangodb::Transaction*); 
+  explicit StringBufferLeaser(arangodb::TransactionContext*); 
+  ~StringBufferLeaser();
+  arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
+  arangodb::basics::StringBuffer* operator->() const { return _stringBuffer; }
+  arangodb::basics::StringBuffer* get() const { return _stringBuffer; }
+ private:
+  arangodb::TransactionContext* _transactionContext;
+  arangodb::basics::StringBuffer* _stringBuffer;
 };
 
 class TransactionBuilderLeaser {

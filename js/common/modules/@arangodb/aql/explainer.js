@@ -878,7 +878,7 @@ function processQuery (query, explain) {
       case "ReturnNode":
         return keyword("RETURN") + " " + variableName(node.inVariable);
       case "SubqueryNode":
-        return keyword("LET") + " " + variableName(node.outVariable) + " = ...   " + annotation("/* subquery */");
+        return keyword("LET") + " " + variableName(node.outVariable) + " = ...   " + annotation("/* " + (node.isConst ? "const " : "") + "subquery */");
       case "InsertNode":
         modificationFlags = node.modificationFlags;
         return keyword("INSERT") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);

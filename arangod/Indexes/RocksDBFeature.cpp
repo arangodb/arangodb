@@ -91,7 +91,7 @@ void RocksDBFeature::start() {
 
   _path = arangodb::basics::FileUtils::buildFilename(database->directory(), "rocksdb");
   
-  LOG(INFO) << "initializing rocksdb, path: " << _path;
+  LOG(TRACE) << "initializing rocksdb, path: " << _path;
   
   _comparator = new RocksDBKeyComparator();
   
@@ -123,7 +123,7 @@ void RocksDBFeature::start() {
   rocksdb::Status status = rocksdb::OptimisticTransactionDB::Open(_options, _path, &_db);
   
   if (! status.ok()) {
-    LOG(FATAL) << "unable to initialize rocksdb";
+    LOG(FATAL) << "unable to initialize rocksdb: " << status.ToString();
     FATAL_ERROR_EXIT();
   }
 }

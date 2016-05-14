@@ -388,9 +388,6 @@ class Expression {
   std::unordered_map<Variable const*, std::unordered_set<std::string>>
       _attributes;
 
-  /// @brief buffer for temporary strings
-  arangodb::basics::StringBuffer _buffer;
-
   /// @brief variables only temporarily valid during execution
   std::unordered_map<Variable const*, arangodb::velocypack::Slice> _variables;
 

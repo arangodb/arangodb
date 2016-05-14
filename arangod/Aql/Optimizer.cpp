@@ -67,7 +67,6 @@ bool Optimizer::addPlan(ExecutionPlan* plan, Rule const* rule, bool wasModified,
 
     plan->clearVarUsageComputed();
     plan->invalidateCost();
-
     plan->findVarUsage();
   }
 

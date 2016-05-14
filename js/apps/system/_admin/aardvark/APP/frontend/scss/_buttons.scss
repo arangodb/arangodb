@@ -2,8 +2,8 @@
 %bare-btn {
   @include border-radius(2px);
   @include box-shadow(0);
-  font-size: 14px;
-  font-weight: 400 !important;
+  font-size: 13px;
+  font-weight: 300 !important;
 }
 
 %btn {
@@ -11,7 +11,7 @@
   border: 0;
   color: $c-white;
   margin-left: 10px;
-  padding: 5px 16px;
+  padding: 4px 12px;
 
   &:focus {
     outline: none;
@@ -19,6 +19,11 @@
 
   i {
     margin-left: -5px;
+  }
+
+  .fa {
+    position: relative;
+    top: 1px;
   }
 }
 

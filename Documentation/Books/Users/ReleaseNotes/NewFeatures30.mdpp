@@ -85,6 +85,26 @@ strings (which are delimited with backticks themselves), e.g.
 var q = `FOR doc IN ´collection´ RETURN doc.´name´`;
 ```
 
+!SUBSECTION Functions added
+
+The following AQL functions have been added in 3.0:
+
+- *HASH(value)*: Calculates a hash value for *value*. *value* is not required to be a 
+  string, but can have any data type. The calculated hash value will take the data type
+  of *value* into account, so for example the number *1* and the string *"1"* will have 
+  different hash values. For arrays the hash values will be creared if the arrays contain
+  exactly the same values (including value types) in the same order. For objects the same 
+  hash values will be created if the objects have exactly the same attribute names and 
+  values (including value types). The order in which attributes appear inside objects
+  is not important for hashing.
+  The hash value returned by this function is a number. The hash algorithm is not guaranteed
+  to remain the same in future versions of ArangoDB. The hash values should therefore be
+  used only for temporary calculations, e.g. to compare if two documents are the same, or
+  for grouping values in queries.
+
+- *TYPENAME(value)*: Returns the data type name of *value*. The data type name can
+  be either *null*, *bool*, *number*, *string*, *array* or *object*.
+
 !SUBSECTION Optimizer improvements
 
 !SUBSUBSECTION "inline-subqueries" rule

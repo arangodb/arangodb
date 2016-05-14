@@ -190,30 +190,12 @@ int PrimaryIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
 
 TRI_doc_mptr_t* PrimaryIndex::lookup(arangodb::Transaction* trx,
                                      VPackSlice const& slice) const {
-  if (!slice.isArray() || slice.length() != 1) {
-    // Invalid lookup
-    TRI_ASSERT(false);
-    return nullptr;
-  }
+  TRI_ASSERT(slice.isArray() && slice.length() == 1);
+  
   VPackSlice tmp = slice.at(0);
-  if (!tmp.isObject() || !tmp.hasKey(TRI_SLICE_KEY_EQUAL)) {
-    // Invalid lookup
-    TRI_ASSERT(false);
-    return nullptr;
-  }
+  TRI_ASSERT(tmp.isObject() && tmp.hasKey(TRI_SLICE_KEY_EQUAL));
   tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
   return _primaryIndex->findByKey(trx, tmp.begin());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an element given a key
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::Transaction* trx,
-                                        char const* key) const {
-  VPackBuilder builder;
-  builder.add(VPackValue(key));
-  return _primaryIndex->findByKey(trx, builder.data());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,20 +206,6 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::Transaction* trx,
                                         VPackSlice const& key) const {
   TRI_ASSERT(key.isString());
   return _primaryIndex->findByKey(trx, key.begin());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an element given a key
-/// returns the index position into which a key would belong in the second
-/// parameter. also returns the hash value for the object
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_doc_mptr_t* PrimaryIndex::lookupKey(
-    arangodb::Transaction* trx, char const* key,
-    arangodb::basics::BucketPosition& position, uint64_t& hash) const {
-  VPackBuilder builder;
-  builder.add(VPackValue(key));
-  return _primaryIndex->findByKey(trx, builder.data(), position, hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,7 +258,6 @@ IndexIterator* PrimaryIndex::anyIterator(arangodb::Transaction* trx) const {
   return new AnyIndexIterator(trx, _primaryIndex);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in
 ///        reversed sequential order.
@@ -330,17 +297,6 @@ int PrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_doc_mptr_t* header,
 int PrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_doc_mptr_t* header,
                             arangodb::basics::BucketPosition const& position) {
   return _primaryIndex->insertAtPosition(trx, header, position);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an key/element from the index
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_doc_mptr_t* PrimaryIndex::removeKey(arangodb::Transaction* trx,
-                                        char const* key) {
-  VPackBuilder builder;
-  builder.add(VPackValue(key));
-  return _primaryIndex->removeByKey(trx, builder.data());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

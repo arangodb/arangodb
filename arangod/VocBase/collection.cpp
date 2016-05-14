@@ -24,7 +24,6 @@
 #include "collection.h"
 
 #include "Basics/FileUtils.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"

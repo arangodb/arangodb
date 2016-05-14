@@ -30,7 +30,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/ConditionLocker.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -51,8 +50,6 @@
 #endif
 
 using namespace arangodb;
-
-using arangodb::basics::JsonHelper;
 
 static std::unique_ptr<ClusterInfo> _instance;
 

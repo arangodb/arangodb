@@ -946,10 +946,12 @@
       this.aqlEditor = ace.edit("aqlEditor");
       this.aqlEditor.getSession().setMode("ace/mode/aql");
       this.aqlEditor.setFontSize("10pt");
+      this.aqlEditor.setShowPrintMargin(false);
 
       this.bindParamAceEditor = ace.edit("bindParamAceEditor");
       this.bindParamAceEditor.getSession().setMode("ace/mode/json");
       this.bindParamAceEditor.setFontSize("10pt");
+      this.bindParamAceEditor.setShowPrintMargin(false);
 
       this.bindParamAceEditor.getSession().on('change', function() {
         try {
@@ -1282,6 +1284,7 @@
       outputEditor.getSession().setMode("ace/mode/json");
       outputEditor.setReadOnly(true);
       outputEditor.setOption("vScrollBarAlwaysVisible", true);
+      outputEditor.setShowPrintMargin(false);
       this.setEditorAutoHeight(outputEditor);
 
       sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj), 1);
@@ -1370,8 +1373,13 @@
     },
 
     setEditorAutoHeight: function (editor) {
+      // ace line height = 17px
+      var winHeight = $('.centralRow').height();
+      var maxLines = (winHeight - 250) / 17;
+
+
       editor.setOptions({
-        maxLines: 100,
+        maxLines: maxLines,
         minLines: 10
       }); 
     },
@@ -1466,7 +1474,7 @@
 
         var appendSpan = function(value, icon) {
           $('#outputEditorWrapper' + counter + ' .arangoToolbarTop .pull-left').append(
-            '<span><i class="fa ' + icon + '"></i><i>' + value + '</i></span>'
+            '<span><i class="fa ' + icon + '"></i><i class="iconText">' + value + '</i></span>'
           );
         };
 
@@ -1476,10 +1484,14 @@
         if (data && data.extra && data.extra.stats) {
           time = data.extra.stats.executionTime.toFixed(3) + " s";
         }
+        appendSpan(
+          data.result.length + ' elements', 'fa-calculator'
+        );
         appendSpan(time, 'fa-clock-o');
 
         if (data.extra) {
           if (data.extra.stats) {
+            console.log(data.result.length);
             if (data.extra.stats.writesExecuted > 0 || data.extra.stats.writesIgnored > 0) {
               appendSpan(
                 data.extra.stats.writesExecuted + ' writes', 'fa-check-circle positive'
@@ -1497,12 +1509,12 @@
             }
             if (data.extra.stats.scannedFull > 0) {
               appendSpan(
-                data.extra.stats.scannedFull + ' full collection scan', 'fa-exclamation-circle warning'
+                'full collection scan', 'fa-exclamation-circle warning'
               );
             }
             else {
               appendSpan(
-                data.extra.stats.scannedFull + ' full collection scan', 'fa-check-circle positive'
+                'no full collection scan', 'fa-check-circle positive'
               );
             }
           }
@@ -1517,6 +1529,17 @@
 
         self.setEditorAutoHeight(outputEditor);
         self.deselect(outputEditor);
+
+        //when finished send a delete req to api (free db space)
+        if (data.id) {
+          $.ajax({
+            url: '/_api/cursor/' + encodeURIComponent(data.id),
+            type: 'DELETE',
+            error: function(error) {
+              console.log(error);
+            }
+          });
+        }
       };
 
       //check if async query is finished

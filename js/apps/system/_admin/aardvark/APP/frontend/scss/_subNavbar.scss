@@ -153,6 +153,10 @@
 
     line-height: 45px;
 
+    a {
+      margin-right: 5px;
+    }
+
     &:hover {
       cursor: default;
 
@@ -181,8 +185,14 @@
   .icon,
   .state {
     color: rgba(255, 255, 255, .95);
+    display: block;
+    float: left;
     font-weight: 300;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     text-transform: uppercase;
+    white-space: nowrap;
 
     span {
       color: $c-positive;
@@ -202,7 +212,7 @@
   background: $c-white;
   border: 1px solid $c-bluegrey-border;
   display: none;
-  margin-top: 10px !important;
+  margin-top: 55px !important;
   min-width: 200px;
   position: absolute;
   z-index: 9999;

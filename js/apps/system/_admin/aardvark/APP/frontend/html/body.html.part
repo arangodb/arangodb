@@ -1,6 +1,6 @@
 </head>
 <body>
-    <nav class="navbar">
+    <nav class="navbar" style="display: none">
       <div class="primary">
           <div class="navlogo">
             <a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"/></a>
@@ -18,7 +18,7 @@
     <div id="modalPlaceholder">
     </div>
 
-    <div class="bodyWrapper">
+    <div class="bodyWrapper" style="display: none">
 
       <div class="centralRow">
 
