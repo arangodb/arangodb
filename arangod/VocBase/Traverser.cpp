@@ -31,8 +31,8 @@
 #include "Basics/json-utilities.h"
 #include "VocBase/KeyGenerator.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
+// #include <velocypack/Iterator.h>
+// #include <velocypack/velocypack-aliases.h>
 
 
 using TraverserExpression = triagens::arango::traverser::TraverserExpression;
