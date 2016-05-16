@@ -202,7 +202,7 @@ void sslBASE64(char const* inputStr, size_t length, char*& outputStr,
                size_t& outputLen) {
   std::string b = StringUtils::encodeBase64(std::string(inputStr, length));
 
-  if (outputStr == 0) {
+  if (outputStr == nullptr) {
     outputStr = new char[b.size() + 1];
     outputLen = length * 2;
   }
