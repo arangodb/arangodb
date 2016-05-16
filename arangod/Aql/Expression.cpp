@@ -124,7 +124,7 @@ AqlValue Expression::execute(arangodb::AqlTransaction* trx,
                              std::vector<RegisterId> const& regs,
                              bool& mustDestroy) {
   if (!_built) {
-    buildExpression();
+    buildExpression(trx);
   }
 
   TRI_ASSERT(_type != UNPROCESSED);
@@ -381,7 +381,7 @@ void Expression::analyzeExpression() {
 }
 
 /// @brief build the expression
-void Expression::buildExpression() {
+void Expression::buildExpression(arangodb::AqlTransaction* trx) {
   TRI_ASSERT(!_built);
 
   if (_type == UNPROCESSED) {
@@ -391,11 +391,11 @@ void Expression::buildExpression() {
   if (_type == JSON) {
     TRI_ASSERT(_data == nullptr);
     // generate a constant value
-    VPackBuilder builder;
-    _node->toVelocyPackValue(builder);
+    TransactionBuilderLeaser builder(trx);
+    _node->toVelocyPackValue(*builder.get());
 
-    _data = new uint8_t[static_cast<size_t>(builder.size())];
-    memcpy(_data, builder.data(), static_cast<size_t>(builder.size()));
+    _data = new uint8_t[static_cast<size_t>(builder->size())];
+    memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
   } else if (_type == V8) {
     // generate a V8 expression
     _func = _executor->generateExpression(_node);
@@ -626,8 +626,8 @@ AqlValue Expression::executeSimpleExpressionArray(
 
   size_t const n = node->numMembers();
 
-  VPackBuilder builder;
-  builder.openArray();
+  TransactionBuilderLeaser builder(trx);
+  builder->openArray();
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
@@ -636,12 +636,12 @@ AqlValue Expression::executeSimpleExpressionArray(
                                               startPos, vars, regs, localMustDestroy, false);
 
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(trx, builder, false);
+    result.toVelocyPack(trx, *builder.get(), false);
   }
 
-  builder.close();
+  builder->close();
   mustDestroy = true; // AqlValue contains builder contains dynamic data
-  return AqlValue(builder);
+  return AqlValue(builder.get());
 }
 
 /// @brief execute an expression of type SIMPLE with OBJECT
@@ -658,16 +658,16 @@ AqlValue Expression::executeSimpleExpressionObject(
     return AqlValue(node->computeValue().begin()); 
   }
 
-  VPackBuilder builder;
-  builder.openObject();
+  TransactionBuilderLeaser builder(trx);
+  builder->openObject();
 
   size_t const n = node->numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
-    TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
     // key
-    builder.add(VPackValue(member->getString()));
-
+    TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
+    builder->add(VPackValue(member->getString()));
+    
     // value
     member = member->getMember(0);
 
@@ -675,12 +675,12 @@ AqlValue Expression::executeSimpleExpressionObject(
     AqlValue result = executeSimpleExpression(member, trx, argv,
                                               startPos, vars, regs, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(trx, builder, false);
+    result.toVelocyPack(trx, *builder.get(), false);
   }
 
-  builder.close();
+  builder->close();
   mustDestroy = true; // AqlValue contains builder contains dynamic data
-  return AqlValue(builder);
+  return AqlValue(*builder.get());
 }
 
 /// @brief execute an expression of type SIMPLE with VALUE
