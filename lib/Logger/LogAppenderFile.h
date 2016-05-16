@@ -34,6 +34,7 @@ class LogAppenderFile : public LogAppender {
 
  public:
   LogAppenderFile(std::string const& filename, std::string const& filter);
+  ~LogAppenderFile();
 
   bool logMessage(LogLevel, std::string const& message,
                   size_t offset) override final;
@@ -48,6 +49,11 @@ class LogAppenderFile : public LogAppender {
 
  private:
   ssize_t _pos;
+
+  /// @brief a reusable buffer for log messages
+  char* _buffer;
+  /// @brief allocation size of the buffer
+  size_t _bufferSize;
 };
 }
 
