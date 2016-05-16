@@ -813,13 +813,16 @@ void Executor::generateCodeExpression(AstNode const* node) {
 
   // write prologue
   // this checks if global variable _AQL is set and populates if it not
+  // the check is only performed if "state.i" (=init) is not yet set
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR(
       "(function (vars, state, consts) { "
-      "if (!state.hasOwnProperty('init')) { "
-      "if (_AQL === undefined) { _AQL = require(\"@arangodb/aql\"); } "
+      "if (!state.i) { "
+      "if (_AQL === undefined) { "
+      "_AQL = require(\"@arangodb/aql\"); } "
       "_AQL.clearCaches(); "));
 
-  // lookup all functions
+  // lookup all user-defined functions used and store them in variables
+  // "state.f\d+"
   for (auto const& it : _userFunctions) {
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.f"));
     _buffer->appendInteger(it.second);
@@ -832,19 +835,23 @@ void Executor::generateCodeExpression(AstNode const* node) {
   for (auto const& it : _userFunctions) {
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.e"));
     _buffer->appendInteger(it.second);
+    // "state.e\d+" executes the user function in a wrapper, converting the 
+    // function result back into the allowed range, and catching any errors
+    // thrown by the function 
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR(" = function(params) { try { return _AQL.fixValue(state.f"));
     _buffer->appendInteger(it.second);
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR(".apply(null, params)); } catch (err) { _AQL.warnFromFunction(\""));
     _buffer->appendText(it.first);
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\", require(\"internal\").errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, _AQL.AQL_TO_STRING(err.stack || String(err))); } }; "));
   }
-    
-  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.init = true; } return "));
+   
+  // set "state.i" to true (=initialized) 
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.i = true; } return "));
 
   generateCodeNode(node);
 
   // write epilogue
-  _buffer->appendText(TRI_CHAR_LENGTH_PAIR(";})"));
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("; })"));
 }
 
 /// @brief generates code for a string value
@@ -1455,13 +1462,11 @@ void Executor::generateCodeNode(AstNode const* node) {
 /// @brief create the string buffer
 arangodb::basics::StringBuffer* Executor::initializeBuffer() {
   if (_buffer == nullptr) {
-    _buffer = new arangodb::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, false);
+    _buffer = new arangodb::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, 512, false);
 
     if (_buffer == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
-
-    _buffer->reserve(512);
   } else {
     _buffer->clear();
   }
