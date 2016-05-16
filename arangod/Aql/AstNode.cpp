@@ -320,15 +320,15 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
   }
 
   if (lType == TRI_JSON_STRING) {
-    size_t maxLength =
-        (std::max)(lhs->getStringLength(), rhs->getStringLength());
-
     if (compareUtf8) {
       return TRI_compare_utf8(lhs->getStringValue(), lhs->getStringLength(),
                               rhs->getStringValue(), rhs->getStringLength());
     }
+    
+    size_t const minLength =
+        (std::min)(lhs->getStringLength(), rhs->getStringLength());
 
-    int res = memcmp(lhs->getStringValue(), rhs->getStringValue(), maxLength);
+    int res = memcmp(lhs->getStringValue(), rhs->getStringValue(), minLength);
 
     if (res != 0) {
       return res;
