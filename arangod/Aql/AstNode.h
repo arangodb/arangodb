@@ -307,11 +307,6 @@ struct AstNode {
   /// numeric value node
   AstNode* castToNumber(Ast*);
 
-  /// @brief convert the node's value to a string value
-  /// this may create a new node or return the node itself if it is already a
-  /// string value node
-  AstNode* castToString(Ast*);
-
   /// @brief check a flag for the node
   inline bool hasFlag(AstNodeFlagType flag) const {
     return ((flags & static_cast<decltype(flags)>(flag)) != 0);
