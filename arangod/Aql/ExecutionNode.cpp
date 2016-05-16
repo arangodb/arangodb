@@ -34,7 +34,6 @@
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/StringBuffer.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;

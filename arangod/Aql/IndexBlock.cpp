@@ -533,8 +533,14 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         // we do not need to do a lookup in
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
-        res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
-                      AqlValue(_documents[_posInDocs++]));
+        auto doc = _documents[_posInDocs++];
+        if (doc.isExternal()) {
+          res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
+                        AqlValue(doc.resolveExternal().begin()));
+        } else {
+          res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
+                        AqlValue(doc));
+        }
         // No harm done, if the setValue throws!
       }
     }

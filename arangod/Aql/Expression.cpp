@@ -346,7 +346,7 @@ void Expression::analyzeExpression() {
         auto v = static_cast<Variable const*>(member->getData());
 
         // specialize the simple expression into an attribute accessor
-        _accessor = new AttributeAccessor(parts, v);
+        _accessor = new AttributeAccessor(std::move(parts), v);
         _type = ATTRIBUTE;
         _built = true;
       }
@@ -769,7 +769,6 @@ AqlValue Expression::executeSimpleExpressionFCall(
   auto member = node->getMemberUnchecked(0);
   TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
-  VPackBuilder builder;
   size_t const n = member->numMembers();
 
   VPackFunctionParameters parameters;
@@ -782,9 +781,7 @@ AqlValue Expression::executeSimpleExpressionFCall(
       auto arg = member->getMemberUnchecked(i);
 
       if (arg->type == NODE_TYPE_COLLECTION) {
-        builder.clear();
-        builder.add(VPackValue(arg->getString()));
-        parameters.emplace_back(AqlValue(builder));
+        parameters.emplace_back(AqlValue(arg->getString()));
         destroyParameters.push_back(true);
       } else {
         bool localMustDestroy;
@@ -1356,8 +1353,8 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
     return AqlValue(VelocyPackHelper::ZeroValue());
   }
 
-  VPackBuilder builder;
+  TransactionBuilderLeaser builder(trx);
   mustDestroy = true; // builder = dynamic data
-  builder.add(VPackValue(result));
-  return AqlValue(builder);
+  builder->add(VPackValue(result));
+  return AqlValue(*builder.get());
 }
