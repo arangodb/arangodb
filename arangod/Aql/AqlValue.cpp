@@ -165,7 +165,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy,
         }
         if (position >= 0 && position < n) {
           if (doCopy) {
-            mustDestroy = (type() == VPACK_MANAGED);
+            mustDestroy = true;
             return AqlValue(s.at(position));
           }
           // return a reference to an existing slice
@@ -237,7 +237,7 @@ AqlValue AqlValue::getKeyAttribute(arangodb::AqlTransaction* trx,
         VPackSlice found = Transaction::extractKeyFromDocument(s);
         if (!found.isNone()) {
           if (doCopy) {
-            mustDestroy = (type() == VPACK_MANAGED);
+            mustDestroy = true;
             return AqlValue(found);
           }
           // return a reference to an existing slice
@@ -278,7 +278,7 @@ AqlValue AqlValue::getIdAttribute(arangodb::AqlTransaction* trx,
         }
         if (!found.isNone()) {
           if (doCopy) {
-            mustDestroy = (type() == VPACK_MANAGED);
+            mustDestroy = true;
             return AqlValue(found);
           }
           // return a reference to an existing slice
@@ -314,7 +314,7 @@ AqlValue AqlValue::getFromAttribute(arangodb::AqlTransaction* trx,
         VPackSlice found = Transaction::extractFromFromDocument(s);
         if (!found.isNone()) {
           if (doCopy) {
-            mustDestroy = (type() == VPACK_MANAGED);
+            mustDestroy = true;
             return AqlValue(found);
           }
           // return a reference to an existing slice
@@ -350,7 +350,7 @@ AqlValue AqlValue::getToAttribute(arangodb::AqlTransaction* trx,
         VPackSlice found = Transaction::extractToFromDocument(s);
         if (!found.isNone()) {
           if (doCopy) {
-            mustDestroy = (type() == VPACK_MANAGED);
+            mustDestroy = true;
             return AqlValue(found);
           }
           // return a reference to an existing slice
@@ -392,7 +392,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
         }
         if (!found.isNone()) {
           if (doCopy) {
-            mustDestroy = (type() == VPACK_MANAGED);
+            mustDestroy = true;
             return AqlValue(found);
           }
           // return a reference to an existing slice
@@ -434,7 +434,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
         }
         if (!found.isNone()) {
           if (doCopy) {
-            mustDestroy = (type() == VPACK_MANAGED);
+            mustDestroy = true;
             return AqlValue(found);
           }
           // return a reference to an existing slice
@@ -845,11 +845,10 @@ void AqlValue::destroy() {
     case VPACK_SLICE_POINTER: 
     case VPACK_INLINE: {
       // nothing to do
-      break;
+      return;
     }
     case VPACK_MANAGED: {
       delete _data.buffer;
-      erase(); // to prevent duplicate deletion
       break;
     }
     case DOCVEC: {
@@ -857,14 +856,15 @@ void AqlValue::destroy() {
         delete it;
       }
       delete _data.docvec;
-      erase(); // to prevent duplicate deletion
       break;
     }
     case RANGE: {
       delete _data.range;
-      erase(); // to prevent duplicate deletion
+      break;
     }
   }
+      
+  erase(); // to prevent duplicate deletion
 }
 
 /// @brief return the slice from the value
