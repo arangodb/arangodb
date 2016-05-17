@@ -25,6 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const joi = require('joi');
+const Netmask = require('netmask').Netmask;
 const dd = require('dedent');
 const internal = require('internal');
 const db = require('@arangodb').db;
@@ -44,19 +45,41 @@ const sessions = systemStorage();
 const router = createRouter();
 module.exports = router;
 
+let trustedProxies = TRUSTED_PROXIES();
+
+let trustedProxyBlocks;
+if (Array.isArray(trustedProxies)) {
+  trustedProxyBlocks = [];
+  trustedProxies.forEach(trustedProxy => {
+    try {
+      trustedProxyBlocks.push(new Netmask(trustedProxy));
+    } catch (e) {
+      console.warn("Error parsing trusted proxy " + trustedProxy, e);
+    }
+  });
+} else {
+  trustedProxyBlocks = null;
+}
+
 let isTrustedProxy = function(proxyAddress) {
-  return true;
+  if (trustedProxies === null) {
+    return true;
+  }
+
+  return trustedProxyBlocks.some(block => {
+    return block.contains(proxyAddress);
+  });
 }
 
 router.get('/config.js', function(req, res) {
   let basePath = '';
   if (req.headers.hasOwnProperty('x-forwarded-for')
       && req.headers.hasOwnProperty('x-script-name')
-      && isTrustedProxy("xxx")) {
+      && isTrustedProxy(req.remoteAddress)) {
     basePath = req.headers['x-script-name'];
   }
   res.set('content-type', 'text/javascript');
-  res.send("var frontendConfig = " + JSON.stringify({"basePath": basePath}) + ";");
+  res.send("var frontendConfig = " + JSON.stringify({"basePath": basePath, "authenticationEnabled": global.AUTHENTICATION_ENABLED()}));
 });
 
 router.get('/whoAmI', function(req, res) {

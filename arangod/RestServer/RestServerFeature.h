@@ -39,6 +39,26 @@ class RestServerThread;
 class RestServerFeature final
     : public application_features::ApplicationFeature {
  public:
+  static bool authenticationEnabled() {
+    return RESTSERVER != nullptr && RESTSERVER->authentication();
+  }
+  
+  static bool hasProxyCheck() {
+    return RESTSERVER != nullptr && RESTSERVER->proxyCheck();
+  }
+  
+  static std::vector<std::string> getTrustedProxies() {
+    if (RESTSERVER == nullptr) {
+      return std::vector<std::string>();
+    }
+    return RESTSERVER->trustedProxies();
+  }
+
+ private:
+  static RestServerFeature* RESTSERVER;
+
+ 
+ public:
   RestServerFeature(application_features::ApplicationServer*,
                     std::string const&);
 
@@ -56,11 +76,15 @@ class RestServerFeature final
   bool _authentication;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
+  bool _proxyCheck;
+  std::vector<std::string> _trustedProxies;
 
  public:
   bool authentication() const { return _authentication; }
   bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
+  bool proxyCheck() const { return _proxyCheck; }
+  std::vector<std::string> trustedProxies() const { return _trustedProxies; }
 
  private:
   void buildServers();
