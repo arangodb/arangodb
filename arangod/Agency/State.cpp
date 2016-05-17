@@ -389,9 +389,9 @@ bool State::compact (arangodb::consensus::index_t cind) {
 }
 
 bool State::compactVolatile (arangodb::consensus::index_t cind) {
-  if (!_log.empty() && cind-_cur > 0) {
+  if (!_log.empty() && cind > _cur && cind-_cur < _log.size()) {
     MUTEX_LOCKER(mutexLocker, _logLock);
-    _log.erase(_log.begin(), _log.begin()+cind-_cur);
+    _log.erase(_log.begin(), _log.begin()+(cind-_cur));
     _cur = _log.begin()->index;
   }
   return true;

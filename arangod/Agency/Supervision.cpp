@@ -49,13 +49,13 @@ inline arangodb::consensus::write_ret_t makeReport (Agent* _agent,
   return _agent->write(envelope);
 }
 
-  static std::string const pendingPrefix = "/arango/Supervision/Jobs/Pending/";
-  static std::string const collectionsPrefix = "/arango/Plan/Collections/";
+static std::string const pendingPrefix = "/arango/Supervision/Jobs/Pending/";
+static std::string const collectionsPrefix = "/arango/Plan/Collections/";
     
-template<> struct Job<arangodb::consensus::FAILED_DBSERVER> {
+struct FailedServerJob {
 
-  Job (Node const& snapshot, Agent* agent, uint64_t jobId,
-       std::string const& failed) {
+  FailedServerJob (Node const& snapshot, Agent* agent, uint64_t jobId,
+                   std::string const& failed) {
     // 1. find all shards in plan, where failed was leader.
     // 2. swap positions in plan between failed and a random in sync follower
     
@@ -206,8 +206,8 @@ std::vector<check_t> Supervision::checkDBServers () {
         if (t.count() > _gracePeriod) {               // Failure
           if (it->second->maintenance() == 0) {
             it->second->maintenance(TRI_NewTickServer());
-            Job<FAILED_DBSERVER> jfl(_snapshot, _agent,
-                                     it->second->maintenance(), serverID);
+            FailedServerJob fsj (_snapshot, _agent,
+                                 it->second->maintenance(), serverID);
           }
         }
 
