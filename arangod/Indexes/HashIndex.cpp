@@ -36,6 +36,172 @@
 
 using namespace arangodb;
 
+LookupBuilder::LookupBuilder(
+    arangodb::Transaction* trx, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields)
+    : _builder(trx), _usesIn(false), _isEmpty(false), _inStorage(trx) {
+  TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+  SimpleAttributeEqualityMatcher matcher(fields);
+  _coveredFields = fields.size();
+  TRI_ASSERT(node->numMembers() == _coveredFields);
+
+  std::pair<arangodb::aql::Variable const*,
+            std::vector<arangodb::basics::AttributeName>> paramPair;
+  std::vector<size_t> storageOrder;
+
+
+  for (size_t i = 0; i < _coveredFields; ++i) {
+    auto comp = node->getMemberUnchecked(i);
+    auto attrNode = comp->getMember(0);
+    auto valNode = comp->getMember(1);
+
+    if (!attrNode->isAttributeAccessForVariable(paramPair) ||
+        paramPair.first != reference) {
+      attrNode = comp->getMember(1);
+      valNode = comp->getMember(0);
+
+      if (!attrNode->isAttributeAccessForVariable(paramPair) ||
+          paramPair.first != reference) {
+        _isEmpty = true;
+        return;
+      }
+    }
+
+    for (size_t j = 0; j < fields.size(); ++j) {
+      if (arangodb::basics::AttributeName::isIdentical(
+              fields[j], paramPair.second, true)) {
+        if (TRI_AttributeNamesHaveExpansion(fields[j])) {
+          TRI_IF_FAILURE("HashIndex::permutationArrayIN") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          _mappingFieldCondition.emplace(j, valNode);
+        } else {
+          TRI_IF_FAILURE("HashIndex::permutationEQ") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          arangodb::aql::AstNodeType type = comp->type;
+          if (type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+            if (!_usesIn) {
+              _inStorage->openArray();
+            }
+            valNode->toVelocyPackValue(*(_inStorage.get()));
+            _inPosition.emplace(j, std::make_pair(0, std::vector<arangodb::velocypack::Slice>()));
+            _usesIn = true;
+            storageOrder.emplace_back(j);
+          } else {
+            _mappingFieldCondition.emplace(j, valNode);
+          }
+        }
+        break;
+      }
+    }
+  }
+  if (_usesIn) {
+    _inStorage->close();
+    arangodb::basics::VelocyPackHelper::VPackLess<true> sorter;
+    std::unordered_set<VPackSlice,
+                       arangodb::basics::VelocyPackHelper::VPackHash,
+                       arangodb::basics::VelocyPackHelper::VPackEqual>
+        tmp(16, arangodb::basics::VelocyPackHelper::VPackHash(),
+            arangodb::basics::VelocyPackHelper::VPackEqual());
+    VPackSlice storageSlice = _inStorage->slice();
+    auto f = storageOrder.begin();
+    for (auto const& values : VPackArrayIterator(storageSlice)) {
+      tmp.clear();
+      TRI_IF_FAILURE("Index::permutationIN")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      for (auto const& value : VPackArrayIterator(values)) {
+        tmp.emplace(value);
+      }
+      if (tmp.empty()) {
+        // IN [] short-circuit, cannot be fullfilled;
+        _isEmpty = true;
+        return;
+      }
+      // Now the elements are unique
+      auto& vector = _inPosition.find(*f)->second.second;
+      vector.insert(vector.end(), tmp.begin(), tmp.end());
+      std::sort(vector.begin(), vector.end(), sorter);
+      f++;
+    }
+  }
+  buildNextSearchValue();
+}
+
+VPackSlice LookupBuilder::lookup() {
+  return _builder->slice();
+}
+
+bool LookupBuilder::hasAndGetNext() {
+  _builder->clear();
+  if (!_usesIn || _isEmpty) {
+    return false;
+  }
+  if (!incrementInPosition()) {
+    return false;
+  }
+  buildNextSearchValue();
+  return true;
+}
+
+void LookupBuilder::reset() {
+  if (_isEmpty) {
+    return;
+  }
+  if (_usesIn) {
+    for (auto& it : _inPosition) {
+      it.second.first = 0;
+    }
+  }
+  buildNextSearchValue();
+}
+
+bool LookupBuilder::incrementInPosition() {
+  size_t i = _coveredFields - 1;
+  while (true) {
+    auto it = _inPosition.find(i);
+    if (it != _inPosition.end()) {
+      it->second.first++;
+      if (it->second.first == it->second.second.size()) {
+        //  Reached end of this array. start form begining.
+        //  Increment another array.
+        it->second.first = 0;
+      } else {
+        return true;
+      }
+    }
+    if (i == 0) {
+      return false;
+    }
+    --i;
+  }
+}
+
+void LookupBuilder::buildNextSearchValue() {
+  if (_isEmpty) {
+    return;
+  }
+  _builder->openArray();
+  if (!_usesIn) {
+    // Fast path, do no search and checks
+    for (size_t i = 0; i < _coveredFields; ++i) {
+      _mappingFieldCondition[i]->toVelocyPackValue(*(_builder.get()));
+    }
+  } else {
+    for (size_t i = 0; i < _coveredFields; ++i) {
+      auto in = _inPosition.find(i);
+      if (in != _inPosition.end()) {
+        _builder->add(in->second.second[in->second.first]);
+      } else {
+        _mappingFieldCondition[i]->toVelocyPackValue(*(_builder.get()));
+      }
+    }
+  }
+  _builder->close(); // End of search Array
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Frees an index element
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,7 +273,52 @@ static bool IsEqualKeyElementHash(
   return IsEqualKeyElement(userData, left, right);
 }
 
+HashIndexIterator::HashIndexIterator(arangodb::Transaction* trx,
+                                     HashIndex const* index,
+                                     arangodb::aql::AstNode const* node,
+                                     arangodb::aql::Variable const* reference)
+    : _trx(trx),
+      _index(index),
+      _lookups(trx, node, reference, index->fields()),
+      _buffer(),
+      _posInBuffer(0) {
+    _index->lookup(_trx, _lookups.lookup(), _buffer);
+  }
+
+
 TRI_doc_mptr_t* HashIndexIterator::next() {
+  while (true) {
+    if (_posInBuffer >= _buffer.size()) {
+      if (!_lookups.hasAndGetNext()) {
+        // we're at the end of the lookup values
+        return nullptr;
+      }
+
+      // We have to refill the buffer
+      _buffer.clear();
+      _posInBuffer = 0;
+
+      _index->lookup(_trx, _lookups.lookup(), _buffer);
+    }
+
+    if (!_buffer.empty()) {
+      // found something
+      return _buffer.at(_posInBuffer++);
+    }
+  }
+}
+
+void HashIndexIterator::reset() {
+  _buffer.clear();
+  _posInBuffer = 0;
+  _lookups.reset();
+  _index->lookup(_trx, _lookups.lookup(), _buffer);
+}
+
+
+
+
+TRI_doc_mptr_t* HashIndexIteratorVPack::next() {
   while (true) {
     if (_posInBuffer >= _buffer.size()) {
       if (!_iterator.valid()) {
@@ -135,7 +346,7 @@ TRI_doc_mptr_t* HashIndexIterator::next() {
   }
 }
 
-void HashIndexIterator::reset() {
+void HashIndexIteratorVPack::reset() {
   _buffer.clear();
   _posInBuffer = 0;
   _iterator.reset();
@@ -404,12 +615,11 @@ void HashIndex::transformSearchValues(VPackSlice const values,
 ////////////////////////////////////////////////////////////////////////////////
 
 int HashIndex::lookup(arangodb::Transaction* trx,
-                      VPackSlice searchValue,
+                      VPackSlice key,
                       std::vector<TRI_doc_mptr_t*>& documents) const {
-  VPackBuilder keyBuilder;
-  transformSearchValues(searchValue, keyBuilder);
-  VPackSlice key = keyBuilder.slice();
-
+  if (key.isNone()) {
+    return TRI_ERROR_NO_ERROR;
+  }
   if (_unique) {
     TRI_index_element_t* found =
         _uniqueArray->_hashArray->findByKey(trx, &key);
@@ -697,90 +907,10 @@ IndexIterator* HashIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext*,
     arangodb::aql::Ast*, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool) const {
-  TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-  SimpleAttributeEqualityMatcher matcher(fields());
-
-  size_t const n = _fields.size();
-  TRI_ASSERT(node->numMembers() == n);
-
-  // valueAccess format:
-  // Index in _fields => <isIn, Value>
-  std::unordered_map<size_t, std::pair<bool, arangodb::aql::AstNode const*>>
-      valueAccess;
-
-  std::pair<arangodb::aql::Variable const*,
-            std::vector<arangodb::basics::AttributeName>> paramPair;
-
-  for (size_t i = 0; i < n; ++i) {
-    auto comp = node->getMemberUnchecked(i);
-    auto attrNode = comp->getMember(0);
-    auto valNode = comp->getMember(1);
-
-    if (!attrNode->isAttributeAccessForVariable(paramPair) ||
-        paramPair.first != reference) {
-      attrNode = comp->getMember(1);
-      valNode = comp->getMember(0);
-
-      if (!attrNode->isAttributeAccessForVariable(paramPair) ||
-          paramPair.first != reference) {
-        return nullptr;
-      }
-    }
-
-    for (size_t j = 0; j < _fields.size(); ++j) {
-      if (arangodb::basics::AttributeName::isIdentical(
-              _fields[j], paramPair.second, true)) {
-
-        if (isAttributeExpanded(j)) {
-          TRI_IF_FAILURE("HashIndex::permutationArrayIN") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-          valueAccess.emplace(j, std::make_pair(false, valNode));
-        } else {
-          TRI_IF_FAILURE("HashIndex::permutationEQ") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-          arangodb::aql::AstNodeType type = comp->type;
-          valueAccess.emplace(j, std::make_pair(type == aql::NODE_TYPE_OPERATOR_BINARY_IN, valNode));
-        }
-        break;
-      }
-    }
-    
-  }
-
-  bool needNormalize = false;
-  auto searchValues = std::make_unique<VPackBuilder>();
-  searchValues->openArray();
-  {
-    // Create the search Values for the lookup
-    VPackArrayBuilder guard(searchValues.get());
-    for (size_t i = 0; i < n; ++i) {
-      VPackObjectBuilder searchGuard(searchValues.get());
-      auto pair = valueAccess[i];
-      if (pair.first) {
-        // x IN [] Case
-        searchValues->add(VPackValue(TRI_SLICE_KEY_IN));
-        needNormalize = true;
-      } else {
-        // x == val Case
-        searchValues->add(VPackValue(TRI_SLICE_KEY_EQUAL));
-      }
-      pair.second->toVelocyPackValue(*searchValues);
-    }
-  }
-  searchValues->close();
-
   TRI_IF_FAILURE("HashIndex::noIterator")  {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
-  if (needNormalize) {
-    auto expandedSearchValues = std::make_unique<VPackBuilder>();
-    expandInSearchValues(searchValues->slice(), *expandedSearchValues);
-    return new HashIndexIterator(trx, this, expandedSearchValues);
-  }
-  return new HashIndexIterator(trx, this, searchValues);
+  return new HashIndexIterator(trx, this, node, reference);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -797,7 +927,7 @@ IndexIterator* HashIndex::iteratorForSlice(arangodb::Transaction* trx,
   }
   auto builder = std::make_unique<VPackBuilder>();
   builder->add(searchValues);
-  return new HashIndexIterator(trx, this, builder);
+  return new HashIndexIteratorVPack(trx, this, builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
