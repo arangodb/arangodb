@@ -2959,7 +2959,7 @@ if (list.length > 0) {
       <div class="pull-right">
         <% if (type === 'Query') { %>
           <button id="downloadQueryResult" counter="<%=counter%>" style="display: none; margin-right: 0;" class="button-success">Download</button>
-          <button id="copy2aqlEditor" counter="<%=counter%>" style="display: none; margin-right: 5px;" class="button-success">Copy to editor</button>
+          <button id="copy2aqlEditor" counter="<%=counter%>" style="display: none; margin-right: 8px;" class="button-success">Copy to editor</button>
           <button id="cancelCurrentQuery" class="button-danger" style="margin-right: 5px">Cancel</button>
         <% } %>
       </div>
@@ -3019,7 +3019,8 @@ if (list.length > 0) {
       </a>
     </li>
     <li id="dbStatus" class="infoEntry subMenuEntry pull-right">
-      <a class="info">DB: <%= currentDB.name %> </a>
+      <a class="info">DB:</a>
+      <a class="info"><%= currentDB.name %> </a>
     </li>
     <li id="userBar" class="infoEntry subMenuEntry pull-right" style="margin-right: 10px;">
 <!--
@@ -3395,8 +3396,8 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="libs.js?version=1463131223996"></script>
-<script src="app.js?version=1463131223996"></script>
+<script src="libs.js?version=1463496174435"></script>
+<script src="app.js?version=1463496174435"></script>
 
   </body>
 </html>
