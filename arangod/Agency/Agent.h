@@ -130,7 +130,9 @@ public:
   Store const& readDB() const;
 
   /// @brief Get spearhead store
-  Store const& spearhead() const; 
+  Store const& spearhead() const;
+
+  Agent& operator= (VPackSlice const&);
 
  private:
 

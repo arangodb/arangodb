@@ -474,6 +474,11 @@ bool Store::applies (arangodb::velocypack::Slice const& slice) {
   return _node.applies(slice);
 }
 
+Store& Store::operator= (VPackSlice const& slice) {
+  MUTEX_LOCKER(storeLocker, _storeLock);
+  _node.applies(slice[0]);
+  return *this;
+}
 
 void Store::toBuilder (Builder& b) const {
   _node.toBuilder(b);

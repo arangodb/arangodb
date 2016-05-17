@@ -450,4 +450,9 @@ Store const& Agent::readDB () const {
   return _readDB;
 }
 
+Agent& Agent::operator= (VPackSlice const& slice) {
+  _spearhead = slice;
+  return *this;
+}
+
 }}
