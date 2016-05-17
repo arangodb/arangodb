@@ -1609,58 +1609,6 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase(TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a collection by name, optionally creates it
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
-    TRI_vocbase_t* vocbase, std::string const& name, TRI_col_type_t type) {
-  if (name.empty()) {
-    return nullptr;
-  }
-
-  TRI_vocbase_col_t* found = nullptr;
-
-  {
-    READ_LOCKER(readLocker, vocbase->_collectionsLock);
-
-    if (name[0] >= '0' && name[0] <= '9') {
-      // support lookup by id, too
-      try {
-        TRI_voc_cid_t id =
-            arangodb::basics::StringUtils::uint64(name);
-        auto it = vocbase->_collectionsById.find(id);
-
-        if (it != vocbase->_collectionsById.end()) {
-          found = (*it).second;
-        }
-      } catch (...) {
-        // no need to throw here... found will still be a nullptr
-      }
-    } else {
-      auto it = vocbase->_collectionsByName.find(name);
-
-      if (it != vocbase->_collectionsByName.end()) {
-        found = (*it).second;
-      }
-    }
-  }
-
-  if (found != nullptr) {
-    return found;
-  } 
-    
-  // collection not found. now create it
-  VPackBuilder builder;  // DO NOT FILL IT
-  arangodb::VocbaseCollectionInfo parameter(
-      vocbase, name.c_str(), (TRI_col_type_e)type,
-      (TRI_voc_size_t)vocbase->_settings.defaultMaximalSize, builder.slice());
-  TRI_vocbase_col_t* collection =
-      TRI_CreateCollectionVocBase(vocbase, parameter, 0, true);
-
-  return collection;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new (document) collection from parameter set
 ///
 /// collection id (cid) is normally passed with a value of 0

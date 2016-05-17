@@ -34,7 +34,6 @@
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/StringBuffer.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -514,8 +513,7 @@ void ExecutionNode::invalidateCost() {
     dep->invalidateCost();
 
     // no need to virtualize this function too, as getType(), estimateCost()
-    // etc.
-    // are already virtual
+    // etc. are already virtual
     if (dep->getType() == SUBQUERY) {
       // invalid cost of subqueries, too
       static_cast<SubqueryNode*>(dep)->getSubquery()->invalidateCost();
@@ -1429,8 +1427,35 @@ void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
 
+  nodes.add("isConst", VPackValue(const_cast<SubqueryNode*>(this)->isConst()));
+
   // And add it:
   nodes.close();
+}
+  
+bool SubqueryNode::isConst() {
+  if (isModificationQuery() || !isDeterministic()) {
+    return false;
+  }
+
+  for (auto const& v : getVariablesUsedHere()) {
+    auto setter = _plan->getVarSetBy(v->id);
+
+    if (setter == nullptr || setter->getType() != CALCULATION) {
+      return false;
+    }
+
+    auto expression = static_cast<CalculationNode const*>(setter)->expression();
+
+    if (expression == nullptr) {
+      return false;
+    }
+    if (!expression->isConstant()) {
+      return false;
+    }
+  }
+      
+  return true;
 }
 
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1453,12 +1478,13 @@ bool SubqueryNode::isModificationQuery() const {
   std::vector<ExecutionNode*> stack({_subquery});
 
   while (!stack.empty()) {
-    auto current = stack.back();
-    stack.pop_back();
+    ExecutionNode* current = stack.back();
 
     if (current->isModificationNode()) {
       return true;
     }
+    
+    stack.pop_back();
 
     current->addDependencies(stack);
   }
@@ -1559,8 +1585,7 @@ struct CanThrowFinder final : public WalkerWorker<ExecutionNode> {
   bool _canThrow;
 
   CanThrowFinder() : _canThrow(false) {}
-
-  ~CanThrowFinder() {}
+  ~CanThrowFinder() = default;
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return false;
@@ -1575,10 +1600,36 @@ struct CanThrowFinder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
+/// @brief is the node determistic?
+struct IsDeterministicFinder final : public WalkerWorker<ExecutionNode> {
+  bool _isDeterministic = true;
+
+  IsDeterministicFinder() : _isDeterministic(true) {}
+  ~IsDeterministicFinder() {}
+
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+    return false;
+  }
+
+  bool before(ExecutionNode* node) override final {
+    if (!node->isDeterministic()) {
+      _isDeterministic = false;
+      return true;
+    }
+    return false;
+  }
+};
+
 bool SubqueryNode::canThrow() {
   CanThrowFinder finder;
   _subquery->walk(&finder);
   return finder._canThrow;
+}
+
+bool SubqueryNode::isDeterministic() {
+  IsDeterministicFinder finder;
+  _subquery->walk(&finder);
+  return finder._isDeterministic;
 }
 
 FilterNode::FilterNode(ExecutionPlan* plan, arangodb::basics::Json const& base)

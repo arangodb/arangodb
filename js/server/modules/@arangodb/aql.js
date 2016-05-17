@@ -8303,6 +8303,9 @@ exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 
 exports.reload = reloadUserFunctions;
 exports.clearCaches = clearCaches;
+exports.lookupFunction = GET_USERFUNCTION;
+exports.warnFromFunction = WARN;
+exports.fixValue = FIX_VALUE;
 
 // initialize the query engine
 exports.clearCaches();

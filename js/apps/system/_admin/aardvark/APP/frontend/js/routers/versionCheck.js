@@ -144,7 +144,7 @@
       success: function(data) {
         var currentVersion =
         window.versionHelper.fromString(data.version);
-        $('.navbar #currentVersion').text(data.version.substr(0,3));
+        $('.navbar #currentVersion').text(" " + data.version.substr(0,3));
 
         window.parseVersions = function (json) {
           if (_.isEmpty(json)) {

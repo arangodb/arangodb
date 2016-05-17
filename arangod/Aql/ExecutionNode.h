@@ -419,6 +419,9 @@ class ExecutionNode {
   /// @brief can the node throw?
   virtual bool canThrow() { return false; }
 
+  /// @brief whether or not the subquery is deterministic
+  virtual bool isDeterministic() { return true; }
+
   /// @brief whether or not the node is a data modification node
   virtual bool isModificationNode() const {
     // derived classes can change this
@@ -665,6 +668,9 @@ class EnumerateCollectionNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesSetHere() const override final {
     return std::vector<Variable const*>{_outVariable};
   }
+  
+  /// @brief the node is only non-deterministic if it uses a random sort order
+  bool isDeterministic() override final { return !_random; }
 
   /// @brief enable random iteration of documents in collection
   void setRandom() { _random = true; }
@@ -911,7 +917,9 @@ class CalculationNode : public ExecutionNode {
   }
 
   /// @brief can the node throw?
-  bool canThrow() override { return _expression->canThrow(); }
+  bool canThrow() override final { return _expression->canThrow(); }
+  
+  bool isDeterministic() override final { return _expression->isDeterministic(); }
 
  private:
   /// @brief an optional condition variable for the calculation
@@ -996,7 +1004,11 @@ class SubqueryNode : public ExecutionNode {
   /// @brief can the node throw? Note that this means that an exception can
   /// *originate* from this node. That is, this method does not need to
   /// return true just because a dependent node can throw an exception.
-  bool canThrow() override;
+  bool canThrow() override final;
+  
+  bool isDeterministic() override final;
+
+  bool isConst(); 
 
  private:
   /// @brief we need to have an expression and where to write the result

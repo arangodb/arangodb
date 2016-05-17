@@ -32,14 +32,13 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
                              ExecutionBlock* subquery)
     : ExecutionBlock(engine, en),
       _outReg(ExecutionNode::MaxRegisterId),
-      _subquery(subquery) {
+      _subquery(subquery),
+      _subqueryIsConst(const_cast<SubqueryNode*>(en)->isConst()) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _outReg = it->second.registerId;
   TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
 }
-
-SubqueryBlock::~SubqueryBlock() {}
 
 /// @brief initialize, tell dependency and the subquery
 int SubqueryBlock::initialize() {
@@ -64,10 +63,7 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
 
   bool const subqueryReturnsData =
       (_subquery->getPlanNode()->getType() == ExecutionNode::RETURN);
-
-  // TODO: constant and deterministic subqueries only need to be executed once
-  bool const subqueryIsConst = false;
-
+  
   std::vector<AqlItemBlock*>* subqueryResults = nullptr;
 
   for (size_t i = 0; i < res->size(); i++) {
@@ -77,7 +73,7 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
       THROW_ARANGO_EXCEPTION(ret);
     }
 
-    if (i > 0 && subqueryIsConst) {
+    if (i > 0 && _subqueryIsConst) {
       // re-use already calculated subquery result
       TRI_ASSERT(subqueryResults != nullptr);
       res->setValue(i, _outReg, AqlValue(subqueryResults));

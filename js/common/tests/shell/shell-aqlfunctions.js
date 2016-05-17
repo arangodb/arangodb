@@ -464,6 +464,36 @@ function AqlFunctionsSuite () {
 /// @brief register a function and run a query
 ////////////////////////////////////////////////////////////////////////////////
 
+    testMultiple : function () {
+      unregister("UnitTests::tryme");
+      unregister("UnitTests::foo");
+      aqlfunctions.register("UnitTests::tryme", function (what) { return "foobar" + what; }, true);
+      aqlfunctions.register("UnitTests::foo", function (what) { return (what * 4) + "barbaz"; }, true);
+
+      var actual = db._createStatement({ query: "RETURN CONCAT(UnitTests::tryme('abcdef'), UnitTests::foo(9))" }).execute().toArray();
+      assertEqual([ "foobar" + "abcdef" + (9 * 4) + "barbaz" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function and run a query
+////////////////////////////////////////////////////////////////////////////////
+
+    testManyInvocations : function () {
+      unregister("UnitTests::tryme");
+      aqlfunctions.register("UnitTests::tryme", function (what) { return what * 2; }, true);
+
+      var actual = db._createStatement({ query: "FOR i IN 1..10000 RETURN UnitTests::tryme(i)" }).execute().toArray();
+      var expected = [ ];
+      for (var i = 1; i <= 10000; ++i) {
+        expected.push(i * 2);
+      }
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function and run a query
+////////////////////////////////////////////////////////////////////////////////
+
     testQueryReturnUndefined : function () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme", function (what) { }, true);

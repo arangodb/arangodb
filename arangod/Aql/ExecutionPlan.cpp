@@ -1623,9 +1623,10 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
 /// @brief determine and set _varsUsedLater in all nodes
 void ExecutionPlan::findVarUsage() {
-  ::VarUsageFinder finder;
+  _varSetBy.clear();
+  ::VarUsageFinder finder(&_varSetBy);
   root()->walk(&finder);
-  _varSetBy = *finder._varSetBy;
+  // _varSetBy = *finder._varSetBy;
 
   _varUsageComputed = true;
 }

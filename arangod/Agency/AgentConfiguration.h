@@ -38,7 +38,7 @@ struct config_t {
   bool supervision;
   bool waitForSync;
   double supervisionFrequency;
-  
+  uint64_t compactionStepSize;
   config_t () :
     id(0),
     minPing(0.3f),
@@ -47,11 +47,12 @@ struct config_t {
     notify(false),
     supervision(false),
     waitForSync(true),
-    supervisionFrequency(5.0) {}
+    supervisionFrequency(5.0),
+    compactionStepSize(1000) {}
   
   config_t (uint32_t i, double minp, double maxp, std::string ep,
             std::vector<std::string> const& eps, bool n,
-            bool s, bool w, double f) :
+            bool s, bool w, double f, uint64_t c) :
     id(i),
     minPing(minp),
     maxPing(maxp),
@@ -60,7 +61,8 @@ struct config_t {
     notify(n),
     supervision(s),
     waitForSync(w),
-    supervisionFrequency(f){}
+    supervisionFrequency(f),
+    compactionStepSize(c) {}
   
   inline size_t size() const {return endpoints.size();}
 
@@ -78,6 +80,7 @@ struct config_t {
     ret->add("notify peers", VPackValue(notify));
     ret->add("supervision", VPackValue(supervision));
     ret->add("supervision frequency", VPackValue(supervisionFrequency));
+    ret->add("compaction step size", VPackValue(compactionStepSize));
     ret->close();
     return ret;
   }

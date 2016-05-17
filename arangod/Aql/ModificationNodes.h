@@ -79,6 +79,9 @@ class ModificationNode : public ExecutionNode {
   /// why we can make it final here.
   double estimateCost(size_t&) const override final;
 
+  /// @brief data modification is non-deterministic  
+  bool isDeterministic() override final { return false; }
+
   /// @brief getOptions
   ModificationOptions const& getOptions() const { return _options; }
 

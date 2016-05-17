@@ -44,7 +44,8 @@ namespace consensus {
 Agent::Agent (config_t const& config) 
     : Thread ("Agent"), 
       _config(config), 
-      _lastCommitIndex(0) {
+      _lastCommitIndex(0),
+      _nextCompationAfter(_config.compactionStepSize) {
 
   _state.configure(this);
   _constituent.configure(this);
@@ -178,7 +179,12 @@ void Agent::reportIn (arangodb::consensus::id_t id, index_t index) {
       
       _readDB.apply(_state.slices(_lastCommitIndex+1, index));
       _lastCommitIndex = index;
+      if (_lastCommitIndex >= _nextCompationAfter) {
+        _state.compact(_lastCommitIndex);
+        _nextCompationAfter += _config.compactionStepSize;
+      }
     }
+    
   }
 
   CONDITION_LOCKER(guard, _waitForCV);
@@ -340,6 +346,7 @@ write_ret_t Agent::write (query_t const& query)  {
       applied = _spearhead.apply(query);             // Apply to spearhead
       indices = _state.log (query, applied, term(), id()); // Log w/ indicies
     }
+    
     if (!indices.empty()) {
       maxind = *std::max_element(indices.begin(), indices.end());
     }

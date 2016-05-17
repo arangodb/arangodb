@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_ENUMERATE_COLLECTION_BLOCK_H
 #define ARANGOD_AQL_ENUMERATE_COLLECTION_BLOCK_H 1
 
+#include "Aql/CollectionScanner.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 
@@ -44,7 +45,7 @@ class EnumerateCollectionBlock : public ExecutionBlock {
   EnumerateCollectionBlock(ExecutionEngine* engine,
                            EnumerateCollectionNode const* ep);
 
-  ~EnumerateCollectionBlock();
+  ~EnumerateCollectionBlock() = default;
 
   /// @brief initialize fetching of documents
   void initializeDocuments();
@@ -74,7 +75,7 @@ class EnumerateCollectionBlock : public ExecutionBlock {
   Collection* _collection;
 
   /// @brief collection scanner
-  CollectionScanner* _scanner;
+  CollectionScanner _scanner;
   
   /// @brief iterator over documents
   arangodb::velocypack::ArrayIterator _iterator;

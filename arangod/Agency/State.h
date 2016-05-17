@@ -109,6 +109,8 @@ public:
     return os;
   }
 
+  bool compact (arangodb::consensus::index_t cind);
+
 private:
 
   bool snapshot ();
@@ -118,7 +120,9 @@ private:
                 arangodb::velocypack::Slice const& entry);
 
   /// @brief Load collection from persistent store
-  bool loadCollection (std::string const& name);
+  bool loadPersisted ();
+  bool loadCompacted ();
+  bool loadRemaining ();
 
   /// @brief Check collections
   bool checkCollections();
@@ -132,11 +136,10 @@ private:
   /// @brief Create collection
   bool createCollection(std::string const& name);
 
-  bool compact (arangodb::consensus::index_t cind);
-
-  bool compactPersistedState (arangodb::consensus::index_t cind);
-  bool compactVolatileState (arangodb::consensus::index_t cind);
-  bool persistSpearhead (arangodb::consensus::index_t cind);
+  bool compactPersisted (arangodb::consensus::index_t cind);
+  bool compactVolatile (arangodb::consensus::index_t cind);
+  bool removeObsolete (arangodb::consensus::index_t cind);
+  bool persistReadDB (arangodb::consensus::index_t cind);
 
   Agent* _agent;
 

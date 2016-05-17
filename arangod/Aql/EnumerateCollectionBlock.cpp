@@ -35,17 +35,13 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     ExecutionEngine* engine, EnumerateCollectionNode const* ep)
     : ExecutionBlock(engine, ep),
       _collection(ep->_collection),
-      _scanner(nullptr),
+      _scanner(_trx, _collection->getName(), ep->_random),
       _iterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue()),
-      _mustStoreResult(true) {
-  _scanner = new CollectionScanner(_trx, _collection->getName(), ep->_random);
-}
-
-EnumerateCollectionBlock::~EnumerateCollectionBlock() { delete _scanner; }
+      _mustStoreResult(true) {}
 
 /// @brief initialize fetching of documents
 void EnumerateCollectionBlock::initializeDocuments() {
-  _scanner->reset();
+  _scanner.reset();
   _documents = VPackSlice();
   _iterator = VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
 }
@@ -56,7 +52,7 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
   throwIfKilled();  // check if we were aborted
   uint64_t skippedHere = 0;
 
-  int res = _scanner->forward(toSkip, skippedHere);
+  int res = _scanner.forward(toSkip, skippedHere);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -80,10 +76,10 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
 
 /// @brief continue fetching of documents
 bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
-  DEBUG_BEGIN_BLOCK();  
-  if (hint < DefaultBatchSize()) {
-    hint = DefaultBatchSize();
-  }
+  DEBUG_BEGIN_BLOCK(); 
+  // if (hint < DefaultBatchSize()) {
+  //   hint = DefaultBatchSize();
+  // }
 
   throwIfKilled();  // check if we were aborted
 
@@ -91,7 +87,7 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  _documents = _scanner->scan(hint);
+  _documents = _scanner.scan(hint);
 
   TRI_ASSERT(_documents.isArray());
   _iterator = VPackArrayIterator(_documents, true);
@@ -148,29 +144,47 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   if (_done) {
     return nullptr;
   }
+  
+  bool needMore;
+  AqlItemBlock* cur = nullptr;
 
-  if (_buffer.empty()) {
-    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-    if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
-      _done = true;
-      return nullptr;
+  do {
+    needMore = false;
+
+    if (_buffer.empty()) {
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+        _done = true;
+        return nullptr;
+      }
+      _pos = 0;  // this is in the first block
+      initializeDocuments();
     }
-    _pos = 0;  // this is in the first block
-    initializeDocuments();
-  }
 
-  // If we get here, we do have _buffer.front()
-  AqlItemBlock* cur = _buffer.front();
-  size_t const curRegs = cur->getNrRegs();
+    // If we get here, we do have _buffer.front()
+    cur = _buffer.front();
+    
+    // Advance read position:
+    if (_iterator.index() >= _iterator.size()) {
+      // we have exhausted our local documents buffer
+      // fetch more documents into our buffer
+      if (!moreDocuments(atMost)) {
+        // nothing more to read, re-initialize fetching of documents
+        needMore = true;
+        initializeDocuments();
 
-  // Get more documents from collection if _documents is empty:
-  if (_iterator.index() >= _iterator.size()) {
-    if (!moreDocuments(atMost)) {
-      _done = true;
-      return nullptr;
+        if (++_pos >= cur->size()) {
+          _buffer.pop_front();  // does not throw
+          returnBlock(cur);
+          _pos = 0;
+        }
+      }
     }
-  }
+  } while (needMore);
 
+  TRI_ASSERT(cur != nullptr);
+  size_t curRegs = cur->getNrRegs();
+  
   size_t available = static_cast<size_t>(_iterator.size() - _iterator.index());
   size_t toSend = (std::min)(atMost, available);
   RegisterId nrRegs =
@@ -203,23 +217,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
 
     _iterator.next();
   }
-
-  // Advance read position:
-  if (_iterator.index() >= _iterator.size()) {
-    // we have exhausted our local documents buffer
-    // fetch more documents into our buffer
-    if (!moreDocuments(atMost)) {
-      // nothing more to read, re-initialize fetching of documents
-      initializeDocuments();
-
-      if (++_pos >= cur->size()) {
-        _buffer.pop_front();  // does not throw
-        returnBlock(cur);
-        _pos = 0;
-      }
-    }
-  }
-
+  
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
 

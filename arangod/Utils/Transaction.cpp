@@ -2865,7 +2865,6 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
 
       // Now collect the Iterator
       IndexIteratorContext ctxt(_vocbase, resolver());
-      // iterator.reset(idx->iteratorForSlice(this, &ctxt, expander.slice(), reverse));
       iterator.reset(idx->iteratorForSlice(this, &ctxt, search, reverse));
     }
   }
@@ -3339,6 +3338,32 @@ void Transaction::freeTransaction() {
     this->_transactionContext->storeTransactionResult(id, hasFailedOperations);
     this->_transactionContext->unregisterTransaction();
   }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, leases a StringBuffer
+//////////////////////////////////////////////////////////////////////////////
+
+StringBufferLeaser::StringBufferLeaser(arangodb::Transaction* trx) 
+      : _transactionContext(trx->transactionContext().get()), 
+        _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, leases a StringBuffer
+//////////////////////////////////////////////////////////////////////////////
+
+StringBufferLeaser::StringBufferLeaser(arangodb::TransactionContext* transactionContext) 
+      : _transactionContext(transactionContext), 
+        _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief destructor, returns a StringBuffer
+//////////////////////////////////////////////////////////////////////////////
+
+StringBufferLeaser::~StringBufferLeaser() { 
+  _transactionContext->returnStringBuffer(_stringBuffer);
 }
   
 //////////////////////////////////////////////////////////////////////////////

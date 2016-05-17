@@ -900,25 +900,11 @@ std::string AgencyComm::getEndpointsString() {
 /// @brief sets the global prefix for all operations
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::setPrefix(std::string const& prefix) {
+bool AgencyComm::setPrefix(std::string const&) {
+
   // agency prefix must not be changed
-  _globalPrefix = prefix;
-  _globalPrefixStripped = prefix;
-  
-  // make sure prefix starts with a forward slash
-  if (prefix[0] != '/') {
-    _globalPrefix = '/' + _globalPrefix;
-  }
-
-  // make sure prefix ends with a forward slash
-  if (_globalPrefix.size() > 0) {
-    if (_globalPrefix[_globalPrefix.size() - 1] != '/') {
-      _globalPrefix += '/';
-    }
-  }
-
-  LOG_TOPIC(TRACE, Logger::AGENCYCOMM) 
-      << "setting agency-prefix to '" << prefix << "'";
+  _globalPrefix = "/arango/";
+  _globalPrefixStripped = "arango";
   return true;
 }
 

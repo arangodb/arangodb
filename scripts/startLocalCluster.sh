@@ -57,6 +57,7 @@ build/bin/arangod \
   --server.endpoint tcp://127.0.0.1:4001 \
   --server.statistics false \
   --server.threads 16 \
+  --agency.compaction-step-size 100 \
   > cluster/4001.stdout 2>&1 &
 sleep 1
 
