@@ -80,7 +80,6 @@
           modules: [
             "frontend/js/arango/arango.js",
             "frontend/js/arango/templateEngine.js",
-            "frontend/js/shell/browser.js",
             "frontend/js/modules/underscore.js"
           ],
           js: [
@@ -289,7 +288,7 @@
             "frontend/html/head.html.part",
             "frontend/js/templates/*.ejs",
             "frontend/html/body.html.part",
-            "frontend/build/scripts.html.part",
+            "frontend/html/scripts.html.part",
             "frontend/html/end.html.part"
           ],
           dest: 'frontend/build/index.html'

@@ -21,7 +21,7 @@
       );
     },
 
-    url: '/_api/user/',
+    url: arangoHelper.databaseUrl('/_api/user/'),
 
     model: ArangoQuery,
 
@@ -69,7 +69,7 @@
       $.ajax({
         cache: false,
         type: "PATCH",
-        url: "/_api/user/" + encodeURIComponent(this.activeUser),
+        url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(this.activeUser)),
         data: JSON.stringify({
           extra: {
            queries: queries

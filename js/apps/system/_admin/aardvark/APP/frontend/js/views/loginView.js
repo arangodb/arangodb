@@ -72,7 +72,7 @@
           $('.wrong-credentials').hide();
           self.loggedIn = true;
           //get list of allowed dbs
-          $.ajax("/_api/database/user").success(function(data) {
+          $.ajax(arangoHelper.databaseUrl("/_api/database/user")).success(function(data) {
 
             $('#loginForm').hide();
             $('#databases').show();

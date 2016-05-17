@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, Backbone, $ */
+/*global window, Backbone, $, arangoHelper */
 (function() {
   "use strict";
   window.FoxxCollection = Backbone.Collection.extend({
@@ -10,7 +10,7 @@
       desc: false
     },
 
-    url: "/_admin/aardvark/foxxes",
+    url: arangoHelper.databaseUrl("/_admin/aardvark/foxxes"),
 
     comparator: function(item, item2) {
       var a, b;
@@ -31,7 +31,7 @@
     // Install Foxx from github repo
     // info is expected to contain: "url" and "version"
     installFromGithub: function (info, mount, callback, flag) {
-      var url = "/_admin/aardvark/foxxes/git?mount=" + encodeURIComponent(mount);
+      var url = arangoHelper.databaseUrl("/_admin/aardvark/foxxes/git?mount=" + encodeURIComponent(mount));
       if (flag !== undefined) {
         if (flag) {
           url += "&replace=true";
@@ -58,7 +58,7 @@
     // Install Foxx from arango store
     // info is expected to contain: "name" and "version"
     installFromStore: function (info, mount, callback, flag) {
-      var url = "/_admin/aardvark/foxxes/store?mount=" + encodeURIComponent(mount);
+      var url = arangoHelper.databaseUrl("/_admin/aardvark/foxxes/store?mount=" + encodeURIComponent(mount));
       if (flag !== undefined) {
         if (flag) {
           url += "&replace=true";
@@ -83,7 +83,7 @@
     },
 
     installFromZip: function(fileName, mount, callback, flag) {
-      var url = "/_admin/aardvark/foxxes/zip?mount=" + encodeURIComponent(mount);
+      var url = arangoHelper.databaseUrl("/_admin/aardvark/foxxes/zip?mount=" + encodeURIComponent(mount));
       if (flag !== undefined) {
         if (flag) {
           url += "&replace=true";
@@ -108,7 +108,7 @@
     },
 
     generate: function (info, mount, callback, flag) {
-      var url = "/_admin/aardvark/foxxes/generate?mount=" + encodeURIComponent(mount);
+      var url = arangoHelper.databaseUrl("/_admin/aardvark/foxxes/generate?mount=" + encodeURIComponent(mount));
       if (flag !== undefined) {
         if (flag) {
           url += "&replace=true";

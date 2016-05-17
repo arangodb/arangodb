@@ -91,6 +91,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
     },
 
     parseConfig = function(config) {
+      console.log(config.baseUrl);
       var arangodb = config.baseUrl || "";
       if (config.width !== undefined) {
         absAdapter.setWidth(config.width);

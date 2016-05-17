@@ -44,6 +44,20 @@ const sessions = systemStorage();
 const router = createRouter();
 module.exports = router;
 
+let isTrustedProxy = function(proxyAddress) {
+  return true;
+}
+
+router.get('/config.js', function(req, res) {
+  let basePath = '';
+  if (req.headers.hasOwnProperty('x-forwarded-for')
+      && req.headers.hasOwnProperty('x-script-name')
+      && isTrustedProxy("xxx")) {
+    basePath = req.headers['x-script-name'];
+  }
+  res.set('content-type', 'text/javascript');
+  res.send("var frontendConfig = " + JSON.stringify({"basePath": basePath}) + ";");
+});
 
 router.get('/whoAmI', function(req, res) {
   res.json({user: req.session.uid || null});

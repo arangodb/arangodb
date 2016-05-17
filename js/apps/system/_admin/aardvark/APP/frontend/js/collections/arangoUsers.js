@@ -16,7 +16,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     desc: false
   },
 
-  url: "/_api/user",
+  url: frontendConfig.basePath + "/_api/user",
 
   //comparator : function(obj) {
   //  return obj.get("user").toLowerCase();
@@ -75,7 +75,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax({
       type: "GET",
       cache: false,
-      url: "/_api/user/" + encodeURIComponent(self.activeUser),
+      url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -93,7 +93,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "PUT",
-      url: "/_api/user/" + encodeURIComponent(self.activeUser),
+      url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
       data: JSON.stringify({ extra: self.activeUserSettings }),
       contentType: "application/json",
       processData: false,
