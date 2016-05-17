@@ -70,6 +70,13 @@ SSL_CTX* arangodb::sslContext(protocol_e protocol, std::string const& keyfile) {
 
   SSL_CTX* sslctx = SSL_CTX_new(meth);
 
+  if (sslctx == nullptr) {
+    // could not create SSL context - this is mostly due to the OpenSSL 
+    // library not having been initialized
+    LOG(FATAL) << "unable to create SSL context";
+    FATAL_ERROR_EXIT();
+  }
+
   // load our keys and certificates
   if (!SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
     LOG(ERR) << "cannot read certificate from '" << keyfile
