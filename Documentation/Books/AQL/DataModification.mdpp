@@ -140,7 +140,7 @@ the operation type:
     UPSERT { name: 'test' } 
       INSERT { name: 'test' } 
       UPDATE { } IN users
-    LET opType = IS_NULL(old) ? 'insert' : 'update'
+    LET opType = IS_NULL(OLD) ? 'insert' : 'update'
     RETURN { _key: NEW._key, type: opType }
 
 
