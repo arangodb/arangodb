@@ -2736,6 +2736,9 @@ div.footer-right {
     outline: none; }
   .button-neutral i, .button-primary i, .button-notification i, .button-success i, .button-info i, .button-danger i, .button-warning i, .button-inactive i, .button-close i, .ajax-file-upload-red i, .ajax-file-upload i {
     margin-left: -5px; }
+  .button-neutral .fa, .button-primary .fa, .button-notification .fa, .button-success .fa, .button-info .fa, .button-danger .fa, .button-warning .fa, .button-inactive .fa, .button-close .fa, .ajax-file-upload-red .fa, .ajax-file-upload .fa {
+    position: relative;
+    top: 1px; }
 
 .button-header {
   margin-top: 5px; }
@@ -6389,7 +6392,7 @@ div.headerBar {
     background: #5bc0de;
     border-radius: 3px;
     color: #fff;
-    margin-left: 5px; }
+    margin-left: 8px; }
   .arangoToolbar .styled-select {
     width: auto; }
 
@@ -6639,6 +6642,7 @@ div.headerBar {
         stroke-width: .5px; }
 
 .dashboard-legend .dashboard-legend-inner {
+  margin-right: 25px;
   padding: 10px 5px 5px 0;
   text-align: right; }
   .dashboard-legend .dashboard-legend-inner br {
@@ -8866,6 +8870,8 @@ main {
         transition: all .2s ease-in; }
   .subnavmenu .infoEntry {
     line-height: 45px; }
+    .subnavmenu .infoEntry a {
+      margin-right: 5px; }
     .subnavmenu .infoEntry:hover {
       cursor: default; }
       .subnavmenu .infoEntry:hover .info {
@@ -8880,8 +8886,14 @@ main {
   .subnavmenu .icon,
   .subnavmenu .state {
     color: rgba(255, 255, 255, 0.95);
+    display: block;
+    float: left;
     font-weight: 300;
-    text-transform: uppercase; }
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap; }
     .subnavmenu .info span,
     .subnavmenu .icon span,
     .subnavmenu .state span {
@@ -8897,7 +8909,7 @@ main {
   background: #fff;
   border: 1px solid rgba(64, 74, 83, 0.2);
   display: none;
-  margin-top: 10px !important;
+  margin-top: 55px !important;
   min-width: 200px;
   position: absolute;
   z-index: 9999; }

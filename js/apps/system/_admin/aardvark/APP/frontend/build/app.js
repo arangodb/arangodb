@@ -16651,10 +16651,15 @@ window.ArangoUsers = Backbone.Collection.extend({
         else {
           var collName = $('#new-collection-name').val(),
           collSize = $('#new-collection-size').val(),
+          replicationFactor = $('#new-replication-factor').val(),
           collType = $('#new-collection-type').val(),
           collSync = $('#new-collection-sync').val(),
           shards = 1,
           shardBy = [];
+
+          if (replicationFactor === '') {
+            replicationFactor = 1;
+          }
 
           if (isCoordinator) {
             shards = $('#new-collection-shards').val();
@@ -16717,6 +16722,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             wfs: wfs,
             isSystem: isSystem,
             collSize: collSize,
+            replicationFactor: replicationFactor,
             collType: collType,
             shards: shards,
             shardBy: shardBy
@@ -16820,6 +16826,24 @@ window.ArangoUsers = Backbone.Collection.extend({
               ]
             )
           );
+          if (window.App.isCluster) {
+            advancedTableContent.push(
+              window.modalView.createTextEntry(
+                "new-replication-factor",
+                "Replication factor",
+                "",
+                "Numeric value. Default is '1'. Description: TODO",
+                "",
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                    msg: "Must be a number."
+                  }
+                ]
+              )
+            );
+          }
           advancedTableContent.push(
             window.modalView.createSelectEntry(
               "new-collection-sync",
@@ -21866,7 +21890,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       };
 
       var path = window.location.protocol + "//" + window.location.host
-                 + "/_db/" + database + "/_admin/aardvark/index.html";
+                 + frontendConfig.basePath + "/_db/" + database + "/_admin/aardvark/index.html";
 
       window.location.href = path;
 
@@ -26317,6 +26341,17 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         self.setEditorAutoHeight(outputEditor);
         self.deselect(outputEditor);
+
+        //when finished send a delete req to api (free db space)
+        if (data.id) {
+          $.ajax({
+            url: '/_api/cursor/' + encodeURIComponent(data.id),
+            type: 'DELETE',
+            error: function(error) {
+              console.log(error);
+            }
+          });
+        }
       };
 
       //check if async query is finished
@@ -27493,7 +27528,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "distinct|graph|outbound|inbound|any|all|none|aggregate|like|count",
 
     aqlBuiltinFunctions: 
-"to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|" +
+"to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|typename|" +
 "concat|concat_separator|char_length|lower|upper|substring|left|right|trim|reverse|contains|" +
 "like|floor|ceil|round|abs|rand|sqrt|pow|length|min|max|average|sum|median|variance_population|" +
 "variance_sample|first|last|unique|matches|merge|merge_recursive|has|attributes|values|unset|unset_recursive|keep|" +
@@ -27508,7 +27543,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 "date_add|date_subtract|date_diff|date_compare|date_format|fail|passthru|sleep|not_null|" +
 "first_list|first_document|parse_identifier|current_user|current_database|" +
 "collections|document|union|union_distinct|intersection|flatten|" +
-"ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|random_token|AQL_LAST_ENTRY",
+"ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|hash|random_token|AQL_LAST_ENTRY",
 
     listenKey: function(e) {
       if (e.keyCode === 27) {
@@ -27692,6 +27727,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     hide: function() {
       $(this.el).hide();
+      this.typeahead = $('#spotlight .typeahead').typeahead('destroy');
     }
 
   });
@@ -30359,7 +30395,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       success: function(data) {
         var currentVersion =
         window.versionHelper.fromString(data.version);
-        $('.navbar #currentVersion').text(data.version.substr(0,3));
+        $('.navbar #currentVersion').text(" " + data.version.substr(0,3));
 
         window.parseVersions = function (json) {
           if (_.isEmpty(json)) {

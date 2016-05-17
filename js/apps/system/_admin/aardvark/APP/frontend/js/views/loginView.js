@@ -116,7 +116,7 @@
       };
 
       var path = window.location.protocol + "//" + window.location.host
-                 + "/_db/" + database + "/_admin/aardvark/index.html";
+                 + frontendConfig.basePath + "/_db/" + database + "/_admin/aardvark/index.html";
 
       window.location.href = path;
 
