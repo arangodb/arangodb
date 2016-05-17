@@ -163,19 +163,8 @@ class PrimaryIndex final : public Index {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* lookup(arangodb::Transaction*, VPackSlice const&) const;
-
-  TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, char const*) const;
   
   TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, VPackSlice const&) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief looks up an element given a key
-  /// returns the index position into which a key would belong in the second
-  /// parameter. also returns the hash value for the object
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, char const*,
-                            arangodb::basics::BucketPosition&, uint64_t&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a method to iterate over all elements in the index in
@@ -238,8 +227,6 @@ class PrimaryIndex final : public Index {
 
   int insertKey(arangodb::Transaction*, struct TRI_doc_mptr_t*,
                 arangodb::basics::BucketPosition const&);
-
-  TRI_doc_mptr_t* removeKey(arangodb::Transaction*, char const*);
 
   TRI_doc_mptr_t* removeKey(arangodb::Transaction* trx,
                             VPackSlice const&);

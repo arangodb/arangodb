@@ -173,6 +173,9 @@ public:
   /// @brief Confirmed indices of all members of agency
   std::vector<index_t> _confirmed;
   arangodb::Mutex _ioLock;          /**< @brief Read/Write lock */
+
+  /// @brief Next compaction after
+  arangodb::consensus::index_t _nextCompationAfter;
 };
 
 }}

@@ -24,7 +24,6 @@
 #include "ContinuousSyncer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"

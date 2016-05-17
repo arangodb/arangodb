@@ -47,6 +47,7 @@ namespace arangodb {
 
 namespace basics {
 struct AttributeName;
+class StringBuffer;
 }
 
 namespace velocypack {
@@ -947,6 +948,19 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
+};
+
+class StringBufferLeaser {
+ public:
+  explicit StringBufferLeaser(arangodb::Transaction*); 
+  explicit StringBufferLeaser(arangodb::TransactionContext*); 
+  ~StringBufferLeaser();
+  arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
+  arangodb::basics::StringBuffer* operator->() const { return _stringBuffer; }
+  arangodb::basics::StringBuffer* get() const { return _stringBuffer; }
+ private:
+  arangodb::TransactionContext* _transactionContext;
+  arangodb::basics::StringBuffer* _stringBuffer;
 };
 
 class TransactionBuilderLeaser {

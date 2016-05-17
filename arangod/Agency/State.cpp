@@ -56,7 +56,6 @@ State::State(std::string const& endpoint)
     _endpoint(endpoint),
     _collectionsChecked(false),
     _collectionsLoaded(false),
-    _compaction_step(1000),
     _cur(0) {
   std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
   VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
@@ -72,6 +71,7 @@ State::~State() {}
 bool State::persist(arangodb::consensus::index_t index, term_t term,
                     arangodb::consensus::id_t lid,
                     arangodb::velocypack::Slice const& entry) {
+
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
   std::ostringstream i_str;
@@ -89,15 +89,14 @@ bool State::persist(arangodb::consensus::index_t index, term_t term,
     transactionContext, "log", TRI_TRANSACTION_WRITE);
   
   int res = trx.begin();
-
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
   OperationResult result = trx.insert("log", body.slice(), _options);
   res = trx.finish(result.code);
 
   return (res == TRI_ERROR_NO_ERROR);
+  
 }
 
 //Leader
@@ -118,13 +117,12 @@ std::vector<arangodb::consensus::index_t> State::log (
       idx[j] = _log.back().index + 1;
       _log.push_back(log_t(idx[j], term, lid, buf));  // log to RAM
       persist(idx[j], term, lid, i[0]);                  // log to disk
-      if (idx[j] > 0 && (idx[j] % _compaction_step) == 0) {
-        //compact(idx[j]);
-      }
       ++j;
     }
   }
+  
   return idx;
+  
 }
 
 // Follower
@@ -132,9 +130,11 @@ bool State::log(query_t const& queries, term_t term,
                 arangodb::consensus::id_t lid,
                 arangodb::consensus::index_t prevLogIndex,
                 term_t prevLogTerm) {  // TODO: Throw exc
+  
   if (queries->slice().type() != VPackValueType::Array) {
     return false;
   }
+
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
   for (auto const& i : VPackArrayIterator(queries->slice())) {
     try {
@@ -145,11 +145,8 @@ bool State::log(query_t const& queries, term_t term,
                   i.get("query").byteSize());
       _log.push_back(log_t(idx, term, lid, buf));
       persist(idx, term, lid, i.get("query")); // to disk
-      if (idx > 0 && (idx % _compaction_step) == 0) {
-        //compact(idx);
-      }
     } catch (std::exception const& e) {
-      LOG(ERR) << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
     }
   
   }
@@ -191,7 +188,7 @@ std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
     start = _log[0].index;
   }
   
-  for (size_t i = start-_cur; i <= end; ++i) {  // TODO:: Check bounds
+  for (size_t i = start-_cur; i <= end-_cur; ++i) {  // TODO:: Check bounds
     slices.push_back(VPackSlice(_log[i].entry->data()));
   }
   
@@ -264,52 +261,101 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
   _options.waitForSync = waitForSync;
   _options.silent = true;
 
-  return loadCollection("log");
+  return loadPersisted ();
 }
 
-bool State::loadCollection(std::string const& name) {
+#include <iostream>
+bool State::loadPersisted() {
+  
   TRI_ASSERT(_vocbase != nullptr);
-  
-  if (checkCollection(name)) {
-    auto bindVars = std::make_shared<VPackBuilder>();
-    bindVars->openObject();
-    bindVars->close();
-    
-    std::string const aql(std::string("FOR l IN ") + name
-                          + " SORT l._key RETURN l");
-    arangodb::aql::Query query(false, _vocbase,
-                               aql.c_str(), aql.size(), bindVars, nullptr,
-                               arangodb::aql::PART_MAIN);
-    
-    auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
-    
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
-    }
-    
-    VPackSlice result = queryResult.result->slice();
-        
-    if (result.isArray()) {
-      for (auto const& i : VPackArrayIterator(result)) {
-        buffer_t tmp =
-              std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-        VPackSlice req = i.get("request");
-        tmp->append(req.startAs<char const>(), req.byteSize());
-        _log.push_back(
-          log_t(std::stoi(i.get(StaticStrings::KeyString).copyString()),
-                static_cast<term_t>(i.get("term").getUInt()),
-                static_cast<arangodb::consensus::id_t>(
-                  i.get("leader").getUInt()), tmp));
-      }
-    }
 
-    return true;
+  if (checkCollection("log") && checkCollection("compact")) {
+    return (loadCompacted() && loadRemaining());
   } 
-  
+
   LOG_TOPIC (DEBUG, Logger::AGENCY) << "Couldn't find persisted log";
   createCollections();
 
-  return false;
+  return true;
+}
+
+bool State::loadCompacted () {
+
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->close();
+  
+  std::string const aql(
+    std::string("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c"));
+  arangodb::aql::Query query(
+    false, _vocbase, aql.c_str(), aql.size(), bindVars, nullptr,
+    arangodb::aql::PART_MAIN);
+  
+  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
+  
+  auto result = queryResult.result->slice();
+
+  LOG(WARN) << result.toJson();
+  
+  if (result.isArray()) {
+    for (auto const& i : VPackArrayIterator(result)) {
+      buffer_t tmp =
+        std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+      auto req = i.get("request");
+      tmp->append(req.startAs<char const>(), req.byteSize());
+      _log.push_back(
+        log_t(
+          std::stoi(i.get(StaticStrings::KeyString).copyString()),
+          static_cast<term_t>(i.get("term").getUInt()),
+          static_cast<arangodb::consensus::id_t>(i.get("leader").getUInt()),
+          tmp));
+    }
+  }
+  
+  return true;
+  
+}
+
+bool State::loadRemaining () {
+
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->close();
+  
+  std::string const aql(std::string("FOR l IN log SORT l._key RETURN l"));
+  arangodb::aql::Query query(
+      false, _vocbase, aql.c_str(), aql.size(), bindVars, nullptr,
+      arangodb::aql::PART_MAIN);
+  
+  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
+  
+  auto result = queryResult.result->slice();
+  
+  if (result.isArray()) {
+    for (auto const& i : VPackArrayIterator(result)) {
+      buffer_t tmp =
+        std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+      auto req = i.get("request");
+      tmp->append(req.startAs<char const>(), req.byteSize());
+      _log.push_back(
+        log_t(
+          std::stoi(i.get(StaticStrings::KeyString).copyString()),
+          static_cast<term_t>(i.get("term").getUInt()),
+          static_cast<arangodb::consensus::id_t>(i.get("leader").getUInt()),
+          tmp));
+    }
+  }
+  
+  return true;
+
 }
 
 bool State::find (arangodb::consensus::index_t prevIndex, term_t prevTerm) {
@@ -322,11 +368,18 @@ bool State::find (arangodb::consensus::index_t prevIndex, term_t prevTerm) {
 
 bool State::compact (arangodb::consensus::index_t cind) {
 
-  bool saved = persistSpearhead(cind);
+  bool saved = persistReadDB(cind);
 
   if (saved) {
-    compactPersistedState(cind);
-    compactVolatileState(cind);
+    compactVolatile(cind);
+    
+    try {
+      compactPersisted(cind);
+      removeObsolete(cind);
+    } catch (std::exception const& e) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to compact persisted store.";
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+    }
     return true;
   } else {
     return false;
@@ -334,24 +387,28 @@ bool State::compact (arangodb::consensus::index_t cind) {
 
 }
 
-bool State::compactVolatileState (arangodb::consensus::index_t cind) {
-  _log.erase(_log.begin(), _log.begin()+_compaction_step-1);
+bool State::compactVolatile (arangodb::consensus::index_t cind) {
+  _log.erase(_log.begin(), _log.begin()+cind-_cur);
   _cur = _log.begin()->index;
   return true;
 }
 
-bool State::compactPersistedState (arangodb::consensus::index_t cind) {
+bool State::compactPersisted (arangodb::consensus::index_t cind) {
   
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
   
+  std::stringstream i_str;
+  i_str << std::setw(20) << std::setfill('0') << cind;
+  
   std::string const aql(
     std::string(
-      "FOR l IN log FILTER u._key < 'deleted' REMOVE l IN log"));
-  arangodb::aql::Query query(false, _vocbase,
-                             aql.c_str(), aql.size(), bindVars, nullptr,
-                             arangodb::aql::PART_MAIN);
+      "FOR l IN log FILTER l._key < \"") + i_str.str() + "\" REMOVE l IN log");
+  
+  arangodb::aql::Query query(
+    false, _vocbase, aql.c_str(), aql.size(), bindVars, nullptr,
+    arangodb::aql::PART_MAIN);
   
   auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
   
@@ -359,23 +416,56 @@ bool State::compactPersistedState (arangodb::consensus::index_t cind) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
   
-  VPackSlice result = queryResult.result->slice();
-
-  LOG(INFO) << result.toJson();
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
   
   return true;
   
 }
 
+bool State::removeObsolete (arangodb::consensus::index_t cind) {
 
-bool State::persistSpearhead (arangodb::consensus::index_t cind) {
+  if (cind > 3*_agent->config().compactionStepSize) {
+    auto bindVars = std::make_shared<VPackBuilder>();
+    bindVars->openObject();
+    bindVars->close();
+    
+    std::stringstream i_str;
+    i_str << std::setw(20) << std::setfill('0')
+          << -3*_agent->config().compactionStepSize + cind;
+    
+    std::string const aql(
+      std::string("FOR c IN compact FILTER c._key < \"")
+      + i_str.str() + "\" REMOVE c IN compact");
+    
+    arangodb::aql::Query query(
+      false, _vocbase, aql.c_str(), aql.size(), bindVars, nullptr,
+      arangodb::aql::PART_MAIN);
+    
+    auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+    
+    if (queryResult.code != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    }
+    
+    if (queryResult.code != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    }
+    
+  }
+  return true;
+  
+}
+
+bool State::persistReadDB (arangodb::consensus::index_t cind) {
   
   if (checkCollection("compact")) {
     
     Builder store;
     store.openObject();
-    store.add("spearhead", VPackValue(VPackValueType::Array));
-    _agent->spearhead().dumpToBuilder(store);
+    store.add("readDB", VPackValue(VPackValueType::Array));
+    _agent->readDB().dumpToBuilder(store);
     store.close();
     std::stringstream i_str;
     i_str << std::setw(20) << std::setfill('0') << cind;
@@ -393,15 +483,15 @@ bool State::persistSpearhead (arangodb::consensus::index_t cind) {
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-  
+    
     auto result = trx.insert("compact", store.slice(), _options);
     res = trx.finish(result.code);
-
+    
     return (res == TRI_ERROR_NO_ERROR); 
-
+    
   }
-
-  LOG_TOPIC (ERR, Logger::AGENCY) << "Compaction failed!";
+  
+  LOG_TOPIC (ERR, Logger::AGENCY) << "Failed to persist read DB for compaction!";
   return false;
 
 }

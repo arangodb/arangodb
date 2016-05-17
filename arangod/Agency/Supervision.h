@@ -134,9 +134,15 @@ private:
   /// @brief Move shard from one db server to other db server
   bool removeShard (std::string const& from);
 
-  /// @Brief Check machines under path in agency
+  /// @brief Check machines under path in agency
   std::vector<check_t> checkDBServers ();
   std::vector<check_t> checkShards ();
+
+  /// @brief Get unique ids from agency
+  bool getUniqueIds ();
+
+  /// @brief Update local cache from agency
+  void updateFromAgency ();
 
   /// @brief Read db
   Store const& store () const;
@@ -157,6 +163,8 @@ private:
 
   long _frequency;
   long _gracePeriod;
+  long _jobId;
+  long _jobIdMax;
   
 };
 

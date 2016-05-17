@@ -1192,7 +1192,7 @@ std::string urlEncode(std::string const& str) {
 }
 
 std::string urlEncode(char const* src) {
-  if (src != 0) {
+  if (src != nullptr) {
     size_t len = strlen(src);
     return urlEncode(src, len);
   }
@@ -1209,24 +1209,24 @@ std::string urlEncode(char const* src, size_t const len) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  char* buffer = new char[3 * len + 1];
-  char* ptr = buffer;
+  std::string result;
+  result.reserve(3 * len);
 
   for (; src < end; ++src) {
     if ('0' <= *src && *src <= '9') {
-      *ptr++ = *src;
+      result.push_back(*src);
     }
 
     else if ('a' <= *src && *src <= 'z') {
-      *ptr++ = *src;
+      result.push_back(*src);
     }
 
     else if ('A' <= *src && *src <= 'Z') {
-      *ptr++ = *src;
+      result.push_back(*src);
     }
 
     else if (*src == '-' || *src == '_' || *src == '.' || *src == '~') {
-      *ptr++ = *src;
+      result.push_back(*src);
     }
 
     else {
@@ -1234,16 +1234,11 @@ std::string urlEncode(char const* src, size_t const len) {
       uint8_t n1 = n >> 4;
       uint8_t n2 = n & 0x0F;
 
-      *ptr++ = '%';
-      *ptr++ = hexChars[n1];
-      *ptr++ = hexChars[n2];
+      result.push_back('%');
+      result.push_back(hexChars[n1]);
+      result.push_back(hexChars[n2]);
     }
   }
-
-  *ptr = '\0';
-  std::string result(buffer, ptr - buffer);
-
-  delete[] buffer;
 
   return result;
 }
@@ -1882,6 +1877,7 @@ std::string encodeBase64(std::string const& in) {
   unsigned char charArray4[4];
 
   std::string ret;
+  ret.reserve((in.size() * 4 / 3) + 2);
 
   int i = 0;
 
@@ -1935,13 +1931,14 @@ std::string encodeBase64(std::string const& in) {
 std::string decodeBase64(std::string const& source) {
   unsigned char charArray4[4];
   unsigned char charArray3[3];
-
+  
   std::string ret;
 
   int i = 0;
   int inp = 0;
 
   int in_len = (int)source.size();
+  ret.reserve((source.size() / 4 * 3) + 1);
 
   while (in_len-- && (source[inp] != '=') && isBase64(source[inp])) {
     charArray4[i++] = source[inp];
@@ -1993,6 +1990,7 @@ std::string encodeBase64U(std::string const& in) {
   unsigned char charArray4[4];
 
   std::string ret;
+  ret.reserve((in.size() * 4 / 3) + 2);
 
   int i = 0;
 
@@ -2048,6 +2046,7 @@ std::string decodeBase64U(std::string const& source) {
   unsigned char charArray3[3];
 
   std::string ret;
+  ret.reserve((source.size() / 4 * 3) + 1);
 
   int i = 0;
   int inp = 0;

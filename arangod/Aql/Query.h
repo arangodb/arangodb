@@ -35,7 +35,6 @@
 #include "Aql/ShortStringStorage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 #include "Utils/AqlTransaction.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"

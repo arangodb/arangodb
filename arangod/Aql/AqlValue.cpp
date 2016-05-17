@@ -845,11 +845,10 @@ void AqlValue::destroy() {
     case VPACK_SLICE_POINTER: 
     case VPACK_INLINE: {
       // nothing to do
-      break;
+      return;
     }
     case VPACK_MANAGED: {
       delete _data.buffer;
-      erase(); // to prevent duplicate deletion
       break;
     }
     case DOCVEC: {
@@ -857,14 +856,15 @@ void AqlValue::destroy() {
         delete it;
       }
       delete _data.docvec;
-      erase(); // to prevent duplicate deletion
       break;
     }
     case RANGE: {
       delete _data.range;
-      erase(); // to prevent duplicate deletion
+      break;
     }
   }
+      
+  erase(); // to prevent duplicate deletion
 }
 
 /// @brief return the slice from the value
