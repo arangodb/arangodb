@@ -320,7 +320,7 @@ else ()
 
   option(USE_OPTIMIZE_FOR_ARCHITECTURE "try to determine CPU architecture" ON)
 
-  if (NOT USE_OPTIMIZE_FOR_ARCHITECTURE)
+  if (NOT ${USE_OPTIMIZE_FOR_ARCHITECTURE})
     # mop: core2 (merom) is our absolute minimum!
     SET(TARGET_ARCHITECTURE "merom")
   endif ()
