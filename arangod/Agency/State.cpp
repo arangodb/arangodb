@@ -44,9 +44,6 @@
 #include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 
-#warning iostream
-#include <iostream>
-
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::consensus;
