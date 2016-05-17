@@ -82,6 +82,8 @@ public:
   /// @brief Get node specified by path string  
   Node const operator ()(std::string const& path) const;
 
+  Store& operator= (VPackSlice const& slice);
+
   /// @brief Apply single slice
   bool applies (arangodb::velocypack::Slice const&);
 
