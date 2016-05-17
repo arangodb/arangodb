@@ -106,6 +106,8 @@ void SortedCollectBlock::CollectGroup::reset() {
     TRI_ASSERT(it != nullptr);
     it->reset();
   }
+
+  rowsAreValid = false;
 }
 
 void SortedCollectBlock::CollectGroup::addValues(AqlItemBlock const* src,
@@ -293,6 +295,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   // If we get here, we do have _buffer.front()
   AqlItemBlock* cur = _buffer.front();
+  TRI_ASSERT(cur != nullptr);
 
   if (!skipping) {
     res.reset(new AqlItemBlock(
@@ -339,6 +342,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       if (!_currentGroup.groupValues[0].isEmpty()) {
         if (!skipping) {
           // need to emit the current group first
+          TRI_ASSERT(cur != nullptr);
           emitGroup(cur, res.get(), skipped);
         }
 
@@ -400,6 +404,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
             throwIfKilled();
 
+            TRI_ASSERT(cur != nullptr);
             emitGroup(cur, res.get(), skipped);
             ++skipped;
             res->shrink(skipped);
