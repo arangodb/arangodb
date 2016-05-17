@@ -1396,7 +1396,7 @@ function optimizerAggregateCollectionTestSuite () {
       db._drop("UnitTestsCollectionB");
       c = db._create("UnitTestsCollectionB");
 
-      var values = [
+      values = [
         { "tlm" : 1456480062167, "ct" : 0, "rev" : "t2", "_key" : "5" },
         { "tlm" : 1460377620213, "ct" : 0, "rev" : "t3", "_key" : "14" }, 
         { "tlm" : 1456480264467, "ct" : 0, "rev" : "t2", "_key" : "6" }, 
