@@ -1047,6 +1047,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
     },
 
     parseConfig = function(config) {
+      console.log(config.baseUrl);
       var arangodb = config.baseUrl || "";
       if (config.width !== undefined) {
         absAdapter.setWidth(config.width);
@@ -3895,7 +3896,6 @@ function GharialAdapter(nodes, edges, viewer, config) {
         // any should be default at the moment
         direction = "any";
       }
-
       api.base = arangodb + "_api/";
       api.cursor = api.base + "cursor";
       api.graph = api.base + "gharial";
@@ -4434,7 +4434,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
           cache: false,
           type: 'GET',
           async: false,
-          url: "/_api/collection/" + encodeURIComponent(collections[i]) + "/count",
+          url: arangoHelper.databaseUrl("/_api/collection/" + encodeURIComponent(collections[i]) + "/count"),
           contentType: "application/json",
           success: function(data) {
             self.TOTAL_NODES = self.TOTAL_NODES + data.count;
@@ -10350,7 +10350,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
 }
 
 /*jshint unused: false */
-/*global window, $, document, arangoHelper, _ */
+/*global window, $, document, _ */
 
 (function() {
   "use strict";
@@ -10486,7 +10486,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/database/current",
+        url: this.databaseUrl("/_api/database/current"),
         contentType: "application/json",
         processData: false,
         success: function(data) {
@@ -10694,7 +10694,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
           $.ajax({
             type: "GET",
             cache: false,
-            url: "/_db/"+ encodeURIComponent(db) + "/_api/database/",
+            url: this.databaseUrl("/_api/database/", db),
             contentType: "application/json",
             processData: false,
             success: function() {
@@ -10782,7 +10782,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       $.ajax({
           cache: false,
           type: "POST",
-          url: "/_admin/aardvark/job",
+          url: this.databaseUrl("/_admin/aardvark/job"),
           data: JSON.stringify(object),
           contentType: "application/json",
           processData: false,
@@ -10803,7 +10803,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       $.ajax({
           cache: false,
           type: "DELETE",
-          url: "/_admin/aardvark/job/" + encodeURIComponent(id),
+          url: this.databaseUrl("/_admin/aardvark/job/" + encodeURIComponent(id)),
           contentType: "application/json",
           processData: false,
           success: function (data) {
@@ -10823,7 +10823,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       $.ajax({
           cache: false,
           type: "DELETE",
-          url: "/_admin/aardvark/job",
+          url: this.databaseUrl("/_admin/aardvark/job"),
           contentType: "application/json",
           processData: false,
           success: function (data) {
@@ -10843,7 +10843,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       $.ajax({
           cache: false,
           type: "GET",
-          url: "/_admin/aardvark/job",
+          url: this.databaseUrl("/_admin/aardvark/job"),
           contentType: "application/json",
           processData: false,
           success: function (data) {
@@ -10864,7 +10864,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       $.ajax({
           cache: false,
           type: "GET",
-          url: "/_api/job/pending",
+          url: this.databaseUrl("/_api/job/pending"),
           contentType: "application/json",
           processData: false,
           success: function (data) {
@@ -11015,6 +11015,24 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+    },
+
+    backendUrl: function(url) {
+      return frontendConfig.basePath + url;
+    },
+
+    databaseUrl: function(url, databaseName) {
+      if (url.substr(0, 5) === '/_db/') {
+        throw new Error("Calling databasUrl with a databased url (" + url + ") doesn't make any sense");
+      }
+
+      if (!databaseName) {
+        databaseName = '_system';
+        if (window.App && window.currentDB && window.currentDB.name) {
+          databaseName = window.App.currentDB.name;
+        }
+      }
+      return this.backendUrl("/_db/" + encodeURIComponent(databaseName) + url);
     }
 
   };
@@ -11045,608 +11063,6 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     window.templateEngine = new TemplateEngine();
   }
 }());
-
-/*jshint node:false, browser:true, strict: false, unused: false */
-/*global global:true, $, jqconsole */
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB web browser shell
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2012-2013 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Achim Brandt
-/// @author Dr. Frank Celler
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            Module
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Module constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function Module (id) {
-  this.id = id;
-  this.exports = {};
-  this.definition = null;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief module cache
-////////////////////////////////////////////////////////////////////////////////
-
-Module.prototype.moduleCache = {};
-Module.prototype.moduleCache["/internal"] = new Module("/internal");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
-
-if (typeof global === 'undefined' && typeof window !== 'undefined') {
-  global = window;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief module
-////////////////////////////////////////////////////////////////////////////////
-
-global.module = Module.prototype.moduleCache["/"] = new Module("/");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalises a path
-////////////////////////////////////////////////////////////////////////////////
-
-Module.prototype.normalise = function (path) {
-  var i;
-  var n;
-  var p;
-  var q;
-  var x;
-
-  if (path === "") {
-    return this.id;
-  }
-
-  p = path.split('/');
-
-  // relative path
-  if (p[0] === "." || p[0] === "..") {
-    q = this.id.split('/');
-    q.pop();
-    q = q.concat(p);
-  }
-
-  // absolute path
-  else {
-    q = p;
-  }
-
-  // normalize path
-  n = [];
-
-  for (i = 0;  i < q.length;  ++i) {
-    x = q[i];
-
-    if (x === "..") {
-      if (n.length === 0) {
-        throw "cannot cross module top";
-      }
-
-      n.pop();
-    }
-    else if (x !== "" && x !== ".") {
-      n.push(x);
-    }
-  }
-
-  return "/" + n.join('/');
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief define
-////////////////////////////////////////////////////////////////////////////////
-
-Module.prototype.define = function (path, definition) {
-
-  // first get rid of any ".." and "."
-  path = this.normalise(path);
-  var match = path.match(/(.+)\/index$/);
-  if (match) {
-    path = match[1];
-  }
-
-  // check if you already know the module, return the exports
-  if (! Module.prototype.moduleCache.hasOwnProperty(path)) {
-    Module.prototype.moduleCache[path] = new Module(path);
-  }
-
-  Module.prototype.moduleCache[path].definition = definition;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief require
-////////////////////////////////////////////////////////////////////////////////
-
-Module.prototype.require = function (path) {
-  var module;
-
-  // first get rid of any ".." and "."
-  path = this.normalise(path);
-
-  // check if you already know the module, return the exports
-  if (Module.prototype.moduleCache.hasOwnProperty(path)) {
-    module = Module.prototype.moduleCache[path];
-  }
-  else {
-    module = Module.prototype.moduleCache[path] = new Module(path);
-  }
-
-  if (module.definition !== null) {
-    var definition;
-
-    definition = module.definition;
-    module.definition = null;
-    definition.call(window, module.exports, module);
-  }
-  return module.exports;
-};
-
-function require (path) {
-  return global.module.require(path);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print
-////////////////////////////////////////////////////////////////////////////////
-
-function print () {
-  var internal = require("internal");
-  internal.print.apply(internal.print, arguments);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  ArangoConnection
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief arango server connection
-////////////////////////////////////////////////////////////////////////////////
-
-function ArangoConnection () {
-  this._databaseName = "_system";
-
-  var path = global.document.location.pathname;
-
-  if (path.substr(0, 5) === '/_db/') {
-    var i = 5, n = path.length;
-    while (i < n) {
-      if (path[i] === '/') {
-        break;
-      }
-      i++;
-    }
-
-    if (i > 5) {
-      this._databaseName = path.substring(5, i);
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getDatabaseName
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoConnection.prototype.getDatabaseName = function () {
-  return this._databaseName;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setDatabaseName
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoConnection.prototype.setDatabaseName = function (name) {
-  this._databaseName = name;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief databasePrefix
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoConnection.prototype.databasePrefix = function (url) {
-  if (url.substr(0, 7) === 'http://' || url.substr(0, 8) === 'https://') {
-    return url;
-  }
-
-  if (url.substr(0, 5) !== '/_db/') {
-    if (url[0] === '/') {
-      // relative URL, starting at /
-      return "/_db/" + this.getDatabaseName() + url;
-    }
-  }
-
-  // everything else
-  return url;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoConnection.prototype.get = function (url) {
-  var msg = null;
-
-  $.ajax({
-    async: false,
-    cache: false,
-    type: "GET",
-    url: url,
-    contentType: "application/json",
-    dataType: "json",
-    processData: false,
-    success: function(data) {
-      msg = data;
-    },
-    error: function(data) {
-      try {
-        msg = JSON.parse(data.responseText);
-      }
-      catch (err) {
-        msg = data.responseText;
-      }
-    }
-  });
-
-  return msg;
-};
-
-ArangoConnection.prototype.GET = ArangoConnection.prototype.get;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoConnection.prototype._delete = function (url) {
-  var msg = null;
-
-  $.ajax({
-    async: false,
-    type: "DELETE",
-    url: url,
-    contentType: "application/json",
-    dataType: "json",
-    processData: false,
-    success: function(data) {
-      msg = data;
-    },
-    error: function(data) {
-      try {
-        msg = JSON.parse(data.responseText);
-      }
-      catch (err) {
-        msg = data.responseText;
-      }
-    }
-  });
-
-  return msg;
-};
-
-ArangoConnection.prototype.DELETE = ArangoConnection.prototype._delete;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief post
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoConnection.prototype.post = function (url, body) {
-  var msg = null;
-
-  $.ajax({
-    async: false,
-    type: "POST",
-    url: url,
-    data: body,
-    contentType: "application/json",
-    dataType: "json",
-    processData: false,
-    success: function(data) {
-      msg = data;
-    },
-    error: function(data) {
-      try {
-        msg = JSON.parse(data.responseText);
-      }
-      catch (err) {
-        msg = data.responseText;
-      }
-    }
-  });
-
-  return msg;
-};
-
-ArangoConnection.prototype.POST = ArangoConnection.prototype.post;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief put
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoConnection.prototype.put = function (url, body) {
-  var msg = null;
-
-  $.ajax({
-    async: false,
-    type: "PUT",
-    url: url,
-    data: body,
-    contentType: "application/json",
-    dataType: "json",
-    processData: false,
-    success: function(data) {
-      msg = data;
-    },
-    error: function(data) {
-      try {
-        msg = JSON.parse(data.responseText);
-      }
-      catch (err) {
-        msg = data.responseText;
-      }
-    }
-  });
-
-  return msg;
-};
-
-ArangoConnection.prototype.PUT = ArangoConnection.prototype.put;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief patch
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoConnection.prototype.patch = function (url, body) {
-  var msg = null;
-
-  $.ajax({
-    async: false,
-    type: "PATCH",
-    url: url,
-    data: body,
-    contentType: "application/json",
-    dataType: "json",
-    processData: false,
-    success: function(data) {
-      msg = data;
-    },
-    error: function(data) {
-      try {
-        msg = JSON.parse(data.responseText);
-      }
-      catch (err) {
-        msg = data.responseText;
-      }
-    }
-  });
-
-  return msg;
-};
-
-ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 Module "internal"
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-(function () {
-  var internal = Module.prototype.moduleCache["/internal"].exports;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief arango
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.arango = new ArangoConnection();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief browserOutputBuffer
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.browserOutputBuffer = "";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief outputs text to shell window
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.output = function () {
-    var i;
-
-    for (i = 0;  i < arguments.length;  ++i) {
-      var value = arguments[i];
-      var text;
-
-      if (value === null) {
-        text = "null";
-      }
-      else if (value === undefined) {
-        text = "undefined";
-      }
-      else if (typeof(value) === "object") {
-        try {
-          text = JSON.stringify(value);
-        }
-        catch (err) {
-          text = String(value);
-        }
-      }
-      else {
-        text = String(value);
-      }
-
-      require('internal').browserOutputBuffer += text;
-    }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief outputs text to browser window
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.print = internal.printBrowser = function () {
-    require('internal').printShell.apply(require('internal').printShell, arguments);
-
-    jqconsole.Write('==> ' + require('internal').browserOutputBuffer, 'jssuccess');
-    require('internal').browserOutputBuffer = "";
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief globally rewrite URLs for AJAX requests to contain the database name
-////////////////////////////////////////////////////////////////////////////////
-
-  $(global.document).ajaxSend(function(event, jqxhr, settings) {
-    settings.url = require('internal').arango.databasePrefix(settings.url);
-  });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-  global.DEFINE_MODULE = function (name, exports) {
-    var path = Module.prototype.normalise(name);
-    var module = Module.prototype.moduleCache[path];
-    if (module) {
-      Object.keys(module.exports).forEach(function (key) {
-        exports[key] = module.exports[key];
-      });
-    } else {
-      module = new Module(path);
-      Module.prototype.moduleCache[path] = module;
-    }
-    module.exports = exports;
-  };
-
-}());
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}"
-// End:
 
 "use strict";
 
@@ -11951,7 +11367,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
 
     idAttribute: "name",
 
-    urlRoot: "/_api/collection",
+    urlRoot: arangoHelper.databaseUrl("/_api/collection"),
     defaults: {
       id: "",
       name: "",
@@ -11967,7 +11383,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/collection/" + encodeURIComponent(this.get("id")) + "/properties",
+        url: arangoHelper.databaseUrl("/_api/collection/" + encodeURIComponent(this.get("id")) + "/properties"),
         contentType: "application/json",
         processData: false,
         success: function(data) {
@@ -11982,7 +11398,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/collection/" + this.get("id") + "/figures",
+        url: arangoHelper.databaseHelper("/_api/collection/" + this.get("id") + "/figures"),
         contentType: "application/json",
         processData: false,
         success: function(data) {
@@ -11997,7 +11413,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/collection/" + this.get("id") + "/revision",
+        url: arangoHelper.databaseUrl("/_api/collection/" + this.get("id") + "/revision"),
         contentType: "application/json",
         processData: false,
         success: function(data) {
@@ -12013,7 +11429,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/index/?collection=" + this.get("id"),
+        url: arangoHelper.databaseUrl("/_api/index/?collection=" + this.get("id")),
         contentType: "application/json",
         processData: false,
         success: function(data) {
@@ -12032,7 +11448,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
       $.ajax({
           cache: false,
           type: "POST",
-          url: "/_api/index?collection="+ self.get("id"),
+          url: arangoHelper.databaseUrl("/_api/index?collection="+ self.get("id")),
           headers: {
             'x-arango-async': 'store' 
           },
@@ -12066,7 +11482,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
       $.ajax({
           cache: false,
           type: 'DELETE',
-          url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
+          url: arangoHelper.databaseUrl("/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id)),
           headers: {
             'x-arango-async': 'store' 
           },
@@ -12095,7 +11511,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: "/_api/collection/" + this.get("id") + "/truncate",
+        url: arangoHelper.databaseUrl("/_api/collection/" + this.get("id") + "/truncate"),
         success: function () {
           arangoHelper.arangoNotification('Collection truncated.');
         },
@@ -12110,7 +11526,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: "/_api/collection/" + this.get("id") + "/load",
+        url: arangoHelper.databaseUrl("/_api/collection/" + this.get("id") + "/load"),
         success: function () {
           callback(false);
         },
@@ -12125,7 +11541,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: "/_api/collection/" + this.get("id") + "/unload?flush=true",
+        url: arangoHelper.databaseUrl("/_api/collection/" + this.get("id") + "/unload?flush=true"),
         success: function () {
           callback(false);
         },
@@ -12142,7 +11558,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
       $.ajax({
         cache: false,
         type: "PUT",
-        url: "/_api/collection/" + this.get("id") + "/rename",
+        url: arangoHelper.databaseUrl("/_api/collection/" + this.get("id") + "/rename"),
         data: JSON.stringify({ name: name }),
         contentType: "application/json",
         processData: false,
@@ -12173,7 +11589,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
       $.ajax({
         cache: false,
         type: "PUT",
-        url: "/_api/collection/" + this.get("id") + "/properties",
+        url: arangoHelper.databaseUrl("/_api/collection/" + this.get("id") + "/properties"),
         data: JSON.stringify(data),
         contentType: "application/json",
         processData: false,
@@ -12212,7 +11628,7 @@ window.DatabaseModel = Backbone.Model.extend({
     return Backbone.sync(method, model, options);
   },
 
-  url: "/_api/database",
+  url: arangoHelper.databaseUrl("/_api/database"),
 
   defaults: {
   }
@@ -12226,7 +11642,7 @@ window.arangoDocumentModel = Backbone.Model.extend({
   initialize: function () {
     'use strict';
   },
-  urlRoot: "/_api/document",
+  urlRoot: arangoHelper.databaseUrl("/_api/document"),
   defaults: {
     _id: "",
     _rev: "",
@@ -12262,7 +11678,7 @@ window.arangoDocumentModel = Backbone.Model.extend({
   'use strict';
   window.ArangoQuery = Backbone.Model.extend({
 
-    urlRoot: "/_api/user",
+    urlRoot: arangoHelper.databaseUrl("/_api/user"),
 
     defaults: {
       name: "",
@@ -12337,19 +11753,19 @@ window.Users = Backbone.Model.extend({
 
   url: function () {
     if (this.isNew()) {
-      return "/_api/user";
+      return arangoHelper.databaseUrl("/_api/user");
     }
     if (this.get("user") !== "") {
-      return "/_api/user/" + this.get("user");
+      return arangoHelper.databaseUrl("/_api/user/" + this.get("user"));
     }
-    return "/_api/user";
+    return arangoHelper.databaseUrl("/_api/user");
   },
 
   checkPassword: function(passwd, callback) {
     $.ajax({
       cache: false,
       type: "POST",
-      url: "/_api/user/" + this.get("user"),
+      url: arangoHelper.databaseUrl("/_api/user/" + this.get("user")),
       data: JSON.stringify({ passwd: passwd }),
       contentType: "application/json",
       processData: false,
@@ -12366,7 +11782,7 @@ window.Users = Backbone.Model.extend({
     $.ajax({
       cache: false,
       type: "PATCH",
-      url: "/_api/user/" + this.get("user"),
+      url: arangoHelper.databaseUrl("/_api/user/" + this.get("user")),
       data: JSON.stringify({ passwd: passwd }),
       contentType: "application/json",
       processData: false
@@ -12377,7 +11793,7 @@ window.Users = Backbone.Model.extend({
     $.ajax({
       cache: false,
       type: "PATCH",
-      url: "/_api/user/" + this.get("user"),
+      url: arangoHelper.databaseUrl("/_api/user/" + this.get("user")),
       data: JSON.stringify({"extra": {"name":name, "img":img}}),
       contentType: "application/json",
       processData: false,
@@ -12478,7 +11894,7 @@ window.Users = Backbone.Model.extend({
   "use strict";
 
   window.CurrentDatabase = Backbone.Model.extend({
-    url: "/_api/database/current",
+    url: arangoHelper.databaseUrl("/_api/database/current"),
 
     parse: function(data) {
       return data.result;
@@ -12487,7 +11903,7 @@ window.Users = Backbone.Model.extend({
 }());
 
 /*jshint browser: true */
-/*global Backbone, $, _, arango */
+/*global Backbone, $, _, arango, arangoHelper */
 (function () {
   "use strict";
 
@@ -12502,7 +11918,7 @@ window.Users = Backbone.Model.extend({
     var qs = _.reduce(args, function (base, value, key) {
       return base + encodeURIComponent(key) + '=' + encodeURIComponent(value) + '&';
     }, '?');
-    req.url = "/_admin/aardvark/foxxes" + (part ? '/' + part : '') + qs.slice(0, qs.length - 1);
+    req.url = arangoHelper.databaseUrl("/_admin/aardvark/foxxes" + (part ? '/' + part : '') + qs.slice(0, qs.length - 1));
     if (body !== undefined) {
       req.data = JSON.stringify(body);
     }
@@ -12649,7 +12065,7 @@ window.Users = Backbone.Model.extend({
 
     idAttribute: "_key",
 
-    urlRoot: "/_api/gharial",
+    urlRoot: arangoHelper.databaseUrl("/_api/gharial"),
 
     isNew: function() {
       return !this.get("_id");
@@ -12967,7 +12383,7 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
   "use strict";
 
   window.arangoCollections = Backbone.Collection.extend({
-      url: '/_api/collection',
+      url: arangoHelper.databaseUrl('/_api/collection'),
 
       model: arangoCollectionModel,
 
@@ -13133,7 +12549,7 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
         $.ajax({
           cache: false,
           type: "POST",
-          url: "/_api/collection",
+          url: arangoHelper.databaseUrl("/_api/collection"),
           data: JSON.stringify(data),
           contentType: "application/json",
           processData: false,
@@ -13153,7 +12569,6 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
 
 (function() {
   'use strict';
-
   window.ArangoDatabase = Backbone.Collection.extend({
 
     model: window.DatabaseModel,
@@ -13162,7 +12577,7 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
       desc: false
     },
 
-    url: "/_api/database",
+    url: arangoHelper.databaseUrl("/_api/database"),
 
     comparator: function(item, item2) {
       var a = item.get('name').toLowerCase();
@@ -13307,7 +12722,7 @@ window.arangoDocument = Backbone.Collection.extend({
       cache: false,
       type: 'DELETE',
       contentType: "application/json",
-      url: "/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
+      url: arangoHelper.databaseUrl("/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid)),
       success: function () {
         callback(false);
       },
@@ -13340,7 +12755,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "POST",
-      url: "/_api/document?collection=" + encodeURIComponent(collectionID),
+      url: arangoHelper.databaseUrl("/_api/document?collection=" + encodeURIComponent(collectionID)),
       data: newEdge,
       contentType: "application/json",
       processData: false,
@@ -13367,7 +12782,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "POST",
-      url: "/_api/document?collection=" + encodeURIComponent(collectionID),
+      url: arangoHelper.databaseUrl("/_api/document?collection=" + encodeURIComponent(collectionID)),
       data: newDocument,
       contentType: "application/json",
       processData: false,
@@ -13385,7 +12800,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "GET",
-      url: "/_api/collection/" + identifier + "?" + arangoHelper.getRandomToken(),
+      url: arangoHelper.databaseUrl("/_api/collection/" + identifier + "?" + arangoHelper.getRandomToken()),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -13406,7 +12821,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "GET",
-      url: "/_api/document/" + encodeURIComponent(colid) +"/"+ encodeURIComponent(docid),
+      url: arangoHelper.databaseUrl("/_api/document/" + encodeURIComponent(colid) +"/"+ encodeURIComponent(docid)),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -13422,7 +12837,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "PUT",
-      url: "/_api/edge/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
+      url: arangoHelper.databaseUrl("/_api/edge/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid)),
       data: model,
       contentType: "application/json",
       processData: false,
@@ -13438,7 +12853,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "PUT",
-      url: "/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
+      url: arangoHelper.databaseUrl("/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid)),
       data: model,
       contentType: "application/json",
       processData: false,
@@ -13478,7 +12893,7 @@ window.arangoDocument = Backbone.Collection.extend({
     lastQuery: {},
     sortAttribute: "",
 
-    url: '/_api/documents',
+    url: arangoHelper.databaseUrl('/_api/documents'),
     model: window.arangoDocumentModel,
 
     loadTotal: function(callback) {
@@ -13486,7 +12901,7 @@ window.arangoDocument = Backbone.Collection.extend({
       $.ajax({
         cache: false,
         type: "GET",
-        url: "/_api/collection/" + this.collectionID + "/count",
+        url: arangoHelper.databaseUrl("/_api/collection/" + this.collectionID + "/count"),
         contentType: "application/json",
         processData: false,
         success: function(data) {
@@ -13610,7 +13025,7 @@ window.arangoDocument = Backbone.Collection.extend({
       $.ajax({
         cache: false,
         type: 'POST',
-        url: '/_api/cursor',
+        url: arangoHelper.databaseUrl('/_api/cursor'),
         data: JSON.stringify(queryObj1),
         contentType: "application/json",
         success: function() {
@@ -13618,7 +13033,7 @@ window.arangoDocument = Backbone.Collection.extend({
           $.ajax({
             cache: false,
             type: 'POST',
-            url: '/_api/cursor',
+            url: arangoHelper.databaseUrl('/_api/cursor'),
             data: JSON.stringify(queryObj2),
             contentType: "application/json",
             success: function() {
@@ -13695,7 +13110,7 @@ window.arangoDocument = Backbone.Collection.extend({
         $.ajax({
           cache: false,
           type: 'PUT',
-          url: '/_api/job/' + encodeURIComponent(jobid),
+          url: arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(jobid)),
           contentType: 'application/json',
           success: function(data, textStatus, xhr) {
             if (xhr.status === 201) {
@@ -13734,7 +13149,7 @@ window.arangoDocument = Backbone.Collection.extend({
       $.ajax({
         cache: false,
         type: 'POST',
-        url: '/_api/cursor',
+        url: arangoHelper.databaseUrl('/_api/cursor'),
         data: JSON.stringify(queryObj),
         headers: {
           'x-arango-async': 'store'
@@ -13747,7 +13162,7 @@ window.arangoDocument = Backbone.Collection.extend({
 
             var cancelRunningCursor = function() {
               $.ajax({
-                url: '/_api/job/'+ encodeURIComponent(jobid) + "/cancel",
+                url: arangoHelper.databaseUrl('/_api/job/'+ encodeURIComponent(jobid) + "/cancel"),
                 type: 'PUT',
                 success: function() {
                   window.clearTimeout(self.checkCursorTimer);
@@ -13804,9 +13219,9 @@ window.arangoDocument = Backbone.Collection.extend({
       $.ajax({
         type: "POST",
         url:
-        '/_api/import?type=auto&collection='+
+        arangoHelper.databaseUrl('/_api/import?type=auto&collection='+
         encodeURIComponent(this.collectionID)+
-        '&createCollection=false',
+        '&createCollection=false'),
         data: file,
         processData: false,
         contentType: 'json',
@@ -13834,7 +13249,7 @@ window.arangoDocument = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, $, _ */
+/*global window, $, _, databaseUrl */
 (function () {
 
   "use strict";
@@ -13893,7 +13308,7 @@ window.arangoDocument = Backbone.Collection.extend({
         type = 'level';
       }
       rtnStr = '/_admin/log?'+type+'='+this.loglevel+'&size='+size+'&offset='+inverseOffset;
-      return rtnStr;
+      return arangoHelper.databaseUrl(rtnStr);
     }
 
   });
@@ -13922,7 +13337,7 @@ window.arangoDocument = Backbone.Collection.extend({
       );
     },
 
-    url: '/_api/user/',
+    url: arangoHelper.databaseUrl('/_api/user/'),
 
     model: ArangoQuery,
 
@@ -13970,7 +13385,7 @@ window.arangoDocument = Backbone.Collection.extend({
       $.ajax({
         cache: false,
         type: "PATCH",
-        url: "/_api/user/" + encodeURIComponent(this.activeUser),
+        url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(this.activeUser)),
         data: JSON.stringify({
           extra: {
            queries: queries
@@ -14018,7 +13433,7 @@ window.arangoDocument = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint strict: false, unused: false */
-/*global window, Backbone, $, window */
+/*global window, Backbone, $, window, arangoHelper */
 
 window.ArangoReplication = Backbone.Collection.extend({
   model: window.Replication,
@@ -14029,7 +13444,7 @@ window.ArangoReplication = Backbone.Collection.extend({
     $.ajax({
       type: "GET",
       cache: false,
-      url: "/_api/replication/logger-state",
+      url: arangoHelper.databaseUrl("/_api/replication/logger-state"),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -14044,7 +13459,7 @@ window.ArangoReplication = Backbone.Collection.extend({
     $.ajax({
       type: "GET",
       cache: false,
-      url: "/_api/replication/applier-state",
+      url: arangoHelper.databaseUrl("/_api/replication/applier-state"),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -14095,7 +13510,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     desc: false
   },
 
-  url: "/_api/user",
+  url: frontendConfig.basePath + "/_api/user",
 
   //comparator : function(obj) {
   //  return obj.get("user").toLowerCase();
@@ -14154,7 +13569,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax({
       type: "GET",
       cache: false,
-      url: "/_api/user/" + encodeURIComponent(self.activeUser),
+      url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -14172,7 +13587,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "PUT",
-      url: "/_api/user/" + encodeURIComponent(self.activeUser),
+      url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
       data: JSON.stringify({ extra: self.activeUserSettings }),
       contentType: "application/json",
       processData: false,
@@ -14474,7 +13889,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, Backbone, $ */
+/*global window, Backbone, $, arangoHelper */
 (function() {
   "use strict";
   window.FoxxCollection = Backbone.Collection.extend({
@@ -14484,7 +13899,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       desc: false
     },
 
-    url: "/_admin/aardvark/foxxes",
+    url: arangoHelper.databaseUrl("/_admin/aardvark/foxxes"),
 
     comparator: function(item, item2) {
       var a, b;
@@ -14505,7 +13920,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     // Install Foxx from github repo
     // info is expected to contain: "url" and "version"
     installFromGithub: function (info, mount, callback, flag) {
-      var url = "/_admin/aardvark/foxxes/git?mount=" + encodeURIComponent(mount);
+      var url = arangoHelper.databaseUrl("/_admin/aardvark/foxxes/git?mount=" + encodeURIComponent(mount));
       if (flag !== undefined) {
         if (flag) {
           url += "&replace=true";
@@ -14532,7 +13947,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     // Install Foxx from arango store
     // info is expected to contain: "name" and "version"
     installFromStore: function (info, mount, callback, flag) {
-      var url = "/_admin/aardvark/foxxes/store?mount=" + encodeURIComponent(mount);
+      var url = arangoHelper.databaseUrl("/_admin/aardvark/foxxes/store?mount=" + encodeURIComponent(mount));
       if (flag !== undefined) {
         if (flag) {
           url += "&replace=true";
@@ -14557,7 +13972,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     installFromZip: function(fileName, mount, callback, flag) {
-      var url = "/_admin/aardvark/foxxes/zip?mount=" + encodeURIComponent(mount);
+      var url = arangoHelper.databaseUrl("/_admin/aardvark/foxxes/zip?mount=" + encodeURIComponent(mount));
       if (flag !== undefined) {
         if (flag) {
           url += "&replace=true";
@@ -14582,7 +13997,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     generate: function (info, mount, callback, flag) {
-      var url = "/_admin/aardvark/foxxes/generate?mount=" + encodeURIComponent(mount);
+      var url = arangoHelper.databaseUrl("/_admin/aardvark/foxxes/generate?mount=" + encodeURIComponent(mount));
       if (flag !== undefined) {
         if (flag) {
           url += "&replace=true";
@@ -14622,12 +14037,12 @@ window.ArangoUsers = Backbone.Collection.extend({
       desc: false
     },
 
-    url: "/_api/gharial",
+    url: frontendConfig.basePath + "/_api/gharial",
 
     dropAndDeleteGraph: function(name, callback) {
       $.ajax({
         type: "DELETE",
-        url: "/_api/gharial/" + encodeURIComponent(name) + "?dropCollections=true",
+        url: frontendConfig.basePath + "/_api/gharial/" + encodeURIComponent(name) + "?dropCollections=true",
         contentType: "application/json",
         processData: true,
         success: function() {
@@ -14683,13 +14098,13 @@ window.ArangoUsers = Backbone.Collection.extend({
     model: window.queryManagementModel,
 
     url: function() {
-      return '/_api/query/current';
+      return frontendConfig.basePath + '/_api/query/current';
     },
 
     killRunningQuery: function(id, callback) {
       var self = this;
       $.ajax({
-        url: '/_api/query/'+encodeURIComponent(id),
+        url: frontendConfig.basePath + '/_api/query/'+encodeURIComponent(id),
         type: 'DELETE',
         success: function(result) {
           callback();
@@ -17236,10 +16651,15 @@ window.ArangoUsers = Backbone.Collection.extend({
         else {
           var collName = $('#new-collection-name').val(),
           collSize = $('#new-collection-size').val(),
+          replicationFactor = $('#new-replication-factor').val(),
           collType = $('#new-collection-type').val(),
           collSync = $('#new-collection-sync').val(),
           shards = 1,
           shardBy = [];
+
+          if (replicationFactor === '') {
+            replicationFactor = 1;
+          }
 
           if (isCoordinator) {
             shards = $('#new-collection-shards').val();
@@ -17302,6 +16722,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             wfs: wfs,
             isSystem: isSystem,
             collSize: collSize,
+            replicationFactor: replicationFactor,
             collType: collType,
             shards: shards,
             shardBy: shardBy
@@ -17405,6 +16826,24 @@ window.ArangoUsers = Backbone.Collection.extend({
               ]
             )
           );
+          if (window.App.isCluster) {
+            advancedTableContent.push(
+              window.modalView.createTextEntry(
+                "new-replication-factor",
+                "Replication factor",
+                "",
+                "Numeric value. Default is '1'. Description: TODO",
+                "",
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                    msg: "Must be a number."
+                  }
+                ]
+              )
+            );
+          }
           advancedTableContent.push(
             window.modalView.createSelectEntry(
               "new-collection-sync",
@@ -18022,7 +17461,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       var self = this;
 
       $.ajax(
-        '/_api/replication/applier-state',
+        arangoHelper.databaseUrl('/_api/replication/applier-state'),
         {async: true}
       ).done(
         function (d) {
@@ -18044,7 +17483,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     getStatistics: function (callback, modalView) {
       var self = this;
-      var url = "/_db/_system/_admin/aardvark/statistics/short";
+      var url = arangoHelper.databaseUrl("/_admin/aardvark/statistics/short", "_system");
       var urlParams = "?start=";
 
       if (self.nextStart) {
@@ -18648,7 +18087,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     submitDeleteDatabase: function(dbname) {
       var toDelete = this.collection.where({name: dbname});
-      toDelete[0].destroy({wait: true, url:"/_api/database/"+dbname});
+      toDelete[0].destroy({wait: true, url: arangoHelper.databaseUrl("/_api/database/"+dbname)});
       this.updateDatabases();
       window.App.naviView.dbSelectionView.render($("#dbSelect"));
       window.modalView.hide();
@@ -19226,8 +18665,9 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     breadcrumb: function () {
       var name = window.location.hash.split("/");
+      console.log(name);
       $('#subNavigationBar .breadcrumb').html(
-        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1].toLowerCase() + '</a>' + 
+        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1] + '</a>' + 
         '<i class="fa fa-chevron-right"></i>' +
         'Document: ' + name[2]
       );
@@ -20460,7 +19900,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/version",
+        url: arangoHelper.databaseUrl("/_api/version"),
         contentType: "application/json",
         processData: false,
         async: true,
@@ -20490,12 +19930,12 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         }
       });
-
+      
       if (! self.system.hasOwnProperty('database')) {
         $.ajax({
           type: "GET",
           cache: false,
-          url: "/_api/database/current",
+          url: arangoHelper.databaseUrl("/_api/database/current?wurst=1"),
           contentType: "application/json",
           processData: false,
           async: true,
@@ -20512,7 +19952,7 @@ window.ArangoUsers = Backbone.Collection.extend({
                 self.render();
               }
             }, 50);
-          }
+          },
         });
       }
     },
@@ -20647,8 +20087,12 @@ window.ArangoUsers = Backbone.Collection.extend({
 /*global $, Joi, _, arangoHelper, templateEngine, window*/
 (function() {
   "use strict";
+  
+  // mop: copy paste from common/bootstrap/errors.js
+  var errors = {
+    "ERROR_APPLICATION_DOWNLOAD_FAILED" : { "code" : 1752, "message" : "application download failed" },
+  };
 
-  var errors = require("internal").errors;
   var appStoreTemplate = templateEngine.createTemplate("applicationListView.ejs");
 
   var FoxxInstallView = function(opts) {
@@ -21001,7 +20445,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
     });
     $("#upload-foxx-zip").uploadFile({
-      url: "/_api/upload?multipart=true",
+      url: arangoHelper.databaseUrl("/_api/upload?multipart=true"),
       allowedTypes: "zip",
       multiple: false,
       onSuccess: installFoxxFromZip.bind(scope)
@@ -21109,7 +20553,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           var adapterConfig = {
             type: "gharial",
             graphName: graphName,
-            baseUrl: require("internal").arango.databasePrefix("/")
+            baseUrl: arangoHelper.databaseUrl("/")
           };
           var width = $("#content").width() - 75;
           $("#content").html("");
@@ -22402,7 +21846,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('.wrong-credentials').hide();
           self.loggedIn = true;
           //get list of allowed dbs
-          $.ajax("/_api/database/user").success(function(data) {
+          $.ajax(arangoHelper.databaseUrl("/_api/database/user")).success(function(data) {
 
             $('#loginForm').hide();
             $('#databases').show();
@@ -22445,7 +21889,8 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
       };
 
-      var path = window.location.protocol + "//" + window.location.host + "/_db/" + database + "/_admin/aardvark/index.html";
+      var path = window.location.protocol + "//" + window.location.host
+                 + frontendConfig.basePath + "/_db/" + database + "/_admin/aardvark/index.html";
 
       window.location.href = path;
 
@@ -25104,7 +24549,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
           $.ajax({
             type: "POST",
-            url: "/_admin/aardvark/query/explain/",
+            url: arangoHelper.databaseUrl("/_admin/aardvark/query/explain/"),
             data: queryData,
             contentType: "application/json",
             processData: false,
@@ -25141,7 +24586,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         $("svg#explainOutput").html();
         $.ajax({
           type: "POST",
-          url: "/_api/explain",
+          url: frontendConfig.basePath + "/_api/explain",
           data: this.readQueryData(),
           contentType: "application/json",
           processData: false,
@@ -25174,7 +24619,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         var cancelRunningQuery = function() {
 
           $.ajax({
-            url: '/_api/job/'+ encodeURIComponent(queryID) + "/cancel",
+            url: arangoHelper.databaseUrl('/_api/job/'+ encodeURIComponent(queryID) + "/cancel"),
             type: 'PUT',
             success: function() {
               window.clearTimeout(self.checkQueryTimer);
@@ -25231,7 +24676,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         var checkQueryStatus = function() {
           $.ajax({
             type: "PUT",
-            url: "/_api/job/" + encodeURIComponent(queryID),
+            url: arangoHelper.databaseUrl("/_api/job/" + encodeURIComponent(queryID)),
             contentType: "application/json",
             processData: false,
             success: function (data, textStatus, xhr) {
@@ -25275,7 +24720,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         if (queryData) {
           $.ajax({
             type: "POST",
-            url: "/_api/cursor",
+            url: arangoHelper.databaseUrl("/_api/cursor"),
             headers: {
               'x-arango-async': 'store' 
             },
@@ -25821,7 +25266,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         $.ajax({
           type: "POST",
-          url: "/_admin/aardvark/query/explain/",
+          url: arangoHelper.databaseUrl("/_admin/aardvark/query/explain/"),
           data: queryData,
           contentType: "application/json",
           processData: false,
@@ -26313,10 +25758,12 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.aqlEditor = ace.edit("aqlEditor");
       this.aqlEditor.getSession().setMode("ace/mode/aql");
       this.aqlEditor.setFontSize("10pt");
+      this.aqlEditor.setShowPrintMargin(false);
 
       this.bindParamAceEditor = ace.edit("bindParamAceEditor");
       this.bindParamAceEditor.getSession().setMode("ace/mode/json");
       this.bindParamAceEditor.setFontSize("10pt");
+      this.bindParamAceEditor.setShowPrintMargin(false);
 
       this.bindParamAceEditor.getSession().on('change', function() {
         try {
@@ -26649,6 +26096,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       outputEditor.getSession().setMode("ace/mode/json");
       outputEditor.setReadOnly(true);
       outputEditor.setOption("vScrollBarAlwaysVisible", true);
+      outputEditor.setShowPrintMargin(false);
       this.setEditorAutoHeight(outputEditor);
 
       sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj), 1);
@@ -26700,7 +26148,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         $.ajax({
           type: "POST",
-          url: "/_api/cursor",
+          url: arangoHelper.databaseUrl("/_api/cursor"),
           headers: {
             'x-arango-async': 'store' 
           },
@@ -26737,8 +26185,13 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     setEditorAutoHeight: function (editor) {
+      // ace line height = 17px
+      var winHeight = $('.centralRow').height();
+      var maxLines = (winHeight - 250) / 17;
+
+
       editor.setOptions({
-        maxLines: 100,
+        maxLines: maxLines,
         minLines: 10
       }); 
     },
@@ -26770,7 +26223,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       var cancelRunningQuery = function(id, counter) {
 
         $.ajax({
-          url: '/_api/job/'+ encodeURIComponent(id) + "/cancel",
+          url: arangoHelper.databaseUrl('/_api/job/'+ encodeURIComponent(id) + "/cancel"),
           type: 'PUT',
           success: function() {
             window.clearTimeout(self.checkQueryTimer);
@@ -26833,7 +26286,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         var appendSpan = function(value, icon) {
           $('#outputEditorWrapper' + counter + ' .arangoToolbarTop .pull-left').append(
-            '<span><i class="fa ' + icon + '"></i><i>' + value + '</i></span>'
+            '<span><i class="fa ' + icon + '"></i><i class="iconText">' + value + '</i></span>'
           );
         };
 
@@ -26843,10 +26296,14 @@ window.ArangoUsers = Backbone.Collection.extend({
         if (data && data.extra && data.extra.stats) {
           time = data.extra.stats.executionTime.toFixed(3) + " s";
         }
+        appendSpan(
+          data.result.length + ' elements', 'fa-calculator'
+        );
         appendSpan(time, 'fa-clock-o');
 
         if (data.extra) {
           if (data.extra.stats) {
+            console.log(data.result.length);
             if (data.extra.stats.writesExecuted > 0 || data.extra.stats.writesIgnored > 0) {
               appendSpan(
                 data.extra.stats.writesExecuted + ' writes', 'fa-check-circle positive'
@@ -26864,12 +26321,12 @@ window.ArangoUsers = Backbone.Collection.extend({
             }
             if (data.extra.stats.scannedFull > 0) {
               appendSpan(
-                data.extra.stats.scannedFull + ' full collection scan', 'fa-exclamation-circle warning'
+                'full collection scan', 'fa-exclamation-circle warning'
               );
             }
             else {
               appendSpan(
-                data.extra.stats.scannedFull + ' full collection scan', 'fa-check-circle positive'
+                'no full collection scan', 'fa-check-circle positive'
               );
             }
           }
@@ -26884,13 +26341,24 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         self.setEditorAutoHeight(outputEditor);
         self.deselect(outputEditor);
+
+        //when finished send a delete req to api (free db space)
+        if (data.id) {
+          $.ajax({
+            url: '/_api/cursor/' + encodeURIComponent(data.id),
+            type: 'DELETE',
+            error: function(error) {
+              console.log(error);
+            }
+          });
+        }
       };
 
       //check if async query is finished
       var checkQueryStatus = function() {
         $.ajax({
           type: "PUT",
-          url: "/_api/job/" + encodeURIComponent(queryID),
+          url: arangoHelper.databaseUrl("/_api/job/" + encodeURIComponent(queryID)),
           contentType: "application/json",
           processData: false,
           success: function (data, textStatus, xhr) {
@@ -28060,7 +27528,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "distinct|graph|outbound|inbound|any|all|none|aggregate|like|count",
 
     aqlBuiltinFunctions: 
-"to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|" +
+"to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|typename|" +
 "concat|concat_separator|char_length|lower|upper|substring|left|right|trim|reverse|contains|" +
 "like|floor|ceil|round|abs|rand|sqrt|pow|length|min|max|average|sum|median|variance_population|" +
 "variance_sample|first|last|unique|matches|merge|merge_recursive|has|attributes|values|unset|unset_recursive|keep|" +
@@ -28075,7 +27543,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 "date_add|date_subtract|date_diff|date_compare|date_format|fail|passthru|sleep|not_null|" +
 "first_list|first_document|parse_identifier|current_user|current_database|" +
 "collections|document|union|union_distinct|intersection|flatten|" +
-"ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|random_token|AQL_LAST_ENTRY",
+"ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|hash|random_token|AQL_LAST_ENTRY",
 
     listenKey: function(e) {
       if (e.keyCode === 27) {
@@ -28259,6 +27727,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     hide: function() {
       $(this.el).hide();
+      this.typeahead = $('#spotlight .typeahead').typeahead('destroy');
     }
 
   });
@@ -30788,7 +30257,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   var disableVersionCheck = function() {
     $.ajax({
       type: "POST",
-      url: "/_admin/aardvark/disableVersionCheck"
+      url: arangoHelper.databaseUrl("/_admin/aardvark/disableVersionCheck")
     });
   };
 
@@ -30796,7 +30265,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   var isVersionCheckEnabled = function(cb) {
     $.ajax({
       type: "GET",
-      url: "/_admin/aardvark/shouldCheckVersion",
+      url: arangoHelper.databaseUrl("/_admin/aardvark/shouldCheckVersion"),
       success: function(data) {
         if (data === true) {
           cb();
@@ -30919,14 +30388,14 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax({
       type: "GET",
       cache: false,
-      url: "/_api/version",
+      url: arangoHelper.databaseUrl("/_api/version"),
       contentType: "application/json",
       processData: false,
       async: true,
       success: function(data) {
         var currentVersion =
         window.versionHelper.fromString(data.version);
-        $('.navbar #currentVersion').text(data.version.substr(0,3));
+        $('.navbar #currentVersion').text(" " + data.version.substr(0,3));
 
         window.parseVersions = function (json) {
           if (_.isEmpty(json)) {

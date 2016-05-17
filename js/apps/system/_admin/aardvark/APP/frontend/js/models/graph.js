@@ -6,7 +6,7 @@
 
     idAttribute: "_key",
 
-    urlRoot: "/_api/gharial",
+    urlRoot: arangoHelper.databaseUrl("/_api/gharial"),
 
     isNew: function() {
       return !this.get("_id");

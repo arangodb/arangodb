@@ -1,5 +1,5 @@
 /*jshint browser: true */
-/*global Backbone, $, _, arango */
+/*global Backbone, $, _, arango, arangoHelper */
 (function () {
   "use strict";
 
@@ -14,7 +14,7 @@
     var qs = _.reduce(args, function (base, value, key) {
       return base + encodeURIComponent(key) + '=' + encodeURIComponent(value) + '&';
     }, '?');
-    req.url = "/_admin/aardvark/foxxes" + (part ? '/' + part : '') + qs.slice(0, qs.length - 1);
+    req.url = arangoHelper.databaseUrl("/_admin/aardvark/foxxes" + (part ? '/' + part : '') + qs.slice(0, qs.length - 1));
     if (body !== undefined) {
       req.data = JSON.stringify(body);
     }

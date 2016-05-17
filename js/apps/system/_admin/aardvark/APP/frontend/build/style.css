@@ -2724,18 +2724,21 @@ div.footer-right {
   -webkit-box-shadow: 0;
   -moz-box-shadow: 0;
   box-shadow: 0;
-  font-size: 14px;
-  font-weight: 400 !important; }
+  font-size: 13px;
+  font-weight: 300 !important; }
 
 .button-neutral, .button-primary, .button-notification, .button-success, .button-info, .button-danger, .button-warning, .button-inactive, .button-close, .ajax-file-upload-red, .ajax-file-upload {
   border: 0;
   color: #fff;
   margin-left: 10px;
-  padding: 5px 16px; }
+  padding: 4px 12px; }
   .button-neutral:focus, .button-primary:focus, .button-notification:focus, .button-success:focus, .button-info:focus, .button-danger:focus, .button-warning:focus, .button-inactive:focus, .button-close:focus, .ajax-file-upload-red:focus, .ajax-file-upload:focus {
     outline: none; }
   .button-neutral i, .button-primary i, .button-notification i, .button-success i, .button-info i, .button-danger i, .button-warning i, .button-inactive i, .button-close i, .ajax-file-upload-red i, .ajax-file-upload i {
     margin-left: -5px; }
+  .button-neutral .fa, .button-primary .fa, .button-notification .fa, .button-success .fa, .button-info .fa, .button-danger .fa, .button-warning .fa, .button-inactive .fa, .button-close .fa, .ajax-file-upload-red .fa, .ajax-file-upload .fa {
+    position: relative;
+    top: 1px; }
 
 .button-header {
   margin-top: 5px; }
@@ -3144,9 +3147,10 @@ div .tile, div .bigtile {
     cursor: pointer;
     fill: #686766;
     height: 50px;
-    margin-left: 97px;
+    margin-left: auto;
+    margin-right: auto;
     margin-top: -63px;
-    position: absolute;
+    position: relative;
     width: 50px; }
   div .tile .tile-icon, div .bigtile .tile-icon {
     color: #686766;
@@ -5770,7 +5774,6 @@ div.headerBar {
   .breadcrumb a {
     color: #fff !important;
     opacity: .8;
-    text-transform: capitalize;
     -moz-transition: all .2s ease-in;
     -o-transition: all .2s ease-in;
     -webkit-transition: all .2s ease-in;
@@ -6352,12 +6355,12 @@ div.headerBar {
 .arangoToolbar {
   background-color: #fff;
   border: 1px solid rgba(140, 138, 137, 0.25);
-  height: 40px;
+  height: 45px;
   width: 100%; }
   .arangoToolbar .pull-right,
   .arangoToolbar .pull-left {
     height: 30px;
-    margin-top: 5px; }
+    margin-top: 8px; }
     .arangoToolbar .pull-right i.positive,
     .arangoToolbar .pull-left i.positive {
       color: #2ecc71; }
@@ -6365,10 +6368,10 @@ div.headerBar {
     .arangoToolbar .pull-left i.warning {
       color: #f1c40f; }
   .arangoToolbar .pull-left button {
-    margin-left: 5px; }
+    margin-left: 8px; }
   .arangoToolbar .pull-right select:first-child,
   .arangoToolbar .pull-right button:first-child {
-    margin-right: 5px; }
+    margin-right: 8px; }
   .arangoToolbar span {
     font-weight: 100;
     margin-left: 10px; }
@@ -6383,19 +6386,20 @@ div.headerBar {
     font-size: 11pt;
     font-style: normal; }
     .arangoToolbar i.fa {
+      font-size: 12pt;
       margin-right: 5px; }
   .arangoToolbar .toolbarType {
     background: #5bc0de;
     border-radius: 3px;
     color: #fff;
-    margin-left: 5px; }
+    margin-left: 8px; }
   .arangoToolbar .styled-select {
     width: auto; }
 
 .arangoToolbarBottom {
   clear: both; }
   .arangoToolbarBottom #executeQuery {
-    margin-right: 5px; }
+    margin-right: 8px; }
   .arangoToolbarBottom .button-close:last-child {
     margin-right: 10px; }
 
@@ -6638,6 +6642,7 @@ div.headerBar {
         stroke-width: .5px; }
 
 .dashboard-legend .dashboard-legend-inner {
+  margin-right: 25px;
   padding: 10px 5px 5px 0;
   text-align: right; }
   .dashboard-legend .dashboard-legend-inner br {
@@ -8626,7 +8631,8 @@ main {
   border-radius: 0;
   border-right: 1px solid rgba(64, 74, 83, 0.2);
   border-top: 0;
-  box-shadow: none; }
+  box-shadow: none;
+  padding: 8px; }
 
 .centralContent .figures1,
 .centralContent .figures2,
@@ -8864,6 +8870,8 @@ main {
         transition: all .2s ease-in; }
   .subnavmenu .infoEntry {
     line-height: 45px; }
+    .subnavmenu .infoEntry a {
+      margin-right: 5px; }
     .subnavmenu .infoEntry:hover {
       cursor: default; }
       .subnavmenu .infoEntry:hover .info {
@@ -8878,8 +8886,14 @@ main {
   .subnavmenu .icon,
   .subnavmenu .state {
     color: rgba(255, 255, 255, 0.95);
+    display: block;
+    float: left;
     font-weight: 300;
-    text-transform: uppercase; }
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap; }
     .subnavmenu .info span,
     .subnavmenu .icon span,
     .subnavmenu .state span {
@@ -8895,7 +8909,7 @@ main {
   background: #fff;
   border: 1px solid rgba(64, 74, 83, 0.2);
   display: none;
-  margin-top: 10px !important;
+  margin-top: 55px !important;
   min-width: 200px;
   position: absolute;
   z-index: 9999; }

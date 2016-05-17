@@ -949,7 +949,7 @@
 
           $.ajax({
             type: "POST",
-            url: "/_admin/aardvark/query/explain/",
+            url: arangoHelper.databaseUrl("/_admin/aardvark/query/explain/"),
             data: queryData,
             contentType: "application/json",
             processData: false,
@@ -986,7 +986,7 @@
         $("svg#explainOutput").html();
         $.ajax({
           type: "POST",
-          url: "/_api/explain",
+          url: frontendConfig.basePath + "/_api/explain",
           data: this.readQueryData(),
           contentType: "application/json",
           processData: false,
@@ -1019,7 +1019,7 @@
         var cancelRunningQuery = function() {
 
           $.ajax({
-            url: '/_api/job/'+ encodeURIComponent(queryID) + "/cancel",
+            url: arangoHelper.databaseUrl('/_api/job/'+ encodeURIComponent(queryID) + "/cancel"),
             type: 'PUT',
             success: function() {
               window.clearTimeout(self.checkQueryTimer);
@@ -1076,7 +1076,7 @@
         var checkQueryStatus = function() {
           $.ajax({
             type: "PUT",
-            url: "/_api/job/" + encodeURIComponent(queryID),
+            url: arangoHelper.databaseUrl("/_api/job/" + encodeURIComponent(queryID)),
             contentType: "application/json",
             processData: false,
             success: function (data, textStatus, xhr) {
@@ -1120,7 +1120,7 @@
         if (queryData) {
           $.ajax({
             type: "POST",
-            url: "/_api/cursor",
+            url: arangoHelper.databaseUrl("/_api/cursor"),
             headers: {
               'x-arango-async': 'store' 
             },

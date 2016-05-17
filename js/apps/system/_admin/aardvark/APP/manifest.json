@@ -42,8 +42,8 @@
 
   "files": {
     "/index.html": {
-      "path": "frontend/build/index-min.html",
-      "gzip": true
+      "path": "frontend/build/index.html",
+      "gzip": false
     },
     "/css/sass.css": {
       "path": "frontend/build/style-minified.css",
@@ -62,11 +62,11 @@
       "gzip": true
     },
     "/app.js": {
-      "path": "frontend/build/app.min.js",
+      "path": "frontend/build/app.js",
       "gzip": true
     },
     "/libs.js": {
-      "path": "frontend/build/libs.min.js",
+      "path": "frontend/build/libs.js",
       "gzip": true
     },
     "/favicon.ico": {

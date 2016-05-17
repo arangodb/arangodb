@@ -1,8 +1,7 @@
 /*jshint browser: true */
-/*global SwaggerUi, $, hljs*/
+/*global SwaggerUi, $, hljs, arangoHelper */
 (function() {
   "use strict";
-  var internal = require("internal");
   var query = window.location.search.substring(1);
   var vars = query.split("&");
   var appUrl = "";
@@ -24,7 +23,7 @@
     $("#swagger-ui-container").append(div);
     return;
   }
-  var url = internal.arango.databasePrefix("/_admin/aardvark/foxxes/billboard?mount=" + appUrl);
+  var url = arangoHelper.databaseUrl("/_admin/aardvark/foxxes/billboard?mount=" + appUrl);
   var swaggerUi = new SwaggerUi({
     discoveryUrl: url,
     apiKey: false,

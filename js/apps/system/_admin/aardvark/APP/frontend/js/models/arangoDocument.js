@@ -4,7 +4,7 @@ window.arangoDocumentModel = Backbone.Model.extend({
   initialize: function () {
     'use strict';
   },
-  urlRoot: "/_api/document",
+  urlRoot: arangoHelper.databaseUrl("/_api/document"),
   defaults: {
     _id: "",
     _rev: "",

@@ -5,7 +5,7 @@
   "use strict";
 
   window.arangoCollections = Backbone.Collection.extend({
-      url: '/_api/collection',
+      url: arangoHelper.databaseUrl('/_api/collection'),
 
       model: arangoCollectionModel,
 
@@ -171,7 +171,7 @@
         $.ajax({
           cache: false,
           type: "POST",
-          url: "/_api/collection",
+          url: arangoHelper.databaseUrl("/_api/collection"),
           data: JSON.stringify(data),
           contentType: "application/json",
           processData: false,

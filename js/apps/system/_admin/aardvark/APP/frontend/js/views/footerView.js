@@ -143,7 +143,7 @@
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/version",
+        url: arangoHelper.databaseUrl("/_api/version"),
         contentType: "application/json",
         processData: false,
         async: true,
@@ -173,12 +173,12 @@
           }
         }
       });
-
+      
       if (! self.system.hasOwnProperty('database')) {
         $.ajax({
           type: "GET",
           cache: false,
-          url: "/_api/database/current",
+          url: arangoHelper.databaseUrl("/_api/database/current?wurst=1"),
           contentType: "application/json",
           processData: false,
           async: true,
@@ -195,7 +195,7 @@
                 self.render();
               }
             }, 50);
-          }
+          },
         });
       }
     },

@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint strict: false, unused: false */
-/*global window, Backbone, $, window */
+/*global window, Backbone, $, window, arangoHelper */
 
 window.ArangoReplication = Backbone.Collection.extend({
   model: window.Replication,
@@ -11,7 +11,7 @@ window.ArangoReplication = Backbone.Collection.extend({
     $.ajax({
       type: "GET",
       cache: false,
-      url: "/_api/replication/logger-state",
+      url: arangoHelper.databaseUrl("/_api/replication/logger-state"),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -26,7 +26,7 @@ window.ArangoReplication = Backbone.Collection.extend({
     $.ajax({
       type: "GET",
       cache: false,
-      url: "/_api/replication/applier-state",
+      url: arangoHelper.databaseUrl("/_api/replication/applier-state"),
       contentType: "application/json",
       processData: false,
       success: function(data) {

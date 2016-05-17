@@ -16,7 +16,7 @@ window.arangoDocument = Backbone.Collection.extend({
       cache: false,
       type: 'DELETE',
       contentType: "application/json",
-      url: "/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
+      url: arangoHelper.databaseUrl("/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid)),
       success: function () {
         callback(false);
       },
@@ -49,7 +49,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "POST",
-      url: "/_api/document?collection=" + encodeURIComponent(collectionID),
+      url: arangoHelper.databaseUrl("/_api/document?collection=" + encodeURIComponent(collectionID)),
       data: newEdge,
       contentType: "application/json",
       processData: false,
@@ -76,7 +76,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "POST",
-      url: "/_api/document?collection=" + encodeURIComponent(collectionID),
+      url: arangoHelper.databaseUrl("/_api/document?collection=" + encodeURIComponent(collectionID)),
       data: newDocument,
       contentType: "application/json",
       processData: false,
@@ -94,7 +94,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "GET",
-      url: "/_api/collection/" + identifier + "?" + arangoHelper.getRandomToken(),
+      url: arangoHelper.databaseUrl("/_api/collection/" + identifier + "?" + arangoHelper.getRandomToken()),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -115,7 +115,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "GET",
-      url: "/_api/document/" + encodeURIComponent(colid) +"/"+ encodeURIComponent(docid),
+      url: arangoHelper.databaseUrl("/_api/document/" + encodeURIComponent(colid) +"/"+ encodeURIComponent(docid)),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -131,7 +131,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "PUT",
-      url: "/_api/edge/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
+      url: arangoHelper.databaseUrl("/_api/edge/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid)),
       data: model,
       contentType: "application/json",
       processData: false,
@@ -147,7 +147,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "PUT",
-      url: "/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
+      url: arangoHelper.databaseUrl("/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid)),
       data: model,
       contentType: "application/json",
       processData: false,
