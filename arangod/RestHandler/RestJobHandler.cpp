@@ -239,7 +239,7 @@ void RestJobHandler::getJobByType(std::string const& type) {
 
   try {
     VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Array));
+    result.openArray();
     size_t const n = ids.size();
     for (size_t i = 0; i < n; ++i) {
       result.add(VPackValue(std::to_string(ids[i])));

@@ -43,8 +43,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
       _outRegNew(ExecutionNode::MaxRegisterId),
       _collection(ep->_collection),
       _isDBServer(false),
-      _usesDefaultSharding(true),
-      _buffer(TRI_UNKNOWN_MEM_ZONE) {
+      _usesDefaultSharding(true) {
 
   _trx->orderDitch(_collection->cid());
 

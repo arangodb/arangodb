@@ -177,6 +177,7 @@ AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
   }
 
   AstNode* node = createNode(NODE_TYPE_FOR);
+  node->reserve(2);
 
   AstNode* variable =
       createNodeVariable(variableName, nameLength, isUserDefinedVariable);
@@ -195,6 +196,7 @@ AstNode* Ast::createNodeLet(char const* variableName, size_t nameLength,
   }
 
   AstNode* node = createNode(NODE_TYPE_LET);
+  node->reserve(2);
 
   AstNode* variable =
       createNodeVariable(variableName, nameLength, isUserDefinedVariable);
@@ -212,6 +214,8 @@ AstNode* Ast::createNodeLet(AstNode const* variable,
   }
 
   AstNode* node = createNode(NODE_TYPE_LET);
+  node->reserve(2);
+
   node->addMember(variable);
   node->addMember(expression);
 
@@ -227,6 +231,7 @@ AstNode* Ast::createNodeLet(char const* variableName, size_t nameLength,
   }
 
   AstNode* node = createNode(NODE_TYPE_LET);
+  node->reserve(3);
 
   AstNode* variable = createNodeVariable(variableName, nameLength, true);
   node->addMember(variable);
@@ -268,6 +273,7 @@ AstNode* Ast::createNodeRemove(AstNode const* expression,
                                AstNode const* collection,
                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_REMOVE);
+  node->reserve(4);
 
   if (options == nullptr) {
     // no options given. now use default options
@@ -288,6 +294,7 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
                                AstNode const* collection,
                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_INSERT);
+  node->reserve(4);
 
   if (options == nullptr) {
     // no options given. now use default options
@@ -309,6 +316,7 @@ AstNode* Ast::createNodeUpdate(AstNode const* keyExpression,
                                AstNode const* collection,
                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_UPDATE);
+  node->reserve(6);
 
   if (options == nullptr) {
     // no options given. now use default options
@@ -339,6 +347,7 @@ AstNode* Ast::createNodeReplace(AstNode const* keyExpression,
                                 AstNode const* collection,
                                 AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_REPLACE);
+  node->reserve(6);
 
   if (options == nullptr) {
     // no options given. now use default options
@@ -370,6 +379,7 @@ AstNode* Ast::createNodeUpsert(AstNodeType type, AstNode const* docVariable,
                                AstNode const* collection,
                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_UPSERT);
+  node->reserve(7);
 
   node->setIntValue(static_cast<int64_t>(type));
 
@@ -407,6 +417,7 @@ AstNode* Ast::createNodeCollect(AstNode const* groups,
                                 AstNode const* keepVariables,
                                 AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_COLLECT);
+  node->reserve(6);
 
   if (options == nullptr) {
     // no options given. now use default options
@@ -433,6 +444,7 @@ AstNode* Ast::createNodeCollectCount(AstNode const* list, char const* name,
                                      size_t nameLength,
                                      AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_COLLECT_COUNT);
+  node->reserve(2);
 
   if (options == nullptr) {
     // no options given. now use default options
@@ -460,6 +472,7 @@ AstNode* Ast::createNodeSort(AstNode const* list) {
 AstNode* Ast::createNodeSortElement(AstNode const* expression,
                                     AstNode const* ascending) {
   AstNode* node = createNode(NODE_TYPE_SORT_ELEMENT);
+  node->reserve(2);
   node->addMember(expression);
   node->addMember(ascending);
 
@@ -469,6 +482,7 @@ AstNode* Ast::createNodeSortElement(AstNode const* expression,
 /// @brief create an AST limit node
 AstNode* Ast::createNodeLimit(AstNode const* offset, AstNode const* count) {
   AstNode* node = createNode(NODE_TYPE_LIMIT);
+  node->reserve(2);
   node->addMember(offset);
   node->addMember(count);
 
@@ -483,6 +497,7 @@ AstNode* Ast::createNodeAssign(char const* variableName, size_t nameLength,
   }
 
   AstNode* node = createNode(NODE_TYPE_ASSIGN);
+  node->reserve(2);
   AstNode* variable = createNodeVariable(variableName, nameLength, true);
   node->addMember(variable);
   node->addMember(expression);
@@ -630,6 +645,7 @@ AstNode* Ast::createNodeUnaryOperator(AstNodeType type,
 AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
                                        AstNode const* rhs) {
   AstNode* node = createNode(type);
+  node->reserve(2);
   node->addMember(lhs);
   node->addMember(rhs);
 
@@ -657,6 +673,7 @@ AstNode* Ast::createNodeTernaryOperator(AstNode const* condition,
                                         AstNode const* truePart,
                                         AstNode const* falsePart) {
   AstNode* node = createNode(NODE_TYPE_OPERATOR_TERNARY);
+  node->reserve(3);
   node->addMember(condition);
   node->addMember(truePart);
   node->addMember(falsePart);
@@ -683,6 +700,7 @@ AstNode* Ast::createNodeAttributeAccess(AstNode const* accessed,
 AstNode* Ast::createNodeBoundAttributeAccess(AstNode const* accessed,
                                              AstNode const* parameter) {
   AstNode* node = createNode(NODE_TYPE_BOUND_ATTRIBUTE_ACCESS);
+  node->reserve(2);
   node->setStringValue(parameter->getStringValue(),
                        parameter->getStringLength());
   node->addMember(accessed);
@@ -695,6 +713,7 @@ AstNode* Ast::createNodeBoundAttributeAccess(AstNode const* accessed,
 AstNode* Ast::createNodeIndexedAccess(AstNode const* accessed,
                                       AstNode const* indexValue) {
   AstNode* node = createNode(NODE_TYPE_INDEXED_ACCESS);
+  node->reserve(2);
   node->addMember(accessed);
   node->addMember(indexValue);
 
@@ -705,6 +724,7 @@ AstNode* Ast::createNodeIndexedAccess(AstNode const* accessed,
 AstNode* Ast::createNodeArrayLimit(AstNode const* offset,
                                    AstNode const* count) {
   AstNode* node = createNode(NODE_TYPE_ARRAY_LIMIT);
+  node->reserve(2);
 
   if (offset == nullptr) {
     offset = createNodeValueInt(0);
@@ -721,6 +741,7 @@ AstNode* Ast::createNodeExpansion(int64_t levels, AstNode const* iterator,
                                   AstNode const* filter, AstNode const* limit,
                                   AstNode const* projection) {
   AstNode* node = createNode(NODE_TYPE_EXPANSION);
+  node->reserve(5);
   node->setIntValue(levels);
 
   node->addMember(iterator);
@@ -758,6 +779,7 @@ AstNode* Ast::createNodeIterator(char const* variableName, size_t nameLength,
   }
 
   AstNode* node = createNode(NODE_TYPE_ITERATOR);
+  node->reserve(2);
 
   AstNode* variable = createNodeVariable(variableName, nameLength, false);
   node->addMember(variable);
@@ -944,6 +966,7 @@ AstNode* Ast::createNodeObjectElement(char const* attributeName,
 AstNode* Ast::createNodeCalculatedObjectElement(AstNode const* attributeName,
                                                 AstNode const* expression) {
   AstNode* node = createNode(NODE_TYPE_CALCULATED_OBJECT_ELEMENT);
+  node->reserve(2);
   node->addMember(attributeName);
   node->addMember(expression);
 
@@ -1000,6 +1023,8 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
 /// @brief create an AST direction node
 AstNode* Ast::createNodeDirection(uint64_t direction, uint64_t steps) {
   AstNode* node = createNode(NODE_TYPE_DIRECTION);
+  node->reserve(2);
+
   AstNode* dir = createNodeValueInt(direction);
   AstNode* step = createNodeValueInt(steps);
   node->addMember(dir);
@@ -1011,6 +1036,7 @@ AstNode* Ast::createNodeDirection(uint64_t direction, uint64_t steps) {
 
 AstNode* Ast::createNodeDirection(uint64_t direction, AstNode const* steps) {
   AstNode* node = createNode(NODE_TYPE_DIRECTION);
+  node->reserve(2);
   AstNode* dir = createNodeValueInt(direction);
 
   node->addMember(dir);
@@ -1022,6 +1048,7 @@ AstNode* Ast::createNodeDirection(uint64_t direction, AstNode const* steps) {
 
 AstNode* Ast::createNodeCollectionDirection(uint64_t direction, AstNode const* collection) {
   AstNode* node = createNode(NODE_TYPE_DIRECTION);
+  node->reserve(2);
   AstNode* dir = createNodeValueInt(direction);
 
   node->addMember(dir);
@@ -1040,6 +1067,7 @@ AstNode* Ast::createNodeTraversal(char const* vertexVarName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   AstNode* node = createNode(NODE_TYPE_TRAVERSAL);
+  node->reserve(3);
 
   node->addMember(direction);
   node->addMember(start);
@@ -1160,6 +1188,7 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName,
 /// @brief create an AST range node
 AstNode* Ast::createNodeRange(AstNode const* start, AstNode const* end) {
   AstNode* node = createNode(NODE_TYPE_RANGE);
+  node->reserve(2);
   node->addMember(start);
   node->addMember(end);
 
@@ -2821,13 +2850,12 @@ std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name) {
   }
 
   std::string functionName(upperName);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, upperName);
 
   if (functionName.find(':') == std::string::npos) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, upperName);
     // prepend default namespace for internal functions
     return std::make_pair(functionName, true);
   }
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, upperName);
 
   // user-defined function
   return std::make_pair(functionName, false);

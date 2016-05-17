@@ -2,7 +2,7 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,42 +18,45 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_APPENDER_FILE_H
-#define ARANGODB_LOGGER_LOG_APPENDER_FILE_H 1
+#ifndef ARANGODB_BASICS_STRING_HEAP_H
+#define ARANGODB_BASICS_STRING_HEAP_H 1
 
-#include "Logger/LogAppender.h"
+#include "Basics/Common.h"
+#include "Basics/CharLengthPair.h"
 
 namespace arangodb {
-class LogAppenderFile : public LogAppender {
+
+class StringHeap {
  public:
-  static void reopen();
-  static void close();
+  StringHeap(StringHeap const&) = delete;
+  StringHeap& operator=(StringHeap const&) = delete;
 
- public:
-  LogAppenderFile(std::string const& filename, std::string const& filter);
-  ~LogAppenderFile();
+  explicit StringHeap(size_t blockSize);
 
-  bool logMessage(LogLevel, std::string const& message,
-                  size_t offset) override final;
+  ~StringHeap();
 
-  std::string details() override final;
+  /// @brief register a string
+  CharLengthPair registerString(char const* ptr, size_t length);
 
  private:
-  void writeLogFile(int, char const*, ssize_t);
+  /// @brief allocate a new block of memory
+  void allocateBlock();
 
  private:
-  static std::vector<std::pair<int, std::string>> _fds;
+  /// @brief already allocated string blocks
+  std::vector<char*> _blocks;
 
- private:
-  ssize_t _pos;
+  /// @brief size of each block
+  size_t const _blockSize;
 
-  /// @brief a reusable buffer for log messages
-  char* _buffer;
-  /// @brief allocation size of the buffer
-  size_t _bufferSize;
+  /// @brief offset into current block
+  char* _current;
+
+  /// @brief end of current block
+  char* _end;
 };
 }
 

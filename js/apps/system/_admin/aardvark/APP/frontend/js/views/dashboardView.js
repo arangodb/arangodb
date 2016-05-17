@@ -632,7 +632,13 @@
 
       $.ajax(
         url + urlParams,
-        {async: true}
+        { 
+          async: true,
+          xhrFields: {
+            withCredentials: true
+          },
+          crossDomain: true
+        }
       ).done(
         function (d) {
           if (d.times.length > 0) {
@@ -646,6 +652,9 @@
             callback(d.enabled, modalView);
           }
           self.updateCharts();
+      }).error(function(e) {
+        console.log("stat fetch req error");
+        console.log(e);
       });
 
       this.getReplicationStatistics();
@@ -950,9 +959,16 @@
 
       if (!enabled) {
         $(this.el).html('');
+        if (this.server) {
+          $(this.el).append(
+            '<div style="color: red">Server statistics (' + this.server + ') are disabled.</div>'
+          );
+        }
+        else {
           $(this.el).append(
             '<div style="color: red">Server statistics are disabled.</div>'
           );
+        }
         return;
       }
 

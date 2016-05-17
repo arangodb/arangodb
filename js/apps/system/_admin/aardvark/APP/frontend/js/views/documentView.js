@@ -330,8 +330,9 @@
 
     breadcrumb: function () {
       var name = window.location.hash.split("/");
+      console.log(name);
       $('#subNavigationBar .breadcrumb').html(
-        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1].toLowerCase() + '</a>' + 
+        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1] + '</a>' + 
         '<i class="fa fa-chevron-right"></i>' +
         'Document: ' + name[2]
       );

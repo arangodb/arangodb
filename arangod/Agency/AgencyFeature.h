@@ -52,6 +52,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   bool _supervision;
   bool _waitForSync;
   double _supervisionFrequency;
+  uint64_t _compactionStepSize;
 
  public:
   consensus::Agent* agent() const { return _agent.get(); }

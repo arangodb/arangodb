@@ -157,6 +157,33 @@ function agencyTestSuite () {
       assertEqual(res.statusCode, 412);
       res = writeAgency([[{"/a/b/c":{"op":"set","new":14}},{"/a":{"old":{"b":{"c":13}}}}]]);
       assertEqual(res.statusCode, 200);
+      // multiple preconditions
+      res = writeAgency([[{"/a":1,"/b":true,"/c":"c"},{"/a":{"oldEmpty":false}}]]);
+      assertEqual(readAndCheck([["/a","/b","c"]]), [{a:1,b:true,c:"c"}]);
+      res = writeAgency([[{"/a":2},{"/a":{"oldEmpty":false},"/b":{"oldEmpty":true}}]]);
+      assertEqual(res.statusCode, 412);
+      assertEqual(readAndCheck([["/a"]]), [{a:1}]);
+      res = writeAgency([[{"/a":2},{"/a":{"oldEmpty":true},"/b":{"oldEmpty":false}}]]);
+      assertEqual(res.statusCode, 412);
+      assertEqual(readAndCheck([["/a"]]), [{a:1}]);
+      res = writeAgency([[{"/a":2},{"/a":{"oldEmpty":false},"/b":{"oldEmpty":false},"/c":{"oldEmpty":true}}]]);
+      assertEqual(res.statusCode, 412);
+      assertEqual(readAndCheck([["/a"]]), [{a:1}]);
+      res = writeAgency([[{"/a":2},{"/a":{"oldEmpty":false},"/b":{"oldEmpty":false},"/c":{"oldEmpty":false}}]]);
+      assertEqual(res.statusCode, 200);
+      assertEqual(readAndCheck([["/a"]]), [{a:2}]);
+      res = writeAgency([[{"/a":3},{"/a":{"old":2},"/b":{"oldEmpty":false},"/c":{"oldEmpty":false}}]]);
+      assertEqual(res.statusCode, 200);
+      assertEqual(readAndCheck([["/a"]]), [{a:3}]);
+      res = writeAgency([[{"/a":2},{"/a":{"old":2},"/b":{"oldEmpty":false},"/c":{"oldEmpty":false}}]]);
+      assertEqual(res.statusCode, 412);
+      assertEqual(readAndCheck([["/a"]]), [{a:3}]);
+      res = writeAgency([[{"/a":2},{"/a":{"old":3},"/b":{"oldEmpty":false},"/c":{"isArray":true}}]]);
+      assertEqual(res.statusCode, 412);
+      assertEqual(readAndCheck([["/a"]]), [{a:3}]);
+      res = writeAgency([[{"/a":2},{"/a":{"old":3},"/b":{"oldEmpty":false},"/c":{"isArray":false}}]]);
+      assertEqual(res.statusCode, 200);
+      assertEqual(readAndCheck([["/a"]]), [{a:2}]);
     },
 
 

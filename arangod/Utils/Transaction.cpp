@@ -2754,7 +2754,7 @@ std::pair<bool, bool> Transaction::getIndexForSortCondition(
 /// calling this method
 //////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
+OperationCursor* Transaction::indexScanForCondition(
     std::string const& collectionName, IndexHandle const& indexId,
     arangodb::aql::Ast* ast, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, uint64_t limit, uint64_t batchSize,
@@ -2767,7 +2767,7 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
 
   if (limit == 0) {
     // nothing to do
-    return std::make_shared<OperationCursor>(TRI_ERROR_NO_ERROR);
+    return new OperationCursor(TRI_ERROR_NO_ERROR);
   }
 
   // Now collect the Iterator
@@ -2783,10 +2783,10 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
 
   if (iterator == nullptr) {
     // We could not create an ITERATOR and it did not throw an error itself
-    return std::make_shared<OperationCursor>(TRI_ERROR_OUT_OF_MEMORY);
+    return new OperationCursor(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  return std::make_shared<OperationCursor>(
+  return new OperationCursor(
       transactionContext()->orderCustomTypeHandler(), iterator.release(), limit,
       batchSize);
 }
@@ -2865,7 +2865,6 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
 
       // Now collect the Iterator
       IndexIteratorContext ctxt(_vocbase, resolver());
-      // iterator.reset(idx->iteratorForSlice(this, &ctxt, expander.slice(), reverse));
       iterator.reset(idx->iteratorForSlice(this, &ctxt, search, reverse));
     }
   }
@@ -3339,6 +3338,32 @@ void Transaction::freeTransaction() {
     this->_transactionContext->storeTransactionResult(id, hasFailedOperations);
     this->_transactionContext->unregisterTransaction();
   }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, leases a StringBuffer
+//////////////////////////////////////////////////////////////////////////////
+
+StringBufferLeaser::StringBufferLeaser(arangodb::Transaction* trx) 
+      : _transactionContext(trx->transactionContext().get()), 
+        _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, leases a StringBuffer
+//////////////////////////////////////////////////////////////////////////////
+
+StringBufferLeaser::StringBufferLeaser(arangodb::TransactionContext* transactionContext) 
+      : _transactionContext(transactionContext), 
+        _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief destructor, returns a StringBuffer
+//////////////////////////////////////////////////////////////////////////////
+
+StringBufferLeaser::~StringBufferLeaser() { 
+  _transactionContext->returnStringBuffer(_stringBuffer);
 }
   
 //////////////////////////////////////////////////////////////////////////////

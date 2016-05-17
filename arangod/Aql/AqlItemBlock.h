@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
 #include "Aql/types.h"

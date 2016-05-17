@@ -1,6 +1,6 @@
 /*jshint strict: false, unused: false, bitwise: false, esnext: true */
 /*global COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
-/*global CPP_SHORTEST_PATH, CPP_NEIGHBORS, Set */
+/*global CPP_SHORTEST_PATH, CPP_NEIGHBORS, Set, OBJECT_HASH */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Aql, internal query functions
@@ -2517,6 +2517,39 @@ function AQL_SHA1 (value) {
   'use strict';
 
   return INTERNAL.sha1(AQL_TO_STRING(value));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a hash value for an object
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_HASH (value) {
+  'use strict';
+
+  return OBJECT_HASH(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the typename for an object
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_TYPENAME (value) {
+  'use strict';
+
+  switch (TYPEWEIGHT(value)) {
+    case TYPEWEIGHT_BOOL:
+      return "bool";
+    case TYPEWEIGHT_NUMBER:
+      return "number";
+    case TYPEWEIGHT_STRING:
+      return "string";
+    case TYPEWEIGHT_ARRAY:
+      return "array";
+    case TYPEWEIGHT_OBJECT:
+      return "object";
+  }
+    
+  return "null";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8133,6 +8166,8 @@ exports.AQL_SPLIT = AQL_SPLIT;
 exports.AQL_SUBSTITUTE = AQL_SUBSTITUTE;
 exports.AQL_MD5 = AQL_MD5;
 exports.AQL_SHA1 = AQL_SHA1;
+exports.AQL_HASH = AQL_HASH;
+exports.AQL_TYPENAME = AQL_TYPENAME;
 exports.AQL_RANDOM_TOKEN = AQL_RANDOM_TOKEN;
 exports.AQL_FIND_FIRST = AQL_FIND_FIRST;
 exports.AQL_FIND_LAST = AQL_FIND_LAST;
@@ -8268,6 +8303,9 @@ exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 
 exports.reload = reloadUserFunctions;
 exports.clearCaches = clearCaches;
+exports.lookupFunction = GET_USERFUNCTION;
+exports.warnFromFunction = WARN;
+exports.fixValue = FIX_VALUE;
 
 // initialize the query engine
 exports.clearCaches();

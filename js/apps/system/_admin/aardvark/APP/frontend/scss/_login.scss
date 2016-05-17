@@ -7,6 +7,14 @@
   width: 100%;
   z-index: 9999;
 
+  #databases {
+    height: 140px;
+
+    #logout {
+      margin-top: 20px;
+    }
+  }
+
   .resizecontainer {
     position: relative;
     top: 0;
@@ -17,8 +25,6 @@
       margin-top: 9px;
     }
   }
-
-
 }
 
 .login-window {

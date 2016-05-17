@@ -32,7 +32,7 @@ cat ${OUTPUT} \
   > ${OUTPUT}.tmp
 
 # give some information
-diff -u ${OUTPUT} ${OUTPUT}.tmp
+# diff -u ${OUTPUT} ${OUTPUT}.tmp
 
 # and move the files to the final destination
 mv ${OUTPUT}.tmp ${OUTPUT} || exit 1

@@ -24,16 +24,6 @@ the following values:
 @RESTQUERYPARAM{collection,string,required}
 The collection name.
 
-@RESTQUERYPARAM{createCollection,boolean,optional}
-If this parameter has a value of `true` or `yes`, then the collection is
-created if it does not yet exist. Other values will be ignored so the
-collection must be present for the operation to succeed.
-
-@RESTQUERYPARAM{createCollectionType,string,optional}
-If this parameter has a value of `document` or `edge`, it will determine
-the type of collection that is going to be created when the `createCollection`
-option is set to `true`. The default value is `document`.
-
 @RESTQUERYPARAM{fromPrefix,string,optional}
 An optional prefix for the values in `_from` attributes. If specified, the
 value is automatically prepended to each `_from` input value. This allows
@@ -211,33 +201,6 @@ Using the auto type detection
     ];
 
     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=auto", body);
-
-    assert(response.code === 201);
-    var r = JSON.parse(response.body);
-    assert(r.created === 3);
-    assert(r.errors === 0);
-    assert(r.empty === 0);
-
-    logJsonResponse(response);
-    db._drop(cn);
-@END_EXAMPLE_ARANGOSH_RUN
-
-Importing documents into a new collection from a JSON array
-
-@EXAMPLE_ARANGOSH_RUN{RestImportJsonCreate}
-    db._flushCache();
-    var cn = "products";
-    db._drop(cn);
-    db._create(cn);
-    db._flushCache();
-
-    var body = [
-      { id: "12553", active: true },
-      { id: "4433", active: false },
-      { id: "55932", count: 4334 },
-    ];
-
-    var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&createCollection=true&type=list", body);
 
     assert(response.code === 201);
     var r = JSON.parse(response.body);

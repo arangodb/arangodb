@@ -422,15 +422,6 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-    
-    testExecutionBlock6 : function () {
-      internal.debugSetFailAt("ExecutionBlock::getOrSkipSomeConcatenate");
-      assertFailingQuery("FOR c IN UnitTestsAhuacatlFailures FILTER c.value >= 40 FILTER c.value <= 9999 LIMIT 50, 5 RETURN c");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
 
     testEnumerateCollectionBlock : function () {
       internal.debugSetFailAt("EnumerateCollectionBlock::moreDocuments");

@@ -320,15 +320,15 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
   }
 
   if (lType == TRI_JSON_STRING) {
-    size_t maxLength =
-        (std::max)(lhs->getStringLength(), rhs->getStringLength());
-
     if (compareUtf8) {
       return TRI_compare_utf8(lhs->getStringValue(), lhs->getStringLength(),
                               rhs->getStringValue(), rhs->getStringLength());
     }
+    
+    size_t const minLength =
+        (std::min)(lhs->getStringLength(), rhs->getStringLength());
 
-    int res = strncmp(lhs->getStringValue(), rhs->getStringValue(), maxLength);
+    int res = memcmp(lhs->getStringValue(), rhs->getStringValue(), minLength);
 
     if (res != 0) {
       return res;
@@ -791,7 +791,8 @@ AstNode::~AstNode() {
 std::string AstNode::getString() const {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT || 
              type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER || 
-             type == NODE_TYPE_COLLECTION || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS);
+             type == NODE_TYPE_COLLECTION || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
+             type == NODE_TYPE_FCALL_USER);
   TRI_ASSERT(value.type == VALUE_TYPE_STRING);
   return std::string(getStringValue(), getStringLength());
 }
@@ -1484,30 +1485,6 @@ AstNode* AstNode::castToNumber(Ast* ast) {
   }
 
   return ast->createNodeValueInt(0);
-}
-
-/// @brief convert the node's value to a string value
-/// this may create a new node or return the node itself if it is already a
-/// string value node
-AstNode* AstNode::castToString(Ast* ast) {
-  TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY ||
-             type == NODE_TYPE_OBJECT);
-
-  if (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_STRING) {
-    // already a string
-    return this;
-  }
-
-  TRI_ASSERT(isConstant());
-
-  // stringify node
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-  stringify(&buffer, false, false);
-
-  char const* value =
-      ast->query()->registerString(buffer.c_str(), buffer.length());
-  TRI_ASSERT(value != nullptr);
-  return ast->createNodeValueString(value, buffer.length());
 }
 
 /// @brief adds a JSON representation of the node to the JSON list specified

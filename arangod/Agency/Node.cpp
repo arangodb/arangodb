@@ -143,6 +143,11 @@ bool Node::operator== (VPackSlice const& rhs) const {
   }
 }
 
+// Comparison with slice
+bool Node::operator!= (VPackSlice const& rhs) const {
+  return !(*this == rhs);
+}
+
 // Remove this node from store
 bool Node::remove () {
   Node& parent = *_parent;

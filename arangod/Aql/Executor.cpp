@@ -120,6 +120,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
                              false, true, true, &Functions::IsObject)},
     {"IS_DATESTRING", Function("IS_DATESTRING", "AQL_IS_DATESTRING", ".", true,
                                true, false, true, true)},
+    {"TYPENAME", Function("TYPENAME", "AQL_TYPENAME", ".", true,
+                               true, false, true, true)},
 
     // type cast functions
     {"TO_NUMBER", Function("TO_NUMBER", "AQL_TO_NUMBER", ".", true, true, false,
@@ -173,6 +175,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
                      &Functions::Md5)},
     {"SHA1", Function("SHA1", "AQL_SHA1", "s", true, true, false, true, true,
                       &Functions::Sha1)},
+    {"HASH", Function("HASH", "AQL_HASH", ".", true, true, false, true, true,
+                      &Functions::Hash)},
     {"RANDOM_TOKEN", Function("RANDOM_TOKEN", "AQL_RANDOM_TOKEN", "n", false,
                               false, true, true, true)},
 
@@ -482,9 +486,6 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
 /// an array / object literal "big" and pulling it out of the expression
 size_t const Executor::DefaultLiteralSizeThreshold = 32;
 
-/// @brief maxmium number of array members created from range accesses
-int64_t const Executor::MaxRangeAccessArraySize = 1024 * 1024 * 32;
-
 /// @brief creates an executor
 Executor::Executor(int64_t literalSizeThreshold)
     : _buffer(nullptr),
@@ -504,6 +505,9 @@ V8Expression* Executor::generateExpression(AstNode const* node) {
   v8::TryCatch tryCatch;
   _constantRegisters.clear();
   detectConstantValues(node, node->type);
+
+  _userFunctions.clear();
+  detectUserFunctions(node);
 
   generateCodeExpression(node);
 
@@ -569,9 +573,9 @@ int Executor::executeExpression(Query* query, AstNode const* node,
     TRI_ASSERT(v8g->_query != nullptr);
 
     // execute the function
-    v8::Handle<v8::Value> args;
+    v8::Handle<v8::Value> args[] = { v8::Object::New(isolate), v8::Object::New(isolate) };
     result = v8::Handle<v8::Function>::Cast(func)
-                 ->Call(v8::Object::New(isolate), 0, &args);
+                 ->Call(v8::Object::New(isolate), 2, args);
 
     v8g->_query = old;
 
@@ -604,6 +608,22 @@ Function const* Executor::getFunctionByName(std::string const& name) {
   return &((*it).second);
 }
 
+/// @brief traverse the expression and note all user-defined functions
+void Executor::detectUserFunctions(AstNode const* node) {
+  if (node == nullptr) {
+    return;
+  }
+
+  if (node->type == NODE_TYPE_FCALL_USER) {
+    _userFunctions.emplace(node->getString(), _userFunctions.size());
+  }
+
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    detectUserFunctions(node->getMemberUnchecked(i));
+  }
+}
+
 /// @brief traverse the expression and note all (big) array/object literals
 void Executor::detectConstantValues(AstNode const* node, AstNodeType previous) {
   if (node == nullptr) {
@@ -614,9 +634,8 @@ void Executor::detectConstantValues(AstNode const* node, AstNodeType previous) {
 
   if (previous != NODE_TYPE_FCALL && previous != NODE_TYPE_FCALL_USER) {
     // FCALL has an ARRAY node as its immediate child
-    // however, we do not want to constify this whole array, but its
-    // individual memb
-    // just its individual members
+    // however, we do not want to constify this whole array, but just its 
+    // individual members
     // otherwise, only the ARRAY node will be marked as constant but not
     // its members. When the code is generated for the function call,
     // the ARRAY node will be ignored because only its individual members
@@ -794,15 +813,45 @@ void Executor::generateCodeExpression(AstNode const* node) {
 
   // write prologue
   // this checks if global variable _AQL is set and populates if it not
+  // the check is only performed if "state.i" (=init) is not yet set
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR(
-      "(function (vars, consts, reset) { if (_AQL === undefined) { _AQL = "
-      "require(\"@arangodb/aql\"); } if (reset) { _AQL.clearCaches(); } "
-      "return "));
+      "(function (vars, state, consts) { "
+      "if (!state.i) { "
+      "if (_AQL === undefined) { "
+      "_AQL = require(\"@arangodb/aql\"); } "
+      "_AQL.clearCaches(); "));
+
+  // lookup all user-defined functions used and store them in variables
+  // "state.f\d+"
+  for (auto const& it : _userFunctions) {
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.f"));
+    _buffer->appendInteger(it.second);
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR(" = _AQL.lookupFunction(\""));
+    _buffer->appendText(it.first);
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\", {}); "));
+  }
+ 
+  // generate specialized functions for UDFs 
+  for (auto const& it : _userFunctions) {
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.e"));
+    _buffer->appendInteger(it.second);
+    // "state.e\d+" executes the user function in a wrapper, converting the 
+    // function result back into the allowed range, and catching any errors
+    // thrown by the function 
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR(" = function(params) { try { return _AQL.fixValue(state.f"));
+    _buffer->appendInteger(it.second);
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR(".apply(null, params)); } catch (err) { _AQL.warnFromFunction(\""));
+    _buffer->appendText(it.first);
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\", require(\"internal\").errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, _AQL.AQL_TO_STRING(err.stack || String(err))); } }; "));
+  }
+   
+  // set "state.i" to true (=initialized) 
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.i = true; } return "));
 
   generateCodeNode(node);
 
   // write epilogue
-  _buffer->appendText(TRI_CHAR_LENGTH_PAIR(";})"));
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("; })"));
 }
 
 /// @brief generates code for a string value
@@ -1166,9 +1215,15 @@ void Executor::generateCodeUserFunctionCall(AstNode const* node) {
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
-  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.FCALL_USER("));
-  generateCodeString(node->getStringValue(), node->getStringLength());
-  _buffer->appendChar(',');
+  auto it = _userFunctions.find(node->getString());
+
+  if (it == _userFunctions.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "user function not found");
+  }
+
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.e"));
+  _buffer->appendInteger((*it).second);
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("("));
 
   generateCodeNode(args);
   _buffer->appendChar(')');
@@ -1407,13 +1462,11 @@ void Executor::generateCodeNode(AstNode const* node) {
 /// @brief create the string buffer
 arangodb::basics::StringBuffer* Executor::initializeBuffer() {
   if (_buffer == nullptr) {
-    _buffer = new arangodb::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+    _buffer = new arangodb::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, 512, false);
 
     if (_buffer == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
-
-    _buffer->reserve(512);
   } else {
     _buffer->clear();
   }

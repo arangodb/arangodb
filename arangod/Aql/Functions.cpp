@@ -884,7 +884,7 @@ AqlValue Functions::IsNull(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isNull(true)));
+  return AqlValue(a.isNull(true));
 }
 
 /// @brief function IS_BOOL
@@ -892,7 +892,7 @@ AqlValue Functions::IsBool(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isBoolean()));
+  return AqlValue(a.isBoolean());
 }
 
 /// @brief function IS_NUMBER
@@ -900,7 +900,7 @@ AqlValue Functions::IsNumber(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isNumber()));
+  return AqlValue(a.isNumber());
 }
 
 /// @brief function IS_STRING
@@ -908,7 +908,7 @@ AqlValue Functions::IsString(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isString()));
+  return AqlValue(a.isString());
 }
 
 /// @brief function IS_ARRAY
@@ -916,7 +916,7 @@ AqlValue Functions::IsArray(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isArray()));
+  return AqlValue(a.isArray());
 }
 
 /// @brief function IS_OBJECT
@@ -924,7 +924,31 @@ AqlValue Functions::IsObject(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isObject()));
+  return AqlValue(a.isObject());
+}
+
+/// @brief function TYPENAME
+AqlValue Functions::Typename(arangodb::aql::Query* query,
+                             arangodb::AqlTransaction* trx,
+                             VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (value.isObject()) {
+    return AqlValue(TRI_CHAR_LENGTH_PAIR("object"));
+  }
+  if (value.isArray()) {
+    return AqlValue(TRI_CHAR_LENGTH_PAIR("array"));
+  }
+  if (value.isString()) {
+    return AqlValue(TRI_CHAR_LENGTH_PAIR("string"));
+  }
+  if (value.isNumber()) {
+    return AqlValue(TRI_CHAR_LENGTH_PAIR("number"));
+  }
+  if (value.isBoolean()) {
+    return AqlValue(TRI_CHAR_LENGTH_PAIR("bool"));
+  }
+  return AqlValue(TRI_CHAR_LENGTH_PAIR("null"));
 }
 
 /// @brief function TO_NUMBER
@@ -950,17 +974,16 @@ AqlValue Functions::ToString(arangodb::aql::Query* query,
                              VPackFunctionParameters const& parameters) {
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24, false);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+  StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   AppendAsString(trx, adapter, value);
   TransactionBuilderLeaser builder(trx);
   try {
-    builder->add(VPackValuePair(buffer.begin(), buffer.length(), VPackValueType::String));
+    return AqlValue(buffer->begin(), buffer->length());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-  return AqlValue(builder.get());
 }
 
 /// @brief function TO_BOOL
@@ -968,7 +991,7 @@ AqlValue Functions::ToBool(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.toBoolean()));
+  return AqlValue(a.toBoolean());
 }
 
 /// @brief function TO_ARRAY
@@ -1124,8 +1147,8 @@ AqlValue Functions::Nth(arangodb::aql::Query* query,
 AqlValue Functions::Concat(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters) {
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24, false);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+  StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   size_t const n = parameters.size();
 
@@ -1153,13 +1176,9 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
     }
   }
 
-  // steal the StringBuffer's char* pointer so we can avoid copying data around
-  // multiple times
-  size_t length = buffer.length();
+  size_t length = buffer->length();
   try {
-    TransactionBuilderLeaser builder(trx);
-    builder->add(VPackValuePair(buffer.c_str(), length, VPackValueType::String));
-    return AqlValue(*builder.get());
+    return AqlValue(buffer->c_str(), length);
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -1171,17 +1190,17 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
                          VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "LIKE", 2, 3);
   bool const caseInsensitive = GetBooleanParameter(trx, parameters, 2, false);
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24, false);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+  StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   // build pattern from parameter #1
   AqlValue regex = ExtractFunctionParameterValue(trx, parameters, 1);
   AppendAsString(trx, adapter, regex);
 
-  size_t const length = buffer.length();
+  size_t const length = buffer->length();
 
   std::string const pattern =
-      BuildRegexPattern(buffer.c_str(), length, caseInsensitive);
+      BuildRegexPattern(buffer->c_str(), length, caseInsensitive);
   RegexMatcher* matcher = nullptr;
 
   if (RegexCache != nullptr) {
@@ -1217,13 +1236,13 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
   }
 
   // extract value
-  buffer.clear();
+  buffer->clear();
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   AppendAsString(trx, adapter, value);
 
   bool error = false;
   bool const result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.matches(
-      matcher, buffer.c_str(), buffer.length(), error);
+      matcher, buffer->c_str(), buffer->length(), error);
 
   if (error) {
     // compiling regular expression failed
@@ -1231,9 +1250,7 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   } 
   
-  TransactionBuilderLeaser builder(trx);
-  builder->add(VPackValue(result));
-  return AqlValue(builder.get());
+  return AqlValue(result);
 }
 
 /// @brief function PASSTHRU
@@ -1359,10 +1376,10 @@ AqlValue Functions::Has(arangodb::aql::Query* query,
   AqlValue name = ExtractFunctionParameterValue(trx, parameters, 1);
   std::string p;
   if (!name.isString()) {
-    arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-    arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+    StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
     AppendAsString(trx, adapter, name);
-    p = std::string(buffer.c_str(), buffer.length());
+    p = std::string(buffer->c_str(), buffer->length());
   } else {
     p = name.slice().copyString();
   }
@@ -1620,8 +1637,8 @@ AqlValue Functions::Md5(arangodb::aql::Query* query,
                         arangodb::AqlTransaction* trx,
                         VPackFunctionParameters const& parameters) {
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+  StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   AppendAsString(trx, adapter, value);
 
@@ -1630,7 +1647,7 @@ AqlValue Functions::Md5(arangodb::aql::Query* query,
   char* p = &hash[0];
   size_t length;
 
-  arangodb::rest::SslInterface::sslMD5(buffer.c_str(), buffer.length(), p,
+  arangodb::rest::SslInterface::sslMD5(buffer->c_str(), buffer->length(), p,
                                        length);
 
   // as hex
@@ -1639,9 +1656,7 @@ AqlValue Functions::Md5(arangodb::aql::Query* query,
 
   arangodb::rest::SslInterface::sslHEX(hash, 16, p, length);
 
-  TransactionBuilderLeaser builder(trx);
-  builder->add(VPackValue(std::string(hex, 32)));
-  return AqlValue(builder.get());
+  return AqlValue(std::string(hex, 32));
 }
 
 /// @brief function SHA1
@@ -1649,9 +1664,8 @@ AqlValue Functions::Sha1(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          VPackFunctionParameters const& parameters) {
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
-
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+  StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   AppendAsString(trx, adapter, value);
 
@@ -1660,7 +1674,7 @@ AqlValue Functions::Sha1(arangodb::aql::Query* query,
   char* p = &hash[0];
   size_t length;
 
-  arangodb::rest::SslInterface::sslSHA1(buffer.c_str(), buffer.length(), p,
+  arangodb::rest::SslInterface::sslSHA1(buffer->c_str(), buffer->length(), p,
                                         length);
 
   // as hex
@@ -1669,8 +1683,21 @@ AqlValue Functions::Sha1(arangodb::aql::Query* query,
 
   arangodb::rest::SslInterface::sslHEX(hash, 20, p, length);
 
+  return AqlValue(std::string(hex, 40));
+}
+
+/// @brief function HASH
+AqlValue Functions::Hash(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  // throw away the top bytes so the hash value can safely be used
+  // without precision loss when storing in JavaScript etc.
+  uint64_t hash = value.hash(trx) & 0x0007ffffffffffffULL;
+
   TransactionBuilderLeaser builder(trx);
-  builder->add(VPackValue(std::string(hex, 40)));
+  builder->add(VPackValue(hash));
   return AqlValue(builder.get());
 }
 
@@ -2289,12 +2316,12 @@ AqlValue Functions::Zip(arangodb::aql::Query* query,
     builder->openObject();
 
     // Buffer will temporarily hold the keys
-    arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24, false);
-    arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+    StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
     for (VPackValueLength i = 0; i < n; ++i) {
-      buffer.reset();
+      buffer->reset();
       AppendAsString(adapter, keysSlice.at(i));
-      builder->add(std::string(buffer.c_str(), buffer.length()), valuesSlice.at(i));
+      builder->add(std::string(buffer->c_str(), buffer->length()), valuesSlice.at(i));
     }
     builder->close();
     return AqlValue(builder.get());

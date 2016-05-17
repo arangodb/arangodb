@@ -23,18 +23,16 @@
 
 #include "RestBaseHandler.h"
 
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackDumper.h"
-#include "Basics/VPackStringBufferAdapter.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
-#include "Utils/TransactionContext.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
+#include "Utils/TransactionContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -52,7 +50,6 @@ void RestBaseHandler::handleError(Exception const& ex) {
 
 void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
                                      VPackSlice const& slice) {
-
   createResponse(code);
   writeResult(slice, VPackOptions::Defaults);
 }
@@ -61,9 +58,9 @@ void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
-                                     VPackSlice const& slice,
-                                     std::shared_ptr<TransactionContext> context) {
+void RestBaseHandler::generateResult(
+    GeneralResponse::ResponseCode code, VPackSlice const& slice,
+    std::shared_ptr<TransactionContext> context) {
   createResponse(code);
   writeResult(slice, *(context->getVPackOptions()));
 }
@@ -116,7 +113,8 @@ void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateOOMError() {
-  generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+  generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                TRI_ERROR_OUT_OF_MEMORY);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,43 +122,23 @@ void RestBaseHandler::generateOOMError() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateCanceled() {
-  return generateError(GeneralResponse::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief checks if velocypack is expected as answer
-//////////////////////////////////////////////////////////////////////////////
-
-bool RestBaseHandler::returnVelocypack() const {
-  std::string const& result = _request->header(StaticStrings::Accept);
-  return (std::string::npos != result.find(StaticStrings::MimeTypeVPack));
+  return generateError(GeneralResponse::ResponseCode::GONE,
+                       TRI_ERROR_REQUEST_CANCELED);
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief writes volocypack or json to response
 //////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice, 
+void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice,
                                   VPackOptions const& options) {
-  if (returnVelocypack()) {
-    _response->setContentType(HttpResponse::CONTENT_TYPE_VPACK);
-    _response->body().appendText(slice.startAs<const char>(), static_cast<size_t>(slice.byteSize()));
-    return;
-  }
-
-  // JSON
-
-  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
   try {
-    //arangodb::basics::VelocyPackDumper dumper(&(_response->body()), &options);
-    //dumper.dumpValue(slice);
-    VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-    VPackDumper dumper(&buffer, &options);
-    dumper.dump(slice);
+    _response->fillBody(_request, slice, true, options);
   } catch (std::exception const& ex) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "cannot generate output");
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL, "cannot generate output");
   }
 }

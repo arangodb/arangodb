@@ -115,7 +115,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // extract the filename
   TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, args[0]);
 
-  if (*filename == 0) {
+  if (*filename == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
   }
 

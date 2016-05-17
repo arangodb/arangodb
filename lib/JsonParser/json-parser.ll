@@ -284,7 +284,7 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
       nameLen = yyleng - 2;
 
       // do proper unescaping
-      name = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, nameLen, &outLength);
+      name = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, nameLen, &outLength, true);
       nameLen = outLength;
     }
     else if (c == STRING_CONSTANT_ASCII) {
@@ -421,9 +421,9 @@ static bool ParseValue (yyscan_t scanner, TRI_json_t* result, int c) {
         TRI_InitStringReferenceJson(result, ptr, 0);
       }
       else {
-        // string is not empty, process it
+        // string is not empty, so process it
         size_t outLength;
-        char* ptr = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+        char* ptr = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength, true);
         if (ptr == nullptr) {
           yyextra._message = "out-of-memory";
           return false;

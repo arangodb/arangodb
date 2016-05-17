@@ -94,7 +94,7 @@ static inline size_t Remaining(TRI_string_buffer_t* self) {
 static int Reserve(TRI_string_buffer_t* self, size_t size) {
   if (size > Remaining(self)) {
     ptrdiff_t off = self->_current - self->_buffer;
-    size_t len = static_cast<size_t>(1.25 * (self->_len + size));
+    size_t len = static_cast<size_t>(1.3 * (self->_len + size));
     TRI_ASSERT(len > 0);
 
     char* ptr = static_cast<char*>(

@@ -188,12 +188,12 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
 
     // make the new node a parent of the original calculation node
     calculationNode->addDependency(setter);
-    auto const& oldParents = setter->getParents();
-    TRI_ASSERT(!oldParents.empty());
-    calculationNode->addParent(oldParents[0]);
+    auto oldParent = setter->getFirstParent();
+    TRI_ASSERT(oldParent != nullptr);
+    calculationNode->addParent(oldParent);
 
-    oldParents[0]->removeDependencies();
-    oldParents[0]->addDependency(calculationNode);
+    oldParent->removeDependencies();
+    oldParent->addDependency(calculationNode);
     setter->setParent(calculationNode);
 
     if (setter->getType() == EN::CALCULATION) {
@@ -231,8 +231,7 @@ void arangodb::aql::removeRedundantSortsRule(Optimizer* opt,
   }
 
   std::unordered_set<ExecutionNode*> toUnlink;
-
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, false);
 
   for (auto const& n : nodes) {
     if (toUnlink.find(n) != toUnlink.end()) {
@@ -1011,8 +1010,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
         newPlan->registerNode(sortNode);
 
         TRI_ASSERT(newCollectNode->hasParent());
-        auto const& parents = newCollectNode->getParents();
-        auto parent = parents[0];
+        auto parent = newCollectNode->getFirstParent();
+        TRI_ASSERT(parent != nullptr);
 
         sortNode->addDependency(newCollectNode);
         parent->replaceDependency(newCollectNode, sortNode);
@@ -1367,7 +1366,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
     return;
   }
 
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, false);
   std::unordered_map<VariableId, Variable const*> replacements;
 
   for (auto const& n : nodes) {
@@ -2148,10 +2147,9 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
           // newNodes[lowBound..highBound-1] in newPlan and replace
           // them by the same ones in a different order, given by
           // permTuple[lowBound..highBound-1].
-          auto const& parents = newNodes[lowBound]->getParents();
+          auto parent = newNodes[lowBound]->getFirstParent();
 
-          TRI_ASSERT(parents.size() == 1);
-          auto parent = parents[0];  // needed for insertion later
+          TRI_ASSERT(parent != nullptr);
 
           // Unlink all those nodes:
           for (size_t j = lowBound; j < highBound; j++) {

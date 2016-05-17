@@ -52,7 +52,7 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
     : ApplicationFeature(server, "V8Shell"),
       _startupDirectory("js"),
       _currentModuleDirectory(true),
-      _gcInterval(10),
+      _gcInterval(50),
       _name(name),
       _isolate(nullptr),
       _console(nullptr) {

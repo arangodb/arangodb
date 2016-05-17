@@ -32,12 +32,13 @@ using namespace arangodb::aql;
 
 /// @brief create the accessor
 AttributeAccessor::AttributeAccessor(
-    std::vector<std::string> const& attributeParts, Variable const* variable)
+    std::vector<std::string>&& attributeParts, Variable const* variable)
     : _attributeParts(attributeParts),
       _variable(variable),
       _type(EXTRACT_MULTI) {
 
   TRI_ASSERT(_variable != nullptr);
+  TRI_ASSERT(!_attributeParts.empty());
 
   // determine accessor type
   if (_attributeParts.size() == 1) {

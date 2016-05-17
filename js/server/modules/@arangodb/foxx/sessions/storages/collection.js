@@ -25,6 +25,7 @@
 const assert = require('assert');
 const arangodb = require('@arangodb');
 const NOT_FOUND = arangodb.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
+const UNIQUE_CONSTRAINT = arangodb.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code;
 const db = arangodb.db;
 const aql = arangodb.aql;
 
@@ -95,8 +96,21 @@ module.exports = function collectionStorage(cfg) {
         data: session.data
       };
       if (!session._key) {
-        const meta = collection.save(payload);
-        session._key = meta._key;
+        // generate a new key
+        let crypto = require("@arangodb/crypto");
+        while (true) {
+          payload._key = crypto.sha256(crypto.rand() + "-frontend");
+          try {
+            // test if key is already present in collection
+            const meta = collection.save(payload);
+            session._key = meta._key;
+            break;
+          } catch (e) {
+            if (!e.isArangoError || e.errorNum !== UNIQUE_CONSTRAINT) {
+              throw e;
+            }
+          }
+        }
       } else {
         collection.replace(session._key, payload);
       }

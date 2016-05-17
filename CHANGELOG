@@ -1,6 +1,8 @@
 v3.0.0-alpha4 (2015-05-11)
 --------------------------
 
+* added AQL functions `TYPENAME()` and `HASH()`
+
 * renamed arangob tool to arangobench
 
 * added AQL string comparison operator `LIKE`

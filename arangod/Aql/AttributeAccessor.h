@@ -38,7 +38,7 @@ struct Variable;
 /// @brief AttributeAccessor
 class AttributeAccessor {
  public:
-  AttributeAccessor(std::vector<std::string> const&, Variable const*);
+  AttributeAccessor(std::vector<std::string>&&, Variable const*);
   ~AttributeAccessor() = default;
 
   /// @brief execute the accessor

@@ -38,7 +38,7 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-  
+
 HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
                          char const* header, size_t length,
                          bool allowMethodOverride)
@@ -54,9 +54,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
   }
 }
 
-HttpRequest::~HttpRequest() {
-  delete[] _header;
-}
+HttpRequest::~HttpRequest() { delete[] _header; }
 
 void HttpRequest::parseHeader(size_t length) {
   char* start = _header;
@@ -362,7 +360,8 @@ void HttpRequest::parseHeader(size_t length) {
         }
 
         if (keyBegin < keyEnd) {
-          setHeader(keyBegin, keyEnd - keyBegin, valueBegin, valueEnd - valueBegin);
+          setHeader(keyBegin, keyEnd - keyBegin, valueBegin,
+                    valueEnd - valueBegin);
         }
       }
 
@@ -506,32 +505,35 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
           0) {  // 14 = strlen("content-length")
     _contentLength = StringUtils::int64(value, valueLength);
     // do not store this header
-  } else if (keyLength == 6 &&
-             memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
-    parseCookies(value, valueLength);
-  } else {
-    if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
-        *(key + 1) == '-') {
-      // handle x-... headers
-
-      // override HTTP method?
-      if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
-          (keyLength == 17 &&
-           memcmp(key, "x-method-override", keyLength) == 0) ||
-          (keyLength == 22 &&
-           memcmp(key, "x-http-method-override", keyLength) == 0)) {
-        std::string overriddenType(value, valueLength);
-        StringUtils::tolowerInPlace(&overriddenType);
-
-        _type = findRequestType(overriddenType.c_str(), overriddenType.size());
-
-        // don't insert this header!!
-        return;
-      }
-    }
-
-    _headers[std::string(key, keyLength)] = std::string(value, valueLength);
+    return;
   }
+
+  if (keyLength == 6 &&
+      memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
+    parseCookies(value, valueLength);
+    return;
+  }
+
+  if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
+      *(key + 1) == '-') {
+    // handle x-... headers
+
+    // override HTTP method?
+    if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
+        (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
+        (keyLength == 22 &&
+         memcmp(key, "x-http-method-override", keyLength) == 0)) {
+      std::string overriddenType(value, valueLength);
+      StringUtils::tolowerInPlace(&overriddenType);
+
+      _type = findRequestType(overriddenType.c_str(), overriddenType.size());
+
+      // don't insert this header!!
+      return;
+    }
+  }
+
+  _headers[std::string(key, keyLength)] = std::string(value, valueLength);
 }
 
 /// @brief sets a key-only header
@@ -652,21 +654,20 @@ std::string const& HttpRequest::cookieValue(std::string const& key) const {
   return it->second;
 }
 
-std::string const& HttpRequest::cookieValue(std::string const& key, bool& found) const {
+std::string const& HttpRequest::cookieValue(std::string const& key,
+                                            bool& found) const {
   auto it = _cookies.find(key);
 
   if (it == _cookies.end()) {
     found = false;
-    return StaticStrings::Empty; 
+    return StaticStrings::Empty;
   }
 
   found = true;
   return it->second;
 }
 
-std::string const& HttpRequest::body() const {
-  return _body;
-}
+std::string const& HttpRequest::body() const { return _body; }
 
 void HttpRequest::setBody(char const* body, size_t length) {
   _body = std::string(body, length);
@@ -678,4 +679,3 @@ std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack(
   parser.parse(body());
   return parser.steal();
 }
-

@@ -1374,10 +1374,73 @@ function optimizerAggregateTestSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function optimizerAggregateCollectionTestSuite () {
+  return {
+    setUp : function () {
+      db._drop("UnitTestsCollectionA");
+      var c = db._create("UnitTestsCollectionA");
+
+      var values = [ 
+        { "_key" : "t1" }, 
+        { "_key" : "t2" }, 
+        { "_key" : "t3" } 
+      ];
+      values.forEach(function(doc) {
+        c.insert(doc);
+
+      });
+
+      db._drop("UnitTestsCollectionB");
+      c = db._create("UnitTestsCollectionB");
+
+      values = [
+        { "tlm" : 1456480062167, "ct" : 0, "rev" : "t2", "_key" : "5" },
+        { "tlm" : 1460377620213, "ct" : 0, "rev" : "t3", "_key" : "14" }, 
+        { "tlm" : 1456480264467, "ct" : 0, "rev" : "t2", "_key" : "6" }, 
+        { "tlm" : 1461698920149, "ct" : 0, "rev" : "t1", "_key" : "17" }, 
+        { "tlm" : 1455815267983, "ct" : 0, "rev" : "t2", "_key" : "3" }, 
+        { "tlm" : 1457427632487, "ct" : 0, "rev" : "t2", "_key" : "12" },
+        { "tlm" : 1455867727519, "ct" : 0, "rev" : "t2", "_key" : "4" },
+        { "tlm" : 1461697990707, "ct" : 0, "rev" : "t1", "_key" : "15" },
+        { "tlm" : 1455867750978, "ct" : 0, "rev" : "t2", "_key" : "1" }, 
+        { "tlm" : 1457340889219, "ct" : 0, "rev" : "t2", "_key" : "10" }, 
+        { "tlm" : 1456488586444, "ct" : 0, "rev" : "t3", "_key" : "9" },
+        { "tlm" : 1461876187642, "ct" : 0, "rev" : "t3", "_key" : "18" }, 
+        { "tlm" : 1455878231589, "ct" : 0, "rev" : "t2", "_key" : "2" }, 
+        { "tlm" : 1463214385088, "ct" : 5, "rev" : "t2", "_key" : "13" }, 
+        { "tlm" : 1463216196030, "ct" : 1, "rev" : "t2", "_key" : "7" },
+        { "tlm" : 1461698190283, "ct" : 0, "rev" : "t1", "_key" : "16" }, 
+        { "tlm" : 1460381974860, "ct" : 0, "rev" : "t2", "_key" : "11" },
+        { "tlm" : 1460382104593, "ct" : 0, "rev" : "t3", "_key" : "8" }
+      ];
+
+      values.forEach(function(doc) {
+        c.insert(doc);
+      });
+    },
+
+    tearDown : function () {
+      db._drop("UnitTestsCollectionA");
+      db._drop("UnitTestsCollectionB");
+    },
+
+    testWithData : function () {
+      var query = "FOR a IN UnitTestsCollectionA LET c = (FOR b IN UnitTestsCollectionB FILTER b.rev == a._key && b.tlm > NOOPT(1463476452512) - 864000000 COLLECT AGGREGATE t = SUM(b.ct) RETURN t)[0] UPDATE a WITH {c} IN UnitTestsCollectionA RETURN NEW";
+      var results = AQL_EXECUTE(query).json;
+      assertEqual(3, results.length); // should just work
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerAggregateTestSuite);
+jsunity.run(optimizerAggregateCollectionTestSuite);
 
 return jsunity.done();
 

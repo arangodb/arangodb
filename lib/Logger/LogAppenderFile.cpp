@@ -90,7 +90,7 @@ void LogAppenderFile::close() {
 
 LogAppenderFile::LogAppenderFile(std::string const& filename,
                                  std::string const& filter)
-    : LogAppender(filter), _pos(-1) {
+    : LogAppender(filter), _pos(-1), _buffer(nullptr), _bufferSize(0) {
   // logging to stdout
   if (filename == "-") {
     _pos = 0;
@@ -123,7 +123,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename,
       }
 
       if (pos == _fds.size()) {
-        _fds.emplace_back(make_pair(fd, filename));
+        _fds.emplace_back(std::make_pair(fd, filename));
       } else {
         _fds[pos].first = fd;
       }
@@ -131,6 +131,10 @@ LogAppenderFile::LogAppenderFile(std::string const& filename,
       _pos = static_cast<ssize_t>(pos);
     }
   }
+}
+  
+LogAppenderFile::~LogAppenderFile() {
+  delete[] _buffer;
 }
 
 bool LogAppenderFile::logMessage(LogLevel level, std::string const& message,
@@ -145,14 +149,41 @@ bool LogAppenderFile::logMessage(LogLevel level, std::string const& message,
     return false;
   }
 
-  size_t escapedLength;
-  char* escaped =
-      TRI_EscapeControlsCString(TRI_UNKNOWN_MEM_ZONE, message.c_str(),
-                                message.size(), &escapedLength, true, false);
+  // check required output length
+  size_t const neededBufferSize = TRI_MaxLengthEscapeControlsCString(message.size());
+  
+  // check if we can re-use our already existing buffer
+  if (neededBufferSize > _bufferSize) {
+    delete[] _buffer;
+    _buffer = nullptr;
+    _bufferSize = 0;
+  }
 
-  if (escaped != nullptr) {
-    writeLogFile(fd, escaped, static_cast<ssize_t>(escapedLength));
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, escaped);
+  if (_buffer == nullptr) {
+    // create a new buffer
+    try {
+      // grow buffer exponentially
+      _buffer = new char[neededBufferSize * 2];
+      _bufferSize = neededBufferSize * 2;
+    } catch (...) {
+      // if allocation fails, simply give up
+      return false;
+    }
+  }
+  
+  TRI_ASSERT(_buffer != nullptr);
+  
+  size_t escapedLength;
+  // this is guaranteed to succeed given that we already have a buffer
+  TRI_EscapeControlsCString(message.c_str(), message.size(), _buffer, &escapedLength, true);
+
+  writeLogFile(fd, _buffer, static_cast<ssize_t>(escapedLength));
+
+  if (_bufferSize > 8192) {
+    // free the buffer so the Logger is not hogging so much memory
+    delete[] _buffer;
+    _buffer = nullptr;
+    _bufferSize = 0;
   }
 
   return (isatty(fd) != 0);

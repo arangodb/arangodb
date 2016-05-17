@@ -73,9 +73,6 @@ class ModificationBlock : public ExecutionBlock {
 
   /// @brief whether or not the collection uses the default sharding attributes
   bool _usesDefaultSharding;
-
-  /// @brief temporary string buffer for extracting system attributes
-  arangodb::basics::StringBuffer _buffer;
 };
 
 class RemoveBlock : public ModificationBlock {
