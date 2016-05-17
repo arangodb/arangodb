@@ -366,6 +366,7 @@ bool State::find (arangodb::consensus::index_t prevIndex, term_t prevTerm) {
   return _log.at(prevIndex).term == prevTerm;
 }
 
+#include <iostream>
 bool State::compact (arangodb::consensus::index_t cind) {
 
   bool saved = persistReadDB(cind);
@@ -388,8 +389,11 @@ bool State::compact (arangodb::consensus::index_t cind) {
 }
 
 bool State::compactVolatile (arangodb::consensus::index_t cind) {
-  _log.erase(_log.begin(), _log.begin()+cind-_cur);
-  _cur = _log.begin()->index;
+  if (!_log.empty() && cind-_cur > 0) {
+    MUTEX_LOCKER(mutexLocker, _logLock);
+    _log.erase(_log.begin(), _log.begin()+cind-_cur);
+    _cur = _log.begin()->index;
+  }
   return true;
 }
 
