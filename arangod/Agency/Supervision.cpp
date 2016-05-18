@@ -241,7 +241,7 @@ bool Supervision::doChecks(bool timedout) {
   _snapshot = _agent->readDB().get("/");
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sanity checks";
-  std::vector<check_t> ret = checkDBServers();
+  /*std::vector<check_t> ret = */checkDBServers();
 
   return true;
 }
