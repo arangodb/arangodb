@@ -26,7 +26,6 @@
   * [Modifying](Collection/Modifying.md)
 * [Indexes](Indexes/README.md)
   * [Working with Indexes](Indexes/WorkingWith.md)
-  * [Cap Constraints](Indexes/Cap.md)
   * [Hash](Indexes/Hash.md)
   * [Skiplist](Indexes/Skiplist.md)
   * [Geo](Indexes/Geo.md)

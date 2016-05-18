@@ -250,9 +250,6 @@ db._executeTransaction({
     db.c1.count(); // 3 
 ```
 
-
-
-
 Aborting the transaction by throwing an exception in the *action* function
 will revert all changes, so as if the transaction never happened:
 
@@ -302,39 +299,7 @@ db.c1.count(); // 0
 
 As required by the *consistency* principle, aborting or rolling back a 
 transaction will also restore secondary indexes to the state at transaction
-start. The following example using a cap constraint should illustrate that:
-
-```js
-// setup 
-db._create("c1");
-
-// limit the number of documents to 3 
-db.c1.ensureIndex({ type: "cap", size: 3 });
-
-// insert 3 documents 
-db.c1.save({ _key: "key1" });
-db.c1.save({ _key: "key2" });
-db.c1.save({ _key: "key3" });
-
-// this will push out key1 
-db.c1.save({ _key: "key4" });
-
-
-db._executeTransaction({
-  collections: {
-    write: [ "c1" ]
-  },
-  action: function () {
-    var db = require("internal").db;
-    // this will push out key2
-    db.c1.save({ _key: "key5" }); 
-    // will abort the transaction 
-    throw "doh!"
-  }
-});
-
-// we now have these keys back: [ "key2", "key3", "key4" ] 
-```
+start.
 
 !SUBSECTION Cross-collection transactions
 

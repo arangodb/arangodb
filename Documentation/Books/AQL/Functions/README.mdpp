@@ -4,7 +4,9 @@ AQL supports functions to allow more complex computations. Functions can be
 called at any query position where an expression is allowed. The general
 function call syntax is:
 
-    FUNCTIONNAME(arguments)
+```js
+FUNCTIONNAME(arguments)
+```
 
 where *FUNCTIONNAME* is the name of the function to be called, and *arguments*
 is a comma-separated list of function arguments. If a function does not need any
@@ -14,9 +16,11 @@ calls distinguishable from variable names.
 
 Some example function calls:
 
-    HAS(user, "name")
-    LENGTH(friends)
-    COLLECTIONS()
+```js
+HAS(user, "name")
+LENGTH(friends)
+COLLECTIONS()
+```
 
 In contrast to collection and variable names, function names are case-insensitive, 
 i.e. *LENGTH(foo)* and *length(foo)* are equivalent.
@@ -36,8 +40,9 @@ To refer to a user-defined AQL function, the function name must be fully qualifi
 to also include the user-defined namespace. The *::* symbol is used as the namespace
 separator:
 
-    MYGROUP::MYFUNC()
+```js
+MYGROUP::MYFUNC()
+MYFUNCTIONS::MATH::RANDOM()
+```
 
-    MYFUNCTIONS::MATH::RANDOM()
-    
 As all AQL function names, user function names are also case-insensitive.
