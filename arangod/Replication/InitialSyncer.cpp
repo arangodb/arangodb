@@ -1624,8 +1624,7 @@ int InitialSyncer::changeCollection(TRI_vocbase_col_t* col,
                                     VPackSlice const& slice) {
   arangodb::CollectionGuard guard(_vocbase, col->_cid);
   bool doSync = _vocbase->_settings.forceSyncProperties;
-  return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection,
-                                  slice, doSync);
+  return guard.collection()->_collection->updateCollectionInfo(_vocbase, slice, doSync);
 }
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -1640,8 +1639,9 @@ int64_t InitialSyncer::getSize(TRI_vocbase_col_t* col) {
   if (res != TRI_ERROR_NO_ERROR) {
     return -1;
   }
-   
-  return static_cast<int64_t>(trx.documentCollection()->size());
+  
+  auto document = trx.documentCollection();
+  return static_cast<int64_t>(document->_numberDocuments);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

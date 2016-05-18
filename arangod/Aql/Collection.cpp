@@ -78,7 +78,7 @@ size_t Collection::count() const {
       // local case
       auto document = documentCollection();
       // cache the result
-      numDocuments = static_cast<int64_t>(document->size());
+      numDocuments = static_cast<int64_t>(document->_numberDocuments);
     }
   }
 
