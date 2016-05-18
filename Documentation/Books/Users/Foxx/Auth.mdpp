@@ -1,13 +1,13 @@
 !CHAPTER Authentication
 
-`const auth = require('@arangodb/foxx/auth');`
+`const createAuth = require('@arangodb/foxx/auth');`
 
 Authenticators allow implementing basic password mechanism using simple built-in hashing functions.
 
 **Examples**
 
 ```js
-const authenticator = auth();
+const auth = createAuth();
 
 // Use the sessions middleware
 const sessionsMiddleware = require('@arangodb/foxx/sessions');
@@ -27,11 +27,11 @@ const joi = require('joi');
 const users = module.context.collection('users');
 router.post('/login', function (req, res) {
   let user = users.firstExample({
-    username: req.bodyParams.username
+    username: req.body.username
   });
-  const valid = authenticator.verify(
+  const valid = auth.verify(
     user ? user.authData : {},
-    req.bodyParams.password
+    req.body.password
   );
   if (!valid) res.throw('unauthorized');
   req.session.uid = user._key;
@@ -77,7 +77,7 @@ Returns an authenticator.
 
 !SECTION Creating hash objects
 
-`authenticator.create(password): Hash`
+`auth.create(password): Hash`
 
 Creates a hash object for the given password with the following properties:
 
@@ -103,7 +103,7 @@ Returns the hash object.
 
 !SECTION Validating passwords against hash objects
 
-`authenticator.verify([hash, [password]]): boolean`
+`auth.verify([hash, [password]]): boolean`
 
 Verifies the given password against the given hash using a constant time string comparison.
 
