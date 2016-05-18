@@ -47,7 +47,7 @@ When not in the default database, you must first switch to it using the
 
 
 returns a list of all endpoints
-`db._listEndpoints()`
+`db._endpoints()`
 
 Returns a list of all endpoints and their mapped databases.
 

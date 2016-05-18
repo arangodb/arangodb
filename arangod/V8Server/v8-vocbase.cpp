@@ -3320,15 +3320,15 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a list of all endpoints
 ///
-/// @FUN{LIST_ENDPOINTS}
+/// @FUN{ENDPOINTS}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("db._listEndpoints()");
+    TRI_V8_THROW_EXCEPTION_USAGE("db._endpoints()");
   }
 
   auto server =
@@ -3620,8 +3620,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                JS_ParseDatetime);
 
   TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("LIST_ENDPOINTS"),
-                               JS_ListEndpoints, true);
+                               TRI_V8_ASCII_STRING("ENDPOINTS"),
+                               JS_Endpoints, true);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("RELOAD_AUTH"),
                                JS_ReloadAuth, true);

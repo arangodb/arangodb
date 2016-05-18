@@ -991,7 +991,7 @@ ArangoDatabase.prototype._useDatabase = function (name) {
 /// @brief lists all endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._listEndpoints = function () {
+ArangoDatabase.prototype._endpoints = function () {
   var requestResult = this._connection.GET("/_api/endpoint");
 
   if (requestResult !== null && requestResult.error === true) {
