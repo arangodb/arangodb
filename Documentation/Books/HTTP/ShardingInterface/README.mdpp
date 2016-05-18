@@ -34,14 +34,4 @@ Sharding only should be used by developers!
 
 <!-- js/actions/api-cluster.js -->
 
-@startDocuBlock JSF_cluster_planner_POST
-
-
-<!-- js/actions/api-cluster.js -->
-
-@startDocuBlock JSF_cluster_dispatcher_POST
-
-
-<!-- js/actions/api-cluster.js -->
-
 @startDocuBlock JSF_cluster_check_port_GET
