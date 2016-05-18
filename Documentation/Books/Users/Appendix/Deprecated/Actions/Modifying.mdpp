@@ -363,7 +363,7 @@ will appear.*
 Using single routes or [bundles](#routing-bundles) can be
 become a bit messy in large applications. Kaerus has written a [deployment tool](https://github.com/kaerus/arangodep) in node.js.
 
-Note that there is also [Foxx](../Foxx/README.md) for building applications
+Note that there is also [Foxx](../../../Foxx/README.md) for building applications
 with ArangoDB.
 
 !SECTION Common Pitfalls when using Actions

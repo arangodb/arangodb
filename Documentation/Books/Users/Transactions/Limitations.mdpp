@@ -39,4 +39,4 @@ unregistered collection used in transaction*.
 It is legal to not declare read-only collections, but this should be avoided if
 possible to reduce the probability of deadlocks and non-repeatable reads.
 
-Please refer to [Locking and Isolation](../Transactions/LockingAndIsolation.md) for more details.
+Please refer to [Locking and Isolation](LockingAndIsolation.md) for more details.

@@ -109,5 +109,5 @@ will not be indexed.
 
 !SUBSUBSECTION Related topics
 
-ArangoDB AQL geographic features are described in [AQL Geo functions](../Aql/GeoFunctions.md)
+ArangoDB AQL geographic features are described in [AQL Geo functions](../../AQL/Functions/Geo.html)
 

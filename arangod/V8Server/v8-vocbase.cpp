@@ -52,6 +52,7 @@
 #include "Cluster/ServerState.h"
 #include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
+#include "RestServer/RestServerFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Utils/ExplicitTransaction.h"
@@ -3320,15 +3321,15 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a list of all endpoints
 ///
-/// @FUN{LIST_ENDPOINTS}
+/// @FUN{ENDPOINTS}
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("db._listEndpoints()");
+    TRI_V8_THROW_EXCEPTION_USAGE("db._endpoints()");
   }
 
   auto server =
@@ -3388,6 +3389,37 @@ static void JS_GetTimers(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result->ForceSet(TRI_V8_ASCII_STRING("totals"), totals);
   result->ForceSet(TRI_V8_ASCII_STRING("counts"), counts);
 
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_TrustedProxies(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  
+  if (RestServerFeature::hasProxyCheck()) {
+    v8::Handle<v8::Array> result = v8::Array::New(isolate);
+
+    uint32_t i = 0;
+    for (auto const& proxyDef: RestServerFeature::getTrustedProxies()) {
+      result->Set(i++, TRI_V8_STD_STRING(proxyDef));
+    }
+    TRI_V8_RETURN(result);
+  } else {
+    TRI_V8_RETURN(v8::Null(isolate));
+  }
+  
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_AuthenticationEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  // mop: one could argue that this is a function because this might be changable on the fly
+  // at some time but the sad truth is server startup order :S v8 is initialized after RestServerFeature
+  // :weglaecheln:
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  v8::Handle<v8::Boolean> result = v8::Boolean::New(isolate, RestServerFeature::authenticationEnabled());
+  
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -3620,8 +3652,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                JS_ParseDatetime);
 
   TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("LIST_ENDPOINTS"),
-                               JS_ListEndpoints, true);
+                               TRI_V8_ASCII_STRING("ENDPOINTS"),
+                               JS_Endpoints, true);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("RELOAD_AUTH"),
                                JS_ReloadAuth, true);
@@ -3654,6 +3686,11 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, context, TRI_V8_ASCII_STRING("GET_TIMERS"), JS_GetTimers, true);
 
+  TRI_AddGlobalFunctionVocbase(
+      isolate, context, TRI_V8_ASCII_STRING("AUTHENTICATION_ENABLED"), JS_AuthenticationEnabled, true);
+  
+  TRI_AddGlobalFunctionVocbase(
+      isolate, context, TRI_V8_ASCII_STRING("TRUSTED_PROXIES"), JS_TrustedProxies, true);
   // .............................................................................
   // create global variables
   // .............................................................................
@@ -3674,7 +3711,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()->ForceSet(TRI_V8_ASCII_STRING("THREAD_NUMBER"),
                               v8::Number::New(isolate, (double)threadNumber),
                               v8::ReadOnly);
-
+  
   // whether or not statistics are enabled
   context->Global()->ForceSet(
       TRI_V8_ASCII_STRING("ENABLE_STATISTICS"),

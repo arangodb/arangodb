@@ -8,7 +8,7 @@ requirements.
 However, in the following section we concentrate on a standard setup
 and show you, how to build a ArangoDB cluster within minutes. If you
 want to dive deeper into the nasty details, you should read about
-[Sharding](../Sharding/README.md).
+[Sharding](../../Administration/Sharding/README.md).
 
 !SECTION Development Scenario
 

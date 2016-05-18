@@ -22,6 +22,7 @@
     "mime-types": "2.1.9",
     "minimatch": "3.0.0",
     "mocha": "2.3.4",
+    "netmask": "^1.0.5",
     "qs": "5.2.0",
     "range-parser": "1.0.3",
     "semver": "5.1.0",

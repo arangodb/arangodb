@@ -1,0 +1,120 @@
+!CHAPTER Getting Started
+
+We're going to start with an empty folder. This will be the root folder of our services. You can name it something clever but for the course of this guide we'll assume it's called the name of your service: `getting-started`.
+
+First we need to create a manifest. Create a new file called `manifest.json` and add the following content:
+
+```json
+{
+  "engines": {
+    "arangodb": "^3.0.0"
+  }
+}
+```
+
+This just tells ArangoDB the service is compatible with versions 3.0.0 and later (all the way up to but not including 4.0.0), allowing older versions of ArangoDB to understand that this service likely won't work for them and newer versions what behaviour to emulate should they still support it.
+
+The little hat to the left of the version number is not a typo, it's called a "caret" and indicates the version range. Foxx uses semantic versioning (also called "semver") for most of its version handling. You can find out more about how semver works at the [official semver website][SEMVER].
+
+Next we'll need to specify an entry point to our service. This is the JavaScript file that will be executed to define our service's HTTP endpoints. We can do this by adding a "main" field to our manifest:
+
+```json
+{
+  "engines": {
+    "arangodb": "^3.0.0"
+  },
+  "main": "index.js"
+}
+```
+
+That's all we need in our manifest for now, so let's next create the `index.js` file:
+
+```js
+'use strict';
+const createRouter = require('@arangodb/foxx/router');
+const router = createRouter();
+module.context.use(router);
+```
+
+The first line causes our file to be interpreted using [strict mode][STRICT]. All examples in the ArangoDB documentation assume strict mode, so you might want to familiarize yourself with it if you haven't encountered it before.
+
+The second line imports the `@arangodb/foxx/router` module which provides a function for creating new Foxx routers. We're using this function to create a new `router` object which we'll be using for our service.
+
+The `module.context` is the so-called Foxx context or service context. This variable is available in all files that are part of your Foxx service and provides access to Foxx APIs specific to the current service, like the `use` method, which tells Foxx to mount the `router` in this service (and to expose its routes to HTTP).
+
+Next let's define a route that prints a generic greeting:
+
+```js
+router.get('/hello-world', function (req, res) {
+  res.send('Hello World!');
+})
+.response(['text/plain'], 'A generic greeting.')
+.summary('Generic greeting')
+.description('Prints a generic greeting.');
+```
+
+The `router` provides the methods `get`, `post`, etc corresponding to each HTTP verb as well as the catch-all `all`. These methods indicate that the given route should be used to handle incoming requests with the given HTTP verb (or any method when using `all`).
+
+These methods take an optional path (if omitted, it defaults to `"/"`) as well as a request handler, which is a function taking the `req` ([request][REQUEST]) and `res` ([response][RESPONSE]) objects to handle the incoming request and generate the outgoing response. If you have used the express framework in Node.js, you may already be familiar with how this works, otherwise check out [the chapter on routes][ROUTES].
+
+The object returned by the router's methods provides additional methods to attach metadata and validation to the route. We're using `summary` and `description` help documenting what the route does. The `response` method lets us additionally document the response content type and what the response body will represent.
+
+!SECTION Try it out
+
+At this point you can upload the service folder as a zip archive from the web interface using the *Services* tab:
+
+![Screenshot of the Services tab with no services listed]()
+
+Click *Add Service* then pick the *Zip* option in the dialog. You will need to provide a *mount path*, which is the URL prefix at which the service will be mounted (e.g. `/getting-started`):
+
+![Screenshot of the Add Service dialog with the Zip tab active]()
+
+Once you have picked the zip archive using the file picker, the upload should begin immediately and your service should be installed. Otherwise press the *Install* button and wait for the dialog to disappear and the service to show up in the service list:
+
+![Screenshot of the Services tab with the getting-started service listed]()
+
+Click anywhere on the card with your mount path on the label to open the service's details:
+
+![Screenshot of the details for the getting-started service]()
+
+In the API documentation you should see the route we defined earlier (`/hello-world`) with the word `GET` next to it indicating the HTTP method it supports and the `summary` we provided on the right. By clicking on the route's path you can open the documentation for the route:
+
+![Screenshot of the API docs with the hello-world route open]()
+
+Note that the `description` we provided appears in the generated documentation as well as the description we added to the `response` (which should correctly indicate the content type `text/plain`, i.e. plain text).
+
+Click the *Try it out!* button to send a request to the route and you should see an example request with the service's response: "Hello World!":
+
+![Screenshot of the API docs after the request]()
+
+Congratulations! You have just created, installed and used your first Foxx service.
+
+!SECTION Parameter validation
+
+Let's add another route that provides a more personalized greeting:
+
+```js
+const joi = require('joi');
+router.get('/hello/:name', function (req, res) {
+  res.send(`Hello ${req.pathParams.name}`);
+})
+.pathParam('name', joi.string().required(), 'Name to greet.')
+.response(['text/plain'], 'A personalized greeting.')
+.summary('Personalized greeting')
+.description('Prints a personalized greeting.');
+```
+
+The first line imports the [`joi` module from npm][JOI] which comes bundled with ArangoDB. Joi is a validation library that is used throughout Foxx to define schemas and parameter types.
+
+**Note**: You can bundle your own modules from npm by installing them in your service folder and making sure the `node_modules` folder is included in your zip archive. For more information see [the chapter on modules][MODULES].
+
+TODO
+
+[SEMVER]: http://semver.org/
+[STRICT]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode
+[JOI]: https://www.npmjs.com/package/joi
+[ROUTER]: ./Router/README.md
+[REQUEST]: ./Router/Request.md
+[RESPONSE]: ./Router/Response.md
+[ROUTES]: ./Router/Endpoints.md
+[MODULES]: ./Modules.md

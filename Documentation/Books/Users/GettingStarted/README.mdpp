@@ -21,7 +21,7 @@ Start up the server by running `arangod`.
 !TODO explain how to do that on all major platforms in the most simple way
 
 For startup parameters, installation in a cluster and so on, see
-[Installing](../GettingStarted/Installing/README.md).
+[Installing](Installing/README.md).
 
 !SUBSECTION Web interface
 
@@ -53,7 +53,7 @@ Every server instance comes with a `_system` database.
 
 The ArangoDB package comes with the following programs:
 
-- `arangod`: The [ArangoDB database daemon](../GettingStarted/Arangod.md).
+- `arangod`: The [ArangoDB database daemon](Arangod.md).
   This server program is intended to run as a daemon process and to serve the
   various clients connection to the server via TCP / HTTP.
   

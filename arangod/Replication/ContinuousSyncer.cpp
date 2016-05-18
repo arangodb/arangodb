@@ -789,16 +789,15 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  VPackSlice const collection = slice.get("collection");
-  if (!collection.isObject()) {
+  VPackSlice const data = slice.get("collection");
+  if (!data.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
   arangodb::CollectionGuard guard(_vocbase, cid);
   bool doSync = _vocbase->_settings.forceSyncProperties;
 
-  return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection,
-                                  collection, doSync);
+  return guard.collection()->_collection->updateCollectionInfo(_vocbase, data, doSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

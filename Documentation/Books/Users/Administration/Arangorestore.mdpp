@@ -33,7 +33,7 @@ target database, the username and passwords passed to _arangorestore_ (in option
 new database.
 
 Here's an example of reloading data to a non-standard endpoint, using a dedicated
-[database name](../Glossary/README.md#database-name):
+[database name](../Appendix/Glossary.md#database-name):
 
     unix> arangorestore --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --input-directory "dump"
 
@@ -94,7 +94,7 @@ It can be specified multiple times if required:
     unix> arangorestore --collection myusers --collection myvalues --input-directory "dump"
 
 Collections will be processed by in alphabetical order by _arangorestore_, with all document
-collections being processed before all [edge collection](../Glossary/README.md#edge-collection)s. This is to ensure that reloading
+collections being processed before all [edge collection](../Appendix/Glossary.md#edge-collection)s. This is to ensure that reloading
 data into edge collections will have the document collections linked in edges (*_from* and
 *_to* attributes) loaded.
 
@@ -113,7 +113,7 @@ Note that setting *--recycle-ids* to *true* will also cause collections to be (r
 the target database with the exact same collection id as in the input directory. Any potentially
 existing collection in the target database with the same collection id will then be dropped.
 
-Setting *--recycle-ids* to *false* or omitting it will only use the [collection name](../Glossary/README.md#collection-name) from the
+Setting *--recycle-ids* to *false* or omitting it will only use the [collection name](../Appendix/Glossary.md#collection-name) from the
 input directory and allow the target database to create the collection with a different id
 (though with the same name) than in the input directory.
 

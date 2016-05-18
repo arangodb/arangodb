@@ -21,7 +21,6 @@ if [ "x$@" == "x" ] ; then
     `find ./js/apps/system/_admin/aardvark/APP/frontend/js/collections -name "*.js"` \
     `find ./js/apps/system/_admin/aardvark/APP/frontend/js/routers -name "*.js"` \
     `find ./js/apps/system/_admin/aardvark/APP/frontend/js/arango -name "*.js"` \
-    `find ./js/apps/system/_admin/aardvark/APP/frontend/js/shell -name "*.js"` \
     `find ./js/apps/system/_admin/aardvark/APP/test/specs -name "*.js"` \
     `find ./js/apps/system/_admin/aardvark/APP/test/clusterSpecs -name "*.js"` \
     \
@@ -32,7 +31,6 @@ if [ "x$@" == "x" ] ; then
     ./js/server/server.js \
     ./js/server/upgrade-database.js \
     \
-    ./js/apps/system/_admin/aardvark/APP/frontend/js/shell/browser.js \
   "
 else
   JAVASCRIPT_JSLINT="$@"

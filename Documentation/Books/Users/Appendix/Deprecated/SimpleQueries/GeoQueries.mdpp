@@ -50,6 +50,6 @@ should be used in a query.
 !SUBSECTION Related topics
 
 Other ArangoDB geographic features are described in: 
-- [AQL Geo functions](../Aql/GeoFunctions.md)
-- [Geo indexes](../IndexHandling/Geo.md)  
+- [AQL Geo functions](../../../../AQL/Functions/Geo.html)
+- [Geo indexes](../../../Indexing/Geo.md)  
 

@@ -43,7 +43,7 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       if (req.requestType === actions.GET) {
-        actions.resultOk(req, res, actions.HTTP_OK, internal.listEndpoints());
+        actions.resultOk(req, res, actions.HTTP_OK, internal.endpoints());
       }
 
       else {

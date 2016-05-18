@@ -29,6 +29,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/OperationOptions.h"
@@ -1334,12 +1335,7 @@ static void JS_PropertiesVocbaseCol(
 
       {
         // only work under the lock
-        TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-        arangodb::basics::ScopeGuard guard{
-            []() -> void {},
-            [&document]() -> void {
-              TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-            }};
+        WRITE_LOCKER(writeLocker, document->_infoLock);
 
         if (base->_info.isVolatile() &&
             arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -1371,7 +1367,7 @@ static void JS_PropertiesVocbaseCol(
 
       // try to write new parameter to file
       bool doSync = base->_vocbase->_settings.forceSyncProperties;
-      res = TRI_UpdateCollectionInfo(base->_vocbase, base, slice, doSync);
+      res = base->updateCollectionInfo(base->_vocbase, slice, doSync);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ReleaseCollection(collection);
@@ -2012,7 +2008,7 @@ static void JS_RotateVocbaseCol(
 
   TRI_document_collection_t* document = collection->_collection;
 
-  int res = TRI_RotateJournalDocumentCollection(document);
+  int res = document->rotateActiveJournal();
 
   ReleaseCollection(collection);
 

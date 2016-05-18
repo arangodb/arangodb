@@ -113,6 +113,6 @@ RETURN { hobbies: oneDocument.hobbies[*].name }
 ]
 ```
 
-More complex [array](../../AQL/Functions/Array.md) and
-[object manipulations](../../AQL/Functions/Document.md) can be done using
-AQL functions and [operators](../../AQL/Operators.md).
+More complex [array](../../AQL/Functions/Array.html) and
+[object manipulations](../../AQL/Functions/Document.html) can be done using
+AQL functions and [operators](../../AQL/Operators.html).

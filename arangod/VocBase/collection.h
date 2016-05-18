@@ -300,43 +300,68 @@ struct TRI_collection_t {
       : _vocbase(vocbase), _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
 
   TRI_collection_t(TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo const& info)
-      : _info(info), _vocbase(vocbase), _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
+      : _vocbase(vocbase), _tickMax(0), _info(info), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
 
   ~TRI_collection_t() = default;
 
  public:
   void iterateIndexes(std::function<bool(std::string const&, void*)> const&, void*);
 
+  /// @brief updates the parameter info block
+  int updateCollectionInfo(TRI_vocbase_t* vocbase,
+                           arangodb::velocypack::Slice const& slice, bool doSync);
+
   // datafile management
-  void addJournal(TRI_datafile_t*);
-  void addDatafile(TRI_datafile_t*);
-  void addCompactor(TRI_datafile_t*);
-  bool hasCompactor();
-  bool compactorToDatafile(TRI_datafile_t*);
-  bool journalToDatafile(TRI_datafile_t*);
+  
+  /// @brief rotate the active journal - will do nothing if there is no journal
+  int rotateActiveJournal();
+
+  /// @brief sync the active journal - will do nothing if there is no journal
+  /// or if the journal is volatile
+  int syncActiveJournal();
+  int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
+                          char*& resultPosition, TRI_datafile_t*& resultDatafile);
+
+  /// @brief create compactor file
+  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize);
+  /// @brief close an existing compactor
+  int closeCompactor(TRI_datafile_t* datafile);
+  /// @brief replace a datafile with a compactor
+  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor);
+
   bool removeCompactor(TRI_datafile_t*);
+  bool removeDatafile(TRI_datafile_t*);
   void addIndexFile(std::string const&);
   int removeIndexFile(TRI_idx_iid_t);
 
- public:
-  arangodb::VocbaseCollectionInfo _info;
+ private:
+  /// @brief seal a datafile
+  int sealDatafile(TRI_datafile_t* datafile, bool isCompactor);
+  /// @brief creates a datafile
+  TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
+                                 TRI_voc_size_t journalSize, 
+                                 bool isCompactor);
 
+ public:
   TRI_vocbase_t* _vocbase;
   TRI_voc_tick_t _tickMax;
+ 
+  /// @brief a lock protecting the _info structure
+  arangodb::basics::ReadWriteLock _infoLock;
+  arangodb::VocbaseCollectionInfo _info;
 
   TRI_col_state_e _state;  // state of the collection
   int _lastError;          // last (critical) error
 
   std::string _directory;  // directory of the collection
 
+  arangodb::basics::ReadWriteLock _filesLock;
   std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
   std::vector<TRI_datafile_t*> _journals;    // all journals
   std::vector<TRI_datafile_t*> _compactors;  // all compactor files
  private:
   std::vector<std::string> _indexFiles;   // all index filenames
 
- private:
-  arangodb::basics::ReadWriteLock _filesLock;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -371,13 +396,6 @@ TRI_CreateVelocyPackCollectionInfo(arangodb::VocbaseCollectionInfo const&);
 // Expects the builder to be in an open Object state
 void TRI_CreateVelocyPackCollectionInfo(arangodb::VocbaseCollectionInfo const&,
                                         arangodb::velocypack::Builder&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the parameter info block
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_UpdateCollectionInfo(TRI_vocbase_t*, TRI_collection_t*,
-                             arangodb::velocypack::Slice const&, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection

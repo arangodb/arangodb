@@ -1,4 +1,4 @@
-/*global window, Backbone */
+/*global window, Backbone, arangoHelper */
 (function () {
   'use strict';
   window.ArangoQuery = Backbone.Model.extend({

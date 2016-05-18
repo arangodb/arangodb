@@ -660,8 +660,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        int res = TRI_UpdateCollectionInfo(
-            vocbase, document, payloadSlice, vocbase->_settings.forceSyncProperties);
+        int res = document->updateCollectionInfo(vocbase, payloadSlice, vocbase->_settings.forceSyncProperties);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "cannot change collection properties for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);

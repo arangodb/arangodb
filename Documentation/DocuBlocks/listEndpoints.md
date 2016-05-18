@@ -1,7 +1,7 @@
 
 
 @brief returns a list of all endpoints
-`db._listEndpoints()`
+`db._endpoints()`
 
 Returns a list of all endpoints and their mapped databases.
 

@@ -166,7 +166,7 @@ file paths first, leading to problems when local files used the same names as ot
 modules (e.g. a local file `chai.js` would cause problems when trying to load the
 `chai` module installed in `node_modules`).
 
-For more information see the [blog announcement of this change](https://www.arangodb.com/2015/11/foxx-module-resolution-will-change-in-2-8/) and the [upgrade guide](./Upgrading28.md#upgrading-foxx-apps-generated-by-arangodb-27-and-earlier).
+For more information see the [blog announcement of this change](https://www.arangodb.com/2015/11/foxx-module-resolution-will-change-in-2-8/) and the [upgrade guide](Upgrading28.md#upgrading-foxx-apps-generated-by-arangodb-27-and-earlier).
 
 !SUBSECTION Module `org/arangodb/request`
 

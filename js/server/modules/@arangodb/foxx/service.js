@@ -47,6 +47,7 @@ const DEV_APP_PATH = internal.devAppPath ? path.resolve(internal.devAppPath) : u
 
 const LEGACY_ALIASES = [
   ['@arangodb/foxx/authentication', '@arangodb/foxx/legacy/authentication'],
+  ['@arangodb/foxx/console', '@arangodb/foxx/legacy/console'],
   ['@arangodb/foxx/controller', '@arangodb/foxx/legacy/controller'],
   ['@arangodb/foxx/model', '@arangodb/foxx/legacy/model'],
   ['@arangodb/foxx/query', '@arangodb/foxx/legacy/query'],
@@ -367,7 +368,6 @@ module.exports = class FoxxService {
     filename = path.resolve(this.main[$_MODULE_CONTEXT].__dirname, filename);
 
     const module = new Module(filename, this.main);
-    module[$_MODULE_CONTEXT].console = this.main[$_MODULE_CONTEXT].console;
     module.context = Object.assign(
       new FoxxContext(this),
       this.main.context,
@@ -381,6 +381,7 @@ module.exports = class FoxxService {
     }
 
     if (this.legacy) {
+      module[$_MODULE_CONTEXT].console = this.main[$_MODULE_CONTEXT].console;
       module[$_MODULE_CONTEXT].applicationContext = module.context;
     }
 
@@ -392,11 +393,9 @@ module.exports = class FoxxService {
     this.requireCache = {};
     const lib = this.manifest.lib || '.';
     const moduleRoot = path.resolve(this.root, this.path, lib);
-    const foxxConsole = require('@arangodb/foxx/console')(this.mount);
     this.main = new Module(`foxx:${this.mount}`);
     this.main.filename = path.resolve(moduleRoot, '.foxx');
     this.main[$_MODULE_ROOT] = moduleRoot;
-    this.main[$_MODULE_CONTEXT].console = foxxConsole;
     this.main.require.aliases = new Map(this.legacy ? LEGACY_ALIASES : []);
     this.main.require.cache = this.requireCache;
     this.main.context = new FoxxContext(this);
@@ -417,6 +416,8 @@ module.exports = class FoxxService {
       this.main.context.use = undefined;
       this.main.context.apiDocumentation = undefined;
       this.main.context.registerType = undefined;
+      const foxxConsole = require('@arangodb/foxx/legacy/console')(this.mount);
+      this.main[$_MODULE_CONTEXT].console = foxxConsole;
     }
   }
 
