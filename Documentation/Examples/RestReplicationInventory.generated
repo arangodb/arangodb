@@ -6,9 +6,8 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 { 
   <span class="hljs-string">"collections"</span> : [ 
     { 
-      <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"45"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"46"</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
@@ -18,10 +17,10 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
         <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
         <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
-      } 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
     }, 
     { 
-      <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
         <span class="hljs-string">"cid"</span> : <span class="hljs-string">"63"</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
@@ -33,12 +32,12 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
         <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
         <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
-      } 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
     }, 
     { 
-      <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"22"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"23"</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
@@ -48,12 +47,12 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
         <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
         <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
-      } 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
     }, 
     { 
-      <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"24"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"25"</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
@@ -63,12 +62,12 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
         <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
         <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
-      } 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
     }, 
     { 
-      <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"26"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"27"</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
@@ -78,23 +77,12 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
         <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
         <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
-      } 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
     }, 
     { 
-      <span class="hljs-string">"indexes"</span> : [ 
-        { 
-          <span class="hljs-string">"fields"</span> : [ 
-            <span class="hljs-string">"user"</span> 
-          ], 
-          <span class="hljs-string">"id"</span> : <span class="hljs-string">"10"</span>, 
-          <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
-          <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
-          <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
-          <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
-        } 
-      ], 
       <span class="hljs-string">"parameters"</span> : { 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"7"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"9"</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
@@ -104,10 +92,21 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
         <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
         <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
-      } 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ 
+        { 
+          <span class="hljs-string">"fields"</span> : [ 
+            <span class="hljs-string">"user"</span> 
+          ], 
+          <span class="hljs-string">"id"</span> : <span class="hljs-string">"12"</span>, 
+          <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
+          <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
+          <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
+        } 
+      ] 
     }, 
     { 
-      <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
         <span class="hljs-string">"cid"</span> : <span class="hljs-string">"104"</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
@@ -119,10 +118,10 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
         <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
         <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
-      } 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
     }, 
     { 
-      <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
         <span class="hljs-string">"cid"</span> : <span class="hljs-string">"98"</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
@@ -134,12 +133,12 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
         <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
         <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
-      } 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
     }, 
     { 
-      <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"10442"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"10473"</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
@@ -149,12 +148,12 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
         <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
         <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
-      } 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
     }, 
     { 
-      <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"10444"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"10475"</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
@@ -164,15 +163,16 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
         <span class="hljs-string">"type"</span> : <span class="hljs-number">3</span>, 
         <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
         <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
-      } 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
     } 
   ], 
   <span class="hljs-string">"state"</span> : { 
-    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"10898"</span>, 
-    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"10901"</span>, 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-05-11T13:34:51Z"</span>, 
-    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3724</span> 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"10890"</span>, 
+    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"10894"</span>, 
+    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3718</span>, 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-05-18T14:17:09Z"</span> 
   }, 
-  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"10901"</span> 
+  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"10894"</span> 
 }

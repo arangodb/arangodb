@@ -31,6 +31,6 @@ arangosh&gt; db.demo.figures()
   <span class="hljs-string">"waitingFor"</span> : <span class="hljs-string">"-"</span>, 
   <span class="hljs-string">"compactionStatus"</span> : { 
     <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-05-11T13:35:21Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-05-18T14:17:40Z"</span> 
   } 
 }

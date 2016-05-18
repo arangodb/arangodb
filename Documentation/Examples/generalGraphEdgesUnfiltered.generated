@@ -7,7 +7,7 @@ arangosh&gt; graph._edges().toArray();
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19081"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19049"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
   }, 
   { 
@@ -15,7 +15,7 @@ arangosh&gt; graph._edges().toArray();
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndCharly"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19085"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19053"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
   }, 
   { 
@@ -23,7 +23,7 @@ arangosh&gt; graph._edges().toArray();
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/bobAndDiana"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19091"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19059"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
   }, 
   { 
@@ -31,7 +31,7 @@ arangosh&gt; graph._edges().toArray();
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/charlyAndDiana"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19088"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19056"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
   } 
 ]

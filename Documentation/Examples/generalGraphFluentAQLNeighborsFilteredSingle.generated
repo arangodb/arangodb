@@ -6,7 +6,7 @@ arangosh&gt; query.neighbors({name: <span class="hljs-string">"Bob"</span>}).toA
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19988"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19965"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
   } 
 ]

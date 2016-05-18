@@ -29,7 +29,7 @@ arangosh&gt; stmt.explain();
         }, 
         <span class="hljs-string">"indexes"</span> : [ 
           { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"10"</span>, 
+            <span class="hljs-string">"id"</span> : <span class="hljs-string">"12"</span>, 
             <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
             <span class="hljs-string">"fields"</span> : [ 
               <span class="hljs-string">"user"</span> 

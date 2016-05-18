@@ -1,22 +1,22 @@
 arangosh&gt; db.example.remove(db.example.byExample({ name: <span class="hljs-string">"John Doe"</span> }).toArray()[<span class="hljs-number">0</span>]._id)
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6845"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6845"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"6845"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6848"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6848"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"6848"</span> 
 }
 arangosh&gt; db.example.toArray()
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6841"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6841"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"6841"</span>, 
-    <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"World"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6848"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6848"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"6848"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6851"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6851"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"6851"</span>, 
     <span class="hljs-string">"age"</span> : <span class="hljs-number">31</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Jane Smith"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6844"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6844"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"6844"</span>, 
+    <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"World"</span> 
   } 
 ]

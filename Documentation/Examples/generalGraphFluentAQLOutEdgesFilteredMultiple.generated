@@ -8,7 +8,7 @@ arangosh&gt; query.outEdges([{type: <span class="hljs-string">"married"</span>},
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20216"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20193"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
   }, 
   { 
@@ -16,7 +16,7 @@ arangosh&gt; query.outEdges([{type: <span class="hljs-string">"married"</span>},
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndCharly"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20220"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20197"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
   }, 
   { 
@@ -24,7 +24,7 @@ arangosh&gt; query.outEdges([{type: <span class="hljs-string">"married"</span>},
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/bobAndDiana"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20226"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20203"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
   } 
 ]

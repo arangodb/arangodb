@@ -4,8 +4,8 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> N
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
-  <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"cursor not found"</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1600</span> 
 }

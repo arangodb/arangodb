@@ -2,8 +2,8 @@ arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-
 arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
 arangosh&gt; graph._toVertex(<span class="hljs-string">"relation/aliceAndBob"</span>)
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"21286"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"21272"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
 }

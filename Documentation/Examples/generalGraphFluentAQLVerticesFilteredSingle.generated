@@ -6,7 +6,7 @@ arangosh&gt; query.vertices({name: <span class="hljs-string">"Alice"</span>}).to
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"21119"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"21096"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   } 
 ]

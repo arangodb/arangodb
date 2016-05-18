@@ -8,15 +8,15 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-number">8962</span>
+etag: <span class="hljs-number">8974</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"edge"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"8962"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"8947"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"8974"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"8959"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }
