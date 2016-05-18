@@ -475,8 +475,23 @@ bool Store::applies (arangodb::velocypack::Slice const& slice) {
 }
 
 Store& Store::operator= (VPackSlice const& slice) {
+  TRI_ASSERT(slice.isArray());
   MUTEX_LOCKER(storeLocker, _storeLock);
   _node.applies(slice[0]);
+  TRI_ASSERT(slice[2].isArray());
+  for (auto const entry : VPackArrayIterator(slice[2])) {
+    TRI_ASSERT(entry.isObject());
+    _observerTable.emplace(
+      std::pair<std::string,std::string>(
+        entry.keyAt(0).copyString(),entry.valueAt(0).copyString()));
+  }
+  TRI_ASSERT(slice[3].isArray());
+  for (auto const entry : VPackArrayIterator(slice[3])) {
+    TRI_ASSERT(entry.isObject());
+    _observedTable.emplace(
+      std::pair<std::string,std::string>(
+        entry.keyAt(0).copyString(),entry.valueAt(0).copyString()));    
+  }
   return *this;
 }
 

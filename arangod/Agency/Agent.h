@@ -132,9 +132,11 @@ public:
   /// @brief Get spearhead store
   Store const& spearhead() const;
 
-  Agent& operator= (VPackSlice const&);
+  friend class State;
 
  private:
+
+  Agent& operator= (VPackSlice const&);
 
   /// @brief This server (need endpoint)
   TRI_server_t*        _server;

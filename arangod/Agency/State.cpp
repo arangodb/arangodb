@@ -183,14 +183,18 @@ std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
   std::vector<VPackSlice> slices;
   MUTEX_LOCKER(mutexLocker, _logLock);
 
-  if (end == (std::numeric_limits<uint64_t>::max)()) {
-    end = _log.size() - 1;
+  if (start < _log.front().index) {
+    start = _log.front().index;
   }
 
-  if (start < _log[0].index) {
-    start = _log[0].index;
+  if (start > _log.back().index) {
+    return slices;
   }
   
+  if (end == (std::numeric_limits<uint64_t>::max)()) {
+    end = _log.back().index;
+  }
+
   for (size_t i = start-_cur; i <= end-_cur; ++i) {  // TODO:: Check bounds
     slices.push_back(VPackSlice(_log[i].entry->data()));
   }
@@ -305,7 +309,7 @@ bool State::loadCompacted () {
     for (auto const& i : VPackArrayIterator(result)) {
       buffer_t tmp =
         std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-      (*_agent) = i.get("readDB");
+      (*_agent) = i;
       _cur = std::stoul(i.get("_key").copyString());
     }
   }

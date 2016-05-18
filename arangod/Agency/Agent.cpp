@@ -298,12 +298,11 @@ bool Agent::load() {
     ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   auto vocbase = database->vocbase();
-
   if (vocbase == nullptr) {
     LOG(FATAL) << "could not determine _system database";
     FATAL_ERROR_EXIT();
   }
-
+  
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading persistent state.";
   if (!_state.loadCollections(vocbase, 
                               _config.waitForSync)) {
@@ -450,8 +449,12 @@ Store const& Agent::readDB () const {
   return _readDB;
 }
 
-Agent& Agent::operator= (VPackSlice const& slice) {
-  _spearhead = slice;
+Agent& Agent::operator= (VPackSlice const& compaction) {
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+  _spearhead = compaction.get("readDB");
+  _readDB = compaction.get("readDB");
+  _lastCommitIndex = std::stoul(compaction.get("_key").copyString());
+  _nextCompationAfter = _lastCommitIndex + _config.compactionStepSize;
   return *this;
 }
 
