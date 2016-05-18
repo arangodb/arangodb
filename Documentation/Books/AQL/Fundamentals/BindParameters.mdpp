@@ -24,7 +24,7 @@ letter, digit or the underscore symbol.
 
 Bind variables represent a value like a string, and must not be put in quotes.
 If you need to do string processing (concatenation, etc.) in the AQL query, you need
-[to use string functions to do so](../Aql/StringFunctions.md):
+[to use string functions to do so](../Functions/String.md):
 
     FOR u IN users
       FILTER u.id == CONCAT('prefix', @id, 'suffix') && u.name == @name
@@ -40,5 +40,8 @@ when using the bind parameter in a query, two *@* symbols must be used).
       RETURN u
 
 
-Specific information about parameters binding can also be found in [Aql With Web Interface](AqlWithWebInterface.md) and [Aql With Arangosh](AqlWithArangosh.md), and [HTTP Interface for AQL Queries](../HttpAqlQuery/README.md)
+Specific information about parameters binding can also be found in
+[Aql With Web Interface](../Invocation/WithWebInterface.md) and
+[Aql With Arangosh](../Invocation/WithArangosh.md), and
+[HTTP Interface for AQL Queries](../../HTTP/AqlQuery/index.html)
 

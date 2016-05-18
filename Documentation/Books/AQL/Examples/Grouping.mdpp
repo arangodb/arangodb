@@ -9,29 +9,29 @@ added in the query if required.
 *COLLECT* can be used to make a result set unique. The following query will return each distinct
 `age` attribute value only once:
 
-```
-FOR u IN users 
-  COLLECT age = u.age
-  RETURN age
+```js
+FOR u IN users
+    COLLECT age = u.age
+    RETURN age
 ```
 
 This is grouping without tracking the group values, but just the group criterion (*age*) value.
 
 Grouping can also be done on multiple levels using *COLLECT*:
 
-```
-FOR u IN users 
-  COLLECT status = u.status, age = u.age
-  RETURN { status, age }
+```js
+FOR u IN users
+    COLLECT status = u.status, age = u.age
+    RETURN { status, age }
 ```
 
 
-Alternatively *RETURN DISTINCT* can be used to make a result set unique. *RETURN DISTINCT* supports a 
+Alternatively *RETURN DISTINCT* can be used to make a result set unique. *RETURN DISTINCT* supports a
 single criterion only:
 
-```
+```js
 FOR u IN users
-  RETURN DISTINCT u.age
+    RETURN DISTINCT u.age
 ```
 
 Note: the order of results is undefined for *RETURN DISTINCT*.
@@ -41,70 +41,72 @@ Note: the order of results is undefined for *RETURN DISTINCT*.
 To group users by age, and return the names of the users with the highest ages,
 we'll issue a query like this:
 
-```
-FOR u IN users 
-  FILTER u.active == true 
-  COLLECT age = u.age INTO usersByAge 
-  SORT age DESC LIMIT 0, 5 
-  RETURN { 
+```js
+FOR u IN users
+  FILTER u.active == true
+  COLLECT age = u.age INTO usersByAge
+  SORT age DESC LIMIT 0, 5
+  RETURN {
     age,
-    users : usersByAge[*].u.name 
+    users: usersByAge[*].u.name
   }
+```
 
-[ 
-  { 
-    "age" : 37, 
-    "users" : [ 
-      "John", 
-      "Sophia" 
-    ] 
-  }, 
-  { 
-    "age" : 36, 
-    "users" : [ 
-      "Fred", 
-      "Emma" 
-    ] 
-  }, 
-  { 
-    "age" : 34, 
-    "users" : [ 
-      "Madison" 
-    ] 
-  }, 
-  { 
-    "age" : 33, 
-    "users" : [ 
-      "Chloe", 
-      "Michael" 
-    ] 
-  }, 
-  { 
-    "age" : 32, 
-    "users" : [ 
-      "Alexander" 
-    ] 
-  } 
+```json
+[
+  {
+    "age": 37,
+    "users": [
+      "John",
+      "Sophia"
+    ]
+  },
+  {
+    "age": 36,
+    "users": [
+      "Fred",
+      "Emma"
+    ]
+  },
+  {
+    "age": 34,
+    "users": [
+      "Madison"
+    ]
+  },
+  {
+    "age": 33,
+    "users": [
+      "Chloe",
+      "Michael"
+    ]
+  },
+  {
+    "age": 32,
+    "users": [
+      "Alexander"
+    ]
+  }
 ]
 ```
 
 The query will put all users together by their *age* attribute. There will be one
 result document per distinct *age* value (let aside the *LIMIT*). For each group,
 we have access to the matching document via the *usersByAge* variable introduced in
-the *COLLECT* statement. 
+the *COLLECT* statement.
 
 !SUBSECTION Variable Expansion
 
-The *usersByAge* variable contains the full documents found, and as we're only 
-interested in user names, we'll use the expansion operator <i>[\*]</i> to extract just the 
+The *usersByAge* variable contains the full documents found, and as we're only
+interested in user names, we'll use the expansion operator <i>[\*]</i> to extract just the
 *name* attribute of all user documents in each group.
 
 The <i>[\*]</i> expansion operator is just a handy short-cut. Instead of <i>usersByAge[\*].u.name</i>
 we could also write:
 
-```
+```js
 FOR temp IN usersByAge
-  RETURN temp.u.name
+    RETURN temp.u.name
 ```
 
 !SUBSECTION Grouping by multiple criteria
@@ -113,42 +115,44 @@ To group by multiple criteria, we'll use multiple arguments in the *COLLECT* cla
 For example, to group users by *ageGroup* (a derived value we need to calculate first)
 and then by *gender*, we'll do:
 
+```js
+FOR u IN users
+    FILTER u.active == true
+    COLLECT ageGroup = FLOOR(u.age / 5) * 5,
+            gender = u.gender INTO group
+    SORT ageGroup DESC
+    RETURN {
+        ageGroup,
+        gender
+    }
 ```
-FOR u IN users 
-  FILTER u.active == true
-  COLLECT ageGroup = FLOOR(u.age / 5) * 5, 
-          gender = u.gender INTO group
-  SORT ageGroup DESC
-  RETURN { 
-    ageGroup,
-    gender
-  }
 
-[ 
-  { 
-    "ageGroup" : 35, 
-    "gender" : "f" 
-  }, 
-  { 
-    "ageGroup" : 35, 
-    "gender" : "m" 
-  }, 
-  { 
-    "ageGroup" : 30, 
-    "gender" : "f" 
-  }, 
-  { 
-    "ageGroup" : 30, 
-    "gender" : "m" 
-  }, 
-  { 
-    "ageGroup" : 25, 
-    "gender" : "f" 
-  }, 
-  { 
-    "ageGroup" : 25, 
-    "gender" : "m" 
-  } 
+```json
+[
+  {
+    "ageGroup": 35,
+    "gender": "f"
+  },
+  {
+    "ageGroup": 35,
+    "gender": "m"
+  },
+  {
+    "ageGroup": 30,
+    "gender": "f"
+  },
+  {
+    "ageGroup": 30,
+    "gender": "m"
+  },
+  {
+    "ageGroup": 25,
+    "gender": "f"
+  },
+  {
+    "ageGroup": 25,
+    "gender": "m"
+  }
 ]
 ```
 
@@ -158,49 +162,51 @@ If the goal is to count the number of values in each group, AQL provides the spe
 *COLLECT WITH COUNT INTO* syntax. This is a simple variant for grouping with an additional
 group length calculation:
 
+```js
+FOR u IN users
+    FILTER u.active == true
+    COLLECT ageGroup = FLOOR(u.age / 5) * 5,
+            gender = u.gender WITH COUNT INTO numUsers
+    SORT ageGroup DESC
+    RETURN {
+        ageGroup,
+        gender,
+        numUsers
+    }
 ```
-FOR u IN users 
-  FILTER u.active == true
-  COLLECT ageGroup = FLOOR(u.age / 5) * 5, 
-          gender = u.gender WITH COUNT INTO numUsers
-  SORT ageGroup DESC
-  RETURN { 
-    ageGroup,
-    gender,
-    numUsers
-  }
 
-[ 
-  { 
-    "ageGroup" : 35, 
-    "gender" : "f", 
-    "numUsers" : 2 
-  }, 
-  { 
-    "ageGroup" : 35, 
-    "gender" : "m", 
-    "numUsers" : 2 
-  }, 
-  { 
-    "ageGroup" : 30, 
-    "gender" : "f", 
-    "numUsers" : 4 
-  }, 
-  { 
-    "ageGroup" : 30, 
-    "gender" : "m", 
-    "numUsers" : 4 
-  }, 
-  { 
-    "ageGroup" : 25, 
-    "gender" : "f", 
-    "numUsers" : 2 
-  }, 
-  { 
-    "ageGroup" : 25, 
-    "gender" : "m", 
-    "numUsers" : 2 
-  } 
+```json
+[
+  {
+    "ageGroup": 35,
+    "gender": "f",
+    "numUsers": 2
+  },
+  {
+    "ageGroup": 35,
+    "gender": "m",
+    "numUsers": 2
+  },
+  {
+    "ageGroup": 30,
+    "gender": "f",
+    "numUsers": 4
+  },
+  {
+    "ageGroup": 30,
+    "gender": "m",
+    "numUsers": 4
+  },
+  {
+    "ageGroup": 25,
+    "gender": "f",
+    "numUsers": 2
+  },
+  {
+    "ageGroup": 25,
+    "gender": "m",
+    "numUsers": 2
+  }
 ]
 ```
 
@@ -209,45 +215,47 @@ FOR u IN users
 Adding further aggregation is also simple in AQL by using an *AGGREGATE* clause
 in the *COLLECT*:
 
+```js
+FOR u IN users
+    FILTER u.active == true
+    COLLECT ageGroup = FLOOR(u.age / 5) * 5,
+            gender = u.gender
+    AGGREGATE numUsers = LENGTH(1),
+              minAge = MIN(u.age),
+              maxAge = MAX(u.age)
+    SORT ageGroup DESC
+    RETURN {
+        ageGroup,
+        gender,
+        numUsers,
+        minAge,
+        maxAge
+    }
 ```
-FOR u IN users 
-  FILTER u.active == true
-  COLLECT ageGroup = FLOOR(u.age / 5) * 5, 
-          gender = u.gender 
-  AGGREGATE numUsers = LENGTH(1), 
-            minAge = MIN(u.age),
-            maxAge = MAX(u.age)
-  SORT ageGroup DESC
-  RETURN { 
-    ageGroup,
-    gender,
-    numUsers,
-    minAge,
-    maxAge
-  }
 
-[ 
-  { 
-    "ageGroup" : 35, 
-    "gender" : "f", 
-    "numUsers" : 2,
-    "minAge" : 36,
-    "maxAge" : 39, 
-  }, 
-  { 
-    "ageGroup" : 35, 
-    "gender" : "m", 
-    "numUsers" : 2,
-    "minAge" : 35,
-    "maxAge" : 39, 
-  }, 
+```json
+[
+  {
+    "ageGroup": 35,
+    "gender": "f",
+    "numUsers": 2,
+    "minAge": 36,
+    "maxAge": 39,
+  },
+  {
+    "ageGroup": 35,
+    "gender": "m",
+    "numUsers": 2,
+    "minAge": 35,
+    "maxAge": 39,
+  },
   ...
 ]
 ```
 
-We have used the aggregate functions *LENGTH* here (it returns the length of a array). 
-This is the equivalent to SQL's `SELECT g, COUNT(*) FROM ... GROUP BY g`. In addition to 
-*LENGTH* AQL also provides *MAX*, *MIN*, *SUM* and *AVERAGE*, *VARIANCE_POPULATION*, 
+We have used the aggregate functions *LENGTH* here (it returns the length of a array).
+This is the equivalent to SQL's `SELECT g, COUNT(*) FROM ... GROUP BY g`. In addition to
+*LENGTH* AQL also provides *MAX*, *MIN*, *SUM* and *AVERAGE*, *VARIANCE_POPULATION*,
 *VARIANCE_SAMPLE*, *STDDEV_POPULATION* and *STDDEV_SAMPLE* as basic aggregation functions.
 
 In AQL all aggregation functions can be run on arrays only. If an aggregation function
@@ -265,38 +273,40 @@ Aggregation can also be performed after a *COLLECT* operation using other AQL co
 though performance-wise this is often inferior to using *COLLECT* with *AGGREGATE*.
 
 The same query as before can be turned into a post-aggregation query as shown below. Note
-that this query will build and pass on all group values for all groups inside the variable 
+that this query will build and pass on all group values for all groups inside the variable
 *g*, and perform the aggregation at the latest possible stage:
 
+```js
+FOR u IN users
+    FILTER u.active == true
+    COLLECT ageGroup = FLOOR(u.age / 5) * 5,
+            gender = u.gender INTO g
+    SORT ageGroup DESC
+    RETURN {
+        ageGroup,
+        gender,
+        numUsers: LENGTH(g[*]),
+        minAge: MIN(g[*].u.age),
+        maxAge: MAX(g[*].u.age)
+    }
 ```
-FOR u IN users 
-  FILTER u.active == true
-  COLLECT ageGroup = FLOOR(u.age / 5) * 5, 
-          gender = u.gender INTO g
-  SORT ageGroup DESC
-  RETURN { 
-    ageGroup,
-    gender,
-    numUsers : LENGTH(g[*]),
-    minAge : MIN(g[*].u.age),
-    maxAge : MAX(g[*].u.age)
-  }
 
-[ 
-  { 
-    "ageGroup" : 35, 
-    "gender" : "f", 
-    "numUsers" : 2,
-    "minAge" : 36,
-    "maxAge" : 39, 
-  }, 
-  { 
-    "ageGroup" : 35, 
-    "gender" : "m", 
-    "numUsers" : 2,
-    "minAge" : 35,
-    "maxAge" : 39, 
-  }, 
+```json
+[
+  {
+    "ageGroup": 35,
+    "gender": "f",
+    "numUsers": 2,
+    "minAge": 36,
+    "maxAge": 39,
+  },
+  {
+    "ageGroup": 35,
+    "gender": "m",
+    "numUsers": 2,
+    "minAge": 35,
+    "maxAge": 39,
+  },
   ...
 ]
 ```
@@ -308,60 +318,62 @@ the aggregation during the collect operation, at the earliest possible stage.
 !SUBSECTION Post-filtering aggregated data
 
 To filter the results of a grouping or aggregation operation (i.e. something
-similar to *HAVING* in SQL), simply add another *FILTER* clause after the *COLLECT* 
-statement. 
+similar to *HAVING* in SQL), simply add another *FILTER* clause after the *COLLECT*
+statement.
 
 For example, to get the 3 *ageGroup*s with the most users in them:
 
+```js
+FOR u IN users
+    FILTER u.active == true
+    COLLECT ageGroup = FLOOR(u.age / 5) * 5 INTO group
+    LET numUsers = LENGTH(group)
+    FILTER numUsers > 2 /* group must contain at least 3 users in order to qualify */
+    SORT numUsers DESC
+    LIMIT 0, 3
+    RETURN {
+        "ageGroup": ageGroup,
+        "numUsers": numUsers,
+        "users": group[*].u.name
+    }
 ```
-FOR u IN users 
-  FILTER u.active == true 
-  COLLECT ageGroup = FLOOR(u.age / 5) * 5 INTO group 
-  LET numUsers = LENGTH(group) 
-  FILTER numUsers > 2 /* group must contain at least 3 users in order to qualify */
-  SORT numUsers DESC 
-  LIMIT 0, 3 
-  RETURN { 
-    "ageGroup" : ageGroup, 
-    "numUsers" : numUsers, 
-    "users" : group[*].u.name 
-  }
 
-[ 
-  { 
-    "ageGroup" : 30, 
-    "numUsers" : 8, 
-    "users" : [ 
-      "Abigail", 
-      "Madison", 
-      "Anthony", 
-      "Alexander", 
-      "Isabella", 
-      "Chloe", 
-      "Daniel", 
-      "Michael" 
-    ] 
-  }, 
-  { 
-    "ageGroup" : 25, 
-    "numUsers" : 4, 
-    "users" : [ 
-      "Mary", 
-      "Mariah", 
-      "Jim", 
-      "Diego" 
-    ] 
-  }, 
-  { 
-    "ageGroup" : 35, 
-    "numUsers" : 4, 
-    "users" : [ 
-      "Fred", 
-      "John", 
-      "Emma", 
-      "Sophia" 
-    ] 
-  } 
+```json
+[
+  {
+    "ageGroup": 30,
+    "numUsers": 8,
+    "users": [
+      "Abigail",
+      "Madison",
+      "Anthony",
+      "Alexander",
+      "Isabella",
+      "Chloe",
+      "Daniel",
+      "Michael"
+    ]
+  },
+  {
+    "ageGroup": 25,
+    "numUsers": 4,
+    "users": [
+      "Mary",
+      "Mariah",
+      "Jim",
+      "Diego"
+    ]
+  },
+  {
+    "ageGroup": 35,
+    "numUsers": 4,
+    "users": [
+      "Fred",
+      "John",
+      "Emma",
+      "Sophia"
+    ]
+  }
 ]
 ```
 

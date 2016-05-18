@@ -33,7 +33,7 @@ alternatives is a document.
 !SUBSECTION Ternary operator
 
 For conditional evaluation, check out the
-[ternary operator](../Aql/Operators.md#ternary-operator).
+[ternary operator](../Operators.md#ternary-operator).
 
 !SECTION Database functions
 
