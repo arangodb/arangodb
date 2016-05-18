@@ -2,7 +2,7 @@
 
 AQL has the following functions to traverse loosely-structured graphs consisting of 
 an edge collection and plus the vertices connected by it. If you have created a graph 
-using the general-graph module you may want to use its more specific [Graph operations](../Aql/GraphOperations.md) 
+using the general-graph module you may want to use its more specific [Graph operations](Operations.md) 
 instead.
 
 
@@ -74,8 +74,8 @@ with the option *includeVertices* set to true.
 
 !SECTION General Purpose Traversals
 
-General purpose traversals with its extendability by visitor functions offer more possibilities over the newer [AQL graph traversals](../Aql/GraphTraversals.md),
-however unless you need some of these features you should [prefer AQL graph traversals](../Aql/GraphTraversals.md).
+General purpose traversals with its extendability by visitor functions offer more possibilities over the newer [AQL graph traversals](Traversals.md),
+however unless you need some of these features you should [prefer AQL graph traversals](Traversals.md).
 
 !SUBSECTION Traversal
 *TRAVERSAL(vertexcollection, edgecollection, startVertex, direction, options)*: 
@@ -516,7 +516,7 @@ path is a document consisting of the following attributes:
         RETURN p.vertices[*].name
 
 !SECTION Graph consistency
-When [using the graph management functions to remove vertices](../GeneralGraphs/Management.md#remove-a-vertex)
+When [using the graph management functions to remove vertices](Management.md#remove-a-vertex)
 you have the guaranty that all referencing edges are also removed.
 However, if you use document features alone to remove vertices, no edge collections will be adjusted.
 This results in an edge with its  `_from` or `_to` attribute referring to vanished vertices.
@@ -532,7 +532,7 @@ In order to keep the result set consistent between *includeData* enabled or disa
 
 When using any of AQL's general purpose traversal functions, please make sure that the graph 
 does not contain cycles, or that you at least specify some maximum depth or uniqueness 
-criteria for a traversal. In contrast [AQL graph traversals](../Aql/GraphTraversals.md) won't trap on cycles.
+criteria for a traversal. In contrast [AQL graph traversals](Traversals.md) won't trap on cycles.
 
 If no bounds are set, a traversal may run into an endless loop in a cyclic graph or sub-graph.
 Even in a non-cyclic graph, traversing far into the graph may consume a lot of processing

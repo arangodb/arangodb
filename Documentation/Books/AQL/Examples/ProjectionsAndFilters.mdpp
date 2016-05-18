@@ -8,7 +8,9 @@ To return three complete documents from collection *users*, the following query 
 FOR u IN users 
   LIMIT 0, 3
   RETURN u
+```
 
+```json
 [ 
   { 
     "_id" : "users/229886047207520", 
@@ -61,7 +63,9 @@ FOR u IN users
       "name" : u.name 
     } 
   }
+```
 
+```json
 [ 
   { 
     "user" : { 
@@ -99,7 +103,9 @@ FOR u IN users
     "age" : u.age, 
     "name" : u.name 
   }
+```
 
+```json
 [ 
   { 
     "age" : 37, 

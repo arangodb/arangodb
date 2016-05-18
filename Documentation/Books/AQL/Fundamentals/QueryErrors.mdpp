@@ -26,6 +26,6 @@ examples that will cause run-time errors are:
   includes unary (logical not/negation), binary (logical and, logical or), and
   the ternary operators
 
-Please refer to the [Arango Errors](../ErrorCodes/README.md) page for a list of error codes and
-meanings.
+Please refer to the [Arango Errors](../../Users/Appendix/ErrorCodes.html) page
+for a list of error codes and meanings.
 

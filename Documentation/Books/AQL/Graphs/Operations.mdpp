@@ -24,9 +24,9 @@ the amount of vertices in the graph, *x* the amount of start vertices and *y* th
 target vertices. Hence a suggestion may be to use Dijkstra when x\*y < n and the functions supports choosing your algorithm.
 
 !SUBSECTION Example Graph
-All examples in this chapter will use [this simple city graph](../Graphs/README.md#the-city-graph):
+All examples in this chapter will use [this simple city graph](../../Users/Graphs/index.html#the-city-graph):
 
-![Cities Example Graph](../Graphs/cities_graph.png)
+![Cities Example Graph](../../Users/Graphs/cities_graph.png)
 
 !SUBSECTION Edges and Vertices related functions
 
@@ -576,7 +576,7 @@ The complexity of this function strongly depends on the usage.
 - *connectName*: The result attribute which
   contains the connection.
 - *options* (optional): An object containing options, see
-  [Graph Traversals](../Aql/GraphOperations.md#graphtraversal):
+  [Graph Traversals](#graphtraversal):
 
 
 **Examples**
@@ -1092,9 +1092,8 @@ outbound paths.
 
 `GRAPH_RADIUS (graphName, options)`
 
-*The GRAPH\_RADIUS function returns the
-[radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-of a graph.*
+The GRAPH_RADIUS function returns the
+[radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29) of a graph.
 
 The complexity of the function is described
 [here](#the-complexity-of-the-shortest-path-algorithms).

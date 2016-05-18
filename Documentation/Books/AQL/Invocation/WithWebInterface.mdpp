@@ -12,18 +12,22 @@ They are defined as JSON values, the same format that is used for bind parameter
  
 Here is an example: 
 
-	for doc in @@collection 
-	FILTER CONTAINS(LOWER(doc.author), @search, false)
-	return {"name":doc.name, "descr": doc.description, "author":doc.author}
+```js
+FOR doc IN @@collection 
+FILTER CONTAINS(LOWER(doc.author), @search, false)
+RETURN { "name": doc.name, "descr": doc.description, "author": doc.author }
+```
 
 Bind parameter: 
 
-	{
-	"@collection":"_apps", 
-	"search":"arango"
-	}
+```js
+{
+    "@collection": "_apps",
+    "search": "arango"
+}
+```
 
-An overview of Bind Parameters may be found in [Aql Fundamentals](BindParameters.md).
+An overview of Bind Parameters may be found in [Aql Fundamentals](../Fundamentals/BindParameters.md).
 
 Queries can also be saved in the AQL editor along with their bind parameter values for later reuse. This data is stored in the user profile in the current database (in the *_users* system table). 
 
