@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, Backbone, $ */
+/*global window, Backbone, $, frontendConfig */
 (function() {
   "use strict";
   window.QueryManagementActive = Backbone.Collection.extend({

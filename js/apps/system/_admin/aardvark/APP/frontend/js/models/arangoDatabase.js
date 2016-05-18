@@ -1,4 +1,4 @@
-/*global window, Backbone */
+/*global window, Backbone, arangoHelper */
 
 window.DatabaseModel = Backbone.Model.extend({
 
