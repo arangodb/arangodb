@@ -258,8 +258,8 @@ bool Node::addTimeToLive (long millis) {
 bool Node::removeTimeToLive () {
   if (_ttl != std::chrono::system_clock::time_point()) {
     store().removeTTL(uri());
-    return true;
   }
+  return true;
 }
 
 inline bool Node::observedBy (std::string const& url) const {
