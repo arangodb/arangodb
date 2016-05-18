@@ -534,13 +534,9 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
         auto doc = _documents[_posInDocs++];
-        if (doc.isExternal()) {
-          res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
-                        AqlValue(doc.resolveExternal().begin()));
-        } else {
-          res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
-                        AqlValue(doc));
-        }
+        TRI_ASSERT(doc.isExternal());
+        res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
+                      AqlValue(doc.resolveExternal().begin()));
         // No harm done, if the setValue throws!
       }
     }
