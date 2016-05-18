@@ -47,6 +47,7 @@
         background-color: $c-white;
         border: 1px solid $c-bluegrey-nontransp;
         border-radius: 3px;
+        margin-bottom: 20px;
         padding: 10px 10px 0;
         position: relative;
         top: 35px;
@@ -121,9 +122,9 @@
             background-color: $c-bluegrey-dark;
             border: 1px solid $c-content-border;
             color: $c-white;
-            font-size: .6em;
+            font-size: 13px;
             font-weight: 300;
-            padding: 0 8px 2px;
+            padding: 2px 8px;
             position: relative;
             top: -3px;
           }
