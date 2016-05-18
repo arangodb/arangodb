@@ -1,6 +1,8 @@
 v2.8.10 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #1826: arangosh --javascript.execute: internal error (geo index issue)
+
 * fixed issue #1823: Arango crashed hard executing very simple query on windows
 
 

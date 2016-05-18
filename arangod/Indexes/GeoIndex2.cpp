@@ -180,7 +180,7 @@ triagens::basics::Json GeoIndex2::toJsonFigures (TRI_memory_zone_t* zone) const 
 
   return json;
 }
-  
+
 int GeoIndex2::insert (TRI_doc_mptr_t const* doc, 
                        bool) {
   auto shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -249,7 +249,12 @@ int GeoIndex2::remove (TRI_doc_mptr_t const* doc,
   double longitude;
 
   if (_location != 0) {
-    ok = extractDoubleArray(shaper, &shapedJson, &latitude, &longitude);
+    if (_geoJson) {
+      ok = extractDoubleArray(shaper, &shapedJson, &longitude, &latitude);
+    }
+    else {
+      ok = extractDoubleArray(shaper, &shapedJson, &latitude, &longitude);
+    }
   }
   else {
     ok = extractDoubleObject(shaper, &shapedJson, 0, &latitude);
@@ -263,8 +268,8 @@ int GeoIndex2::remove (TRI_doc_mptr_t const* doc,
     gc.longitude = longitude;
     gc.data = const_cast<void*>(static_cast<void const*>(doc));
 
-    // ignore non-existing elements in geo-index
     GeoIndex_remove(_geoIndex, &gc);
+    // ignore non-existing elements in geo-index
   }
 
   return TRI_ERROR_NO_ERROR;
