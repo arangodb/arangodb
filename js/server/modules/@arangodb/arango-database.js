@@ -251,11 +251,11 @@ ArangoDatabase.prototype._dropIndex = function (id) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock listEndpoints
+/// @brief was docuBlock endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._listEndpoints = function () {
-  return internal._listEndpoints();
+ArangoDatabase.prototype._endpoints = function () {
+  return internal._endpoints();
 };
 
 
