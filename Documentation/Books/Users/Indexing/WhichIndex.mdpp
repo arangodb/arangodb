@@ -63,12 +63,6 @@ different usage scenarios:
   The index supports complete match queries (full words) and prefix queries.
   Fulltext indexes will only be invoked via special functions.
 
-- cap constraint: the cap constraint provided by ArangoDB indexes documents
-  not to speed up search queries, but to limit (cap) the number or size of
-  documents in a collection. This can be used to prevent collections from growing 
-  permanently.
-
-
 !SUBSECTION Sparse vs. non-sparse indexes
 
 Hash indexes and skiplist indexes can optionally be created sparse. A sparse index

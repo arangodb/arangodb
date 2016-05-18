@@ -15,7 +15,6 @@ Other attributes may be necessary, depending on the index type.
 - *fulltext*: fulltext index
 - *geo1*: geo index, with one attribute
 - *geo2*: geo index, with two attributes
-- *cap*: cap constraint
 
 **sparse** can be *true* or *false*.
 

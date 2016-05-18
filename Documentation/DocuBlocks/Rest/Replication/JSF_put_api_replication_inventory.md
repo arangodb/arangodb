@@ -103,13 +103,11 @@ With some additional indexes:
     var c1 = db._create("IndexedCollection1");
     c1.ensureHashIndex("name");
     c1.ensureUniqueSkiplist("a", "b");
-    c1.ensureCapConstraint(500);
 
     db._drop("IndexedCollection2");
     var c2 = db._create("IndexedCollection2");
     c2.ensureFulltextIndex("text", 10);
     c2.ensureSkiplist("a");
-    c2.ensureCapConstraint(0, 1048576);
 
     var url = "/_api/replication/inventory";
     var response = logCurlRequest('GET', url);
