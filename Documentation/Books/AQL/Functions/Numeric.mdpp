@@ -3,71 +3,307 @@
 AQL offers some numeric functions for calculations. The following functions are
 supported:
 
-- *FLOOR(value)*: Returns the integer closest but not greater to *value*
+!SUBSECTION ABS()
 
-- *CEIL(value)*: Returns the integer closest but not less than *value*
+`ABS(value) → unsignedValue`
 
-- *ROUND(value)*: Returns the integer closest to *value*
+Return the absolute part of *value*.
 
-  Rounding towards zero, also known as `trunc()`in C/C++, can be achieved with
-  a combination of the [ternary operator](../Operators.md#ternary-operator),
-  `CEIL()` and `FLOOR()`:
-  
-  ```
-  LET rounded = value >= 0 ? FLOOR(value) : CEIL(value)
-  ```
+- **value** (number): any number, positive or negative
+- returns **unsignedValue** (number): the number without + or - sign
 
-- *ABS(value)*: Returns the absolute part of *value*
+```js
+ABS(-5) // 5
+ABS(+5) // 5
+ABS(3.5) // 3.5
+```
 
-- *SQRT(value)*: Returns the square root of *value*
+!SUBSECTION AVERAGE()
 
-- *POW(base, exp)*: Returns the *base* to the exponent *exp*
+`AVERAGE(numArray) → mean`
 
-- *RAND()*: Returns a pseudo-random number between 0 and 1
+Return the average (arithmetic mean) of the values in *array*.
 
-- *MIN(array)*: Returns the smallest element of *array*. *null* values
-  are ignored. If the array is empty or only *null* values are contained in the array, the
-  function will return *null*.
+- **numArray** (array): an array of numbers, *null* values are ignored
+- returns **mean** (number|null): the average value of *numArray*. If the array is
+  empty or contains *null* values only, *null* will be returned.
 
-- *MAX(array)*: Returns the greatest element of *array*. *null* values
-  are ignored. If the array is empty or only *null* values are contained in the array, the
-  function will return *null*.
+!SUBSECTION CEIL()
 
-- *AVERAGE(array)*: Returns the average (arithmetic mean) of the values in *array*. 
-  This requires the elements in *array* to be numbers. *null* values are ignored. 
-  If the array is empty or only *null* values are contained in the array, the function 
-  will return *null*.
+`CEIL(value) → roundedValue`
 
-- *SUM(array)*: Returns the sum of the values in *array*. This
-  requires the elements in *array* to be numbers. *null* values are ignored. 
+Return the integer closest but not less than *value*.
 
-- *MEDIAN(array)*: Returns the median value of the values in *array*. This 
-  requires the elements in *array* to be numbers. *null* values are ignored. If the 
-  array is empty or only *null* values are contained in the array, the function will return 
-  *null*.
+- **value** (number): any number
+- returns **roundedValue** (number): the value rounded to the ceiling
 
-- *PERCENTILE(array, n, method)*: Returns the *n*th percentile of the values in *array*. 
-  This requires the elements in *array* to be numbers. *null* values are ignored. *n* must
-  be between 0 (excluded) and 100 (included). *method* can be *rank* or *interpolation*.
-  The function will return null if the array is empty or only *null* values are contained 
-  in it or the percentile cannot be calculated.
+```js
+CEIL(2.49) // 3
+CEIL(2.50) // 3
+CEIL(-2.50) // -2
+CEIL(-2.51) // -2
+```
 
-- *VARIANCE_POPULATION(array)*: Returns the population variance of the values in 
-  *array*. This requires the elements in *array* to be numbers. *null* values 
-  are ignored. If the array is empty or only *null* values are contained in the array, 
-  the function will return *null*.
+!SUBSECTION FLOOR()
 
-- *VARIANCE_SAMPLE(array)*: Returns the sample variance of the values in 
-  *array*. This requires the elements in *array* to be numbers. *null* values 
-  are ignored. If the array is empty or only *null* values are contained in the array, 
-  the function will return *null*.
+`FLOOR(value) → roundedValue`
 
-- *STDDEV_POPULATION(array)*: Returns the population standard deviation of the 
-  values in *array*. This requires the elements in *array* to be numbers. *null* 
-  values are ignored. If the array is empty or only *null* values are contained in the array, 
-  the function will return *null*.
+Return the integer closest but not greater than *value*.
 
-- *STDDEV_SAMPLE(array)*: Returns the sample standard deviation of the values in 
-  *array*. This requires the elements in *array* to be numbers. *null* values 
-  are ignored. If the array is empty or only *null* values are contained in the array, 
-  the function will return *null*.
+- **value** (number): any number
+- returns **roundedValue** (number): the value rounded to the floor
+
+```js
+FLOOR(2.49) // 2
+FLOOR(2.50) // 2
+FLOOR(-2.50) // -3
+FLOOR(-2.51) // -3
+```
+
+!SUBSECTION MAX()
+
+`MAX(anyArray) → max`
+
+Return the greatest element of *anyArray*. The array is not limited to numbers.
+Also see [type and value order](../Fundamentals/TypeValueOrder.md).
+
+- **anyArray** (array): an array of numbers, *null* values are ignored
+- returns **max** (any|null): the element with the greatest value. If the array is
+  empty or contains *null* values only, the function will return *null*.
+
+```js
+MAX( [5, 9, -2, null, 1] ) // 9
+```
+
+!SUBSECTION MEDIAN()
+
+`MEDIAN(numArray) → median`
+
+Return the median value of the values in *array*.
+
+The array is sorted and the element in the middle is returned. If the array has an
+even length of elements, the two center-most elements are interpolated by calculating
+the average value (arithmetic mean).
+
+- **numArray** (array): an array of numbers, *null* values are ignored
+- returns **median** (number|null): the median of *numArray*. If the array is
+  empty or contains *null* values only, the function will return *null*.
+
+```js
+MEDIAN( [ 1, 2, 3] ) // 2
+MEDIAN( [ 1, 2, 3, 4 ] ) // 2.5
+MEDIAN( [ 4, 2, 3, 1 ] ) // 2.5
+MEDIAN( [ 999, 80, 4, 4, 4, 3, 3, 3 ] ) // 4
+```
+
+!SUBSECTION MIN()
+
+`MIN(anyArray) → min`
+
+Return the smallest element of *anyArray*. The array is not limited to numbers.
+Also see [type and value order](../Fundamentals/TypeValueOrder.md).
+
+- **anyArray** (array): an array of numbers, *null* values are ignored
+- returns **min** (any|null): the element with the smallest value. If the array is
+  empty or contains *null* values only, the function will return *null*.
+
+```js
+MIN( [5, 9, -2, null, 1] ) // -2
+```
+
+!SUBSECTION PERCENTILE()
+
+`PERCENTILE(numArray, n, method) → percentile`
+
+Return the *n*th percentile of the values in *numArray*.
+
+- **numArray** (array): an array of numbers, *null* values are ignored
+- **n** (number): must be between 0 (excluded) and 100 (included)
+- **method** (string, *optional*): "rank" (default) or "interpolation"
+- returns **percentile** (number|null): the *n*th percentile, or *null* if the
+  array is empty or only *null* values are contained in it or the percentile
+  cannot be calculated
+
+```js
+PERCENTILE( [1, 2, 3, 4], 50 ) // 2
+PERCENTILE( [1, 2, 3, 4], 50, "rank" ) // 2
+PERCENTILE( [1, 2, 3, 4], 50, "interpolation" ) // 2.5
+```
+
+!SUBSECTION POW()
+
+`POW(base, exp) → num`
+
+Return the *base* to the exponent *exp*.
+
+- **base** (number): the base value
+- **exp** (number): the exponent value
+- returns **num** (number): the exponentiated value
+
+```js
+POW( 2, 4 ) // 16
+POW( 5, -1 ) // 0.2
+POW( 5, 0 ) // 1
+```
+
+!SUBSECTION RAND()
+
+`RAND() → randomNumber`
+
+Return a pseudo-random number between 0 and 1.
+
+- returns **randomNumber** (number): a number greater than 0 and less than 1
+
+```js
+RAND() // 0.3503170117504508
+RAND() // 0.6138226173882478
+```
+
+Complex example:
+
+```js
+LET coinFlips = (
+    FOR i IN 1..100000
+    RETURN RAND() > 0.5 ? "heads" : "tails"
+)
+RETURN MERGE(
+    FOR flip IN coinFlips
+        COLLECT f = flip WITH COUNT INTO count
+        RETURN { [f]: count }
+)
+```
+
+Result:
+
+```json
+[
+  {
+    "heads": 49902,
+    "tails": 50098
+  }
+]
+```
+
+!SUBSECTION ROUND()
+
+`ROUND(value) → roundedValue`
+
+Return the integer closest to *value*.
+
+- **value** (number): any number
+- returns **roundedValue** (number): the value rounded to the closest integer
+
+```js
+ROUND(2.49) // 2
+ROUND(2.50) // 3
+ROUND(-2.50) // -2
+ROUND(-2.51) // -3
+```
+
+Rounding towards zero, also known as `trunc()`in C/C++, can be achieved with
+a combination of the [ternary operator](../Operators.md#ternary-operator),
+[CEIL()](#ceil) and [FLOOR()](#floor):
+
+```js
+LET rounded = value >= 0 ? FLOOR(value) : CEIL(value)
+```
+
+!SUBSECTION SQRT()
+
+`SQRT(value) → squareRoot`
+
+Return the square root of *value*.
+
+- **value** (number): a number
+- returns **squareRoot** (number): the square root of *value*
+
+```js
+SQRT(9) // 3
+SQRT(2) // 1.4142135623730951
+```
+
+Other roots can be calculated with [POW()](#pow) like `POW(value, 1/n)`:
+
+```js
+// 4th root of 8 * 8 * 8 * 8 = 4096
+POW(4096, 1/4) // 8
+
+// cube root of 3 * 3 * 3 = 27
+POW(27, 1/3) // 3
+
+// square root of 3 * 3 = 9
+POW(9, 1/2) // 3
+```
+
+!SUBSECTION STDDEV_POPULATION()
+
+`STDDEV_POPULATION(numArray) → num`
+
+Return the population standard deviation of the values in *array*.
+
+- **numArray** (array): an array of numbers, *null* values are ignored
+- returns **num** (number|null): the population standard deviation of *numArray*.
+  If the array is empty or only *null* values are contained in the array, 
+  *null* will be returned.
+
+```js
+STDDEV_POPULATION( [ 1, 3, 6, 5, 2 ] ) // 1.854723699099141
+```
+
+!SUBSECTION STDDEV_SAMPLE()
+
+`STDDEV_SAMPLE(numArray) → num`
+
+Return the sample standard deviation of the values in *array*.
+
+- **numArray** (array): an array of numbers, *null* values are ignored
+- returns **num** (number|null): the sample standard deviation of *numArray*.
+  If the array is empty or only *null* values are contained in the array, 
+  *null* will be returned.
+
+```js
+STDDEV_SAMPLE( [ 1, 3, 6, 5, 2 ] ) // 2.0736441353327724
+```
+
+!SUBSECTION SUM()
+
+`SUM(numArray) → sum`
+
+Return the sum of the values in *array*.
+
+- **numArray** (array): an array of numbers, *null* values are ignored
+-returns **sum** (number): the total of all values in *numArray*
+
+```js
+SUM( [1, 2, 3, 4] ) // 10
+```
+
+!SUBSECTION VARIANCE_POPULATION()
+
+`VARIANCE_POPULATION(numArray) → num`
+
+Return the population variance of the values in *array*.
+
+- **numArray** (array): an array of numbers, *null* values are ignored
+- returns **num** (number|null): the population variance of *numArray*.
+  If the array is empty or only *null* values are contained in the array, 
+  *null* will be returned.
+
+```js
+VARIANCE_POPULATION( [ 1, 3, 6, 5, 2 ] ) // 3.4400000000000004
+```
+
+!SUBSECTION VARIANCE_SAMPLE()
+
+`VARIANCE_SAMPLE(array) → num`
+
+Return the sample variance of the values in *array*.
+
+- **numArray** (array): an array of numbers, *null* values are ignored
+- returns **num** (number|null): the sample variance of *numArray*.
+  If the array is empty or only *null* values are contained in the array, 
+  *null* will be returned.
+
+```js
+VARIANCE_SAMPLE( [ 1, 3, 6, 5, 2 ] ) // 4.300000000000001
+```

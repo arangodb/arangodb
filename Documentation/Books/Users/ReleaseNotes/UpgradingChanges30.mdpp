@@ -653,6 +653,13 @@ in 3.0:
   is unchanged.
 - `--server.foxx-queues-poll-interval` was renamed to `--foxx.queues-poll-interval`.
   The meaning of the option is unchanged.
+- `--database.query-cache-mode` was renamed to `--query.cache-mode`. The meaning of
+  the option is unchanged.
+- `--database.query-cache-max-results` was renamed to `--query.cache-entries`. The
+  meaning of the option is unchanged.
+- `--database.disable-query-tracking` was renamed to `--query.tracking`. The meaning 
+  of the option `--query.tracking` is the opposite of the previous 
+  `--database.disable-query-tracking`.
 - `--log.tty` was renamed to `--log.foreground-tty`. The meaning of the option is
   unchanged.
 - `--upgrade` has been renamed to `--database.auto-upgrade`. In contrast to 2.8 this

@@ -1,31 +1,77 @@
 !CHAPTER Getting started
 
+!SECTION Overview
+
+This beginner's guide will make you familiar with ArangoDB.
+We will cover how to
+
+- install and run a local ArangoDB server
+- use the web interface to interact with it
+- store example data in the database
+- query the database to retrieve the data again
+- edit and remove existing data
+
+!SUBSECTION Installation
+
+Head to [arangodb.com/download](https://www.arangodb.com/download/),
+select your operating system and download ArangoDB. You may also follow
+the instructions on how to install with a package manager, if available.
+
+Start up the server by running `arangod`.
+!TODO explain how to do that on all major platforms in the most simple way
+
+For startup parameters, installation in a cluster and so on, see
+[Installing](../GettingStarted/Installing/README.md).
+
+!SUBSECTION Web interface
+
+The server itself speaks REST and VelocyStream, but you can use the
+graphical web interface to keep it simple. There's also
+[../Administration/Arangosh/README.md](arangosh), a synchronous shell for
+interaction with the server. If you're a developer, you might prefer the shell
+over the GUI. It does not provide features like syntax highlighting however.
+
+The web interface will become available shortly after you started `arangod`.
+You can access it in your browser at http://localhost:8529 - if not, please
+see [Troubleshooting](../Troubleshooting/README.md). It should look like this:
+
+!SUBSECTION Databases, collections and documents
+
+Databases are sets of collections. Collections store records, which are refered
+to as documents. Collections are the equivalent of tables in RDBMS, and documents
+can be thought of as rows in a table. The difference is that you don't define
+what columns (or rather attribures) there will be in advance. Every document
+in any collection can have arbitrary attribute keys and values. Documents in
+a single collection will likely have a similar structure in practice however,
+but the database system itself does not require it and will operate stable and
+fast no matter how your data looks like.
+
+Every server instance comes with a `_system` database.
+
+
 !SECTION ArangoDB programs 
 
 The ArangoDB package comes with the following programs:
 
-* `arangod`: The ArangoDB database daemon. This server program is
-  intended to run as a daemon process and to serve the various clients
-  connection to the server via TCP / HTTP.
-  See [Details about the ArangoDB Server](../GettingStarted/Arangod.md)
+- `arangod`: The [ArangoDB database daemon](../GettingStarted/Arangod.md).
+  This server program is intended to run as a daemon process and to serve the
+  various clients connection to the server via TCP / HTTP.
   
-* `arangosh`: The ArangoDB shell. A client that implements a
-  read-eval-print loop (REPL) and provides functions to access and
-  administrate the ArangoDB server.
-  See [Details about the ArangoDB Shell](../Administration/Arangosh/README.md)
+- `arangosh`: The [ArangoDB shell](../Administration/Arangosh/README.md).
+  A client that implements a read-eval-print loop (REPL) and provides functions
+  to access and administrate the ArangoDB server.
   
-* `arangoimp`: A bulk importer for the ArangoDB server.
-  See [Details about Arangoimp](../Administration/Arangoimp.md)
+- `arangoimp`: A [bulk importer](../Administration/Arangoimp.md) for the
+  ArangoDB server. It supports JSON and CSV.
   
-* `arangodump`: A tool to create backups of an ArangoDB database. See
-   [Details about Arangodump](../Administration/Arangodump.md)
+- `arangodump`: A tool to [create backups](../Administration/Arangodump.md)
+  of an ArangoDB database in JSON format.
    
-* `arangorestore`: A tool to reload data from a backup into an ArangoDB database.
-  See [Details about Arangorestore](../Administration/Arangorestore.md)
+- `arangorestore`: A tool to [load data of a backup](../Administration/Arangorestore.md)
+  back into an ArangoDB database.
   
-* `arango-dfdb`: A datafile debugger for ArangoDB. It is intended to be
-  used primarily during development of ArangoDB.
-  See [Details about Arango-DFDB](../Troubleshooting/ArangoDfdb.md)
+- `arango-dfdb`: A [datafile debugger](../Troubleshooting/ArangoDfdb.md) for
+  ArangoDB. It is primarily intended to be used during development of ArangoDB.
   
-* `arangobench`: A benchmark and test tool. It can be used for performance and
-  server function testing. See [Details about Arangobench](../Troubleshooting/Arangobench.md)
+- `arangobench`: A [benchmark and test tool](../Troubleshooting/Arangobench.md).
+  It can be used for performance and server function testing.

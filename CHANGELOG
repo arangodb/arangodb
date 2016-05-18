@@ -186,11 +186,28 @@ v3.0.0 (XXXX-XX-XX)
   using a backwards-compatible "legacy mode"
 
 
-v2.8.9 (XXXX-XX-XX)
+v2.8.10 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #1826: arangosh --javascript.execute: internal error (geo index issue)
+
+* fixed issue #1823: Arango crashed hard executing very simple query on windows
+
+
+v2.8.9 (2016-05-13)
 -------------------
+
+* fixed escaping and quoting of extra parameters for executables in Mac OS X App
+
+* added "waiting for" status variable to web interface collection figures view
+
+* fixed undefined behavior in query cache invaldation
 
 * fixed access to /_admin/statistics API in case statistics are disable via option
   `--server.disable-statistics`
+
+* Foxx manager will no longer fail hard when Foxx store is unreachable unless installing
+  a service from the Foxx store (e.g. when behind a firewall or GitHub is unreachable).
 
 
 v2.8.8 (2016-04-19)

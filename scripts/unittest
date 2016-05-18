@@ -13,7 +13,6 @@ fi;
 ulimit -n 2048
 
 export PORT=`expr 1024 + $RANDOM`
-export ETCD_NONO_WAL_SYNC=1
 
 if [ -z "${ARANGOSH}" ];  then
   if [ -x build/bin/arangosh ];  then

@@ -589,24 +589,6 @@ ArangoCollection.prototype.dropIndex = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures a cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
-  var body = {
-    type : "cap",
-    size : size || undefined,
-    byteSize: byteSize || undefined
-  };
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures a unique skip-list index
 ////////////////////////////////////////////////////////////////////////////////
 
