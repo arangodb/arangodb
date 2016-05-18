@@ -1,0 +1,11 @@
+!CHAPTER Router Module
+
+`const createRouter = require('@arangodb/foxx/router');`
+
+TODO
+
+Routers need to be mounted to expose their HTTP routes. See [service context][CONTEXT].
+
+TODO
+
+[CONTEXT]: ../Context.md

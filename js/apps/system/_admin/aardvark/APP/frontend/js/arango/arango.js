@@ -1,5 +1,5 @@
 /*jshint unused: false */
-/*global window, $, document, _ */
+/*global window, $, document, _, arangoHelper, frontendConfig */
 
 (function() {
   "use strict";

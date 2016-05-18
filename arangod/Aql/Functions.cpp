@@ -3200,7 +3200,7 @@ AqlValue Functions::CollectionCount(
   }
 
   TransactionBuilderLeaser builder(trx);
-  builder->add(VPackValue(document->size()));
+  builder->add(VPackValue(document->_numberDocuments));
   return AqlValue(builder.get());
 }
 

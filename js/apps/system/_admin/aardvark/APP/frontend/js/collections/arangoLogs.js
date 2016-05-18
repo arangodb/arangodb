@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, $, _, databaseUrl */
+/*global window, $, _, databaseUrl, arangoHelper */
 (function () {
 
   "use strict";

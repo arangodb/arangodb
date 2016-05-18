@@ -2577,14 +2577,16 @@ OperationResult Transaction::countLocal(std::string const& collectionName) {
  
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
-  VPackBuilder resultBuilder;
-  resultBuilder.add(VPackValue(document->size()));
+  uint64_t num = document->_numberDocuments;
 
   res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
   
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.add(VPackValue(num));
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
 }

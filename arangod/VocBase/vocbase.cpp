@@ -1075,8 +1075,7 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
     bool doSync = (vocbase->_settings.forceSyncProperties &&
                    !arangodb::wal::LogfileManager::instance()->isInRecovery());
     VPackSlice slice;
-    int res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, slice,
-                                       doSync);
+    int res = collection->_collection->updateCollectionInfo(vocbase, slice, doSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);

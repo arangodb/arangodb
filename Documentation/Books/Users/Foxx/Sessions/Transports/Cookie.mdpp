@@ -1,0 +1,37 @@
+!CHAPTER Cookie Session Transport
+
+`const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');`
+
+TODO
+
+!SECTION Creating a transport
+
+`cookieTransport([options]): Transport`
+
+Creates a [Transport][TRANSPORT] that can be used in the sessions middleware.
+
+**Arguments**
+
+* **options**: `Object` (optional)
+
+  An object with the following properties:
+
+  * **name**: `string` (Default: `"sid"`)
+
+    TODO
+
+  * **ttl**: `number` (optional)
+
+    TODO
+
+  * **secret**: `string` (optional)
+
+    TODO
+
+  * **algorithm**: `string` (optional)
+
+    TODO
+
+If a string is passed instead of an options object, it will be interpreted as the *name* option.
+
+[TRANSPORT]: ./README.md
