@@ -1,0 +1,41 @@
+!CHAPTER Session Middleware
+
+`const sessionMiddleware = require('@arangodb/foxx/sessions');`
+
+TODO
+
+!SECTION Creating a session middleware
+
+`sessionMiddleware(options): Middleware`
+
+TODO
+
+**Arguments**
+
+* **options**: `Object`
+
+  An object with the following properties:
+
+  * **storage**: `Storage`
+
+    Storage that will be used to persist the sessions.
+
+    If a string or collection is passed instead of a Storage, it will be used to create a [Collection Storage][COLLECTIONSTORAGE]
+
+  * **transports**: `Array<Transport>` | `Transport`
+
+    Transports that will be used to extract the session identifiers from incoming requests and inject them into outgoing responses. When attempting to extract a session identifier, the transports will be used in the order specified until a match is found. When injecting (or clearing) session identifiers, all transports will be invoked.
+
+    If the string `"cookie"` is passed instead of a Transport, the [Cookie Transport][COOKIETRANSPORT] will be used with the default settings instead.
+
+    If the string `"header"` is passed instead of a Transport, the [Header Transport][HEADERTRANSPORT] will be used with the default settings instead.
+
+  * **autoCreate**: `boolean` (Default: `true`)
+
+    If enabled the session storage's `new` method will be invoked to create an empty session whenever the transport failed to return a session for the incoming request. Otherwise the session will be initialized as `null`.
+
+TODO
+
+[COLLECTIONSTORAGE]: ./Storages/Collection.md
+[COOKIETRANSPORT]: ./Transports/Cookie.md
+[HEADERTRANSPORT]: ./Transports/Header.md

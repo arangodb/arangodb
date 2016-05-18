@@ -1,0 +1,25 @@
+!CHAPTER Header Session Transport
+
+`const headerTransport = require('@arangodb/foxx/sessions/transports/header');`
+
+TODO
+
+!SECTION Creating a transport
+
+`headerTransport([options]): Transport`
+
+Creates a [Transport][TRANSPORT] that can be used in the sessions middleware.
+
+**Arguments**
+
+* **options**: `Object` (optional)
+
+  An object with the following properties:
+
+  * **name**: `string` (Default: `X-Session-Id`)
+
+    TODO
+
+If a string is passed instead of an options object, it will be interpreted as the *name* option.
+
+[TRANSPORT]: ./README.md

@@ -1,0 +1,29 @@
+!CHAPTER JWT Session Storage
+
+`const jwtStorage = require('@arangodb/foxx/sessions/storages/jwt');`
+
+The JWT session storage converts sessions to and from [JSON Web Tokens](https://jwt.io/).
+
+!SECTION Creating a storage
+
+`jwtStorage(options): Storage`
+
+Creates a [Storage][STORAGES] that can be used in the sessions middleware.
+
+**Arguments**
+
+* **options**: `Object`
+
+  An object with the following properties:
+
+  * **algorithm**: `string`
+
+    TODO
+
+  * **secret**: `string`
+
+    TODO
+
+TODO
+
+[STORAGES]: ./README.md
