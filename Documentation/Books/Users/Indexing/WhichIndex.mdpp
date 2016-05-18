@@ -122,7 +122,7 @@ will not know beforehand whether the values which are compared to `doc.attr` wil
 Sparse skiplist indexes can be used for sorting if the optimizer can safely detect that the 
 index range does not include `null` for any of the index attributes. 
 
-Note that if you intend to use [joins](../AqlExamples/Join.md) it may be clever
+Note that if you intend to use [joins](../../AQL/Examples/Join.html) it may be clever
 to use non-sparsity and maybe even uniqueness for that attribute, else all items containing
 the `null` value will match against each other and thus produce large results.
 

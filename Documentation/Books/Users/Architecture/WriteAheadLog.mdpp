@@ -33,4 +33,4 @@ already collected write-ahead logfiles so replication slaves still can fetch dat
 them if required. How many collected logfiles will be kept before they get deleted is
 configurable via the option *--wal.historic-logfiles*.
 
-For all write-ahead log configuration options, please refer to the page [Write-ahead log options](../ConfigureArango/Wal.md).
+For all write-ahead log configuration options, please refer to the page [Write-ahead log options](../Administration/Configuration/Wal.md).

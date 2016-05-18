@@ -1,6 +1,6 @@
 !CHAPTER Graph Management
 
-This chapter describes the javascript interface for [creating and modifying named graphs](../Graphs/README.md).
+This chapter describes the javascript interface for [creating and modifying named graphs](../README.md).
 In order to create a non empty graph the functionality to create edge definitions has to be introduced first:
 
 !SECTION Edge Definitions
@@ -119,7 +119,7 @@ to any collection in *toVertexCollections*.
 **Warning: Deprecated**
 
 This function is deprecated and will be removed soon.
-Please use [Relation](../GeneralGraphs/Management.md#relation) instead.
+Please use [Relation](#relation) instead.
 
 
 
@@ -168,7 +168,7 @@ To define a relation between several vertex collections:
 **Warning: Deprecated**
 
 This function is deprecated and will be removed soon.
-Please use [Relation](../GeneralGraphs/Management.md#relation) instead.
+Please use [Relation](#relation) instead.
 
 
 
@@ -715,7 +715,7 @@ Replaces the data of a vertex in collection vertexCollectionName
 
 * vertexId (required) *_id* attribute of the vertex
 * data (required) JSON data of vertex.
-* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
+* options (optional) See [collection documentation](../../DataModeling/Documents/DocumentMethods.md)
 
 
 **Examples**
@@ -746,7 +746,7 @@ Updates the data of a vertex in collection vertexCollectionName
 
 * vertexId (required) *_id* attribute of the vertex
 * data (required) JSON data of vertex.
-* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
+* options (optional) See [collection documentation](../../DataModeling/Documents/DocumentMethods.md)
 
 **Examples**
 
@@ -778,7 +778,7 @@ Additionally removes all ingoing and outgoing edges of the vertex recursively
 **Parameters**
 
 * vertexId (required) *_id* attribute of the vertex
-* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
+* options (optional) See [collection documentation](../../DataModeling/Documents/DocumentMethods.md)
 
 
 **Examples**
@@ -858,7 +858,7 @@ Replaces the data of an edge in collection edgeCollectionName
 
 * edgeId (required) *_id* attribute of the edge
 * data (required) JSON data of the edge
-* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
+* options (optional) See [collection documentation](../../DataModeling/Documents/DocumentMethods.md)
 
 
 **Examples**
@@ -889,7 +889,7 @@ Updates the data of an edge in collection edgeCollectionName
 
 * edgeId (required) *_id* attribute of the edge
 * data (required) JSON data of the edge
-* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
+* options (optional) See [collection documentation](../../DataModeling/Documents/DocumentMethods.md)
 
 
 **Examples**
@@ -921,7 +921,7 @@ If this edge is used as a vertex by another edge, the other edge will be removed
 **Parameters**
 
 * edgeId (required) *_id* attribute of the edge
-* options (optional) See [collection documentation](../Documents/DocumentMethods.md)
+* options (optional) See [collection documentation](../../DataModeling/Documents/DocumentMethods.md)
 
 
 **Examples**

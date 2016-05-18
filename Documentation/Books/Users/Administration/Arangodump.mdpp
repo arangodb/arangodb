@@ -27,7 +27,7 @@ or use authentication, you can use the following command-line options:
 * *--server.disable-authentication <bool>*: whether or not to use authentication
 
 Here's an example of dumping data from a non-standard endpoint, using a dedicated
-[database name](../Glossary/README.md#database-name):
+[database name](../Appendix/Glossary.md#database-name):
 
     unix> arangodump --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --output-directory "dump"
 

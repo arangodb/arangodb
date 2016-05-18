@@ -24,7 +24,7 @@ Key features include:
 * It is **open source** (Apache License 2.0)
 
 In this documentation you can inform yourself about all the functions, features and programs ArangoDB provides for you.
-Features are illustrated with interactive usage examples; you can cut'n'paste them into [arangosh](Arangosh/README.md) to try them out.
+Features are illustrated with interactive usage examples; you can cut'n'paste them into [arangosh](Administration/Arangosh/README.md) to try them out.
 The http REST-API is demonstrated with cut'n'paste recepies intended to be used with the [cURL](http://curl.haxx.se).
 Drivers may provide their own examples based on these .js based examples to improve understandeability for their respective users.
 I.e. for the [java driver](https://github.com/arangodb/arangodb-java-driver#learn-more) some of the samples are re-implemented.

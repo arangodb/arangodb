@@ -11,10 +11,10 @@ ArangoDB is a database that serves documents to clients.
   or more documents
 * *Queries* are used to filter documents based on certain criteria.
   Queries can be as simple as a "query by example" or as complex as
-  ["joins"](../AqlExamples/Join.md) using many collections or graph structures
+  ["joins"](../../AQL/Examples/Join.html) using many collections or graph structures
 * *Cursors* are used to iterate over the result of a query
 * *Indexes* are used to speed up searches. There are various
-  types of indexes such as [hash indexes](../IndexHandling/Hash.md) and [geo indexes](../IndexHandling/Geo.md)
+  types of indexes such as [hash indexes](../Indexing/Hash.md) and [geo indexes](../Indexing/Geo.md)
 
 If you are familiar with RDBMS then it is safe to compare collections
 to tables and documents to rows. However, bringing structure to the
@@ -175,7 +175,7 @@ the `_id` using *byExample*:
     @endDocuBlock 07_workWithColl_remove
 
 
-You can learn all about the query language [Aql](../Aql/README.md). Note that
+You can learn all about the query language [Aql](../../AQL/index.html). Note that
 *_query* is a short-cut for *_createStatement* and *execute*. We will
 come back to these functions when we talk about cursors.
 
