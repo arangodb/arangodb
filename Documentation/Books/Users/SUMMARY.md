@@ -158,6 +158,7 @@
   * [Server Internals](Architecture/ServerInternals.md)
 #
 * [Release notes](ReleaseNotes/README.md)
+  * [Whats New in 3.0](ReleaseNotes/NewFeatures30.md)
   * [Whats New in 2.8](ReleaseNotes/NewFeatures28.md)
   * [Whats New in 2.7](ReleaseNotes/NewFeatures27.md)
   * [Whats New in 2.6](ReleaseNotes/NewFeatures26.md)
@@ -183,7 +184,6 @@
     * ["request"](Appendix/JavaScriptModules/Request.md)
     * ["actions"](Appendix/JavaScriptModules/Actions.md)
     * ["queries"](Appendix/JavaScriptModules/Queries.md)
-    * ["planner"](Appendix/JavaScriptModules/Planner.md)
     * [Write-ahead log](Appendix/JavaScriptModules/WAL.md)
     * [Task Management](Appendix/JavaScriptModules/Tasks.md)
   * [Deprecated](Appendix/Deprecated/README.md)
