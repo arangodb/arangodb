@@ -62,7 +62,7 @@ enum AstNodeFlagType : AstNodeFlagsType {
       16,  // node produces non-deterministic result (e.g. function call nodes)
   DETERMINED_RUNONDBSERVER =
       32,  // node can run on the DB server in a cluster setup
-  DETERMINED_USERDEFINED = 64,  // node contains user-defined function calls
+  DETERMINED_CHECKUNIQUENESS = 64,  // object's keys must be checked for uniqueness
 
   VALUE_SORTED = 128,    // node is a list and its members are sorted asc.
   VALUE_CONSTANT = 256,  // node value is constant (i.e. not dynamic)
@@ -73,7 +73,7 @@ enum AstNodeFlagType : AstNodeFlagsType {
                                   // (e.g. function call nodes)
   VALUE_RUNONDBSERVER =
       4096,                  // node can run on the DB server in a cluster setup
-  VALUE_USERDEFINED = 8192,  // node can run on the DB server in a cluster setup
+  VALUE_CHECKUNIQUENESS = 8192,  // object's keys must be checked for uniqueness
 
   FLAG_KEEP_VARIABLENAME = 16384,  // node is a reference to a variable name,
                                    // not the variable value (used in KEEP
@@ -480,6 +480,9 @@ struct AstNode {
   /// @brief whether or not a node (and its subnodes) can safely be executed on
   /// a DB server
   bool canRunOnDBServer() const;
+  
+  /// @brief whether or not an object's keys must be checked for uniqueness
+  bool mustCheckUniqueness() const;
 
   /// @brief whether or not a node (and its subnodes) is deterministic
   bool isDeterministic() const;

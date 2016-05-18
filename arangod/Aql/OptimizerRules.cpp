@@ -1622,6 +1622,11 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
           continue;
         }
 
+        if (rootNode->isSimple() != otherExpression->node()->isSimple()) {
+          // expression types (V8 vs. non-V8) do not match. give up
+          continue;
+        }
+
         TRI_ASSERT(other != nullptr);
         otherExpression->replaceVariableReference(outvars[0], rootNode);
 

@@ -3519,6 +3519,13 @@ function AQL_SLICE (value, from, to, nonNegative) {
   }
 
   from = AQL_TO_NUMBER(from);
+  if (from < 0) {
+    from = value.length + from;
+    if (from < 0) {
+      from = 0;
+    }
+  }
+
   if (TYPEWEIGHT(to) !== TYPEWEIGHT_NULL) {
     to = AQL_TO_NUMBER(to);
   }
@@ -3533,6 +3540,11 @@ function AQL_SLICE (value, from, to, nonNegative) {
   else {
     if (to >= 0) {
       to += from;
+    } else {
+      to = value.length + to;
+      if (to < 0) {
+        to = 0;
+      }
     }
   }
 

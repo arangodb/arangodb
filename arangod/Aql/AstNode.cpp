@@ -1701,7 +1701,7 @@ bool AstNode::isSimple() const {
 
   if (type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT ||
       type == NODE_TYPE_EXPANSION || type == NODE_TYPE_ITERATOR ||
-      type == NODE_TYPE_ARRAY_LIMIT) {
+      type == NODE_TYPE_ARRAY_LIMIT || type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
@@ -1715,12 +1715,6 @@ bool AstNode::isSimple() const {
 
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
-  }
-
-  if (type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-    // this one is explicitly non-simple!
-    setFlag(DETERMINED_SIMPLE);
-    return false;
   }
 
   if (type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_ATTRIBUTE_ACCESS ||
@@ -2031,6 +2025,53 @@ bool AstNode::canRunOnDBServer() const {
   // everyhing else can run everywhere
   setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
   return true;
+}
+
+/// @brief whether or not an object's keys must be checked for uniqueness
+bool AstNode::mustCheckUniqueness() const {
+  if (hasFlag(DETERMINED_CHECKUNIQUENESS)) {
+    // fast track exit
+    return hasFlag(VALUE_CHECKUNIQUENESS);
+  }
+
+  TRI_ASSERT(type == NODE_TYPE_OBJECT);
+
+  bool mustCheck = false;
+
+  // check the actual key members now
+  size_t const n = numMembers();
+
+  if (n >= 2) {
+    std::unordered_set<std::string> keys;
+
+    // only useful to check when there are 2 or more keys
+    for (size_t i = 0; i < n; ++i) {
+      auto member = getMemberUnchecked(i);
+
+      if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+        // constant key
+        if (!keys.emplace(member->getString()).second) {
+          // duplicate key
+          mustCheck = true;
+          break;
+        }
+      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+        // dynamic key... we don't know the key yet, so there's no
+        // way around check it at runtime later
+        mustCheck = true;
+        break;
+      }
+    }
+  }
+        
+  if (mustCheck) {
+    // we have duplicate keys, or we can't tell yet
+    setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
+  } else {
+    // all keys unique, or just one or zero keys in object
+    setFlag(DETERMINED_CHECKUNIQUENESS);
+  }
+  return mustCheck;
 }
 
 /// @brief whether or not a node (and its subnodes) is deterministic

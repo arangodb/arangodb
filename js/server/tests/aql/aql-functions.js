@@ -695,43 +695,43 @@ function ahuacatlFunctionsTestSuite () {
     testSlice : function () {
       var actual;
       
-      actual = getQueryResults("RETURN SLICE([ ], 0, 1)");
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ ], 0, 1)))");
       assertEqual([ [ ] ], actual);
-
-      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0, 1)");
+      
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ 1, 2, 3, 4, 5 ], 0, 1)))");
       assertEqual([ [ 1 ] ], actual);
 
-      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0, 2)");
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ 1, 2, 3, 4, 5 ], 0, 2)))");
       assertEqual([ [ 1, 2 ] ], actual);
       
-      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 1, 2)");
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ 1, 2, 3, 4, 5 ], 1, 2)))");
       assertEqual([ [ 2, 3 ] ], actual);
       
-      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0)");
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ 1, 2, 3, 4, 5 ], 0)))");
       assertEqual([ [ 1, 2, 3, 4, 5 ] ], actual);
       
-      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 3)");
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ 1, 2, 3, 4, 5 ], 3)))");
       assertEqual([ [ 4, 5 ] ], actual);
       
-      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0, -1)");
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ 1, 2, 3, 4, 5 ], 0, -1)))");
       assertEqual([ [ 1, 2, 3, 4 ] ], actual);
       
-      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0, -2)");
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ 1, 2, 3, 4, 5 ], 0, -2)))");
       assertEqual([ [ 1, 2, 3 ] ], actual);
       
-      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 2, -1)");
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ 1, 2, 3, 4, 5 ], 2, -1)))");
       assertEqual([ [ 3, 4 ] ], actual);
       
-      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 10)");
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ 1, 2, 3, 4, 5 ], 10)))");
       assertEqual([ [ ] ], actual);
       
-      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 1000)");
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ 1, 2, 3, 4, 5 ], 1000)))");
       assertEqual([ [ ] ], actual);
       
-      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], -1000)");
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ 1, 2, 3, 4, 5 ], -1000)))");
       assertEqual([ [ 1, 2, 3, 4, 5 ] ], actual);
       
-      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 1, -10)");
+      actual = getQueryResults("RETURN NOOPT(V8(SLICE([ 1, 2, 3, 4, 5 ], 1, -10)))");
       assertEqual([ [ ] ], actual);
     },
 
@@ -740,20 +740,88 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSliceInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE(true)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE(1)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE('foo')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE({ })"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE([ ])"); 
-      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], { })")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], true)")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], 'foo')")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], [ ])")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], { })")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], 1, false)")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], 1, 'foo')")); 
-      assertEqual([ [ ] ], getQueryResults("RETURN SLICE([ ], 1, [ ])")); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(SLICE()))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(SLICE(true)))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(SLICE(1)))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(SLICE('foo')))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(SLICE({ })))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(SLICE([ ])))"); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(V8(SLICE([ ], { })))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(V8(SLICE([ ], true)))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(V8(SLICE([ ], 'foo')))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(V8(SLICE([ ], [ ])))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(V8(SLICE([ ], { })))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(V8(SLICE([ ], 1, false)))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(V8(SLICE([ ], 1, 'foo')))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(V8(SLICE([ ], 1, [ ])))")); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test slice function
+////////////////////////////////////////////////////////////////////////////////
+
+    testSliceCxx : function () {
+      var actual;
+      
+      actual = getQueryResults("RETURN NOOPT(SLICE([ ], 0, 1))");
+      assertEqual([ [ ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 0, 1))");
+      assertEqual([ [ 1 ] ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 0, 2))");
+      assertEqual([ [ 1, 2 ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 1, 2))");
+      assertEqual([ [ 2, 3 ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 0))");
+      assertEqual([ [ 1, 2, 3, 4, 5 ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 3))");
+      assertEqual([ [ 4, 5 ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 0, -1))");
+      assertEqual([ [ 1, 2, 3, 4 ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 0, -2))");
+      assertEqual([ [ 1, 2, 3 ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 2, -1))");
+      assertEqual([ [ 3, 4 ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 10))");
+      assertEqual([ [ ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 1000))");
+      assertEqual([ [ ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], -1000))");
+      assertEqual([ [ 1, 2, 3, 4, 5 ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(SLICE([ 1, 2, 3, 4, 5 ], 1, -10))");
+      assertEqual([ [ ] ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test slice function
+////////////////////////////////////////////////////////////////////////////////
+
+    testSliceInvalidCxx : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SLICE())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SLICE(true))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SLICE(1))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SLICE('foo'))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SLICE({ }))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SLICE([ ]))"); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], { }))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], true))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], 'foo'))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], [ ]))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], { }))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], 1, false))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], 1, 'foo'))")); 
+      assertEqual([ [ ] ], getQueryResults("RETURN NOOPT(SLICE([ ], 1, [ ]))")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
