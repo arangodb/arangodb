@@ -58,6 +58,7 @@ build/bin/arangod \
   --server.statistics false \
   --server.threads 16 \
   --agency.compaction-step-size 100 \
+  --log.force-direct true \
   > cluster/4001.stdout 2>&1 &
 sleep 1
 

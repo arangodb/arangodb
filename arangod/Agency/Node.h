@@ -62,7 +62,6 @@ enum NODE_EXCEPTION {PATH_NOT_FOUND};
 class Node;
 
 typedef std::chrono::system_clock::time_point TimePoint;
-typedef std::multimap<TimePoint, std::shared_ptr<Node>> TimeTable;
 
 class Store;
 
@@ -175,6 +174,8 @@ public:
   Store const& store() const;
 
   std::string toJson() const;
+
+  Node const* parent() const;
 
 protected:
 

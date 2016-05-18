@@ -99,12 +99,15 @@ public:
 
 private:
 
-  std::multimap<TimePoint, std::shared_ptr<Node>>& timeTable ();
-  std::multimap<TimePoint, std::shared_ptr<Node>> const& timeTable () const;
-  std::multimap <std::string,std::string>& observerTable();
-  std::multimap <std::string,std::string> const& observerTable() const;
-  std::multimap <std::string,std::string>& observedTable();
-  std::multimap <std::string,std::string> const& observedTable() const;
+  /// @brief Remove time to live entries for uri
+  void removeTTL (std::string const&);
+
+  std::multimap<TimePoint, std::string>& timeTable ();
+  std::multimap<TimePoint, std::string> const& timeTable () const;
+  std::multimap<std::string,std::string>& observerTable();
+  std::multimap<std::string,std::string> const& observerTable() const;
+  std::multimap<std::string,std::string>& observedTable();
+  std::multimap<std::string,std::string> const& observedTable() const;
   
   /// @brief Read individual entry specified in slice into builder
   bool read  (arangodb::velocypack::Slice const&,
@@ -129,7 +132,7 @@ private:
   Agent* _agent;
 
   /// @brief Table of expiries in tree (only used in root node)
-  std::multimap<TimePoint, std::shared_ptr<Node>> _timeTable;
+  std::multimap<TimePoint, std::string> _timeTable;
   
   /// @brief Table of observers in tree (only used in root node)
   std::multimap <std::string,std::string> _observerTable;

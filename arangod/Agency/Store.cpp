@@ -376,7 +376,7 @@ query_t Store::clearExpired () const {
     for (auto it = _timeTable.cbegin(); it != _timeTable.cend(); ++it) {
       if (it->first < std::chrono::system_clock::now()) {
         tmp->openArray(); tmp->openObject();
-        tmp->add(it->second->uri(), VPackValue(VPackValueType::Object));
+        tmp->add(it->second, VPackValue(VPackValueType::Object));
         tmp->add("op",VPackValue("delete"));
         tmp->close(); tmp->close(); tmp->close();
       } else {
@@ -395,10 +395,9 @@ void Store::dumpToBuilder (Builder& builder) const {
   {
     VPackObjectBuilder guard(&builder);
     for (auto const& i : _timeTable) {
-      auto in_time_t = std::chrono::system_clock::to_time_t(i.first);
-      std::string ts = ctime(&in_time_t);
-      ts.resize(ts.size()-1);
-      builder.add(ts, VPackValue(i.second->uri()));
+      auto ts = std::chrono::duration_cast<std::chrono::seconds>(
+        i.first.time_since_epoch()).count();
+      builder.add(i.second, VPackValue(ts));
     }
   }
   {
@@ -442,7 +441,6 @@ bool Store::start (Agent* agent) {
 void Store::run() {
 
   CONDITION_LOCKER(guard, _cv);
-  
   while (!this->isStopping()) { // Check timetable and remove overage entries
 
     std::chrono::microseconds t{0};
@@ -475,24 +473,38 @@ bool Store::applies (arangodb::velocypack::Slice const& slice) {
 }
 
 Store& Store::operator= (VPackSlice const& slice) {
+
   TRI_ASSERT(slice.isArray());
+
   MUTEX_LOCKER(storeLocker, _storeLock);
   _node.applies(slice[0]);
+
+  TRI_ASSERT(slice[1].isObject());
+  for (auto const& entry : VPackObjectIterator(slice[1])) {
+    long long tse = entry.value.getInt();
+    _timeTable.emplace(
+      std::pair<TimePoint,std::string>(
+        TimePoint(std::chrono::duration<int>(tse)), entry.key.copyString()) );
+  }
+
   TRI_ASSERT(slice[2].isArray());
-  for (auto const entry : VPackArrayIterator(slice[2])) {
+  for (auto const& entry : VPackArrayIterator(slice[2])) {
     TRI_ASSERT(entry.isObject());
     _observerTable.emplace(
       std::pair<std::string,std::string>(
         entry.keyAt(0).copyString(),entry.valueAt(0).copyString()));
   }
+  
   TRI_ASSERT(slice[3].isArray());
-  for (auto const entry : VPackArrayIterator(slice[3])) {
+  for (auto const& entry : VPackArrayIterator(slice[3])) {
     TRI_ASSERT(entry.isObject());
     _observedTable.emplace(
       std::pair<std::string,std::string>(
         entry.keyAt(0).copyString(),entry.valueAt(0).copyString()));    
   }
+  
   return *this;
+  
 }
 
 void Store::toBuilder (Builder& b) const {
@@ -517,11 +529,11 @@ Node const Store::operator ()(std::string const& path) const {
 }
 
 
-std::multimap<TimePoint, std::shared_ptr<Node>>& Store::timeTable () {
+std::multimap<TimePoint, std::string>& Store::timeTable () {
   return _timeTable;
 }
 
-const std::multimap<TimePoint, std::shared_ptr<Node>>& Store::timeTable () const {
+const std::multimap<TimePoint, std::string>& Store::timeTable () const {
   return _timeTable;
 }
 
@@ -543,4 +555,16 @@ std::multimap <std::string,std::string> const& Store::observedTable() const {
 Node const Store::get (std::string const& path) const {
   MUTEX_LOCKER(storeLocker, _storeLock);  
   return _node(path);
+}
+
+void Store::removeTTL (std::string const& uri) {
+  if (!_timeTable.empty()) {
+    for (auto it = _timeTable.cbegin(); it != _timeTable.cend(); ) {
+      if (it->second == uri) {
+        _timeTable.erase(it++);
+      } else {
+        ++it;
+      }
+    }
+  }
 }

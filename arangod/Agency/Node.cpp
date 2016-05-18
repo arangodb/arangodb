@@ -249,9 +249,7 @@ ValueType Node::valueType() const {
 bool Node::addTimeToLive (long millis) {
   auto tkey = std::chrono::system_clock::now() +
     std::chrono::milliseconds(millis);
-  store().timeTable().insert(
-    std::pair<TimePoint,std::shared_ptr<Node>>(
-      tkey, _parent->_children[_node_name]));
+  store().timeTable().insert(std::pair<TimePoint,std::string>(tkey, uri()));
   _ttl = tkey;
   return true;
 }
@@ -259,16 +257,9 @@ bool Node::addTimeToLive (long millis) {
 // remove time to live entry for this node
 bool Node::removeTimeToLive () {
   if (_ttl != std::chrono::system_clock::time_point()) {
-    auto ret = store().timeTable().equal_range(_ttl);
-    for (auto it = ret.first; it!=ret.second;) {
-      if (it->second == _parent->_children[_node_name]) {
-        store().timeTable().erase(it);
-        break;
-      }
-      ++it;
-    }
+    store().removeTTL(uri());
+    return true;
   }
-  return true;
 }
 
 inline bool Node::observedBy (std::string const& url) const {
@@ -599,4 +590,9 @@ std::string Node::toJson() const {
   std::string strval = builder.slice()[0].isString() ?
     builder.slice()[0].copyString() : builder.slice()[0].toJson();
   return strval;
+}
+
+
+Node const* Node::parent () const {
+  return _parent;
 }
