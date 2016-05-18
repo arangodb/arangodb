@@ -152,17 +152,12 @@ static std::vector<df_entry_t> GetRangeDatafiles(
 
   std::vector<df_entry_t> datafiles;
 
-  TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(document);
+  {
+    READ_LOCKER(readLocker, document->_filesLock); 
 
-  try {
     IterateDatafiles(document->_datafiles, datafiles, dataMin, dataMax, false);
     IterateDatafiles(document->_journals, datafiles, dataMin, dataMax, true);
-  } catch (...) {
-    TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
-    throw;
   }
-
-  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
   return datafiles;
 }

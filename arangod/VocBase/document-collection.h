@@ -164,12 +164,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
   arangodb::basics::ReadWriteLock _compactionLock;
   double _lastCompaction;
 
-  // ...........................................................................
-  // this condition variable protects the _journalsCondition
-  // ...........................................................................
-
-  TRI_condition_t _journalsCondition;
-
   // whether or not any of the indexes may need to be garbage-collected
   // this flag may be modifying when an index is added to a collection
   // if true, the cleanup thread will periodically call the cleanup functions of
@@ -184,8 +178,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int beginWriteTimed(uint64_t, uint64_t);
 
   TRI_doc_collection_info_t* figures();
-
-  uint64_t size();
 
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_t*);
@@ -282,53 +274,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to read lock the journal files and the parameter file
-///
-/// note: the return value of the call to TRI_TryReadLockReadWriteLock is
-/// is checked so we cannot add logging here
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_TRY_READ_LOCK_DATAFILES_DOC_COLLECTION(a) a->_lock.tryReadLock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read locks the journal files and the parameter file
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(a) a->_lock.readLock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read unlocks the journal files and the parameter file
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(a) a->_lock.unlock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write locks the journal files and the parameter file
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(a) a->_lock.writeLock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write unlocks the journal files and the parameter file
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(a) a->_lock.unlock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks the journal entries
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(a) \
-  TRI_LockCondition(&(a)->_journalsCondition)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlocks the journal entries
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(a) \
-  TRI_UnlockCondition(&(a)->_journalsCondition)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks the documents and indexes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -399,21 +344,6 @@ void TRI_FreeDocumentCollection(TRI_document_collection_t*);
 int TRI_FromVelocyPackIndexDocumentCollection(
     arangodb::Transaction*, TRI_document_collection_t*,
     arangodb::velocypack::Slice const&, arangodb::Index**);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new journal
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_datafile_t* TRI_CreateDatafileDocumentCollection(TRI_document_collection_t*,
-                                                     TRI_voc_fid_t,
-                                                     TRI_voc_size_t, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes an existing journal
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t*, size_t,
-                                         bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fill the additional (non-primary) indexes
@@ -563,12 +493,5 @@ arangodb::Index* TRI_LookupFulltextIndexDocumentCollection(
 arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t*, TRI_idx_iid_t,
     std::string const&, int, bool&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rotate the current journal of the collection
-/// use this for testing only
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RotateJournalDocumentCollection(TRI_document_collection_t*);
 
 #endif

@@ -175,28 +175,24 @@ struct compaction_info_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a compactor file, based on a datafile
-////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the number of documents in the collection
+///////////////////////////////////////////////////////////////////////////////
+  
+static uint64_t GetNumberOfDocuments(TRI_document_collection_t* document) {
+  TRI_vocbase_t* vocbase = document->_vocbase;
 
-static TRI_datafile_t* CreateCompactor(TRI_document_collection_t* document,
-                                       TRI_voc_fid_t fid, int64_t maximalSize) {
-  TRI_collection_t* collection = document;
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase), document->_info.id(), TRI_TRANSACTION_READ);
+  // only try to acquire the lock here
+  // if lock acquisition fails, we go on and report an (arbitrary) positive number
+  trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, false); 
 
-  // reserve room for one additional entry
-  collection->_compactors.reserve(collection->_compactors.size() + 1);
+  int res = trx.begin();
 
-  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-  TRI_datafile_t* compactor = TRI_CreateDatafileDocumentCollection(
-      document, fid, static_cast<TRI_voc_size_t>(maximalSize), true);
-
-  if (compactor != nullptr) {
-    collection->_compactors.emplace_back(compactor);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return 16384; // assume some positive value 
   }
-
-  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-  return compactor;
+   
+  return static_cast<int64_t>(document->_numberDocuments);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,26 +214,6 @@ static int CopyMarker(TRI_document_collection_t* document,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief locate a datafile, identified by fid, in a vector of datafiles
-////////////////////////////////////////////////////////////////////////////////
-
-static bool LocateDatafile(std::vector<TRI_datafile_t*> const& vector,
-                           TRI_voc_fid_t fid, size_t* position) {
-  size_t const n = vector.size();
-
-  for (size_t i = 0; i < n; ++i) {
-    auto datafile = vector[i];
-
-    if (datafile->_fid == fid) {
-      *position = i;
-      return true;
-    }
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief callback to drop a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -250,13 +226,11 @@ static void DropDatafileCallback(TRI_datafile_t* datafile, void* data) {
   std::string name("deleted-" + std::to_string(fid) + ".db");
   std::string filename = arangodb::basics::FileUtils::buildFilename(document->_directory, name);
 
-  bool ok;
-
   if (datafile->isPhysical(datafile)) {
     // copy the current filename
     copy = datafile->_filename;
 
-    ok = TRI_RenameDatafile(datafile, filename.c_str());
+    bool ok = TRI_RenameDatafile(datafile, filename.c_str());
 
     if (!ok) {
       LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot rename obsolete datafile '" << copy << "' to '" << filename << "': " << TRI_last_error();
@@ -265,7 +239,7 @@ static void DropDatafileCallback(TRI_datafile_t* datafile, void* data) {
 
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "finished compacting datafile '" << datafile->getName(datafile) << "'";
 
-  ok = TRI_CloseDatafile(datafile);
+  bool ok = TRI_CloseDatafile(datafile);
 
   if (!ok) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot close obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_last_error();
@@ -335,34 +309,12 @@ static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
   }
 
   if (ok) {
-    size_t i;
+    int res = document->replaceDatafileWithCompactor(datafile, compactor);
 
-    // must acquire a write-lock as we're about to change the datafiles vector
-    TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(document);
-
-    if (!LocateDatafile(document->_datafiles, datafile->_fid, &i)) {
-      TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
-
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate datafile";
-      TRI_Free(TRI_CORE_MEM_ZONE, context);
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not swap datafile and compactor files";
       return;
     }
-
-    // put the compactor in place of the datafile
-    document->_datafiles[i] = compactor;
-
-    if (!LocateDatafile(document->_compactors, compactor->_fid, &i)) {
-      TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
-
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate compactor";
-      TRI_Free(TRI_CORE_MEM_ZONE, context);
-      return;
-    }
-
-    // remove the compactor from the list of compactors
-    document->_compactors.erase(document->_compactors.begin() + i);
-
-    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
     DropDatafileCallback(datafile, document);
   }
@@ -462,36 +414,24 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
 
 static int RemoveCompactor(TRI_document_collection_t* document,
                            TRI_datafile_t* compactor) {
-  size_t i;
-
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty compaction file '" << compactor->getName(compactor) << "'";
 
-  // remove the datafile from the list of datafiles
-  TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(document);
-
   // remove the compactor from the list of compactors
-  if (!LocateDatafile(document->_compactors, compactor->_fid, &i)) {
-    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
+  bool ok = document->removeCompactor(compactor);
 
+  if (!ok) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate compactor";
 
     return TRI_ERROR_INTERNAL;
   }
 
-  document->_compactors.erase(document->_compactors.begin() + i);
-
-  TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
-
   // close the file & remove it
   if (compactor->isPhysical(compactor)) {
-    char* filename;
-
-    filename = TRI_DuplicateString(compactor->getName(compactor));
+    std::string filename = compactor->getName(compactor);
     TRI_CloseDatafile(compactor);
     TRI_FreeDatafile(compactor);
 
-    TRI_UnlinkFile(filename);
-    TRI_Free(TRI_CORE_MEM_ZONE, filename);
+    TRI_UnlinkFile(filename.c_str());
   } else {
     TRI_CloseDatafile(compactor);
     TRI_FreeDatafile(compactor);
@@ -508,20 +448,13 @@ static int RemoveDatafile(TRI_document_collection_t* document,
                           TRI_datafile_t* df) {
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty datafile '" << df->getName(df) << "'";
 
-  // remove the datafile from the list of datafiles
-  TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(document);
+  bool ok = document->removeDatafile(df);
 
-  size_t i;
-  if (!LocateDatafile(document->_datafiles, df->_fid, &i)) {
-    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
-
+  if (!ok) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate datafile";
 
     return TRI_ERROR_INTERNAL;
   }
-
-  document->_datafiles.erase(document->_datafiles.begin() + i);
-  TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
   // update dfi
   document->_datafileStatistics.remove(df->_fid);
@@ -639,7 +572,7 @@ static void CompactifyDatafiles(
     std::vector<compaction_info_t> const& toCompact) {
   TRI_datafile_t* compactor;
   compaction_context_t context;
-  size_t i, j;
+  size_t i;
 
   size_t const n = toCompact.size();
   TRI_ASSERT(n > 0);
@@ -663,7 +596,7 @@ static void CompactifyDatafiles(
 
   // now create a new compactor file
   // we are re-using the _fid of the first original datafile!
-  compactor = CreateCompactor(document, initial._fid, initial._targetSize);
+  compactor = document->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
 
   if (compactor == nullptr) {
     // some error occurred
@@ -721,30 +654,15 @@ static void CompactifyDatafiles(
     document->_datafileStatistics.remove(compaction._datafile->_fid);
   }
 
-  // locate the compactor
-  // must acquire a write-lock as we're about to change the datafiles vector
-  TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(document);
-
-  if (!LocateDatafile(document->_compactors, compactor->_fid, &j)) {
-    // not found
-    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
-
-    LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error in CompactifyDatafiles: could not find compactor";
-    return;
-  }
-
-  if (!TRI_CloseDatafileDocumentCollection(document, j, true)) {
-    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
-
+  if (document->closeCompactor(compactor) != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not close compactor file";
     // TODO: how do we recover from this state?
     return;
   }
 
-  TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
-
   if (context._dfi.numberAlive == 0 && context._dfi.numberDead == 0 &&
       context._dfi.numberDeletions == 0) {
+    // everything is empty after compaction
     if (n > 1) {
       // create .dead files for all collected files
       for (i = 0; i < n; ++i) {
@@ -752,13 +670,10 @@ static void CompactifyDatafiles(
         TRI_datafile_t* datafile = compaction._datafile;
 
         if (datafile->isPhysical(datafile)) {
-          char* filename =
-              TRI_Concatenate2String(datafile->getName(datafile), ".dead");
+          std::string filename(datafile->getName(datafile));
+          filename.append(".dead");
 
-          if (filename != nullptr) {
-            TRI_WriteFile(filename, "", 0);
-            TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-          }
+          TRI_WriteFile(filename.c_str(), "", 0);
         }
       }
     }
@@ -789,13 +704,10 @@ static void CompactifyDatafiles(
         TRI_datafile_t* datafile = compaction._datafile;
 
         if (datafile->isPhysical(datafile)) {
-          char* filename =
-              TRI_Concatenate2String(datafile->getName(datafile), ".dead");
+          std::string filename(datafile->getName(datafile));
+          filename.append(".dead");
 
-          if (filename != nullptr) {
-            TRI_WriteFile(filename, "", 0);
-            TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-          }
+          TRI_WriteFile(filename.c_str(), "", 0);
         }
       }
     }
@@ -845,40 +757,45 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
   //    return false;
   //  }
 
-  std::vector<compaction_info_t> toCompact;
-  toCompact.reserve(COMPACTOR_MAX_FILES);
-
   // if we cannot acquire the read lock instantly, we will exit directly.
   // otherwise we'll risk a multi-thread deadlock between synchronizer,
   // compactor and data-modification threads (e.g. POST /_api/document)
-  if (!TRI_TRY_READ_LOCK_DATAFILES_DOC_COLLECTION(document)) {
+  TRY_READ_LOCKER(readLocker, document->_filesLock);
+
+  if (!readLocker.isLocked()) {
+    // unable to acquire the lock at the moment
     return false;
   }
-
-  size_t const n = document->_datafiles.size();
-
-  if (n == 0 || document->_compactors.size() > 0) {
+  
+  // check if there is already a compactor file
+  if (!document->_compactors.empty()) {
     // we already have created a compactor file in progress.
     // if this happens, then a previous compaction attempt for this collection
-    // failed
-
-    // additionally, if there are no datafiles, then there's no need to compact
-    TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
-
-    if (n == 0) {
-      document->setCompactionStatus(ReasonNoDatafiles);
-    } else {
-      document->setCompactionStatus(ReasonCompactionBlocked);
-    }
+    // failed or is not finished yet
+    document->setCompactionStatus(ReasonCompactionBlocked);
     return false;
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection '" << document->_info.namec_str() << "' for compaction opportunities";
+  // copy datafiles vector
+  std::vector<TRI_datafile_t*> datafiles = document->_datafiles;
+
+  if (datafiles.empty()) {
+    // collection has no datafiles
+    document->setCompactionStatus(ReasonNoDatafiles);
+    return false;
+  }
+  
+  std::vector<compaction_info_t> toCompact;
+  toCompact.reserve(COMPACTOR_MAX_FILES);
+
+  // now we have datafiles that we can process 
+  size_t const n = datafiles.size();
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection '" << document->_info.name() << "' for compaction opportunities";
 
   size_t start = document->getNextCompactionStartIndex();
 
-  // number of documents is protected by the same lock
-  uint64_t const numDocuments = document->size();
+  // get number of documents from collection
+  uint64_t const numDocuments = GetNumberOfDocuments(document);
 
   // get maximum size of result file
   uint64_t maxSize = (uint64_t)COMPACTOR_MAX_SIZE_FACTOR *
@@ -908,9 +825,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
   char const* firstReason = nullptr;
 
   for (size_t i = start; i < n; ++i) {
-    TRI_datafile_t* df =
-        static_cast<TRI_datafile_t*>(document->_datafiles[i]);
-
+    TRI_datafile_t* df = datafiles[i];
     TRI_ASSERT(df != nullptr);
 
     DatafileStatisticsContainer dfi =
@@ -1035,8 +950,8 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
     numAlive += static_cast<int64_t>(dfi.numberAlive);
   }
 
-  // can now continue without the lock
-  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
+  // we can now continue without the lock
+  readLocker.unlock();
 
   if (toCompact.empty()) {
     // nothing to compact. now reset start index
