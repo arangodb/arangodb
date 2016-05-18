@@ -1,0 +1,64 @@
+!CHAPTER Session Transports
+
+TODO
+
+!SECTION get
+
+`transport.get(request): string`
+
+TODO
+
+**Arguments**
+
+* **request**: `Request`
+
+  [Request object][REQUEST] to extract a session identifier from.
+
+TODO
+
+**Examples**
+
+TODO
+
+!SECTION set
+
+`transport.set(response, sid): void`
+
+TODO
+
+**Arguments**
+
+* **response**: `Response`
+
+  [Response object][RESPONSE] to attach a session identifier to.
+
+* **sid**: `string`
+
+  Session identifier to attach to the response.
+
+TODO
+
+**Examples**
+
+TODO
+
+!SECTION clear
+
+`transport.clear(response): void`
+
+TODO
+
+**Arguments**
+
+* **response**: `Response`
+
+  Response object to remove the session identifier from.
+
+TODO
+
+**Examples**
+
+TODO
+
+[REQUEST]: ../../Router/Request.md
+[RESPONSE]: ../../Router/Response.md
