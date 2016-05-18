@@ -16,6 +16,7 @@ Examples will explain the API on the [social graph](../README.md#the-social-grap
 
 @startDocuBlock JSF_general_graph_example_description
 
+
 !SECTION Starting Points
 
 This section describes the entry points for the fluent interface.

@@ -1,6 +1,6 @@
 !CHAPTER Windows
 
-The default installation directory is *c:\Program Files\ArangoDB-1.x.y*. During the
+The default installation directory is *C:\Program Files\ArangoDB-3.x.y*. During the
 installation process you may change this. In the following description we will assume
 that ArangoDB has been installed in the location *&lt;ROOTDIR&gt;*.
 
@@ -10,7 +10,7 @@ server process. In the latter case the database directory and the Foxx directory
 has to be writable by the user.
 
 Installing for a single user: Select a different directory during
-installation. For example *c:\Users\&lt;Username&gt;\ArangoDB* or *c:\ArangoDB*.
+installation. For example *C:\Users\&lt;Username&gt;\ArangoDB* or *C:\ArangoDB*.
 
 Installing for multiple users: Keep the default directory. After the
 installation edit the file *&lt;ROOTDIR&gt;\etc\ArangoDB\arangod.conf*. Adjust the
