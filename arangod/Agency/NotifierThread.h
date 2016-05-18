@@ -33,7 +33,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 namespace arangodb {
 namespace consensus {
 
@@ -43,17 +42,18 @@ struct NotificationResult {
 };
 
 class NotifierThread : public Thread {
-public:
-  NotifierThread(const std::string& path, std::shared_ptr<VPackBuilder> body, const std::vector<std::string> &endpoints);
+ public:
+  NotifierThread(const std::string& path, std::shared_ptr<VPackBuilder> body,
+                 const std::vector<std::string>& endpoints);
   virtual ~NotifierThread();
 
   void run() override;
   bool start();
-  
-  /// @brief Orderly shutdown of thread
-  void beginShutdown () override;
 
-private:
+  /// @brief Orderly shutdown of thread
+  void beginShutdown() override;
+
+ private:
   void scheduleNotification(const std::string&);
 
   arangodb::basics::ConditionVariable _cv;
@@ -61,11 +61,10 @@ private:
   std::string _path;
   std::shared_ptr<VPackBuilder> _body;
   std::vector<std::string> _endpoints;
-  
+
   std::vector<NotificationResult> _openResults;
 };
+}
+}
 
-}}
-
-#endif // ARANGODB_CONSENSUS_NOTIFIER_COMMON_H
-
+#endif  // ARANGODB_CONSENSUS_NOTIFIER_COMMON_H

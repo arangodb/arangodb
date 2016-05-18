@@ -47,15 +47,13 @@ class Agent;
 
 /// @brief RAFT leader election
 class Constituent : public arangodb::Thread {
-  
-public:
-
+ public:
   /// @brief Distribution type
-  typedef std::uniform_real_distribution<double> dist_t; 
+  typedef std::uniform_real_distribution<double> dist_t;
 
   /// @brief Default ctor
   Constituent();
-  
+
   /// @brief Clean up and exit election
   virtual ~Constituent();
 
@@ -67,7 +65,7 @@ public:
 
   /// @brief Get current role
   role_t role() const;
-  
+
   /// @brief Are we leading?
   bool leading() const;
 
@@ -84,10 +82,10 @@ public:
   void run() override final;
 
   /// @brief Who is leading
-  arangodb::consensus::id_t leaderID () const;
+  arangodb::consensus::id_t leaderID() const;
 
   /// @brief Configuration
-  config_t const& config () const;
+  config_t const& config() const;
 
   /// @brief Become follower
   void follow(term_t);
@@ -100,10 +98,9 @@ public:
 
   bool start(TRI_vocbase_t* vocbase, aql::QueryRegistry*);
 
-private:
-
+ private:
   /// @brief set term to new term
-  void term (term_t);
+  void term(term_t);
 
   /// @brief Agency endpoints
   std::vector<std::string> const& endpoints() const;
@@ -119,43 +116,42 @@ private:
 
   /// @brief Call for vote (by leader or candidates after timeout)
   void callElection();
-  
+
   /// @brief Count my votes
   void countVotes();
 
   /// @brief Wait for sync
-  bool waitForSync () const;
+  bool waitForSync() const;
 
   /// @brief Notify everyone, that we are good to go.
   ///        This is the task of the last process starting up.
   ///        Will be taken care of by gossip
   void notifyAll();
-  
+
   /// @brief Sleep for how long
   duration_t sleepFor(double, double);
 
-  TRI_vocbase_t* _vocbase; 
+  TRI_vocbase_t* _vocbase;
   aql::QueryRegistry* _queryRegistry;
 
-  term_t               _term;         /**< @brief term number */
-  std::atomic<bool>    _cast;         /**< @brief cast a vote this term */
-  std::atomic<state_t> _state;        /**< @brief State (follower, candidate, leader)*/
+  term_t _term;                /**< @brief term number */
+  std::atomic<bool> _cast;     /**< @brief cast a vote this term */
+  std::atomic<state_t> _state; /**< @brief State (follower, candidate, leader)*/
 
-  arangodb::consensus::id_t                 _leaderID;     /**< @brief Current leader */
-  arangodb::consensus::id_t                 _id;           /**< @brief My own id */
-  constituency_t       _constituency; /**< @brief List of consituents */
-  std::mt19937         _gen;          /**< @brief Random number generator */
-  role_t               _role;         /**< @brief My role */
-  Agent*               _agent;        /**< @brief My boss */
-  arangodb::consensus::id_t                 _votedFor;
+  arangodb::consensus::id_t _leaderID; /**< @brief Current leader */
+  arangodb::consensus::id_t _id;       /**< @brief My own id */
+  constituency_t _constituency;        /**< @brief List of consituents */
+  std::mt19937 _gen;                   /**< @brief Random number generator */
+  role_t _role;                        /**< @brief My role */
+  Agent* _agent;                       /**< @brief My boss */
+  arangodb::consensus::id_t _votedFor;
 
   std::unique_ptr<NotifierThread> _notifier;
 
-  arangodb::basics::ConditionVariable _cv;      // agency callbacks
+  arangodb::basics::ConditionVariable _cv;  // agency callbacks
   mutable arangodb::Mutex _castLock;
-
 };
-  
-}}
+}
+}
 
 #endif
