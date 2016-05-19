@@ -31,8 +31,10 @@
         $('#loginUsername').focus();
       }
       else {
-        $('#logout').hide();
-        $('.login-window #databases').css('height', '90px');
+        if (frontendConfig.authenticationEnabled === false) {
+          $('#logout').hide();
+          $('.login-window #databases').css('height', '90px');
+        }
         $('#loginForm').hide();
         $('.login-window #databases').show();
 
