@@ -2167,7 +2167,7 @@ textarea,
 .dropdownImport.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus {
   cursor: pointer; }
 
-.arangoToolbar span.clickable:hover, .login-window button, #swagger #jsonLink {
+.arangoToolbar span.clickable:hover, .login-window button, #swagger #jsonLink, .subnavmenu .infoEntry a.default-icon i {
   -moz-transition: all .2s ease-in;
   -o-transition: all .2s ease-in;
   -webkit-transition: all .2s ease-in;
@@ -8366,6 +8366,7 @@ input.gv-radio-button {
       background-color: #fff;
       border: 1px solid #d9dbdc;
       border-radius: 3px;
+      margin-bottom: 20px;
       padding: 10px 10px 0;
       position: relative;
       top: 35px;
@@ -8420,9 +8421,9 @@ input.gv-radio-button {
           background-color: #404a53;
           border: 1px solid rgba(140, 138, 137, 0.25);
           color: #fff;
-          font-size: .6em;
+          font-size: 13px;
           font-weight: 300;
-          padding: 0 8px 2px;
+          padding: 2px 8px;
           position: relative;
           top: -3px; }
         .application-detail-view section.info .header .header_left .header_line .production {
@@ -8872,11 +8873,17 @@ main {
     line-height: 45px; }
     .subnavmenu .infoEntry a {
       margin-right: 5px; }
+      .subnavmenu .infoEntry a.default-icon i {
+        color: #fff; }
+      .subnavmenu .infoEntry a.default-icon i:hover {
+        color: #2ecc71;
+        cursor: pointer; }
     .subnavmenu .infoEntry:hover {
       cursor: default; }
       .subnavmenu .infoEntry:hover .info {
         color: #fff; }
     .subnavmenu .infoEntry.positive .health-state,
+    .subnavmenu .infoEntry.positive .state,
     .subnavmenu .infoEntry.positive .health-icon {
       color: #2ecc71; }
     .subnavmenu .infoEntry.negative .health-state,

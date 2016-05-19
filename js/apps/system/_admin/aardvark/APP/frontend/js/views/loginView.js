@@ -31,14 +31,17 @@
         $('#loginUsername').focus();
       }
       else {
+        var url = arangoHelper.databaseUrl("/_api/database/user");
+
         if (frontendConfig.authenticationEnabled === false) {
           $('#logout').hide();
           $('.login-window #databases').css('height', '90px');
         }
+
         $('#loginForm').hide();
         $('.login-window #databases').show();
 
-        $.ajax(arangoHelper.databaseUrl("/_api/database/")).success(function(data) {
+        $.ajax(url).success(function(data) {
           //enable db select and login button
           $('#loginDatabase').html('');
           //fill select with allowed dbs
@@ -95,10 +98,16 @@
           ); 
         }
         else {
+          var url = arangoHelper.databaseUrl("/_api/database/user", '_system');
+
+          if (frontendConfig.authenticationEnabled === false) {
+            url = arangoHelper.databaseUrl("/_api/database/user");
+          }
+
           $('.wrong-credentials').hide();
           self.loggedIn = true;
           //get list of allowed dbs
-          $.ajax(arangoHelper.databaseUrl("/_api/database/user")).success(function(data) {
+          $.ajax(url).success(function(data) {
 
             $('#loginForm').hide();
             $('#databases').show();

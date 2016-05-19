@@ -673,8 +673,8 @@
 
       if (!databaseName) {
         databaseName = '_system';
-        if (window.App && window.currentDB && window.currentDB.name) {
-          databaseName = window.App.currentDB.name;
+        if (frontendConfig.db) {
+          databaseName = frontendConfig.db;
         }
       }
       return this.backendUrl("/_db/" + encodeURIComponent(databaseName) + url);
