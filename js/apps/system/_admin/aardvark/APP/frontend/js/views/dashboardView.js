@@ -957,7 +957,7 @@
         $(this.el).html(this.template.render());
       }
 
-      if (!enabled || clusterFrontend.db !== '_system') {
+      if (!enabled || frontendConfig.db !== '_system') {
         $(this.el).html('');
         if (this.server) {
           $(this.el).append(
