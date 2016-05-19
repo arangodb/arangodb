@@ -3538,6 +3538,66 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief suspends an external process, only Unix
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_SuspendExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("suspendExternal(<external-identifier>)");
+  }
+
+  TRI_external_id_t pid;
+  memset(&pid, 0, sizeof(TRI_external_id_t));
+
+#ifndef _WIN32
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
+#else
+  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(args[0], true));
+#endif
+
+  // return the result
+  if (TRI_SuspendExternalProcess(pid)) {
+    TRI_V8_RETURN_TRUE();
+  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief continues an external process
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ContinueExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("continueExternal(<external-identifier>)");
+  }
+
+  TRI_external_id_t pid;
+  memset(&pid, 0, sizeof(TRI_external_id_t));
+
+#ifndef _WIN32
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
+#else
+  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(args[0], true));
+#endif
+
+  // return the result
+  if (TRI_ContinueExternalProcess(pid)) {
+    TRI_V8_RETURN_TRUE();
+  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a port is available
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4271,6 +4331,12 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_KILL_EXTERNAL"),
                                JS_KillExternal);
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_SUSPEND_EXTERNAL"),
+                               JS_SuspendExternal);
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_CONTINUE_EXTERNAL"),
+                               JS_ContinueExternal);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_LOAD"), JS_Load);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_LOG"),
