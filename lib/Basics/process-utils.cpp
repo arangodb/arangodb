@@ -1183,6 +1183,8 @@ bool TRI_SuspendExternalProcess(TRI_external_id_t pid) {
 
 #ifndef _WIN32
   return 0 == kill(pid._pid, SIGSTOP);
+#else
+  return true;
 #endif
 }
 
@@ -1195,6 +1197,8 @@ bool TRI_ContinueExternalProcess(TRI_external_id_t pid) {
 
 #ifndef _WIN32
   return 0 == kill(pid._pid, SIGCONT);
+#else
+  return true;
 #endif
 }
 
