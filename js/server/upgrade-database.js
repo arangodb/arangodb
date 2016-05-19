@@ -443,13 +443,13 @@
 
         var versionValues = JSON.parse(versionInfo);
 
-        if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {
+        if (versionValues && versionValues.hasOwnProperty("version") && ! isNaN(versionValues.version)) {
           lastVersion = parseFloat(versionValues.version);
         }
         else {
           return false;
         }
-
+      
         if (versionValues && versionValues.tasks && typeof(versionValues.tasks) === 'object') {
           lastTasks = versionValues.tasks || {};
         }
@@ -506,7 +506,7 @@
 
       // VERSION file does not exist, we are running on a new database
       logger.info("No version information file found in database directory.");
-      return runTasks(mode, cluster, DATABASE_INIT, 0);
+      return runTasks(mode, cluster, DATABASE_INIT, currentVersion);
     }
 
 // -----------------------------------------------------------------------------
