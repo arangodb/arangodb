@@ -2615,6 +2615,7 @@ if (list.length > 0) {
 
   <% if (coords.length > 0) { %>
     <% var disabled = ''; %> 
+
     <% var genClass = "pure-u-1-" + Object.keys(coords[0]).length; %>
 
     <% if (type !== 'coordinator') { %>
@@ -2628,11 +2629,7 @@ if (list.length > 0) {
         <div class="<%= genClass %> mid">Name</div>
         <div class="<%= genClass %> mid">Address</div>
         <div class="<%= genClass %> mid">Protocol</div>
-  
-        <% if(type !== 'coordinator' ) { %>
-          <div class="<%=genClass%> mid">Role</div>
-        <% } %>
-
+        <div class="<%=genClass%> mid">Role</div>
         <div class="<%=genClass%> mid">Status</div>
  
       </div>
@@ -2647,10 +2644,7 @@ if (list.length > 0) {
           <div class="<%= genClass %> mid"><%= node.name %></div>
           <div class="<%= genClass %> mid"><%= node.address %></div>
           <div class="<%= genClass %> mid"><%= node.protocol %></div>
-
-          <% if(type !== 'coordinator' ) { %>
-            <div class="<%=genClass%> mid"><%= node.role %></div>
-          <% } %>
+          <div class="<%=genClass%> mid"><%= node.role %></div>
 
           <% if(node.status === 'ok') { %>
             <div class="<%= genClass %> mid"><i class="fa fa-check-circle"></i></div>
@@ -3012,22 +3006,21 @@ if (list.length > 0) {
     <li class="subMenuEntry pull-left">
       <div class="breadcrumb"></div>
     </li>
-    <li id="healthStatus" class="infoEntry subMenuEntry pull-right">
+    <li id="healthStatus" class="infoEntry subMenuEntry pull-right positive">
       <a class="info health-info">HEALTH: </a>
       <a class="state health-state">GOOD</a>
       <a class="icon health-icon">
         <i class="fa fa-check-circle"></i>
       </a>
     </li>
-    <li id="dbStatus" class="infoEntry subMenuEntry pull-right">
+    <li id="dbStatus" class="infoEntry subMenuEntry pull-right positive">
       <a class="info">DB:</a>
-      <a class="info"><%= currentDB.name %> </a>
+      <a class="state"><span><%= currentDB.name %></span></a>
+      <a class="icon db-icon default-icon">
+        <i class="fa fa-refresh"></i>      
+      </a>
     </li>
     <li id="userBar" class="infoEntry subMenuEntry pull-right" style="margin-right: 10px;">
-<!--
-      <div class="usermenu" id="userBar"></div>
-      <div class="notificationmenu" id="notificationBar"></div>
--->
     </li>
   </ul>
 
@@ -3124,10 +3117,11 @@ var cutByResolution = function (str) {
 
 <script id="userBarView.ejs" type="text/template">
 
-  <a class="info">User: 
+  <a class="info default-icon">User: 
     <span class="toggle"> 
       <%=_.escape(username)%>
     </span>
+    <i id="userLogoutIcon" class="fa fa-power-off" aria-hidden="true"></i>
   </a>
 
   <ul id="userInfo" class="subBarDropdown">
@@ -3397,7 +3391,7 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="libs.js?version=__VERSION">wuwuwuw</script>
+<script src="libs.js?version=__VERSION"></script>
 <script src="app.js?version=__VERSION"></script>
 
   </body>

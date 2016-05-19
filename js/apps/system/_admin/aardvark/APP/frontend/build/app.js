@@ -10350,7 +10350,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
 }
 
 /*jshint unused: false */
-/*global window, $, document, _ */
+/*global window, $, document, _, arangoHelper, frontendConfig */
 
 (function() {
   "use strict";
@@ -10483,19 +10483,14 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     },
 
     currentDatabase: function (callback) {
-      $.ajax({
-        type: "GET",
-        cache: false,
-        url: this.databaseUrl("/_api/database/current"),
-        contentType: "application/json",
-        processData: false,
-        success: function(data) {
-          callback(false, data.result.name);
-        },
-        error: function(data) {
-          callback(true, data);
-        }
-      });
+      if (frontendConfig.db) {
+        callback(false, frontendConfig.db);
+      }
+      else {
+        callback(true, undefined);
+      }
+      console.log(frontendConfig.db);
+      return frontendConfig.db;
     },
 
     allHotkeys: {
@@ -10852,6 +10847,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
             }
           },
           error: function(data) {
+            console.log("error");
             if (callback) {
               callback(true, data);
             }
@@ -11028,8 +11024,8 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
 
       if (!databaseName) {
         databaseName = '_system';
-        if (window.App && window.currentDB && window.currentDB.name) {
-          databaseName = window.App.currentDB.name;
+        if (frontendConfig.db) {
+          databaseName = frontendConfig.db;
         }
       }
       return this.backendUrl("/_db/" + encodeURIComponent(databaseName) + url);
@@ -11398,7 +11394,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       $.ajax({
         type: "GET",
         cache: false,
-        url: arangoHelper.databaseHelper("/_api/collection/" + this.get("id") + "/figures"),
+        url: arangoHelper.databaseUrl("/_api/collection/" + this.get("id") + "/figures"),
         contentType: "application/json",
         processData: false,
         success: function(data) {
@@ -11606,7 +11602,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   });
 }());
 
-/*global window, Backbone */
+/*global window, Backbone, arangoHelper */
 
 window.DatabaseModel = Backbone.Model.extend({
 
@@ -11673,7 +11669,7 @@ window.arangoDocumentModel = Backbone.Model.extend({
   }
 });
 
-/*global window, Backbone */
+/*global window, Backbone, arangoHelper */
 (function () {
   'use strict';
   window.ArangoQuery = Backbone.Model.extend({
@@ -11732,7 +11728,7 @@ window.StatisticsDescription = Backbone.Model.extend({
 });
 
 /*jshint strict: false */
-/*global Backbone, $, window */
+/*global Backbone, $, window, arangoHelper */
 window.Users = Backbone.Model.extend({
   defaults: {
     user: "",
@@ -11888,13 +11884,13 @@ window.Users = Backbone.Model.extend({
   });
 }());
 
-/*global Backbone, window */
+/*global Backbone, window, arangoHelper, frontendConfig */
 
 (function() {
   "use strict";
 
   window.CurrentDatabase = Backbone.Model.extend({
-    url: arangoHelper.databaseUrl("/_api/database/current"),
+    url: arangoHelper.databaseUrl("/_api/database/current", frontendConfig.db),
 
     parse: function(data) {
       return data.result;
@@ -12057,7 +12053,7 @@ window.Users = Backbone.Model.extend({
   });
 }());
 
-/*global window, Backbone, $ */
+/*global window, Backbone, $, arangoHelper */
 (function() {
   "use strict";
 
@@ -13249,7 +13245,7 @@ window.arangoDocument = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, $, _, databaseUrl */
+/*global window, $, _, databaseUrl, arangoHelper */
 (function () {
 
   "use strict";
@@ -13494,7 +13490,7 @@ window.StatisticsDescriptionCollection = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint strict: false, unused: false */
-/*global window, Backbone, $,_, window */
+/*global window, Backbone, $,_, window, frontendConfig */
 
 window.ArangoUsers = Backbone.Collection.extend({
   model: window.Users,
@@ -14026,7 +14022,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, Backbone, $, arangoHelper */
+/*global window, Backbone, $, arangoHelper, frontendConfig */
 (function () {
   "use strict";
 
@@ -14090,7 +14086,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, Backbone, $ */
+/*global window, Backbone, $, frontendConfig */
 (function() {
   "use strict";
   window.QueryManagementActive = Backbone.Collection.extend({
@@ -16873,7 +16869,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 /*jshint browser: true */
 /*jshint unused: false */
 /*global Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
-/*global document, console, Dygraph, _,templateEngine */
+/*global document, console, frontendConfig, Dygraph, _,templateEngine */
 
 (function () {
   "use strict";
@@ -17829,7 +17825,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         $(this.el).html(this.template.render());
       }
 
-      if (!enabled) {
+      if (!enabled || frontendConfig.db !== '_system') {
         $(this.el).html('');
         if (this.server) {
           $(this.el).append(
@@ -17869,6 +17865,11 @@ window.ArangoUsers = Backbone.Collection.extend({
         );
     }.bind(this);
 
+    if (frontendConfig.db !== '_system') {
+      errorFunction();
+      return;
+    }
+
     var callback2 = function(error, authorized) {
       if (!error) {
         if (!authorized) {
@@ -17880,13 +17881,21 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
     }.bind(this);
 
-    if (window.App.currentDB.get("name") !== '_system') {
-      errorFunction();
-      return;
+    if (window.App.currentDB.get("name") === undefined) {
+      window.setTimeout(function() {
+        if (window.App.currentDB.get("name") !== '_system') {
+          errorFunction();
+          return;
+        }
+        //check if user has _system permission
+        this.options.database.hasSystemAccess(callback2);
+      }.bind(this), 300);
+    }
+    else {
+      //check if user has _system permission
+      this.options.database.hasSystemAccess(callback2);
     }
 
-    //check if user has _system permission
-    this.options.database.hasSystemAccess(callback2);
   }
 });
 }());
@@ -18665,7 +18674,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     breadcrumb: function () {
       var name = window.location.hash.split("/");
-      console.log(name);
       $('#subNavigationBar .breadcrumb').html(
         '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1] + '</a>' + 
         '<i class="fa fa-chevron-right"></i>' +
@@ -19935,7 +19943,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         $.ajax({
           type: "GET",
           cache: false,
-          url: arangoHelper.databaseUrl("/_api/database/current?wurst=1"),
+          url: arangoHelper.databaseUrl("/_api/database/current"),
           contentType: "application/json",
           processData: false,
           async: true,
@@ -21774,7 +21782,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, document, EJS, _, arangoHelper, window, setTimeout, $, templateEngine*/
+/*global Backbone, document, EJS, _, arangoHelper, window, setTimeout, $, templateEngine, frontendConfig*/
 
 (function() {
   "use strict";
@@ -21794,13 +21802,42 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     template: templateEngine.createTemplate("loginView.ejs"),
 
-    render: function() {
+    render: function(loggedIn) {
+      var self = this;
+
       $(this.el).html(this.template.render({}));
       $(this.el2).hide();
       $(this.el3).hide();
-      $('.bodyWrapper').show();
 
-      $('#loginUsername').focus();
+      if (frontendConfig.authenticationEnabled && loggedIn !== true) {
+        $('#loginUsername').focus();
+      }
+      else {
+        var url = arangoHelper.databaseUrl("/_api/database/user");
+
+        if (frontendConfig.authenticationEnabled === false) {
+          $('#logout').hide();
+          $('.login-window #databases').css('height', '90px');
+        }
+
+        $('#loginForm').hide();
+        $('.login-window #databases').show();
+
+        $.ajax(url).success(function(data) {
+          //enable db select and login button
+          $('#loginDatabase').html('');
+          //fill select with allowed dbs
+          _.each(data.result, function(db) {
+            $('#loginDatabase').append(
+              '<option>' + db + '</option>'
+            ); 
+          });
+
+          self.renderDBS();
+        });
+      }
+
+      $('.bodyWrapper').show();
 
       return this;
     },
@@ -21843,10 +21880,16 @@ window.ArangoUsers = Backbone.Collection.extend({
           ); 
         }
         else {
+          var url = arangoHelper.databaseUrl("/_api/database/user", '_system');
+
+          if (frontendConfig.authenticationEnabled === false) {
+            url = arangoHelper.databaseUrl("/_api/database/user");
+          }
+
           $('.wrong-credentials').hide();
           self.loggedIn = true;
           //get list of allowed dbs
-          $.ajax(arangoHelper.databaseUrl("/_api/database/user")).success(function(data) {
+          $.ajax(url).success(function(data) {
 
             $('#loginForm').hide();
             $('#databases').show();
@@ -21882,6 +21925,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       e.preventDefault();
       var username = $('#loginUsername').val();
       var database = $('#loginDatabase').val();
+      console.log(window.App.dbSet);
+      window.App.dbSet = database;
+      console.log(window.App.dbSet);
 
       var callback2 = function(error) {
         if (error) {
@@ -22570,6 +22616,10 @@ window.ArangoUsers = Backbone.Collection.extend({
     renderFirst: true,
     activeSubMenu: undefined,
 
+    changeDB: function() {
+      window.location.hash = '#login';
+    },
+
     initialize: function (options) {
 
       var self = this;
@@ -22645,6 +22695,10 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         $('.arangodbLogo').on('click', function() {
           self.selectMenuItem();
+        });
+
+        $('#dbStatus').on('click', function() {
+          self.changeDB();
         });
       }
 
@@ -28622,7 +28676,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global arangoHelper, Backbone, templateEngine, $, window*/
+/*global frontendConfig, arangoHelper, Backbone, templateEngine, $, window*/
 (function () {
   "use strict";
 
@@ -28633,6 +28687,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click .tab"                    : "navigateByTab",
       "mouseenter .dropdown"          : "showDropdown",
       "mouseleave .dropdown"          : "hideDropdown",
+      "click #userLogoutIcon"         : "userLogout",
       "click #userLogout"             : "userLogout"
     },
 
@@ -28675,6 +28730,11 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function () {
+
+      if (frontendConfig.authenticationEnabled === false) {
+        return;
+      }
+
       var self = this;
 
       var callback = function(error, username) {
@@ -28740,7 +28800,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global _, window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
+/*global frontendConfig, _, window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
   CryptoJS, Joi */
 (function() {
 
@@ -28777,11 +28837,13 @@ window.ArangoUsers = Backbone.Collection.extend({
     initialize: function() {
       var self = this,
       callback = function(error, user) {
-        if (error || user === null) {
-          arangoHelper.arangoError("User", "Could not fetch user data");
-        }
-        else {
-          this.currentUser = this.collection.findWhere({user: user});
+        if (frontendConfig.authenticationEnabled === true) {
+          if (error || user === null) {
+            arangoHelper.arangoError("User", "Could not fetch user data");
+          }
+          else {
+            this.currentUser = this.collection.findWhere({user: user});
+          }
         }
       }.bind(this);
 
@@ -29422,7 +29484,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint unused: false */
 /*global window, $, Backbone, document, arangoCollectionModel*/
-/*global arangoHelper, btoa, dashboardView, arangoDatabase, _*/
+/*global arangoHelper, btoa, dashboardView, arangoDatabase, _, frontendConfig */
 
 (function () {
   "use strict";
@@ -29476,26 +29538,45 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     checkUser: function () {
+
       if (window.location.hash === '#login') {
         return;
       }
 
+      var startInit = function() {
+        this.initOnce();
+
+        //show hidden by default divs
+        $('.bodyWrapper').show();
+        $('.navbar').show();
+      }.bind(this);
+
       var callback = function(error, user) {
-        if (error || user === null) {
-          if (window.location.hash !== '#login') {
-            this.navigate("login", {trigger: true});
+        if (frontendConfig.authenticationEnabled) {
+          if (error || user === null) {
+            if (window.location.hash !== '#login') {
+              this.navigate("login", {trigger: true});
+            }
+          }
+          else {
+            startInit();
           }
         }
         else {
-          this.initOnce();
-
-          //show hidden by default divs
-          $('.bodyWrapper').show();
-          $('.navbar').show();
+          startInit();
         }
       }.bind(this);
 
-      this.userCollection.whoAmI(callback); 
+      if (frontendConfig.authenticationEnabled) {
+        this.userCollection.whoAmI(callback);
+      }
+      else {
+        this.initOnce();
+
+        //show hidden by default divs
+        $('.bodyWrapper').show();
+        $('.navbar').show();
+      }
     },
 
     waitForInit: function(origin, param1, param2) {
@@ -29510,7 +29591,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           if (param1 && param2) {
             origin(param1, param2, false);
           }
-        }, 250);
+        }, 350);
       } else {
         if (!param1) {
           origin(true);
@@ -29545,7 +29626,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         var callback = function(error, isCoordinator) {
           self = this;
-          if (isCoordinator) {
+          if (isCoordinator === true) {
             self.isCluster = true;
 
             self.coordinatorCollection.fetch({
@@ -29631,11 +29712,11 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     cluster: function (initialized) {
       this.checkUser();
-      if (!initialized || this.isCluster === undefined) {
+      if (!initialized) {
         this.waitForInit(this.cluster.bind(this));
         return;
       }
-      if (this.isCluster === false) {
+      if (this.isCluster === false || this.isCluster === undefined) {
         if (this.currentDB.get("name") === '_system') {
           this.routes[""] = 'dashboard';
           this.navigate("#dashboard", {trigger: true});
@@ -29831,16 +29912,16 @@ window.ArangoUsers = Backbone.Collection.extend({
     login: function () {
 
       var callback = function(error, user) {
+        if (!this.loginView) {
+          this.loginView = new window.loginView({
+            collection: this.userCollection
+          });
+        }
         if (error || user === null) {
-          if (!this.loginView) {
-            this.loginView = new window.loginView({
-              collection: this.userCollection
-            });
-          }
           this.loginView.render();
         }
         else {
-          this.navigate("", {trigger: true});
+          this.loginView.render(true);
         }
       }.bind(this);
 
@@ -30250,7 +30331,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 }());
 
 /*jshint unused: false */
-/*global $, window, navigator, _*/
+/*global $, window, navigator, _, arangoHelper*/
 (function() {
   "use strict";
 
