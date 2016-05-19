@@ -321,7 +321,8 @@ static void ExtractKeys(std::unordered_set<std::string>& names,
 
 /// @brief append the VelocyPack value to a string buffer
 ///        Note: Backwards compatibility. Is different than Slice.toJson()
-void Functions::Stringify(arangodb::basics::VPackStringBufferAdapter& buffer,
+void Functions::Stringify(arangodb::AqlTransaction* trx,
+                          arangodb::basics::VPackStringBufferAdapter& buffer,
                           VPackSlice const& slice) {
   if (slice.isNull()) {
     // null is the empty string
@@ -344,7 +345,7 @@ void Functions::Stringify(arangodb::basics::VPackStringBufferAdapter& buffer,
       } else {
         first = false;
       }
-      Stringify(buffer, sub);
+      Stringify(trx, buffer, sub);
     }
     return;
   }
@@ -353,6 +354,11 @@ void Functions::Stringify(arangodb::basics::VPackStringBufferAdapter& buffer,
     buffer.append("[object Object]");
     return;
   } 
+  
+  if (slice.isCustom()) {
+    buffer.append(trx->extractIdString(slice));
+    return;
+  }
 
   VPackDumper dumper(&buffer);
   dumper.dump(slice);
@@ -366,7 +372,7 @@ static void AppendAsString(arangodb::AqlTransaction* trx,
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(value, false);
 
-  Functions::Stringify(buffer, slice);
+  Functions::Stringify(trx, buffer, slice);
 }
 
 /// @brief Checks if the given list contains the element
@@ -572,7 +578,8 @@ static void RequestEdges(VPackSlice vertexSlice,
 /// @brief Helper function to unset or keep all given names in the value.
 ///        Recursively iterates over sub-object and unsets or keeps their values
 ///        as well
-static void UnsetOrKeep(VPackSlice const& value,
+static void UnsetOrKeep(arangodb::AqlTransaction* trx,
+                        VPackSlice const& value,
                         std::unordered_set<std::string> const& names,
                         bool unset,  // true means unset, false means keep
                         bool recursive, VPackBuilder& result) {
@@ -585,9 +592,13 @@ static void UnsetOrKeep(VPackSlice const& value,
       // not found and unset or found and keep 
       if (recursive && entry.value.isObject()) {
         result.add(entry.key); // Add the key
-        UnsetOrKeep(entry.value, names, unset, recursive, result); // Adds the object
+        UnsetOrKeep(trx, entry.value, names, unset, recursive, result); // Adds the object
       } else {
-        result.add(key, entry.value);
+        if (entry.value.isCustom()) {
+          result.add(key, VPackValue(trx->extractIdString(value)));
+        } else {
+          result.add(key, entry.value);
+        }
       }
     }
   }
@@ -1170,7 +1181,7 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
           continue;
         }
 
-        Stringify(adapter, sub);
+        Stringify(trx, adapter, sub);
       }
     } else {
       // convert member to a string and append
@@ -1285,7 +1296,7 @@ AqlValue Functions::Unset(arangodb::aql::Query* query,
     AqlValueMaterializer materializer(trx);
     VPackSlice slice = materializer.slice(value, false);
     TransactionBuilderLeaser builder(trx);
-    UnsetOrKeep(slice, names, true, false, *builder.get());
+    UnsetOrKeep(trx, slice, names, true, false, *builder.get());
     return AqlValue(builder.get());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1311,7 +1322,7 @@ AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
     AqlValueMaterializer materializer(trx);
     VPackSlice slice = materializer.slice(value, false);
     TransactionBuilderLeaser builder(trx);
-    UnsetOrKeep(slice, names, true, true, *builder.get());
+    UnsetOrKeep(trx, slice, names, true, true, *builder.get());
     return AqlValue(builder.get());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1331,13 +1342,14 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
   }
 
   std::unordered_set<std::string> names;
+
   ExtractKeys(names, query, trx, parameters, 1, "KEEP");
 
   try {
     AqlValueMaterializer materializer(trx);
     VPackSlice slice = materializer.slice(value, false);
     TransactionBuilderLeaser builder(trx);
-    UnsetOrKeep(slice, names, false, false, *builder.get());
+    UnsetOrKeep(trx, slice, names, false, false, *builder.get());
     return AqlValue(builder.get());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -2322,7 +2334,7 @@ AqlValue Functions::Zip(arangodb::aql::Query* query,
     arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
     for (VPackValueLength i = 0; i < n; ++i) {
       buffer->reset();
-      Stringify(adapter, keysSlice.at(i));
+      Stringify(trx, adapter, keysSlice.at(i));
       builder->add(std::string(buffer->c_str(), buffer->length()), valuesSlice.at(i));
     }
     builder->close();

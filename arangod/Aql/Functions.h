@@ -55,7 +55,8 @@ struct Functions {
   static void DestroyThreadContext();
 
   /// @brief helper function. not callable as a "normal" AQL function
-  static void Stringify(arangodb::basics::VPackStringBufferAdapter& buffer,
+  static void Stringify(arangodb::AqlTransaction* trx,
+                        arangodb::basics::VPackStringBufferAdapter& buffer,
                         VPackSlice const& slice);
 
   static AqlValue IsNull(arangodb::aql::Query*, arangodb::AqlTransaction*,
