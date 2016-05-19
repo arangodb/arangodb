@@ -4,6 +4,7 @@
 
   <% if (coords.length > 0) { %>
     <% var disabled = ''; %> 
+
     <% var genClass = "pure-u-1-" + Object.keys(coords[0]).length; %>
 
     <% if (type !== 'coordinator') { %>
@@ -17,11 +18,7 @@
         <div class="<%= genClass %> mid">Name</div>
         <div class="<%= genClass %> mid">Address</div>
         <div class="<%= genClass %> mid">Protocol</div>
-  
-        <% if(type !== 'coordinator' ) { %>
-          <div class="<%=genClass%> mid">Role</div>
-        <% } %>
-
+        <div class="<%=genClass%> mid">Role</div>
         <div class="<%=genClass%> mid">Status</div>
  
       </div>
@@ -36,10 +33,7 @@
           <div class="<%= genClass %> mid"><%= node.name %></div>
           <div class="<%= genClass %> mid"><%= node.address %></div>
           <div class="<%= genClass %> mid"><%= node.protocol %></div>
-
-          <% if(type !== 'coordinator' ) { %>
-            <div class="<%=genClass%> mid"><%= node.role %></div>
-          <% } %>
+          <div class="<%=genClass%> mid"><%= node.role %></div>
 
           <% if(node.status === 'ok') { %>
             <div class="<%= genClass %> mid"><i class="fa fa-check-circle"></i></div>
