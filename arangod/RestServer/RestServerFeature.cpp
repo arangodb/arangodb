@@ -160,7 +160,7 @@ void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     for (auto& it : _accessControlAllowOrigins) {
       if (it == "*" || it == "all") {
         // special members "*" or "all" means all origins are allowed
-       _accessControlAllowOrigins.clear();
+        _accessControlAllowOrigins.clear();
         _accessControlAllowOrigins.push_back("*");
         break;
       } else if (it == "none") {
