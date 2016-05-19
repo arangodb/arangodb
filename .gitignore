@@ -119,6 +119,7 @@ js/apps/system/_admin/aardvark/APP/frontend/build/libs.js.gz
 js/apps/system/_admin/aardvark/APP/frontend/build/libs.min.js
 js/apps/system/_admin/aardvark/APP/frontend/build/style-minified.css
 js/apps/system/_admin/aardvark/APP/frontend/build/style.css
+js/apps/system/_admin/aardvark/APP/frontend/build/scripts.html.part
 
 3rdParty/etcd/src/
 
