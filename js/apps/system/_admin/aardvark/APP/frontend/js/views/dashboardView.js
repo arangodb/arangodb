@@ -1,7 +1,7 @@
 /*jshint browser: true */
 /*jshint unused: false */
 /*global Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
-/*global document, console, Dygraph, _,templateEngine */
+/*global document, console, frontendConfig, Dygraph, _,templateEngine */
 
 (function () {
   "use strict";
@@ -957,7 +957,7 @@
         $(this.el).html(this.template.render());
       }
 
-      if (!enabled) {
+      if (!enabled || clusterFrontend.db !== '_system') {
         $(this.el).html('');
         if (this.server) {
           $(this.el).append(
@@ -996,6 +996,11 @@
           '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
         );
     }.bind(this);
+
+    if (frontendConfig.db !== '_system') {
+      errorFunction();
+      return;
+    }
 
     var callback2 = function(error, authorized) {
       if (!error) {
