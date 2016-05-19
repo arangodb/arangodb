@@ -401,6 +401,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
     VPackBuilder builder;
     builder.add(VPackValue(VPackValueType::Object));  // Base
 
+    arangodb::wal::LogfileManager::instance()->waitForSync(10.0);
     arangodb::wal::LogfileManagerState const s =
         arangodb::wal::LogfileManager::instance()->state();
 

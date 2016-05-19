@@ -929,35 +929,41 @@ function synchronizeLocalFollowerCollections (plannedCollections,
                           var sy = rep.syncCollection(shard, 
                             { endpoint: ep, incremental: true,
                               keepBarrier: true });
-                          // Now start a read transaction to stop writes:
-                          var queryid;
-                          try {
-                            queryid = startReadingQuery(ep, shard, 300);
-                          }
-                          finally {
-                            cancelBarrier(ep, sy.barrierId);
-                          }
-                          var ok = false;
-                          try {
-                            var sy2 = rep.syncCollectionFinalize(
-                              shard, sy.collections[0].id, sy.lastLogTick, 
-                              { endpoint: ep });
-                            if (sy2.error) {
-                              console.error("Could not synchronize shard", shard,
-                                            sy2);
-                            }
-                            ok = addShardFollower(ep, shard);
-                          }
-                          finally {
-                            if (!cancelReadingQuery(ep, queryid)) {
-                              console.error("Read transaction has timed out for shard", shard);
-                              ok = false;
-                            }
-                          }
-                          if (ok) {
-                            console.info("Synchronization worked for shard", shard);
+                          if (sy.error) {
+                            console.error("Could not initially synchronize shard ", shard, sy);
                           } else {
-                            throw "Did not work.";  // just to log below in catch
+                            var ok = false;
+                            // Now start a read transaction to stop writes:
+                            var queryid;
+                            try {
+                              queryid = startReadingQuery(ep, shard, 300);
+                            }
+                            finally {
+                              cancelBarrier(ep, sy.barrierId);
+                            }
+                            try {
+                              var sy2 = rep.syncCollectionFinalize(
+                                shard, sy.collections[0].id, sy.lastLogTick,
+                                { endpoint: ep });
+                              if (sy2.error) {
+                                console.error("Could not synchronize shard", shard,
+                                              sy2);
+                                ok = false;
+                              } else {
+                                ok = addShardFollower(ep, shard);
+                              }
+                            }
+                            finally {
+                              if (!cancelReadingQuery(ep, queryid)) {
+                                console.error("Read transaction has timed out for shard", shard);
+                                ok = false;
+                              }
+                            }
+                            if (ok) {
+                              console.info("Synchronization worked for shard", shard);
+                            } else {
+                              throw "Did not work.";  // just to log below in catch
+                            }
                           }
                         }
                         catch (err2) {
@@ -1325,9 +1331,9 @@ var handlePlanChange = function (plan, current) {
     current: current.Version,
   };
     
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an action under a write-lock
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   function writeLocked (lockInfo, cb, args) {
     var timeout = lockInfo.timeout;
