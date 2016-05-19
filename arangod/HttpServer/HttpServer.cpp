@@ -220,7 +220,7 @@ bool HttpServer::handleRequestAsync(HttpCommTask* task,
   }
 
   // execute the handler using the dispatcher
-  int res = _dispatcher->addJob(job);
+  int res = _dispatcher->addJob(job, task->startThread());
 
   // could not add job to job queue
   if (res != TRI_ERROR_NO_ERROR) {
@@ -260,7 +260,8 @@ bool HttpServer::handleRequest(HttpCommTask* task,
              << (void*)job.get();
 
   // add the job to the dispatcher
-  int res = _dispatcher->addJob(job);
+
+  int res = _dispatcher->addJob(job, task->startThread());
 
   // job is in queue now
   return res == TRI_ERROR_NO_ERROR;

@@ -68,6 +68,7 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
       _acceptDeflate(false),
       _newRequest(true),
       _isChunked(false),
+      _startThread(false),
       _request(nullptr),
       _httpVersion(GeneralRequest::ProtocolVersion::UNKNOWN),
       _requestType(GeneralRequest::RequestType::ILLEGAL),
@@ -115,6 +116,7 @@ HttpCommTask::~HttpCommTask() {
 void HttpCommTask::handleResponse(HttpResponse* response) {
   _requestPending = false;
   _isChunked = false;
+  _startThread = false;
 
   addResponse(response);
 }
@@ -576,6 +578,7 @@ void HttpCommTask::finishedChunked() {
   _writeBuffersStats.push_back(nullptr);
 
   _isChunked = false;
+  _startThread = false;
   _requestPending = false;
 
   fillWriteBuffer();
@@ -845,8 +848,15 @@ void HttpCommTask::processRequest() {
           << (StringUtils::escapeUnicode(body)) << "\"";
     }
   }
-
+  
   handler->setTaskId(_taskId, _loop);
+  
+  std::string const& startThread = _request->header(StaticStrings::StartThread, found);
+
+  if (found) {
+    _startThread = StringUtils::boolean(startThread);
+  }
+
 
   // clear request object
   _request = nullptr;
@@ -949,6 +959,7 @@ void HttpCommTask::resetState(bool close) {
 
   _newRequest = true;
   _readRequestBody = false;
+  _startThread = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

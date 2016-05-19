@@ -657,7 +657,7 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
           << "could not schedule dbserver sync - dispatcher gone.";
       return false;
     }
-    if (dispatcher->addJob(job) == TRI_ERROR_NO_ERROR) {
+    if (dispatcher->addJob(job, false) == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "scheduled dbserver sync";
       return true;
     }
