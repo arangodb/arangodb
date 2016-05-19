@@ -1,6 +1,6 @@
 /*jshint unused: false */
 /*global window, $, Backbone, document, arangoCollectionModel*/
-/*global arangoHelper, btoa, dashboardView, arangoDatabase, _*/
+/*global arangoHelper, btoa, dashboardView, arangoDatabase, _, frontendConfig */
 
 (function () {
   "use strict";
@@ -54,26 +54,45 @@
     },
 
     checkUser: function () {
+
       if (window.location.hash === '#login') {
         return;
       }
 
+      var startInit = function() {
+        this.initOnce();
+
+        //show hidden by default divs
+        $('.bodyWrapper').show();
+        $('.navbar').show();
+      }.bind(this);
+
       var callback = function(error, user) {
-        if (error || user === null) {
-          if (window.location.hash !== '#login') {
-            this.navigate("login", {trigger: true});
+        if (frontendConfig.authenticationEnabled) {
+          if (error || user === null) {
+            if (window.location.hash !== '#login') {
+              this.navigate("login", {trigger: true});
+            }
+          }
+          else {
+            startInit();
           }
         }
         else {
-          this.initOnce();
-
-          //show hidden by default divs
-          $('.bodyWrapper').show();
-          $('.navbar').show();
+          startInit();
         }
       }.bind(this);
 
-      this.userCollection.whoAmI(callback); 
+      if (frontendConfig.authenticationEnabled) {
+        this.userCollection.whoAmI(callback);
+      }
+      else {
+        this.initOnce();
+
+        //show hidden by default divs
+        $('.bodyWrapper').show();
+        $('.navbar').show();
+      }
     },
 
     waitForInit: function(origin, param1, param2) {
@@ -88,7 +107,7 @@
           if (param1 && param2) {
             origin(param1, param2, false);
           }
-        }, 250);
+        }, 350);
       } else {
         if (!param1) {
           origin(true);
@@ -123,7 +142,7 @@
 
         var callback = function(error, isCoordinator) {
           self = this;
-          if (isCoordinator) {
+          if (isCoordinator === true) {
             self.isCluster = true;
 
             self.coordinatorCollection.fetch({
@@ -209,11 +228,11 @@
 
     cluster: function (initialized) {
       this.checkUser();
-      if (!initialized || this.isCluster === undefined) {
+      if (!initialized) {
         this.waitForInit(this.cluster.bind(this));
         return;
       }
-      if (this.isCluster === false) {
+      if (this.isCluster === false || this.isCluster === undefined) {
         if (this.currentDB.get("name") === '_system') {
           this.routes[""] = 'dashboard';
           this.navigate("#dashboard", {trigger: true});
@@ -409,16 +428,16 @@
     login: function () {
 
       var callback = function(error, user) {
+        if (!this.loginView) {
+          this.loginView = new window.loginView({
+            collection: this.userCollection
+          });
+        }
         if (error || user === null) {
-          if (!this.loginView) {
-            this.loginView = new window.loginView({
-              collection: this.userCollection
-            });
-          }
           this.loginView.render();
         }
         else {
-          this.navigate("", {trigger: true});
+          this.loginView.render(true);
         }
       }.bind(this);
 

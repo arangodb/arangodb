@@ -1008,13 +1008,21 @@
       }
     }.bind(this);
 
-    if (window.App.currentDB.get("name") !== '_system') {
-      errorFunction();
-      return;
+    if (window.App.currentDB.get("name") === undefined) {
+      window.setTimeout(function() {
+        if (window.App.currentDB.get("name") !== '_system') {
+          errorFunction();
+          return;
+        }
+        //check if user has _system permission
+        this.options.database.hasSystemAccess(callback2);
+      }.bind(this), 300);
+    }
+    else {
+      //check if user has _system permission
+      this.options.database.hasSystemAccess(callback2);
     }
 
-    //check if user has _system permission
-    this.options.database.hasSystemAccess(callback2);
   }
 });
 }());

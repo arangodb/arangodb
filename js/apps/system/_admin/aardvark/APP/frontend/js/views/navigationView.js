@@ -20,6 +20,10 @@
     renderFirst: true,
     activeSubMenu: undefined,
 
+    changeDB: function() {
+      window.location.hash = '#login';
+    },
+
     initialize: function (options) {
 
       var self = this;
@@ -95,6 +99,10 @@
 
         $('.arangodbLogo').on('click', function() {
           self.selectMenuItem();
+        });
+
+        $('#dbStatus').on('click', function() {
+          self.changeDB();
         });
       }
 
