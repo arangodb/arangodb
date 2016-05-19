@@ -155,6 +155,18 @@
 
     a {
       margin-right: 5px;
+
+      &.default-icon {
+        i {
+          @extend %animated;
+          color: $c-white;
+        }
+
+        i:hover {
+          color: $c-positive;
+          cursor: pointer;
+        }
+      }
     }
 
     &:hover {
@@ -168,6 +180,7 @@
 
     &.positive {
       .health-state,
+      .state,
       .health-icon {
         color: $c-positive;
       }
