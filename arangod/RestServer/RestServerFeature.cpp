@@ -110,13 +110,6 @@ void RestServerFeature::collectOptions(
                      "enable or disable authentication for ALL client requests",
                      new BooleanParameter(&_authentication));
   
-  options->addOption("--server.proxy-request-check",
-                     "enable or disable proxy request checking",
-                     new BooleanParameter(&_proxyCheck));
-
-  options->addOption("--server.trusted-proxy",
-                     "list of proxies to trust (may be IP or network). Make sure --server.proxy-request-check is enabled",
-                     new VectorParameter<StringParameter>(&_trustedProxies));
 
   options->addOption(
       "--server.authentication-system-only",
@@ -143,6 +136,15 @@ void RestServerFeature::collectOptions(
       "--http.hide-product-header",
       "do not expose \"Server: ArangoDB\" header in HTTP responses",
       new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
+  
+  options->addSection("frontend", "Frontend options");
+  options->addOption("--frontend.proxy-request-check",
+                     "enable or disable proxy request checking",
+                     new BooleanParameter(&_proxyCheck));
+
+  options->addOption("--frontend.trusted-proxy",
+                     "list of proxies to trust (may be IP or network). Make sure --frontend.proxy-request-check is enabled",
+                     new VectorParameter<StringParameter>(&_trustedProxies));
 }
 
 void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {

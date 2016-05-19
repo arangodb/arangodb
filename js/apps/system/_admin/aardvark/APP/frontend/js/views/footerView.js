@@ -178,7 +178,7 @@
         $.ajax({
           type: "GET",
           cache: false,
-          url: arangoHelper.databaseUrl("/_api/database/current?wurst=1"),
+          url: arangoHelper.databaseUrl("/_api/database/current"),
           contentType: "application/json",
           processData: false,
           async: true,

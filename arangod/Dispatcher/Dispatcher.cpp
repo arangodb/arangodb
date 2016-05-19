@@ -110,7 +110,7 @@ int Dispatcher::addExtraQueue(size_t identifier, size_t nrThreads,
 /// @brief adds a new job
 ////////////////////////////////////////////////////////////////////////////////
 
-int Dispatcher::addJob(std::unique_ptr<Job>& job) {
+int Dispatcher::addJob(std::unique_ptr<Job>& job, bool startThread) {
   job->requestStatisticsAgentSetQueueStart();
 
   // do not start new jobs if we are already shutting down
@@ -133,7 +133,7 @@ int Dispatcher::addJob(std::unique_ptr<Job>& job) {
   LOG(TRACE) << "added job " << (void*)(job.get()) << " to queue '" << qnr << "'";
 
   // add the job to the list of ready jobs
-  return queue->addJob(job);
+  return queue->addJob(job, startThread);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -82,7 +82,7 @@ DispatcherQueue::~DispatcherQueue() {
 /// @brief adds a job
 ////////////////////////////////////////////////////////////////////////////////
 
-int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
+int DispatcherQueue::addJob(std::unique_ptr<Job>& job, bool startThread) {
   TRI_ASSERT(job.get() != nullptr);
 
   // get next free slot, return false is queue is full
@@ -125,8 +125,8 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   }
 
   // if all threads are blocked, start a new one - we ignore race conditions
-  else if (notEnoughThreads()) {
-    startQueueThread();
+  else if (startThread || notEnoughThreads()) {
+    startQueueThread(startThread);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -351,7 +351,7 @@ void DispatcherQueue::shutdown() {
 /// @brief starts a new queue thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::startQueueThread() {
+void DispatcherQueue::startQueueThread(bool force) {
   DispatcherThread* thread = (*createDispatcherThread)(this);
 
   if (!_affinityCores.empty()) {
@@ -371,12 +371,17 @@ void DispatcherQueue::startQueueThread() {
   {
     MUTEX_LOCKER(mutexLocker, _threadsLock);
 
-    if (!notEnoughThreads()) {
+    if (!force && !notEnoughThreads()) {
       delete thread;
       return;
     }
 
-    _startedThreads.insert(thread);
+    try {
+      _startedThreads.insert(thread);
+    } catch (...) {
+      delete thread;
+      return;
+    }
 
     ++_nrRunning;
   }

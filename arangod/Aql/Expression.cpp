@@ -685,7 +685,7 @@ AqlValue Expression::executeSimpleExpressionObject(
       AqlValueMaterializer materializer(trx);
       VPackSlice slice = materializer.slice(result, false);
 
-      Functions::Stringify(adapter, slice);
+      Functions::Stringify(trx, adapter, slice);
       
       std::string key(buffer->begin(), buffer->length());
       builder->add(VPackValue(key));
