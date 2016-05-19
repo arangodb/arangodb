@@ -324,6 +324,7 @@ it may break client applications that rely on the old behavior.
 !SUBSECTION Databases API
 
 `_listDatabases()` has been renamed to `_databases()` (making it consistent with `_collections()`)
+`_listEndpoints()` has been renamed to `_endpoints()` (making it consistent with `_collections()`)
 
 !SUBSECTION Collection API
 
@@ -647,12 +648,42 @@ in 3.0:
 - `--server.disable-statistics` was renamed to `--server.statistics`. Note that the
   meaning of the option `--server.statistics` is the opposite of the previous
   `--server.disable-statistics`.
+- `--server.cafile` was renamed to `--ssl.cafile`. The meaning of the option is
+  unchanged.
 - `--server.keyfile` was renamed to `--ssl.keyfile`. The meaning of the option is
   unchanged.
+- `--server.ssl-cache` was renamed to `--ssl.session-cache`. The meaning of the option
+  is unchanged.
+- `--server.ssl-cipher-list` was renamed to `--ssl.cipher-list`. The meaning of the
+  option is unchanged.
+- `--server.ssl-options` was renamed to `--ssl.options`. The meaning of the option
+  is unchanged.
+- `--server.ssl-protocol` was renamed to `--ssl.protocol`. The meaning of the option
+  is unchanged.
+- `--server.backlog-size` was renamed to `--tcp.backlog-size`. The meaning of the
+  option is unchanged.
+- `--server.reuse-address` was renamed to `--tcp.reuse-address`. The meaning of the
+  option is unchanged.
+- `--server.disable-replication-applier` was renamed to `--database.replication-applier`.
+  The meaning of the option `--database.replication-applier` is the opposite of the
+  previous `--server.disable-replication-applier`.
+- `--server.allow-method-override` was renamed to `--http.allow-method-override`. The
+  meaning of the option is unchanged.
+- `--server.hide-product-header` was renamed to `--http.hide-product-header`. The
+  meaning of the option is unchanged.
+- `--server.keep-alive-timeout` was renamed to `--http.keep-alive-timeout`. The
+  meaning of the option is unchanged.
 - `--server.foxx-queues` was renamed to `--foxx.queues`. The meaning of the option
   is unchanged.
 - `--server.foxx-queues-poll-interval` was renamed to `--foxx.queues-poll-interval`.
   The meaning of the option is unchanged.
+- `--database.query-cache-mode` was renamed to `--query.cache-mode`. The meaning of
+  the option is unchanged.
+- `--database.query-cache-max-results` was renamed to `--query.cache-entries`. The
+  meaning of the option is unchanged.
+- `--database.disable-query-tracking` was renamed to `--query.tracking`. The meaning 
+  of the option `--query.tracking` is the opposite of the previous 
+  `--database.disable-query-tracking`.
 - `--log.tty` was renamed to `--log.foreground-tty`. The meaning of the option is
   unchanged.
 - `--upgrade` has been renamed to `--database.auto-upgrade`. In contrast to 2.8 this

@@ -65,7 +65,7 @@
           var adapterConfig = {
             type: "gharial",
             graphName: graphName,
-            baseUrl: require("internal").arango.databasePrefix("/")
+            baseUrl: arangoHelper.databaseUrl("/")
           };
           var width = $("#content").width() - 75;
           $("#content").html("");

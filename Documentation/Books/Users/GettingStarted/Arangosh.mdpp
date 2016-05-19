@@ -1,10 +1,10 @@
 !CHAPTER Details about the ArangoDB Shell
 
-After the server has been [started](../FirstSteps/Arangod.md#details-about-the-arangodb-server),
+After the server has been [started](Arangod.md#details-about-the-arangodb-server),
 you can use the ArangoDB shell (_arangosh_) to administrate the
 server. Without any arguments, the ArangoDB shell will try to contact
 the server on port 8529 on the localhost. For more information see the
-[ArangoDB Shell documentation](../Arangosh/README.md). You might need to set additional options
+[ArangoDB Shell documentation](../Administration/Arangosh/README.md). You might need to set additional options
 (endpoint, username and password) when connecting:
 
 ```
@@ -54,7 +54,7 @@ CLIENT options:
 ```
 
 !SECTION Database Wrappers
-The *db*-Object is available in *arangosh* as well as on *arangod* i.e. if you're using [Foxx](../Foxx/README.md). While its Interface is persistant bewteen the *arangosh* and the *arangod* implementations, its underpinning are not. The *arangod* implementation is JavaScript wrappers around ArangoDBs native C++ implementation, the *arangosh* implementation wraps HTTP-Accesses to [ArangoDBs RESTfull API](../HttpApi/README.md).
+The *db*-Object is available in *arangosh* as well as on *arangod* i.e. if you're using [Foxx](../Foxx/README.md). While its Interface is persistant bewteen the *arangosh* and the *arangod* implementations, its underpinning are not. The *arangod* implementation is JavaScript wrappers around ArangoDBs native C++ implementation, the *arangosh* implementation wraps HTTP-Accesses to [ArangoDBs RESTfull API](../../HTTP/index.html).
 
 So while this code may produce similar results when executed in *arangosh* and *arangod*, the cpu-usage and time required will be really different:
 
@@ -64,4 +64,4 @@ for (i = 0; i < 100000; i++) {
 }
 ```
 
-Since the *arangosh* version will be doing around 100k HTTP-Requests, and the *arangod* version [will directly write to the database](../Advanced/ServerInternals.md).
+Since the *arangosh* version will be doing around 100k HTTP-Requests, and the *arangod* version [will directly write to the database](../Architecture/ServerInternals.md).

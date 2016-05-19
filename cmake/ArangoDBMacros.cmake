@@ -241,14 +241,15 @@ if (DH_INSTALLINIT AND FAKEROOT)
     postrm
     prerm
   )
+  SET(DEBIAN_WORK_DIR "${PROJECT_BINARY_DIR}/debian-work")
   add_custom_command(TARGET prepare_debian POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E
-    remove_directory "${PROJECT_BINARY_DIR}/debian"
+    remove_directory "${DEBIAN_WORK_DIR}"
   )
   foreach (_DEBIAN_CONTROL_EXTRA_BASENAME ${DEBIAN_CONTROL_EXTRA_BASENAMES})
     SET(RELATIVE_NAME "debian/${_DEBIAN_CONTROL_EXTRA_BASENAME}")
     SET(SRCFILE "${PROJECT_SOURCE_DIR}/Installation/${RELATIVE_NAME}")
-    SET(DESTFILE "${PROJECT_BINARY_DIR}/${RELATIVE_NAME}")
+    SET(DESTFILE "${DEBIAN_WORK_DIR}/${RELATIVE_NAME}")
 
     list(APPEND DEBIAN_CONTROL_EXTRA_SRC "${SRCFILE}")
     list(APPEND DEBIAN_CONTROL_EXTRA_DEST "${DESTFILE}")
@@ -258,22 +259,21 @@ if (DH_INSTALLINIT AND FAKEROOT)
                      copy ${SRCFILE} ${DESTFILE})
   endforeach()
   
-  SET(DEBIAN_WORK_DIR "${PROJECT_BINARY_DIR}/debian")
   add_custom_command(TARGET prepare_debian POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E
-    copy "${PROJECT_SOURCE_DIR}/Installation/debian/control" "${PROJECT_BINARY_DIR}/debian/control"
+    copy "${PROJECT_SOURCE_DIR}/Installation/debian/control" "${DEBIAN_WORK_DIR}/debian/control"
   )
   add_custom_command(TARGET prepare_debian POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E
-    copy "${PROJECT_SOURCE_DIR}/Installation/debian/compat" "${PROJECT_BINARY_DIR}/debian/compat"
+    copy "${PROJECT_SOURCE_DIR}/Installation/debian/compat" "${DEBIAN_WORK_DIR}/debian/compat"
   )
   add_custom_command(TARGET prepare_debian POST_BUILD
     COMMAND fakeroot "${DH_INSTALLINIT}" -o 2>/dev/null
-    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+    WORKING_DIRECTORY ${DEBIAN_WORK_DIR}
   )
   add_custom_command(TARGET prepare_debian POST_BUILD
     COMMAND fakeroot dh_installdeb
-    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+    WORKING_DIRECTORY ${DEBIAN_WORK_DIR}
   )
 endif()
 
@@ -302,7 +302,7 @@ SET(CPACK_DEBIAN_PACKAGE_CONFLICTS "arangodb")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://www.arangodb.com/")
-set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_BINARY_DIR}/debian/${CPACK_PACKAGE_NAME}/DEBIAN/postinst;${PROJECT_BINARY_DIR}/debian/${CPACK_PACKAGE_NAME}/DEBIAN/preinst;${PROJECT_BINARY_DIR}/debian/${CPACK_PACKAGE_NAME}/DEBIAN/postrm;${PROJECT_BINARY_DIR}/debian/${CPACK_PACKAGE_NAME}/DEBIAN/prerm;")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_BINARY_DIR}/debian-work/debian/${CPACK_PACKAGE_NAME}/DEBIAN/postinst;${PROJECT_BINARY_DIR}/debian-work/debian/${CPACK_PACKAGE_NAME}/DEBIAN/preinst;${PROJECT_BINARY_DIR}/debian-work/debian/${CPACK_PACKAGE_NAME}/DEBIAN/postrm;${PROJECT_BINARY_DIR}/debian-work/debian/${CPACK_PACKAGE_NAME}/DEBIAN/prerm;")
 set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
 configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
 set(CPACK_BUNDLE_PLIST           "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")

@@ -36,7 +36,7 @@ HTML pages - static or dynamic. A simple example is the built-in administration
 interface. You can access it using any modern browser and there is no need for a
 separate Apache or IIS.
 
-In general you will use [Foxx](../Foxx/README.md) to easily extend the database with
+In general you will use [Foxx](../../../Foxx/README.md) to easily extend the database with
 business logic. Foxx provides an simple to use interface to actions.
 
 The following sections will explain the low-level actions within ArangoDB on

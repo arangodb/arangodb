@@ -1,7 +1,7 @@
 !CHAPTER Upgrading to ArangoDB 2.5
 
 Please read the following sections if you upgrade from a previous version to
-ArangoDB 2.5. Please be sure that you have checked the list of [changes in 2.5](../Upgrading/UpgradingChanges25.md)
+ArangoDB 2.5. Please be sure that you have checked the list of [changes in 2.5](../../ReleaseNotes/UpgradingChanges25.md)
 before upgrading.
 
 Please note first that a database directory used with ArangoDB 2.5

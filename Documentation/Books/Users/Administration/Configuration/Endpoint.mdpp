@@ -3,7 +3,7 @@
 The ArangoDB server can listen for incoming requests on multiple *endpoints*.
 
 The endpoints are normally specified either in ArangoDB's configuration file or on
-the command-line, using the ["--server.endpoint"](../ConfigureArango/Arangod.md) option.
+the command-line, using the ["--server.endpoint"](../Configuration/Arangod.md) option.
 The default endpoint for ArangoDB is *tcp://127.0.0.1:8529* or *tcp://localhost:8529*.
 ArangoDB can also do a so called *broadcast bind* using *tcp://0.0.0.0:8529*. This way
 it will be reachable on all interfaces of the host. This may be useful
@@ -47,7 +47,7 @@ When not in the default database, you must first switch to it using the
 
 
 returns a list of all endpoints
-`db._listEndpoints()`
+`db._endpoints()`
 
 Returns a list of all endpoints and their mapped databases.
 

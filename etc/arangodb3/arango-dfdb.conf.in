@@ -8,7 +8,7 @@ directory= @LOCALSTATEDIR@/lib/arangodb3
 
 [server]
 rest-server = false
-authenication = false
+authentication = false
 statistics = false
 # set number of threads to 1 so we don't have concurrency
 threads = 1

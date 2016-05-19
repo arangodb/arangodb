@@ -64,8 +64,8 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "enable the session cache for connections",
                      new BooleanParameter(&_sessionCache));
 
-  options->addOption("--ssl.chipher-list",
-                     "ssl chipers to use, see OpenSSL documentation",
+  options->addOption("--ssl.cipher-list",
+                     "ssl cipers to use, see OpenSSL documentation",
                      new StringParameter(&_cipherList));
 
   std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4};

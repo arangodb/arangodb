@@ -23,10 +23,10 @@ attribute of the index details. Depending on the index type, additional
 other attributes may need to specified in the request in order to create
 the index.
 
-Most indexes (a notable exception being the cap constraint) require the
-array of attributes to be indexed in the *fields* attribute of the index
-details. Depending on the index type, a single attribute or multiple
-attributes can be indexed.
+Indexes require the to be indexed attribute(s) in the *fields* attribute
+of the index details. Depending on the index type, a single attribute or
+multiple attributes can be indexed. In the latter case, an array of
+strings is expected.
 
 Indexing system attributes such as *_id*, *_key*, *_from*, and *_to*
 is not supported for user-defined indexes. Manually creating an index using
@@ -41,7 +41,6 @@ create a non-unique index.
 **Note**: The following index types do not support uniqueness, and using
 the *unique* attribute with these types may lead to an error:
 
-- cap constraints
 - fulltext indexes
 
 **Note**: Unique indexes on non-shard keys are not supported in a

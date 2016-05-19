@@ -1,10 +1,7 @@
 !CHAPTER Getting familiar with ArangoDB
 
 First of all download and install the corresponding RPM or Debian package or use
-homebrew on the MacOS X. See the [installation manual](../Installing/README.md) for more details.
-In case you just want to experiment with ArangoDB you
-can use the [online](https://www.arangodb.com/tryitout) demo without
-installing ArangoDB locally.
+homebrew on the MacOS X. See the [installation manual](Installing/README.md) for more details.
 
 !SUBSECTION For Linux
 

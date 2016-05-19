@@ -256,7 +256,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
      Function("SORTED_UNIQUE", "AQL_SORTED_UNIQUE", "l", true, true, false,
               true, true, &Functions::SortedUnique)},
     {"SLICE",
-     Function("SLICE", "AQL_SLICE", "l,n|n", true, true, false, true, true)},
+     Function("SLICE", "AQL_SLICE", "l,n|n", true, true, false, true, true, &Functions::Slice)},
     {"REVERSE",
      Function("REVERSE", "AQL_REVERSE", "ls", true, true, false, true,
               true)},  // note: REVERSE() can be applied on strings, too
@@ -453,7 +453,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
     {"NOOPT", Function("NOOPT", "AQL_PASSTHRU", ".", false, false, false, true,
                        true, &Functions::Passthru)},
     {"V8",
-     Function("V8", "AQL_PASSTHRU", ".", false, false, false, true, true)},
+     Function("V8", "AQL_PASSTHRU", ".", false, true, false, true, true)},
     {"TEST_INTERNAL", Function("TEST_INTERNAL", "AQL_TEST_INTERNAL", "s,.",
                                false, false, false, true, false)},
     {"SLEEP",
@@ -1167,8 +1167,13 @@ void Executor::generateCodeFunctionCall(AstNode const* node) {
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
-  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
-  _buffer->appendText(func->internalName);
+  if (func->externalName != "V8") {
+    // special case for the V8 function... this is actually not a function 
+    // call at all, but a wrapper to ensure that the following expression
+    // is executed using V8
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
+    _buffer->appendText(func->internalName);
+  }
   _buffer->appendChar('(');
 
   size_t const n = args->numMembers();

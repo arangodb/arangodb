@@ -42,85 +42,94 @@
 namespace arangodb {
 namespace consensus {
 
-enum NodeType {NODE, LEAF};
-enum Operation {SET, INCREMENT, DECREMENT, PUSH, POP,
-                PREPEND, SHIFT, OBSERVE, UNOBSERVE};
+enum NodeType { NODE, LEAF };
+enum Operation {
+  SET,
+  INCREMENT,
+  DECREMENT,
+  PUSH,
+  POP,
+  PREPEND,
+  SHIFT,
+  OBSERVE,
+  UNOBSERVE
+};
 
 using namespace arangodb::velocypack;
 
 class StoreException : public std::exception {
-public:
+ public:
   explicit StoreException(std::string const& message) : _message(message) {}
   virtual char const* what() const noexcept override final {
-    return _message.c_str(); }
-private:
+    return _message.c_str();
+  }
+
+ private:
   std::string _message;
 };
 
-enum NODE_EXCEPTION {PATH_NOT_FOUND};
+enum NODE_EXCEPTION { PATH_NOT_FOUND };
 
 class Node;
 
 typedef std::chrono::system_clock::time_point TimePoint;
-typedef std::multimap<TimePoint, std::shared_ptr<Node>> TimeTable;
 
 class Store;
 
 /// @brief Simple tree implementation
 class Node {
-  
-public:
-  // @brief Slash-segemented path 
+ public:
+  // @brief Slash-segemented path
   typedef std::vector<std::string> PathType;
 
   // @brief Child nodes
   typedef std::map<std::string, std::shared_ptr<Node>> Children;
-  
+
   /// @brief Construct with name
-  explicit Node (std::string const& name);
+  explicit Node(std::string const& name);
 
   /// @brief Construct with name and introduce to tree under parent
-  Node (std::string const& name, Node* parent);
-  
+  Node(std::string const& name, Node* parent);
+
   /// @brief Construct with name and introduce to tree under parent
-  Node (std::string const& name, Store* store);
+  Node(std::string const& name, Store* store);
 
   /// @brief Default dtor
-  virtual ~Node ();
-  
-  /// @brief Get name 
+  virtual ~Node();
+
+  /// @brief Get name
   std::string const& name() const;
 
   /// @brief Get full path
   std::string uri() const;
 
   /// @brief Apply rhs to this node (deep copy of rhs)
-  Node& operator= (Node const& node);
+  Node& operator=(Node const& node);
 
   /// @brief Apply value slice to this node
-  Node& operator= (arangodb::velocypack::Slice const&);
+  Node& operator=(arangodb::velocypack::Slice const&);
 
   /// @brief Check equality with slice
-  bool operator== (arangodb::velocypack::Slice const&) const;
+  bool operator==(arangodb::velocypack::Slice const&) const;
 
   /// @brief Check equality with slice
-  bool operator!= (arangodb::velocypack::Slice const&) const;
+  bool operator!=(arangodb::velocypack::Slice const&) const;
 
   /// @brief Type of this node (LEAF / NODE)
   NodeType type() const;
 
-  /// @brief Get node specified by path vector  
-  Node& operator ()(std::vector<std::string> const& pv);
-  /// @brief Get node specified by path vector  
-  Node const& operator ()(std::vector<std::string> const& pv) const;
-  
-  /// @brief Get node specified by path string  
-  Node& operator ()(std::string const& path);
-  /// @brief Get node specified by path string  
-  Node const& operator ()(std::string const& path) const;
+  /// @brief Get node specified by path vector
+  Node& operator()(std::vector<std::string> const& pv);
+  /// @brief Get node specified by path vector
+  Node const& operator()(std::vector<std::string> const& pv) const;
+
+  /// @brief Get node specified by path string
+  Node& operator()(std::string const& path);
+  /// @brief Get node specified by path string
+  Node const& operator()(std::string const& path) const;
 
   /// @brief Remove child by name
-  bool removeChild (std::string const& key);
+  bool removeChild(std::string const& key);
 
   /// @brief Remove this node and below from tree
   bool remove();
@@ -132,72 +141,72 @@ public:
   Node& root();
 
   /// @brief Dump to ostream
-  std::ostream& print (std::ostream&) const;
+  std::ostream& print(std::ostream&) const;
 
   /// #brief Get path of this node
-  std::string path (); 
-  
+  std::string path();
+
   /// @brief Apply single operation as defined by "op"
-  bool applieOp (arangodb::velocypack::Slice const&);
+  bool applieOp(arangodb::velocypack::Slice const&);
 
   /// @brief Apply single slice
-  bool applies (arangodb::velocypack::Slice const&);
+  bool applies(arangodb::velocypack::Slice const&);
 
   /// @brief handle "op" keys in write json
-  template<Operation Oper>
-  bool handle (arangodb::velocypack::Slice const&);
+  template <Operation Oper>
+  bool handle(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
-  void toBuilder (Builder&) const;
+  void toBuilder(Builder&) const;
 
   /// @brief Access children
-  Children& children ();
+  Children& children();
 
   /// @brief Access children
-  Children const& children () const;
+  Children const& children() const;
 
   /// @brief Create slice from value
   Slice slice() const;
 
-  /// @brief Get value type  
-  ValueType valueType () const;
+  /// @brief Get value type
+  ValueType valueType() const;
 
   /// @brief Add observer for this node
-  bool addObserver (std::string const&);
-  
+  bool addObserver(std::string const&);
+
   /// @brief Add observer for this node
-  void notifyObservers (std::string const& origin) const;
+  void notifyObservers(std::string const& origin) const;
 
   /// @brief Is this node being observed by url
-  bool observedBy (std::string const& url) const;
+  bool observedBy(std::string const& url) const;
 
   Store& store();
   Store const& store() const;
 
   std::string toJson() const;
 
-protected:
+  Node const* parent() const;
 
+ protected:
   /// @brief Add time to live entry
-  virtual bool addTimeToLive (long millis);
+  virtual bool addTimeToLive(long millis);
 
   /// @brief Remove time to live entry
-  virtual bool removeTimeToLive ();
+  virtual bool removeTimeToLive();
 
-  std::string _node_name;              /**< @brief my name */
+  std::string _node_name; /**< @brief my name */
 
-  Node* _parent;                       /**< @brief parent */
-  Store* _store;                       /**< @brief Store */
-  Children _children;                  /**< @brief child nodes */
-  TimePoint _ttl;                      /**< @brief my expiry */
-  Buffer<uint8_t> _value;              /**< @brief my value */
-
+  Node* _parent;          /**< @brief parent */
+  Store* _store;          /**< @brief Store */
+  Children _children;     /**< @brief child nodes */
+  TimePoint _ttl;         /**< @brief my expiry */
+  Buffer<uint8_t> _value; /**< @brief my value */
 };
 
-inline std::ostream& operator<< (std::ostream& o, Node const& n) {
+inline std::ostream& operator<<(std::ostream& o, Node const& n) {
   return n.print(o);
 }
-
-}} // namespaces
+}
+}  // namespaces
 
 #endif

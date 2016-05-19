@@ -30,19 +30,16 @@ namespace arangodb {
 namespace consensus {
 
 class StoreCallback : public arangodb::ClusterCommCallback {
-  
-public:
-  
+ public:
   StoreCallback();
-  
-  virtual bool operator()(arangodb::ClusterCommResult*) override final;
-  
-  void shutdown();
-  
-private:
-  
-};
 
-}} // namespace
+  virtual bool operator()(arangodb::ClusterCommResult*) override final;
+
+  void shutdown();
+
+ private:
+};
+}
+}  // namespace
 
 #endif

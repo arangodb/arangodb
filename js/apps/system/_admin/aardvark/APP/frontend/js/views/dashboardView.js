@@ -589,7 +589,7 @@
       var self = this;
 
       $.ajax(
-        '/_api/replication/applier-state',
+        arangoHelper.databaseUrl('/_api/replication/applier-state'),
         {async: true}
       ).done(
         function (d) {
@@ -611,7 +611,7 @@
 
     getStatistics: function (callback, modalView) {
       var self = this;
-      var url = "/_db/_system/_admin/aardvark/statistics/short";
+      var url = arangoHelper.databaseUrl("/_admin/aardvark/statistics/short", "_system");
       var urlParams = "?start=";
 
       if (self.nextStart) {

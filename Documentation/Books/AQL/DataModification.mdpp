@@ -8,7 +8,7 @@ AQL supports the following data-modification operations:
 - **REMOVE**: remove existing documents from a collection
 - **UPSERT**: conditionally insert or update documents in a collection
 
-Those operations are detailed in the chapter [High Level Operations](Operations.md). 
+Those operations are detailed in the chapter [High Level Operations](Operations/README.md). 
 
 
 !SUBSECTION Modifying a single document 
@@ -16,34 +16,49 @@ Those operations are detailed in the chapter [High Level Operations](Operations.
 Let's start with the basics: `INSERT`, `UPDATE` and `REMOVE` operations on single documents.
 Here is an example that insert a document in an existing collection *users*:
 
-	INSERT {firstName:'Anna', name:'Pavlova', profession:'artist'} IN users
+```js
+INSERT { firstName: "Anna", name: "Pavlova", profession: "artist" } IN users
+```
 
 You may provide a key for the new document; if not provided, ArangoDB will create one for you.  
 
-	INSERT {_key:'GilbertoGil', firstName:'Gilberto', name:'Gil', city:'Fortalezza'} IN users
+```js
+INSERT { _key: "GilbertoGil", firstName: "Gilberto", name: "Gil", city: "Fortalezza" } IN users
+```
 
 As Arango is schema-free, attributes of the documents may vary: 
 
-	INSERT {_key:'PhilCarpenter',  firstName:'Phil', name:'Carpenter', middleName:'G.',status:'inactive', } IN users
+```js
+INSERT { _key: "PhilCarpenter", firstName: "Phil", name: "Carpenter", middleName: "G.", status: "inactive" } IN users
+```
 
-	INSERT {_key:'NatachaDeclerck', firstName:'Natacha', name:'Declerck', location:'Antwerp'} IN users 
+```js
+INSERT { _key: "NatachaDeclerck", firstName: "Natacha", name: "Declerck", location: "Antwerp" } IN users 
+```
 
 Update is quite simple. The following AQL statement will add or change the attributes status and location
 
-	UPDATE 'PhilCarpenter' WITH { status:'active', location:'Beijing' }  IN users
+```js
+UPDATE "PhilCarpenter" WITH { status: "active", location: "Beijing" } IN users
+```
 
 Replace is an alternative to update where all attributes of the document are replaced.
 
-	REPLACE   { _key: 'NatachaDeclerck', firstName:'Natacha', name:'Leclerc', status: 'active', level:'premium' } IN users
+```js
+REPLACE { _key: "NatachaDeclerck", firstName: "Natacha", name: "Leclerc", status: "active", level: "premium" } IN users
+```
 
 Removing a document if you know its key is simple as well : 
 
-	REMOVE 'GilbertoGil' IN users
+```js
+REMOVE "GilbertoGil" IN users
+```
 
 or 
 
-	REMOVE {_key:'GilbertoGil'} IN users
-
+```js
+REMOVE { _key: "GilbertoGil" } IN users
+```
 
 !SUBSECTION Modifying multiple documents
 
@@ -54,26 +69,30 @@ iterate over a given list of documents. They can optionally be combined with
 Let's start with an example that modifies existing documents in a collection
 *users* that match some condition:
 
-    FOR u IN users
-      FILTER u.status == 'not active'
-      UPDATE u WITH { status: 'inactive' } IN users
-
+```js
+FOR u IN users
+    FILTER u.status == "not active"
+    UPDATE u WITH { status: "inactive" } IN users
+```
 
 
 Now, let's copy the contents of the collection *users* into the collection
 *backup*:
 
-    FOR u IN users
-      INSERT u IN backup
+```js
+FOR u IN users
+    INSERT u IN backup
+```
 
 As a final example, let's find some documents in collection *users* and
 remove them from collection *backup*. The link between the documents in both
 collections is established via the documents' keys:
 
-    FOR u IN users
-      FILTER u.status == 'deleted'
-      REMOVE u IN backup
-
+```js
+FOR u IN users
+    FILTER u.status == "deleted"
+    REMOVE u IN backup
+```
 
 !SUBSECTION Returning documents
 
@@ -81,19 +100,25 @@ Data-modification queries can optionally return documents. In order to reference
 the inserted, removed or modified documents in a `RETURN` statement, data-modification 
 statements introduce the `OLD` and/or `NEW` pseudo-values:
 
-    FOR i IN 1..100
-      INSERT { value: i } IN test 
-      RETURN NEW
+```js
+FOR i IN 1..100
+    INSERT { value: i } IN test 
+    RETURN NEW
+```
 
-    FOR u IN users
-      FILTER u.status == 'deleted'
-      REMOVE u IN users 
-      RETURN OLD
+```js
+FOR u IN users
+    FILTER u.status == "deleted"
+    REMOVE u IN users 
+    RETURN OLD
+```
 
-    FOR u IN users
-      FILTER u.status == 'not active'
-      UPDATE u WITH { status: 'inactive' } IN users 
-      RETURN NEW
+```js
+FOR u IN users
+    FILTER u.status == "not active"
+    UPDATE u WITH { status: "inactive" } IN users 
+    RETURN NEW
+```
 
 `NEW` refers to the inserted or modified document revision, and `OLD` refers
 to the document revision before update or removal. `INSERT` statements can 
@@ -112,21 +137,23 @@ by queries.
 
 For example, the following query will return only the keys of the inserted documents:
 
-    FOR i IN 1..100
-      INSERT { value: i } IN test 
-      RETURN NEW._key
-
+```js
+FOR i IN 1..100
+    INSERT { value: i } IN test 
+    RETURN NEW._key
+```
 
 !SUBSUBSECTION Using OLD and NEW in the same query
 
 For `UPDATE`, `REPLACE` and `UPSERT` statements, both `OLD` and `NEW` can be used
 to return the previous revision of a document together with the updated revision:
 
-    FOR u IN users
-      FILTER u.status == 'not active'
-      UPDATE u WITH { status: 'inactive' } IN users 
-      RETURN { old: OLD, new: NEW }
-
+```js
+FOR u IN users
+    FILTER u.status == "not active"
+    UPDATE u WITH { status: "inactive" } IN users 
+    RETURN { old: OLD, new: NEW }
+```
 
 !SUBSUBSECTION Calculations with OLD or NEW
 
@@ -137,18 +164,20 @@ updated, or a new document was inserted. It does so by checking the `OLD` variab
 after the `UPSERT` and using a `LET` statement to store a temporary string for
 the operation type:
   
-    UPSERT { name: 'test' } 
-      INSERT { name: 'test' } 
-      UPDATE { } IN users
-    LET opType = IS_NULL(old) ? 'insert' : 'update'
-    RETURN { _key: NEW._key, type: opType }
-
+```js
+UPSERT { name: "test" }
+    INSERT { name: "test" }
+    UPDATE { } IN users
+LET opType = IS_NULL(old) ? "insert" : "update"
+RETURN { _key: NEW._key, type: opType }
+```
 
 !SUBSECTION Restrictions
 
 The name of the modified collection (*users* and *backup* in the above cases) 
 must be known to the AQL executor at query-compile time and cannot change at 
-runtime. Using a bind parameter to specify the [collection name](../Glossary/README.md#collection-name) is allowed.
+runtime. Using a bind parameter to specify the
+[collection name](../Users/Appendix/Glossary.html#collection-name) is allowed.
 
 Data-modification queries are restricted to modifying data in a single 
 collection per query. That means a data-modification query cannot modify 

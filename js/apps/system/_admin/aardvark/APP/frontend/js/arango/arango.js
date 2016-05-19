@@ -1,5 +1,5 @@
 /*jshint unused: false */
-/*global window, $, document, arangoHelper, _ */
+/*global window, $, document, _, arangoHelper, frontendConfig */
 
 (function() {
   "use strict";
@@ -135,7 +135,7 @@
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/database/current",
+        url: this.databaseUrl("/_api/database/current"),
         contentType: "application/json",
         processData: false,
         success: function(data) {
@@ -343,7 +343,7 @@
           $.ajax({
             type: "GET",
             cache: false,
-            url: "/_db/"+ encodeURIComponent(db) + "/_api/database/",
+            url: this.databaseUrl("/_api/database/", db),
             contentType: "application/json",
             processData: false,
             success: function() {
@@ -431,7 +431,7 @@
       $.ajax({
           cache: false,
           type: "POST",
-          url: "/_admin/aardvark/job",
+          url: this.databaseUrl("/_admin/aardvark/job"),
           data: JSON.stringify(object),
           contentType: "application/json",
           processData: false,
@@ -452,7 +452,7 @@
       $.ajax({
           cache: false,
           type: "DELETE",
-          url: "/_admin/aardvark/job/" + encodeURIComponent(id),
+          url: this.databaseUrl("/_admin/aardvark/job/" + encodeURIComponent(id)),
           contentType: "application/json",
           processData: false,
           success: function (data) {
@@ -472,7 +472,7 @@
       $.ajax({
           cache: false,
           type: "DELETE",
-          url: "/_admin/aardvark/job",
+          url: this.databaseUrl("/_admin/aardvark/job"),
           contentType: "application/json",
           processData: false,
           success: function (data) {
@@ -492,7 +492,7 @@
       $.ajax({
           cache: false,
           type: "GET",
-          url: "/_admin/aardvark/job",
+          url: this.databaseUrl("/_admin/aardvark/job"),
           contentType: "application/json",
           processData: false,
           success: function (data) {
@@ -513,7 +513,7 @@
       $.ajax({
           cache: false,
           type: "GET",
-          url: "/_api/job/pending",
+          url: this.databaseUrl("/_api/job/pending"),
           contentType: "application/json",
           processData: false,
           success: function (data) {
@@ -664,6 +664,24 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+    },
+
+    backendUrl: function(url) {
+      return frontendConfig.basePath + url;
+    },
+
+    databaseUrl: function(url, databaseName) {
+      if (url.substr(0, 5) === '/_db/') {
+        throw new Error("Calling databasUrl with a databased url (" + url + ") doesn't make any sense");
+      }
+
+      if (!databaseName) {
+        databaseName = '_system';
+        if (window.App && window.currentDB && window.currentDB.name) {
+          databaseName = window.App.currentDB.name;
+        }
+      }
+      return this.backendUrl("/_db/" + encodeURIComponent(databaseName) + url);
     }
 
   };

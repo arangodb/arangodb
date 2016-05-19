@@ -1,7 +1,7 @@
 !CHAPTER Fulltext queries 
 
 ArangoDB allows to run queries on text contained in document attributes.  To use
-this, a [fulltext index](../Glossary/README.md#fulltext-index) must be defined for the attribute of the collection that
+this, a [fulltext index](../Appendix/Glossary.md#fulltext-index) must be defined for the attribute of the collection that
 contains the text. Creating the index will parse the text in the specified
 attribute for all documents of the collection. Only documents will be indexed
 that contain a textual value in the indexed attribute.  For such documents, the
@@ -25,7 +25,7 @@ Details about the fulltext query syntax can be found below.
 Note: the *fulltext* simple query function is **deprecated** as of ArangoDB 2.6. 
 The function may be removed in future versions of ArangoDB. The preferred
 way for executing fulltext queries is to use an AQL query using the *FULLTEXT*
-[AQL function](../Aql/FulltextFunctions.md) as follows:
+[AQL function](../../../../AQL/Functions/Fulltext.html) as follows:
 
     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
       RETURN doc

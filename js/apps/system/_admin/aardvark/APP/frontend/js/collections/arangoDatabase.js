@@ -3,7 +3,6 @@
 
 (function() {
   'use strict';
-
   window.ArangoDatabase = Backbone.Collection.extend({
 
     model: window.DatabaseModel,
@@ -12,7 +11,7 @@
       desc: false
     },
 
-    url: "/_api/database",
+    url: arangoHelper.databaseUrl("/_api/database"),
 
     comparator: function(item, item2) {
       var a = item.get('name').toLowerCase();

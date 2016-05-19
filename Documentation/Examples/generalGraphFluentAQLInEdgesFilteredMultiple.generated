@@ -8,7 +8,7 @@ arangosh&gt; query.inEdges([{type: <span class="hljs-string">"married"</span>}, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19783"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"19760"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
   } 
 ]

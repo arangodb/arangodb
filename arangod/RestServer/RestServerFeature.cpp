@@ -73,6 +73,8 @@ using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
 
+RestServerFeature* RestServerFeature::RESTSERVER = nullptr;
+
 RestServerFeature::RestServerFeature(
     application_features::ApplicationServer* server,
     std::string const& authenticationRealm)
@@ -83,6 +85,7 @@ RestServerFeature::RestServerFeature(
       _authentication(true),
       _authenticationUnixSockets(true),
       _authenticationSystemOnly(false),
+      _proxyCheck(true),
       _handlerFactory(nullptr),
       _jobManager(nullptr) {
   setOptional(true);
@@ -102,10 +105,11 @@ RestServerFeature::RestServerFeature(
 void RestServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
-
+  
   options->addOption("--server.authentication",
                      "enable or disable authentication for ALL client requests",
                      new BooleanParameter(&_authentication));
+  
 
   options->addOption(
       "--server.authentication-system-only",
@@ -132,6 +136,15 @@ void RestServerFeature::collectOptions(
       "--http.hide-product-header",
       "do not expose \"Server: ArangoDB\" header in HTTP responses",
       new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
+  
+  options->addSection("frontend", "Frontend options");
+  options->addOption("--frontend.proxy-request-check",
+                     "enable or disable proxy request checking",
+                     new BooleanParameter(&_proxyCheck));
+
+  options->addOption("--frontend.trusted-proxy",
+                     "list of proxies to trust (may be IP or network). Make sure --frontend.proxy-request-check is enabled",
+                     new VectorParameter<StringParameter>(&_trustedProxies));
 }
 
 void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -186,6 +199,7 @@ void RestServerFeature::prepare() {
 }
 
 void RestServerFeature::start() {
+  RESTSERVER = this;
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
   _httpOptions._vocbase = DatabaseFeature::DATABASE->vocbase();
@@ -216,6 +230,7 @@ void RestServerFeature::start() {
 }
 
 void RestServerFeature::stop() {
+  RESTSERVER = nullptr;
   for (auto& server : _servers) {
     server->stopListening();
   }

@@ -2,16 +2,16 @@
 
 The following high-level operations are described here after: 
 
-* [FOR](../AqlOperations/For.md) : to iterate over all elements of an array.
-* [RETURN](../AqlOperations/Return.md) : to produce the result of a query.
-* [FILTER](../AqlOperations/Filter.md) : to restrict the results to elements that match an arbitrary logical condition. 
-* [SORT](../AqlOperations/Sort.md) : to force a sort of the array of already produced intermediate results. 
-* [LIMIT](../AqlOperations/Limit.md) : to reduce the number of elements in the result to at most the specified number.  
-* [LET](../AqlOperations/Let.md) : to assign an arbitrary value to a variable.  
-* [COLLECT](../AqlOperations/Collect.md) : to group an array by one or multiple group criteria. 
-* [REMOVE](../AqlOperations/Remove.md) : to remove documents from a collection. 
-* [UPDATE](../AqlOperations/Update.md) : to partially update documents in a collection. 
-* [REPLACE](../AqlOperations/Replace.md) :  to completely replace documents in a collection. 
-* [INSERT](../AqlOperations/Insert.md) : to insert new documents into a collection. 
-* [UPSERT](../AqlOperations/Upsert.md) : to update an existing document, or create it in the case it does not exist.
+* [FOR](For.md) : to iterate over all elements of an array.
+* [RETURN](Return.md) : to produce the result of a query.
+* [FILTER](Filter.md) : to restrict the results to elements that match an arbitrary logical condition. 
+* [SORT](Sort.md) : to force a sort of the array of already produced intermediate results. 
+* [LIMIT](Limit.md) : to reduce the number of elements in the result to at most the specified number.  
+* [LET](Let.md) : to assign an arbitrary value to a variable.  
+* [COLLECT](Collect.md) : to group an array by one or multiple group criteria. 
+* [REMOVE](Remove.md) : to remove documents from a collection. 
+* [UPDATE](Update.md) : to partially update documents in a collection. 
+* [REPLACE](Replace.md) :  to completely replace documents in a collection. 
+* [INSERT](Insert.md) : to insert new documents into a collection. 
+* [UPSERT](Upsert.md) : to update an existing document, or create it in the case it does not exist.
 

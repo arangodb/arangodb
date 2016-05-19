@@ -166,6 +166,10 @@ function optimizerRuleTestSuite () {
         "FOR i IN [1] LET a = i * 2 RETURN a * a",
         "FOR i IN [1] LET a = CONCAT('a', i) RETURN CONCAT(a, a)",
         "FOR i IN [1] LET a = i * 2 COLLECT y = a INTO g RETURN [ y * 2, g ]",
+        
+        // v8 vs. non-v8 expression types
+        "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = V8(ATTRIBUTES(doc)) RETURN KEEP(doc, a)",
+        "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = ATTRIBUTES(doc) RETURN V8(KEEP(doc, a))"
       ];
 
       queries.forEach(function(query) {
@@ -258,7 +262,11 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) UPDATE CONCAT(a, i) WITH { } INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }",
         "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) UPDATE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }",
         "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT(a, i) WITH { } INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }",
-        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }"
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }",
+        
+        // same expression types
+        "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = V8(ATTRIBUTES(doc)) RETURN V8(KEEP(doc, a))",
+        "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = ATTRIBUTES(doc) RETURN KEEP(doc, a)"
       ];
 
       queries.forEach(function(query) {
@@ -359,7 +367,7 @@ function optimizerRuleTestSuite () {
         [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc.a RETURN a * 2", [ 2, 4 ] ],
         [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc.a * 2 RETURN a * 2", [ 4, 8 ] ],
         [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc RETURN a.a", [ 1, 2 ] ],
-        [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = SLICE(ATTRIBUTES(doc), 0, 1) RETURN KEEP(doc, a)", [ { a: 1 }, { a: 2 } ] ]
+        [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = SLICE(ATTRIBUTES(doc, false, true), 0, 1) RETURN KEEP(doc, a)", [ { a: 1 }, { a: 2 } ] ]
       ];
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query[0]);

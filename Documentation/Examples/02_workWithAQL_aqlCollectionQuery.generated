@@ -5,7 +5,7 @@ arangosh&gt; db._query(aqlQuery<span class="hljs-string">`FOR doc IN <span class
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"testKey"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"mycollection/testKey"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"6627"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"6630"</span>, 
     <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"World"</span> 
   } 
 ]

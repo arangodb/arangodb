@@ -10,7 +10,7 @@ To upgrade an existing ArangoDB database to a newer version of ArangoDB
 (e.g. 3.0 to 3.1, or 3.3 to 3.4), the following method is recommended:
 
 * Check the *CHANGELOG* and the
-  [list of incompatible changes](../Upgrading/UpgradingChanges28.md) for API or
+  [list of incompatible changes](../../ReleaseNotes/UpgradingChanges28.md) for API or
   other changes in the new version of ArangoDB and make sure your applications
   can deal with them
 * Stop the "old" arangod service or binary

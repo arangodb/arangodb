@@ -1,0 +1,76 @@
+!CHAPTER Routers
+
+`const createRouter = require('@arangodb/foxx/router');`
+
+TODO
+
+!SECTION Creating a router
+
+`createRouter(): Router`
+
+This returns a new, clean Router object that has not yet been mounted in the service and can be exported like any other object.
+
+!SECTION Request handlers
+
+`router.get([path], handler, [name]): Endpoint`
+
+`router.post([path], handler, [name]): Endpoint`
+
+`router.put([path], handler, [name]): Endpoint`
+
+`router.patch([path], handler, [name]): Endpoint`
+
+`router.delete([path], handler, [name]): Endpoint`
+
+`router.all([path], handler, [name]): Endpoint`
+
+TODO
+
+**Arguments**
+
+* **path**: `string` (Default: `"/"`)
+
+  The path of the request handler relative to the base path the Router is mounted at. If omitted, the request handler will handle requests to the base path of the Router. For information on defining dynamic routes see the section on path parameters in the [chapter on router endpoints][ENDPOINTS].
+
+* **handler**: `Function`
+
+  A function that takes the following arguments:
+
+  * **req**: `Request`
+
+    An incoming server request object.
+
+  * **res**: `Response`
+
+    An outgoing server response.
+
+* **name**: `string` (optional)
+
+  A name that can be used to generate URLs for the endpoint. For more information see the `reverse` method of the [request object][REQUEST].
+
+TODO
+
+!SECTION Mounting child routers and middleware
+
+`router.use([path], handler, [name]): Endpoint`
+
+TODO
+
+**Arguments**
+
+* **path**: `string` (optional)
+
+  TODO
+
+* **handler**: `Router | Middleware`
+
+  TODO
+
+* **name**: `string` (optional)
+
+  A name that can be used to generate URLs for endpoints of this router. For more information see the `reverse` method of the [request object][REQUEST]. Has no effect if *handler* is a Middleware.
+
+TODO
+
+[ENDPOINTS]: ./Endpoints.md
+[REQUEST]: ./Request.md

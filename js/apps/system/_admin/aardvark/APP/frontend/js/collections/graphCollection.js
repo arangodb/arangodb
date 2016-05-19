@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, Backbone, $, arangoHelper */
+/*global window, Backbone, $, arangoHelper, frontendConfig */
 (function () {
   "use strict";
 
@@ -11,12 +11,12 @@
       desc: false
     },
 
-    url: "/_api/gharial",
+    url: frontendConfig.basePath + "/_api/gharial",
 
     dropAndDeleteGraph: function(name, callback) {
       $.ajax({
         type: "DELETE",
-        url: "/_api/gharial/" + encodeURIComponent(name) + "?dropCollections=true",
+        url: frontendConfig.basePath + "/_api/gharial/" + encodeURIComponent(name) + "?dropCollections=true",
         contentType: "application/json",
         processData: true,
         success: function() {

@@ -1,0 +1,167 @@
+!CHAPTER Foxx service context
+
+TODO
+
+The service context specifies the following properties:
+
+* **argv**: `any`
+
+  Any arguments passed in if the current file was executed as a script or queued job. For more information see the [chapter on scripts and queued jobs][SCRIPTS].
+
+* **basePath**: `string`
+
+  The file system path of the service, i.e. the folder in which the service was installed by ArangoDB.
+
+* **baseUrl**: `string`
+
+  The base URL of the service, relative to the ArangoDB server, e.g. `/_db/_system/my-foxx`.
+
+* **collectionPrefix**: `string`
+
+  The prefix that will be used by *collection* and *collectionName* to derive the names of service-specific collections. This is derived from the service's mount point, e.g. `/my-foxx` becomes `my_foxx`.
+
+* **configuration**: `Object`
+
+  TODO
+
+* **dependencies**: `Object`
+
+  TODO
+
+* **isDevelopment**: `boolean`
+
+  TODO
+
+* **isProduction**: `boolean`
+
+  The inverse of *isDevelopment*.
+
+* **manifest**: `Object`
+
+  TODO
+
+* **mount**: `string`
+
+  The mount point of the service, e.g. `/my-foxx`.
+
+!SECTION apiDocumentation
+
+`module.context.apiDocumentation([options]): Function`
+
+TODO
+
+**Arguments**
+
+* **options**: `Object` (optional)
+
+  TODO
+
+TODO
+
+!SECTION collection
+
+`module.context.collection(name): ArangoCollection | null`
+
+Passes the given name to *collectionName*, then looks up the collection with the prefixed name.
+
+**Arguments**
+
+* **name**: `string`
+
+  Unprefixed name of the service-specific collection.
+
+Returns a collection or `null` if no collection with the prefixed name exists.
+
+!SECTION collectionName
+
+`module.context.collectionName(name): string`
+
+Prefixes the given name with the *collectionPrefix* for this service.
+
+**Arguments**
+
+* **name**: `string`
+
+  Unprefixed name of the service-specific collection.
+
+Returns the prefixed name.
+
+**Examples**
+
+```js
+module.context.mount === '/my-foxx'
+module.context.collectionName('doodads') === 'my_foxx_doodads'
+```
+
+!SECTION file
+
+`module.context.file(name, [encoding]): Buffer | string`
+
+Passes the given name to *fileName*, then loads the file with the resulting name.
+
+**Arguments**
+
+* **name**: `string`
+
+  Name of the file to load, relative to the current service.
+
+* **encoding**: `string` (optional)
+
+  Encoding of the file, e.g. `utf-8`. If omitted the file will be loaded as a raw buffer instead of a string.
+
+Returns the file's contents.
+
+!SECTION fileName
+
+`module.context.fileName(name): string`
+
+Resolves the given file name relative to the current service.
+
+**Arguments**
+
+* **name**: `string`
+
+  Name of the file, relative to the current service.
+
+Returns the absolute file path.
+
+!SECTION registerType
+
+`module.context.registerType(type, def): void`
+
+TODO
+
+**Arguments**
+
+* **type**: `string`
+
+  TODO
+
+* **def**: `Object`
+
+  TODO
+
+TODO
+
+!SECTION use
+
+`module.context.use([path], router): Endpoint`
+
+Mounts a given router on the service to expose the router's routes on the service's mount point.
+
+**Arguments**
+
+* **path**: `string` (Default: `"/"`)
+
+  Path to mount the router at, relative to the service's mount point.
+
+* **router**: `Router | Middleware`
+
+  A router or middleware to mount.
+
+Returns the [Endpoint][ENDPOINTS] for the given router or middleware.
+
+**Note**: Mounting services at run time (e.g. within request handlers or queued jobs) is not supported.
+
+[SCRIPTS]: ./Scripts.md
+[ENDPOINTS]: ./Router/Endpoints.md

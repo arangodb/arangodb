@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, document, EJS, _, arangoHelper, window, setTimeout, $, templateEngine*/
+/*global Backbone, document, EJS, _, arangoHelper, window, setTimeout, $, templateEngine, frontendConfig*/
 
 (function() {
   "use strict";
@@ -72,7 +72,7 @@
           $('.wrong-credentials').hide();
           self.loggedIn = true;
           //get list of allowed dbs
-          $.ajax("/_api/database/user").success(function(data) {
+          $.ajax(arangoHelper.databaseUrl("/_api/database/user")).success(function(data) {
 
             $('#loginForm').hide();
             $('#databases').show();
@@ -116,7 +116,7 @@
       };
 
       var path = window.location.protocol + "//" + window.location.host
-                 + "/_db/" + database + "/_admin/aardvark/index.html";
+                 + frontendConfig.basePath + "/_db/" + database + "/_admin/aardvark/index.html";
 
       window.location.href = path;
 

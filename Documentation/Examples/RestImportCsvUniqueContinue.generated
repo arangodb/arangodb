@@ -8,13 +8,13 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> C
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"created"</span> : <span class="hljs-number">1</span>, 
+  <span class="hljs-string">"errors"</span> : <span class="hljs-number">1</span>, 
+  <span class="hljs-string">"empty"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"updated"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"ignored"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"details"</span> : [ 
     <span class="hljs-string">"at position 2: creating document failed with error 'unique constraint violated', offending document: {\"_key\":\"abc\",\"value1\":\"bar\",\"value2\":\"baz\"}"</span> 
-  ], 
-  <span class="hljs-string">"empty"</span> : <span class="hljs-number">0</span>, 
-  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"errors"</span> : <span class="hljs-number">1</span>, 
-  <span class="hljs-string">"ignored"</span> : <span class="hljs-number">0</span>, 
-  <span class="hljs-string">"updated"</span> : <span class="hljs-number">0</span> 
+  ] 
 }
