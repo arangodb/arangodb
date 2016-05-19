@@ -40,6 +40,18 @@ class Store : public arangodb::Thread {
   /// @brief Destruct
   virtual ~Store();
 
+  /// @brief Copy constructor
+  Store (Store const& other);
+
+  /// @brief Move constructor
+  Store (Store&& other);
+
+  // @brief Copy assignent
+  Store& operator= (Store const& rhs);
+
+  // @brief Move assigment
+  Store& operator= (Store&& rhs);
+
   /// @brief Apply entry in query
   std::vector<bool> apply(query_t const& query);
 

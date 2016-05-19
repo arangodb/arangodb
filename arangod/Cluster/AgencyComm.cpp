@@ -579,14 +579,13 @@ bool AgencyComm::tryInitializeStructure() {
     builder.add(VPackValue("Target"));
     {
       VPackObjectBuilder c(&builder);
-      addEmptyVPackObject("Coordinators", builder);
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);
         addEmptyVPackObject("_system", builder);
       }
-      builder.add("Version", VPackValue(1));
-      addEmptyVPackObject("MapLocalToID", builder);
+      addEmptyVPackObject("Coordinators", builder);
+      addEmptyVPackObject("DBServers", builder);
       builder.add(VPackValue("Databases"));
       {
         VPackObjectBuilder d(&builder);
@@ -597,19 +596,20 @@ bool AgencyComm::tryInitializeStructure() {
           builder.add("id", VPackValue("1"));
         }
       }
-      addEmptyVPackObject("DBServers", builder);
       builder.add("Lock", VPackValue("UNLOCKED"));
+      addEmptyVPackObject("MapLocalToID", builder);
+      addEmptyVPackObject("Failed", builder);
+      addEmptyVPackObject("Finished", builder);
+      addEmptyVPackObject("Pending", builder);
+      addEmptyVPackObject("ToDo", builder);
+      builder.add("Version", VPackValue(1));
     }
     builder.add(VPackValue("Supervision"));
     {
       VPackObjectBuilder c(&builder);
-      builder.add(VPackValue("Jobs"));
-      {
-        VPackObjectBuilder d(&builder);
-        addEmptyVPackObject("Pending", builder);
-        addEmptyVPackObject("Finished", builder);
-        addEmptyVPackObject("Failed", builder);
-      }
+      addEmptyVPackObject("Health", builder);
+      addEmptyVPackObject("Shards", builder);
+      addEmptyVPackObject("DBServers", builder);
     }
     builder.add("InitDone", VPackValue(true));
   } catch (...) {
