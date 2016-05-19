@@ -71,7 +71,7 @@ const optionsDocumentation = [
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipArangoBenchNonConnKeepAlive`: if set to true benchmark do not use keep-alive',
   '   - `skipArangoBench`: if set to true benchmark tests are skipped',
-  '   - `skipAuthenication : testing authentication and authentication_paramaters will be skipped.',
+  '   - `skipAuthentication : testing authentication and authentication_paramaters will be skipped.',
   '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipConfig`: omit the noisy configuration tests',
   '   - `skipFoxxQueues`: omit the test for the foxx queues',
@@ -153,7 +153,7 @@ const optionsDefaults = {
   "skipAql": false,
   "skipArangoBench": false,
   "skipArangoBenchNonConnKeepAlive": true,
-  "skipAuthenication": false,
+  "skipAuthentication": false,
   "skipBoost": false,
   "skipGeo": false,
   "skipLogAnalysis": false,
@@ -2215,7 +2215,7 @@ testFuncs.arangobench = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.authentication = function(options) {
-  if (options.skipAuthenication === true) {
+  if (options.skipAuthentication === true) {
     print("skipping Authentication tests!");
 
     return {
@@ -2299,7 +2299,7 @@ function checkBodyForJsonToParse(request) {
 }
 
 testFuncs.authentication_parameters = function(options) {
-  if (options.skipAuthenication === true) {
+  if (options.skipAuthentication === true) {
     print(CYAN + "skipping Authentication with parameters tests!" + RESET);
     return {
       authentication_parameters: {
@@ -2480,12 +2480,15 @@ testFuncs.config = function(options) {
     }
   };
 
-  const ts = ["arangod",
+  const ts = [
+    "arangod",
     "arangobench",
     "arangodump",
     "arangoimp",
     "arangorestore",
-    "arangosh"
+    "arangosh",
+    "arango-dfdb",
+    "foxx-manager"
   ];
 
   print("--------------------------------------------------------------------------------");
