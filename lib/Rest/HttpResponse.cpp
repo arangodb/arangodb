@@ -291,7 +291,7 @@ void HttpResponse::fillBody(GeneralRequest const* request,
                             arangodb::velocypack::Slice const& slice,
                             bool generateBody, VPackOptions const& options) {
   // VELOCYPACK
-  if (request->velocyPackResponse()) {
+  if (request != nullptr && request->velocyPackResponse()) {
     setContentType(HttpResponse::CONTENT_TYPE_VPACK);
     size_t length = static_cast<size_t>(slice.byteSize());
 
