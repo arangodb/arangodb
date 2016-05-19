@@ -4,16 +4,16 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> O
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
-  <span class="hljs-string">"clients"</span> : [ ], 
-  <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"141768013217395"</span>, 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.0.x-devel"</span> 
-  }, 
   <span class="hljs-string">"state"</span> : { 
-    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"10941"</span>, 
-    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"10941"</span>, 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-05-11T13:34:53Z"</span>, 
-    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3739</span> 
-  } 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"10956"</span>, 
+    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"10956"</span>, 
+    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3740</span>, 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-05-18T14:17:12Z"</span> 
+  }, 
+  <span class="hljs-string">"server"</span> : { 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.0.x-devel"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"233962659630983"</span> 
+  }, 
+  <span class="hljs-string">"clients"</span> : [ ] 
 }

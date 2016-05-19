@@ -2,7 +2,7 @@
 @startDocuBlock API_EDGE_REPLACE
 @brief replaces an edge
 
-@RESTHEADER{PUT /_api/document/{document-handle},replaces an edge}
+@RESTHEADER{PUT /_api/document/{document-handle}#replaceEdge, replaces an edge}
 
 @RESTALLBODYPARAM{edge,json,required}
 A JSON representation of the new edge data.

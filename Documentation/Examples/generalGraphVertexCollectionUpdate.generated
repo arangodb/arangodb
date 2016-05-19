@@ -4,12 +4,12 @@ arangosh&gt; graph.female.save({name: <span class="hljs-string">"Lynda"</span>, 
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/linda"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"linda"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"26527"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"26531"</span> 
 }
 arangosh&gt; graph.female.update(<span class="hljs-string">"female/linda"</span>, {name: <span class="hljs-string">"Linda"</span>, _key: <span class="hljs-string">"linda"</span>});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/linda"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"linda"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"26527"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"26531"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"26535"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"26531"</span> 
 }

@@ -88,7 +88,7 @@ It is always possible to retrieve statistics for a query with the *getExtra* met
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 03_workWithAQL_getExtra
 
-The meaning of the statistics values is described in [Execution statistics](QueryStatistics.md).
+The meaning of the statistics values is described in [Execution statistics](../ExecutionAndPerformance/QueryStatistics.md).
 You also will find warnings in here; If you're designing queries on the shell be sure to also look at it.
 
 !SUBSECTION with _createStatement (ArangoStatement) 

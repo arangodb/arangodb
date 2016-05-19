@@ -324,6 +324,7 @@ it may break client applications that rely on the old behavior.
 !SUBSECTION Databases API
 
 `_listDatabases()` has been renamed to `_databases()` (making it consistent with `_collections()`)
+`_listEndpoints()` has been renamed to `_endpoints()` (making it consistent with `_collections()`)
 
 !SUBSECTION Collection API
 

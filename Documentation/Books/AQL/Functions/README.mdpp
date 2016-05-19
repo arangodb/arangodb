@@ -31,7 +31,7 @@ Since ArangoDB 1.3, it is possible to extend AQL with user-defined functions.
 These functions need to be written in JavaScript, and be registered before usage
 in a query.
 
-Please refer to [Extending AQL](../AqlExtending/README.md) for more details on this.
+Please refer to [Extending AQL](../Extending/index.html) for more details on this.
 
 By default, any function used in an AQL query will be sought in the built-in 
 function namespace *_aql*. This is the default namespace that contains all AQL

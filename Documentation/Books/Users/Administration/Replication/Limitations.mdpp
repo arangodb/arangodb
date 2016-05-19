@@ -18,8 +18,7 @@ removed in later versions of ArangoDB:
   return all write operations for user-defined collections, but it will exclude write
   operations for certain system collections. The following collections are excluded
   intentionally from replication: *_apps*, *_trx*, *_replication*, *_configuration*,
-  *_cluster_kickstart_plans*, *_jobs*, *_queues*, *_sessions*, *_foxxlog* and all 
-  statistics collections. 
+  *_jobs*, *_queues*, *_sessions*, *_foxxlog* and all statistics collections.
   Write operations for the following system collections can be queried from a master: 
   *_aqlfunctions*, *_graphs*, *_users*.
 * Foxx applications consist of database entries and application scripts in the file system.

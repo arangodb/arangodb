@@ -1649,6 +1649,10 @@ void Ast::validateAndOptimize() {
       return node;
     }
 
+    if (node->type == NODE_TYPE_OBJECT) {
+      return this->optimizeObject(node);
+    }
+
     // traversal
     if (node->type == NODE_TYPE_TRAVERSAL) {
       // traversals must not be used after a modification operation
@@ -2672,6 +2676,46 @@ AstNode* Ast::optimizeFor(AstNode* node) {
   }
 
   // no real optimizations will be done here
+  return node;
+}
+
+/// @brief optimizes an object literal or an object expression
+AstNode* Ast::optimizeObject(AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_OBJECT);
+
+  size_t const n = node->numMembers();
+
+  // only useful to check when there are 2 or more keys
+  if (n < 2) {
+    // no need to check for uniqueless later
+    node->setFlag(DETERMINED_CHECKUNIQUENESS);
+    return node;
+  }
+    
+  std::unordered_set<std::string> keys;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMemberUnchecked(i);
+    
+    if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+      // constant key
+      if (!keys.emplace(member->getString()).second) {
+        // duplicate key
+        node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
+        return node;
+      }
+    } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+      // dynamic key... we don't know the key yet, so there's no
+      // way around check it at runtime later
+      node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
+      return node;
+    }
+  }
+
+  // no real optimizations will be done here, but we simply
+  // note that we don't need to perform any uniqueness checks later
+  node->setFlag(DETERMINED_CHECKUNIQUENESS);
   return node;
 }
 

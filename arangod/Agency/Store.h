@@ -31,93 +31,93 @@ namespace consensus {
 
 class Agent;
 
-/// @brief Key value tree 
+/// @brief Key value tree
 class Store : public arangodb::Thread {
-  
-public:
-
+ public:
   /// @brief Construct with name
-  explicit Store (std::string const& name = "root");
+  explicit Store(std::string const& name = "root");
 
   /// @brief Destruct
-  virtual ~Store ();
+  virtual ~Store();
 
-  /// @brief Apply entry in query 
-  std::vector<bool> apply (query_t const& query);
+  /// @brief Apply entry in query
+  std::vector<bool> apply(query_t const& query);
 
-  /// @brief Apply entry in query 
-  std::vector<bool> apply (std::vector<Slice> const& query, bool inform = true);
+  /// @brief Apply entry in query
+  std::vector<bool> apply(std::vector<Slice> const& query, bool inform = true);
 
   /// @brief Read specified query from store
-  std::vector<bool> read (query_t const& query, query_t& result) const;
-  
+  std::vector<bool> read(query_t const& query, query_t& result) const;
+
   /// @brief Begin shutdown of thread
-  void beginShutdown () override final;
+  void beginShutdown() override final;
 
   /// @brief Start thread
-  bool start ();
+  bool start();
 
   /// @brief Start thread with access to agent
-  bool start (Agent*);
+  bool start(Agent*);
 
   /// @brief Set name
-  void name (std::string const& name);
+  void name(std::string const& name);
 
   /// @brief Dump everything to builder
-  void dumpToBuilder (Builder&) const;
+  void dumpToBuilder(Builder&) const;
 
   /// @brief Notify observers
-  void notifyObservers () const;
+  void notifyObservers() const;
 
   /// @brief See how far the path matches anything in store
-  size_t matchPath (std::vector<std::string> const& pv) const;
+  size_t matchPath(std::vector<std::string> const& pv) const;
 
-  /// @brief Get node specified by path vector  
-  Node operator ()(std::vector<std::string> const& pv);
-  /// @brief Get node specified by path vector  
-  Node const operator ()(std::vector<std::string> const& pv) const;
-  
-  /// @brief Get node specified by path string  
-  Node operator ()(std::string const& path);
-  /// @brief Get node specified by path string  
-  Node const operator ()(std::string const& path) const;
+  /// @brief Get node specified by path vector
+  Node operator()(std::vector<std::string> const& pv);
+  /// @brief Get node specified by path vector
+  Node const operator()(std::vector<std::string> const& pv) const;
 
-  Store& operator= (VPackSlice const& slice);
+  /// @brief Get node specified by path string
+  Node operator()(std::string const& path);
+  /// @brief Get node specified by path string
+  Node const operator()(std::string const& path) const;
+
+  Store& operator=(VPackSlice const& slice);
 
   /// @brief Apply single slice
-  bool applies (arangodb::velocypack::Slice const&);
+  bool applies(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
-  void toBuilder (Builder&) const;
+  void toBuilder(Builder&) const;
 
   /// @brief Copy out a node
-  Node const get (std::string const& path) const;
+  Node const get(std::string const& path) const;
 
-  std::string toJson () const;
+  std::string toJson() const;
 
   friend class Node;
 
-private:
+ private:
+  /// @brief Remove time to live entries for uri
+  void removeTTL(std::string const&);
 
-  std::multimap<TimePoint, std::shared_ptr<Node>>& timeTable ();
-  std::multimap<TimePoint, std::shared_ptr<Node>> const& timeTable () const;
-  std::multimap <std::string,std::string>& observerTable();
-  std::multimap <std::string,std::string> const& observerTable() const;
-  std::multimap <std::string,std::string>& observedTable();
-  std::multimap <std::string,std::string> const& observedTable() const;
-  
+  std::multimap<TimePoint, std::string>& timeTable();
+  std::multimap<TimePoint, std::string> const& timeTable() const;
+  std::multimap<std::string, std::string>& observerTable();
+  std::multimap<std::string, std::string> const& observerTable() const;
+  std::multimap<std::string, std::string>& observedTable();
+  std::multimap<std::string, std::string> const& observedTable() const;
+
   /// @brief Read individual entry specified in slice into builder
-  bool read  (arangodb::velocypack::Slice const&,
-              arangodb::velocypack::Builder&) const;
+  bool read(arangodb::velocypack::Slice const&,
+            arangodb::velocypack::Builder&) const;
 
   /// @brief Check precondition
-  bool check (arangodb::velocypack::Slice const&) const;
+  bool check(arangodb::velocypack::Slice const&) const;
 
   /// @brief Clear entries, whose time to live has expired
-  query_t clearExpired () const;
+  query_t clearExpired() const;
 
   /// @brief Run thread
-  void run () override final;
+  void run() override final;
 
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;
@@ -129,17 +129,16 @@ private:
   Agent* _agent;
 
   /// @brief Table of expiries in tree (only used in root node)
-  std::multimap<TimePoint, std::shared_ptr<Node>> _timeTable;
-  
+  std::multimap<TimePoint, std::string> _timeTable;
+
   /// @brief Table of observers in tree (only used in root node)
-  std::multimap <std::string,std::string> _observerTable;
-  std::multimap <std::string,std::string> _observedTable;
+  std::multimap<std::string, std::string> _observerTable;
+  std::multimap<std::string, std::string> _observedTable;
 
   /// @brief Root node
   Node _node;
-
 };
-
-}}
+}
+}
 
 #endif

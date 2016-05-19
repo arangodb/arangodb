@@ -24,7 +24,9 @@ FOR u IN users
       "user" : u.name,
       "friendId" : f.thisUser
     }
+```
 
+```json
 [
   {
     "user" : "Abigail",
@@ -88,7 +90,9 @@ FOR u IN users
         RETURN f.thisUser
     )
   }
+```
 
+```json
 [
   {
     "user" : "Abigail",
@@ -144,7 +148,9 @@ FOR u IN users
           RETURN u2.name
     )
   }
+```
 
+```json
 [
   {
     "user" : "Abigail",
@@ -196,7 +202,9 @@ FOR user IN users
   )
   FILTER LENGTH(friendList) == 0
   RETURN { "user" : user.name }
+```
 
+```json
 [
   {
     "user" : "Abigail"
@@ -217,12 +225,21 @@ Since we're free of schemata, there is by default no way to tell the format of t
 documents. So, if your documents don't contain an attribute, it defaults to
 null. We can however check our data for accuracy like this:
 
-```
+```js
 RETURN LENGTH(FOR u IN users FILTER u.userId == null RETURN 1)
+```
+
+```json
 [
   10000
 ]
+```
+
+```js
 RETURN LENGTH(FOR f IN relations FILTER f.friendOf == null RETURN 1)
+```
+
+```json
 [
   10000
 ]

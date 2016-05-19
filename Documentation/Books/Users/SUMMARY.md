@@ -14,12 +14,11 @@
     * [Compiling](GettingStarted/Installing/Compiling.md)
     * [Cluster setup](GettingStarted/Installing/Cluster.md)
   * [Using the Web Interface](GettingStarted/WebInterface.md)
-  * [Your first queries](GettingStarted/AqlQueries.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
   #* [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md)
 #
 * [Scalability](Scalability/README.md)
-  * [Joins](Scalability/Joins.md)
+#  * [Joins](Scalability/Joins.md)
 #
 * [Data model & modeling](DataModeling/README.md)
 #* [Collections](FirstSteps/CollectionsAndDocuments.md)
@@ -41,13 +40,6 @@
     * [Document Keys](DataModeling/NamingConventions/DocumentKeys.md)
     * [Attribute Names](DataModeling/NamingConventions/AttributeNames.md)
   * [Modeling Relationships](DataModeling/ModelingRelationships.md)
-  # Best practice? (Date handling, Versioning / Revisions
-  # Add a fake chapter for AQL to go to the AQL docs?
-  #* [AQL query language](Aql/README.md)
-  #  * [10-minutes guide](Aql/TenMinutesGuide.md)
-  #  * [Using Joins in AQL](Aql/UsingJoins.md)
-  #  * [Dynamic attribute names](Aql/DynamicAttributes.md)
-  # ...
 #
 * [Indexing](Indexing/README.md)
   * [Index Basics](Indexing/IndexBasics.md)
@@ -68,8 +60,6 @@
     * [Using Traversal Objects](Graphs/Traversals/UsingTraversalObjects.md)
     * [Example Data](Graphs/Traversals/ExampleData.md)
   * [Working with Edges](Graphs/Edges/README.md)
-#
-# Foxx
 #
 * [Foxx Microservices](Foxx/README.md)
   * [Getting started](Foxx/GettingStarted.md)
@@ -138,7 +128,6 @@
     * [Replication Limitations](Administration/Replication/Limitations.md)
     * [Replication Overhead](Administration/Replication/Overhead.md)
   * [Sharding](Administration/Sharding/README.md)
-    * [How to try it out](Administration/Sharding/HowTo.md)
     * [Implementation](Administration/Sharding/StatusOfImplementation.md)
     * [Authentication](Administration/Sharding/Authentication.md)
     * [Firewall setup](Administration/Sharding/FirewallSetup.md)

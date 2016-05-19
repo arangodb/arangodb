@@ -264,7 +264,8 @@ will produce the following result:
 
 !SUBSUBSECTION Array operators 
 
-AQL provides [array operators](ArrayOperators.md) <i>[\*]</i> for array variable expansion and <i>[\*\*]</i> for array contraction. 
+AQL provides [array operators](Advanced/ArrayOperators.md) <i>[\*]</i> for
+array variable expansion and <i>[\*\*]</i> for array contraction. 
 
 
 !SUBSUBSECTION Operator precedence

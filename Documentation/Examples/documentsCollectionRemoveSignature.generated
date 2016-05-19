@@ -1,8 +1,8 @@
 arangosh&gt; db.example.insert({ a:  <span class="hljs-number">1</span> } );
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15612"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15612"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15612"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15562"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15562"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15562"</span> 
 }
 arangosh&gt; db.example.remove(<span class="hljs-string">"example/11265325374"</span>,
 ........&gt; { overwrite: <span class="hljs-literal">true</span>, waitForSync: <span class="hljs-literal">false</span>})

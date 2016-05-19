@@ -1,15 +1,15 @@
 arangosh&gt; a1 = db.example.insert({ a : <span class="hljs-number">1</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15499"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15499"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15499"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15449"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15449"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15449"</span> 
 }
 arangosh&gt; a2 = db._update(a1, { b : <span class="hljs-number">2</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15499"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15499"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"15499"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15503"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15449"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15449"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15453"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"15449"</span> 
 }
 arangosh&gt; a3 = db._update(a1, { c : <span class="hljs-number">3</span> });
 [ArangoError <span class="hljs-number">1200</span>: precondition failed]

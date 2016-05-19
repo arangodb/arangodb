@@ -59,8 +59,8 @@ Therefore anonymous graphs may be faster in many operations.
 So this question boils down to 'Can I afford the additional effort or do I need the warranty for integrity?'. 
 
 !SUBSECTION Backup and restore
-For sure you want to have backups of your graph data, you can use [Arangodump](../../HTTP/BulkImports/Arangodump.html) to create the backup,
-and [Arangorestore](../../HTTP/BulkImports/Arangorestore.html) to restore a backup into a new ArangoDB. You should however note that:
+For sure you want to have backups of your graph data, you can use [Arangodump](../Administration/Arangodump.md) to create the backup,
+and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into a new ArangoDB. You should however note that:
 - you need the system collection `_graphs` if you backup named graphs.
 - you need to backup the complete set of all edge and vertex collections your graph consists of. Partial dump/restore may not work.
 

@@ -8,7 +8,7 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25174"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25169"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
         } 
       ], 
@@ -16,13 +16,13 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25174"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25169"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25174"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25169"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
       } 
     }, 
@@ -31,7 +31,7 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25163"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25158"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         } 
       ], 
@@ -39,13 +39,13 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25163"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25158"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25163"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25158"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       } 
     }, 
@@ -54,13 +54,13 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25163"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25158"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25167"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25162"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
         } 
       ], 
@@ -70,20 +70,20 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25178"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25173"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
         } 
       ], 
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25163"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25158"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25167"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25162"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
       } 
     }, 
@@ -92,19 +92,19 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25163"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25158"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25167"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25162"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25174"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25169"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
         } 
       ], 
@@ -114,7 +114,7 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25178"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25173"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
         }, 
         { 
@@ -122,20 +122,20 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/bobAndDiana"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/bob"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25188"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25183"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
         } 
       ], 
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25163"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25158"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25174"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25169"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
       } 
     }, 
@@ -144,13 +144,13 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25163"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25158"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25171"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25166"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
         } 
       ], 
@@ -160,20 +160,20 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndCharly"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25182"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25177"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
         } 
       ], 
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25163"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25158"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25171"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25166"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
       } 
     }, 
@@ -182,19 +182,19 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25163"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25158"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25171"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25166"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25174"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25169"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
         } 
       ], 
@@ -204,7 +204,7 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndCharly"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25182"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25177"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
         }, 
         { 
@@ -212,20 +212,20 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/charlyAndDiana"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25185"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25180"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
         } 
       ], 
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25163"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25158"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25174"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25169"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
       } 
     }, 
@@ -234,7 +234,7 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25167"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25162"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
         } 
       ], 
@@ -242,13 +242,13 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25167"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25162"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25167"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25162"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
       } 
     }, 
@@ -257,13 +257,13 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25167"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25162"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25174"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25169"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
         } 
       ], 
@@ -273,20 +273,20 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/bobAndDiana"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/bob"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25188"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25183"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
         } 
       ], 
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25167"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25162"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25174"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25169"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
       } 
     }, 
@@ -295,7 +295,7 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25171"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25166"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
         } 
       ], 
@@ -303,13 +303,13 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25171"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25166"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25171"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25166"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
       } 
     }, 
@@ -318,13 +318,13 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25171"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25166"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25174"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25169"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
         } 
       ], 
@@ -334,20 +334,20 @@ arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_PATHS('social')"<
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/charlyAndDiana"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25185"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25180"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
         } 
       ], 
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25171"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25166"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25174"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25169"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
       } 
     } 

@@ -36,6 +36,22 @@ var jsunity = require("jsunity");
 
 function ahuacatlDynamicAttributesTestSuite () {
 
+  function checkResult(query, expected) {
+    var q;
+
+    q = "RETURN NOOPT(V8(" + query + "))";
+    assertEqual(expected, AQL_EXECUTE(q).json[0]);
+    assertEqual("v8", AQL_EXPLAIN(q).plan.nodes[1].expressionType);
+    
+    q = "RETURN NOOPT(" + query + ")";
+    assertEqual(expected, AQL_EXECUTE(q).json[0]);
+    assertEqual("simple", AQL_EXPLAIN(q).plan.nodes[1].expressionType);
+    
+    q = "RETURN " + query;
+    assertEqual(expected, AQL_EXECUTE(q).json[0]);
+    assertEqual("simple", AQL_EXPLAIN(q).plan.nodes[1].expressionType);
+  }
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,8 +74,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesNonStringNames : function () {
       var expected = { "true" : 12, "false" : 15, "123" : 21, "-42.5" : 99, "" : 117, "1,2,3,4" : 131, "[object Object]" : 149 };
-      var actual = AQL_EXECUTE("RETURN { [ PASSTHRU(null) ] : 7, [ PASSTHRU(true) ] : 12, [ PASSTHRU(false) ] : 15, [ PASSTHRU(123) ] : 21, [ PASSTHRU(-42.5) ] : 99, [ PASSTHRU([ ]) ] : 117, [ PASSTHRU([ 1, 2, 3, 4 ]) ] : 131, [ PASSTHRU({ a: 1 }) ] : 149 }");
-      assertEqual(expected, actual.json[0]);
+      var query = "{ [ PASSTHRU(null) ] : 7, [ PASSTHRU(true) ] : 12, [ PASSTHRU(false) ] : 15, [ PASSTHRU(123) ] : 21, [ PASSTHRU(-42.5) ] : 99, [ PASSTHRU([ ]) ] : 117, [ PASSTHRU([ 1, 2, 3, 4 ]) ] : 131, [ PASSTHRU({ a: 1 }) ] : 149 }";
+      checkResult(query, expected);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,8 +94,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesWhitespace : function () {
       var expected = { "1" : "one", " 1" : "one-1", "1 " : "1-one", " 1 " : "one-1-one" };
-      var actual = AQL_EXECUTE("RETURN { [ '1' ] : 'one', [ ' 1' ] : 'one-1', [ '1 ' ] : '1-one', [ ' 1 ' ] : 'one-1-one' }");
-      assertEqual(expected, actual.json[0]);
+      var query = "{ [ '1' ] : 'one', [ ' 1' ] : 'one-1', [ '1 ' ] : '1-one', [ ' 1 ' ] : 'one-1-one' }";
+      checkResult(query, expected);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,8 +154,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesHangul : function () {
       var expected = { "코리아닷컴" : 1, "메일알리미" : 2 };
-      var actual = AQL_EXECUTE("RETURN { [ PASSTHRU('코리아닷컴') ] : 1,  [ PASSTHRU('메일알리미') ] : 2 }");
-      assertEqual(expected, actual.json[0]);
+      var query = "{ [ PASSTHRU('코리아닷컴') ] : 1,  [ PASSTHRU('메일알리미') ] : 2 }";
+      checkResult(query, expected);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,8 +164,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesChinese : function () {
       var expected = { "中华网以中国的市场为核心" : 23, "致力为当地用户提供流动增值服务" : 99 };
-      var actual = AQL_EXECUTE("RETURN { [ PASSTHRU('中华网以中国的市场为核心') ] : 23, [ PASSTHRU('致力为当地用户提供流动增值服务') ] : 99 }");
-      assertEqual(expected, actual.json[0]);
+      var query = "{ [ PASSTHRU('中华网以中国的市场为核心') ] : 23, [ PASSTHRU('致力为当地用户提供流动增值服务') ] : 99 }";
+      checkResult(query, expected);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,8 +174,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesRussian : function () {
       var expected = { "Голкипер" : 1, "мадридского" : 2, "Икер Касильяс призвал" : 3 };
-      var actual = AQL_EXECUTE("RETURN { [ PASSTHRU('Голкипер') ] : 1, [ PASSTHRU('мадридского') ] : 2, [ PASSTHRU('Икер Касильяс призвал') ] : 3 }");
-      assertEqual(expected, actual.json[0]);
+      var query = "{ [ PASSTHRU('Голкипер') ] : 1, [ PASSTHRU('мадридского') ] : 2, [ PASSTHRU('Икер Касильяс призвал') ] : 3 }";
+      checkResult(query, expected);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,9 +193,9 @@ function ahuacatlDynamicAttributesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDynamicAttributesRepeated : function () {
-      var expected = { foo: 23, bar: 19 };
-      var actual = AQL_EXECUTE("RETURN { [ 'foo' ] : 123, [ LOWER('FOO') ] : 42, [ 'bar' ] : 19, [ PASSTHRU(LOWER('FOo')) ] : 23 }");
-      assertEqual(expected, actual.json[0]);
+      var expected = { FOO: 23, bar: 19 };
+      var query = "{ [ 'FOO' ] : 123, [ PASSTHRU('FOO') ] : 42, [ 'bar' ] : 19, [ PASSTHRU('FOO') ] : 23 }";
+      checkResult(query, expected);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,8 +204,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesMixedWithRegular : function () {
       var expected = { foo: 1, FOO: 2, bar: 5, baR: 4, foobar: 6 };
-      var actual = AQL_EXECUTE("RETURN { 'foo' : 1, [ 'FOO' ] : 2, 'bar' : 3, [ PASSTHRU('baR') ] : 4, [ PASSTHRU('bar') ] : 5, 'foobar' : 6 }");
-      assertEqual(expected, actual.json[0]);
+      var query = "{ 'foo' : 1, [ 'FOO' ] : 2, 'bar' : 3, [ PASSTHRU('baR') ] : 4, [ PASSTHRU('bar') ] : 5, 'foobar' : 6 }";
+      checkResult(query, expected);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,8 +214,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesOverwritingRegular : function () {
       var expected = { FOO: 1 };
-      var actual = AQL_EXECUTE("RETURN { FOO : 2, [ PASSTHRU('FOO') ] : 1 }");
-      assertEqual(expected, actual.json[0]);
+      var query = "{ FOO : 2, [ PASSTHRU('FOO') ] : 1 }";
+      checkResult(query, expected);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,8 +224,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesOverwrittenByRegular : function () {
       var expected = { FOO: 2 };
-      var actual = AQL_EXECUTE("RETURN { [ PASSTHRU('FOO') ] : 1, FOO : 2 }");
-      assertEqual(expected, actual.json[0]);
+      var query = "{ [ PASSTHRU('FOO') ] : 1, FOO : 2 }";
+      checkResult(query, expected);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +239,10 @@ function ahuacatlDynamicAttributesTestSuite () {
         doc["test-value-" + i] = i;
         expected.push(doc);
       }
-      var actual = AQL_EXECUTE("FOR i IN 1..100 RETURN { [ CONCAT('test-value-', i) ] : i }");
+      var actual = AQL_EXECUTE("FOR i IN 1..100 RETURN V8({ [ CONCAT('test-value-', i) ] : i })");
+      assertEqual(expected, actual.json);
+      
+      actual = AQL_EXECUTE("FOR i IN 1..100 RETURN { [ CONCAT('test-value-', i) ] : i }");
       assertEqual(expected, actual.json);
     },
 

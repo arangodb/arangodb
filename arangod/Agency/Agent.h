@@ -38,8 +38,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace consensus {
 class Agent : public arangodb::Thread {
-
-public:
+ public:
   /// @brief Construct with program options
   explicit Agent(config_t const&);
 
@@ -53,7 +52,8 @@ public:
   arangodb::consensus::id_t id() const;
 
   /// @brief Vote request
-  priv_rpc_ret_t requestVote(term_t, arangodb::consensus::id_t, index_t, index_t, query_t const&);
+  priv_rpc_ret_t requestVote(term_t, arangodb::consensus::id_t, index_t,
+                             index_t, query_t const&);
 
   /// @brief Provide configuration
   config_t const& config() const;
@@ -90,9 +90,9 @@ public:
 
   /// @brief Received by followers to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
-  bool recvAppendEntriesRPC(term_t term, arangodb::consensus::id_t leaderId, index_t prevIndex,
-                            term_t prevTerm, index_t lastCommitIndex,
-                            query_t const& queries);
+  bool recvAppendEntriesRPC(term_t term, arangodb::consensus::id_t leaderId,
+                            index_t prevIndex, term_t prevTerm,
+                            index_t lastCommitIndex, query_t const& queries);
 
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
@@ -121,7 +121,7 @@ public:
   log_t const& lastLog() const;
 
   /// @brief Persist term
-  void persist (term_t, arangodb::consensus::id_t);
+  void persist(term_t, arangodb::consensus::id_t);
 
   /// @brief State machine
   State const& state() const;
@@ -132,54 +132,55 @@ public:
   /// @brief Get spearhead store
   Store const& spearhead() const;
 
-  Agent& operator= (VPackSlice const&);
+  friend class State;
 
  private:
+  Agent& operator=(VPackSlice const&);
 
   /// @brief This server (need endpoint)
-  TRI_server_t*        _server;
+  TRI_server_t* _server;
 
   /// @brief Vocbase for agency persistence
-  TRI_vocbase_t*       _vocbase; 
+  TRI_vocbase_t* _vocbase;
 
   /// @brief Query registry for agency persistence
-  aql::QueryRegistry*  _queryRegistry;
+  aql::QueryRegistry* _queryRegistry;
 
   /// @brief Leader election delegate
-  Constituent          _constituent;
+  Constituent _constituent;
 
   /// @brief Cluster supervision module
-  Supervision          _supervision;
+  Supervision _supervision;
 
   /// @brief State machine
-  State                _state;
+  State _state;
 
   /// @brief Configuration of command line options
-  config_t             _config;   
+  config_t _config;
 
-  /// @brief Last commit index (raft) 
-  index_t _lastCommitIndex; 
+  /// @brief Last commit index (raft)
+  index_t _lastCommitIndex;
 
   /// @brief Spearhead (write) kv-store
-  Store                _spearhead;
+  Store _spearhead;
 
   /// @brief Commited (read) kv-store
-  Store                _readDB;
+  Store _readDB;
 
-  /// @brief Condition variable for appendEntries 
+  /// @brief Condition variable for appendEntries
   arangodb::basics::ConditionVariable _appendCV;
 
-  /// @brief Condition variable for waitFor 
+  /// @brief Condition variable for waitFor
   arangodb::basics::ConditionVariable _waitForCV;
 
   /// @brief Confirmed indices of all members of agency
   std::vector<index_t> _confirmed;
-  arangodb::Mutex _ioLock;          /**< @brief Read/Write lock */
+  arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
 
   /// @brief Next compaction after
   arangodb::consensus::index_t _nextCompationAfter;
 };
-
-}}
+}
+}
 
 #endif

@@ -1,3 +1,120 @@
 !CHAPTER Authentication
 
-TODO
+`const createAuth = require('@arangodb/foxx/auth');`
+
+Authenticators allow implementing basic password mechanism using simple built-in hashing functions.
+
+**Examples**
+
+```js
+const auth = createAuth();
+
+// Use the sessions middleware
+const sessionsMiddleware = require('@arangodb/foxx/sessions');
+const sessions = sessionsMiddleware({
+  storage: module.context.collection('sessions'),
+  transports: 'cookie'
+});
+module.context.use(sessions);
+
+// Create a router
+const createRouter = require('@arangodb/foxx/router');
+const router = createRouter();
+module.context.use(router);
+
+// Define a login route
+const joi = require('joi');
+const users = module.context.collection('users');
+router.post('/login', function (req, res) {
+  let user = users.firstExample({
+    username: req.body.username
+  });
+  const valid = auth.verify(
+    user ? user.authData : {},
+    req.body.password
+  );
+  if (!valid) res.throw('unauthorized');
+  req.session.uid = user._key;
+  req.sessionStorage.save(req.session);
+  res.send({sucess: true});
+})
+.body(joi.object({
+  username: joi.string().required(),
+  password: joi.string().required()
+}).required(), 'Credentials');
+```
+
+!SECTION Creating an authenticator
+
+`auth([options]): Authenticator`
+
+Creates an authenticator.
+
+**Arguments**
+
+* **options**: `Object` (optional)
+
+  An object with the following properties:
+
+  * **method**: `string` (Default: `"sha256"`)
+
+    The hashing algorithm to use to create password hashes. The authenticator will be able to verify passwords against hashes using any supported hashing algorithm. This only affects new hashes created by the authenticator.
+
+    Supported values:
+
+    * `"md5"`
+    * `"sha1"`
+    * `"sha224"`
+    * `"sha256"`
+    * `"sha384"`
+    * `"sha512"`
+
+  * **saltLength**: `number` (Default: `16`)
+
+    Length of the salts that will be generated for password hashes.
+
+Returns an authenticator.
+
+!SECTION Creating hash objects
+
+`auth.create(password): Hash`
+
+Creates a hash object for the given password with the following properties:
+
+* **method**: `string`
+
+  The method used to generate the hash.
+
+* **salt**: `string`
+
+  A random salt used to generate this hash.
+
+* **hash**: `string`
+
+  The hash string itself.
+
+**Arguments**
+
+* **password**: `string`
+
+  A password to hash.
+
+Returns the hash object.
+
+!SECTION Validating passwords against hash objects
+
+`auth.verify([hash, [password]]): boolean`
+
+Verifies the given password against the given hash using a constant time string comparison.
+
+**Arguments**
+
+* **hash**: `Hash` (optional)
+
+  A hash object generated with the *create* method.
+
+* **password**: `string` (optional)
+
+  A password to verify against the hash.
+
+Returns `true` if the hash matches the given password. Returns `false` otherwise.

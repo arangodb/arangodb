@@ -10,13 +10,13 @@ arangosh&gt; db._query(
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25282"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25277"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25279"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25274"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
         } 
       ], 
@@ -26,20 +26,20 @@ arangosh&gt; db._query(
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/charlyAndDiana"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25293"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25288"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
         } 
       ], 
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25282"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25277"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25279"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25274"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
       } 
     }, 
@@ -48,19 +48,19 @@ arangosh&gt; db._query(
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25282"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25277"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25279"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25274"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25271"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25266"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         } 
       ], 
@@ -70,7 +70,7 @@ arangosh&gt; db._query(
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/charlyAndDiana"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25293"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25288"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
         }, 
         { 
@@ -78,20 +78,20 @@ arangosh&gt; db._query(
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndCharly"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25290"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25285"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
         } 
       ], 
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25282"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25277"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25271"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25266"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       } 
     }, 
@@ -100,13 +100,13 @@ arangosh&gt; db._query(
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25282"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25277"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25275"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25270"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
         } 
       ], 
@@ -116,20 +116,20 @@ arangosh&gt; db._query(
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/bobAndDiana"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/bob"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25296"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25291"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
         } 
       ], 
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25282"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25277"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25275"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25270"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
       } 
     }, 
@@ -138,19 +138,19 @@ arangosh&gt; db._query(
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25282"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25277"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25275"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25270"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25271"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25266"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         } 
       ], 
@@ -160,7 +160,7 @@ arangosh&gt; db._query(
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/bobAndDiana"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/bob"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25296"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25291"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
         }, 
         { 
@@ -168,20 +168,20 @@ arangosh&gt; db._query(
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25286"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25281"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
         } 
       ], 
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25282"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25277"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25271"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25266"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       } 
     }, 
@@ -190,13 +190,13 @@ arangosh&gt; db._query(
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25275"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25270"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25271"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25266"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         } 
       ], 
@@ -206,20 +206,20 @@ arangosh&gt; db._query(
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25286"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25281"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
         } 
       ], 
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25275"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25270"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25271"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25266"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       } 
     }, 
@@ -228,13 +228,13 @@ arangosh&gt; db._query(
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25279"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25274"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25271"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25266"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         } 
       ], 
@@ -244,20 +244,20 @@ arangosh&gt; db._query(
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndCharly"</span>, 
           <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
           <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25290"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25285"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
         } 
       ], 
       <span class="hljs-string">"source"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25279"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25274"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
       }, 
       <span class="hljs-string">"destination"</span> : { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25271"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25266"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       } 
     } 
