@@ -162,10 +162,10 @@ macro (install_command_alias name where alias)
       TARGET ${name}
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
-	      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}.exe)
+	      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$(Configuration)/${alias}.exe)
     install(
-      PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}.exe
-      DESTINATION ${where})
+      PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$(Configuration)/${alias}.exe
+      RUNTIME DESTINATION ${where})
   else ()
     add_custom_command(
       TARGET ${name}
@@ -174,7 +174,7 @@ macro (install_command_alias name where alias)
         ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}) 
     install(
       PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}
-      DESTINATION ${where})
+      RUNTIME DESTINATION ${where})
   endif ()
 endmacro ()
 
