@@ -313,6 +313,27 @@ Cluster statistics are now integrated into the web interface as well. Additional
 menu item "Help us" has been added to easily provide the ArangoDB team feedback about
 the product.
 
+The frontend may now be mounted behind a reverse proxy on a different path. For this to work
+the proxy should send a X-Script-Name header containing the path.
+
+A backend configuration for haproxy might look like this:
+
+```
+reqadd X-Script-Name:\ /arangodb
+```
+
+The frontend will recognize the subpath and produce appropriate links. ArangoDB will only
+accept paths from trusted frontend proxies. Trusted proxies may be added on startup:
+
+```
+--frontend.proxy-request-check true --frontend.trusted-proxy 192.168.1.117
+```
+
+--frontend.trusted-proxy may be any address or netmask.
+
+To disable the check and blindly accept any x-script-name set --frontend.proxy-request-check
+to false.
+
 !SECTION Foxx improvements
 
 The Foxx framework has been completely rewritten for 3.0 with a new, simpler and 

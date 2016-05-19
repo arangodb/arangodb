@@ -35,9 +35,10 @@ using namespace arangodb::rest;
 HttpsServer::HttpsServer(Scheduler* scheduler, Dispatcher* dispatcher,
                          HttpHandlerFactory* handlerFactory,
                          AsyncJobManager* jobManager, double keepAliveTimeout,
+                         std::vector<std::string> const& accessControlAllowOrigins,
                          SSL_CTX* ctx)
     : HttpServer(scheduler, dispatcher, handlerFactory, jobManager,
-                 keepAliveTimeout),
+                 keepAliveTimeout, accessControlAllowOrigins),
       _ctx(ctx),
       _verificationMode(SSL_VERIFY_NONE),
       _verificationCallback(0) {}
