@@ -109,8 +109,9 @@ function SynchronousReplicationSuite () {
   function makeFailure(failure) {
     if (failure.follower) {
       failFollower();
-    } else {
-      failLeader();
+/*    } else {
+      failLeader(); // TODO: function does not exist 
+*/      
     }
   }
 
@@ -121,8 +122,9 @@ function SynchronousReplicationSuite () {
   function healFailure(failure) {
     if (failure.follower) {
       healFollower();
-    } else {
-      healLeader();
+/*    } else {
+      healLeader(); // TODO: function does not exist 
+*/      
     }
   }
 
