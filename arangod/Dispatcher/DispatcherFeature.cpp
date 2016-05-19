@@ -78,21 +78,12 @@ void DispatcherFeature::collectOptions(
 
 void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (_nrStandardThreads == 0) {
+    // automatically figure out number of dispatcher threads...
     size_t n = TRI_numberProcessors();
 
-    if (n == 0) {
-      n = 1;
-    }
-
-    if (n > 1) {
-      if (n <= 4) {
-        _nrStandardThreads = n - 1;
-      } else {
-        _nrStandardThreads = n - 2;
-      }
-    } else {
-      _nrStandardThreads = 1;
-    }
+    // start at least 4 dispatcher threads. this is necessary as
+    // threads may be blocking, and starting just one is not enough 
+    n = (std::max)(n, static_cast<size_t>(4));
   }
     
   TRI_ASSERT(_nrStandardThreads >= 1);
