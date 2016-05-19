@@ -236,9 +236,6 @@ function post_api_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_collections (req, res) {
-  var i;
-  var list = [];
-  var names = {};
   var excludeSystem;
   var collections = arangodb.db._collections();
 
@@ -250,20 +247,18 @@ function get_api_collections (req, res) {
     }
   }
 
-  for (i = 0;  i < collections.length;  ++i) {
+  var list = [];
+  for (var i = 0;  i < collections.length;  ++i) {
     var collection = collections[i];
     var rep = collectionRepresentation(collection);
 
     // include system collections or exclude them?
     if (! excludeSystem || rep.name.substr(0, 1) !== '_') {
       list.push(rep);
-      names[rep.name] = rep;
     }
   }
 
-  var result = { collections : list, names : names };
-
-  actions.resultOk(req, res, actions.HTTP_OK, result);
+  actions.resultOk(req, res, actions.HTTP_OK, { result : list });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
