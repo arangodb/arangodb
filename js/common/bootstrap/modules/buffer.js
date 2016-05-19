@@ -204,19 +204,14 @@ function Buffer(subject, encoding, offset) {
                             'array or string.');
     }
 
-    if (this.length > Buffer.poolSize) {
+    // note: the following condition means we'll always create a SlowBuffer
+    // for non-empty lengths. This is required to circumvent using the shared
+    // pool, which is only allocated but never freed (and therefore leaks
+    // memory on shutdown)
+    if (this.length > 0) {
       // Big buffer, just alloc one.
       this.parent = new SlowBuffer(this.length);
       this.offset = 0;
-
-    } else if (this.length > 0) {
-      // Small buffer.
-      if (!pool || pool.length - pool.used < this.length) allocPool();
-      this.parent = pool;
-      this.offset = pool.used;
-      pool.used += this.length;
-      if (pool.used & 7) pool.used = (pool.used + 8) & ~7;
-
     } else {
       // Zero-length buffer
       this.parent = new SlowBuffer(0);
