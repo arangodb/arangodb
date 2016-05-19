@@ -105,6 +105,16 @@ std::string Node::uri() const {
   return path.str();
 }
 
+Node::Node(Node&& other) :
+  _node_name(std::move(other._node_name)),
+  _children(std::move(other._children)), 
+  _value(std::move(other._value)) {}
+
+Node::Node(Node const& other) :
+  _node_name(other._node_name),
+  _children(other._children),
+  _value(other._value) {}
+
 // Assignment of rhs slice
 Node& Node::operator=(VPackSlice const& slice) {
   // 1. remove any existing time to live entry
@@ -120,16 +130,28 @@ Node& Node::operator=(VPackSlice const& slice) {
 }
 
 // Assignment of rhs node
+Node& Node::operator=(Node&& rhs) {
+  // 1. remove any existing time to live entry
+  // 2. copy children map
+  // 3. copy from rhs to buffer pointer
+  // Must not copy rhs's _parent, _ttl, _observers
+  removeTimeToLive();
+  _node_name = std::move(rhs._node_name);
+  _children = std::move(rhs._children);
+  _value = std::move(rhs._value);
+  return *this;
+}
+
+// Assignment of rhs node
 Node& Node::operator=(Node const& rhs) {
   // 1. remove any existing time to live entry
   // 2. clear children map
-  // 3. copy from rhs to buffer pointer
-  // 4. inform all observers here and above
-  // Must not copy rhs's _parent, _ttl, _observers
+  // 3. move from rhs to buffer pointer
+  // Must not move rhs's _parent, _ttl, _observers
   removeTimeToLive();
   _node_name = rhs._node_name;
-  _value = rhs._value;
   _children = rhs._children;
+  _value = rhs._value;
   return *this;
 }
 

@@ -61,13 +61,13 @@
 
       parse: function(response)  {
         var self = this;
-        _.each(response.collections, function(val) {
+        _.each(response.result, function(val) {
           val.isSystem = arangoHelper.isSystemCollection(val);
           val.type = arangoHelper.collectionType(val);
           val.status = self.translateStatus(val.status);
           val.picture = self.translateTypePicture(val.type);
         });
-        return response.collections;
+        return response.result;
       },
 
       getPosition : function (name) {

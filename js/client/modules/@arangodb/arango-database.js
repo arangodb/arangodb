@@ -247,8 +247,8 @@ ArangoDatabase.prototype._collections = function () {
 
   arangosh.checkRequestResult(requestResult);
 
-  if (requestResult.collections !== undefined) {
-    var collections = requestResult.collections;
+  if (requestResult.result !== undefined) {
+    var collections = requestResult.result;
     var result = [];
     var i;
 

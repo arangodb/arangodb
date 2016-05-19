@@ -106,7 +106,7 @@ function startReadingQuery (endpoint, collName, timeout) {
       }
     }
     console.info("startReadingQuery: Did not find query.", r);
-    wait(0.5);
+    require("internal").wait(0.5, false);
   }
 }
 

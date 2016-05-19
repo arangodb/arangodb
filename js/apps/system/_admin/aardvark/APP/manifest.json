@@ -57,12 +57,8 @@
       "path": "frontend/src/ace.min.js",
       "gzip": true
     },
-    "/arangoes5.js": {
-      "path": "frontend/build/arangoes5.min.js",
-      "gzip": true
-    },
     "/app.js": {
-      "path": "frontend/build/app.js",
+      "path": "frontend/build/app.min.js",
       "gzip": true
     },
     "/libs.js": {

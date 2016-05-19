@@ -99,6 +99,36 @@ inline static bool endpointPathFromUrl(std::string const& url,
 // Create with name
 Store::Store(std::string const& name) : Thread(name), _node(name, this) {}
 
+Store::Store(Store const& other) :
+  Thread(other._node.name()), _agent(other._agent), _timeTable(other._timeTable),
+  _observerTable(other._observerTable), _observedTable(other._observedTable),
+  _node(other._node) {}
+  
+  Store::Store(Store&& other) :
+  Thread(other._node.name()), _agent(std::move(other._agent)),
+  _timeTable(std::move(other._timeTable)),
+  _observerTable(std::move(other._observerTable)),
+  _observedTable(std::move(other._observedTable)),
+  _node(std::move(other._node)) {}
+
+Store& Store::operator=(Store const& rhs) {
+  _agent = rhs._agent;
+  _timeTable = rhs._timeTable;
+  _observerTable = rhs._observerTable;
+  _observedTable = rhs._observedTable;
+  _node = rhs._node;
+  return *this;
+}
+
+Store& Store::operator=(Store&& rhs) {
+  _agent = std::move(rhs._agent);
+  _timeTable = std::move(rhs._timeTable);
+  _observerTable = std::move(rhs._observerTable);
+  _observedTable = std::move(rhs._observedTable);
+  _node = std::move(rhs._node);
+  return *this;
+}
+
 // Default ctor
 Store::~Store() {}
 
