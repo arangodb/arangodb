@@ -290,6 +290,7 @@ function makeArgsArangod(options, appDir) {
     "javascript.app-path": appDir,
     "javascript.startup-directory": JS_DIR,
     "javascript.v8-contexts": "5",
+    "http.trusted-origin": "all",
     "log.level": "warning",
     "server.allow-use-database": "true",
     "server.authentication": "false",

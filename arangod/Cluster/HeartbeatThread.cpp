@@ -154,7 +154,7 @@ void HeartbeatThread::runDBServer() {
   }
   
   // we check Current/Version every few heartbeats:
-  int const currentCountStart = 5;  
+  int const currentCountStart = 1;    // set to 1 by Max to speed up discovery
   int currentCount = currentCountStart;
 
   while (!isStopping()) {
@@ -252,6 +252,7 @@ void HeartbeatThread::runDBServer() {
         // mop: a plan change returned successfully...
         // recheck and redispatch in case our desired versions increased
         // in the meantime
+        LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "wasNotified==true";
         syncDBServerStatusQuo();
       }
       remain = interval - (TRI_microtime() - start);
@@ -338,8 +339,14 @@ void HeartbeatThread::runCoordinator() {
         }
 
         if (planVersion > lastPlanVersionNoticed) {
+          LOG_TOPIC(TRACE, Logger::HEARTBEAT)
+              << "Found planVersion " << planVersion << " which is newer than "
+              << lastPlanVersionNoticed;
           if (handlePlanChangeCoordinator(planVersion)) {
             lastPlanVersionNoticed = planVersion;
+          } else {
+            LOG_TOPIC(WARN, Logger::HEARTBEAT)
+                << "handlePlanChangeCoordinator was unsuccessful";
           }
         }
       }
@@ -389,7 +396,7 @@ void HeartbeatThread::runCoordinator() {
       }
 
       versionSlice = result.slice()[0].get(std::vector<std::string>(
-          {_agency.prefix(), "Plan", "Version"}));
+          {_agency.prefix(), "Current", "Version"}));
       if (versionSlice.isInteger()) {
 
         uint64_t currentVersion = 0;
@@ -399,6 +406,9 @@ void HeartbeatThread::runCoordinator() {
         catch (...) {
         }
         if (currentVersion > lastCurrentVersionNoticed) {
+          LOG_TOPIC(TRACE, Logger::HEARTBEAT)
+              << "Found currentVersion " << currentVersion 
+              << " which is newer than " << lastCurrentVersionNoticed;
           lastCurrentVersionNoticed = currentVersion;
 
           ClusterInfo::instance()->invalidateCurrent();
@@ -657,7 +667,7 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
           << "could not schedule dbserver sync - dispatcher gone.";
       return false;
     }
-    if (dispatcher->addJob(job) == TRI_ERROR_NO_ERROR) {
+    if (dispatcher->addJob(job, false) == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "scheduled dbserver sync";
       return true;
     }

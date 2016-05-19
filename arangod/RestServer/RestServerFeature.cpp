@@ -26,6 +26,7 @@
 #include "Agency/RestAgencyHandler.h"
 #include "Agency/RestAgencyPrivHandler.h"
 #include "Aql/RestAqlHandler.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
@@ -35,6 +36,7 @@
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
@@ -136,8 +138,13 @@ void RestServerFeature::collectOptions(
       "--http.hide-product-header",
       "do not expose \"Server: ArangoDB\" header in HTTP responses",
       new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
+
+  options->addOption("--http.trusted-origin",
+                     "trusted origin URLs for CORS requests with credentials",
+                     new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
   
   options->addSection("frontend", "Frontend options");
+
   options->addOption("--frontend.proxy-request-check",
                      "enable or disable proxy request checking",
                      new BooleanParameter(&_proxyCheck));
@@ -148,6 +155,31 @@ void RestServerFeature::collectOptions(
 }
 
 void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+  if (!_accessControlAllowOrigins.empty()) {
+    // trim trailing slash from all members
+    for (auto& it : _accessControlAllowOrigins) {
+      if (it == "*" || it == "all") {
+        // special members "*" or "all" means all origins are allowed
+        _accessControlAllowOrigins.clear();
+        _accessControlAllowOrigins.push_back("*");
+        break;
+      } else if (it == "none") {
+        // "none" means no origins are allowed
+        _accessControlAllowOrigins.clear();
+        break;
+      } else if (it[it.size() - 1] == '/') {
+        // strip trailing slash
+        it = it.substr(0, it.size() - 1);
+      }
+    }
+ 
+    // remove empty members 
+    _accessControlAllowOrigins.erase(
+      std::remove_if(_accessControlAllowOrigins.begin(), _accessControlAllowOrigins.end(), 
+                     [](std::string const& value) { 
+                       return basics::StringUtils::trim(value).empty(); 
+                     }), _accessControlAllowOrigins.end());
+  }
 }
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
@@ -256,7 +288,8 @@ void RestServerFeature::buildServers() {
   // unencrypted HTTP endpoints
   HttpServer* httpServer = new HttpServer(
       SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
-      _handlerFactory.get(), _jobManager.get(), _keepAliveTimeout);
+      _handlerFactory.get(), _jobManager.get(), _keepAliveTimeout,
+      _accessControlAllowOrigins);
 
   // YYY #warning FRANK filter list
   auto const& endpointList = endpoint->endpointList();
@@ -281,7 +314,8 @@ void RestServerFeature::buildServers() {
     httpServer =
         new HttpsServer(SchedulerFeature::SCHEDULER,
                         DispatcherFeature::DISPATCHER, _handlerFactory.get(),
-                        _jobManager.get(), _keepAliveTimeout, sslContext);
+                        _jobManager.get(), _keepAliveTimeout, _accessControlAllowOrigins,
+                        sslContext);
 
     httpServer->setEndpointList(&endpointList);
     _servers.push_back(httpServer);

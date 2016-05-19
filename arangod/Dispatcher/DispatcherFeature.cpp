@@ -84,6 +84,7 @@ void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     // start at least 4 dispatcher threads. this is necessary as
     // threads may be blocking, and starting just one is not enough 
     n = (std::max)(n, static_cast<size_t>(4));
+    _nrStandardThreads = n;
   }
     
   TRI_ASSERT(_nrStandardThreads >= 1);
