@@ -75,9 +75,8 @@ function startReadingQuery (endpoint, collName, timeout) {
   }
   var count = 0;
   while (true) {
-    count += 1;
-    if (count > 500) {
-      console.error("startReadingQuery: Read transaction did not begin. Giving up");
+    if (++count > 5) {
+      console.error("startReadingQuery: Read transaction did not begin. Giving up after 5 tries");
       return false;
     }
     require("internal").wait(0.2);
@@ -106,7 +105,8 @@ function startReadingQuery (endpoint, collName, timeout) {
         break;
       }
     }
-    console.error("startReadingQuery: Did not find query.", r);
+    console.info("startReadingQuery: Did not find query.", r);
+    require("internal").wait(0.5, false);
   }
 }
 

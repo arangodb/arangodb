@@ -56,7 +56,7 @@ class DispatcherQueue {
 
   DispatcherQueue(Scheduler*, Dispatcher*, size_t id,
                   Dispatcher::newDispatcherThread_fptr, size_t nrThreads,
-                  size_t maxSize);
+                  size_t nrExtra, size_t maxSize);
 
   ~DispatcherQueue();
 
@@ -154,11 +154,21 @@ class DispatcherQueue {
   /// @brief total number of threads
   ///
   /// This number is fixed. It is the number of pre-configured threads from the
-  /// configuration file and is the initial number of threads started. The
-  /// dispatcher queues will try to have at least this many running threads.
+  /// configuration file and is the average number of threads running under
+  /// normal condition. Note that at server start not all threads will be
+  /// started instantly, as threads will be created on demand.
   //////////////////////////////////////////////////////////////////////////////
 
   size_t const _nrThreads;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief total number of extra/overhead threads
+  ///
+  /// This number is fixed. It is the maximum number of extra threads that can
+  /// be created if _nrThreads threads have already been created
+  //////////////////////////////////////////////////////////////////////////////
+  
+  size_t const _nrExtra;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief maximum queue size (number of jobs)

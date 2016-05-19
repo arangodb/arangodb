@@ -50,10 +50,6 @@ struct Job {
   Job() {}
   ~Job() {}
 };
-struct FailedServersJob : public Job {
-  FailedServersJob();
-  ~FailedServersJob();
-};
 
 struct check_t {
   bool good;
@@ -128,6 +124,10 @@ class Supervision : public arangodb::Thread {
   void wakeUp();
 
  private:
+
+  /// @brief Update agency prefix from agency itself
+  bool updateAgencyPrefix (size_t nTries = 10, int intervalSec = 1);
+  
   /// @brief Move shard from one db server to other db server
   bool moveShard(std::string const& from, std::string const& to);
 
@@ -167,6 +167,8 @@ class Supervision : public arangodb::Thread {
   long _gracePeriod;
   long _jobId;
   long _jobIdMax;
+
+  static std::string _agencyPrefix;
 };
 }
 }

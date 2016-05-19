@@ -38,9 +38,10 @@ using namespace arangodb::rest;
 DispatcherQueue::DispatcherQueue(Scheduler* scheduler, Dispatcher* dispatcher,
                                  size_t id,
                                  Dispatcher::newDispatcherThread_fptr creator,
-                                 size_t nrThreads, size_t maxSize)
+                                 size_t nrThreads, size_t nrExtra, size_t maxSize)
     : _id(id),
       _nrThreads(nrThreads),
+      _nrExtra(nrExtra),
       _maxSize(maxSize),
       _waitLock(),
       _readyJobs(maxSize),
@@ -125,7 +126,7 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job, bool startThread) {
   }
 
   // if all threads are blocked, start a new one - we ignore race conditions
-  else if (startThread || notEnoughThreads()) {
+  else if (notEnoughThreads()) {
     startQueueThread(startThread);
   }
 
@@ -443,7 +444,12 @@ bool DispatcherQueue::notEnoughThreads() {
   size_t nrRunning = _nrRunning.load(std::memory_order_relaxed);
   size_t nrBlocked = (size_t)_nrBlocked.load(std::memory_order_relaxed);
 
-  return nrRunning <= _nrThreads - 1 || nrRunning <= nrBlocked;
+  if (nrRunning + nrBlocked >= _nrThreads + _nrExtra) {
+    // we have reached the absolute maximum capacity
+    return false;
+  }
+
+  return nrRunning <= (_nrThreads + _nrExtra - 1) || nrRunning <= nrBlocked;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

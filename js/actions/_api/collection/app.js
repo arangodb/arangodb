@@ -38,12 +38,7 @@ var cluster = require("@arangodb/cluster");
 ////////////////////////////////////////////////////////////////////////////////
 
 function databasePrefix (req, url) {
-  if (req.hasOwnProperty('compatibility') && req.compatibility < 10400) {
-    // pre 1.4-style location response (e.g. /_api/collection/xyz)
-    return url;
-  }
-
-  // 1.4-style location response (e.g. /_db/dbname/_api/collection/xyz)
+  // location response (e.g. /_db/dbname/_api/collection/xyz)
   return "/_db/" + encodeURIComponent(arangodb.db._name()) + url;
 }
 
