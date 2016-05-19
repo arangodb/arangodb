@@ -66,6 +66,7 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
     if (cluster.isCoordinator()) {
       result.shardKeys = properties.shardKeys;
       result.numberOfShards = properties.numberOfShards;
+      result.replicationFactor = properties.replicationFactor;
     }
   }
 
