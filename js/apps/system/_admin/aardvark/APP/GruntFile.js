@@ -268,7 +268,7 @@
             "frontend/html/head.html.part",
             "frontend/js/templates/*.ejs",
             "frontend/html/body.html.part",
-            "frontend/html/scripts.html.part",
+            "frontend/build/scripts.html.part",
             "frontend/html/end.html.part"
           ],
           dest: 'frontend/build/index.html'
