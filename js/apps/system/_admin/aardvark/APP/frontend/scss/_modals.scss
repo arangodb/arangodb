@@ -55,6 +55,7 @@
     border-radius: 3px;
     -webkit-box-shadow: none;
     box-shadow: none;
+    width: 450px;
 
     input {
       @extend %inputs;
@@ -269,7 +270,7 @@
   }
 
   select {
-    width: 450px;
+    width: 452px;
   }
 
   .collectionTh {

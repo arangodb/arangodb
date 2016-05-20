@@ -561,6 +561,8 @@ namespace arangodb {
   /* now push the character back into the input stream and return a T_NOT token */
   BEGIN(INITIAL);
   yyless(0);
+  /* must decrement offset by one character as we're pushing the char back onto the stack */
+  yyextra->decreaseOffset(1);
   return T_NOT;
 }
 
