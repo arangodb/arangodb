@@ -267,6 +267,9 @@
         buttons.push(self.createCloseButton('Close'));
       }
       if (!divID) {
+        console.log(1);
+        console.log($(this.el));
+        console.log(this.el);
         $(this.el).html(this.baseTemplate.render({
           title: title,
           buttons: buttons,
@@ -276,6 +279,7 @@
         }));
       }
       else {
+        console.log(2);
         //render into custom div
         $('#' + divID).html(this.baseTemplate.render({
           title: title,
@@ -317,11 +321,20 @@
       var template;
       if (typeof templateName === 'string') {
         template = templateEngine.createTemplate(templateName);
-        $(".createModalDialog .modal-body").html(template.render({
-          content: tableContent,
-          advancedContent: advancedContent,
-          info: extraInfo
-        }));
+        if (divID) {
+          $('#' + divID + " .createModalDialog .modal-body").html(template.render({
+            content: tableContent,
+            advancedContent: advancedContent,
+            info: extraInfo
+          }));
+        }
+        else {
+          $("#modalPlaceholder .createModalDialog .modal-body").html(template.render({
+            content: tableContent,
+            advancedContent: advancedContent,
+            info: extraInfo
+          }));
+        }
       }
       else {
         var counter = 0;
