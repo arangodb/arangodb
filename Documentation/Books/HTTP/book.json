@@ -22,6 +22,9 @@
     "addcssjs": {
       "js": ["styles/header.js"],
       "css": ["styles/header.css"]
+    },
+    "add-header": {
+        "BASE_PATH": "https://docs.arangodb.com/devel"
     }
   }
 }
