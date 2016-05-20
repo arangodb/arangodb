@@ -16,6 +16,16 @@ While Foxx is primarily designed to be used to access the database itself, Arang
 
 Finally [Scripts][SCRIPTS] can be used to perform one-off tasks, which can also be scheduled to be performed asynchronously using the built-in job queue.
 
+!SECTION Development mode
+
+TODO
+
+!SECTION Foxx store
+
+TODO
+
+!SECTION Cluster-Foxx
+
 TODO
 
 [CONTEXT]: ./Context.md
