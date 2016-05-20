@@ -124,6 +124,12 @@
     initFinished: false,
 
     initialize: function () {
+
+      //check frontend config for global conf settings
+      if (frontendConfig.isCluster === true) {
+        this.isCluster = true;
+      }
+
       // This should be the only global object
       window.modalView = new window.ModalView();
 
@@ -143,16 +149,12 @@
         var callback = function(error, isCoordinator) {
           self = this;
           if (isCoordinator === true) {
-            self.isCluster = true;
 
             self.coordinatorCollection.fetch({
               success: function() {
                 self.fetchDBS();
               }
             });
-          }
-          else {
-            self.isCluster = false;
           }
         }.bind(this);
 

@@ -2,7 +2,17 @@
 
 `const headerTransport = require('@arangodb/foxx/sessions/transports/header');`
 
-TODO
+The header transport stores session identifiers in headers on the request and response objects.
+
+**Examples**
+
+```js
+const sessions = sessionsMiddleware({
+  storage: module.context.collection('sessions'),
+  transport: headerTransport('X-FOXXSESSID')
+});
+module.context.use(sessions);
+```
 
 !SECTION Creating a transport
 
@@ -18,7 +28,7 @@ Creates a [Transport][TRANSPORT] that can be used in the sessions middleware.
 
   * **name**: `string` (Default: `X-Session-Id`)
 
-    TODO
+    Name of the header that contains the session identifier (not case sensitive).
 
 If a string is passed instead of an options object, it will be interpreted as the *name* option.
 
