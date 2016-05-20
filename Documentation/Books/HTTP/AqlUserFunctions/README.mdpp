@@ -7,7 +7,7 @@ user functions. AQL user functions are a means to extend the functionality
 of ArangoDB's query language (AQL) with user-defined JavaScript code.
  
 For an overview of how AQL user functions work, please refer to
-[Extending Aql](../AqlExtending/README.md).
+[Extending Aql](../../AQL/Extending/index.html).
 
 The HTTP interface provides an API for adding, deleting, and listing
 previously registered AQL user functions.
