@@ -75,11 +75,11 @@ function startReadingQuery (endpoint, collName, timeout) {
   }
   var count = 0;
   while (true) {
-    if (++count > 5) {
-      console.error("startReadingQuery: Read transaction did not begin. Giving up after 5 tries");
+    if (++count > 15) {
+      console.error("startReadingQuery: Read transaction did not begin. Giving up after 10 tries");
       return false;
     }
-    require("internal").wait(0.2);
+    require("internal").wait(1);
     r = request({ url: url + "/_api/query/current", method: "GET" });
     if (r.status !== 200) {
       console.error("startReadingQuery: Bad response from /_api/query/current",
@@ -106,7 +106,6 @@ function startReadingQuery (endpoint, collName, timeout) {
       }
     }
     console.info("startReadingQuery: Did not find query.", r);
-    require("internal").wait(0.5, false);
   }
 }
 
