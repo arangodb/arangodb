@@ -32,7 +32,6 @@ var arangodb = require("@arangodb");
 var actions = require("@arangodb/actions");
 var cluster = require("@arangodb/cluster");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a prefixed URL
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +107,7 @@ function parseBodyForCreateCollection (req, res) {
   else {
     r.name = body.name;
   }
-  r.parameters = { waitForSync : false };
+  r.parameters = { waitForSync : require("internal").options()["database.wait-for-sync"] };
   r.type = arangodb.ArangoCollection.TYPE_DOCUMENT;
 
   if (body.hasOwnProperty("doCompact")) {
