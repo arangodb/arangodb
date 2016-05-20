@@ -31,7 +31,6 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Creation
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +72,7 @@ function SkipListSuite() {
 /// @brief test: index creation
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreationUniqueSkiplist : function () {
+    testCreation : function () {
       var idx = collection.ensureSkiplist("a");
       var id = idx.id;
 

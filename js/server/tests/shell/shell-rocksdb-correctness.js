@@ -2,7 +2,7 @@
 /*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the correctness of a skip-list index
+/// @brief test the correctness of the RocksDB index
 ///
 /// @file
 ///
@@ -32,12 +32,12 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: Creation
+/// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function SkipListCorrSuite() {
+function RocksDBCorrSuite() {
   'use strict';
-  var cn = "UnitTestsCollectionSkiplistCorr";
+  var cn = "UnitTestsCollectionRocksDBCorr";
   var coll = null;
   var helper = require("@arangodb/aql-helper");
   var getQueryResults = helper.getQueryResults;
@@ -71,21 +71,21 @@ function SkipListCorrSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: performance of deletion with skip-list index
+/// @brief test correctness of non-unique
 ////////////////////////////////////////////////////////////////////////////////
 
     testCorrectnessNonUnique : function () {
-      coll.ensureSkiplist("v");
+      coll.ensureIndex({ type: "rocksdb", fields: ["v"] });
 
-      coll.save({a:1,_key:"1",v:1});
-      coll.save({a:17,_key:"2",v:2});
-      coll.save({a:22,_key:"3",v:3});
-      coll.save({a:4,_key:"4",v:1});
-      coll.save({a:17,_key:"5",v:2});
-      coll.save({a:6,_key:"6",v:3});
-      coll.save({a:12,_key:"7",v:4});
-      coll.save({a:100,_key:"8",v:3});
-      coll.save({a:7,_key:"9",v:3});
+      coll.save({a: 1, _key: "1", v: 1});
+      coll.save({a: 17, _key: "2", v: 2});
+      coll.save({a: 22, _key: "3", v: 3});
+      coll.save({a: 4, _key: "4", v: 1});
+      coll.save({a: 17, _key: "5", v: 2});
+      coll.save({a: 6, _key: "6", v: 3});
+      coll.save({a: 12, _key: "7", v: 4});
+      coll.save({a: 100, _key: "8", v: 3});
+      coll.save({a: 7, _key: "9", v: 3});
 
       assertEqual(getQueryResults(
                   "FOR x IN " + cn + " FILTER x.v == 3 RETURN x").length, 4);
@@ -145,17 +145,17 @@ function SkipListCorrSuite() {
     },
 
     testCorrectnessUnique : function () {
-      coll.ensureUniqueSkiplist("v");
+      coll.ensureIndex({ type: "rocksdb", fields: ["v"], unique: true });
 
-      coll.save({a:1,_key:"1",v:1});
-      coll.save({a:17,_key:"2",v:2});
-      coll.save({a:22,_key:"3",v:3});
-      coll.save({a:4,_key:"4",v:-1});
-      coll.save({a:17,_key:"5",v:5});
-      coll.save({a:6,_key:"6",v:6});
-      coll.save({a:12,_key:"7",v:4});
-      coll.save({a:100,_key:"8",v:-3});
-      coll.save({a:7,_key:"9",v:-7});
+      coll.save({a:1, _key:"1", v:1});
+      coll.save({a:17, _key:"2", v:2});
+      coll.save({a:22, _key:"3", v:3});
+      coll.save({a:4, _key:"4", v:-1});
+      coll.save({a:17, _key:"5", v:5});
+      coll.save({a:6, _key:"6", v:6});
+      coll.save({a:12, _key:"7", v:4});
+      coll.save({a:100, _key:"8", v:-3});
+      coll.save({a:7, _key:"9", v:-7});
 
       assertEqual(getQueryResults(
                   "FOR x IN " + cn + " FILTER x.v == 3 RETURN x").length, 1);
@@ -215,17 +215,17 @@ function SkipListCorrSuite() {
     },
 
     testCorrectnessSparse : function () {
-      coll.ensureUniqueSkiplist("v", { sparse: true });
+      coll.ensureIndex({ type: "rocksdb", fields: ["v"], unique: true, sparse: true });
 
-      coll.save({a:1,_key:"1",v:1});
-      coll.save({a:17,_key:"2",v:2});
-      coll.save({a:22,_key:"3",v:3});
-      coll.save({a:4,_key:"4",v:-1});
-      coll.save({a:17,_key:"5",v:5});
-      coll.save({a:6,_key:"6",v:6});
-      coll.save({a:12,_key:"7",v:4});
-      coll.save({a:100,_key:"8",v:-3});
-      coll.save({a:7,_key:"9",v:-7});
+      coll.save({a:1, _key:"1", v:1});
+      coll.save({a:17, _key:"2", v:2});
+      coll.save({a:22, _key:"3", v:3});
+      coll.save({a:4, _key:"4", v:-1});
+      coll.save({a:17, _key:"5", v:5});
+      coll.save({a:6, _key:"6", v:6});
+      coll.save({a:12, _key:"7", v:4});
+      coll.save({a:100, _key:"8", v:-3});
+      coll.save({a:7, _key:"9", v:-7});
 
       assertEqual(getQueryResults(
                   "FOR x IN " + cn + " FILTER x.v == 3 RETURN x").length, 1);
@@ -286,11 +286,10 @@ function SkipListCorrSuite() {
   };
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
+/// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(SkipListCorrSuite);
+jsunity.run(RocksDBCorrSuite);
 
 return jsunity.done();
