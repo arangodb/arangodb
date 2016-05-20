@@ -167,6 +167,9 @@
           data.numberOfShards = object.shards;
           data.shardKeys = object.keys;
         }
+        if (object.replicationFactor) {
+          data.replicationFactor = JSON.parse(object.replicationFactor);
+        }
 
         $.ajax({
           cache: false,
