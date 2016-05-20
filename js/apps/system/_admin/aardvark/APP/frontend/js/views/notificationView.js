@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, templateEngine, $, window, noty */
+/*global frontendConfig, Backbone, templateEngine, $, window, noty */
 (function () {
   "use strict";
 
@@ -76,7 +76,7 @@
             }];
           }
           else if (latestModel.get('type') === 'warning') {
-            time = false;
+            time = 20000;
           }
 
           $.noty.clearQueue();
