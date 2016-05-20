@@ -138,7 +138,6 @@
       else {
         callback(true, undefined);
       }
-      console.log(frontendConfig.db);
       return frontendConfig.db;
     },
 
@@ -672,7 +671,7 @@
 
     databaseUrl: function(url, databaseName) {
       if (url.substr(0, 5) === '/_db/') {
-        throw new Error("Calling databasUrl with a databased url (" + url + ") doesn't make any sense");
+        throw new Error("Calling databaseUrl with a databased url (" + url + ") doesn't make any sense");
       }
 
       if (!databaseName) {

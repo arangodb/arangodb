@@ -124,6 +124,12 @@
     initFinished: false,
 
     initialize: function () {
+
+      //check frontend config for global conf settings
+      if (frontendConfig.isCluster === true) {
+        this.isCluster = true;
+      }
+
       // This should be the only global object
       window.modalView = new window.ModalView();
 
@@ -143,16 +149,12 @@
         var callback = function(error, isCoordinator) {
           self = this;
           if (isCoordinator === true) {
-            self.isCluster = true;
 
             self.coordinatorCollection.fetch({
               success: function() {
                 self.fetchDBS();
               }
             });
-          }
-          else {
-            self.isCluster = false;
           }
         }.bind(this);
 
@@ -286,7 +288,6 @@
         this.navigate("#dashboard", {trigger: true});
         return;
       }
-
       this.nodesView = new window.NodesView({
         coordinators: this.coordinatorCollection,
         dbServers: this.dbServers[0],
@@ -304,6 +305,10 @@
       if (this.isCluster === false) {
         this.routes[""] = 'dashboard';
         this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+      if (this.dbServers.length === 0) {
+        this.navigate("#cNodes", {trigger: true});
         return;
       }
 

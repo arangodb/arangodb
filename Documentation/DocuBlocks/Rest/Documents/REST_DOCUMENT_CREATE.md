@@ -195,9 +195,9 @@ Illegal document
 @END_EXAMPLE_ARANGOSH_RUN
 
 Insert multiple documents:
-TODO, make this example work.
+ ###!TODO, make this example work.
 
-@ EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostMulti}
+  EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostMulti}
     var cn = "products";
     db._drop(cn);
 
@@ -209,12 +209,12 @@ TODO, make this example work.
     assert(response.code === 200);
 
     logJsonResponse(response);
-@ END_EXAMPLE_ARANGOSH_RUN
+  ND_EXAMPLE_ARANGOSH_RUN
 
 Use of returnNew:
-TODO, make this example work.
+ ###!TODO, make this example work.
 
-@ EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostMulti}
+  EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostMulti}
     var cn = "products";
     db._drop(cn);
 
@@ -226,6 +226,6 @@ TODO, make this example work.
     assert(response.code === 200);
 
     logJsonResponse(response);
-@ END_EXAMPLE_ARANGOSH_RUN
+   END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
 

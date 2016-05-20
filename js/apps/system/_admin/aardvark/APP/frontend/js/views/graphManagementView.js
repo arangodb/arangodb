@@ -185,7 +185,7 @@
       var graph = $(e.currentTarget).attr('graph-id'), self = this;
       $.ajax({
         type: "POST",
-        url: "/_admin/aardvark/graph-examples/create/" + encodeURIComponent(graph),
+        url: arangoHelper.databaseUrl("/_admin/aardvark/graph-examples/create/" + encodeURIComponent(graph)),
         success: function () {
           window.modalView.hide();
           self.updateGraphManagementView();

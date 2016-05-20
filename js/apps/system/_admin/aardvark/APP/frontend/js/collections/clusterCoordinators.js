@@ -1,10 +1,10 @@
-/*global window */
+/*global window, arangoHelper */
 (function() {
   "use strict";
   window.ClusterCoordinators = window.AutomaticRetryCollection.extend({
     model: window.ClusterCoordinator,
 
-    url: "/_admin/aardvark/cluster/Coordinators",
+    url: arangoHelper.databaseUrl("/_admin/aardvark/cluster/Coordinators"),
 
     updateUrl: function() {
       this.url = window.App.getNewRoute("Coordinators");

@@ -38,7 +38,7 @@ new() {
 
 `storage.fromClient(sid): Session | null`
 
-TODO
+Resolves or deserializes a session identifier to a session object.
 
 **Arguments**
 
@@ -60,7 +60,7 @@ fromClient(sid) {
 
 `storage.forClient(session): string | null`
 
-TODO
+Derives a session identifier from the given session object.
 
 **Arguments**
 

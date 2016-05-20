@@ -257,7 +257,6 @@
     },
 
     breadcrumb: function() {
-      console.log(this.model.toJSON());
       var string = 'Service: ' + this.model.get('name') + '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
       
       var contributors = '<p class="mount"><span>Contributors:</span>';
