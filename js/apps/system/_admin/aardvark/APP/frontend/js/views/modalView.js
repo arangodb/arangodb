@@ -267,9 +267,6 @@
         buttons.push(self.createCloseButton('Close'));
       }
       if (!divID) {
-        console.log(1);
-        console.log($(this.el));
-        console.log(this.el);
         $(this.el).html(this.baseTemplate.render({
           title: title,
           buttons: buttons,
@@ -279,7 +276,6 @@
         }));
       }
       else {
-        console.log(2);
         //render into custom div
         $('#' + divID).html(this.baseTemplate.render({
           title: title,
