@@ -18,7 +18,7 @@ select your operating system and download ArangoDB. You may also follow
 the instructions on how to install with a package manager, if available.
 
 Start up the server by running `arangod`.
-!TODO explain how to do that on all major platforms in the most simple way
+ !TODO explain how to do that on all major platforms in the most simple way
 
 For startup parameters, installation in a cluster and so on, see
 [Installing](Installing/README.md).
