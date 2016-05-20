@@ -1,11 +1,11 @@
 #
 # Summary
 #
-#* [First Steps](FirstSteps/README.md)
-#  * [Getting Familiar](FirstSteps/GettingFamiliar.md)
+# * [First Steps](FirstSteps/README.md) #TODO
+#  * [Getting Familiar](FirstSteps/GettingFamiliar.md) #TODO
 * [Getting Started](GettingStarted/README.md)
   # move to administration (command line options)?
-  #* [Install and run the server](FirstSteps/Arangod.md)
+  # * [Install and run the server](FirstSteps/Arangod.md) #TODO
   * [Installing](GettingStarted/Installing/README.md)
     * [Linux](GettingStarted/Installing/Linux.md)
     * [Mac OS X](GettingStarted/Installing/MacOSX.md)
@@ -15,13 +15,13 @@
     * [Cluster setup](GettingStarted/Installing/Cluster.md)
   * [Using the Web Interface](GettingStarted/WebInterface.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
-  #* [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md)
+  # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
 #
 * [Scalability](Scalability/README.md)
 #  * [Joins](Scalability/Joins.md)
 #
 * [Data model & modeling](DataModeling/README.md)
-#* [Collections](FirstSteps/CollectionsAndDocuments.md)
+# * [Collections](FirstSteps/CollectionsAndDocuments.md) #TODO
   * [Concepts](DataModeling/Concepts.md)
   * [Databases](DataModeling/Databases/README.md)
     * [Working with Databases](DataModeling/Databases/WorkingWith.md)
@@ -67,8 +67,7 @@
   * [Service context](Foxx/Context.md)
   * [Configuration](Foxx/Configuration.md)
   * [Dependencies](Foxx/Dependencies.md)
-  * [Routing](Foxx/Router/README.md)
-    * [Routers](Foxx/Router/Routers.md)
+  * [Routers](Foxx/Router/README.md)
     * [Endpoints](Foxx/Router/Endpoints.md)
     * [Middleware](Foxx/Router/Middleware.md)
     * [Request](Foxx/Router/Request.md)
@@ -84,6 +83,7 @@
   * [Writing tests](Foxx/Testing.md)
   * [Scripts and queued jobs](Foxx/Scripts.md)
   * [Legacy mode for 2.x](Foxx/LegacyMode.md)
+  * [User management](Foxx/Users.md)
   * [Related modules](Foxx/Modules.md)
     * [Authentication](Foxx/Auth.md)
     * [OAuth 2.0](Foxx/OAuth2.md)

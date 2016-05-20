@@ -272,7 +272,7 @@ STDDEV_SAMPLE( [ 1, 3, 6, 5, 2 ] ) // 2.0736441353327724
 Return the sum of the values in *array*.
 
 - **numArray** (array): an array of numbers, *null* values are ignored
--returns **sum** (number): the total of all values in *numArray*
+- returns **sum** (number): the total of all values in *numArray*
 
 ```js
 SUM( [1, 2, 3, 4] ) // 10
