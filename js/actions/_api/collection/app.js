@@ -118,7 +118,7 @@ function parseBodyForCreateCollection (req, res) {
   else {
     r.name = body.name;
   }
-  r.parameter = { waitForSync : false };
+  r.parameter = { waitForSync : require("internal").options()["database.wait-for-sync"] };
   r.type = arangodb.ArangoCollection.TYPE_DOCUMENT;
 
   if (body.hasOwnProperty("doCompact")) {
