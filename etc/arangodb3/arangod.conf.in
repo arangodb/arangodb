@@ -32,7 +32,7 @@ endpoint = tcp://127.0.0.1:8529
 # reuse-address = false
 
 # disable authentication for the admin frontend
-authentication = false
+authentication = true
 
 # number of server threads, 0 to use them all
 # threads = 4

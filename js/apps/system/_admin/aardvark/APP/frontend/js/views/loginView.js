@@ -20,13 +20,42 @@
 
     template: templateEngine.createTemplate("loginView.ejs"),
 
-    render: function() {
+    render: function(loggedIn) {
+      var self = this;
+
       $(this.el).html(this.template.render({}));
       $(this.el2).hide();
       $(this.el3).hide();
-      $('.bodyWrapper').show();
 
-      $('#loginUsername').focus();
+      if (frontendConfig.authenticationEnabled && loggedIn !== true) {
+        $('#loginUsername').focus();
+      }
+      else {
+        var url = arangoHelper.databaseUrl("/_api/database/user");
+
+        if (frontendConfig.authenticationEnabled === false) {
+          $('#logout').hide();
+          $('.login-window #databases').css('height', '90px');
+        }
+
+        $('#loginForm').hide();
+        $('.login-window #databases').show();
+
+        $.ajax(url).success(function(data) {
+          //enable db select and login button
+          $('#loginDatabase').html('');
+          //fill select with allowed dbs
+          _.each(data.result, function(db) {
+            $('#loginDatabase').append(
+              '<option>' + db + '</option>'
+            ); 
+          });
+
+          self.renderDBS();
+        });
+      }
+
+      $('.bodyWrapper').show();
 
       return this;
     },
@@ -69,10 +98,16 @@
           ); 
         }
         else {
+          var url = arangoHelper.databaseUrl("/_api/database/user", '_system');
+
+          if (frontendConfig.authenticationEnabled === false) {
+            url = arangoHelper.databaseUrl("/_api/database/user");
+          }
+
           $('.wrong-credentials').hide();
           self.loggedIn = true;
           //get list of allowed dbs
-          $.ajax(arangoHelper.databaseUrl("/_api/database/user")).success(function(data) {
+          $.ajax(url).success(function(data) {
 
             $('#loginForm').hide();
             $('#databases').show();
@@ -108,6 +143,9 @@
       e.preventDefault();
       var username = $('#loginUsername').val();
       var database = $('#loginDatabase').val();
+      console.log(window.App.dbSet);
+      window.App.dbSet = database;
+      console.log(window.App.dbSet);
 
       var callback2 = function(error) {
         if (error) {

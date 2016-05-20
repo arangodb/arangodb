@@ -162,8 +162,7 @@ function post_api_database (req, res) {
 
   var result = arangodb.db._createDatabase(json.name || "", options, users);
 
-  var returnCode = (req.compatibility <= 10400 ? actions.HTTP_OK : actions.HTTP_CREATED);
-  actions.resultOk(req, res, returnCode, { result : result });
+  actions.resultOk(req, res, actions.HTTP_CREATED, { result : result });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

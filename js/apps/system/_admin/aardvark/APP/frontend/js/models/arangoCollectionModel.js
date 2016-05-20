@@ -36,7 +36,7 @@
       $.ajax({
         type: "GET",
         cache: false,
-        url: arangoHelper.databaseHelper("/_api/collection/" + this.get("id") + "/figures"),
+        url: arangoHelper.databaseUrl("/_api/collection/" + this.get("id") + "/figures"),
         contentType: "application/json",
         processData: false,
         success: function(data) {

@@ -79,7 +79,7 @@ router.get('/config.js', function(req, res) {
     basePath = req.headers['x-script-name'];
   }
   res.set('content-type', 'text/javascript');
-  res.send("var frontendConfig = " + JSON.stringify({"basePath": basePath, "authenticationEnabled": global.AUTHENTICATION_ENABLED()}));
+  res.send("var frontendConfig = " + JSON.stringify({"basePath": basePath, "db": req.database, "authenticationEnabled": global.AUTHENTICATION_ENABLED()}));
 });
 
 router.get('/whoAmI', function(req, res) {
@@ -147,8 +147,10 @@ router.use(authRouter);
 
 
 authRouter.use((req, res, next) => {
-  if (!req.session.uid) {
-    res.throw('unauthorized');
+  if (global.AUTHENTICATION_ENABLED()) {
+    if (!req.session.uid) {
+      res.throw('unauthorized');
+    }
   }
   next();
 });

@@ -78,6 +78,7 @@ class RestServerFeature final
   bool _authenticationSystemOnly;
   bool _proxyCheck;
   std::vector<std::string> _trustedProxies;
+  std::vector<std::string> _accessControlAllowOrigins;
 
  public:
   bool authentication() const { return _authentication; }

@@ -75,12 +75,11 @@ function startReadingQuery (endpoint, collName, timeout) {
   }
   var count = 0;
   while (true) {
-    count += 1;
-    if (count > 500) {
-      console.error("startReadingQuery: Read transaction did not begin. Giving up");
+    if (++count > 15) {
+      console.error("startReadingQuery: Read transaction did not begin. Giving up after 10 tries");
       return false;
     }
-    require("internal").wait(0.2);
+    require("internal").wait(1);
     r = request({ url: url + "/_api/query/current", method: "GET" });
     if (r.status !== 200) {
       console.error("startReadingQuery: Bad response from /_api/query/current",
@@ -106,7 +105,7 @@ function startReadingQuery (endpoint, collName, timeout) {
         break;
       }
     }
-    console.error("startReadingQuery: Did not find query.", r);
+    console.info("startReadingQuery: Did not find query.", r);
   }
 }
 
@@ -929,35 +928,41 @@ function synchronizeLocalFollowerCollections (plannedCollections,
                           var sy = rep.syncCollection(shard, 
                             { endpoint: ep, incremental: true,
                               keepBarrier: true });
-                          // Now start a read transaction to stop writes:
-                          var queryid;
-                          try {
-                            queryid = startReadingQuery(ep, shard, 300);
-                          }
-                          finally {
-                            cancelBarrier(ep, sy.barrierId);
-                          }
-                          var ok = false;
-                          try {
-                            var sy2 = rep.syncCollectionFinalize(
-                              shard, sy.collections[0].id, sy.lastLogTick, 
-                              { endpoint: ep });
-                            if (sy2.error) {
-                              console.error("Could not synchronize shard", shard,
-                                            sy2);
-                            }
-                            ok = addShardFollower(ep, shard);
-                          }
-                          finally {
-                            if (!cancelReadingQuery(ep, queryid)) {
-                              console.error("Read transaction has timed out for shard", shard);
-                              ok = false;
-                            }
-                          }
-                          if (ok) {
-                            console.info("Synchronization worked for shard", shard);
+                          if (sy.error) {
+                            console.error("Could not initially synchronize shard ", shard, sy);
                           } else {
-                            throw "Did not work.";  // just to log below in catch
+                            var ok = false;
+                            // Now start a read transaction to stop writes:
+                            var queryid;
+                            try {
+                              queryid = startReadingQuery(ep, shard, 300);
+                            }
+                            finally {
+                              cancelBarrier(ep, sy.barrierId);
+                            }
+                            try {
+                              var sy2 = rep.syncCollectionFinalize(
+                                shard, sy.collections[0].id, sy.lastLogTick,
+                                { endpoint: ep });
+                              if (sy2.error) {
+                                console.error("Could not synchronize shard", shard,
+                                              sy2);
+                                ok = false;
+                              } else {
+                                ok = addShardFollower(ep, shard);
+                              }
+                            }
+                            finally {
+                              if (!cancelReadingQuery(ep, queryid)) {
+                                console.error("Read transaction has timed out for shard", shard);
+                                ok = false;
+                              }
+                            }
+                            if (ok) {
+                              console.info("Synchronization worked for shard", shard);
+                            } else {
+                              throw "Did not work.";  // just to log below in catch
+                            }
                           }
                         }
                         catch (err2) {
@@ -1325,9 +1330,9 @@ var handlePlanChange = function (plan, current) {
     current: current.Version,
   };
     
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an action under a write-lock
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   function writeLocked (lockInfo, cb, args) {
     var timeout = lockInfo.timeout;

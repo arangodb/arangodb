@@ -18,6 +18,14 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release CACHE string "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif ()
 
+if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
+      OR CMAKE_BUILD_TYPE STREQUAL "Release"
+      OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
+      OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
+      OR CMAKE_BUILD_TYPE STREQUAL "None"))
+  message(FATAL_ERROR "expecting CMAKE_BUILD_TYPE: None Debug Release RelWithDebInfo MinSizeRel, got ${CMAKE_BUILD_TYPE}.")
+endif ()
+
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
 if (WIN32)
@@ -544,10 +552,6 @@ else ()
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C++ release with debug info flags")
 endif ()
 
-if (VERBOSE)
-  message(STATUS)
-endif ()
-
 set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS}                ${BASE_FLAGS} ${BASE_C_FLAGS}")
 set(CMAKE_C_FLAGS_DEBUG          "${CMAKE_C_FLAGS_DEBUG}          ${BASE_FLAGS} ${BASE_C_FLAGS}")
 set(CMAKE_C_FLAGS_RELEASE        "${CMAKE_C_FLAGS_RELEASE}        ${BASE_FLAGS} ${BASE_C_FLAGS}")
@@ -561,68 +565,39 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${BASE_FLA
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "${CMAKE_CXX_FLAGS_MINSIZEREL}     ${BASE_FLAGS} ${BASE_CXX_FLAGS}")
 
 if (VERBOSE)
-  message(STATUS "Info BASE_FLAGS")
-  message(STATUS "${BASE_FLAGS}")
+  message(STATUS "Info BASE_FLAGS:     ${BASE_FLAGS}")
+  message(STATUS "Info BASE_C_FLAGS:   ${BASE_C_FLAGS}")
+  message(STATUS "Info BASE_CXX_FLAGS: ${BASE_CXX_FLAGS}")
+  message(STATUS "Info BASE_LD_FLAGS:  ${BASE_LD_FLAGS}")
+  message(STATUS "Info BASE_LIBS:      ${BASE_LIBS}")
   message(STATUS)
 
-  message(STATUS "Info BASE_C_FLAGS")
-  message(STATUS "${BASE_C_FLAGS}")
-  message(STATUS)
+  if (CMAKE_BUILD_TYPE STREQUAL "None")
+    message(STATUS "Info CMAKE_C_FLAGS:   ${CMAKE_C_FLAGS}")
+    message(STATUS "Info CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+  endif ()
 
-  message(STATUS "Info BASE_CXX_FLAGS")
-  message(STATUS "${BASE_CXX_FLAGS}")
-  message(STATUS)
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Info CMAKE_C_FLAGS_DEBUG:   ${CMAKE_C_FLAGS_DEBUG}")
+    message(STATUS "Info CMAKE_CXX_FLAGS_DEBUG: ${CMAKE_CXX_FLAGS_DEBUG}")
+  endif ()
 
-  message(STATUS "Info BASE_LD_FLAGS")
-  message(STATUS "${BASE_LD_FLAGS}")
-  message(STATUS)
+  if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Info CMAKE_C_FLAGS_RELEASE:   ${CMAKE_C_FLAGS_RELEASE}")
+    message(STATUS "Info CMAKE_CXX_FLAGS_RELEASE: ${CMAKE_CXX_FLAGS_RELEASE}")
+  endif ()
 
-  message(STATUS "Info BASE_LIBS")
-  message(STATUS "${BASE_LIBS}")
-  message(STATUS)
+  if (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    message(STATUS "Info CMAKE_C_FLAGS_RELWITHDEBINFO:   ${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+    message(STATUS "Info CMAKE_CXX_FLAGS_RELWITHDEBINFO: ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+  endif ()
 
-  message(STATUS "Info CMAKE_C_FLAGS")
-  message(STATUS "${CMAKE_C_FLAGS}")
-  message(STATUS)
+  if (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+    message(STATUS "Info CMAKE_C_FLAGS_MINSIZEREL:   ${CMAKE_C_FLAGS_MINSIZEREL}")
+    message(STATUS "Info CMAKE_CXX_FLAGS_MINSIZEREL: ${CMAKE_CXX_FLAGS_MINSIZEREL}")
+  endif ()
 
-  message(STATUS "Info CMAKE_C_FLAGS_DEBUG")
-  message(STATUS "${CMAKE_C_FLAGS_DEBUG}")
-  message(STATUS)
-
-  message(STATUS "Info CMAKE_C_FLAGS_RELEASE")
-  message(STATUS "${CMAKE_C_FLAGS_RELEASE}")
-  message(STATUS)
-
-  message(STATUS "Info CMAKE_C_FLAGS_RELWITHDEBINFO")
-  message(STATUS "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
-  message(STATUS)
-
-  message(STATUS "Info CMAKE_C_FLAGS_MINSIZEREL")
-  message(STATUS "${CMAKE_C_FLAGS_MINSIZEREL}")
-  message(STATUS)
-
-  message(STATUS "Info CMAKE_CXX_FLAGS")
-  message(STATUS "${CMAKE_CXX_FLAGS}")
-  message(STATUS)
-
-  message(STATUS "Info CMAKE_CXX_FLAGS_DEBUG")
-  message(STATUS "${CMAKE_CXX_FLAGS_DEBUG}")
-  message(STATUS)
-
-  message(STATUS "Info CMAKE_CXX_FLAGS_RELEASE")
-  message(STATUS "${CMAKE_CXX_FLAGS_RELEASE}")
-  message(STATUS)
-
-  message(STATUS "Info CMAKE_CXX_FLAGS_RELWITHDEBINFO")
-  message(STATUS "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-  message(STATUS)
-
-  message(STATUS "Info CMAKE_CXX_FLAGS_MINSIZEREL")
-  message(STATUS "${CMAKE_CXX_FLAGS_MINSIZEREL}")
-  message(STATUS)
-
-  message(STATUS "Info CMAKE_EXE_LINKER_FLAGS")
-  message(STATUS "${CMAKE_EXE_LINKER_FLAGS}")
+  message(STATUS "Info CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
   message(STATUS)
 endif ()
 

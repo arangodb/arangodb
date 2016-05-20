@@ -4,22 +4,21 @@
     <li class="subMenuEntry pull-left">
       <div class="breadcrumb"></div>
     </li>
-    <li id="healthStatus" class="infoEntry subMenuEntry pull-right">
+    <li id="healthStatus" class="infoEntry subMenuEntry pull-right positive">
       <a class="info health-info">HEALTH: </a>
       <a class="state health-state">GOOD</a>
       <a class="icon health-icon">
         <i class="fa fa-check-circle"></i>
       </a>
     </li>
-    <li id="dbStatus" class="infoEntry subMenuEntry pull-right">
+    <li id="dbStatus" class="infoEntry subMenuEntry pull-right positive">
       <a class="info">DB:</a>
-      <a class="info"><%= currentDB.name %> </a>
+      <a class="state"><span><%= currentDB.name %></span></a>
+      <a class="icon db-icon default-icon">
+        <i class="fa fa-refresh"></i>      
+      </a>
     </li>
     <li id="userBar" class="infoEntry subMenuEntry pull-right" style="margin-right: 10px;">
-<!--
-      <div class="usermenu" id="userBar"></div>
-      <div class="notificationmenu" id="notificationBar"></div>
--->
     </li>
   </ul>
 

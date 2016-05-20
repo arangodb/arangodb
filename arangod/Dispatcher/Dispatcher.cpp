@@ -55,55 +55,25 @@ Dispatcher::~Dispatcher() {
 /// @brief adds the standard queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addStandardQueue(size_t nrThreads, size_t maxSize) {
+void Dispatcher::addStandardQueue(size_t nrThreads, size_t nrExtraThreads,
+                                  size_t maxSize) {
   TRI_ASSERT(_queues[STANDARD_QUEUE] == nullptr);
 
   _queues[STANDARD_QUEUE] =
       new DispatcherQueue(_scheduler, this, STANDARD_QUEUE,
-                          CreateDispatcherThread, nrThreads, maxSize);
+                          CreateDispatcherThread, nrThreads, nrExtraThreads, maxSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the AQL queue (used for the cluster)
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addAQLQueue(size_t nrThreads, size_t maxSize) {
+void Dispatcher::addAQLQueue(size_t nrThreads, size_t nrExtraThreads, 
+                             size_t maxSize) {
   TRI_ASSERT(_queues[AQL_QUEUE] == nullptr);
 
   _queues[AQL_QUEUE] = new DispatcherQueue(
-      _scheduler, this, AQL_QUEUE, CreateDispatcherThread, nrThreads, maxSize);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts a new named queue
-///
-/// This is not thread safe. Only used during initialization.
-////////////////////////////////////////////////////////////////////////////////
-
-int Dispatcher::addExtraQueue(size_t identifier, size_t nrThreads,
-                              size_t maxSize) {
-  if (identifier == 0) {
-    return TRI_ERROR_QUEUE_ALREADY_EXISTS;
-  }
-
-  size_t n = identifier + (SYSTEM_QUEUE_SIZE - 1);
-
-  if (_queues.size() <= n) {
-    _queues.resize(n + 1, nullptr);
-  }
-
-  if (_queues[n] != nullptr) {
-    return TRI_ERROR_QUEUE_ALREADY_EXISTS;
-  }
-
-  if (_stopping != 0) {
-    return TRI_ERROR_DISPATCHER_IS_STOPPING;
-  }
-
-  _queues[n] = new DispatcherQueue(_scheduler, this, n, CreateDispatcherThread,
-                                   nrThreads, maxSize);
-
-  return TRI_ERROR_NO_ERROR;
+      _scheduler, this, AQL_QUEUE, CreateDispatcherThread, nrThreads, nrExtraThreads, maxSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

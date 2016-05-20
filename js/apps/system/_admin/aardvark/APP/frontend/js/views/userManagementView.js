@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global _, window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
+/*global frontendConfig, _, window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
   CryptoJS, Joi */
 (function() {
 
@@ -37,11 +37,13 @@
     initialize: function() {
       var self = this,
       callback = function(error, user) {
-        if (error || user === null) {
-          arangoHelper.arangoError("User", "Could not fetch user data");
-        }
-        else {
-          this.currentUser = this.collection.findWhere({user: user});
+        if (frontendConfig.authenticationEnabled === true) {
+          if (error || user === null) {
+            arangoHelper.arangoError("User", "Could not fetch user data");
+          }
+          else {
+            this.currentUser = this.collection.findWhere({user: user});
+          }
         }
       }.bind(this);
 

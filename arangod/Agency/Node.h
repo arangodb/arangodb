@@ -88,6 +88,9 @@ class Node {
   /// @brief Construct with name
   explicit Node(std::string const& name);
 
+  Node(Node const& other);
+  Node(Node&& other);
+
   /// @brief Construct with name and introduce to tree under parent
   Node(std::string const& name, Node* parent);
 
@@ -105,6 +108,7 @@ class Node {
 
   /// @brief Apply rhs to this node (deep copy of rhs)
   Node& operator=(Node const& node);
+  Node& operator=(Node&& node);
 
   /// @brief Apply value slice to this node
   Node& operator=(arangodb::velocypack::Slice const&);

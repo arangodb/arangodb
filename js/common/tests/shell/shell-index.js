@@ -33,7 +33,6 @@ var internal = require("internal");
 var errors = internal.errors;
 var testHelper = require("@arangodb/test-helper").Helper;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: basics
 ////////////////////////////////////////////////////////////////////////////////
@@ -551,6 +550,142 @@ function getIndexesSuite() {
       assertEqual("fulltext", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "value" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get unique rocksdb index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetRocksDBUnique1 : function () {
+      collection.ensureIndex({ type: "rocksdb", unique: true, fields: ["value"] });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("rocksdb", idx.type);
+      assertTrue(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get unique rocksdb index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetRocksDBUnique2 : function () {
+      collection.ensureIndex({ type: "rocksdb", unique: true, fields: ["value1", "value2"] });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("rocksdb", idx.type);
+      assertTrue(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value1", "value2" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get unique rocksdb index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseRocksDBUnique1 : function () {
+      collection.ensureIndex({ type: "rocksdb", unique: true, fields: ["value"], sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("rocksdb", idx.type);
+      assertTrue(idx.unique);
+      assertTrue(idx.sparse);
+      assertEqual([ "value" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get unique rocksdb index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseRocksDBUnique2 : function () {
+      collection.ensureIndex({ type: "rocksdb", unique: true, fields: ["value1", "value2"], sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("rocksdb", idx.type);
+      assertTrue(idx.unique);
+      assertTrue(idx.sparse);
+      assertEqual([ "value1", "value2" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get non-unique rocksdb index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetRocksDBNonUnique1 : function () {
+      collection.ensureIndex({ type: "rocksdb", fields: ["value"] });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("rocksdb", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get non-unique rocksdb index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetRocksDBNonUnique2 : function () {
+      collection.ensureIndex({ type: "rocksdb", fields: ["value1", "value2"] });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("rocksdb", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value1", "value2" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get non-unique rocksdb index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseRocksDBNonUnique1 : function () {
+      collection.ensureIndex({ type: "rocksdb", fields: ["value"], sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("rocksdb", idx.type);
+      assertFalse(idx.unique);
+      assertTrue(idx.sparse);
+      assertEqual([ "value" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get non-unique rocksdb index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseRocksDBNonUnique2 : function () {
+      collection.ensureIndex({ type: "rocksdb", fields: ["value1", "value2"], sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("rocksdb", idx.type);
+      assertFalse(idx.unique);
+      assertTrue(idx.sparse);
+      assertEqual([ "value1", "value2" ], idx.fields);
     }
 
   };

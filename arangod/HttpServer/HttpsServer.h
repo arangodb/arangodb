@@ -42,7 +42,7 @@ class HttpsServer : public HttpServer {
   //////////////////////////////////////////////////////////////////////////////
 
   HttpsServer(Scheduler*, Dispatcher*, HttpHandlerFactory*, AsyncJobManager*,
-              double keepAliveTimeout, SSL_CTX*);
+              double keepAliveTimeout, std::vector<std::string> const&, SSL_CTX*);
 
   ~HttpsServer();
 

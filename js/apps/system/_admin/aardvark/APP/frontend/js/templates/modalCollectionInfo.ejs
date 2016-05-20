@@ -73,7 +73,29 @@
             <th class="collectionInfoTh">
             </th>
           </tr>
+
+          <% if (figuresData.numberOfShards) { %>
+            <tr>
+              <th class="collectionInfoTh2">Shards:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.numberOfShards%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
           
+          <% if (figuresData.replicationFactor) { %>
+            <tr>
+              <th class="collectionInfoTh2">Replication factor:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.replicationFactor%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+
           <tr>
             <th class="collectionInfoTh2">Index buckets:</th>
             <th class="collectionInfoTh">

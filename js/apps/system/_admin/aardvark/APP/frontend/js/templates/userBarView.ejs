@@ -1,9 +1,10 @@
 <script id="userBarView.ejs" type="text/template">
 
-  <a class="info">User: 
+  <a class="info default-icon">User: 
     <span class="toggle"> 
       <%=_.escape(username)%>
     </span>
+    <i id="userLogoutIcon" class="fa fa-power-off" aria-hidden="true"></i>
   </a>
 
   <ul id="userInfo" class="subBarDropdown">

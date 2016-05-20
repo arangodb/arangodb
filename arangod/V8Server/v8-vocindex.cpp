@@ -975,7 +975,33 @@ static void CreateCollectionCoordinator(
 
   std::vector<std::string> dbServers;
 
-  if (distributeShardsLike.empty()) {
+  bool done = false;
+  if (!distributeShardsLike.empty()) {
+    CollectionNameResolver resolver(vocbase);
+    TRI_voc_cid_t otherCid =
+        resolver.getCollectionIdCluster(distributeShardsLike);
+    if (otherCid != 0) {
+      std::string otherCidString 
+          = arangodb::basics::StringUtils::itoa(otherCid);
+      std::shared_ptr<CollectionInfo> collInfo =
+          ci->getCollection(databaseName, otherCidString);
+      if (!collInfo->empty()) {
+        auto shards = collInfo->shardIds();
+        auto shardList = ci->getShardList(otherCidString);
+        for (auto const& s : *shardList) {
+          auto it = shards->find(s);
+          if (it != shards->end()) {
+            for (auto const& s : it->second) {
+              dbServers.push_back(s);
+            }
+          }
+        }
+        done = true;
+      }
+    }
+  }
+
+  if (!done) {
     // fetch list of available servers in cluster, and shuffle them randomly
     dbServers = ci->getCurrentDBServers();
 
@@ -985,23 +1011,6 @@ static void CreateCollectionCoordinator(
     }
 
     random_shuffle(dbServers.begin(), dbServers.end());
-  } else {
-    CollectionNameResolver resolver(vocbase);
-    TRI_voc_cid_t otherCid =
-        resolver.getCollectionIdCluster(distributeShardsLike);
-    std::string otherCidString = arangodb::basics::StringUtils::itoa(otherCid);
-    std::shared_ptr<CollectionInfo> collInfo =
-        ci->getCollection(databaseName, otherCidString);
-    auto shards = collInfo->shardIds();
-    auto shardList = ci->getShardList(otherCidString);
-    for (auto const& s : *shardList) {
-      auto it = shards->find(s);
-      if (it != shards->end()) {
-        for (auto const& s : it->second) {
-          dbServers.push_back(s);
-        }
-      }
-    }
   }
 
   // now create the shards
@@ -1013,17 +1022,23 @@ static void CreateCollectionCoordinator(
     for (uint64_t j = 0; j < replicationFactor; ++j) {
       std::string candidate;
       size_t count2 = 0;
+      bool found = true;
       do {
         candidate = dbServers[count++];
         if (count >= dbServers.size()) {
           count = 0;
         }
         if (++count2 == dbServers.size() + 1) {
-          TRI_V8_THROW_EXCEPTION_PARAMETER("replicationFactor too large");
+          LOG(WARN) << "createCollectionCoordinator: replicationFactor is "
+                       "too large for the number of DBservers";
+          found = false;
+          break;
         }
       } while (std::find(serverIds.begin(), serverIds.end(), candidate) != 
                serverIds.end());
-      serverIds.push_back(candidate);
+      if (found) {
+        serverIds.push_back(candidate);
+      }
     }
 
     // determine shard id

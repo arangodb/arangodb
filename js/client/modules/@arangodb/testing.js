@@ -46,6 +46,7 @@ const functionsDocumentation = {
   "replication_ongoing": "replication ongoing tests",
   "replication_static": "replication static tests",
   "replication_sync": "replication sync tests",
+  "resilience": "resilience tests",
   "shell_client": "shell client tests",
   "shell_replication": "shell replication tests",
   "shell_server": "shell server tests",
@@ -290,6 +291,7 @@ function makeArgsArangod(options, appDir) {
     "javascript.app-path": appDir,
     "javascript.startup-directory": JS_DIR,
     "javascript.v8-contexts": "5",
+    "http.trusted-origin": "all",
     "log.level": "warning",
     "server.allow-use-database": "true",
     "server.authentication": "false",
@@ -1735,6 +1737,14 @@ function findTests() {
     }).map(
     function(x) {
       return fs.join(makePathUnix("js/client/tests/agency"), x);
+    }).sort();
+
+  testsCases.resilience = _.filter(fs.list(makePathUnix("js/server/tests/resilience")),
+    function(p) {
+      return p.substr(-3) === ".js";
+    }).map(
+    function(x) {
+      return fs.join(makePathUnix("js/server/tests/resilience"), x);
     }).sort();
 
   testsCases.server = testsCases.common.concat(testsCases.server_only);
@@ -3263,6 +3273,20 @@ testFuncs.replication_sync = function(options) {
   print("done.");
 
   return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: resilience
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.resilience = function(options) {
+  findTests();
+  options.propagateInstanceInfo = true;
+  options.cluster = true;
+  if (options.clusterNodes === undefined) {
+    options.clusterNodes = 3;
+  }
+  return performTests(options, testsCases.resilience, 'resilience');
 };
 
 ////////////////////////////////////////////////////////////////////////////////
