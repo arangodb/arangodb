@@ -622,13 +622,13 @@
       }
 
       if (self.server !== "-local-") {
-        url = self.serverInfo.endpoint + "/_admin/aardvark/statistics/cluster";
         urlParams += "&type=short&DBserver=" + self.serverInfo.target;
 
         if (! self.history.hasOwnProperty(self.server)) {
           self.history[self.server] = {};
         }
       }
+      console.log(url);
 
       $.ajax(
         url + urlParams,
