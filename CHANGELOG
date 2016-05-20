@@ -1,6 +1,50 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* changed default value of `--server.authentication` from `false` to `true` in 
+  configuration files etc/relative/arangod.conf and etc/arangodb/arangod.conf.in.
+  This means the server will be started with authentication enabled by default,
+  requiring all client connections to provide authentication data when connecting
+  to ArangoDB. Authentication can still be turned off via setting the value of
+  `--server.authentication` to `false` in ArangoDB's configuration files or by
+  specifying the option on the command-line.
+
+* Changed result format for querying all collections via the API GET `/_api/collection`.
+
+  Previous versions of ArangoDB returned an object with an attribute named `collections` 
+  and an attribute named `names`. Both contained all available collections, but
+  `collections` contained the collections as an array, and `names` contained the
+  collections again, contained in an object in which the attribute names were the
+  collection names, e.g.
+
+  ```
+  {
+    "collections": [
+      {"id":"5874437","name":"test","isSystem":false,"status":3,"type":2},
+      {"id":"17343237","name":"something","isSystem":false,"status":3,"type":2},
+      ...
+    ],
+    "names": {
+      "test": {"id":"5874437","name":"test","isSystem":false,"status":3,"type":2},
+      "something": {"id":"17343237","name":"something","isSystem":false,"status":3,"type":2},
+      ...
+    }
+  }
+  ```
+  This result structure was redundant, and therefore has been simplified to just
+
+  ```
+  {
+    "result": [
+      {"id":"5874437","name":"test","isSystem":false,"status":3,"type":2},
+      {"id":"17343237","name":"something","isSystem":false,"status":3,"type":2},
+      ...
+    ]
+  }
+  ```
+
+  in ArangoDB 3.0.
+
 * added AQL functions `TYPENAME()` and `HASH()`
 
 * renamed arangob tool to arangobench
@@ -188,6 +232,11 @@ v3.0.0 (XXXX-XX-XX)
 
 v2.8.10 (XXXX-XX-XX)
 --------------------
+
+* honor the value of startup option `--database.wait-for-sync` (that is used to control
+  whether new collections are created with `waitForSync` set to `true` by default) also
+  when creating collections via the HTTP API (and thus the ArangoShell). When creating
+  a collection via these mechanisms, the option was ignored so far, which was inconsistent.
 
 * fixed issue #1826: arangosh --javascript.execute: internal error (geo index issue)
 
