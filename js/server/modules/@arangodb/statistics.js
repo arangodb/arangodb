@@ -54,7 +54,9 @@ function createStatisticsCollection (name) {
     var r = null;
 
     try {
-      r = db._create(name, { isSystem: true, waitForSync: false });
+      r = db._create(name, { isSystem: true, waitForSync: false,
+                             replicationFactor: 2, 
+                             distributeShardsLike: "_graphs" });
     }
     catch (err) {
     }
