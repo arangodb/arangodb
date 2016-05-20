@@ -300,7 +300,7 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
     value.append(s.startAs<char const>(), s.byteSize());
     values.emplace_back(std::move(value));
   }
-      
+
   auto rocksTransaction = trx->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
@@ -315,6 +315,10 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
       if (status.ok()) {
         // duplicate key
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+        if (!_collection->useSecondaryIndexes()) {
+          // suppress the error during recovery
+          res = TRI_ERROR_NO_ERROR;
+        }
       }
     }
 
@@ -337,7 +341,7 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
       break;
     }
   }
-      
+
   return res;
 }
 

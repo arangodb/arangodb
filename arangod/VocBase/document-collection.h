@@ -97,12 +97,11 @@ struct TRI_document_collection_t : public TRI_collection_t {
   ~TRI_document_collection_t();
 
   std::string label() const;
-
+  
   // ...........................................................................
   // this lock protects the indexes and _headers attributes
   // ...........................................................................
 
-  // TRI_read_write_lock_t        _lock;
   arangodb::basics::ReadWriteLock _lock;
 
  private:
@@ -111,7 +110,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
   char const* _lastCompactionStatus;
   char _lastCompactionStamp[21];
 
-  // whether or not secondary indexes are filled
+  // whether or not secondary indexes should be filled
   bool _useSecondaryIndexes;
 
   // the following contains in the cluster/DBserver case the information
@@ -170,6 +169,9 @@ struct TRI_document_collection_t : public TRI_collection_t {
   // the collection's indexes that support cleanup
   size_t _cleanupIndexes;
 
+  // number of persistent indexes
+  size_t _persistentIndexes;
+
   int beginRead();
   int endRead();
   int beginWrite();
@@ -200,8 +202,12 @@ struct TRI_document_collection_t : public TRI_collection_t {
                         TRI_doc_mptr_t*, TRI_doc_mptr_t const*);
   
   arangodb::Index* removeIndex(TRI_idx_iid_t);
+  
+  /// @brief enumerate all indexes of the collection, but don't fill them yet
+  int detectIndexes(arangodb::Transaction*);
 
  private:
+
   int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const,
                      TRI_doc_mptr_t*&);
   int checkRevision(arangodb::Transaction*, arangodb::velocypack::Slice const,
