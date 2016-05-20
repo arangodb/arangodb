@@ -138,7 +138,6 @@
       else {
         callback(true, undefined);
       }
-      console.log(frontendConfig.db);
       return frontendConfig.db;
     },
 
