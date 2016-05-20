@@ -1,12 +1,12 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, Backbone, $ */
+/*global window, Backbone, $, arangoHelper */
 (function() {
   "use strict";
   window.CoordinatorCollection = Backbone.Collection.extend({
     model: window.Coordinator,
 
-    url: "/_admin/aardvark/cluster/Coordinators"
+    url: arangoHelper.databaseUrl("/_admin/aardvark/cluster/Coordinators")
 
   });
 }());

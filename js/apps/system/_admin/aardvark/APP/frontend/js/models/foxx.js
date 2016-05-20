@@ -147,7 +147,7 @@
 
     download: function () {
       window.open(
-        "/_db/" + arango.getDatabaseName() + "/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount()
+        arangoHelper.databaseUrl("/_db/" + arango.getDatabaseName() + "/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount())
       );
     }
   });

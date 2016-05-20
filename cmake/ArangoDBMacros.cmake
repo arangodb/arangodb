@@ -397,6 +397,7 @@ install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/actions ${PROJECT_SOURCE_DIR}/js/apps ${PROJECT_SOURCE_DIR}/js/contrib ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/server
   DESTINATION share/arangodb3/js
   REGEX "^.*/server/tests$" EXCLUDE
+  REGEX "^.*/aardvark/APP/node_modules$" EXCLUDE
 )
 
 ################################################################################
