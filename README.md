@@ -14,7 +14,7 @@ ArangoDB
 
 Master: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=master)](http://travis-ci.org/arangodb/arangodb)
 
-Slack: ![ArangoDB-Logo](http://slack.arangodb.com/badge.svg)
+Slack: [![ArangoDB-Logo](http://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
 
 ArangoDB is a multi-model, open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript extensions. Use ACID transactions if you require them. Scale horizontally with a few mouse clicks.
 
