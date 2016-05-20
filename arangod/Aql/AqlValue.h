@@ -140,14 +140,14 @@ struct AqlValue final {
     }
     if (length < sizeof(_data.internal) - 1) {
       // short string... can store it inline
-      _data.internal[0] = 0x40 + length;
+      _data.internal[0] = static_cast<uint8_t>(0x40 + length);
       memcpy(_data.internal + 1, value, length);
       setType(AqlValueType::VPACK_INLINE);
     } else if (length <= 126) {
       // short string... cannot store inline, but we don't need to
       // create a full-features Builder object here
       _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
-      _data.buffer->push_back(0x40 + length);
+      _data.buffer->push_back(static_cast<char>(0x40 + length));
       _data.buffer->append(value, length);
       setType(AqlValueType::VPACK_MANAGED);
     } else {
@@ -169,14 +169,14 @@ struct AqlValue final {
     size_t const length = value.size();
     if (length < sizeof(_data.internal) - 1) {
       // short string... can store it inline
-      _data.internal[0] = 0x40 + length;
+      _data.internal[0] = static_cast<uint8_t>(0x40 + length);
       memcpy(_data.internal + 1, value.c_str(), value.size());
       setType(AqlValueType::VPACK_INLINE);
     } else if (length <= 126) {
       // short string... cannot store inline, but we don't need to
       // create a full-features Builder object here
       _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
-      _data.buffer->push_back(0x40 + length);
+      _data.buffer->push_back(static_cast<char>(0x40 + length));
       _data.buffer->append(value.c_str(), length);
       setType(AqlValueType::VPACK_MANAGED);
     } else {
