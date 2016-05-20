@@ -35,7 +35,16 @@
 }
 
 .select2-drop-active {
+  border: 2px solid $c-info;
+  border-top: 0;
+  margin-top: -2px;
+  width: 452px !important;
   z-index: 9999999;
+}
+
+.select2-results,
+.select2-no-results {
+  font-weight: 100;
 }
 
 .modal-tabbar {
@@ -49,13 +58,27 @@
   font-weight: 300;
   max-height: 410px;
 
+  input {
+    height: 20px;
+  }
+
+  select {
+    height: 33px;
+  }
+
+  .select2-container-multi.select2-container-active {
+    .select2-choices {
+      border: 2px solid $c-info;
+    }
+  }
+
   .select2-choices {
     background-image: none !important;
-    border: 1px solid $c-dark-grey;
+    border: 2px solid $c-content-border;
     border-radius: 3px;
     -webkit-box-shadow: none;
     box-shadow: none;
-    width: 450px;
+    width: 448px;
 
     input {
       @extend %inputs;
@@ -270,11 +293,12 @@
   }
 
   select {
+    margin-top: 0;
     width: 452px;
   }
 
   .collectionTh {
-    height: 50px;
+    height: 55px;
   }
 
   .tab-content {
@@ -302,8 +326,7 @@
     color: $c-white;
     font-size: 9pt;
     font-weight: 100;
-    margin-bottom: 5px;
-    margin-top: -7px;
+    margin-top: -9px;
     padding-left: 5px;
     padding-right: 5px;
     position: absolute;
@@ -412,7 +435,6 @@
 
 .modal table tr,
 .thBorderBottom {
-  border-bottom: 1px solid $c-modal-table-border-bottom !important;
 }
 
 .modal-delete-confirmation {
