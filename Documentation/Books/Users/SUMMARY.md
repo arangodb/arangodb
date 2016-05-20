@@ -1,11 +1,11 @@
 #
 # Summary
 #
-#* [First Steps](FirstSteps/README.md)
-#  * [Getting Familiar](FirstSteps/GettingFamiliar.md)
+# * [First Steps](FirstSteps/README.md) #TODO
+#  * [Getting Familiar](FirstSteps/GettingFamiliar.md) #TODO
 * [Getting Started](GettingStarted/README.md)
   # move to administration (command line options)?
-  #* [Install and run the server](FirstSteps/Arangod.md)
+  # * [Install and run the server](FirstSteps/Arangod.md) #TODO
   * [Installing](GettingStarted/Installing/README.md)
     * [Linux](GettingStarted/Installing/Linux.md)
     * [Mac OS X](GettingStarted/Installing/MacOSX.md)
@@ -15,13 +15,13 @@
     * [Cluster setup](GettingStarted/Installing/Cluster.md)
   * [Using the Web Interface](GettingStarted/WebInterface.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
-  #* [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md)
+  # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
 #
 * [Scalability](Scalability/README.md)
 #  * [Joins](Scalability/Joins.md)
 #
 * [Data model & modeling](DataModeling/README.md)
-#* [Collections](FirstSteps/CollectionsAndDocuments.md)
+# * [Collections](FirstSteps/CollectionsAndDocuments.md) #TODO
   * [Concepts](DataModeling/Concepts.md)
   * [Databases](DataModeling/Databases/README.md)
     * [Working with Databases](DataModeling/Databases/WorkingWith.md)
@@ -86,6 +86,8 @@
   * [Related modules](Foxx/Modules.md)
     * [Authentication](Foxx/Auth.md)
     * [OAuth 2.0](Foxx/OAuth2.md)
+  # TODO: fixme Alan:
+  * [User management in Foxx](Foxx/Users.md)
 * [Transactions](Transactions/README.md)
   * [Transaction invocation](Transactions/TransactionInvocation.md)
   * [Passing parameters](Transactions/Passing.md)
