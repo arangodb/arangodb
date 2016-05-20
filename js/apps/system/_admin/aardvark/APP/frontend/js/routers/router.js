@@ -288,7 +288,6 @@
         this.navigate("#dashboard", {trigger: true});
         return;
       }
-
       this.nodesView = new window.NodesView({
         coordinators: this.coordinatorCollection,
         dbServers: this.dbServers[0],
@@ -306,6 +305,10 @@
       if (this.isCluster === false) {
         this.routes[""] = 'dashboard';
         this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+      if (this.dbServers.length === 0) {
+        this.navigate("#cNodes", {trigger: true});
         return;
       }
 
