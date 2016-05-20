@@ -106,7 +106,54 @@ router.get('/hello/:name', function (req, res) {
 
 The first line imports the [`joi` module from npm][JOI] which comes bundled with ArangoDB. Joi is a validation library that is used throughout Foxx to define schemas and parameter types.
 
-**Note**: You can bundle your own modules from npm by installing them in your service folder and making sure the `node_modules` folder is included in your zip archive. For more information see [the chapter on modules][MODULES].
+**Note**: You can bundle your own modules from npm by installing them in your service folder and making sure the `node_modules` folder is included in your zip archive. For more information see [the section on module dependencies in the chapter on dependencies][DEPENDENCIES].
+
+The `pathParam` method allows us to specify parameters we are expecting in the path. The first argument corresponds to the parameter name in the path, the second argument is a joi schema the parameter is expected to match and the final argument serves to describe the parameter in the API documentation.
+
+The path parameters are accessible from the `pathParams` property of the request object. We're using a template string to generate the server's response containing the parameter's value.
+
+Note that routes with path parameters that fail to validate for the request URL will be skipped as if they wouldn't exist. This allows you to define multiple routes that are only distinguished by the schemas of their path parameters (e.g. a route taking only numeric parameters and one taking any string as a fallback).
+
+![Screenshot of the API docs after a request to /hello/world]()
+
+Let's take this further and create a route that takes a JSON request body:
+
+```js
+const requestSchema = joi.object({
+  values: joi.array().items(joi.number().required()).required()
+}).required();
+const responseSchema = joi.object({
+  result: joi.number().required()
+}).required();
+router.post('/sum', function (req, res) {
+  const values = req.body.values;
+  res.send({
+    result: values.reduce(function (a, b) {
+      return a + b;
+    }, 0)
+  });
+})
+.body(requestSchema, 'Values to add together.')
+.response(responseSchema, 'Sum of the input values.')
+.summary('Add up numbers')
+.description('Calculates the sum of an array of number values.');
+```
+
+Note that we used `post` to define this route instead of `get` (which does not support request bodies). Trying to send a GET request to this route's URL (in the absence of a `get` route for the same path) will result in Foxx responding with an appropriate error response, indicating the supported HTTP methods.
+
+As this route not only expects a JSON object as input but also responds with a JSON object as output we need to define two schemas. We don't strictly need a response schema but it helps documenting what the route should be expected to respond with and will show up in the API documentation.
+
+Because we're passing a schema to the `response` method we don't need to explicitly tell Foxx we are sending a JSON response. The presence of a schema in the absence of a content type always implies we want JSON. Though we could just add `["application/json"]` as an additional argument after the schema if we wanted to make this more explicit.
+
+The `body` method works the same way as the `response` method except the schema will be used to validate the request body. If the request body can't be parsed as JSON or doesn't match the schema, Foxx will reject the request with an appropriate error response.
+
+![Screenshot of the API docs after a request with an array of numbers]()
+
+!SECTION Using the database
+
+TODO
+
+!SECTION Next steps
 
 TODO
 
@@ -117,4 +164,4 @@ TODO
 [REQUEST]: ./Router/Request.md
 [RESPONSE]: ./Router/Response.md
 [ROUTES]: ./Router/Endpoints.md
-[MODULES]: ./Modules.md
+[DEPENDENCIES]: ./Dependencies.md

@@ -74,6 +74,13 @@
           ignoreNull: ignoreNull
         };
         break;
+        case 'Persistent':
+          fields = $('#newPersistentFields').val();
+        postParameter = {
+          type: 'persistent',
+          fields: self.stringToArray(fields)
+        };
+        break;
         case 'Hash':
           fields = $('#newHashFields').val();
         unique = self.checkboxToValue('#newHashUnique');

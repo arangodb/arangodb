@@ -36,6 +36,7 @@ const examples = require('@arangodb/graph-examples/example-graph');
 const systemStorage = require('@arangodb/foxx/sessions/storages/_system');
 const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
+const cluster = require('@arangodb/cluster');
 
 const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
 const API_DOCS = require(module.context.fileName('api-docs.json'));
@@ -78,8 +79,14 @@ router.get('/config.js', function(req, res) {
       && isTrustedProxy(req.remoteAddress)) {
     basePath = req.headers['x-script-name'];
   }
+  console.log(Object.keys(global));
   res.set('content-type', 'text/javascript');
-  res.send("var frontendConfig = " + JSON.stringify({"basePath": basePath, "db": req.database, "authenticationEnabled": global.AUTHENTICATION_ENABLED()}));
+  res.send("var frontendConfig = " + JSON.stringify({
+    "basePath": basePath, 
+    "db": req.database, 
+    "authenticationEnabled": global.AUTHENTICATION_ENABLED(),
+    "isCluster": cluster.isCluster()
+  }));
 });
 
 router.get('/whoAmI', function(req, res) {
