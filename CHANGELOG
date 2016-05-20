@@ -1,6 +1,11 @@
 v2.8.10 (XXXX-XX-XX)
 --------------------
 
+* honor the value of startup option `--database.wait-for-sync` (that is used to control
+  whether new collections are created with `waitForSync` set to `true` by default) also
+  when creating collections via the HTTP API (and thus the ArangoShell). When creating
+  a collection via these mechanisms, the option was ignored so far, which was inconsistent.
+
 * fixed issue #1826: arangosh --javascript.execute: internal error (geo index issue)
 
 * fixed issue #1823: Arango crashed hard executing very simple query on windows
