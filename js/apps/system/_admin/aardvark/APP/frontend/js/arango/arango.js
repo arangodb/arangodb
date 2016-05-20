@@ -362,6 +362,10 @@
       window.App.notificationList.add({title:title, content: content, info: info, type: 'error'});
     },
 
+    arangoWarning: function (title, content, info) {
+      window.App.notificationList.add({title:title, content: content, info: info, type: 'warning'});
+    },
+
     hideArangoNotifications: function() {
       $.noty.clearQueue();
       $.noty.closeAll();

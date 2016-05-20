@@ -323,8 +323,9 @@ it may break client applications that rely on the old behavior.
 
 !SUBSECTION Databases API
 
-`_listDatabases()` has been renamed to `_databases()` (making it consistent with `_collections()`)
-`_listEndpoints()` has been renamed to `_endpoints()` (making it consistent with `_collections()`)
+The `_listDatabases()` function of the `db` object has been renamed to `_databases()`, making it 
+consistent with the `_collections()` function. Also the `_listEndpoints()` function has been 
+renamed to `_endpoints()`.
 
 !SUBSECTION Collection API
 
@@ -589,6 +590,43 @@ could be overridden by sending the HTTP header `x-arango-version: 1.4`. Clients 
 still send the header, but this will not make the database name in the "location"
 response header disappear.
 
+The result format for querying all collections via the API GET `/_api/collection` 
+has been changed. 
+
+Previous versions of ArangoDB returned an object with an attribute named `collections` 
+and an attribute named `names`. Both contained all available collections, but 
+`collections` contained the collections as an array, and `names` contained the 
+collections again, contained in an object in which the attribute names were the 
+collection names, e.g.
+
+```
+{ 
+  "collections": [
+    {"id":"5874437","name":"test","isSystem":false,"status":3,"type":2},
+    {"id":"17343237","name":"something","isSystem":false,"status":3,"type":2},
+    ...
+  ],
+  "names": {
+    "test": {"id":"5874437","name":"test","isSystem":false,"status":3,"type":2},
+    "something": {"id":"17343237","name":"something","isSystem":false,"status":3,"type":2},
+    ...
+  }
+}
+```
+
+This result structure was redundant, and therefore has been simplified to just
+
+```
+{
+  "result": [
+    {"id":"5874437","name":"test","isSystem":false,"status":3,"type":2},
+    {"id":"17343237","name":"something","isSystem":false,"status":3,"type":2},
+    ...
+  ]
+}
+
+in ArangoDB 3.0.
+
 !SUBSECTION Replication APIs
 
 The URL parameter "failOnUnknown" was removed from the REST API GET `/_api/replication/dump`.
@@ -771,7 +809,7 @@ to adapt to the new behavior, making the option superfluous in 3.0.
 !SECTION Web Admin Interface
 
 The JavaScript shell has been removed from ArangoDB's web interface. The functionality
-it provided is still fully available in the ArangoShell (arangosh) binary shipped
+the shell provided is still fully available in the ArangoShell (arangosh) binary shipped
 with ArangoDB.
 
 !SECTION ArangoShell and client tools

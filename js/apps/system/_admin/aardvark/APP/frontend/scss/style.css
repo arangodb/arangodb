@@ -4104,7 +4104,6 @@ input.gv-radio-button {
   text-align: left;
   width: 20% !important; }
   .collectionTh input,
-  .collectionTh select,
   .collectionTh textarea {
     margin-top: 10px; }
 

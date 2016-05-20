@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, templateEngine, $, window, noty */
+/*global frontendConfig, Backbone, templateEngine, $, window, noty */
 (function () {
   "use strict";
 
@@ -16,6 +16,15 @@
       this.collection.bind("add", this.renderNotifications.bind(this));
       this.collection.bind("remove", this.renderNotifications.bind(this));
       this.collection.bind("reset", this.renderNotifications.bind(this));
+
+      // TODO save user property if check should be enabled/disabled
+      window.setTimeout(function() {
+        if (frontendConfig.authenticationEnabled === false) {
+          window.arangoHelper.arangoWarning(
+            "Warning", "Authentication is disabled. Do not use this setup in production mode."
+          );
+        }
+      }, 2000);
     },
 
     notificationItem: templateEngine.createTemplate("notificationItem.ejs"),
@@ -66,6 +75,10 @@
               }
             }];
           }
+          else if (latestModel.get('type') === 'warning') {
+            time = 20000;
+          }
+
           $.noty.clearQueue();
           $.noty.closeAll();
 

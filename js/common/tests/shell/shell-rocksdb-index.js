@@ -2,7 +2,7 @@
 /*global fail, assertEqual, assertTrue, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the hash index
+/// @brief test the rocksdb index
 ///
 /// @file
 ///
@@ -32,12 +32,12 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: Creation
+/// @brief test suite: creation
 ////////////////////////////////////////////////////////////////////////////////
 
-function HashIndexSuite() {
+function RocksDBIndexSuite() {
   'use strict';
-  var cn = "UnitTestsCollectionHash";
+  var cn = "UnitTestsCollectionRocksDB";
   var collection = null;
 
   return {
@@ -69,43 +69,43 @@ function HashIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: hash index creation
+/// @brief test: index creation
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreationUniqueConstraint : function () {
-      var idx = collection.ensureHashIndex("a");
+    testCreation : function () {
+      var idx = collection.ensureIndex({ type: "rocksdb", fields: ["a"] });
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("hash", idx.type);
+      assertEqual("rocksdb", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(false, idx.sparse);
       assertEqual(["a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
-      idx = collection.ensureHashIndex("a");
+      idx = collection.ensureIndex({ type: "rocksdb", fields: ["a"] });
 
       assertEqual(id, idx.id);
-      assertEqual("hash", idx.type);
+      assertEqual("rocksdb", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(false, idx.sparse);
       assertEqual(["a"], idx.fields);
       assertEqual(false, idx.isNewlyCreated);
 
-      idx = collection.ensureHashIndex("a", { sparse: true });
+      idx = collection.ensureIndex({ type: "rocksdb", fields: ["a"], sparse: true });
 
       assertNotEqual(id, idx.id);
-      assertEqual("hash", idx.type);
+      assertEqual("rocksdb", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(true, idx.sparse);
       assertEqual(["a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
       id = idx.id;
 
-      idx = collection.ensureHashIndex("a", { sparse: true });
+      idx = collection.ensureIndex({ type: "rocksdb", fields: ["a"], sparse: true });
 
       assertEqual(id, idx.id);
-      assertEqual("hash", idx.type);
+      assertEqual("rocksdb", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(true, idx.sparse);
       assertEqual(["a"], idx.fields);
@@ -116,22 +116,39 @@ function HashIndexSuite() {
 /// @brief test: permuted attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreationPermutedUniqueConstraint : function () {
-      var idx = collection.ensureHashIndex("a", "b");
+    testCreationPermuted : function () {
+      var idx = collection.ensureIndex({ type: "rocksdb", fields: ["a", "b"] });
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("hash", idx.type);
+      assertEqual("rocksdb", idx.type);
       assertEqual(false, idx.unique);
-      assertEqual(["a","b"].sort(), idx.fields.sort());
+      assertEqual(["a","b"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
-      idx = collection.ensureHashIndex("b", "a");
+      idx = collection.ensureIndex({ type: "rocksdb", fields: ["a", "b"] });
 
       assertEqual(id, idx.id);
-      assertEqual("hash", idx.type);
+      assertEqual("rocksdb", idx.type);
       assertEqual(false, idx.unique);
-      assertEqual(["a","b"].sort(), idx.fields.sort());
+      assertEqual(["a","b"], idx.fields);
+      assertEqual(false, idx.isNewlyCreated);
+      
+      idx = collection.ensureIndex({ type: "rocksdb", fields: ["b", "a"] });
+
+      assertNotEqual(id, idx.id);
+      id = idx.id;
+      assertEqual("rocksdb", idx.type);
+      assertEqual(false, idx.unique);
+      assertEqual(["b","a"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+      
+      idx = collection.ensureIndex({ type: "rocksdb", fields: ["b", "a"] });
+
+      assertEqual(id, idx.id);
+      assertEqual("rocksdb", idx.type);
+      assertEqual(false, idx.unique);
+      assertEqual(["b","a"], idx.fields);
       assertEqual(false, idx.isNewlyCreated);
     },
 
@@ -140,11 +157,11 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUniqueDocuments : function () {
-      var idx = collection.ensureHashIndex("a", "b");
+      var idx = collection.ensureIndex({ type: "rocksdb", fields: ["a", "b"] });
 
-      assertEqual("hash", idx.type);
+      assertEqual("rocksdb", idx.type);
       assertEqual(false, idx.unique);
-      assertEqual(["a","b"].sort(), idx.fields.sort());
+      assertEqual(["a","b"], idx.fields.sort());
       assertEqual(true, idx.isNewlyCreated);
 
       collection.save({ a : 1, b : 1 });
@@ -163,11 +180,11 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUniqueDocumentsSparseIndex : function () {
-      var idx = collection.ensureHashIndex("a", "b", { sparse: true });
+      var idx = collection.ensureIndex({ type: "rocksdb", fields: ["a", "b"], sparse: true });
 
-      assertEqual("hash", idx.type);
+      assertEqual("rocksdb", idx.type);
       assertEqual(false, idx.unique);
-      assertEqual(["a","b"].sort(), idx.fields.sort());
+      assertEqual(["a","b"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
       collection.save({ a : 1, b : 1 });
@@ -186,8 +203,8 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiIndexViolation1 : function () {
-      collection.ensureUniqueConstraint("a");
-      collection.ensureSkiplist("b");
+      collection.ensureIndex({ type: "rocksdb", fields: ["a"], unique: true });
+      collection.ensureIndex({ type: "rocksdb", fields: ["b"] });
 
       collection.save({ a : "test1", b : 1});
       try {
@@ -216,8 +233,8 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiIndexViolationSparse1 : function () {
-      collection.ensureUniqueConstraint("a", { sparse: true });
-      collection.ensureSkiplist("b", { sparse: true });
+      collection.ensureIndex({ type: "rocksdb", fields: ["a"], unique: true, sparse: true });
+      collection.ensureIndex({ type: "rocksdb", fields: ["b"], sparse: true });
 
       collection.save({ a : "test1", b : 1});
       try {
@@ -246,8 +263,8 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiIndexViolation2 : function () {
-      collection.ensureUniqueSkiplist("a");
-      collection.ensureHashIndex("b");
+      collection.ensureIndex({ type: "rocksdb", fields: ["a"], unique: true });
+      collection.ensureIndex({ type: "rocksdb", fields: ["b"] });
 
       collection.save({ a : "test1", b : 1});
       try {
@@ -276,8 +293,8 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiIndexViolationSparse2 : function () {
-      collection.ensureUniqueSkiplist("a", { sparse: true });
-      collection.ensureHashIndex("b", { sparse: true });
+      collection.ensureIndex({ type: "rocksdb", fields: ["a"], unique: true, sparse: true });
+      collection.ensureIndex({ type: "rocksdb", fields: ["b"], sparse: true });
 
       collection.save({ a : "test1", b : 1});
       try {
@@ -305,10 +322,10 @@ function HashIndexSuite() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
+/// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(HashIndexSuite);
+jsunity.run(RocksDBIndexSuite);
 
 return jsunity.done();
 

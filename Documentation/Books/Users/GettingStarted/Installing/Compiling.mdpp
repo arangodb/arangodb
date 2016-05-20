@@ -22,26 +22,23 @@ is available that describes how to compile ArangoDB from source on Ubuntu.
 
 Verify that your system contains
 
-* the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries, with support
-  for C++11. You will need version gcc 4.9.0 or higher. For "clang" and "clang++", 
-  you will need at least version 3.6.
-* the GNU autotools (autoconf, automake)
+* git (to obtain the sources)
+* a modern C/C++ compiler C++11 capable including full regex support:
+  * GNU "gcc" and "g++" version 4.9.0 or higher
+  * "clang" and "clang++" version 3.6 or higher
+  * Visual C++ 2015 [(see the "compiling under windows" cookbook for more details)](/cookbook/CompilingUnderWindows30.html)
+* cmake
 * GNU make
-* the GNU scanner generator FLEX, at least version 2.3.35
-* the GNU parser generator BISON, at least version 2.4
-* Python, version 2 or 3
+* Python, version 2 in order to use gyp for V8
 * the OpenSSL library, version 1.0.1g or higher (development package)
-* the GNU readline library (development package)
-* Go, at least version 1.4.1
+* jemalloc or tcmalloc development packages
+* the GNU scanner generator FLEX, at least version 2.3.35 (optional)
+* the GNU parser generator BISON, at least version 2.4 (optional)
 
 Most Linux systems already supply RPMs or DPKGs for these packages. 
-Some distributions, for example Ubuntu 12.04 or Centos 5, provide only very out-dated 
-versions of compilers, FLEX, BISON, and/or the V8 engine. In that case you need to compile 
+Some older distributions, for example Ubuntu 12.04 or Centos 5, provide only very out-dated 
+versions of compilers, FLEX and BISON. In that case you need to compile 
 newer versions of the programs and/or libraries.
-
-When compiling with special configure options, you may need the following extra libraries:
-
-* the Boost test framework library (only when using configure option `--enable-maintainer-mode`) 
 
 !SUBSECTION Download the Source
 
@@ -62,42 +59,38 @@ any changes, you can speed up cloning substantially by using the *--single-branc
 Switch into the ArangoDB directory
 
     unix> cd ArangoDB
+    unix> mkdir build
+    unix> cd build
 
-In order to generate the configure script, execute
+In order to generate the build environment please execute
 
-    unix> make setup
-
-This will call aclocal, autoheader, automake, and autoconf in the correct order.
-
-!SUBSECTION Configure
-
-In order to configure the build environment please execute
-
-    unix> ./configure
+    unix> cmake .. 
 
 to setup the makefiles. This will check the various system characteristics and
-installed libraries.
+installed libraries. If you installed the compiler in a non standard location, you may need to specify it:
 
-Please note that it may be required to set the *--host* and *--target* variables
-when running the configure command. For example, if you compile on MacOS, you
-should add the following options to the configure command:
+    cmake -DCMAKE_C_COMPILER=/opt/bin/gcc -DCMAKE_CXX_COMPILER=/opt/bin/g++ ..
 
-    --host=x86_64-apple-darwin --target=x86_64-apple-darwin
+If you compile on MacOS, you should add the following options to the cmake command:
 
-The host and target values for other architectures vary. 
+    cmake .. -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_BUILD_TYPE=RelWithDebInfo  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11
 
-If you also plan to make changes to the source code of ArangoDB, add the
-following option to the *configure* command: *--enable-maintainer-mode*. Using
-this option, you can make changes to the lexer and parser files and some other
-source files that will generate other files. Enabling this option will add extra
-dependencies to BISON, FLEX, and PYTHON. These external tools then need to be
-available in the correct versions on your system.
+If you also plan to make changes to the source code of ArangoDB, you should compile with the `Debug` target;
+The `Debug` target enables additional sanity checks etc. which would slow down production binaries.
 
-The following configuration options exist:
+Other options valuable for development:
 
-`--enable-relative` 
+    -DARANGODB_ENABLE_MAINTAINER_MODE
 
-This will make relative paths be used in the compiled binaries and
+Needed, if you plan to make changes to AQL language (which is implemented using a lexer and parser
+files in `arangod/Aql/grammar.y` and `arangod/Aql/tokens.ll`) your system has to contain the tools FLEX and BISON.
+
+    -DARANGODB_ENABLE_BACKTRACE
+
+(requires the maintainer mode) If you want to have c++ stacktraces attached to your exceptions.
+This can be usefull to more quick locate the place where an exception or an assertion was thrown.
+
+
 scripts. It allows to run ArangoDB from the compile directory directly, without the
 need for a *make install* command and specifying much configuration parameters. 
 When used, you can start ArangoDB using this command:
@@ -106,73 +99,21 @@ When used, you can start ArangoDB using this command:
 
 ArangoDB will then automatically use the configuration from file *etc/relative/arangod.conf*.
 
-`--enable-all-in-one-etcd` 
-
-This tells the build system to use the bundled version of ETCD. This is the
-default and recommended.
-
-`--enable-internal-go` 
-
-This tells the build system to use Go binaries located in the 3rdParty
-directory. Note that ArangoDB does not ship with Go binaries, and that the Go
-binaries must be copied into this directory manually.
-
-`--enable-maintainer-mode` 
-
-This tells the build system to use BISON and FLEX to regenerate the parser and
-scanner files. If disabled, the supplied files will be used so you cannot make
-changes to the parser and scanner files.  You need at least BISON 2.4.1 and FLEX
-2.5.35.  This option also allows you to make changes to the error messages file,
-which is converted to js and C header files using Python. You will need Python 2
-or 3 for this.  Furthermore, this option enables additional test cases to be
-executed in a *make unittests* run. You also need to install the Boost test
-framework for this.
-
-Additionally, turning on the maintainer mode will turn on a lot of assertions in
-the code.
-
-`--enable-failure-tests`
+    -DUSE_FAILURE_TESTS
 
 This option activates additional code in the server that intentionally makes the
 server crash or misbehave (e.g. by pretending the system ran out of
 memory). This option is useful for writing tests.
 
-`--enable-v8-debug`
+By default the libc allocator is chosen. If your system offers the jemalloc it will be
+prefered over tcmalloc and the system allocator. 
 
-Builds a debug version of the V8 library. This is useful only when working on
-the V8 integration inside ArangoDB.
+!SUBSUBSECTION shared memory
+Gyp is used as makefile generator by V8. Gyp requires shared memory to be available,
+which may not if you i.e. compile in a chroot. You can make it available like this:
 
-`--enable-tcmalloc`
-
-Links arangod and the client tools against the tcmalloc library installed on the
-system. Note that when this option is set, a tcmalloc library must be present
-and exposed under the name `libtcmalloc`, `libtcmalloc_minimal` or
-`libtcmalloc_debug`.
-
-!SUBSECTION Compiling Go
-
-Users F21 and duralog told us that some systems don't provide an update-to-date
-version of go. This seems to be the case for at least Ubuntu 12 and 13. To
-install go on these system, you may follow the instructions provided
-[here](http://blog.labix.org/2013/06/15/in-flight-deb-packages-of-go).  For
-other systems, you may follow the instructions
-[here](http://golang.org/doc/install).
-
-To make ArangoDB use a specific version of go, you may copy the go binaries into
-the 3rdParty/go-32 or 3rdParty/go-64 directories of ArangoDB (depending on your
-architecture), and then tell ArangoDB to use this specific go version by using
-the *--enable-internal-go* configure option.
-
-User duralog provided some the following script to pull the latest release
-version of go into the ArangoDB source directory and build it:
-
-    cd ArangoDB
-    hg clone -u release https://code.google.com/p/go 3rdParty/go-64 && \
-      cd 3rdParty/go-64/src && \
-      ./all.bash
-
-    # now that go is installed, run your configure with --enable-internal-go
-    ./configure --enable-internal-go
+    none /opt/chroots/ubuntu_precise_x64/dev/shm tmpfs rw,nosuid,nodev,noexec 0 2
+    devpts    /opt/chroots/ubuntu_precise_x64/dev/pts    devpts    gid=5,mode=620    0  0
 
 
 !SUBSECTION Compile
@@ -200,10 +141,10 @@ to IP address 127.0.0.1. You should see the startup messages similar to the
 following:
 
 ```
-2013-10-14T12:47:29Z [29266] INFO ArangoDB xxx ... 
-2013-10-14T12:47:29Z [29266] INFO using endpoint 'tcp://127.0.0.1.8529' for non-encrypted requests
-2013-10-14T12:47:30Z [29266] INFO Authentication is turned off
-2013-10-14T12:47:30Z [29266] INFO ArangoDB (version xxx) is ready for business. Have fun!
+2016-06-01T12:47:29Z [29266] INFO ArangoDB xxx ... 
+2016-06-10T12:47:29Z [29266] INFO using endpoint 'tcp://127.0.0.1.8529' for non-encrypted requests
+2016-06-01T12:47:30Z [29266] INFO Authentication is turned on
+2016-60-01T12:47:30Z [29266] INFO ArangoDB (version xxx) is ready for business. Have fun!
 ```
 
 If it fails with a message about the database directory, please make sure the
@@ -233,27 +174,18 @@ From time to time there will be bigger structural changes in ArangoDB, which may
 render the old Makefiles invalid. Should this be the case and `make` complains
 about missing files etc., the following commands should fix it:
 
-    unix> rm -rf lib/*/.deps arangod/*/.deps arangosh/*/.deps Makefile
-    unix> make setup
-    unix> ./configure <your configure options go here>
+
+    unix> rm -f CMakeCache.txt
+    unix> cmake .. 
     unix> make
 
 In order to reset everything and also recompile all 3rd party libraries, issue
 the following commands:
 
-    unix> make superclean
     unix> git checkout -- .
-    unix> make setup
-    unix> ./configure <your configure options go here>
-    unix> make
+    unix> cd ..; rm -rf build; mkdir build; cd build
 
 This will clean up ArangoDB and the 3rd party libraries, and rebuild everything.
-
-If you forgot your previous configure options, you can look them up with
-
-    unix> head config.log
-   
-before issuing `make superclean` (as make `superclean` also removes the file `config.log`). 
 
 Sometimes you can get away with the less intrusive commands.
 
