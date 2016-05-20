@@ -253,7 +253,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 
   if (slice.isObject()) {  // single document case
     std::string const rev =
-        VelocyPackHelper::getStringValue(slice, StaticStrings::KeyString, "");
+        VelocyPackHelper::getStringValue(slice, StaticStrings::RevString, "");
     _response->setHeaderNC(StaticStrings::Etag, "\"" + rev + "\"");
   }
   VPackBuilder builder;
