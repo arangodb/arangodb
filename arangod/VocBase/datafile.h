@@ -243,7 +243,7 @@ struct TRI_df_marker_t {
  private:
   TRI_voc_size_t _size;  // 4 bytes
   TRI_voc_crc_t _crc;    // 4 bytes, generated
-  uint64_t _typeAndTick; // 8 bytes
+  uint64_t _typeAndTick; // 8 bytes, including 1 byte for type and 7 bytes for tick
  
  public:
   TRI_df_marker_t() : _size(0), _crc(0), _typeAndTick(0) {}
