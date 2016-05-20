@@ -83,11 +83,10 @@
   * [Writing tests](Foxx/Testing.md)
   * [Scripts and queued jobs](Foxx/Scripts.md)
   * [Legacy mode for 2.x](Foxx/LegacyMode.md)
+  * [User management](Foxx/Users.md)
   * [Related modules](Foxx/Modules.md)
     * [Authentication](Foxx/Auth.md)
     * [OAuth 2.0](Foxx/OAuth2.md)
-  # TODO: fixme Alan:
-  * [User management in Foxx](Foxx/Users.md)
 * [Transactions](Transactions/README.md)
   * [Transaction invocation](Transactions/TransactionInvocation.md)
   * [Passing parameters](Transactions/Passing.md)
