@@ -44,12 +44,12 @@ using namespace arangodb::rest;
 RestExportHandler::RestExportHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request), _restrictions() {}
 
-HttpHandler::status_t RestExportHandler::execute() {
+RestHandler::status RestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(GeneralResponse::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/export' is not yet supported in a cluster");
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   // extract the sub-request type
@@ -57,22 +57,22 @@ HttpHandler::status_t RestExportHandler::execute() {
 
   if (type == GeneralRequest::RequestType::POST) {
     createCursor();
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   if (type == GeneralRequest::RequestType::PUT) {
     modifyCursor();
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   if (type == GeneralRequest::RequestType::DELETE_REQ) {
     deleteCursor();
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

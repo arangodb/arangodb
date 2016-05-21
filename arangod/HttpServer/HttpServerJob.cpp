@@ -28,9 +28,10 @@
 #include "Dispatcher/DispatcherQueue.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
-#include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpServer.h"
+#include "HttpServer/RestHandler.h"
 #include "Logger/Logger.h"
+#include "RestServer/RestServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -42,7 +43,7 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServerJob::HttpServerJob(HttpServer* server,
-                             WorkItem::uptr<HttpHandler>& handler, bool isAsync)
+                             WorkItem::uptr<RestHandler>& handler, bool isAsync)
     : Job("HttpServerJob"),
       _server(server),
       _workDesc(nullptr),
@@ -80,7 +81,8 @@ void HttpServerJob::work() {
 
     if (_isAsync) {
       _handler->RequestStatisticsAgent::release();
-      _server->jobManager()->finishAsyncJob(_jobId, _handler->stealResponse());
+      RestServerFeature::JOB_MANAGER->finishAsyncJob(_jobId,
+                                                     _handler->stealResponse());
     } else {
       auto data = std::make_unique<TaskData>();
 

@@ -44,7 +44,7 @@ class RestAdminLogHandler : public RestBaseHandler {
   /// @brief returns the log files (inheritDoc)
   //////////////////////////////////////////////////////////////////////////////
 
-  status_t execute() override;
+  status execute() override;
 };
 }
 

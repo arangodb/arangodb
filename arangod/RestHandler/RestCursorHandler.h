@@ -56,7 +56,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
       arangodb::aql::QueryRegistry*);
 
  public:
-  virtual status_t execute() override;
+  virtual status execute() override;
 
   bool cancel() override;
 

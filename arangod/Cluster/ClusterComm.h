@@ -39,7 +39,6 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-
 class ClusterCommThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +176,7 @@ struct ClusterCommOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterCommRestCallback(std::string& coordinator,
-                             HttpResponse* response);
+                             GeneralResponse* response);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief used to let ClusterComm send a set of requests and look after them
@@ -331,14 +330,14 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string processAnswer(std::string& coordinatorHeader,
-                            HttpRequest* answer);
+                            GeneralRequest* answer);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief send an answer HTTP request to a coordinator
   //////////////////////////////////////////////////////////////////////////////
 
   void asyncAnswer(std::string& coordinatorHeader,
-                   HttpResponse* responseToSend);
+                   GeneralResponse* responseToSend);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief this method performs the given requests described by the vector

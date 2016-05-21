@@ -97,6 +97,15 @@ class GeneralResponse {
     NOT_EXTENDED = 510
   };
 
+  enum class ContentType {
+    CUSTOM,  // use Content-Type from _headers
+    JSON,    // application/json
+    VPACK,   // application/x-velocypack
+    TEXT,    // text/plain
+    HTML,    // text/html
+    DUMP     // application/x-arango-dump
+  };
+
  public:
   // converts the response code to a string for delivering to a http client.
   static std::string responseString(ResponseCode);
@@ -107,8 +116,10 @@ class GeneralResponse {
   // response code from integer error code
   static ResponseCode responseCode(int);
 
- public:
+ protected:
   explicit GeneralResponse(ResponseCode);
+
+ public:
   virtual ~GeneralResponse() {}
 
  public:

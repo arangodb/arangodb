@@ -21,10 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpHandlerFactory.h"
+#include "RestHandlerFactory.h"
 
 #include "Cluster/ServerState.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/RequestContext.h"
@@ -32,7 +32,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-  
+
 static std::string const ROOT_PATH = "/";
 
 namespace {
@@ -40,16 +40,16 @@ sig_atomic_t MaintenanceMode = 0;
 }
 
 namespace {
-class MaintenanceHandler : public HttpHandler {
+class MaintenanceHandler : public RestHandler {
  public:
-  explicit MaintenanceHandler(HttpRequest* request) : HttpHandler(request){};
+  explicit MaintenanceHandler(HttpRequest* request) : RestHandler(request){};
 
   bool isDirect() const override { return true; };
 
-  status_t execute() override {
+  status execute() override {
     createResponse(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
 
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   };
 
   void handleError(const Exception& error) override {
@@ -62,27 +62,19 @@ class MaintenanceHandler : public HttpHandler {
 /// @brief constructs a new handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::HttpHandlerFactory(std::string const& authenticationRealm,
-                                       bool allowMethodOverride,
+RestHandlerFactory::RestHandlerFactory(std::string const& authenticationRealm,
                                        context_fptr setContext,
                                        void* setContextData)
     : _authenticationRealm(authenticationRealm),
-      _allowMethodOverride(allowMethodOverride),
       _setContext(setContext),
       _setContextData(setContextData),
       _notFound(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a handler factory
-////////////////////////////////////////////////////////////////////////////////
-
-HttpHandlerFactory::~HttpHandlerFactory() {}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets maintenance mode
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::setMaintenance(bool value) {
+void RestHandlerFactory::setMaintenance(bool value) {
   MaintenanceMode = value ? 1 : 0;
 }
 
@@ -92,7 +84,7 @@ void HttpHandlerFactory::setMaintenance(bool value) {
 /// wrapper method that will consider disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralResponse::ResponseCode HttpHandlerFactory::authenticateRequest(
+GeneralResponse::ResponseCode RestHandlerFactory::authenticateRequest(
     HttpRequest* request) {
   auto context = request->requestContext();
 
@@ -113,7 +105,7 @@ GeneralResponse::ResponseCode HttpHandlerFactory::authenticateRequest(
 /// @brief set request context, wrapper method
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpHandlerFactory::setRequestContext(HttpRequest* request) {
+bool RestHandlerFactory::setRequestContext(HttpRequest* request) {
   return _setContext(request, _setContextData);
 }
 
@@ -121,14 +113,14 @@ bool HttpHandlerFactory::setRequestContext(HttpRequest* request) {
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpHandlerFactory::authenticationRealm(
+std::string RestHandlerFactory::authenticationRealm(
     HttpRequest* request) const {
   auto context = request->requestContext();
 
   if (context != nullptr) {
     auto realm = context->realm();
 
-    if (! realm.empty()) {
+    if (!realm.empty()) {
       return _authenticationRealm + "/" + std::string(realm);
     }
   }
@@ -136,37 +128,22 @@ std::string HttpHandlerFactory::authenticationRealm(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new request
-////////////////////////////////////////////////////////////////////////////////
-
-HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
-                                               char const* ptr, size_t length) {
-  HttpRequest* request = new HttpRequest(info, ptr, length, _allowMethodOverride);
-
-  if (request != nullptr) {
-    setRequestContext(request);
-  }
-
-  return request;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
+RestHandler* RestHandlerFactory::createHandler(GeneralRequest* request,
+                                               GeneralResponse* response) {
   std::string const& path = request->requestPath();
 
-  // In the bootstrap phase, we would like that coordinators answer the 
+  // In the bootstrap phase, we would like that coordinators answer the
   // following to endpoints, but not yet others:
   if (MaintenanceMode &&
       (!ServerState::instance()->isCoordinator() ||
-       (path != "/_api/shard-comm" && 
+       (path != "/_api/shard-comm" &&
         path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-        path.find("/_api/aql") == std::string::npos))) { 
-    LOG(DEBUG) << "Maintenance mode: refused path: "
-               << path;
-    return new MaintenanceHandler(request);
+        path.find("/_api/aql") == std::string::npos))) {
+    LOG(DEBUG) << "Maintenance mode: refused path: " << path;
+    return new MaintenanceHandler(request, response);
   }
 
   std::unordered_map<std::string, create_fptr> const& ii = _constructors;
@@ -236,7 +213,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
       }
 
       modifiedPath = &prefix;
-      
+
       i = ii.find(prefix);
       request->setPrefix(prefix);
     }
@@ -247,7 +224,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
 
   if (i == ii.end()) {
     if (_notFound != nullptr) {
-      HttpHandler* notFoundHandler = _notFound(request, data);
+      RestHandler* notFoundHandler = _notFound(request, response, data);
       notFoundHandler->setServer(this);
 
       return notFoundHandler;
@@ -257,7 +234,8 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
     return nullptr;
   }
 
-  // look up data
+// look up data
+#warning TODO remove datas
   {
     auto const& it = _datas.find(*modifiedPath);
 
@@ -267,8 +245,8 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
   }
 
   LOG(TRACE) << "found handler for path '" << *modifiedPath << "'";
-  HttpHandler* handler = i->second(request, data);
 
+  RestHandler* handler = i->second(request, response, data);
   handler->setServer(this);
 
   return handler;
@@ -278,7 +256,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addHandler(std::string const& path, create_fptr func,
+void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
                                     void* data) {
   _constructors[path] = func;
   _datas[path] = data;
@@ -288,7 +266,7 @@ void HttpHandlerFactory::addHandler(std::string const& path, create_fptr func,
 /// @brief adds a prefix path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addPrefixHandler(std::string const& path,
+void RestHandlerFactory::addPrefixHandler(std::string const& path,
                                           create_fptr func, void* data) {
   _constructors[path] = func;
   _datas[path] = data;
@@ -299,6 +277,6 @@ void HttpHandlerFactory::addPrefixHandler(std::string const& path,
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addNotFoundHandler(create_fptr func) {
+void RestHandlerFactory::addNotFoundHandler(create_fptr func) {
   _notFound = func;
 }

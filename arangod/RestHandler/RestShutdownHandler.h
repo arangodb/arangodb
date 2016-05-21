@@ -46,7 +46,7 @@ class RestShutdownHandler : public RestBaseHandler {
   /// @brief initiates the shutdown process
   //////////////////////////////////////////////////////////////////////////////
 
-  status_t execute() override;
+  status execute() override;
 };
 }
 

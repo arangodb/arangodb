@@ -37,7 +37,7 @@ class RestUploadHandler : public RestVocbaseBaseHandler {
   ~RestUploadHandler();
 
  public:
-  HttpHandler::status_t execute();
+  RestHandler::status execute();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses a multi-part request body and determines the boundaries of

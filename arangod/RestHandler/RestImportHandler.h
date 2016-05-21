@@ -65,7 +65,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   explicit RestImportHandler(HttpRequest*);
 
  public:
-  status_t execute() override final;
+  status execute() override final;
 
  private:
 

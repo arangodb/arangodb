@@ -49,12 +49,12 @@ using namespace arangodb::rest;
 RestImportHandler::RestImportHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request), _onDuplicateAction(DUPLICATE_ERROR) {}
 
-HttpHandler::status_t RestImportHandler::execute() {
+RestHandler::status RestImportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(GeneralResponse::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/import' is not yet supported in a cluster");
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   // set default value for onDuplicate
@@ -113,7 +113,7 @@ HttpHandler::status_t RestImportHandler::execute() {
   }
 
   // this handler is done
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

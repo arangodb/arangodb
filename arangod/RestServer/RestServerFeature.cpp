@@ -32,9 +32,9 @@
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestShardHandler.h"
 #include "Dispatcher/DispatcherFeature.h"
-#include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
+#include "HttpServer/RestHandlerFactory.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
@@ -182,7 +182,7 @@ static bool SetRequestContext(HttpRequest* request, void* data) {
 }
 
 void RestServerFeature::prepare() {
-  HttpHandlerFactory::setMaintenance(true);
+  RestHandlerFactory::setMaintenance(true);
 }
 
 void RestServerFeature::start() {
@@ -190,7 +190,7 @@ void RestServerFeature::start() {
 
   _httpOptions._vocbase = DatabaseFeature::DATABASE->vocbase();
 
-  _handlerFactory.reset(new HttpHandlerFactory(
+  _handlerFactory.reset(new RestHandlerFactory(
       _authenticationRealm, _allowMethodOverride,
       &SetRequestContext, DatabaseServerFeature::SERVER));
 

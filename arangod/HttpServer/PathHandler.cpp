@@ -45,7 +45,7 @@ namespace rest {
 // -----------------------------------------------------------------------------
 
 PathHandler::PathHandler(HttpRequest* request, Options const* options)
-    : HttpHandler(request),
+    : RestHandler(request),
       path(options->path),
       contentType(options->contentType),
       allowSymbolicLink(options->allowSymbolicLink),
@@ -65,7 +65,7 @@ PathHandler::PathHandler(HttpRequest* request, Options const* options)
 // Handler methods
 // -----------------------------------------------------------------------------
 
-HttpHandler::status_t PathHandler::execute() {
+RestHandler::status PathHandler::execute() {
   std::vector<std::string> const& names = _request->suffix();
   std::string name = path;
   std::string last;
@@ -91,7 +91,7 @@ HttpHandler::status_t PathHandler::execute() {
     _response->body().appendText(url);
     _response->body().appendText("</a>.</p></body></html>");
 
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   for (std::vector<std::string>::const_iterator j = names.begin();
@@ -103,7 +103,7 @@ HttpHandler::status_t PathHandler::execute() {
 
       createResponse(GeneralResponse::ResponseCode::FORBIDDEN);
       _response->body().appendText("path contains '.'");
-      return status_t(HANDLER_DONE);
+      return status::DONE;
     }
 
     if (next == "..") {
@@ -111,7 +111,7 @@ HttpHandler::status_t PathHandler::execute() {
 
       createResponse(GeneralResponse::ResponseCode::FORBIDDEN);
       _response->body().appendText("path contains '..'");
-      return status_t(HANDLER_DONE);
+      return status::DONE;
     }
 
     std::string::size_type sc = next.find_first_not_of(AllowedChars);
@@ -122,7 +122,7 @@ HttpHandler::status_t PathHandler::execute() {
       createResponse(GeneralResponse::ResponseCode::FORBIDDEN);
       _response->body().appendText("path contains illegal character '" +
                                    std::string(1, next[sc]) + "'");
-      return status_t(HANDLER_DONE);
+      return status::DONE;
     }
 
     if (!path.empty()) {
@@ -131,7 +131,7 @@ HttpHandler::status_t PathHandler::execute() {
 
         createResponse(GeneralResponse::ResponseCode::NOT_FOUND);
         _response->body().appendText("file not found");
-        return status_t(HANDLER_DONE);
+        return status::DONE;
       }
     }
 
@@ -143,7 +143,7 @@ HttpHandler::status_t PathHandler::execute() {
 
       createResponse(GeneralResponse::ResponseCode::FORBIDDEN);
       _response->body().appendText("symbolic links are not allowed");
-      return status_t(HANDLER_DONE);
+      return status::DONE;
     }
   }
 
@@ -152,7 +152,7 @@ HttpHandler::status_t PathHandler::execute() {
 
     createResponse(GeneralResponse::ResponseCode::NOT_FOUND);
     _response->body().appendText("file not found");
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   createResponse(GeneralResponse::ResponseCode::OK);
@@ -164,7 +164,7 @@ HttpHandler::status_t PathHandler::execute() {
 
     createResponse(GeneralResponse::ResponseCode::NOT_FOUND);
     _response->body().appendText("file not readable");
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   // check if we should use caching and this is an HTTP GET request
@@ -186,7 +186,7 @@ HttpHandler::status_t PathHandler::execute() {
       if (mimetype != nullptr) {
         _response->setContentType(mimetype);
 
-        return status_t(HANDLER_DONE);
+        return status::DONE;
       }
     } else {
       // note: changed the log level to debug. an unknown content-type does not
@@ -197,7 +197,7 @@ HttpHandler::status_t PathHandler::execute() {
 
   _response->setContentType(contentType);
 
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 void PathHandler::handleError(const Exception&) {

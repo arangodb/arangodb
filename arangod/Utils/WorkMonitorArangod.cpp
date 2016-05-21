@@ -30,7 +30,7 @@
 #include "Aql/QueryList.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -44,7 +44,7 @@ using namespace arangodb::rest;
 /// @brief pushes a handler
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::pushHandler(HttpHandler* handler) {
+void WorkMonitor::pushHandler(RestHandler* handler) {
   TRI_ASSERT(handler != nullptr);
   WorkDescription* desc = createWorkDescription(WorkType::HANDLER);
   desc->_data.handler = handler;
@@ -57,7 +57,7 @@ void WorkMonitor::pushHandler(HttpHandler* handler) {
 /// @brief pops and releases a handler
 ////////////////////////////////////////////////////////////////////////////////
 
-WorkDescription* WorkMonitor::popHandler(HttpHandler* handler, bool free) {
+WorkDescription* WorkMonitor::popHandler(RestHandler* handler, bool free) {
   WorkDescription* desc = deactivateWorkDescription();
 
   TRI_ASSERT(desc != nullptr);
@@ -123,8 +123,8 @@ void WorkMonitor::deleteHandler(WorkDescription* desc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
-  HttpHandler* handler = desc->_data.handler;
-  const HttpRequest* request = handler->getRequest();
+  RestHandler* handler = desc->_data.handler;
+  GeneralRequest const* request = handler->getRequest();
 
   b->add("type", VPackValue("http-handler"));
   b->add("protocol", VPackValue(request->protocol()));
@@ -158,10 +158,6 @@ void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
   b->close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sends the overview
-////////////////////////////////////////////////////////////////////////////////
-
 void WorkMonitor::sendWorkOverview(uint64_t taskId, std::string const& data) {
   auto response = std::make_unique<HttpResponse>(GeneralResponse::ResponseCode::OK);
 
@@ -179,11 +175,11 @@ void WorkMonitor::sendWorkOverview(uint64_t taskId, std::string const& data) {
   SchedulerFeature::SCHEDULER->signalTask(answer);
 }
 
-HandlerWorkStack::HandlerWorkStack(HttpHandler* handler) : _handler(handler) {
+HandlerWorkStack::HandlerWorkStack(RestHandler* handler) : _handler(handler) {
   WorkMonitor::pushHandler(_handler);
 }
 
-HandlerWorkStack::HandlerWorkStack(WorkItem::uptr<HttpHandler>& handler) {
+HandlerWorkStack::HandlerWorkStack(WorkItem::uptr<RestHandler>& handler) {
   _handler = handler.release();
   WorkMonitor::pushHandler(_handler);
 }

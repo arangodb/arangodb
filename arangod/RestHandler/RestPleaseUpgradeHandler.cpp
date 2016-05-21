@@ -28,11 +28,11 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(HttpRequest* request)
-    : HttpHandler(request) {}
+    : RestHandler(request) {}
 
 bool RestPleaseUpgradeHandler::isDirect() const { return true; }
 
-HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
+RestHandler::status RestPleaseUpgradeHandler::execute() {
   createResponse(GeneralResponse::ResponseCode::OK);
   _response->setContentType(HttpResponse::CONTENT_TYPE_TEXT);
 
@@ -47,7 +47,7 @@ HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
   buffer.appendText("  /etc/init.d/arangodb start\r\n\r\n");
   buffer.appendText("Please check the log file for details.\r\n");
 
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 void RestPleaseUpgradeHandler::handleError(const Exception&) {}

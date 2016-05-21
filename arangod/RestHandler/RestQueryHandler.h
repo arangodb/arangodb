@@ -39,8 +39,7 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
  public:
   bool isDirect() const override;
-
-  status_t execute() override;
+  status execute() override;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

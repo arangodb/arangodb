@@ -41,7 +41,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 void arangodb::ClusterCommRestCallback(std::string& coordinator,
-                                       arangodb::HttpResponse* response) {
+                                       GeneralResponse* response) {
   ClusterComm::instance()->asyncAnswer(coordinator, response);
 }
 
@@ -775,7 +775,7 @@ void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
-                              arangodb::HttpResponse* responseToSend) {
+                              GeneralResponse* responseToSend) {
   // First take apart the header to get the coordinatorID:
   ServerID coordinatorID;
   size_t start = 0;
@@ -783,16 +783,19 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 
   LOG(DEBUG) << "In asyncAnswer, seeing " << coordinatorHeader;
   pos = coordinatorHeader.find(":", start);
+
   if (pos == std::string::npos) {
     LOG(ERR) << "Could not find coordinator ID in X-Arango-Coordinator";
     return;
   }
+
   coordinatorID = coordinatorHeader.substr(start, pos - start);
 
   // Now find the connection to which the request goes from the coordinatorID:
   httpclient::ConnectionManager* cm = httpclient::ConnectionManager::instance();
   std::string endpoint =
       ClusterInfo::instance()->getServerEndpoint(coordinatorID);
+
   if (endpoint == "") {
     if (logConnectionErrors()) {
       LOG(ERR) << "asyncAnswer: cannot find endpoint for server '"
@@ -806,6 +809,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 
   httpclient::ConnectionManager::SingleServerConnection* connection =
       cm->leaseConnection(endpoint);
+
   if (nullptr == connection) {
     LOG(ERR) << "asyncAnswer: cannot create connection to server '"
              << coordinatorID << "'";
@@ -852,7 +856,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
-                                       arangodb::HttpRequest* answer) {
+                                       GeneralRequest* answer) {
   TRI_ASSERT(answer != nullptr);
   // First take apart the header to get the operaitonID:
   OperationID operationID;

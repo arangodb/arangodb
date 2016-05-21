@@ -32,12 +32,8 @@ using namespace arangodb::rest;
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer::HttpsServer(Scheduler* scheduler, Dispatcher* dispatcher,
-                         HttpHandlerFactory* handlerFactory,
-                         AsyncJobManager* jobManager, double keepAliveTimeout,
-                         SSL_CTX* ctx)
-    : HttpServer(scheduler, dispatcher, handlerFactory, jobManager,
-                 keepAliveTimeout),
+HttpsServer::HttpsServer(double keepAliveTimeout, SSL_CTX* ctx)
+    : HttpServer(keepAliveTimeout),
       _ctx(ctx),
       _verificationMode(SSL_VERIFY_NONE),
       _verificationCallback(0) {}

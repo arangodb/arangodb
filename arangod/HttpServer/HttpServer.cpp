@@ -27,13 +27,15 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/WorkMonitor.h"
 #include "Dispatcher/Dispatcher.h"
+#include "Dispatcher/DispatcherFeature.h"
 #include "Endpoint/EndpointList.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
-#include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpListenTask.h"
 #include "HttpServer/HttpServerJob.h"
+#include "HttpServer/RestHandler.h"
 #include "Logger/Logger.h"
+#include "RestServer/RestServerFeature.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -63,14 +65,8 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
 /// @brief constructs a new general server with dispatcher and job manager
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::HttpServer(Scheduler* scheduler, Dispatcher* dispatcher,
-                       HttpHandlerFactory* handlerFactory,
-                       AsyncJobManager* jobManager, double keepAliveTimeout)
-    : _scheduler(scheduler),
-      _dispatcher(dispatcher),
-      _handlerFactory(handlerFactory),
-      _jobManager(jobManager),
-      _listenTasks(),
+HttpServer::HttpServer(double keepAliveTimeout)
+    : _listenTasks(),
       _endpointList(nullptr),
       _commTasks(),
       _keepAliveTimeout(keepAliveTimeout) {}
@@ -107,7 +103,8 @@ void HttpServer::startListening() {
       _endpointList->matching(Endpoint::TransportType::HTTP, encryptionType());
 
   for (auto& it : endpoints) {
-    LOG(TRACE) << "trying to bind to endpoint '" << it.first << "' for requests";
+    LOG(TRACE) << "trying to bind to endpoint '" << it.first
+               << "' for requests";
 
     bool ok = openEndpoint(it.second);
 
@@ -116,7 +113,8 @@ void HttpServer::startListening() {
     } else {
       LOG(FATAL) << "failed to bind to endpoint '" << it.first
                  << "'. Please check whether another instance is already "
-                    "running using this endpint and review your endpoints configuration.";
+                    "running using this endpint and review your endpoints "
+                    "configuration.";
       FATAL_ERROR_EXIT();
     }
   }
@@ -128,7 +126,7 @@ void HttpServer::startListening() {
 
 void HttpServer::stopListening() {
   for (auto& task : _listenTasks) {
-    _scheduler->destroyTask(task);
+    SchedulerFeature::SCHEDULER->destroyTask(task);
   }
 
   _listenTasks.clear();
@@ -153,7 +151,7 @@ void HttpServer::stop() {
       _commTasks.erase(task);
     }
 
-    _scheduler->destroyTask(task);
+    SchedulerFeature::SCHEDULER->destroyTask(task);
   }
 }
 
@@ -175,7 +173,7 @@ void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo&& info) {
 
   // registers the task and get the number of the scheduler thread
   ssize_t n;
-  _scheduler->registerTask(task, &n);
+  SchedulerFeature::SCHEDULER->registerTask(task, &n);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,11 +199,12 @@ void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpServer::handleRequestAsync(HttpCommTask* task,
-                                    WorkItem::uptr<HttpHandler>& handler,
+                                    WorkItem::uptr<RestHandler>& handler,
                                     uint64_t* jobId) {
   // extract the coordinator flag
   bool found;
-  std::string const& hdrStr = handler->getRequest()->header(StaticStrings::Coordinator, found);
+  std::string const& hdrStr =
+      handler->request()->header(StaticStrings::Coordinator, found);
   char const* hdr = found ? hdrStr.c_str() : nullptr;
 
   // execute the handler using the dispatcher
@@ -215,12 +214,13 @@ bool HttpServer::handleRequestAsync(HttpCommTask* task,
 
   // register the job with the job manager
   if (jobId != nullptr) {
-    _jobManager->initAsyncJob(static_cast<HttpServerJob*>(job.get()), hdr);
+    RestServerFeature::JOB_MANAGER->initAsyncJob(
+        static_cast<HttpServerJob*>(job.get()), hdr);
     *jobId = job->jobId();
   }
 
   // execute the handler using the dispatcher
-  int res = _dispatcher->addJob(job);
+  int res = DispatcherFeature::DISPATCHER->addJob(job);
 
   // could not add job to job queue
   if (res != TRI_ERROR_NO_ERROR) {
@@ -243,11 +243,11 @@ bool HttpServer::handleRequestAsync(HttpCommTask* task,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpServer::handleRequest(HttpCommTask* task,
-                               WorkItem::uptr<HttpHandler>& handler) {
+                               WorkItem::uptr<RestHandler>& handler) {
   // direct handlers
   if (handler->isDirect()) {
     HandlerWorkStack work(handler);
-    handleRequestDirectly(task, work.handler());
+    handleRequestDirectly(work.handler(), task);
 
     return true;
   }
@@ -260,7 +260,7 @@ bool HttpServer::handleRequest(HttpCommTask* task,
              << (void*)job.get();
 
   // add the job to the dispatcher
-  int res = _dispatcher->addJob(job);
+  int res = DispatcherFeature::DISPATCHER->addJob(job);
 
   // job is in queue now
   return res == TRI_ERROR_NO_ERROR;
@@ -283,7 +283,7 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
     return false;
   }
 
-  int res = _scheduler->registerTask(task);
+  int res = SchedulerFeature::SCHEDULER->registerTask(task);
 
   if (res == TRI_ERROR_NO_ERROR) {
     _listenTasks.emplace_back(task);
@@ -297,19 +297,19 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
 /// @brief handle request directly
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleRequestDirectly(HttpCommTask* task,
-                                       HttpHandler* handler) {
+void HttpServer::handleRequestDirectly(RestHandler* handler,
+                                       HttpCommTask* task) {
   task->RequestStatisticsAgent::transferTo(handler);
-  HttpHandler::status_t status = handler->executeFull();
+  RestHandler::status result = handler->executeFull();
   handler->RequestStatisticsAgent::transferTo(task);
 
-  switch (status._status) {
-    case HttpHandler::HANDLER_FAILED:
-    case HttpHandler::HANDLER_DONE:
+  switch (result) {
+    case RestHandler::status::FAILED:
+    case RestHandler::status::DONE:
       task->handleResponse(handler->getResponse());
       break;
 
-    case HttpHandler::HANDLER_ASYNC:
+    case RestHandler::status::ASYNC:
       // do nothing, just wait
       break;
   }

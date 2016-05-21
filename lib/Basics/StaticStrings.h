@@ -63,11 +63,15 @@ class StaticStrings {
   static std::string const BatchContentType;
   static std::string const CacheControl;
   static std::string const Close;
+  static std::string const Code;
   static std::string const Connection;
   static std::string const ContentEncoding;
   static std::string const ContentTypeHeader;
   static std::string const Coordinator;
   static std::string const CorsMethods;
+  static std::string const Error;
+  static std::string const ErrorMessage;
+  static std::string const ErrorNum;
   static std::string const Errors;
   static std::string const ErrorCodes;
   static std::string const Etag;

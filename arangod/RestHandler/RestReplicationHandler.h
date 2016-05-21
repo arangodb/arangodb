@@ -46,7 +46,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ~RestReplicationHandler();
 
  public:
-  HttpHandler::status_t execute();
+  RestHandler::status execute();
 
  public:
   //////////////////////////////////////////////////////////////////////////////

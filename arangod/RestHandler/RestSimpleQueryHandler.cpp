@@ -41,7 +41,7 @@ RestSimpleQueryHandler::RestSimpleQueryHandler(
     arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(request, queryRegistry) {}
 
-HttpHandler::status_t RestSimpleQueryHandler::execute() {
+RestHandler::status RestSimpleQueryHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
@@ -50,18 +50,18 @@ HttpHandler::status_t RestSimpleQueryHandler::execute() {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH) {
       // all query
       allDocuments();
-      return status_t(HANDLER_DONE);
+      return status::DONE;
     }
     if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH) {
       // all-keys query
       allDocumentKeys();
-      return status_t(HANDLER_DONE);
+      return status::DONE;
     }
   }
 
   generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

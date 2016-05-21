@@ -37,13 +37,13 @@ RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(arangodb::HttpRequest* re
 
 bool RestAgencyCallbacksHandler::isDirect() const { return false; }
 
-arangodb::rest::HttpHandler::status_t RestAgencyCallbacksHandler::execute() {
+RestHandler::status RestAgencyCallbacksHandler::execute() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
     generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid callback");
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   // extract the sub-request type
@@ -51,7 +51,7 @@ arangodb::rest::HttpHandler::status_t RestAgencyCallbacksHandler::execute() {
   if (type != GeneralRequest::RequestType::POST) {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
   
   bool parseSuccess = true;
@@ -62,7 +62,7 @@ arangodb::rest::HttpHandler::status_t RestAgencyCallbacksHandler::execute() {
   if (!parseSuccess) {
     generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   try {
@@ -78,5 +78,5 @@ arangodb::rest::HttpHandler::status_t RestAgencyCallbacksHandler::execute() {
     // mop: not found...expected
     createResponse(arangodb::GeneralResponse::ResponseCode::NOT_FOUND);
   }
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }

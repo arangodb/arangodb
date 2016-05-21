@@ -43,7 +43,7 @@ RestVersionHandler::RestVersionHandler(HttpRequest* request)
 
 bool RestVersionHandler::isDirect() const { return true; }
 
-HttpHandler::status_t RestVersionHandler::execute() {
+RestHandler::status RestVersionHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
@@ -71,5 +71,5 @@ HttpHandler::status_t RestVersionHandler::execute() {
   } catch (...) {
     // Ignore this error
   }
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }

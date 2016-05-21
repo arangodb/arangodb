@@ -26,8 +26,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
-#include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
+#include "HttpServer/RestHandlerFactory.h"
 #include "Rest/HttpRequest.h"
 
 using namespace arangodb;
@@ -43,7 +43,7 @@ RestBatchHandler::~RestBatchHandler() {}
 /// @brief was docuBlock JSF_batch_processing
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestBatchHandler::execute() {
+RestHandler::status RestBatchHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
 
@@ -51,7 +51,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
       type != GeneralRequest::RequestType::PUT) {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return status_t(HttpHandler::HANDLER_DONE);
+    return status::DONE;
   }
 
   std::string boundary;
@@ -61,7 +61,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid content-type or boundary received");
-    return status_t(HttpHandler::HANDLER_FAILED);
+    return status(RestHandler::HANDLER_FAILED);
   }
 
   LOG(TRACE) << "boundary of multipart-message is '" << boundary << "'";
@@ -94,7 +94,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
                     "invalid multipart message received");
       LOG(WARN) << "received a corrupted multipart message";
 
-      return status_t(HttpHandler::HANDLER_FAILED);
+      return status(RestHandler::HANDLER_FAILED);
     }
 
     // split part into header & body
@@ -138,7 +138,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
       generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_OUT_OF_MEMORY);
 
-      return status_t(HttpHandler::HANDLER_FAILED);
+      return status(RestHandler::HANDLER_FAILED);
     }
 
     // we do not have a client task id here
@@ -161,7 +161,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
                          authorization.c_str(), authorization.size());
     }
 
-    HttpHandler* handler = _server->createHandler(request);
+    RestHandler* handler = _server->createHandler(request);
 
     if (handler == nullptr) {
       delete request;
@@ -169,19 +169,19 @@ HttpHandler::status_t RestBatchHandler::execute() {
       generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                     "could not create handler for batch part processing");
 
-      return status_t(HttpHandler::HANDLER_FAILED);
+      return status(RestHandler::HANDLER_FAILED);
     }
 
     // start to work for this handler
     {
       HandlerWorkStack work(handler);
-      HttpHandler::status_t status = handler->executeFull();
+      RestHandler::status status = handler->executeFull();
 
-      if (status._status == HttpHandler::HANDLER_FAILED) {
+      if (status._status == RestHandler::HANDLER_FAILED) {
         generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                       "executing a handler for batch part failed");
 
-        return status_t(HttpHandler::HANDLER_FAILED);
+        return status(RestHandler::HANDLER_FAILED);
       }
 
       HttpResponse* partResponse = handler->getResponse();
@@ -190,7 +190,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
         generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                       "could not create a response for batch part request");
 
-        return status_t(HttpHandler::HANDLER_FAILED);
+        return status(RestHandler::HANDLER_FAILED);
       }
 
       GeneralResponse::ResponseCode const code = partResponse->responseCode();
@@ -239,7 +239,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
   }
 
   // success
-  return status_t(HttpHandler::HANDLER_DONE);
+  return status::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

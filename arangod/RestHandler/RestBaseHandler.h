@@ -24,7 +24,7 @@
 #ifndef ARANGOD_REST_HANDLER_REST_BASE_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_BASE_HANDLER_H 1
 
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/RestHandler.h"
 
 #include "Rest/HttpResponse.h"
 
@@ -36,7 +36,7 @@ struct Options;
 class Slice;
 }
 
-class RestBaseHandler : public rest::HttpHandler {
+class RestBaseHandler : public rest::RestHandler {
  public:
   explicit RestBaseHandler(HttpRequest* request);
 

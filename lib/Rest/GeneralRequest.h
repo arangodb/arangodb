@@ -32,6 +32,11 @@
 #include "Endpoint/ConnectionInfo.h"
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+struct Options;
+}
+
 class RequestContext;
 
 class GeneralRequest {
@@ -48,7 +53,7 @@ class GeneralRequest {
   // VSTREAM_STATUS: Returns STATUS code and message for a given
   // request
   enum class RequestType {
-    DELETE_REQ = 0, // windows redefines DELETE
+    DELETE_REQ = 0,  // windows redefines DELETE
     GET,
     HEAD,
     OPTIONS,
@@ -145,7 +150,9 @@ class GeneralRequest {
   // The key must be lowercase.
   std::string const& header(std::string const& key) const;
   std::string const& header(std::string const& key, bool& found) const;
-  std::unordered_map<std::string, std::string> const& headers() const { return _headers; }
+  std::unordered_map<std::string, std::string> const& headers() const {
+    return _headers;
+  }
 
   std::string const& value(std::string const& key) const;
   std::string const& value(std::string const& key, bool& found) const;
@@ -153,12 +160,17 @@ class GeneralRequest {
     return _values;
   }
 
-  std::unordered_map<std::string, std::vector<std::string>> arrayValues() const {
+  std::unordered_map<std::string, std::vector<std::string>> arrayValues()
+      const {
     return _arrayValues;
   }
   void setArrayValue(std::string const& key, std::string const& value);
 
-  bool velocyPackResponse () const;
+  bool velocyPackResponse() const;
+
+  // the request body as VelocyPackBuilder
+  virtual std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
+      arangodb::velocypack::Options const*) = 0;
 
  protected:
   void setValue(char const* key, char const* value);

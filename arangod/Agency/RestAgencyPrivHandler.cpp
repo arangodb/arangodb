@@ -49,29 +49,29 @@ RestAgencyPrivHandler::RestAgencyPrivHandler(HttpRequest* request, Agent* agent)
 
 bool RestAgencyPrivHandler::isDirect() const { return false; }
 
-inline HttpHandler::status_t RestAgencyPrivHandler::reportErrorEmptyRequest() {
+inline RestHandler::status RestAgencyPrivHandler::reportErrorEmptyRequest() {
   LOG(WARN) << "Empty request to agency!";
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-inline HttpHandler::status_t RestAgencyPrivHandler::reportTooManySuffices() {
+inline RestHandler::status RestAgencyPrivHandler::reportTooManySuffices() {
   LOG(WARN) << "Agency handles a single suffix: vote, log or configure";
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-inline HttpHandler::status_t RestAgencyPrivHandler::reportBadQuery() {
+inline RestHandler::status RestAgencyPrivHandler::reportBadQuery() {
   generateError(GeneralResponse::ResponseCode::BAD, 400);
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-inline HttpHandler::status_t RestAgencyPrivHandler::reportMethodNotAllowed() {
+inline RestHandler::status RestAgencyPrivHandler::reportMethodNotAllowed() {
   generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-HttpHandler::status_t RestAgencyPrivHandler::execute() {
+RestHandler::status RestAgencyPrivHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
@@ -124,7 +124,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
       } else {
         generateError(GeneralResponse::ResponseCode::NOT_FOUND,
                       404);  // nothing else here
-        return HttpHandler::status_t(HANDLER_DONE);
+        return RestHandler::status::DONE;
       }
     }
     result.close();
@@ -133,5 +133,5 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
   } catch (...) {
     // Ignore this error
   }
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }

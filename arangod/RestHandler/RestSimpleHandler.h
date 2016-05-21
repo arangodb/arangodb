@@ -44,8 +44,7 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
   RestSimpleHandler(HttpRequest*, arangodb::aql::QueryRegistry*);
 
  public:
-  status_t execute() override final;
-
+  status execute() override final;
   bool cancel() override;
 
  private:

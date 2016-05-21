@@ -33,20 +33,20 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RestShardHandler::RestShardHandler(arangodb::HttpRequest* request)
-    : RestBaseHandler(request) {
-}
+    : RestBaseHandler(request) {}
 
 bool RestShardHandler::isDirect() const { return true; }
 
-arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
+RestHandler::status RestShardHandler::execute() {
   bool found;
-  std::string const& _coordinator = _request->header(StaticStrings::Coordinator, found);
+  std::string const& _coordinator =
+      _request->header(StaticStrings::Coordinator, found);
 
   if (!found) {
     generateError(arangodb::GeneralResponse::ResponseCode::BAD,
                   (int)arangodb::GeneralResponse::ResponseCode::BAD,
                   "header 'X-Arango-Coordinator' is missing");
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   std::string coordinatorHeader = _coordinator;
@@ -57,8 +57,9 @@ arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
     createResponse(arangodb::GeneralResponse::ResponseCode::ACCEPTED);
   } else {
     generateError(arangodb::GeneralResponse::ResponseCode::BAD,
-                  (int)arangodb::GeneralResponse::ResponseCode::BAD, result.c_str());
+                  (int)arangodb::GeneralResponse::ResponseCode::BAD,
+                  result.c_str());
   }
 
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }

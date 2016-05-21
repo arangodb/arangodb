@@ -31,14 +31,22 @@
 #include "Endpoint/ConnectionInfo.h"
 
 namespace arangodb {
+namespace rest {
+class HttpCommTask;
+}
+
 namespace velocypack {
 class Builder;
 struct Options;
 }
 
 class HttpRequest : public GeneralRequest {
- public:
+  friend class HttpCommTask;
+
+ private:
   HttpRequest(ConnectionInfo const&, char const*, size_t, bool);
+
+ public:
   ~HttpRequest();
 
  public:
@@ -54,17 +62,20 @@ class HttpRequest : public GeneralRequest {
 
   std::string const& cookieValue(std::string const& key) const;
   std::string const& cookieValue(std::string const& key, bool& found) const;
-  std::unordered_map<std::string, std::string> cookieValues() const { return _cookies; }
+  std::unordered_map<std::string, std::string> cookieValues() const {
+    return _cookies;
+  }
 
   std::string const& body() const;
   void setBody(char const* body, size_t length);
 
   // the request body as VelocyPackBuilder
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
-      arangodb::velocypack::Options const*);
-  
+      arangodb::velocypack::Options const*) override final;
+
   /// @brief sets a key/value header
-  void setHeader(char const* key, size_t keyLength, char const* value, size_t valueLength);
+  void setHeader(char const* key, size_t keyLength, char const* value,
+                 size_t valueLength);
   /// @brief sets a key-only header
   void setHeader(char const* key, size_t keyLength);
 

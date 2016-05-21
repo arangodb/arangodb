@@ -47,25 +47,25 @@ RestAgencyHandler::RestAgencyHandler(HttpRequest* request, Agent* agent)
 
 bool RestAgencyHandler::isDirect() const { return false; }
 
-inline HttpHandler::status_t RestAgencyHandler::reportErrorEmptyRequest() {
+inline RestHandler::status RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC(WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-inline HttpHandler::status_t RestAgencyHandler::reportTooManySuffices() {
+inline RestHandler::status RestAgencyHandler::reportTooManySuffices() {
   LOG_TOPIC(WARN, Logger::AGENCY)
       << "Too many suffixes. Agency public interface takes one path.";
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-inline HttpHandler::status_t RestAgencyHandler::reportUnknownMethod() {
+inline RestHandler::status RestAgencyHandler::reportUnknownMethod() {
   LOG_TOPIC(WARN, Logger::AGENCY) << "Public REST interface has no method "
                                   << _request->suffix()[0];
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 405);
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
 void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
@@ -83,7 +83,7 @@ void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
   
 }
 
-HttpHandler::status_t RestAgencyHandler::handleStores () {
+RestHandler::status RestAgencyHandler::handleStores () {
   if (_request->requestType() == GeneralRequest::RequestType::GET) {
     Builder body;
     body.openObject();
@@ -98,10 +98,10 @@ HttpHandler::status_t RestAgencyHandler::handleStores () {
   } else {
     generateError(GeneralResponse::ResponseCode::BAD, 400);
   }
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-HttpHandler::status_t RestAgencyHandler::handleWrite () {
+RestHandler::status RestAgencyHandler::handleWrite () {
   arangodb::velocypack::Options options; // TODO: User not wait. 
   if (_request->requestType() == GeneralRequest::RequestType::POST) {
     query_t query;
@@ -115,7 +115,7 @@ HttpHandler::status_t RestAgencyHandler::handleWrite () {
       body.add("message", VPackValue(e.what()));
       body.close();
       generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
-      return HttpHandler::status_t(HANDLER_DONE);
+      return RestHandler::status::DONE;
     }
 
     write_ret_t ret = _agent->write(query);
@@ -162,16 +162,16 @@ HttpHandler::status_t RestAgencyHandler::handleWrite () {
   } else {  // Unknown method
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
   }
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-/*inline HttpHandler::status_t RestAgencyHandler::handleReplicate () {
+/*inline RestHandler::status RestAgencyHandler::handleReplicate () {
   if (_request->requestType() == GeneralRequest::RequestType::POST) {
     
   }  
   }*/
 
-inline HttpHandler::status_t RestAgencyHandler::handleRead() {
+inline RestHandler::status RestAgencyHandler::handleRead() {
   arangodb::velocypack::Options options;
   if (_request->requestType() == GeneralRequest::RequestType::POST) {
     query_t query;
@@ -180,7 +180,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead() {
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
       generateError(GeneralResponse::ResponseCode::BAD, 400);
-      return HttpHandler::status_t(HANDLER_DONE);
+      return RestHandler::status::DONE;
     }
     read_ret_t ret = _agent->read (query);
 
@@ -192,16 +192,16 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead() {
       }
     } else {            // Redirect to leader
       redirectRequest(ret.redirect);
-      return HttpHandler::status_t(HANDLER_DONE);
+      return RestHandler::status::DONE;
     }
   } else {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
-    return HttpHandler::status_t(HANDLER_DONE);
+    return RestHandler::status::DONE;
   }
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-HttpHandler::status_t RestAgencyHandler::handleConfig() {
+RestHandler::status RestAgencyHandler::handleConfig() {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
   body.add("term", Value(_agent->term()));
@@ -209,10 +209,10 @@ HttpHandler::status_t RestAgencyHandler::handleConfig() {
   body.add("configuration", _agent->config().toBuilder()->slice());
   body.close();
   generateResult(GeneralResponse::ResponseCode::OK, body.slice());
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-HttpHandler::status_t RestAgencyHandler::handleState() {
+RestHandler::status RestAgencyHandler::handleState() {
   Builder body;
   body.add(VPackValue(VPackValueType::Array));
   for (auto const& i : _agent->state().get()) {
@@ -225,15 +225,15 @@ HttpHandler::status_t RestAgencyHandler::handleState() {
   }
   body.close();
   generateResult(GeneralResponse::ResponseCode::OK, body.slice());
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-inline HttpHandler::status_t RestAgencyHandler::reportMethodNotAllowed() {
+inline RestHandler::status RestAgencyHandler::reportMethodNotAllowed() {
   generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-HttpHandler::status_t RestAgencyHandler::execute() {
+RestHandler::status RestAgencyHandler::execute() {
   try {
     if (_request->suffix().size() == 0) {  // Empty request
       return reportErrorEmptyRequest();
@@ -263,5 +263,5 @@ HttpHandler::status_t RestAgencyHandler::execute() {
   } catch (...) {
     // Ignore this error
   }
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }

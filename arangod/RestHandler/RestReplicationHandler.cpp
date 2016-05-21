@@ -67,7 +67,7 @@ RestReplicationHandler::RestReplicationHandler(HttpRequest* request)
 
 RestReplicationHandler::~RestReplicationHandler() {}
 
-HttpHandler::status_t RestReplicationHandler::execute() {
+RestHandler::status RestReplicationHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
   auto const& suffix = _request->suffix();
@@ -87,7 +87,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
       handleCommandLoggerTickRanges();
     } else if (command == "logger-first-tick") {
@@ -95,7 +95,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
       handleCommandLoggerFirstTick();
     } else if (command == "logger-follow") {
@@ -104,7 +104,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
       handleCommandLoggerFollow();
     } else if (command == "determine-open-transactions") {
@@ -120,7 +120,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
     } else if (command == "barrier") {
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
       handleCommandBarrier();
     } else if (command == "inventory") {
@@ -141,7 +141,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
 
       if (type == GeneralRequest::RequestType::POST) {
@@ -191,7 +191,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
 
       handleCommandSync();
@@ -201,7 +201,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
 
       handleCommandMakeSlave();
@@ -225,7 +225,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
 
       handleCommandApplierStart();
@@ -235,7 +235,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
 
       handleCommandApplierStop();
@@ -273,7 +273,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
                     TRI_ERROR_HTTP_BAD_PARAMETER, "invalid command");
     }
 
-    return status_t(HttpHandler::HANDLER_DONE);
+    return status::DONE;
   }
 
 BAD_CALL:
@@ -286,7 +286,7 @@ BAD_CALL:
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
-  return status_t(HttpHandler::HANDLER_DONE);
+  return status::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

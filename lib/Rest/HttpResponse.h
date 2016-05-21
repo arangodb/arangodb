@@ -30,11 +30,17 @@
 #include "Basics/StringBuffer.h"
 
 namespace arangodb {
+namespace rest {
+class HttpCommTask;
+}
+
 class HttpResponse : public GeneralResponse {
+  friend class HttpCommTask;
+
  public:
   static bool HIDE_PRODUCT_HEADER;
 
- public:
+ private:
   explicit HttpResponse(ResponseCode code);
 
  public:
@@ -46,17 +52,8 @@ class HttpResponse : public GeneralResponse {
     CONNECTION_CLOSE
   };
 
-  enum ContentType {
-    CONTENT_TYPE_CUSTOM,  // use Content-Type from _headers
-    CONTENT_TYPE_JSON,    // application/json
-    CONTENT_TYPE_VPACK,   // application/x-velocypack
-    CONTENT_TYPE_TEXT,    // text/plain
-    CONTENT_TYPE_HTML,    // text/html
-    CONTENT_TYPE_DUMP     // application/x-arango-dump
-  };
-
  public:
-  using GeneralResponse::setHeader;
+  void reset(ResponseCode code);
 
   void setCookie(std::string const& name, std::string const& value,
                  int lifeTimeSeconds, std::string const& path,
@@ -84,13 +81,13 @@ class HttpResponse : public GeneralResponse {
   /// cases when the content-type is user-defined
   void setContentType(std::string const& contentType) {
     _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
-    _contentType = CONTENT_TYPE_CUSTOM;
+    _contentType = ContentType::CUSTOM;
   }
 
   void setContentType(std::string&& contentType) {
     _headers[arangodb::StaticStrings::ContentTypeHeader] =
         std::move(contentType);
-    _contentType = CONTENT_TYPE_CUSTOM;
+    _contentType = ContentType::CUSTOM;
   }
 
   // you should call writeHeader only after the body has been created

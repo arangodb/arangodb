@@ -48,28 +48,28 @@ RestCursorHandler::RestCursorHandler(
       _query(nullptr),
       _queryKilled(false) {}
 
-HttpHandler::status_t RestCursorHandler::execute() {
+RestHandler::status RestCursorHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
   if (type == GeneralRequest::RequestType::POST) {
     createCursor();
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   if (type == GeneralRequest::RequestType::PUT) {
     modifyCursor();
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   if (type == GeneralRequest::RequestType::DELETE_REQ) {
     deleteCursor();
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 bool RestCursorHandler::cancel() { return cancelQuery(); }

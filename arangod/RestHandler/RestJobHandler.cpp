@@ -45,7 +45,7 @@ RestJobHandler::RestJobHandler(HttpRequest* request,
 
 bool RestJobHandler::isDirect() const { return true; }
 
-HttpHandler::status_t RestJobHandler::execute() {
+RestHandler::status RestJobHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
@@ -69,7 +69,7 @@ HttpHandler::status_t RestJobHandler::execute() {
                   (int)GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED);
   }
 
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

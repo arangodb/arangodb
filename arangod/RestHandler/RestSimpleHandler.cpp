@@ -50,7 +50,7 @@ RestSimpleHandler::RestSimpleHandler(
       _query(nullptr),
       _queryKilled(false) {}
 
-HttpHandler::status_t RestSimpleHandler::execute() {
+RestHandler::status RestSimpleHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
 
@@ -60,7 +60,7 @@ HttpHandler::status_t RestSimpleHandler::execute() {
         parseVelocyPackBody(&VPackOptions::Defaults, parsingSuccess);
 
     if (!parsingSuccess) {
-      return status_t(HANDLER_DONE);
+      return status::DONE;
     }
 
     VPackSlice body = parsedBody.get()->slice();
@@ -68,7 +68,7 @@ HttpHandler::status_t RestSimpleHandler::execute() {
     if (!body.isObject()) {
       generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting JSON object body");
-      return status_t(HANDLER_DONE);
+      return status::DONE;
     }
 
     std::string const& prefix = _request->requestPath();
@@ -82,12 +82,12 @@ HttpHandler::status_t RestSimpleHandler::execute() {
                     "unsupported value for <operation>");
     }
 
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 bool RestSimpleHandler::cancel() { return cancelQuery(); }

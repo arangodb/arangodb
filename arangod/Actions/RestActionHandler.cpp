@@ -33,8 +33,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestActionHandler::RestActionHandler(HttpRequest* request,
-                                     action_options_t* data)
+RestActionHandler::RestActionHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request),
       _action(nullptr),
       _dataLock(),
@@ -44,7 +43,7 @@ RestActionHandler::RestActionHandler(HttpRequest* request,
 
 bool RestActionHandler::isDirect() const { return _action == nullptr; }
 
-HttpHandler::status_t RestActionHandler::execute() {
+RestHandler::status RestActionHandler::execute() {
   TRI_action_result_t result;
 
   // check the request path
@@ -85,7 +84,8 @@ HttpHandler::status_t RestActionHandler::execute() {
   }
 
   // handler has finished, generate result
-  return status_t(result.isValid ? HANDLER_DONE : HANDLER_FAILED);
+  return result.isValid ? RestHandler::status::DONE
+                        : RestHandler::status::FAILED;
 }
 
 bool RestActionHandler::cancel() { return _action->cancel(&_dataLock, &_data); }

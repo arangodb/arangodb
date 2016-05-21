@@ -30,7 +30,7 @@
 namespace arangodb {
 namespace rest {
 class AsyncJobManager;
-class HttpHandlerFactory;
+class RestHandlerFactory;
 class HttpServer;
 }
 
@@ -38,6 +38,10 @@ class RestServerThread;
 
 class RestServerFeature final
     : public application_features::ApplicationFeature {
+ public:
+  static rest::RestHandlerFactory* HANDLER_FACTORY;
+  static rest::AsyncJobManager* JOB_MANAGER;
+  
  public:
   RestServerFeature(application_features::ApplicationServer*,
                     std::string const&);
@@ -67,10 +71,9 @@ class RestServerFeature final
   void defineHandlers();
 
  private:
-  std::unique_ptr<rest::HttpHandlerFactory> _handlerFactory;
+  std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<rest::HttpServer*> _servers;
-  RestActionHandler::action_options_t _httpOptions;
 };
 }
 

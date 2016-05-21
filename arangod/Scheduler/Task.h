@@ -49,7 +49,7 @@ class TaskData : public RequestStatisticsAgent {
   EventLoop _loop;
   uint64_t _type;
   std::string _data;
-  std::unique_ptr<HttpResponse> _response;
+  std::unique_ptr<GeneralResponse> _response;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

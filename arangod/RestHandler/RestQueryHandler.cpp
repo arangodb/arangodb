@@ -51,7 +51,7 @@ bool RestQueryHandler::isDirect() const {
   return _request->requestType() != GeneralRequest::RequestType::POST;
 }
 
-HttpHandler::status_t RestQueryHandler::execute() {
+RestHandler::status RestQueryHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
@@ -86,7 +86,7 @@ HttpHandler::status_t RestQueryHandler::execute() {
   }
 
   // this handler is done
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 bool RestQueryHandler::readQueryProperties() {
