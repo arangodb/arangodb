@@ -101,7 +101,7 @@ int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead,
 #else
   res = read(s.fileDescriptor, buffer, numBytesToRead);
 #endif
-   LOG(INFO) << "Here is the wohiiii - string received - 1 ";
+  LOG(INFO) << "Here is string received as Http Request ";
   return res;
 }
 
