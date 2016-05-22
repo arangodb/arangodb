@@ -29,10 +29,7 @@
 
 namespace arangodb {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief container for complete multipart message
-////////////////////////////////////////////////////////////////////////////////
-
+// container for complete multipart message
 struct MultipartMessage {
   MultipartMessage(char const* boundary, size_t const boundaryLength,
                    char const* messageStart, char const* messageEnd)
@@ -47,10 +44,7 @@ struct MultipartMessage {
   char const* messageEnd;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief container for search data within multipart message
-////////////////////////////////////////////////////////////////////////////////
-
+// container for search data within multipart message
 struct SearchHelper {
   MultipartMessage* message;
   char const* searchStart;
@@ -63,8 +57,7 @@ struct SearchHelper {
 
 class RestBatchHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestBatchHandler(HttpRequest*);
-
+  RestBatchHandler(GeneralRequest*, GeneralResponse*);
   ~RestBatchHandler();
 
  public:

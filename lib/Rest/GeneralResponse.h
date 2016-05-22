@@ -148,6 +148,8 @@ class GeneralResponse {
   }
 
  public:
+  virtual void reset(ResponseCode) = 0;
+
   // generates the response body, sets the content type; this might
   // throw an error
   virtual void fillBody(GeneralRequest const*,

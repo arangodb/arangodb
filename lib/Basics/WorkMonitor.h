@@ -27,6 +27,7 @@
 #include "Basics/Thread.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/WorkDescription.h"
@@ -40,7 +41,7 @@ class Builder;
 class WorkMonitor : public Thread {
  public:
   WorkMonitor();
-  ~WorkMonitor() {shutdown();}
+  ~WorkMonitor() { shutdown(); }
 
  public:
   bool isSilent() override { return true; }
@@ -65,11 +66,11 @@ class WorkMonitor : public Thread {
   void run() override;
 
  private:
-  static void sendWorkOverview(uint64_t, std::string const&);
+  static void sendWorkOverview(uint64_t,
+                               std::shared_ptr<velocypack::Buffer<uint8_t>>);
   static bool cancelAql(WorkDescription*);
   static void deleteHandler(WorkDescription* desc);
-  static void vpackHandler(velocypack::Builder*,
-                           WorkDescription* desc);
+  static void vpackHandler(velocypack::Builder*, WorkDescription* desc);
 
   static WorkDescription* createWorkDescription(WorkType);
   static void deleteWorkDescription(WorkDescription*, bool stopped);

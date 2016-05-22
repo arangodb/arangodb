@@ -32,8 +32,8 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(HttpRequest* request)
-    : RestBaseHandler(request) {}
+RestShutdownHandler::RestShutdownHandler(GeneralRequest* request, GeneralResponse* response)
+  : RestBaseHandler(request, response) {}
 
 bool RestShutdownHandler::isDirect() const { return true; }
 

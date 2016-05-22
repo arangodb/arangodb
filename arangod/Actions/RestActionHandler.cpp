@@ -33,8 +33,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestActionHandler::RestActionHandler(HttpRequest* request)
-    : RestVocbaseBaseHandler(request),
+RestActionHandler::RestActionHandler(GeneralRequest* request,
+                                     GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response),
       _action(nullptr),
       _dataLock(),
       _data(nullptr) {
@@ -96,21 +97,16 @@ bool RestActionHandler::cancel() { return _action->cancel(&_dataLock, &_data); }
 
 TRI_action_result_t RestActionHandler::executeAction() {
   TRI_action_result_t result =
-      _action->execute(_vocbase, _request, &_dataLock, &_data);
+      _action->execute(_vocbase, _request, _response, &_dataLock, &_data);
 
-  if (result.isValid) {
-    _response = result.response;
-    result.response = nullptr;
-  } else if (result.canceled) {
-    result.isValid = true;
-    generateCanceled();
-  } else {
-    result.isValid = true;
-    generateNotImplemented(_action->_url);
-  }
-
-  if (result.response != nullptr) {
-    delete result.response;
+  if (!result.isValid) {
+    if (result.canceled) {
+      result.isValid = true;
+      generateCanceled();
+    } else {
+      result.isValid = true;
+      generateNotImplemented(_action->_url);
+    }
   }
 
   return result;

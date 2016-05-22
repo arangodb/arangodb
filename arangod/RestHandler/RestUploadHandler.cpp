@@ -35,12 +35,20 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestUploadHandler::RestUploadHandler(HttpRequest* request)
-    : RestVocbaseBaseHandler(request) {}
+RestUploadHandler::RestUploadHandler(GeneralRequest* request,
+                                     GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response) {}
 
 RestUploadHandler::~RestUploadHandler() {}
 
 RestHandler::status RestUploadHandler::execute() {
+  // TODO needs to generalized
+  auto request = dynamic_cast<HttpRequest*>(_request);
+
+  if (request == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
   // extract the request type
   auto const type = _request->requestType();
 
@@ -65,7 +73,7 @@ RestHandler::status RestUploadHandler::execute() {
 
   char* relative = TRI_GetFilename(filename);
 
-  std::string const& bodyStr = _request->body();
+  std::string const& bodyStr = request->body();
   char const* body = bodyStr.c_str();
   size_t bodySize = bodyStr.size();
 
@@ -84,7 +92,7 @@ RestHandler::status RestUploadHandler::execute() {
         TRI_Free(TRI_CORE_MEM_ZONE, filename);
         generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                       TRI_ERROR_INTERNAL, "invalid multipart request");
-        return status::HANDLER_FAILED;
+        return status::FAILED;
       }
     }
   }
@@ -97,7 +105,7 @@ RestHandler::status RestUploadHandler::execute() {
     TRI_Free(TRI_CORE_MEM_ZONE, filename);
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, "could not save file");
-    return status::HANDLER_FAILED;
+    return status::FAILED;
   }
 
   char* fullName = TRI_Concatenate2File("uploads", relative);
@@ -105,15 +113,14 @@ RestHandler::status RestUploadHandler::execute() {
 
   // create the response
   createResponse(GeneralResponse::ResponseCode::CREATED);
-  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
-  // TODO: use RestBaseHandler
   VPackBuilder b;
+
   b.add(VPackValue(VPackValueType::Object));
   b.add("filename", VPackValue(fullName));
   TRI_Free(TRI_CORE_MEM_ZONE, fullName);
-
   b.close();
+
   VPackSlice s = b.slice();
 
   generateResult(GeneralResponse::ResponseCode::CREATED, s);
@@ -128,7 +135,14 @@ RestHandler::status RestUploadHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
-  std::string const& bodyStr = _request->body();
+  // TODO needs to generalized
+  auto request = dynamic_cast<HttpRequest*>(_request);
+
+  if (request == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  std::string const& bodyStr = request->body();
   char const* beg = bodyStr.c_str();
   char const* end = beg + bodyStr.size();
 

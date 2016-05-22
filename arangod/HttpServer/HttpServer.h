@@ -54,7 +54,8 @@ class HttpServer : protected TaskManager {
   static int sendChunk(uint64_t, std::string const&);
 
  public:
-  explicit HttpServer(double keepAliveTimeout);
+  HttpServer(double keepAliveTimeout, std::string const& _authenticationRealm,
+             bool allowMethodOverride);
   virtual ~HttpServer();
 
  public:
@@ -67,7 +68,9 @@ class HttpServer : protected TaskManager {
   }
 
   // check, if we allow a method override
-  bool allowMethodOverride();
+  bool allowMethodOverride() {
+    return _allowMethodOverride;
+  }
 
   // generates a suitable communication task
   virtual HttpCommTask* createCommTask(TRI_socket_t, ConnectionInfo&&);
@@ -95,8 +98,7 @@ class HttpServer : protected TaskManager {
   void handleCommunicationFailure(HttpCommTask*);
 
   // creates a job for asynchronous execution
-  bool handleRequestAsync(HttpCommTask*,
-                          arangodb::WorkItem::uptr<RestHandler>&,
+  bool handleRequestAsync(HttpCommTask*, arangodb::WorkItem::uptr<RestHandler>&,
                           uint64_t* jobId);
 
   // executes the handler directly or add it to the queue
@@ -121,6 +123,9 @@ class HttpServer : protected TaskManager {
   void registerHandler(RestHandler* handler, HttpCommTask* task);
 
  protected:
+  // authentication realm
+  std::string const _authenticationRealm;
+
   // active listen tasks
   std::vector<ListenTask*> _listenTasks;
 
@@ -135,6 +140,9 @@ class HttpServer : protected TaskManager {
 
   // keep-alive timeout
   double _keepAliveTimeout;
+
+  // allow to override the method
+  bool _allowMethodOverride;
 };
 }
 }

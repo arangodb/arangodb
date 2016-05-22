@@ -32,8 +32,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestShardHandler::RestShardHandler(arangodb::HttpRequest* request)
-    : RestBaseHandler(request) {}
+RestShardHandler::RestShardHandler(GeneralRequest* request,
+                                   GeneralResponse* response)
+    : RestBaseHandler(request, response) {}
 
 bool RestShardHandler::isDirect() const { return true; }
 

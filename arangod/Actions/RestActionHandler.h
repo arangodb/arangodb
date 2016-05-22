@@ -33,7 +33,7 @@ class TRI_action_t;
 namespace arangodb {
 class RestActionHandler : public RestVocbaseBaseHandler {
  public:
-  RestActionHandler(HttpRequest*);
+  RestActionHandler(GeneralRequest*, GeneralResponse*);
 
  public:
   bool isDirect() const override;

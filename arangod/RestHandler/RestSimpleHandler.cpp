@@ -43,8 +43,9 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RestSimpleHandler::RestSimpleHandler(
-    HttpRequest* request, arangodb::aql::QueryRegistry* queryRegistry)
-    : RestVocbaseBaseHandler(request),
+    GeneralRequest* request, GeneralResponse* response,
+    arangodb::aql::QueryRegistry* queryRegistry)
+    : RestVocbaseBaseHandler(request, response),
       _queryRegistry(queryRegistry),
       _queryLock(),
       _query(nullptr),
@@ -213,9 +214,8 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       }
     }
 
-    arangodb::aql::Query query(
-        false, _vocbase, aql.c_str(), aql.size(),
-        bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(),
+                               bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);
@@ -255,13 +255,16 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       result.add("removed", VPackValue(removed));
       result.add("ignored", VPackValue(ignored));
       result.add("error", VPackValue(false));
-      result.add("code", VPackValue(static_cast<int>(GeneralResponse::ResponseCode::OK)));
+      result.add(
+          "code",
+          VPackValue(static_cast<int>(GeneralResponse::ResponseCode::OK)));
       if (!silent) {
         result.add("old", queryResult.result->slice());
       }
       result.close();
 
-      generateResult(GeneralResponse::ResponseCode::OK, result.slice(), queryResult.context);
+      generateResult(GeneralResponse::ResponseCode::OK, result.slice(),
+                     queryResult.context);
     }
   } catch (arangodb::basics::Exception const& ex) {
     unregisterQuery();
@@ -279,6 +282,13 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
+  // TODO needs to generalized
+  auto response = dynamic_cast<HttpResponse*>(_response);
+
+  if (response == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
   try {
     std::string collectionName;
     {
@@ -323,9 +333,8 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     std::string const aql(
         "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
-    arangodb::aql::Query query(
-        false, _vocbase, aql.c_str(), aql.size(),
-        bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(),
+                               bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);
@@ -350,10 +359,11 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     {
       VPackObjectBuilder guard(&result);
       createResponse(GeneralResponse::ResponseCode::OK);
-      _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
+
+      // TODO this should be generalized
+      response->setContentType(HttpResponse::ContentType::JSON);
 
       if (qResult.isArray()) {
-
         // This is for internal use of AQL Traverser only.
         // Should not be documented
         VPackSlice const postFilter = slice.get("filter");
@@ -377,12 +387,14 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
               expression.release();
             }
           }
-          
+
           result.add(VPackValue("documents"));
           std::vector<std::string> filteredIds;
 
           // just needed to build the result
-          SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), collectionName, TRI_TRANSACTION_READ);
+          SingleCollectionTransaction trx(
+              StandaloneTransactionContext::Create(_vocbase), collectionName,
+              TRI_TRANSACTION_READ);
 
           result.openArray();
           for (auto const& tmp : VPackArrayIterator(qResult)) {
@@ -420,23 +432,25 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
         queryResult.result = nullptr;
       }
       result.add("error", VPackValue(false));
-      result.add("code", VPackValue(static_cast<int>(_response->responseCode())));
+      result.add("code",
+                 VPackValue(static_cast<int>(_response->responseCode())));
 
       // reserve a few bytes per result document by default
-      int res = _response->body().reserve(32 * resultSize);
+      int res = response->body().reserve(32 * resultSize);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
     }
 
-    auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+    auto transactionContext =
+        std::make_shared<StandaloneTransactionContext>(_vocbase);
     auto customTypeHandler = transactionContext->orderCustomTypeHandler();
-    VPackOptions options = VPackOptions::Defaults; // copy defaults
+    VPackOptions options = VPackOptions::Defaults;  // copy defaults
     options.customTypeHandler = customTypeHandler.get();
-     
+
     arangodb::basics::VPackStringBufferAdapter buffer(
-        _response->body().stringBuffer());
+        response->body().stringBuffer());
     VPackDumper dumper(&buffer, &options);
     dumper.dump(result.slice());
   } catch (arangodb::basics::Exception const& ex) {

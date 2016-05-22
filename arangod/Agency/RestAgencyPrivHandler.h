@@ -36,7 +36,7 @@ namespace arangodb {
 
 class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
  public:
-  RestAgencyPrivHandler(HttpRequest*, consensus::Agent*);
+  RestAgencyPrivHandler(GeneralRequest*, GeneralResponse*, consensus::Agent*);
 
  public:
   bool isDirect() const override;

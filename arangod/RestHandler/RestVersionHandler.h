@@ -29,7 +29,7 @@
 namespace arangodb {
 class RestVersionHandler : public arangodb::RestBaseHandler {
  public:
-  explicit RestVersionHandler(arangodb::HttpRequest*);
+  explicit RestVersionHandler(GeneralRequest*, GeneralResponse*);
 
  public:
   bool isDirect() const override;

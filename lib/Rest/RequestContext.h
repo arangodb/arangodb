@@ -30,14 +30,14 @@
 #include "Rest/HttpResponse.h"
 
 namespace arangodb {
-class HttpRequest;
+class GeneralRequest;
 
 class RequestContext {
   RequestContext(const RequestContext&) = delete;
   RequestContext& operator=(const RequestContext&) = delete;
 
  public:
-  RequestContext(HttpRequest* request) : _request(request) {}
+  RequestContext(GeneralRequest* request) : _request(request) {}
   virtual ~RequestContext() {}
 
  public:
@@ -46,7 +46,7 @@ class RequestContext {
   virtual GeneralResponse::ResponseCode authenticate() = 0;
 
  protected:
-  HttpRequest* _request;
+  GeneralRequest* _request;
 };
 
 }

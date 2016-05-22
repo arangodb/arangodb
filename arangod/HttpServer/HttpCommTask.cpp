@@ -53,7 +53,8 @@ size_t const HttpCommTask::RunCompactEvery = 500;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
-                           ConnectionInfo&& info, double keepAliveTimeout)
+                           ConnectionInfo&& info, double keepAliveTimeout,
+                           std::string const& authenticationRealm)
     : Task("HttpCommTask"),
       SocketTask(socket, keepAliveTimeout),
       _connectionInfo(std::move(info)),
@@ -79,7 +80,8 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
       _startPosition(0),
       _sinceCompactification(0),
       _originalBodyLength(0),
-      _setupDone(false) {
+      _setupDone(false),
+      _authenticationRealm(authenticationRealm) {
   LOG(TRACE) << "connection established, client "
              << TRI_get_fd_or_handle_of_socket(socket) << ", server ip "
              << _connectionInfo.serverAddress << ", server port "
@@ -111,20 +113,16 @@ HttpCommTask::~HttpCommTask() {
   delete _request;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles response
-////////////////////////////////////////////////////////////////////////////////
-
 void HttpCommTask::handleResponse(HttpResponse* response) {
   _requestPending = false;
   _isChunked = false;
 
-  addResponse(response);
+  if (response == nullptr) {
+    handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
+  } else {
+    addResponse(response);
+  }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles simple error response
-////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode code) {
   HttpResponse response(code);
@@ -133,8 +131,7 @@ void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode code) {
   addResponse(&response);
 }
 
-void HttpCommTask::handleSimpleError(HttpRequest* request,
-                                     GeneralResponse::ResponseCode responseCode,
+void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
                                      int errorNum,
                                      std::string const& errorMessage) {
   HttpResponse response(responseCode);
@@ -148,7 +145,7 @@ void HttpCommTask::handleSimpleError(HttpRequest* request,
   builder.close();
 
   try {
-    response->fillBody(request, builder.slice(), true, VPackOptions::Defaults);
+    response.fillBody(_request, builder.slice(), true, VPackOptions::Defaults);
 
     clearRequest();
     handleResponse(&response);
@@ -156,6 +153,40 @@ void HttpCommTask::handleSimpleError(HttpRequest* request,
     resetState(true);
     addResponse(&response);
   }
+}
+
+std::string HttpCommTask::authenticationRealm() const {
+  auto context = (_request == nullptr) ? nullptr : _request->requestContext();
+
+  if (context != nullptr) {
+    auto realm = context->realm();
+
+    if (!realm.empty()) {
+      return _authenticationRealm + "/" + realm;
+    }
+  }
+
+  return _authenticationRealm;
+}
+
+GeneralResponse::ResponseCode HttpCommTask::authenticateRequest() {
+  auto context = (_request == nullptr) ? nullptr : _request->requestContext();
+
+  if (context == nullptr && _request != nullptr) {
+    bool res = RestServerFeature::HANDLER_FACTORY->setRequestContext(_request);
+
+    if (!res) {
+      return GeneralResponse::ResponseCode::NOT_FOUND;
+    }
+
+    context = _request->requestContext();
+  }
+
+  if (context == nullptr) {
+    return GeneralResponse::ResponseCode::SERVER_ERROR;
+  }
+
+  return context->authenticate();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -474,8 +505,7 @@ bool HttpCommTask::processRead() {
   // authenticate
   // .............................................................................
 
-  GeneralResponse::ResponseCode authResult =
-      RestServerFeature::HANDLER_FACTORY->authenticateRequest(_request);
+  GeneralResponse::ResponseCode authResult = authenticateRequest();
 
   // authenticated or an OPTIONS request. OPTIONS requests currently go
   // unauthenticated
@@ -490,13 +520,13 @@ bool HttpCommTask::processRead() {
 
   // not found
   else if (authResult == GeneralResponse::ResponseCode::NOT_FOUND) {
-    handleSimpleError(_request, authResult, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+    handleSimpleError(authResult, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                       TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
   }
 
   // forbidden
   else if (authResult == GeneralResponse::ResponseCode::FORBIDDEN) {
-    handleSimpleError(_request, authResult, TRI_ERROR_USER_CHANGE_PASSWORD,
+    handleSimpleError(authResult, TRI_ERROR_USER_CHANGE_PASSWORD,
                       "change password");
   }
 
@@ -505,11 +535,7 @@ bool HttpCommTask::processRead() {
     HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED);
 
     if (sendWwwAuthenticateHeader()) {
-      std::string realm =
-          "basic realm=\"" +
-          RestServerFeature::HANDLER_FACTORY->authenticationRealm(_request) +
-          "\"";
-
+      std::string realm = "basic realm=\"" + authenticationRealm() + "\"";
       response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
     }
 
@@ -781,31 +807,14 @@ void HttpCommTask::processRequest() {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::REQUESTS)
-      << "\"http-request-begin\",\"" << (void*)this << "\",\""
-      << _connectionInfo.clientAddress << "\",\""
-      << HttpRequest::translateMethod(_requestType) << "\",\""
-      << HttpRequest::translateVersion(_httpVersion) << "\"," << _fullUrl
-      << "\"";
+  {
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+        << "\"http-request-begin\",\"" << (void*)this << "\",\""
+        << _connectionInfo.clientAddress << "\",\""
+        << HttpRequest::translateMethod(_requestType) << "\",\""
+        << HttpRequest::translateVersion(_httpVersion) << "\"," << _fullUrl
+        << "\"";
 
-  // check for an async request
-  std::string const& asyncExecution =
-      _request->header(StaticStrings::Async, found);
-
-  // create handler, this will take over the request
-  WorkItem::uptr<RestHandler> handler(
-      RestServerFeature::HANDLER_FACTORY->createHandler(_request));
-
-  if (handler == nullptr) {
-    LOG(TRACE) << "no handler is known, giving up";
-
-    clearRequest();
-
-    handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND);
-    return;
-  }
-
-  if (_request != nullptr) {
     std::string const& body = _request->body();
 
     if (!body.empty()) {
@@ -813,6 +822,28 @@ void HttpCommTask::processRequest() {
           << "\"http-request-body\",\"" << (void*)this << "\",\""
           << (StringUtils::escapeUnicode(body)) << "\"";
     }
+  }
+
+  // check for an async request
+  std::string const& asyncExecution =
+      _request->header(StaticStrings::Async, found);
+
+  // create handler, this will take over the request and the response
+  std::unique_ptr<HttpResponse> response(
+      new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR));
+
+  WorkItem::uptr<RestHandler> handler(
+      RestServerFeature::HANDLER_FACTORY->createHandler(_request,
+                                                        response.get()));
+
+  if (handler == nullptr) {
+    LOG(TRACE) << "no handler is known, giving up";
+
+    clearRequest();
+    response.release();
+
+    handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND);
+    return;
   }
 
   handler->setTaskId(_taskId, _loop);
@@ -966,12 +997,24 @@ void HttpCommTask::signalTask(TaskData* data) {
     HttpResponse* response = dynamic_cast<HttpResponse*>(data->_response.get());
 
     if (response != nullptr) {
-      handleResponse(data->_response.get());
+      handleResponse(response);
       processRead();
+    } else {
+      handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
     }
-    else {
-      handleSimpleError(GeneralResponse::Response::SERVER_ERROR);
-    }
+  }
+
+  // data response
+  else if (data->_type == TaskData::TASK_DATA_BUFFER) {
+    data->RequestStatisticsAgent::transferTo(this);
+
+    HttpResponse response(GeneralResponse::ResponseCode::OK);
+
+    velocypack::Slice slice(data->_buffer->data());
+    response.fillBody(_request, slice, true, VPackOptions::Defaults);
+
+    handleResponse(&response);
+    processRead();
   }
 
   // data chunk

@@ -52,7 +52,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
  public:
   HttpCommTask(HttpServer*, TRI_socket_t, ConnectionInfo&&,
-               double keepAliveTimeout);
+               double keepAliveTimeout, std::string const& authenticationRealm);
 
  protected:
   ~HttpCommTask();
@@ -79,10 +79,16 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   void setupDone();
 
  private:
+  // returns the authentication realm
+  std::string authenticationRealm() const;
+
+  // checks the authentication
+  GeneralResponse::ResponseCode authenticateRequest();
+
   // reads data from the socket
   void addResponse(HttpResponse*);
 
-  /// check the content-length header of a request and fail it is broken
+  // check the content-length header of a request and fail it is broken
   bool checkContentLength(bool expectContentLength);
 
   // fills the write buffer
@@ -98,13 +104,12 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   void clearRequest();
 
   // resets the internal state
-  ///
-  /// this method can be called to clean up when the request handling aborts
-  /// prematurely
+  //
+  // this method can be called to clean up when the request handling aborts
+  // prematurely
   void resetState(bool close);
 
-  // decides whether or not we should send back a www-authenticate
-  /// header
+  // decides whether or not we should send back a www-authenticate header
   bool sendWwwAuthenticateHeader() const;
 
  protected:
@@ -191,6 +196,9 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   // task ready
   std::atomic<bool> _setupDone;
+
+  // authentication real
+  std::string const _authenticationRealm;
 };
 }
 }

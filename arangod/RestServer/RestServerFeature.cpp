@@ -73,6 +73,9 @@ using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
 
+rest::RestHandlerFactory* RestServerFeature::HANDLER_FACTORY = nullptr;
+rest::AsyncJobManager* RestServerFeature::JOB_MANAGER = nullptr;
+
 RestServerFeature::RestServerFeature(
     application_features::ApplicationServer* server,
     std::string const& authenticationRealm)
@@ -134,10 +137,9 @@ void RestServerFeature::collectOptions(
       new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
 }
 
-void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-}
+void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
 
-static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
+static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request,
                                                 TRI_server_t* server) {
   // get database name from request
   std::string const& dbName = request->databaseName();
@@ -159,7 +161,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
   return TRI_UseDatabaseServer(server, p);
 }
 
-static bool SetRequestContext(HttpRequest* request, void* data) {
+static bool SetRequestContext(GeneralRequest* request, void* data) {
   TRI_server_t* server = static_cast<TRI_server_t*>(data);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
 
@@ -181,18 +183,17 @@ static bool SetRequestContext(HttpRequest* request, void* data) {
   return true;
 }
 
-void RestServerFeature::prepare() {
-  RestHandlerFactory::setMaintenance(true);
-}
+void RestServerFeature::prepare() { RestHandlerFactory::setMaintenance(true); }
 
 void RestServerFeature::start() {
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
-  _httpOptions._vocbase = DatabaseFeature::DATABASE->vocbase();
+  JOB_MANAGER = nullptr;
 
-  _handlerFactory.reset(new RestHandlerFactory(
-      _authenticationRealm, _allowMethodOverride,
-      &SetRequestContext, DatabaseServerFeature::SERVER));
+  _handlerFactory.reset(new RestHandlerFactory(&SetRequestContext,
+                                               DatabaseServerFeature::SERVER));
+
+  HANDLER_FACTORY = _handlerFactory.get();
 
   defineHandlers();
   buildServers();
@@ -228,7 +229,8 @@ void RestServerFeature::stop() {
     delete server;
   }
 
-  _httpOptions._vocbase = nullptr;
+  JOB_MANAGER = nullptr;
+  HANDLER_FACTORY = nullptr;
 }
 
 void RestServerFeature::buildServers() {
@@ -240,8 +242,7 @@ void RestServerFeature::buildServers() {
 
   // unencrypted HTTP endpoints
   HttpServer* httpServer = new HttpServer(
-      SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
-      _handlerFactory.get(), _jobManager.get(), _keepAliveTimeout);
+      _keepAliveTimeout, _authenticationRealm, _allowMethodOverride);
 
   // YYY #warning FRANK filter list
   auto const& endpointList = endpoint->endpointList();
@@ -251,7 +252,8 @@ void RestServerFeature::buildServers() {
   // ssl endpoints
   if (endpointList.hasSsl()) {
     SslServerFeature* ssl =
-        application_features::ApplicationServer::getFeature<SslServerFeature>("SslServer");
+        application_features::ApplicationServer::getFeature<SslServerFeature>(
+            "SslServer");
 
     // check the ssl context
     if (ssl->sslContext() == nullptr) {
@@ -263,10 +265,8 @@ void RestServerFeature::buildServers() {
     SSL_CTX* sslContext = ssl->sslContext();
 
     // https
-    httpServer =
-        new HttpsServer(SchedulerFeature::SCHEDULER,
-                        DispatcherFeature::DISPATCHER, _handlerFactory.get(),
-                        _jobManager.get(), _keepAliveTimeout, sslContext);
+    httpServer = new HttpsServer(_keepAliveTimeout, _authenticationRealm,
+                                 _allowMethodOverride, sslContext);
 
     httpServer->setEndpointList(&endpointList);
     _servers.push_back(httpServer);
@@ -423,8 +423,7 @@ void RestServerFeature::defineHandlers() {
       RestHandlerCreator<WorkMonitorHandler>::createNoData);
 
   _handlerFactory->addHandler(
-      "/_admin/json-echo",
-      RestHandlerCreator<RestEchoHandler>::createNoData);
+      "/_admin/json-echo", RestHandlerCreator<RestEchoHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
@@ -441,7 +440,5 @@ void RestServerFeature::defineHandlers() {
   // ...........................................................................
 
   _handlerFactory->addPrefixHandler(
-      "/", RestHandlerCreator<RestActionHandler>::createData<
-               RestActionHandler::action_options_t*>,
-      (void*)&_httpOptions);
+      "/", RestHandlerCreator<RestActionHandler>::createNoData);
 }

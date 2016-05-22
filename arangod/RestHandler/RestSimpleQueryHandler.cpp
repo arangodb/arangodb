@@ -37,9 +37,9 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RestSimpleQueryHandler::RestSimpleQueryHandler(
-    HttpRequest* request,
+    GeneralRequest* request, GeneralResponse* response,
     arangodb::aql::QueryRegistry* queryRegistry)
-    : RestCursorHandler(request, queryRegistry) {}
+    : RestCursorHandler(request, response, queryRegistry) {}
 
 RestHandler::status RestSimpleQueryHandler::execute() {
   // extract the sub-request type
@@ -149,13 +149,17 @@ void RestSimpleQueryHandler::allDocuments() {
     // now run the actual query and handle the result
     processQuery(s);
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
+                  ex.what());
   } catch (std::bad_alloc const&) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL);
   }
 }
 
@@ -201,9 +205,9 @@ void RestSimpleQueryHandler::allDocumentKeys() {
     data.add("query", VPackValue(aql));
 
     data.add(VPackValue("bindVars"));
-    data.openObject(); // bindVars
+    data.openObject();  // bindVars
     data.add("@collection", VPackValue(collectionName));
-    data.close(); // bindVars
+    data.close();  // bindVars
 
     data.close();
 
@@ -211,12 +215,16 @@ void RestSimpleQueryHandler::allDocumentKeys() {
     // now run the actual query and handle the result
     processQuery(s);
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
+                  ex.what());
   } catch (std::bad_alloc const&) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL);
   }
 }

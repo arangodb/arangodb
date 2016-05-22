@@ -38,7 +38,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBaseHandler::RestBaseHandler(HttpRequest* request) : RestHandler(request) {}
+RestBaseHandler::RestBaseHandler(GeneralRequest* request,
+                                 GeneralResponse* response)
+    : RestHandler(request, response) {}
 
 void RestBaseHandler::handleError(Exception const& ex) {
   generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());

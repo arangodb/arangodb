@@ -38,7 +38,7 @@ class TraverserExpression;
 
 class RestEdgesHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestEdgesHandler(HttpRequest*);
+  explicit RestEdgesHandler(GeneralRequest*, GeneralResponse*);
 
  public:
   status execute() override final;

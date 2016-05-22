@@ -29,9 +29,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(arangodb::HttpRequest* request,
+RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(GeneralRequest* request,
+                                                       GeneralResponse* response,
     arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
-    : RestVocbaseBaseHandler(request),
+  : RestVocbaseBaseHandler(request, response),
     _agencyCallbackRegistry(agencyCallbackRegistry) {
 }
 

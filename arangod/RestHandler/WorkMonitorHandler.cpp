@@ -35,8 +35,9 @@ using namespace arangodb::rest;
 using arangodb::HttpRequest;
 using arangodb::rest::RestHandler;
 
-WorkMonitorHandler::WorkMonitorHandler(HttpRequest* request)
-    : RestBaseHandler(request) {}
+WorkMonitorHandler::WorkMonitorHandler(GeneralRequest* request,
+                                       GeneralResponse* response)
+    : RestBaseHandler(request, response) {}
 
 bool WorkMonitorHandler::isDirect() const { return true; }
 

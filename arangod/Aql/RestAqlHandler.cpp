@@ -48,9 +48,10 @@ using Json = arangodb::basics::Json;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using JsonHelper = arangodb::basics::JsonHelper;
 
-RestAqlHandler::RestAqlHandler(arangodb::HttpRequest* request,
+RestAqlHandler::RestAqlHandler(GeneralRequest* request,
+                               GeneralResponse* response,
                                QueryRegistry* queryRegistry)
-    : RestVocbaseBaseHandler(request),
+    : RestVocbaseBaseHandler(request, response),
       _context(static_cast<VocbaseContext*>(request->requestContext())),
       _vocbase(_context->getVocbase()),
       _queryRegistry(queryRegistry),
@@ -562,7 +563,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
 // executes the handler
 RestHandler::status RestAqlHandler::execute() {
   // std::cout << "GOT INCOMING REQUEST: " <<
-  // HttpRequest::translateMethod(_request->requestType()) << ",
+  // GeneralRequest::translateMethod(_request->requestType()) << ",
   // " << arangodb::ServerState::instance()->getId() << ": " <<
   // _request->fullUrl() << ": " << _request->body() << "\n\n";
 

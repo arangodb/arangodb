@@ -40,9 +40,9 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RestCursorHandler::RestCursorHandler(
-    HttpRequest* request,
+    GeneralRequest* request, GeneralResponse* response,
     arangodb::aql::QueryRegistry* queryRegistry)
-    : RestVocbaseBaseHandler(request),
+    : RestVocbaseBaseHandler(request, response),
       _queryRegistry(queryRegistry),
       _queryLock(),
       _query(nullptr),
@@ -98,7 +98,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       return;
     }
   }
-  
+
   std::shared_ptr<VPackBuilder> bindVarsBuilder;
   if (!bindVars.isNone()) {
     bindVarsBuilder.reset(new VPackBuilder);
@@ -109,11 +109,9 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   VPackValueLength l;
   char const* queryString = querySlice.getString(l);
 
-  arangodb::aql::Query query(
-      false, _vocbase, queryString, static_cast<size_t>(l),
-      bindVarsBuilder,
-      options,
-      arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(false, _vocbase, queryString,
+                             static_cast<size_t>(l), bindVarsBuilder, options,
+                             arangodb::aql::PART_MAIN);
 
   registerQuery(&query);
   auto queryResult = query.execute(_queryRegistry);
@@ -138,7 +136,16 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
   {
     createResponse(GeneralResponse::ResponseCode::CREATED);
-    _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
+
+    // TODO needs to generalized
+    auto* response = dynamic_cast<HttpResponse*>(_response);
+
+    if (response == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+
+    // TODO: generalize to calling handler fillBody
+    response->setContentType(GeneralResponse::ContentType::JSON);
 
     std::shared_ptr<VPackBuilder> extra = buildExtra(queryResult);
     VPackSlice opts = options->slice();
@@ -155,15 +162,15 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       VPackOptions options = VPackOptions::Defaults;
       options.buildUnindexedArrays = true;
       options.buildUnindexedObjects = true;
-  
+
       // conservatively allocate a few bytes per value to be returned
       int res;
       if (n >= 10000) {
-        res = _response->body().reserve(128 * 1024);
+        res = response->body().reserve(128 * 1024);
       } else if (n >= 1000) {
-        res = _response->body().reserve(64 * 1024);
+        res = response->body().reserve(64 * 1024);
       } else {
-        res = _response->body().reserve(n * 48);
+        res = response->body().reserve(n * 48);
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -188,12 +195,13 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
           result.add("extra", extra->slice());
         }
         result.add("error", VPackValue(false));
-        result.add("code", VPackValue((int) _response->responseCode()));
+        result.add("code", VPackValue((int)response->responseCode()));
       } catch (...) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      arangodb::basics::VelocyPackDumper dumper(&(_response->body()), queryResult.context->getVPackOptions());
+      arangodb::basics::VelocyPackDumper dumper(
+          &(response->body()), queryResult.context->getVPackOptions());
       dumper.dumpValue(result.slice());
       return;
     }
@@ -214,12 +222,12 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         std::move(queryResult), batchSize, extra, ttl, count);
 
     try {
-      _response->body().appendChar('{');
-      cursor->dump(_response->body());
-      _response->body().appendText(",\"error\":false,\"code\":");
-      _response->body().appendInteger(
-          static_cast<uint32_t>(_response->responseCode()));
-      _response->body().appendChar('}');
+      response->body().appendChar('{');
+      cursor->dump(response->body());
+      response->body().appendText(",\"error\":false,\"code\":");
+      response->body().appendInteger(
+          static_cast<uint32_t>(response->responseCode()));
+      response->body().appendChar('}');
 
       cursors->release(cursor);
     } catch (...) {
@@ -454,14 +462,23 @@ void RestCursorHandler::modifyCursor() {
 
   try {
     createResponse(GeneralResponse::ResponseCode::OK);
-    _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
-    _response->body().appendChar('{');
-    cursor->dump(_response->body());
-    _response->body().appendText(",\"error\":false,\"code\":");
-    _response->body().appendInteger(
-        static_cast<uint32_t>(_response->responseCode()));
-    _response->body().appendChar('}');
+    // TODO needs to generalized
+    auto* response = dynamic_cast<HttpResponse*>(_response);
+
+    if (response == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+
+    // TODO: generalize to calling handler fillBody
+    response->setContentType(GeneralResponse::ContentType::JSON);
+
+    response->body().appendChar('{');
+    cursor->dump(response->body());
+    response->body().appendText(",\"error\":false,\"code\":");
+    response->body().appendInteger(
+        static_cast<uint32_t>(response->responseCode()));
+    response->body().appendChar('}');
 
     cursors->release(cursor);
   } catch (arangodb::basics::Exception const& ex) {
@@ -511,7 +528,9 @@ void RestCursorHandler::deleteCursor() {
   builder.openObject();
   builder.add("id", VPackValue(id));
   builder.add("error", VPackValue(false));
-  builder.add("code", VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
+  builder.add(
+      "code",
+      VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
   builder.close();
 
   generateResult(GeneralResponse::ResponseCode::ACCEPTED, builder.slice());

@@ -36,8 +36,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDocumentHandler::RestDocumentHandler(HttpRequest* request)
-    : RestVocbaseBaseHandler(request) {}
+RestDocumentHandler::RestDocumentHandler(GeneralRequest* request,
+                                         GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response) {}
 
 RestHandler::status RestDocumentHandler::execute() {
   // extract the sub-request type

@@ -35,8 +35,9 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestDebugHandler::RestDebugHandler(HttpRequest* request)
-    : RestVocbaseBaseHandler(request) {}
+RestDebugHandler::RestDebugHandler(GeneralRequest* request,
+                                   GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response) {}
 
 bool RestDebugHandler::isDirect() const { return false; }
 
@@ -44,7 +45,7 @@ RestHandler::status RestDebugHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
   size_t const len = _request->suffix().size();
-  
+
   if (len == 0 || len > 2 || !(_request->suffix()[0] == "failat")) {
     generateNotImplemented("ILLEGAL /_admin/debug/failat");
     return status::DONE;

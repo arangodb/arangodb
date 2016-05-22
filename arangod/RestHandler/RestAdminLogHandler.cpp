@@ -35,8 +35,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminLogHandler::RestAdminLogHandler(HttpRequest* request)
-    : RestBaseHandler(request) {}
+RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request,
+                                         GeneralResponse* response)
+    : RestBaseHandler(request, response) {}
 
 bool RestAdminLogHandler::isDirect() const { return true; }
 

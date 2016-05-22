@@ -30,12 +30,15 @@
 #include "Basics/StringBuffer.h"
 
 namespace arangodb {
+class RestBatchHandler;
+
 namespace rest {
 class HttpCommTask;
 }
 
 class HttpResponse : public GeneralResponse {
-  friend class HttpCommTask;
+  friend class rest::HttpCommTask;
+  friend class RestBatchHandler; // TODO must be removed
 
  public:
   static bool HIDE_PRODUCT_HEADER;
@@ -53,8 +56,6 @@ class HttpResponse : public GeneralResponse {
   };
 
  public:
-  void reset(ResponseCode code);
-
   void setCookie(std::string const& name, std::string const& value,
                  int lifeTimeSeconds, std::string const& path,
                  std::string const& domain, bool secure, bool httpOnly);
@@ -94,6 +95,8 @@ class HttpResponse : public GeneralResponse {
   void writeHeader(basics::StringBuffer*);
 
  public:
+  void reset(ResponseCode code) override final;
+
   void fillBody(GeneralRequest const*, arangodb::velocypack::Slice const&,
                 bool generateBody,
                 arangodb::velocypack::Options const&) override final;

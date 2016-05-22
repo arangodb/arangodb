@@ -83,7 +83,7 @@ WorkDescription* WorkMonitor::popHandler(RestHandler* handler, bool free) {
 
 bool WorkMonitor::cancelAql(WorkDescription* desc) {
   auto type = desc->_type;
-  
+
   if (type != WorkType::AQL_STRING && type != WorkType::AQL_ID) {
     return true;
   }
@@ -124,14 +124,14 @@ void WorkMonitor::deleteHandler(WorkDescription* desc) {
 
 void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
   RestHandler* handler = desc->_data.handler;
-  GeneralRequest const* request = handler->getRequest();
+  GeneralRequest const* request = handler->request();
 
   b->add("type", VPackValue("http-handler"));
   b->add("protocol", VPackValue(request->protocol()));
   b->add("method",
          VPackValue(HttpRequest::translateMethod(request->requestType())));
   b->add("url", VPackValue(request->fullUrl()));
-  b->add("httpVersion", VPackValue((int) request->protocolVersion()));
+  b->add("httpVersion", VPackValue((int)request->protocolVersion()));
   b->add("database", VPackValue(request->databaseName()));
   b->add("user", VPackValue(request->user()));
   b->add("taskId", VPackValue(request->clientTaskId()));
@@ -158,19 +158,14 @@ void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
   b->close();
 }
 
-void WorkMonitor::sendWorkOverview(uint64_t taskId, std::string const& data) {
-  auto response = std::make_unique<HttpResponse>(GeneralResponse::ResponseCode::OK);
-
-  response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
-  TRI_AppendString2StringBuffer(response->body().stringBuffer(), data.c_str(),
-                                data.length());
-
+void WorkMonitor::sendWorkOverview(
+    uint64_t taskId, std::shared_ptr<velocypack::Buffer<uint8_t>> buffer) {
   auto answer = std::make_unique<TaskData>();
 
   answer->_taskId = taskId;
   answer->_loop = SchedulerFeature::SCHEDULER->lookupLoopById(taskId);
-  answer->_type = TaskData::TASK_DATA_RESPONSE;
-  answer->_response.reset(response.release());
+  answer->_type = TaskData::TASK_DATA_BUFFER;
+  answer->_buffer = buffer;
 
   SchedulerFeature::SCHEDULER->signalTask(answer);
 }

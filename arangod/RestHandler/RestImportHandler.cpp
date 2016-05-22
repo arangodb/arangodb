@@ -46,8 +46,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestImportHandler::RestImportHandler(HttpRequest* request)
-    : RestVocbaseBaseHandler(request), _onDuplicateAction(DUPLICATE_ERROR) {}
+RestImportHandler::RestImportHandler(GeneralRequest* request,
+                                     GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response),
+      _onDuplicateAction(DUPLICATE_ERROR) {}
 
 RestHandler::status RestImportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
@@ -81,11 +83,12 @@ RestHandler::status RestImportHandler::execute() {
       std::string const& from = _request->value("fromPrefix", found);
       if (found) {
         _fromPrefix = from;
-        if (!_fromPrefix.empty() && _fromPrefix[_fromPrefix.size() - 1] != '/') {
+        if (!_fromPrefix.empty() &&
+            _fromPrefix[_fromPrefix.size() - 1] != '/') {
           _fromPrefix.push_back('/');
         }
       }
-      
+
       std::string const& to = _request->value("toPrefix", found);
       if (found) {
         _toPrefix = to;
@@ -164,11 +167,10 @@ std::string RestImportHandler::buildParseError(size_t i,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestImportHandler::handleSingleDocument(
-    SingleCollectionTransaction& trx, RestImportResult& result, 
-    VPackBuilder& tempBuilder, char const* lineStart,
-    VPackSlice slice, std::string const& collectionName,
-    bool isEdgeCollection, OperationOptions const& opOptions, size_t i) {
-
+    SingleCollectionTransaction& trx, RestImportResult& result,
+    VPackBuilder& tempBuilder, char const* lineStart, VPackSlice slice,
+    std::string const& collectionName, bool isEdgeCollection,
+    OperationOptions const& opOptions, size_t i) {
   if (!slice.isObject()) {
     std::string part = VPackDumper::toString(slice);
     if (part.size() > 255) {
@@ -194,7 +196,7 @@ int RestImportHandler::handleSingleDocument(
   if (isEdgeCollection) {
     // Validate from and to
     // TODO: Check if this is unified in trx.insert
-    
+
     if (!_fromPrefix.empty() || !_toPrefix.empty()) {
       tempBuilder.clear();
       tempBuilder.openObject();
@@ -203,7 +205,8 @@ int RestImportHandler::handleSingleDocument(
         if (from.isString()) {
           std::string f = from.copyString();
           if (f.find('/') == std::string::npos) {
-            tempBuilder.add(StaticStrings::FromString, VPackValue(_fromPrefix + f));
+            tempBuilder.add(StaticStrings::FromString,
+                            VPackValue(_fromPrefix + f));
           }
         }
       }
@@ -219,7 +222,8 @@ int RestImportHandler::handleSingleDocument(
       tempBuilder.close();
 
       if (tempBuilder.slice().length() > 0) {
-        newBuilder = VPackCollection::merge(slice, tempBuilder.slice(), false, false);
+        newBuilder =
+            VPackCollection::merge(slice, tempBuilder.slice(), false, false);
         slice = newBuilder.slice();
       }
     }
@@ -244,7 +248,6 @@ int RestImportHandler::handleSingleDocument(
       registerError(result, errorMsg);
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
-  
   }
 
   OperationResult opResult = trx.insert(collectionName, slice, opOptions);
@@ -309,6 +312,13 @@ int RestImportHandler::handleSingleDocument(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createFromJson(std::string const& type) {
+  // TODO needs to generalized
+  auto request = dynamic_cast<HttpRequest*>(_request);
+
+  if (request == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
   RestImportResult result;
 
   std::vector<std::string> const& suffix = _request->suffix();
@@ -349,8 +359,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   } else if (type == "auto") {
     linewise = true;
 
+    // TODO: generalize to calling handler fillBody
     // auto detect import type by peeking at first character
-    std::string const& body = _request->body();
+    std::string const& body = request->body();
     char const* ptr = body.c_str();
     char const* end = ptr + body.size();
 
@@ -373,8 +384,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                            collectionName, TRI_TRANSACTION_WRITE);
+  SingleCollectionTransaction trx(
+      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -387,8 +399,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     return false;
   }
 
- 
-  VPackBuilder tempBuilder; 
+  VPackBuilder tempBuilder;
   bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
@@ -401,7 +412,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   if (linewise) {
     // each line is a separate JSON document
-    std::string const& body = _request->body();
+    std::string const& body = request->body();
     char const* ptr = body.c_str();
     char const* end = ptr + body.size();
     size_t i = 0;
@@ -462,8 +473,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
         continue;
       }
 
-      res = handleSingleDocument(trx, result, tempBuilder, oldPtr, builder->slice(),
-                                 collectionName, isEdgeCollection, opOptions, i);
+      res = handleSingleDocument(trx, result, tempBuilder, oldPtr,
+                                 builder->slice(), collectionName,
+                                 isEdgeCollection, opOptions, i);
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
@@ -480,7 +492,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     // the entire request body is one JSON document
     std::shared_ptr<VPackBuilder> parsedDocuments;
     try {
-      parsedDocuments = VPackParser::fromJson(_request->body());
+      parsedDocuments = VPackParser::fromJson(request->body());
     } catch (VPackException const&) {
       generateError(GeneralResponse::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -502,8 +514,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice const slice = documents.at(i);
 
-      res = handleSingleDocument(trx, result, tempBuilder, nullptr, slice, collectionName,
-                                 isEdgeCollection, opOptions, static_cast<size_t>(i + 1));
+      res = handleSingleDocument(trx, result, tempBuilder, nullptr, slice,
+                                 collectionName, isEdgeCollection, opOptions,
+                                 static_cast<size_t>(i + 1));
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
@@ -538,6 +551,13 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createFromKeyValueList() {
+  // TODO needs to generalized
+  auto* request = dynamic_cast<HttpRequest*>(_request);
+
+  if (request == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
   RestImportResult result;
 
   std::vector<std::string> const& suffix = _request->suffix();
@@ -575,7 +595,7 @@ bool RestImportHandler::createFromKeyValueList() {
     lineNumber = StringUtils::int64(lineNumValue);
   }
 
-  std::string const& bodyStr = _request->body();
+  std::string const& bodyStr = request->body();
   char const* current = bodyStr.c_str();
   char const* bodyEnd = current + bodyStr.size();
 
@@ -630,8 +650,9 @@ bool RestImportHandler::createFromKeyValueList() {
   current = next + 1;
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                            collectionName, TRI_TRANSACTION_WRITE);
+  SingleCollectionTransaction trx(
+      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -654,7 +675,7 @@ bool RestImportHandler::createFromKeyValueList() {
     // Ignore the result ...
   }
 
-  VPackBuilder tempBuilder; 
+  VPackBuilder tempBuilder;
   size_t i = static_cast<size_t>(lineNumber);
 
   while (current != nullptr && current < bodyEnd) {
@@ -709,9 +730,9 @@ bool RestImportHandler::createFromKeyValueList() {
       try {
         std::shared_ptr<VPackBuilder> objectBuilder =
             createVelocyPackObject(keys, values, errorMsg, i);
-        res =
-            handleSingleDocument(trx, result, tempBuilder, lineStart, objectBuilder->slice(),
-                                 collectionName, isEdgeCollection, opOptions, i);
+        res = handleSingleDocument(trx, result, tempBuilder, lineStart,
+                                   objectBuilder->slice(), collectionName,
+                                   isEdgeCollection, opOptions, i);
       } catch (...) {
         // raise any error
         res = TRI_ERROR_INTERNAL;
@@ -752,9 +773,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
 void RestImportHandler::generateDocumentsCreated(
     RestImportResult const& result) {
-  // TODO: is it necessary to create a response object here already
   createResponse(GeneralResponse::ResponseCode::CREATED);
-  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
 
   try {
     VPackBuilder json;
@@ -776,9 +795,12 @@ void RestImportHandler::generateDocumentsCreated(
       for (auto const& elem : result._errors) {
         json.add(VPackValue(elem));
       }
+
       json.close();
     }
+
     json.close();
+
     generateResult(GeneralResponse::ResponseCode::CREATED, json.slice());
   } catch (...) {
     // Ignore the error

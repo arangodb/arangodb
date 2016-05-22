@@ -26,7 +26,7 @@
 
 #include "HttpServer/RestHandler.h"
 
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 
 namespace arangodb {
 class TransactionContext;
@@ -38,7 +38,7 @@ class Slice;
 
 class RestBaseHandler : public rest::RestHandler {
  public:
-  explicit RestBaseHandler(HttpRequest* request);
+  explicit RestBaseHandler(GeneralRequest*, GeneralResponse*);
 
   void handleError(basics::Exception const&) override;
 

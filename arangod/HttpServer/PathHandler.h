@@ -53,20 +53,18 @@ class PathHandler : public RestHandler {
   };
 
  public:
-  static RestHandler* create(HttpRequest* request, void* data) {
+  static RestHandler* create(GeneralRequest* request, GeneralResponse* response, void* data) {
     Options* options = static_cast<Options*>(data);
 
-    return new PathHandler(request, options);
+    return new PathHandler(request, response, options);
   }
 
  public:
-  PathHandler(HttpRequest* request, Options const* options);
+  PathHandler(GeneralRequest*, GeneralResponse*, Options const*);
 
  public:
   bool isDirect() const override { return true; }
-
-  status_t execute() override;
-
+  status execute() override;
   void handleError(const basics::Exception&) override;
 
  private:

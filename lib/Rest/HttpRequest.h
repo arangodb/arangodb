@@ -31,6 +31,8 @@
 #include "Endpoint/ConnectionInfo.h"
 
 namespace arangodb {
+class RestBatchHandler;
+
 namespace rest {
 class HttpCommTask;
 }
@@ -41,7 +43,8 @@ struct Options;
 }
 
 class HttpRequest : public GeneralRequest {
-  friend class HttpCommTask;
+  friend class rest::HttpCommTask;
+  friend class RestBatchHandler; // TODO must be removed
 
  private:
   HttpRequest(ConnectionInfo const&, char const*, size_t, bool);

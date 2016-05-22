@@ -775,7 +775,14 @@ void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
-                              GeneralResponse* responseToSend) {
+                              GeneralResponse* responseToSendGeneral) {
+  // TODO needs to generalized
+  auto responseToSend = dynamic_cast<HttpResponse*>(responseToSendGeneral);
+
+  if (responseToSend == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  
   // First take apart the header to get the coordinatorID:
   ServerID coordinatorID;
   size_t start = 0;
@@ -856,7 +863,14 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
-                                       GeneralRequest* answer) {
+                                       GeneralRequest* answerGeneral) {
+  // TODO needs to generalized
+  auto answer = dynamic_cast<HttpRequest*>(answerGeneral);
+
+  if (answer == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  
   TRI_ASSERT(answer != nullptr);
   // First take apart the header to get the operaitonID:
   OperationID operationID;

@@ -138,7 +138,7 @@ double VocbaseContext::accessSid(std::string const& database,
   return (*it2).second.second;
 }
 
-VocbaseContext::VocbaseContext(HttpRequest* request, TRI_server_t* server,
+VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_server_t* server,
                                TRI_vocbase_t* vocbase)
     : RequestContext(request), _server(server), _vocbase(vocbase) {
   TRI_ASSERT(_server != nullptr);
@@ -238,40 +238,45 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   strncat(cn, "arango_sid_", 11);
   strncat(cn + 11, _vocbase->_name, sizeof(cn) - 12);
 
-  // extract the sid
-  std::string const& sid = _request->cookieValue(cn, found);
+  auto request = dynamic_cast<HttpRequest*>(_request);
 
-  if (found) {
-    MUTEX_LOCKER(mutexLocker, SidLock);
+  if (request != nullptr) {
+    // extract the sid
+    std::string const& sid = request->cookieValue(cn, found);
 
-    auto it = SidCache.find(_vocbase->_name);
+    if (found) {
+      MUTEX_LOCKER(mutexLocker, SidLock);
 
-    if (it != SidCache.end()) {
-      auto& sids = (*it).second;
-      auto it2 = sids.find(sid);
+      auto it = SidCache.find(_vocbase->_name);
 
-      if (it2 != sids.end()) {
-        _request->setUser((*it2).second.first);
-        double const now = TRI_microtime() * 1000.0;
-        // fetch last access date of session
-        double const lastAccess = (*it2).second.second;
+      if (it != SidCache.end()) {
+        auto& sids = (*it).second;
+        auto it2 = sids.find(sid);
 
-        // check if session has expired
-        if (lastAccess + (ServerSessionTtl * 1000.0) < now) {
-          // session has expired
-          sids.erase(sid);
-          return GeneralResponse::ResponseCode::UNAUTHORIZED;
+        if (it2 != sids.end()) {
+          _request->setUser((*it2).second.first);
+          double const now = TRI_microtime() * 1000.0;
+          // fetch last access date of session
+          double const lastAccess = (*it2).second.second;
+
+          // check if session has expired
+          if (lastAccess + (ServerSessionTtl * 1000.0) < now) {
+            // session has expired
+            sids.erase(sid);
+            return GeneralResponse::ResponseCode::UNAUTHORIZED;
+          }
+
+          (*it2).second.second = now;
+          return GeneralResponse::ResponseCode::OK;
         }
-
-        (*it2).second.second = now;
-        return GeneralResponse::ResponseCode::OK;
       }
-    }
 
-    // no cookie found. fall-through to regular HTTP authentication
+      // no cookie found. fall-through to regular HTTP authentication
+    }
   }
 
-  std::string const& authStr = _request->header(StaticStrings::Authorization, found);
+  std::string const& authStr =
+      _request->header(StaticStrings::Authorization, found);
 
   if (!found || !TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
     return GeneralResponse::ResponseCode::UNAUTHORIZED;

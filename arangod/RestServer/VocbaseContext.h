@@ -24,10 +24,10 @@
 #ifndef ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H
 #define ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H 1
 
-#include "Basics/Common.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"
+
+#include "Rest/GeneralRequest.h"
+#include "Rest/GeneralResponse.h"
 
 struct TRI_server_t;
 struct TRI_vocbase_t;
@@ -66,8 +66,7 @@ class VocbaseContext : public arangodb::RequestContext {
   static double accessSid(std::string const& database, std::string const& sid);
 
  public:
-  VocbaseContext(HttpRequest*, TRI_server_t*, TRI_vocbase_t*);
-
+  VocbaseContext(GeneralRequest*, TRI_server_t*, TRI_vocbase_t*);
   ~VocbaseContext();
 
  public:

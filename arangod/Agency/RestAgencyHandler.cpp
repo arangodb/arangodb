@@ -42,8 +42,9 @@ using namespace arangodb::consensus;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyHandler::RestAgencyHandler(HttpRequest* request, Agent* agent)
-    : RestBaseHandler(request), _agent(agent) {}
+RestAgencyHandler::RestAgencyHandler(GeneralRequest* request,
+                                     GeneralResponse* response, Agent* agent)
+    : RestBaseHandler(request, response), _agent(agent) {}
 
 bool RestAgencyHandler::isDirect() const { return false; }
 
@@ -69,10 +70,10 @@ inline RestHandler::status RestAgencyHandler::reportUnknownMethod() {
 }
 
 void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
-
   try {
-    std::string url = Endpoint::uriForm(
-      _agent->config().endpoints.at(leaderId)) + _request->requestPath();
+    std::string url =
+        Endpoint::uriForm(_agent->config().endpoints.at(leaderId)) +
+        _request->requestPath();
     createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
   } catch (std::exception const& e) {
@@ -80,10 +81,9 @@ void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, e.what());
   }
-  
 }
 
-RestHandler::status RestAgencyHandler::handleStores () {
+RestHandler::status RestAgencyHandler::handleStores() {
   if (_request->requestType() == GeneralRequest::RequestType::GET) {
     Builder body;
     body.openObject();
@@ -101,8 +101,8 @@ RestHandler::status RestAgencyHandler::handleStores () {
   return RestHandler::status::DONE;
 }
 
-RestHandler::status RestAgencyHandler::handleWrite () {
-  arangodb::velocypack::Options options; // TODO: User not wait. 
+RestHandler::status RestAgencyHandler::handleWrite() {
+  arangodb::velocypack::Options options;  // TODO: User not wait.
   if (_request->requestType() == GeneralRequest::RequestType::POST) {
     query_t query;
 
@@ -149,14 +149,14 @@ RestHandler::status RestAgencyHandler::handleWrite () {
       }
 
       body.close();
-      
-      if (errors > 0) { // Some/all requests failed
+
+      if (errors > 0) {  // Some/all requests failed
         generateResult(GeneralResponse::ResponseCode::PRECONDITION_FAILED,
                        body.slice());
-      } else {          // All good 
+      } else {  // All good
         generateResult(GeneralResponse::ResponseCode::OK, body.slice());
       }
-    } else {            // Redirect to leader
+    } else {  // Redirect to leader
       redirectRequest(ret.redirect);
     }
   } else {  // Unknown method
@@ -167,8 +167,8 @@ RestHandler::status RestAgencyHandler::handleWrite () {
 
 /*inline RestHandler::status RestAgencyHandler::handleReplicate () {
   if (_request->requestType() == GeneralRequest::RequestType::POST) {
-    
-  }  
+
+  }
   }*/
 
 inline RestHandler::status RestAgencyHandler::handleRead() {
@@ -182,15 +182,16 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
       generateError(GeneralResponse::ResponseCode::BAD, 400);
       return RestHandler::status::DONE;
     }
-    read_ret_t ret = _agent->read (query);
+    read_ret_t ret = _agent->read(query);
 
-    if (ret.accepted) { // I am leading
+    if (ret.accepted) {  // I am leading
       if (ret.success.size() == 1 && !ret.success.at(0)) {
-        generateResult(GeneralResponse::ResponseCode::I_AM_A_TEAPOT, ret.result->slice());
+        generateResult(GeneralResponse::ResponseCode::I_AM_A_TEAPOT,
+                       ret.result->slice());
       } else {
         generateResult(GeneralResponse::ResponseCode::OK, ret.result->slice());
       }
-    } else {            // Redirect to leader
+    } else {  // Redirect to leader
       redirectRequest(ret.redirect);
       return RestHandler::status::DONE;
     }

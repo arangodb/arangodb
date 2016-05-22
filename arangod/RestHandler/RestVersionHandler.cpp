@@ -38,8 +38,9 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler(HttpRequest* request)
-    : RestBaseHandler(request) {}
+RestVersionHandler::RestVersionHandler(GeneralRequest* request,
+                                       GeneralResponse* response)
+    : RestBaseHandler(request, response) {}
 
 bool RestVersionHandler::isDirect() const { return true; }
 

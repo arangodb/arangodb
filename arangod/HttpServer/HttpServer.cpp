@@ -65,11 +65,15 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
 /// @brief constructs a new general server with dispatcher and job manager
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::HttpServer(double keepAliveTimeout)
-    : _listenTasks(),
+HttpServer::HttpServer(double keepAliveTimeout,
+                       std::string const& authenticationRealm,
+                       bool allowMethodOverride)
+    : _authenticationRealm(authenticationRealm),
+      _listenTasks(),
       _endpointList(nullptr),
       _commTasks(),
-      _keepAliveTimeout(keepAliveTimeout) {}
+      _keepAliveTimeout(keepAliveTimeout),
+      _allowMethodOverride(allowMethodOverride) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a general server
@@ -83,7 +87,8 @@ HttpServer::~HttpServer() { stopListening(); }
 
 HttpCommTask* HttpServer::createCommTask(TRI_socket_t s,
                                          ConnectionInfo&& info) {
-  return new HttpCommTask(this, s, std::move(info), _keepAliveTimeout);
+  return new HttpCommTask(this, s, std::move(info), _keepAliveTimeout,
+                          _authenticationRealm);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -305,9 +310,11 @@ void HttpServer::handleRequestDirectly(RestHandler* handler,
 
   switch (result) {
     case RestHandler::status::FAILED:
-    case RestHandler::status::DONE:
-      task->handleResponse(handler->getResponse());
+    case RestHandler::status::DONE: {
+      auto response = dynamic_cast<HttpResponse*>(handler->response());
+      task->handleResponse(response);
       break;
+    }
 
     case RestHandler::status::ASYNC:
       // do nothing, just wait

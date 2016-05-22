@@ -35,13 +35,9 @@ class Query;
 class QueryRegistry;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document batch request handler
-////////////////////////////////////////////////////////////////////////////////
-
 class RestSimpleHandler : public RestVocbaseBaseHandler {
  public:
-  RestSimpleHandler(HttpRequest*, arangodb::aql::QueryRegistry*);
+  RestSimpleHandler(GeneralRequest*, GeneralResponse*, aql::QueryRegistry*);
 
  public:
   status execute() override final;

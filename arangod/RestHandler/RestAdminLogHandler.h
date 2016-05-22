@@ -35,7 +35,7 @@ namespace arangodb {
 
 class RestAdminLogHandler : public RestBaseHandler {
  public:
-  explicit RestAdminLogHandler(HttpRequest*);
+  explicit RestAdminLogHandler(GeneralRequest*, GeneralResponse*);
 
  public:
   bool isDirect() const override;

@@ -26,7 +26,7 @@
 #include "Cluster/ServerState.h"
 #include "HttpServer/RestHandler.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/RequestContext.h"
 
 using namespace arangodb;
@@ -42,7 +42,9 @@ sig_atomic_t MaintenanceMode = 0;
 namespace {
 class MaintenanceHandler : public RestHandler {
  public:
-  explicit MaintenanceHandler(HttpRequest* request) : RestHandler(request){};
+  explicit MaintenanceHandler(GeneralRequest* request,
+                              GeneralResponse* response)
+      : RestHandler(request, response){};
 
   bool isDirect() const override { return true; };
 
@@ -62,13 +64,9 @@ class MaintenanceHandler : public RestHandler {
 /// @brief constructs a new handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-RestHandlerFactory::RestHandlerFactory(std::string const& authenticationRealm,
-                                       context_fptr setContext,
-                                       void* setContextData)
-    : _authenticationRealm(authenticationRealm),
-      _setContext(setContext),
-      _setContextData(setContextData),
-      _notFound(nullptr) {}
+RestHandlerFactory::RestHandlerFactory(context_fptr setContext,
+                                       void* contextData)
+    : _setContext(setContext), _contextData(contextData), _notFound(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets maintenance mode
@@ -79,52 +77,11 @@ void RestHandlerFactory::setMaintenance(bool value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief authenticates a new request
-///
-/// wrapper method that will consider disabled authentication etc.
-////////////////////////////////////////////////////////////////////////////////
-
-GeneralResponse::ResponseCode RestHandlerFactory::authenticateRequest(
-    HttpRequest* request) {
-  auto context = request->requestContext();
-
-  if (context == nullptr) {
-    if (!setRequestContext(request)) {
-      return GeneralResponse::ResponseCode::NOT_FOUND;
-    }
-
-    context = request->requestContext();
-  }
-
-  TRI_ASSERT(context != nullptr);
-
-  return context->authenticate();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set request context, wrapper method
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestHandlerFactory::setRequestContext(HttpRequest* request) {
-  return _setContext(request, _setContextData);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the authentication realm
-////////////////////////////////////////////////////////////////////////////////
-
-std::string RestHandlerFactory::authenticationRealm(
-    HttpRequest* request) const {
-  auto context = request->requestContext();
-
-  if (context != nullptr) {
-    auto realm = context->realm();
-
-    if (!realm.empty()) {
-      return _authenticationRealm + "/" + std::string(realm);
-    }
-  }
-  return _authenticationRealm;
+bool RestHandlerFactory::setRequestContext(GeneralRequest* request) {
+  return _setContext(request, _contextData);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +103,7 @@ RestHandler* RestHandlerFactory::createHandler(GeneralRequest* request,
     return new MaintenanceHandler(request, response);
   }
 
-  std::unordered_map<std::string, create_fptr> const& ii = _constructors;
+  auto const& ii = _constructors;
   std::string const* modifiedPath = &path;
   std::string prefix;
 
@@ -174,7 +131,7 @@ RestHandler* RestHandlerFactory::createHandler(GeneralRequest* request,
     if (prefix.empty()) {
       LOG(TRACE) << "no prefix handler found, trying catch all";
 
-      i = ii.find("/");
+      i = ii.find(ROOT_PATH);
       if (i != ii.end()) {
         LOG(TRACE) << "found catch all handler '/'";
 
@@ -220,36 +177,19 @@ RestHandler* RestHandlerFactory::createHandler(GeneralRequest* request,
   }
 
   // no match
-  void* data = nullptr;
-
   if (i == ii.end()) {
     if (_notFound != nullptr) {
-      RestHandler* notFoundHandler = _notFound(request, response, data);
-      notFoundHandler->setServer(this);
-
-      return notFoundHandler;
+      return _notFound(request, response, nullptr);
     }
 
     LOG(TRACE) << "no not-found handler, giving up";
     return nullptr;
   }
 
-// look up data
-#warning TODO remove datas
-  {
-    auto const& it = _datas.find(*modifiedPath);
-
-    if (it != _datas.end()) {
-      data = (*it).second;
-    }
-  }
-
   LOG(TRACE) << "found handler for path '" << *modifiedPath << "'";
-
-  RestHandler* handler = i->second(request, response, data);
-  handler->setServer(this);
-
-  return handler;
+  LOG(ERR) << (void*)i->second.first;
+  LOG(ERR) << (void*)i->second.second;
+  return i->second.first(request, response, i->second.second);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,8 +198,7 @@ RestHandler* RestHandlerFactory::createHandler(GeneralRequest* request,
 
 void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
                                     void* data) {
-  _constructors[path] = func;
-  _datas[path] = data;
+  _constructors[path] = std::make_pair(func, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,8 +207,7 @@ void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
 
 void RestHandlerFactory::addPrefixHandler(std::string const& path,
                                           create_fptr func, void* data) {
-  _constructors[path] = func;
-  _datas[path] = data;
+  _constructors[path] = std::make_pair(func, data);
   _prefixes.emplace_back(path);
 }
 

@@ -40,7 +40,7 @@ class Dispatcher;
 
 class RestJobHandler : public RestBaseHandler {
  public:
-  RestJobHandler(HttpRequest* request, rest::AsyncJobManager*);
+  RestJobHandler(GeneralRequest*, GeneralResponse*, rest::AsyncJobManager*);
 
  public:
   bool isDirect() const override;

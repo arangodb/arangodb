@@ -384,10 +384,10 @@ void WorkMonitor::run() {
           }
         }
 
-        b.close();
-        b.close();
+        builder.close();
+        builder.close();
 
-        sendWorkOverview(taskId, b);
+        sendWorkOverview(taskId, builder.steal());
       }
     } catch (...) {
       // must prevent propagation of exceptions from here

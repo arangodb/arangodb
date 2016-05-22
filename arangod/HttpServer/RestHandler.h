@@ -45,7 +45,7 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   RestHandler& operator=(RestHandler const&) = delete;
 
  public:
-  explicit RestHandler(GeneralRequest*, GeneralResponse*);
+  RestHandler(GeneralRequest*, GeneralResponse*);
 
  protected:
   ~RestHandler();

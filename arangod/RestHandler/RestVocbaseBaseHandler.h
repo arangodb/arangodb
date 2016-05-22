@@ -132,8 +132,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   static std::string const UPLOAD_PATH;
 
  public:
-  explicit RestVocbaseBaseHandler(HttpRequest*);
-
+  RestVocbaseBaseHandler(GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
  protected:

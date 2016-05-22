@@ -37,9 +37,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestJobHandler::RestJobHandler(HttpRequest* request,
+RestJobHandler::RestJobHandler(GeneralRequest* request,
+                               GeneralResponse* response,
                                AsyncJobManager* jobManager)
-    : RestBaseHandler(request), _jobManager(jobManager) {
+  : RestBaseHandler(request, response), _jobManager(jobManager) {
   TRI_ASSERT(jobManager != nullptr);
 }
 
@@ -82,7 +83,7 @@ void RestJobHandler::putJob() {
   uint64_t jobId = StringUtils::uint64(value);
 
   AsyncJobResult::Status status;
-  HttpResponse* response = _jobManager->getJobResult(jobId, status, true);
+  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true);
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job

@@ -29,7 +29,7 @@
 namespace arangodb {
 class RestPleaseUpgradeHandler : public rest::RestHandler {
  public:
-  explicit RestPleaseUpgradeHandler(HttpRequest*);
+  explicit RestPleaseUpgradeHandler(GeneralRequest*, GeneralResponse*);
 
  public:
   bool isDirect() const override;

@@ -136,8 +136,9 @@ std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
 
 std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
-    : RestBaseHandler(request),
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestBaseHandler(request, response),
       _context(static_cast<VocbaseContext*>(request->requestContext())),
       _vocbase(_context->getVocbase()),
       _nolockHeaderSet(nullptr) {}
@@ -637,6 +638,13 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
 
 std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     VPackOptions const* options, bool& success) {
+  // TODO needs to generalized
+  auto request = dynamic_cast<HttpRequest*>(_request);
+
+  if (request == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
   bool found;
   std::string const& contentType =
       _request->header(StaticStrings::ContentTypeHeader, found);
@@ -644,9 +652,8 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
   try {
     success = true;
 
-    if (found && contentType.size() == StaticStrings::MimeTypeVPack.size() &&
-        contentType == StaticStrings::MimeTypeVPack) {
-      VPackSlice slice{_request->body().c_str()};
+    if (found && contentType == StaticStrings::MimeTypeVPack) {
+      VPackSlice slice{request->body().c_str()};
       auto builder = std::make_shared<VPackBuilder>(options);
       builder->add(slice);
       return builder;

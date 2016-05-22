@@ -44,30 +44,25 @@ class RestHandlerFactory {
 
  public:
   // handler creator
-  typedef RestHandler* (*create_fptr)(GeneralRequest*, void*);
+  typedef RestHandler* (*create_fptr)(GeneralRequest*, GeneralResponse*,
+                                      void* data);
 
   // context handler
   typedef bool (*context_fptr)(GeneralRequest*, void*);
 
  public:
-  RestHandlerFactory(std::string const&, bool, context_fptr, void*);
+  RestHandlerFactory(context_fptr, void*);
 
  public:
   // sets maintenance mode
   static void setMaintenance(bool);
 
  public:
-  // authenticates a new request, wrapper method
-  GeneralResponse::ResponseCode authenticateRequest(GeneralRequest*);
-
   // set request context, wrapper method
   bool setRequestContext(GeneralRequest*);
 
-  // returns the authentication realm
-  std::string authenticationRealm(GeneralRequest*) const;
-
   // creates a new handler
-  RestHandler* createHandler(GeneralRequest*);
+  RestHandler* createHandler(GeneralRequest*, GeneralResponse*);
 
   // adds a path and constructor to the factory
   void addHandler(std::string const& path, create_fptr, void* data = 0);
@@ -79,10 +74,6 @@ class RestHandlerFactory {
   void addNotFoundHandler(create_fptr);
 
  private:
-  // authentication realm
-#warning TODO
-  std::string _authenticationRealm;
-
   // set context callback
   context_fptr _setContext;
 
@@ -90,10 +81,7 @@ class RestHandlerFactory {
   void* _contextData;
 
   // list of constructors
-  std::unordered_map<std::string, create_fptr> _constructors;
-
-  // list of data pointers for constructors
-  std::unordered_map<std::string, void*> _datas;
+  std::unordered_map<std::string, std::pair<create_fptr, void*>> _constructors;
 
   // list of prefix handlers
   std::vector<std::string> _prefixes;

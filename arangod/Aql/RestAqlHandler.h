@@ -39,7 +39,7 @@ namespace aql {
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
-  RestAqlHandler(HttpRequest* request, QueryRegistry* queryRegistry);
+  RestAqlHandler(GeneralRequest*, GeneralResponse*, QueryRegistry*);
 
  public:
   bool isDirect() const override;

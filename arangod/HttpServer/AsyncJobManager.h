@@ -28,7 +28,7 @@
 #include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
-class HttpResponse;
+class GeneralResponse;
 
 namespace rest {
 class AsyncCallbackContext;
@@ -62,7 +62,7 @@ struct AsyncJobResult {
   /// @brief constructor for a specific job result
   //////////////////////////////////////////////////////////////////////////////
 
-  AsyncJobResult(IdType jobId, HttpResponse* response, double stamp,
+  AsyncJobResult(IdType jobId, GeneralResponse* response, double stamp,
                  Status status, AsyncCallbackContext* ctx);
 
   ~AsyncJobResult();
@@ -77,7 +77,7 @@ struct AsyncJobResult {
   /// @brief the full HTTP response object of the job, can be 0
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse* _response;
+  GeneralResponse* _response;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief job creation stamp
@@ -111,7 +111,7 @@ class AsyncJobManager {
   /// @brief callback typedef
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef void (*callback_fptr)(std::string&, HttpResponse*);
+  typedef void (*callback_fptr)(std::string&, GeneralResponse*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief joblist typedef
@@ -128,8 +128,8 @@ class AsyncJobManager {
   /// @brief returns the result of an async job
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse* getJobResult(AsyncJobResult::IdType, AsyncJobResult::Status&,
-                             bool removeFromList);
+  GeneralResponse* getJobResult(AsyncJobResult::IdType, AsyncJobResult::Status&,
+                                bool removeFromList);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief deletes the result of an async job
@@ -178,7 +178,7 @@ class AsyncJobManager {
   /// @brief finishes the execution of an async job
   //////////////////////////////////////////////////////////////////////////////
 
-  void finishAsyncJob(AsyncJobResult::IdType jobId, HttpResponse*);
+  void finishAsyncJob(AsyncJobResult::IdType jobId, GeneralResponse*);
 
  private:
   //////////////////////////////////////////////////////////////////////////////

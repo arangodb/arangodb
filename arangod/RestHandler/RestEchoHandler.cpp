@@ -33,8 +33,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEchoHandler::RestEchoHandler(HttpRequest* request)
-    : RestVocbaseBaseHandler(request) {}
+RestEchoHandler::RestEchoHandler(GeneralRequest* request, GeneralResponse* response)
+  : RestVocbaseBaseHandler(request, response) {}
 
 RestHandler::status RestEchoHandler::execute() {
   bool parseSuccess = true;
