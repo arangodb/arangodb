@@ -202,9 +202,9 @@ RestHandler::status RestBatchHandler::execute() {
     // start to work for this handler
     {
       HandlerWorkStack work(handler);
-      RestHandler::status status = handler->executeFull();
+      RestHandler::status result = handler->executeFull();
 
-      if (status == status::FAILED) {
+      if (result == status::FAILED) {
         generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                       "executing a handler for batch part failed");
 

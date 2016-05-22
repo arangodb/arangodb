@@ -187,8 +187,6 @@ RestHandler* RestHandlerFactory::createHandler(GeneralRequest* request,
   }
 
   LOG(TRACE) << "found handler for path '" << *modifiedPath << "'";
-  LOG(ERR) << (void*)i->second.first;
-  LOG(ERR) << (void*)i->second.second;
   return i->second.first(request, response, i->second.second);
 }
 

@@ -101,10 +101,8 @@ TRI_action_result_t RestActionHandler::executeAction() {
 
   if (!result.isValid) {
     if (result.canceled) {
-      result.isValid = true;
       generateCanceled();
     } else {
-      result.isValid = true;
       generateNotImplemented(_action->_url);
     }
   }
