@@ -74,8 +74,8 @@ HttpServer::HttpServer(
       _endpointList(nullptr),
       _commTasks(),
       _keepAliveTimeout(keepAliveTimeout),
-      _allowMethodOverride(allowMethodOverride) {}
-_accessControlAllowOrigins(accessControlAllowOrigins) {}
+      _allowMethodOverride(allowMethodOverride),
+      _accessControlAllowOrigins(accessControlAllowOrigins) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a general server
