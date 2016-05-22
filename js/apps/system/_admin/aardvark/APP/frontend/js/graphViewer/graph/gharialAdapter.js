@@ -110,7 +110,6 @@ function GharialAdapter(nodes, edges, viewer, config) {
         // any should be default at the moment
         direction = "any";
       }
-
       api.base = arangodb + "_api/";
       api.cursor = api.base + "cursor";
       api.graph = api.base + "gharial";
@@ -649,7 +648,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
           cache: false,
           type: 'GET',
           async: false,
-          url: "/_api/collection/" + encodeURIComponent(collections[i]) + "/count",
+          url: arangoHelper.databaseUrl("/_api/collection/" + encodeURIComponent(collections[i]) + "/count"),
           contentType: "application/json",
           success: function(data) {
             self.TOTAL_NODES = self.TOTAL_NODES + data.count;

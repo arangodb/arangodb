@@ -1,12 +1,12 @@
 /*jshint unused: false */
-/*global $, window, navigator, _*/
+/*global $, window, navigator, _, arangoHelper*/
 (function() {
   "use strict";
 
   var disableVersionCheck = function() {
     $.ajax({
       type: "POST",
-      url: "/_admin/aardvark/disableVersionCheck"
+      url: arangoHelper.databaseUrl("/_admin/aardvark/disableVersionCheck")
     });
   };
 
@@ -14,7 +14,7 @@
   var isVersionCheckEnabled = function(cb) {
     $.ajax({
       type: "GET",
-      url: "/_admin/aardvark/shouldCheckVersion",
+      url: arangoHelper.databaseUrl("/_admin/aardvark/shouldCheckVersion"),
       success: function(data) {
         if (data === true) {
           cb();
@@ -137,14 +137,14 @@
     $.ajax({
       type: "GET",
       cache: false,
-      url: "/_api/version",
+      url: arangoHelper.databaseUrl("/_api/version"),
       contentType: "application/json",
       processData: false,
       async: true,
       success: function(data) {
         var currentVersion =
         window.versionHelper.fromString(data.version);
-        $('.navbar #currentVersion').text(data.version.substr(0,3));
+        $('.navbar #currentVersion').text(" " + data.version.substr(0,3));
 
         window.parseVersions = function (json) {
           if (_.isEmpty(json)) {

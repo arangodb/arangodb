@@ -68,10 +68,11 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
       _requestPending(false),
       _closeRequested(false),
       _readRequestBody(false),
-      _denyCredentials(false),
+      _denyCredentials(true),
       _acceptDeflate(false),
       _newRequest(true),
       _isChunked(false),
+      _startThread(false),
       _request(nullptr),
       _httpVersion(GeneralRequest::ProtocolVersion::UNKNOWN),
       _requestType(GeneralRequest::RequestType::ILLEGAL),
@@ -116,6 +117,7 @@ HttpCommTask::~HttpCommTask() {
 void HttpCommTask::handleResponse(HttpResponse* response) {
   _requestPending = false;
   _isChunked = false;
+  _startThread = false;
 
   if (response == nullptr) {
     handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
@@ -225,7 +227,7 @@ bool HttpCommTask::processRead() {
       _httpVersion = GeneralRequest::ProtocolVersion::UNKNOWN;
       _requestType = GeneralRequest::RequestType::ILLEGAL;
       _fullUrl = "";
-      _denyCredentials = false;
+      _denyCredentials = true;
       _acceptDeflate = false;
 
       _sinceCompactification++;
@@ -329,7 +331,32 @@ bool HttpCommTask::processRead() {
             StaticStrings::AccessControlAllowCredentials, found);
 
         if (found) {
-          _denyCredentials = !StringUtils::boolean(allowCredentials);
+          // default is to allow nothing
+          _denyCredentials = true;
+         
+          // if the request asks to allow credentials, we'll check against the
+          // configured whitelist of origins
+          std::vector<std::string> const& accessControlAllowOrigins = _server->trustedOrigins();
+          
+          if (StringUtils::boolean(allowCredentials) &&
+              !accessControlAllowOrigins.empty())  {
+            if (accessControlAllowOrigins[0] == "*") {
+              // special case: allow everything
+              _denyCredentials = false;
+            } else if (!_origin.empty()) {
+              // copy origin string
+              if (_origin[_origin.size() - 1] == '/') {
+                // strip trailing slash
+                auto result = std::find(accessControlAllowOrigins.begin(), accessControlAllowOrigins.end(), _origin.substr(0, _origin.size() - 1));
+                _denyCredentials = (result == accessControlAllowOrigins.end());
+              } else {
+                auto result = std::find(accessControlAllowOrigins.begin(), accessControlAllowOrigins.end(), _origin);
+                _denyCredentials = (result == accessControlAllowOrigins.end());
+              }
+            } else {
+              TRI_ASSERT(_denyCredentials);
+            }
+          }
         }
       }
 
@@ -577,6 +604,7 @@ void HttpCommTask::finishedChunked() {
   _writeBuffersStats.push_back(nullptr);
 
   _isChunked = false;
+  _startThread = false;
   _requestPending = false;
 
   fillWriteBuffer();
@@ -807,7 +835,7 @@ void HttpCommTask::processRequest() {
     }
   }
 
-  {
+  if (_request != nullptr) {
     LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << _connectionInfo.clientAddress << "\",\""
@@ -846,6 +874,16 @@ void HttpCommTask::processRequest() {
   }
 
   response.release();
+
+  if (_request != nullptr) {
+    bool found; 
+    std::string const& startThread = _request->header(StaticStrings::StartThread, found);
+
+    if (found) {
+      _startThread = StringUtils::boolean(startThread);
+    }
+  }
+  
   handler->setTaskId(_taskId, _loop);
 
   // clear request object
@@ -949,6 +987,7 @@ void HttpCommTask::resetState(bool close) {
 
   _newRequest = true;
   _readRequestBody = false;
+  _startThread = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -43,6 +43,7 @@ DispatcherFeature::DispatcherFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Dispatcher"),
       _nrStandardThreads(0),
+      _nrExtraThreads(0),
       _nrAqlThreads(0),
       _queueSize(16384),
       _dispatcher(nullptr) {
@@ -64,11 +65,15 @@ void DispatcherFeature::collectOptions(
   options->addSection("server", "Server features");
 
   options->addOption("--server.threads",
-                     "number of threads for basic operations",
+                     "number of threads for basic operations (0 = automatic)",
                      new UInt64Parameter(&_nrStandardThreads));
+  
+  options->addHiddenOption("--server.extra-threads",
+                           "number of extra threads that can additionally be created when all regular threads are blocked and the client requests thread creation",
+                           new UInt64Parameter(&_nrExtraThreads));
 
   options->addHiddenOption("--server.aql-threads",
-                           "number of threads for basic operations",
+                           "number of threads for basic operations (0 = automatic)",
                            new UInt64Parameter(&_nrAqlThreads));
 
   options->addHiddenOption("--server.maximal-queue-size",
@@ -78,21 +83,13 @@ void DispatcherFeature::collectOptions(
 
 void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (_nrStandardThreads == 0) {
+    // automatically figure out number of dispatcher threads...
     size_t n = TRI_numberProcessors();
 
-    if (n == 0) {
-      n = 1;
-    }
-
-    if (n > 1) {
-      if (n <= 4) {
-        _nrStandardThreads = n - 1;
-      } else {
-        _nrStandardThreads = n - 2;
-      }
-    } else {
-      _nrStandardThreads = 1;
-    }
+    // start at least 4 dispatcher threads. this is necessary as
+    // threads may be blocking, and starting just one is not enough 
+    n = (std::max)(n, static_cast<size_t>(4));
+    _nrStandardThreads = n;
   }
     
   TRI_ASSERT(_nrStandardThreads >= 1);
@@ -102,6 +99,10 @@ void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
   
   TRI_ASSERT(_nrAqlThreads >= 1);
+
+  if (_nrExtraThreads == 0) {
+    _nrExtraThreads = _nrStandardThreads;
+  }
 
   if (_queueSize <= 128) {
     LOG(FATAL)
@@ -169,14 +170,18 @@ void DispatcherFeature::buildStandardQueue() {
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "setting up a standard queue with "
                                     << _nrStandardThreads << " threads";
 
-  _dispatcher->addStandardQueue(static_cast<size_t>(_nrStandardThreads), static_cast<size_t>(_queueSize));
+  _dispatcher->addStandardQueue(static_cast<size_t>(_nrStandardThreads), 
+                                static_cast<size_t>(_nrExtraThreads), 
+                                static_cast<size_t>(_queueSize));
 }
 
 void DispatcherFeature::buildAqlQueue() {
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "setting up the AQL standard queue with "
                                     << _nrAqlThreads << " threads";
 
-  _dispatcher->addAQLQueue(static_cast<size_t>(_nrAqlThreads), static_cast<size_t>(_queueSize));
+  _dispatcher->addAQLQueue(static_cast<size_t>(_nrAqlThreads), 
+                           static_cast<size_t>(_nrExtraThreads), 
+                           static_cast<size_t>(_queueSize));
 }
 
 void DispatcherFeature::setProcessorAffinity(std::vector<size_t> const& cores) {

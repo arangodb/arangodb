@@ -80,7 +80,6 @@
           modules: [
             "frontend/js/arango/arango.js",
             "frontend/js/arango/templateEngine.js",
-            "frontend/js/shell/browser.js",
             "frontend/js/modules/underscore.js"
           ],
           js: [
@@ -235,7 +234,6 @@
             'frontend/build/app.js': [
               '<%=project.standalone.graphViewer %>',
               '<%=project.standalone.modules %>',
-              'frontend/build/arangoes5.js',
               '<%=project.standalone.js %>'
             ]
           },
@@ -264,25 +262,6 @@
             }
           }
         },
-        sharedES: {
-          src: [
-            "frontend/js/bootstrap/modules/internal.js", 
-            "frontend/js/bootstrap/errors.js",
-            "frontend/js/bootstrap/modules/console.js",
-            "frontend/js/client/bootstrap/modules/internal.js", 
-            "frontend/js/modules/**/*.js",
-            "frontend/js/client/client.js"
-          ],
-          dest: 'frontend/build/arangoes6.js',
-          options: {
-            extractRequired: function () {
-              return [];
-            },
-            extractDeclared: function () {
-              return [];
-            }
-          }
-        },
         htmlStandalone: {
           src: [
             "frontend/html/start.html.part",
@@ -299,7 +278,6 @@
             'frontend/build/lib.test.js': [
               '<%=project.shared.lib %>',
               '<%=project.standalone.lib %>',
-              'frontend/build/arangoes5.js',
               '<%=project.standalone.modules %>'
             ],
             'frontend/build/app.test.js': [
@@ -337,17 +315,6 @@
         default: [
           '<%=project.standalone.js %>'
         ]
-      },
-
-      babel: {
-        options: {
-          sourceMap: false
-        },
-        dist: {
-          files: {
-            'frontend/build/arangoes5.js': 'frontend/build/arangoes6.js'
-          }
-        }
       },
 
       uglify: {
@@ -398,7 +365,6 @@
             'frontend/js/graphViewer/**/*.js'
           ],
           tasks: [
-            'concat_in_order:sharedES',
             'concat_in_order:default',
             'compress',
           ]
@@ -434,8 +400,6 @@
       'jshint:default',
       'replace',
       'concat',
-      'concat_in_order:sharedES',
-      'babel',
       'concat_in_order:default',
       'concat_in_order:htmlStandalone',
       'cssmin',
@@ -449,8 +413,6 @@
       'jshint:default',
       'replace',
       'concat',
-      'concat_in_order:sharedES',
-      'babel',
       'concat_in_order:default',
       'concat_in_order:htmlStandalone',
       'concurrent:uglifyFast',
@@ -463,8 +425,6 @@
       'replace',
       'imagemin',
       'concat',
-      'concat_in_order:sharedES',
-      'babel',
       'concat_in_order:libs',
       'concat_in_order:default',
       'concat_in_order:htmlStandalone',

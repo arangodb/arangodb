@@ -1,6 +1,6 @@
 !CHAPTER Fluent AQL Interface
 
-This chapter describes a fluent interface to query [your graph](../Graphs/README.md).
+This chapter describes a fluent interface to query [your graph](../README.md).
 The philosophy of this interface is to select a group of starting elements (vertices or edges) at first and from there on explore the graph with your query by selecting connected elements.
 
 As an example you can start with a set of vertices, select their direct neighbors and finally their outgoing edges.
@@ -8,13 +8,14 @@ As an example you can start with a set of vertices, select their direct neighbor
 The result of this query will be the set of outgoing edges.
 For each part of the query it is possible to further refine the resulting set of elements by giving examples for them.
 
-Examples will explain the API on the [social graph](../Graphs/README.md#the-social-graph):
+Examples will explain the API on the [social graph](../README.md#the-social-graph):
 
-![Social Example Graph](../Graphs/social_graph.png)
+![Social Example Graph](../social_graph.png)
 
 !SECTION Definition of examples
 
 @startDocuBlock JSF_general_graph_example_description
+
 
 !SECTION Starting Points
 

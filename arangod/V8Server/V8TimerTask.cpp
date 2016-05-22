@@ -90,7 +90,7 @@ bool V8TimerTask::handleTimeout() {
     return false;
   }
   
-  int res = DispatcherFeature::DISPATCHER->addJob(job);
+  int res = DispatcherFeature::DISPATCHER->addJob(job, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(WARN) << "could not add task " << _command << " to queue";

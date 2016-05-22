@@ -91,7 +91,8 @@ TRI_document_collection_t::TRI_document_collection_t(TRI_vocbase_t* vocbase)
       _masterPointers(),
       _keyGenerator(nullptr),
       _uncollectedLogfileEntries(0),
-      _cleanupIndexes(0) {
+      _cleanupIndexes(0), 
+      _persistentIndexes(0) {
   _tickMax = 0;
 
   setCompactionStatus("compaction not yet started");
@@ -111,7 +112,7 @@ TRI_document_collection_t::~TRI_document_collection_t() {
 std::string TRI_document_collection_t::label() const {
   return std::string(_vocbase->_name) + " / " + _info.name();
 }
-
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update statistics for a collection
 /// note: the write-lock for the collection must be held to call this
@@ -464,24 +465,13 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the number of documents in collection
-///
-/// the caller must have read-locked the collection!
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_document_collection_t::size() {
-  return static_cast<uint64_t>(_numberDocuments);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the collection
 /// note: the collection lock must be held when calling this function
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
   // prefill with 0's to init counters
-  TRI_doc_collection_info_t* info =
-      static_cast<TRI_doc_collection_info_t*>(TRI_Allocate(
+  auto info = static_cast<TRI_doc_collection_info_t*>(TRI_Allocate(
           TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true));
 
   if (info == nullptr) {
@@ -547,8 +537,12 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
 void TRI_document_collection_t::addIndex(arangodb::Index* idx) {
   _indexes.emplace_back(idx);
 
+  // update statistics
   if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
     ++_cleanupIndexes;
+  }
+  if (idx->isPersistent()) {
+    ++_persistentIndexes;
   }
 }
 
@@ -572,8 +566,12 @@ arangodb::Index* TRI_document_collection_t::removeIndex(TRI_idx_iid_t iid) {
 
       _indexes.erase(_indexes.begin() + i);
 
+      // update statistics
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
         --_cleanupIndexes;
+      }
+      if (idx->isPersistent()) {
+        --_persistentIndexes;
       }
 
       return idx;
@@ -673,20 +671,6 @@ static int FulltextIndexFromVelocyPack(arangodb::Transaction*,
 static inline void SetRevision(TRI_document_collection_t* document,
                                TRI_voc_rid_t rid, bool force) {
   document->_info.setRevision(rid, force);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that an error code is set in all required places
-////////////////////////////////////////////////////////////////////////////////
-
-static void EnsureErrorCode(int code) {
-  if (code == TRI_ERROR_NO_ERROR) {
-    // must have an error code
-    code = TRI_ERROR_INTERNAL;
-  }
-
-  TRI_set_errno(code);
-  errno = code;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1046,7 +1030,7 @@ static bool OpenIndexIterator(std::string const& filename, void* data) {
   }
 
   VPackSlice description = builder->slice();
-  // VelocyPack must be a index description
+  // VelocyPack must be an index description
   if (!description.isObject()) {
     LOG(ERR) << "cannot read index definition from '" << filename << "'";
     return false;
@@ -1054,9 +1038,9 @@ static bool OpenIndexIterator(std::string const& filename, void* data) {
 
   auto ctx = static_cast<OpenIndexIteratorContext*>(data);
   arangodb::Transaction* trx = ctx->trx;
-  TRI_document_collection_t* collection = ctx->collection;
+  TRI_document_collection_t* document = ctx->collection;
 
-  int res = TRI_FromVelocyPackIndexDocumentCollection(trx, collection,
+  int res = TRI_FromVelocyPackIndexDocumentCollection(trx, document,
                                                       description, nullptr);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1101,7 +1085,8 @@ static void DestroyBaseDocumentCollection(TRI_document_collection_t* document) {
 static bool InitDocumentCollection(TRI_document_collection_t* document) {
   TRI_ASSERT(document != nullptr);
 
-  document->_cleanupIndexes = false;
+  document->_cleanupIndexes = 0;
+  document->_persistentIndexes = 0;
   document->_uncollectedLogfileEntries.store(0);
 
   int res = InitBaseDocumentCollection(document);
@@ -1148,9 +1133,6 @@ static bool InitDocumentCollection(TRI_document_collection_t* document) {
     }
   }
 
-  TRI_InitCondition(&document->_journalsCondition);
-
-  // crud methods
   document->cleanupIndexes = CleanupIndexes;
 
   return true;
@@ -1298,8 +1280,6 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyDocumentCollection(TRI_document_collection_t* document) {
-  TRI_DestroyCondition(&document->_journalsCondition);
-
   // free memory allocated for indexes
   for (auto& idx : document->allIndexes()) {
     delete idx;
@@ -1315,166 +1295,6 @@ void TRI_DestroyDocumentCollection(TRI_document_collection_t* document) {
 void TRI_FreeDocumentCollection(TRI_document_collection_t* document) {
   TRI_DestroyDocumentCollection(document);
   delete document;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a journal
-///
-/// Note that the caller must hold a lock protecting the _journals entry.
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
-    TRI_document_collection_t* document, TRI_voc_fid_t fid,
-    TRI_voc_size_t journalSize, bool isCompactor) {
-  TRI_ASSERT(fid > 0);
-
-  // create a datafile entry for the new journal
-  try {
-    document->_datafileStatistics.create(fid);
-  } catch (...) {
-    EnsureErrorCode(TRI_ERROR_OUT_OF_MEMORY);
-    return nullptr;
-  }
-
-  TRI_datafile_t* journal;
-
-  if (document->_info.isVolatile()) {
-    // in-memory collection
-    journal = TRI_CreateDatafile(nullptr, fid, journalSize, true);
-  } else {
-    // construct a suitable filename (which may be temporary at the beginning)
-    std::string jname;
-    if (isCompactor) {
-      jname = "compaction-";
-    } else {
-      jname = "temp-";
-    }
-
-    jname.append(std::to_string(fid) + ".db");
-    std::string filename = arangodb::basics::FileUtils::buildFilename(document->_directory, jname);
-
-    TRI_IF_FAILURE("CreateJournalDocumentCollection") {
-      // simulate disk full
-      document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-
-      EnsureErrorCode(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-
-      return nullptr;
-    }
-
-    // remove an existing temporary file first
-    if (TRI_ExistsFile(filename.c_str())) {
-      // remove an existing file first
-      TRI_UnlinkFile(filename.c_str());
-    }
-
-    journal = TRI_CreateDatafile(filename.c_str(), fid, journalSize, true);
-  }
-
-  if (journal == nullptr) {
-    if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
-      document->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
-    } else {
-      document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
-    }
-
-    EnsureErrorCode(document->_lastError);
-
-    return nullptr;
-  }
-
-  // journal is there now
-  TRI_ASSERT(journal != nullptr);
-
-  if (isCompactor) {
-    LOG(TRACE) << "created new compactor '" << journal->getName(journal) << "'";
-  } else {
-    LOG(TRACE) << "created new journal '" << journal->getName(journal) << "'";
-  }
-
-  // create a collection header, still in the temporary file
-  TRI_df_marker_t* position;
-  int res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t),
-                                       &position, journalSize);
-
-  TRI_IF_FAILURE("CreateJournalDocumentCollectionReserve1") {
-    res = TRI_ERROR_DEBUG;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    document->_lastError = journal->_lastError;
-    LOG(ERR) << "cannot create collection header in file '"
-             << journal->getName(journal) << "': " << TRI_errno_string(res);
-
-    // close the journal and remove it
-    TRI_CloseDatafile(journal);
-    TRI_UnlinkFile(journal->getName(journal));
-    TRI_FreeDatafile(journal);
-
-    EnsureErrorCode(res);
-
-    return nullptr;
-  }
-
-  TRI_col_header_marker_t cm;
-  DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(&cm), TRI_DF_MARKER_COL_HEADER,
-                         sizeof(TRI_col_header_marker_t), static_cast<TRI_voc_tick_t>(fid));
-  cm._cid = document->_info.id();
-
-  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, false);
-
-  TRI_IF_FAILURE("CreateJournalDocumentCollectionReserve2") {
-    res = TRI_ERROR_DEBUG;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    document->_lastError = journal->_lastError;
-    LOG(ERR) << "cannot create collection header in file '"
-             << journal->getName(journal) << "': " << TRI_last_error();
-
-    // close the journal and remove it
-    TRI_CloseDatafile(journal);
-    TRI_UnlinkFile(journal->getName(journal));
-    TRI_FreeDatafile(journal);
-
-    EnsureErrorCode(document->_lastError);
-
-    return nullptr;
-  }
-
-  TRI_ASSERT(fid == journal->_fid);
-
-  // if a physical file, we can rename it from the temporary name to the correct
-  // name
-  if (!isCompactor) {
-    if (journal->isPhysical(journal)) {
-      // and use the correct name
-      std::string jname("journal-" + std::to_string(journal->_fid) + ".db");
-      std::string filename = arangodb::basics::FileUtils::buildFilename(document->_directory, jname);
-
-      bool ok = TRI_RenameDatafile(journal, filename.c_str());
-
-      if (!ok) {
-        LOG(ERR) << "failed to rename journal '" << journal->getName(journal)
-                 << "' to '" << filename << "': " << TRI_last_error();
-
-        TRI_CloseDatafile(journal);
-        TRI_UnlinkFile(journal->getName(journal));
-        TRI_FreeDatafile(journal);
-
-        EnsureErrorCode(document->_lastError);
-
-        return nullptr;
-      } else {
-        LOG(TRACE) << "renamed journal from '" << journal->getName(journal)
-                   << "' to '" << filename << "'";
-      }
-    }
-
-    document->_journals.emplace_back(journal);
-  }
-
-  return journal;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1561,71 +1381,17 @@ int TRI_FromVelocyPackIndexDocumentCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief closes an existing datafile
-/// Note that the caller must hold a lock protecting the _datafiles and
-/// _journals entry.
+/// @brief enumerate all indexes of the collection, but don't fill them yet
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
-                                         size_t position, bool isCompactor) {
-  std::vector<TRI_datafile_t*>* vector;
+int TRI_document_collection_t::detectIndexes(arangodb::Transaction* trx) {
+  OpenIndexIteratorContext ctx;
+  ctx.trx = trx;
+  ctx.collection = this;
 
-  // either use a journal or a compactor
-  if (isCompactor) {
-    vector = &document->_compactors;
-  } else {
-    vector = &document->_journals;
-  }
+  iterateIndexes(OpenIndexIterator, static_cast<void*>(&ctx));
 
-  // no journal at this position
-  if (vector->size() <= position) {
-    TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
-    return false;
-  }
-
-  // seal and rename datafile
-  TRI_datafile_t* journal =
-      static_cast<TRI_datafile_t*>(vector->at(position));
-  int res = TRI_SealDatafile(journal);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "failed to seal datafile '" << journal->getName(journal)
-             << "': " << TRI_last_error();
-
-    if (!isCompactor) {
-      vector->erase(vector->begin() + position);
-      document->_datafiles.emplace_back(journal);
-    }
-
-    return false;
-  }
-
-  if (!isCompactor && journal->isPhysical(journal)) {
-    // rename the file
-    std::string dname("datafile-" + std::to_string(journal->_fid) + ".db");
-    std::string filename = arangodb::basics::FileUtils::buildFilename(document->_directory, dname);
-
-    bool ok = TRI_RenameDatafile(journal, filename.c_str());
-
-    if (!ok) {
-      LOG(ERR) << "failed to rename datafile '" << journal->getName(journal)
-               << "' to '" << filename << "': " << TRI_last_error();
-
-      vector->erase(vector->begin() + position);
-      document->_datafiles.emplace_back(journal);
-
-      return false;
-    }
-
-    LOG(TRACE) << "closed file '" << journal->getName(journal) << "'";
-  }
-
-  if (!isCompactor) {
-    vector->erase(vector->begin() + position);
-    document->_datafiles.emplace_back(journal);
-  }
-
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1663,24 +1429,6 @@ class IndexFiller {
 int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
                                       TRI_vocbase_col_t* collection,
                                       TRI_document_collection_t* document) {
-  auto old = document->useSecondaryIndexes();
-
-  // turn filling of secondary indexes off. we're now only interested in getting
-  // the indexes' definition. we'll fill them below ourselves.
-  document->useSecondaryIndexes(false);
-
-  try {
-    OpenIndexIteratorContext ctx;
-    ctx.trx = trx;
-    ctx.collection = document;
-
-    document->iterateIndexes(OpenIndexIterator, static_cast<void*>(&ctx));
-    document->useSecondaryIndexes(old);
-  } catch (...) {
-    document->useSecondaryIndexes(old);
-    return TRI_ERROR_INTERNAL;
-  }
-
   // distribute the work to index threads plus this thread
   auto const& indexes = document->allIndexes();
   size_t const n = indexes.size();
@@ -1880,7 +1628,31 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
+  // build the indexes meta-data, but do not fill the indexes yet
+  {
+    auto old = document->useSecondaryIndexes();
+
+    // turn filling of secondary indexes off. we're now only interested in getting
+    // the indexes' definition. we'll fill them below ourselves.
+    document->useSecondaryIndexes(false);
+
+    try {
+      document->detectIndexes(&trx);
+      document->useSecondaryIndexes(old);
+    } catch (...) {
+      document->useSecondaryIndexes(old);
+    
+      TRI_CloseCollection(collection);
+      TRI_FreeCollection(collection);
+    
+      LOG(ERR) << "cannot initialize collection indexes";
+      return nullptr;
+    }
+  }
+
+
   if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+    // build the index structures, and fill the indexes
     TRI_FillIndexesDocumentCollection(&trx, col, document);
   }
 
@@ -3398,32 +3170,6 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rotate the current journal of the collection
-/// use this for testing only
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RotateJournalDocumentCollection(TRI_document_collection_t* document) {
-  int res = TRI_ERROR_ARANGO_NO_JOURNAL;
-
-  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-  if (document->_state == TRI_COL_STATE_WRITE) {
-    size_t const n = document->_journals.size();
-
-    if (n > 0) {
-      TRI_ASSERT(document->_journals[0] != nullptr);
-      TRI_CloseDatafileDocumentCollection(document, 0, false);
-
-      res = TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reads an element from the document collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4074,14 +3820,7 @@ int TRI_document_collection_t::lookupDocument(
     return TRI_ERROR_INTERNAL;
   }
 
-  VPackBuilder searchValue;
-  searchValue.openArray();
-  searchValue.openObject();
-  searchValue.add(TRI_SLICE_KEY_EQUAL, key);
-  searchValue.close();
-  searchValue.close();
-    
-  header = primaryIndex()->lookup(trx, searchValue.slice());
+  header = primaryIndex()->lookupKey(trx, key);
 
   if (header == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -4256,7 +3995,8 @@ int TRI_document_collection_t::insertSecondaryIndexes(
     arangodb::Transaction* trx, TRI_doc_mptr_t const* header, bool isRollback) {
   TRI_IF_FAILURE("InsertSecondaryIndexes") { return TRI_ERROR_DEBUG; }
 
-  if (!useSecondaryIndexes()) {
+  bool const useSecondary = useSecondaryIndexes();
+  if (!useSecondary && _persistentIndexes == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -4267,6 +4007,11 @@ int TRI_document_collection_t::insertSecondaryIndexes(
 
   for (size_t i = 1; i < n; ++i) {
     auto idx = indexes[i];
+
+    if (!useSecondary && !idx->isPersistent()) {
+      continue;
+    }
+
     int res = idx->insert(trx, header, isRollback);
 
     // in case of no-memory, return immediately
@@ -4309,7 +4054,9 @@ int TRI_document_collection_t::deletePrimaryIndex(
 
 int TRI_document_collection_t::deleteSecondaryIndexes(
     arangodb::Transaction* trx, TRI_doc_mptr_t const* header, bool isRollback) {
-  if (!useSecondaryIndexes()) {
+
+  bool const useSecondary = useSecondaryIndexes();
+  if (!useSecondary && _persistentIndexes == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -4322,6 +4069,11 @@ int TRI_document_collection_t::deleteSecondaryIndexes(
 
   for (size_t i = 1; i < n; ++i) {
     auto idx = indexes[i];
+    
+    if (!useSecondary && !idx->isPersistent()) {
+      continue;
+    }
+
     int res = idx->remove(trx, header, isRollback);
 
     if (res != TRI_ERROR_NO_ERROR) {

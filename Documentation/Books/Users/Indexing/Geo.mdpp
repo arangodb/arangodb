@@ -4,6 +4,8 @@
 
 This is an introduction to ArangoDB's geo indexes.
 
+AQL's geographic features are described in [Geo functions](../../AQL/Functions/Geo.html).
+
 ArangoDB uses Hilbert curves to implement geo-spatial indexes. 
 See this [blog](https://www.arangodb.com/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing)
 for details.
@@ -106,8 +108,4 @@ Since ArangoDB 2.5, this method is an alias for *ensureGeoIndex* since
 geo indexes are always sparse, meaning that documents that do not contain
 the index attributes or have non-numeric values in the index attributes
 will not be indexed.
-
-!SUBSUBSECTION Related topics
-
-ArangoDB AQL geographic features are described in [AQL Geo functions](../Aql/GeoFunctions.md)
 

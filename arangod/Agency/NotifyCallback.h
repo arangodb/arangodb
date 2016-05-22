@@ -21,7 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_NOTIFY_CALLBACK_H 
+#ifndef ARANGOD_CONSENSUS_NOTIFY_CALLBACK_H
 #define ARANGOD_CONSENSUS_NOTIFY_CALLBACK_H 1
 
 #include "Agency/AgencyCommon.h"
@@ -33,19 +33,17 @@ namespace arangodb {
 namespace consensus {
 
 class NotifyCallback : public arangodb::ClusterCommCallback {
-  
-public:
-  
+ public:
   explicit NotifyCallback(std::function<void(bool)>);
-  
+
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
-  
+
   void shutdown();
-  
-private:
+
+ private:
   std::function<void(bool)> _cb;
 };
-
-}} // namespace
+}
+}  // namespace
 
 #endif

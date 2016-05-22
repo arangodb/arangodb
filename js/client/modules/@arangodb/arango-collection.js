@@ -331,7 +331,8 @@ ArangoCollection.prototype.properties = function (properties) {
     "shardKeys": false,
     "numberOfShards": false,
     "keyOptions": false,
-    "indexBuckets": true
+    "indexBuckets": true,
+    "replicationFactor": false
   };
   var a;
 
@@ -586,24 +587,6 @@ ArangoCollection.prototype.dropIndex = function (id) {
   arangosh.checkRequestResult(requestResult);
 
   return true;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures a cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
-  var body = {
-    type : "cap",
-    size : size || undefined,
-    byteSize: byteSize || undefined
-  };
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

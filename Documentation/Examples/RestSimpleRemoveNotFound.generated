@@ -13,8 +13,8 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> O
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
-  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
-  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"removed"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"ignored"</span> : <span class="hljs-number">3</span>, 
-  <span class="hljs-string">"removed"</span> : <span class="hljs-number">0</span> 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

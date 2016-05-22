@@ -317,11 +317,20 @@
       var template;
       if (typeof templateName === 'string') {
         template = templateEngine.createTemplate(templateName);
-        $(".createModalDialog .modal-body").html(template.render({
-          content: tableContent,
-          advancedContent: advancedContent,
-          info: extraInfo
-        }));
+        if (divID) {
+          $('#' + divID + " .createModalDialog .modal-body").html(template.render({
+            content: tableContent,
+            advancedContent: advancedContent,
+            info: extraInfo
+          }));
+        }
+        else {
+          $("#modalPlaceholder .createModalDialog .modal-body").html(template.render({
+            content: tableContent,
+            advancedContent: advancedContent,
+            info: extraInfo
+          }));
+        }
       }
       else {
         var counter = 0;

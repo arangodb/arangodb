@@ -1,6 +1,65 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* as a consequence of the upgrade to V8 version 5, the implementation of the
+  JavaScript `Buffer` object had to be changed. JavaScript `Buffer` objects in
+  ArangoDB now always store their data on the heap. There is no shared pool
+  for small Buffer values, and no pointing into existing Buffer data when
+  extracting slices. This change may increase the cost of creating Buffers with
+  short contents or when peeking into existing Buffers, but was required for
+  safer memory management and to prevent leaks.
+
+* the `db` object's function `_listDatabases()` was renamed to just `_databases()`
+  in order to make it more consistent with the existing `_collections()` function.
+  Additionally the `db` object's `_listEndpoints()` function was renamed to just
+  `_endpoints()`.
+
+* changed default value of `--server.authentication` from `false` to `true` in 
+  configuration files etc/relative/arangod.conf and etc/arangodb/arangod.conf.in.
+  This means the server will be started with authentication enabled by default,
+  requiring all client connections to provide authentication data when connecting
+  to ArangoDB. Authentication can still be turned off via setting the value of
+  `--server.authentication` to `false` in ArangoDB's configuration files or by
+  specifying the option on the command-line.
+
+* Changed result format for querying all collections via the API GET `/_api/collection`.
+
+  Previous versions of ArangoDB returned an object with an attribute named `collections` 
+  and an attribute named `names`. Both contained all available collections, but
+  `collections` contained the collections as an array, and `names` contained the
+  collections again, contained in an object in which the attribute names were the
+  collection names, e.g.
+
+  ```
+  {
+    "collections": [
+      {"id":"5874437","name":"test","isSystem":false,"status":3,"type":2},
+      {"id":"17343237","name":"something","isSystem":false,"status":3,"type":2},
+      ...
+    ],
+    "names": {
+      "test": {"id":"5874437","name":"test","isSystem":false,"status":3,"type":2},
+      "something": {"id":"17343237","name":"something","isSystem":false,"status":3,"type":2},
+      ...
+    }
+  }
+  ```
+  This result structure was redundant, and therefore has been simplified to just
+
+  ```
+  {
+    "result": [
+      {"id":"5874437","name":"test","isSystem":false,"status":3,"type":2},
+      {"id":"17343237","name":"something","isSystem":false,"status":3,"type":2},
+      ...
+    ]
+  }
+  ```
+
+  in ArangoDB 3.0.
+
+* added AQL functions `TYPENAME()` and `HASH()`
+
 * renamed arangob tool to arangobench
 
 * added AQL string comparison operator `LIKE`
@@ -184,11 +243,33 @@ v3.0.0 (XXXX-XX-XX)
   using a backwards-compatible "legacy mode"
 
 
-v2.8.9 (XXXX-XX-XX)
+v2.8.10 (XXXX-XX-XX)
+--------------------
+
+* honor the value of startup option `--database.wait-for-sync` (that is used to control
+  whether new collections are created with `waitForSync` set to `true` by default) also
+  when creating collections via the HTTP API (and thus the ArangoShell). When creating
+  a collection via these mechanisms, the option was ignored so far, which was inconsistent.
+
+* fixed issue #1826: arangosh --javascript.execute: internal error (geo index issue)
+
+* fixed issue #1823: Arango crashed hard executing very simple query on windows
+
+
+v2.8.9 (2016-05-13)
 -------------------
+
+* fixed escaping and quoting of extra parameters for executables in Mac OS X App
+
+* added "waiting for" status variable to web interface collection figures view
+
+* fixed undefined behavior in query cache invaldation
 
 * fixed access to /_admin/statistics API in case statistics are disable via option
   `--server.disable-statistics`
+
+* Foxx manager will no longer fail hard when Foxx store is unreachable unless installing
+  a service from the Foxx store (e.g. when behind a firewall or GitHub is unreachable).
 
 
 v2.8.8 (2016-04-19)

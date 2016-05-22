@@ -3519,6 +3519,13 @@ function AQL_SLICE (value, from, to, nonNegative) {
   }
 
   from = AQL_TO_NUMBER(from);
+  if (from < 0) {
+    from = value.length + from;
+    if (from < 0) {
+      from = 0;
+    }
+  }
+
   if (TYPEWEIGHT(to) !== TYPEWEIGHT_NULL) {
     to = AQL_TO_NUMBER(to);
   }
@@ -3533,6 +3540,11 @@ function AQL_SLICE (value, from, to, nonNegative) {
   else {
     if (to >= 0) {
       to += from;
+    } else {
+      to = value.length + to;
+      if (to < 0) {
+        to = 0;
+      }
     }
   }
 
@@ -8303,6 +8315,9 @@ exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 
 exports.reload = reloadUserFunctions;
 exports.clearCaches = clearCaches;
+exports.lookupFunction = GET_USERFUNCTION;
+exports.warnFromFunction = WARN;
+exports.fixValue = FIX_VALUE;
 
 // initialize the query engine
 exports.clearCaches();

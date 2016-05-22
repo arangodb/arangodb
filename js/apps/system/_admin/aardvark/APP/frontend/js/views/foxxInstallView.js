@@ -2,8 +2,12 @@
 /*global $, Joi, _, arangoHelper, templateEngine, window*/
 (function() {
   "use strict";
+  
+  // mop: copy paste from common/bootstrap/errors.js
+  var errors = {
+    "ERROR_APPLICATION_DOWNLOAD_FAILED" : { "code" : 1752, "message" : "application download failed" },
+  };
 
-  var errors = require("internal").errors;
   var appStoreTemplate = templateEngine.createTemplate("applicationListView.ejs");
 
   var FoxxInstallView = function(opts) {
@@ -356,7 +360,7 @@
       }
     });
     $("#upload-foxx-zip").uploadFile({
-      url: "/_api/upload?multipart=true",
+      url: arangoHelper.databaseUrl("/_api/upload?multipart=true"),
       allowedTypes: "zip",
       multiple: false,
       onSuccess: installFoxxFromZip.bind(scope)

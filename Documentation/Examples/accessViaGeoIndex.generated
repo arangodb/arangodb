@@ -8,7 +8,7 @@ arangosh&gt; <span class="hljs-keyword">for</span> (i = <span class="hljs-number
 ........&gt; 
 arangosh&gt; db.example.ensureIndex({ type: <span class="hljs-string">"geo"</span>, fields: [ <span class="hljs-string">"home"</span> ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/14959"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/14983"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"geo1"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"home"</span> 
@@ -25,5 +25,5 @@ arangosh&gt; items = db.example.getIndexes().map(<span class="hljs-function"><sp
 ........&gt; db.example.index(items[<span class="hljs-number">1</span>]);
 [ 
   <span class="hljs-string">"example/0"</span>, 
-  <span class="hljs-string">"example/14959"</span> 
+  <span class="hljs-string">"example/14983"</span> 
 ]

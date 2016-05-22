@@ -42,6 +42,24 @@ class RestServerFeature final
   static rest::RestHandlerFactory* HANDLER_FACTORY;
   static rest::AsyncJobManager* JOB_MANAGER;
   
+  static bool authenticationEnabled() {
+    return REST_SERVER != nullptr && REST_SERVER->authentication();
+  }
+  
+  static bool hasProxyCheck() {
+    return REST_SERVER != nullptr && REST_SERVER->proxyCheck();
+  }
+  
+  static std::vector<std::string> getTrustedProxies() {
+    if (REST_SERVER == nullptr) {
+      return std::vector<std::string>();
+    }
+    return REST_SERVER->trustedProxies();
+  }
+
+ private:
+  static RestServerFeature* REST_SERVER;
+
  public:
   RestServerFeature(application_features::ApplicationServer*,
                     std::string const&);
@@ -60,11 +78,16 @@ class RestServerFeature final
   bool _authentication;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
+  bool _proxyCheck;
+  std::vector<std::string> _trustedProxies;
+  std::vector<std::string> _accessControlAllowOrigins;
 
  public:
   bool authentication() const { return _authentication; }
   bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
+  bool proxyCheck() const { return _proxyCheck; }
+  std::vector<std::string> trustedProxies() const { return _trustedProxies; }
 
  private:
   void buildServers();

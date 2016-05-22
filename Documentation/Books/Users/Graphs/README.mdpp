@@ -20,18 +20,18 @@ Edges have a direction, with their relations `_from` and `_to` pointing *from* o
 In queries you can define in which directions the edge relations may be followed (`OUTBOUND`: `_from` -> `_to`, `INBOUND`: `_to` -> `_from`, `ANY`: `_from` <-> `_to`).
 
 !SUBSECTION Named Graphs
-Named graphs are completely managed by arangodb, and thus also [visible in the webinterface](../WebInterface/README.md#graphs-tab).
+Named graphs are completely managed by arangodb, and thus also [visible in the webinterface](../GettingStarted/WebInterface.md#graphs-tab).
 They use the full spectrum of ArangoDBs graph features. You may access them via several interfaces.
 
- - [AQL Graph Operations](../Aql/Graphs.md) with several flavors:
-   - [AQL Graph traversals](../Aql/GraphTraversals.md) on both named and anonymous graphs
-   - [AQL operations on named Graphs](../Aql/GraphOperations.md)
-   - [AQL operations on raw vertex & edge collections](../Aql/GraphFunctions.md)
- - [The javascript General Graph implementation, as you may use it in FOXX Services](../GeneralGraphs/README.md)
-    * [Graph Management](../GeneralGraphs/Management.md); creating & manipualating graph definitions; inserting, updating and deleting vertices and edges into graphs
-    * [Graph Functions](../GeneralGraphs/Functions.md) for working with edges and vertices, to analyze them and their relations
-    * [Fluent Query Interface](../GeneralGraphs/FluentAQLInterface.md); if you like to work with graphs via a [fluent interface](https://en.wikipedia.org/wiki/Fluent_interface)
- - [the RESTful General Graph interface](../HttpGharial/README.md) used to implement graph management in client drivers
+ - [AQL Graph Operations](../../AQL/Graphs/index.html) with several flavors:
+   - [AQL Graph traversals](../../AQL/Graphs/Traversals.html) on both named and anonymous graphs
+   - [AQL operations on named Graphs](../../AQL/Graphs/Operations.html)
+   - [AQL operations on raw vertex & edge collections](../../AQL/Graphs/Functions.html)
+ - [The javascript General Graph implementation, as you may use it in Foxx Services](GeneralGraphs/README.md)
+    * [Graph Management](GeneralGraphs/Management.md); creating & manipualating graph definitions; inserting, updating and deleting vertices and edges into graphs
+    * [Graph Functions](GeneralGraphs/Functions.md) for working with edges and vertices, to analyze them and their relations
+    * [Fluent Query Interface](GeneralGraphs/FluentAQLInterface.md); if you like to work with graphs via a [fluent interface](https://en.wikipedia.org/wiki/Fluent_interface)
+ - [the RESTful General Graph interface](../../HTTP/Gharial/index.html) used to implement graph management in client drivers
 
 !SUBSUBSECTION Manipulating collections of named graphs with regular document functions
 
@@ -47,7 +47,7 @@ so if you delete documents from your vertex collections directly, the edges poin
 
 !SUBSECTION Anonymous graphs
 Sometimes you may not need all the powers of named graphs, but some of its bits may be valuable to you.
-You [may use AQL Graph Functions](../Aql/GraphFunctions.md) that are a little deeper explained in the [traversals](../Traversals/README.md) and the [Working with Edges](../Edges/README.md) Chapter.
+You [may use AQL Graph Functions](../../AQL/Graphs/Functions.html) that are a little deeper explained in the [traversals](Traversals/README.md) and the [Working with Edges](Edges/README.md) chapter.
 Anonymous graphs don't have *edge definitions* describing which *vertex collection* is connected by which *edge collection*. The graph model has to be maintained in the client side code.
 This gives you more freedom than the strict *named graphs*.
 
@@ -59,8 +59,8 @@ Therefore anonymous graphs may be faster in many operations.
 So this question boils down to 'Can I afford the additional effort or do I need the warranty for integrity?'. 
 
 !SUBSECTION Backup and restore
-For sure you want to have backups of your graph data, you can use [ArangoDump](../HttpBulkImports/Arangodump.md) to create the backup,
-and [ArangoRestore](../HttpBulkImports/Arangorestore.md) to restore a backup into a new ArangoDB. You should however note that:
+For sure you want to have backups of your graph data, you can use [Arangodump](../Administration/Arangodump.md) to create the backup,
+and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into a new ArangoDB. You should however note that:
 - you need the system collection `_graphs` if you backup named graphs.
 - you need to backup the complete set of all edge and vertex collections your graph consists of. Partial dump/restore may not work.
 
@@ -71,7 +71,7 @@ We offer [blueprints support via an api compatible java driver](https://github.c
 !SUBSECTION Example Graphs
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrate the APIs.
 You can use the `add samples` tab in the `create graph` window in the webinterface, or load the module `@arangodb/graph-examples/example-graph` in arangosh and use it to create instances of these graphs in your ArangoDB.
-Once you've created them, you can [inspect them in the webinterface](../WebInterface/README.md#graphs-tab) - which was used to create the pictures below.
+Once you've created them, you can [inspect them in the webinterface](../GettingStarted/WebInterface.md#graphs-tab) - which was used to create the pictures below.
 
 !SUBSUBSECTION The Knows\_Graph
 A set of persons knowing each other:

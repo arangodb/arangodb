@@ -1,5 +1,7 @@
 !CHAPTER ARM
 
+Currently ARM linux is *unsupported*; The initialization of the BOOST lockfree queue doesn't work.
+
 The ArangoDB packages for ARM require the kernel to allow unaligned memory access.
 How the kernel handles unaligned memory access is configurable at runtime by
 checking and adjusting the contents `/proc/cpu/alignment`.

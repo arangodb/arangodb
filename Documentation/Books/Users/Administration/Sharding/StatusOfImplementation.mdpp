@@ -78,7 +78,7 @@ road map):
     maintenance and scaling of a cluster. However, in version 2.0 the
     cluster layout is static and no redistribution of data between the
     DBservers or moving of shards between servers is possible. 
-  * At this stage the sharding of an [edge collection](../Glossary/README.md#edge-collection) is independent of
+  * At this stage the sharding of an [edge collection](../Appendix/Glossary.md#edge-collection) is independent of
     the sharding of the corresponding vertex collection in a graph.
     For version 2.2 we plan to synchronize the two, to allow for more
     efficient graph traversal functions in large, sharded graphs. We
@@ -137,16 +137,6 @@ to implement efficiently:
     to be the revision of the latest inserted document. Again,
     maintaining a global revision number over all shards is very
     difficult to maintain efficiently.
-  * The methods *db.<collection>.first()* and *db.<collection>.last()* are 
-    unsupported for collections with more than one shard. The reason for
-    this, is that temporal order in a highly parallelized environment
-    like a cluster is difficult or even impossible to achieve
-    efficiently. In a cluster it is entirely possible that two
-    different coordinators add two different documents to two
-    different shards *at the same time*. In such a situation it is not
-    even well-defined which of the two documents is "later". The only
-    way to overcome this fundamental problem would again be a central
-    locking mechanism, which is not desirable for performance reasons.
   * Contrary to the situation in a single instance, objects representing
     sharded collections are broken after their database is dropped.
     In a future version they might report that they are broken, but

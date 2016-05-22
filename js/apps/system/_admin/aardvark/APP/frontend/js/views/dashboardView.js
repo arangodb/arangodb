@@ -1,7 +1,7 @@
 /*jshint browser: true */
 /*jshint unused: false */
 /*global Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
-/*global document, console, Dygraph, _,templateEngine */
+/*global document, console, frontendConfig, Dygraph, _,templateEngine */
 
 (function () {
   "use strict";
@@ -589,7 +589,7 @@
       var self = this;
 
       $.ajax(
-        '/_api/replication/applier-state',
+        arangoHelper.databaseUrl('/_api/replication/applier-state'),
         {async: true}
       ).done(
         function (d) {
@@ -611,7 +611,7 @@
 
     getStatistics: function (callback, modalView) {
       var self = this;
-      var url = "/_db/_system/_admin/aardvark/statistics/short";
+      var url = arangoHelper.databaseUrl("/_admin/aardvark/statistics/short", "_system");
       var urlParams = "?start=";
 
       if (self.nextStart) {
@@ -622,13 +622,13 @@
       }
 
       if (self.server !== "-local-") {
-        url = self.serverInfo.endpoint + "/_admin/aardvark/statistics/cluster";
         urlParams += "&type=short&DBserver=" + self.serverInfo.target;
 
         if (! self.history.hasOwnProperty(self.server)) {
           self.history[self.server] = {};
         }
       }
+      console.log(url);
 
       $.ajax(
         url + urlParams,
@@ -668,7 +668,7 @@
         = "?filter=" + this.dygraphConfig.mapStatToFigure[figure].join();
 
       if (self.server !== "-local-") {
-        url = self.server.endpoint + "/_admin/aardvark/statistics/cluster";
+        url = self.server.endpoint + arangoHelper.databaseUrl("/_admin/aardvark/statistics/cluster");
         urlParams += "&type=long&DBserver=" + self.server.target;
 
         if (! self.history.hasOwnProperty(self.server)) {
@@ -957,7 +957,7 @@
         $(this.el).html(this.template.render());
       }
 
-      if (!enabled) {
+      if (!enabled || frontendConfig.db !== '_system') {
         $(this.el).html('');
         if (this.server) {
           $(this.el).append(
@@ -997,6 +997,11 @@
         );
     }.bind(this);
 
+    if (frontendConfig.db !== '_system') {
+      errorFunction();
+      return;
+    }
+
     var callback2 = function(error, authorized) {
       if (!error) {
         if (!authorized) {
@@ -1008,13 +1013,21 @@
       }
     }.bind(this);
 
-    if (window.App.currentDB.get("name") !== '_system') {
-      errorFunction();
-      return;
+    if (window.App.currentDB.get("name") === undefined) {
+      window.setTimeout(function() {
+        if (window.App.currentDB.get("name") !== '_system') {
+          errorFunction();
+          return;
+        }
+        //check if user has _system permission
+        this.options.database.hasSystemAccess(callback2);
+      }.bind(this), 300);
+    }
+    else {
+      //check if user has _system permission
+      this.options.database.hasSystemAccess(callback2);
     }
 
-    //check if user has _system permission
-    this.options.database.hasSystemAccess(callback2);
   }
 });
 }());

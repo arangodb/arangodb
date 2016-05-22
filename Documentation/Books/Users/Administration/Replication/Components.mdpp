@@ -6,7 +6,7 @@ and the *replication applier*. Since ArangoDB 2.2, the replication logger has no
 special purpose anymore and is available for downwards-compatibility only.
 
 The replication applier can be administered via the command line or a REST API 
-(see [HTTP Interface for Replication](../HttpReplications/README.md)).
+(see [HTTP Interface for Replication](../../../HTTP/Replications/index.html)).
 
 As replication is configured on a per-database level and there can be multiple 
 databases inside one ArangoDB instance, there can be multiple replication appliers
@@ -72,7 +72,8 @@ operation that was written to the server's write-ahead log. It can be used to de
 operations were logged, and is also used by the replication applier for incremental 
 fetching of data.
 
-**Note**: The replication logger state can also be queried via the [HTTP API](../HttpReplications/README.md).
+**Note**: The replication logger state can also be queried via the
+[HTTP API](../../../HTTP/Replications/index.html).
 
 To query which data ranges are still available for replication clients to fetch,
 the logger provides the *firstTick* and *tickRanges* functions:
@@ -198,7 +199,7 @@ Here is an example of the state after the replication applier terminated itself 
 ```
 
 **Note**: the state of a database's replication applier is queryable via the HTTP API, too. 
-Please refer to [HTTP Interface for Replication](../HttpReplications/README.md) for more details.
+Please refer to [HTTP Interface for Replication](../../../HTTP/Replications/index.html) for more details.
 
 !SUBSUBSECTION All-in-one setup
 

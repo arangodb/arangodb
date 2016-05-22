@@ -37,6 +37,7 @@
               <select id="newIndexType">
                 <option value="Geo">Geo Index</option>
                 <option value="Hash">Hash Index</option>
+                <option value="Persistent">Persistent Index</option>
                 <option value="Fulltext">Fulltext Index</option>
                 <option value="Skiplist">Skip-List Index</option>
               </select>
@@ -91,6 +92,21 @@
               <th class="tooltipInfoTh">
                 <div>
                   <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If a geo-spatial constraint is created and ignoreNull is true, then documents with a null in location or at least one null in latitude or longitude are ignored.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+          </table>
+        </div>
+        <div id="newIndexTypePersistent" class="newIndexClass" style="display:none">
+          <table>
+            <tr>
+              <th class="collectionTh">Fields:</th>
+              <th><input type="text" id="newPersistentFields" value=""/></th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list of attribute paths.">
                     <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                   </a>
                 </div>

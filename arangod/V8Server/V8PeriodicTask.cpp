@@ -89,7 +89,7 @@ bool V8PeriodicTask::handlePeriod() {
     return false;
   }
   
-  DispatcherFeature::DISPATCHER->addJob(job);
+  DispatcherFeature::DISPATCHER->addJob(job, false);
 
   return true;
 }

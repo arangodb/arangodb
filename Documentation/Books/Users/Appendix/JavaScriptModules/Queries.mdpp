@@ -1,4 +1,5 @@
 !CHAPTER Module "queries"
+
 The query module provides the infrastructure for working with currently running AQL queries via arangosh.
 
 
@@ -15,7 +16,8 @@ The query module provides the infrastructure for working with currently running 
 
 
 !SUBSECTION Currently running queries
-We [create a task](../ModuleTasks/README.md) that spawns queries, so we have nice output. Since this task
+
+We [create a task](Tasks.md) that spawns queries, so we have nice output. Since this task
 uses resources, you may want to increase `period` (and not forget to remove it... afterwards):
 
     @startDocuBlockInline QUERY_02_listQueries

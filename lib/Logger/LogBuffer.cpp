@@ -35,6 +35,8 @@ uint64_t LogBuffer::_ringBufferId = 0;
 LogBuffer LogBuffer::_ringBuffer[RING_BUFFER_SIZE];
 
 static void logEntry(LogMessage* message) {
+  auto timestamp = time(0);
+
   MUTEX_LOCKER(guard, LogBuffer::_ringBufferLock);
 
   uint64_t n = LogBuffer::_ringBufferId++;
@@ -42,7 +44,7 @@ static void logEntry(LogMessage* message) {
 
   ptr->_id = n;
   ptr->_level = message->_level;
-  ptr->_timestamp = time(0);
+  ptr->_timestamp = timestamp;
   TRI_CopyString(ptr->_message, message->_message.c_str() + message->_offset,
                  sizeof(ptr->_message) - 1);
 }

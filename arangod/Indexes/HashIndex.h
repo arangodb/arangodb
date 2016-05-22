@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/PathBasedIndex.h"
 #include "Indexes/IndexIterator.h"
+#include "Utils/Transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -46,27 +47,52 @@ struct TRI_document_collection_t;
 namespace arangodb {
 
 class HashIndex;
-class Transaction;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Class to build Slice lookups out of AST Conditions
+////////////////////////////////////////////////////////////////////////////////
+
+class LookupBuilder {
+  private:
+    TransactionBuilderLeaser _builder;
+    bool _usesIn;
+    bool _isEmpty;
+    size_t _coveredFields;
+    std::unordered_map<size_t, arangodb::aql::AstNode const*> _mappingFieldCondition;
+    std::unordered_map<
+        size_t, std::pair<size_t, std::vector<arangodb::velocypack::Slice>>>
+        _inPosition;
+    TransactionBuilderLeaser _inStorage;
+
+  public:
+   LookupBuilder(
+       arangodb::Transaction*, arangodb::aql::AstNode const*,
+       arangodb::aql::Variable const*,
+       std::vector<std::vector<arangodb::basics::AttributeName>> const&);
+
+   arangodb::velocypack::Slice lookup();
+
+   bool hasAndGetNext();
+
+   void reset();
+
+  private:
+
+   bool incrementInPosition();
+   void buildNextSearchValue();
+
+};
 
 class HashIndexIterator final : public IndexIterator {
  public:
   
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Construct an HashIndexIterator based on VelocyPack
+/// @brief Construct an HashIndexIterator based on Ast Conditions
 ////////////////////////////////////////////////////////////////////////////////
 
   HashIndexIterator(arangodb::Transaction* trx, HashIndex const* index,
-                    std::unique_ptr<arangodb::velocypack::Builder>& searchValues)
-      : _trx(trx),
-        _index(index),
-        _searchValues(searchValues.get()),
-        _searchKeys(_searchValues->slice()),
-        _iterator(_searchValues->slice(), true),
-        _buffer(),
-        _posInBuffer(0) {
-
-    searchValues.release(); // now we have ownership for searchValues
-  }
+                    arangodb::aql::AstNode const*,
+                    arangodb::aql::Variable const*);
 
   ~HashIndexIterator() = default;
 
@@ -77,8 +103,42 @@ class HashIndexIterator final : public IndexIterator {
  private:
   arangodb::Transaction* _trx;
   HashIndex const* _index;
+  LookupBuilder _lookups;
+  std::vector<TRI_doc_mptr_t*> _buffer;
+  size_t _posInBuffer;
+};
+
+
+
+class HashIndexIteratorVPack final : public IndexIterator {
+ public:
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Construct an HashIndexIterator based on VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+  HashIndexIteratorVPack(
+      arangodb::Transaction* trx, HashIndex const* index,
+      std::unique_ptr<arangodb::velocypack::Builder>& searchValues)
+      : _trx(trx),
+        _index(index),
+        _searchValues(searchValues.get()),
+        _iterator(_searchValues->slice(), true),
+        _buffer(),
+        _posInBuffer(0) {
+    searchValues.release(); // now we have ownership for searchValues
+  }
+
+  ~HashIndexIteratorVPack() = default;
+
+  TRI_doc_mptr_t* next() override;
+
+  void reset() override;
+
+ private:
+  arangodb::Transaction* _trx;
+  HashIndex const* _index;
   std::unique_ptr<arangodb::velocypack::Builder> _searchValues;
-  arangodb::velocypack::Slice _searchKeys;
   arangodb::velocypack::ArrayIterator _iterator;
   std::vector<TRI_doc_mptr_t*> _buffer;
   size_t _posInBuffer;
@@ -86,6 +146,7 @@ class HashIndexIterator final : public IndexIterator {
 
 class HashIndex final : public PathBasedIndex {
   friend class HashIndexIterator;
+  friend class HashIndexIteratorVPack;
 
  public:
   HashIndex() = delete;

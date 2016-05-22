@@ -1,7 +1,7 @@
 arangosh&gt; <span class="hljs-keyword">var</span> explain = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/aql/explainer"</span>).explain;
 arangosh&gt; db.example.ensureIndex({ type: <span class="hljs-string">"skiplist"</span>, fields: [ <span class="hljs-string">"a"</span>, <span class="hljs-string">"b"</span> ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/9227"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/9239"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"a"</span>, 

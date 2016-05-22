@@ -21,8 +21,8 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-// XXX #warning MOP nope, include guards
-#pragma once
+#ifndef CLUSTER_RESTAGENCYCALLACKSHANDLER_H
+#define CLUSTER_RESTAGENCYCALLACKSHANDLER_H 1
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -51,3 +51,5 @@ class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
 };
 }
 }
+
+#endif

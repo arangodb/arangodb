@@ -55,7 +55,8 @@ class HttpServer : protected TaskManager {
 
  public:
   HttpServer(double keepAliveTimeout, std::string const& _authenticationRealm,
-             bool allowMethodOverride);
+             bool allowMethodOverride, 
+             std::vector<std::string> const& accessControlAllowOrigins);
   virtual ~HttpServer();
 
  public:
@@ -76,6 +77,11 @@ class HttpServer : protected TaskManager {
   virtual HttpCommTask* createCommTask(TRI_socket_t, ConnectionInfo&&);
 
  public:
+  // list of trusted origin urls for CORS 
+  std::vector<std::string> const& trustedOrigins() const { 
+    return _accessControlAllowOrigins;
+  }
+
   // adds the endpoint list
   void setEndpointList(const EndpointList* list);
 
@@ -143,6 +149,9 @@ class HttpServer : protected TaskManager {
 
   // allow to override the method
   bool _allowMethodOverride;
+  
+  // list of trusted origin urls for CORS 
+  std::vector<std::string> const _accessControlAllowOrigins;
 };
 }
 }

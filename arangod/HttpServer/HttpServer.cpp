@@ -65,15 +65,17 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
 /// @brief constructs a new general server with dispatcher and job manager
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::HttpServer(double keepAliveTimeout,
-                       std::string const& authenticationRealm,
-                       bool allowMethodOverride)
+HttpServer::HttpServer(
+    double keepAliveTimeout, std::string const& authenticationRealm,
+    bool allowMethodOverride,
+    std::vector<std::string> const& accessControlAllowOrigins)
     : _authenticationRealm(authenticationRealm),
       _listenTasks(),
       _endpointList(nullptr),
       _commTasks(),
       _keepAliveTimeout(keepAliveTimeout),
       _allowMethodOverride(allowMethodOverride) {}
+_accessControlAllowOrigins(accessControlAllowOrigins) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a general server
@@ -206,6 +208,8 @@ void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
 bool HttpServer::handleRequestAsync(HttpCommTask* task,
                                     WorkItem::uptr<RestHandler>& handler,
                                     uint64_t* jobId) {
+  bool startThread = task->startThread();
+
   // extract the coordinator flag
   bool found;
   std::string const& hdrStr =
@@ -225,7 +229,7 @@ bool HttpServer::handleRequestAsync(HttpCommTask* task,
   }
 
   // execute the handler using the dispatcher
-  int res = DispatcherFeature::DISPATCHER->addJob(job);
+  int res = DispatcherFeature::DISPATCHER->addJob(job, startThread);
 
   // could not add job to job queue
   if (res != TRI_ERROR_NO_ERROR) {
@@ -257,6 +261,8 @@ bool HttpServer::handleRequest(HttpCommTask* task,
     return true;
   }
 
+  bool startThread = task->startThread();
+
   // use a dispatcher queue, handler belongs to the job
   std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
   task->RequestStatisticsAgent::transferTo(job.get());
@@ -265,7 +271,7 @@ bool HttpServer::handleRequest(HttpCommTask* task,
              << (void*)job.get();
 
   // add the job to the dispatcher
-  int res = DispatcherFeature::DISPATCHER->addJob(job);
+  int res = DispatcherFeature::DISPATCHER->addJob(job, startThread);
 
   // job is in queue now
   return res == TRI_ERROR_NO_ERROR;

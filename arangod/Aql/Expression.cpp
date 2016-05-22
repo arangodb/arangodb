@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
 #include "Aql/Executor.h"
+#include "Aql/Functions.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/V8Expression.h"
@@ -35,7 +36,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/json.h"
+#include "Basics/VPackStringBufferAdapter.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -44,7 +45,6 @@
 
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
-using JsonHelper = arangodb::basics::JsonHelper;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief register warning
@@ -75,8 +75,7 @@ Expression::Expression(Ast* ast, AstNode* node)
       _isDeterministic(false),
       _hasDeterminedAttributes(false),
       _built(false),
-      _attributes(),
-      _buffer(TRI_UNKNOWN_MEM_ZONE) {
+      _attributes() {
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);
@@ -126,7 +125,7 @@ AqlValue Expression::execute(arangodb::AqlTransaction* trx,
                              std::vector<RegisterId> const& regs,
                              bool& mustDestroy) {
   if (!_built) {
-    buildExpression();
+    buildExpression(trx);
   }
 
   TRI_ASSERT(_type != UNPROCESSED);
@@ -348,7 +347,7 @@ void Expression::analyzeExpression() {
         auto v = static_cast<Variable const*>(member->getData());
 
         // specialize the simple expression into an attribute accessor
-        _accessor = new AttributeAccessor(parts, v);
+        _accessor = new AttributeAccessor(std::move(parts), v);
         _type = ATTRIBUTE;
         _built = true;
       }
@@ -383,7 +382,7 @@ void Expression::analyzeExpression() {
 }
 
 /// @brief build the expression
-void Expression::buildExpression() {
+void Expression::buildExpression(arangodb::AqlTransaction* trx) {
   TRI_ASSERT(!_built);
 
   if (_type == UNPROCESSED) {
@@ -393,11 +392,11 @@ void Expression::buildExpression() {
   if (_type == JSON) {
     TRI_ASSERT(_data == nullptr);
     // generate a constant value
-    VPackBuilder builder;
-    _node->toVelocyPackValue(builder);
+    TransactionBuilderLeaser builder(trx);
+    _node->toVelocyPackValue(*builder.get());
 
-    _data = new uint8_t[static_cast<size_t>(builder.size())];
-    memcpy(_data, builder.data(), static_cast<size_t>(builder.size()));
+    _data = new uint8_t[static_cast<size_t>(builder->size())];
+    memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
   } else if (_type == V8) {
     // generate a V8 expression
     _func = _executor->generateExpression(_node);
@@ -628,8 +627,8 @@ AqlValue Expression::executeSimpleExpressionArray(
 
   size_t const n = node->numMembers();
 
-  VPackBuilder builder;
-  builder.openArray();
+  TransactionBuilderLeaser builder(trx);
+  builder->openArray();
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
@@ -638,12 +637,12 @@ AqlValue Expression::executeSimpleExpressionArray(
                                               startPos, vars, regs, localMustDestroy, false);
 
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(trx, builder, false);
+    result.toVelocyPack(trx, *builder.get(), false);
   }
 
-  builder.close();
+  builder->close();
   mustDestroy = true; // AqlValue contains builder contains dynamic data
-  return AqlValue(builder);
+  return AqlValue(builder.get());
 }
 
 /// @brief execute an expression of type SIMPLE with OBJECT
@@ -660,29 +659,131 @@ AqlValue Expression::executeSimpleExpressionObject(
     return AqlValue(node->computeValue().begin()); 
   }
 
-  VPackBuilder builder;
-  builder.openObject();
+  // unordered map to make object keys unique afterwards
+  std::unordered_map<std::string, size_t> uniqueKeyValues;
+  bool isUnique = true;
+  bool const mustCheckUniqueness = node->mustCheckUniqueness();
+
+  TransactionBuilderLeaser builder(trx);
+  builder->openObject();
 
   size_t const n = node->numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
-    TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
-    // key
-    builder.add(VPackValue(member->getString()));
 
-    // value
-    member = member->getMember(0);
+    // key
+    if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+      bool localMustDestroy;
+      AqlValue result = executeSimpleExpression(member->getMember(0), trx, argv,
+                                                startPos, vars, regs, localMustDestroy, false);
+      AqlValueGuard guard(result, localMustDestroy);
+
+      // make sure key is a string, and convert it if not
+      StringBufferLeaser buffer(trx);
+      arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+      AqlValueMaterializer materializer(trx);
+      VPackSlice slice = materializer.slice(result, false);
+
+      Functions::Stringify(trx, adapter, slice);
+      
+      std::string key(buffer->begin(), buffer->length());
+      builder->add(VPackValue(key));
+
+      if (mustCheckUniqueness) {
+        // note each individual object key name with latest value position
+        auto it = uniqueKeyValues.find(key);
+
+        if (it == uniqueKeyValues.end()) {
+          // unique key
+          uniqueKeyValues.emplace(std::move(key), i);
+        } else {
+          // duplicate key
+          (*it).second = i;
+          isUnique = false;
+        }
+      }
+
+      // value
+      member = member->getMember(1);
+    } else {
+      TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
+
+      if (mustCheckUniqueness) {
+        std::string key(member->getString());
+        builder->add(VPackValue(key));
+
+        // note each individual object key name with latest value position
+        auto it = uniqueKeyValues.find(key);
+
+        if (it == uniqueKeyValues.end()) {
+          // unique key
+          uniqueKeyValues.emplace(std::move(key), i);
+        } else {
+          // duplicate key
+          (*it).second = i;
+          isUnique = false;
+        }
+      
+      } else {
+        // object has only one key or multiple unique keys. no need to de-duplicate
+        builder->add(VPackValuePair(member->getStringValue(), member->getStringLength(), VPackValueType::String));
+      }
+    
+      // value
+      member = member->getMember(0);
+    }
 
     bool localMustDestroy;
     AqlValue result = executeSimpleExpression(member, trx, argv,
                                               startPos, vars, regs, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(trx, builder, false);
+    result.toVelocyPack(trx, *builder.get(), false);
   }
 
-  builder.close();
+  builder->close();
+    
   mustDestroy = true; // AqlValue contains builder contains dynamic data
-  return AqlValue(builder);
+
+  if (!isUnique) {
+    // must make the object keys unique now
+    
+    // we must have at least two members...
+    TRI_ASSERT(n > 1);
+    
+    VPackSlice nonUnique = builder->slice();
+     
+    TransactionBuilderLeaser unique(trx);
+    unique->openObject();
+
+    size_t pos = 0;
+    // iterate over all attributes of the non-unique object
+    VPackObjectIterator it(nonUnique, true);
+    while (it.valid()) {
+      // key should be a string. ignore it if not
+      VPackSlice key = it.key();
+      if (key.isString()) {
+        // check if this instance of the key is the one we need to hand out
+        auto it2 = uniqueKeyValues.find(key.copyString());
+        if (it2 != uniqueKeyValues.end()) {
+          // key is in map. this is always expected
+          if (pos == (*it2).second) {
+            // this is the correct occurrence of the key
+            unique->add((*it2).first, it.value());
+          }
+        }
+      }
+      // advance iterator and position
+      it.next();
+      ++pos;
+    }
+
+    unique->close();
+    
+    return AqlValue(*unique.get());
+  }
+    
+  return AqlValue(*builder.get());
 }
 
 /// @brief execute an expression of type SIMPLE with VALUE
@@ -771,7 +872,6 @@ AqlValue Expression::executeSimpleExpressionFCall(
   auto member = node->getMemberUnchecked(0);
   TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
-  VPackBuilder builder;
   size_t const n = member->numMembers();
 
   VPackFunctionParameters parameters;
@@ -784,9 +884,7 @@ AqlValue Expression::executeSimpleExpressionFCall(
       auto arg = member->getMemberUnchecked(i);
 
       if (arg->type == NODE_TYPE_COLLECTION) {
-        builder.clear();
-        builder.add(VPackValue(arg->getString()));
-        parameters.emplace_back(AqlValue(builder));
+        parameters.emplace_back(AqlValue(arg->getString()));
         destroyParameters.push_back(true);
       } else {
         bool localMustDestroy;
@@ -1358,8 +1456,8 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
     return AqlValue(VelocyPackHelper::ZeroValue());
   }
 
-  VPackBuilder builder;
+  TransactionBuilderLeaser builder(trx);
   mustDestroy = true; // builder = dynamic data
-  builder.add(VPackValue(result));
-  return AqlValue(builder);
+  builder->add(VPackValue(result));
+  return AqlValue(*builder.get());
 }

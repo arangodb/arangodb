@@ -38,8 +38,7 @@ class ExecutionEngine;
 class SubqueryBlock : public ExecutionBlock {
  public:
   SubqueryBlock(ExecutionEngine*, SubqueryNode const*, ExecutionBlock*);
-
-  ~SubqueryBlock();
+  ~SubqueryBlock() = default;
 
   /// @brief initialize, tell dependency and the subquery
   int initialize() override;
@@ -65,6 +64,10 @@ class SubqueryBlock : public ExecutionBlock {
 
   /// @brief we need to have an executionblock and where to write the result
   ExecutionBlock* _subquery;
+
+  /// @brief whether the subquery is const and will always return the same values
+  /// when invoked multiple times
+  bool _subqueryIsConst;
 };
 
 }  // namespace arangodb::aql

@@ -247,8 +247,8 @@ ArangoDatabase.prototype._collections = function () {
 
   arangosh.checkRequestResult(requestResult);
 
-  if (requestResult.collections !== undefined) {
-    var collections = requestResult.collections;
+  if (requestResult.result !== undefined) {
+    var collections = requestResult.result;
     var result = [];
     var i;
 
@@ -991,7 +991,7 @@ ArangoDatabase.prototype._useDatabase = function (name) {
 /// @brief lists all endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._listEndpoints = function () {
+ArangoDatabase.prototype._endpoints = function () {
   var requestResult = this._connection.GET("/_api/endpoint");
 
   if (requestResult !== null && requestResult.error === true) {

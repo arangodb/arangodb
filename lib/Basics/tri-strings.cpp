@@ -895,15 +895,27 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
 
 char* TRI_EscapeControlsCString(TRI_memory_zone_t* zone, char const* in,
                                 size_t inLength, size_t* outLength,
-                                bool appendNewline, bool truncate) {
+                                bool appendNewline) {
   char* buffer = static_cast<char*>(
-      TRI_Allocate(zone, (4 * inLength) + 1 + (appendNewline ? 1 : 0), false));
+      TRI_Allocate(zone, TRI_MaxLengthEscapeControlsCString(inLength), false));
 
-  if (buffer == nullptr) {
+  return TRI_EscapeControlsCString(in, inLength, buffer, outLength, appendNewline);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief escapes special characters using C escapes
+/// the target buffer must have been allocated already and big enough to hold
+/// the result of at most (4 * inLength) + 2 bytes!
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_EscapeControlsCString(char const* in, size_t inLength, 
+                                char* out, size_t* outLength,
+                                bool appendNewline) {
+  if (out == nullptr) {
     return nullptr;
   }
 
-  char* qtr = buffer;
+  char* qtr = out;
   char const* ptr;
   char const* end;
 
@@ -945,22 +957,8 @@ char* TRI_EscapeControlsCString(TRI_memory_zone_t* zone, char const* in,
   }
 
   *qtr = '\0';
-  *outLength = static_cast<size_t>(qtr - buffer);
-
-  if (!truncate) {
-    return buffer;
-  }
-
-  qtr = static_cast<char*>(TRI_Allocate(zone, (*outLength) + 1, false));
-
-  if (qtr != nullptr) {
-    memcpy(qtr, buffer, (*outLength) + 1);
-  }
-
-  TRI_Free(zone, buffer);
-
-  // may be nullptr
-  return qtr;
+  *outLength = static_cast<size_t>(qtr - out);
+  return out;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

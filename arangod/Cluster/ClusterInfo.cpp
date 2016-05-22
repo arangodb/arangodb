@@ -30,7 +30,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/ConditionLocker.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -51,8 +50,6 @@
 #endif
 
 using namespace arangodb;
-
-using arangodb::basics::JsonHelper;
 
 static std::unique_ptr<ClusterInfo> _instance;
 
@@ -554,14 +551,7 @@ void ClusterInfo::loadCurrent() {
   }
 
   // Now contact the agency:
-  AgencyCommResult result;
-  {
-    AgencyCommLocker locker("Plan", "READ");
-    if (locker.successful()) {
-      result = _agency.getValues(prefixCurrent);
-    }
-  }
-  
+  AgencyCommResult result = _agency.getValues(prefixCurrent);
   if (result.successful()) {
 
     velocypack::Slice slice =
@@ -580,8 +570,7 @@ void ClusterInfo::loadCurrent() {
       bool swapDatabases = false;
       bool swapCollections = false;
 
-      VPackSlice databasesSlice;
-      databasesSlice = currentSlice.get("Databases");
+      VPackSlice databasesSlice = currentSlice.get("Databases");
       if (databasesSlice.isObject()) {
         for (auto const& databaseSlicePair : VPackObjectIterator(databasesSlice)) {
           std::string const database = databaseSlicePair.key.copyString();
@@ -642,6 +631,7 @@ void ClusterInfo::loadCurrent() {
         _currentDatabases.swap(newDatabases);
       }
       if (swapCollections) {
+        LOG(TRACE) << "Have loaded new collections current cache!";
         _currentCollections.swap(newCollections);
         _shardIds.swap(newShardIds);
       }
@@ -2550,8 +2540,20 @@ void FollowerInfo::add(ServerID const& sid) {
         }
       } else {
         auto newValue = newShardEntry(currentEntry, sid, true);
-        AgencyCommResult res2 =
-          ac.casValue(path, currentEntry, newValue.slice(), 0, 0);
+        std::string key = "Current/Collections/" +
+                          std::string(_docColl->_vocbase->_name) + "/" +
+                          std::to_string(_docColl->_info.planId()) + "/" +
+                          _docColl->_info.name();
+        AgencyWriteTransaction trx;
+        trx.preconditions.push_back(
+            AgencyPrecondition(key, AgencyPrecondition::VALUE, currentEntry));
+        trx.operations.push_back(
+            AgencyOperation(key, AgencyValueOperationType::SET,
+                            newValue.slice()));
+        trx.operations.push_back(
+            AgencyOperation("Current/Version",
+                            AgencySimpleOperationType::INCREMENT_OP));
+        AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
         if (res2.successful()) {
           success = true;
           break;  //
@@ -2619,8 +2621,20 @@ void FollowerInfo::remove(ServerID const& sid) {
         }
       } else {
         auto newValue = newShardEntry(currentEntry, sid, false);
-        AgencyCommResult res2 =
-          ac.casValue(path, currentEntry, newValue.slice(), 0, 0);
+        std::string key = "Current/Collections/" +
+                          std::string(_docColl->_vocbase->_name) + "/" +
+                          std::to_string(_docColl->_info.planId()) + "/" +
+                          _docColl->_info.name();
+        AgencyWriteTransaction trx;
+        trx.preconditions.push_back(
+            AgencyPrecondition(key, AgencyPrecondition::VALUE, currentEntry));
+        trx.operations.push_back(
+            AgencyOperation(key, AgencyValueOperationType::SET,
+                            newValue.slice()));
+        trx.operations.push_back(
+            AgencyOperation("Current/Version",
+                            AgencySimpleOperationType::INCREMENT_OP));
+        AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
         if (res2.successful()) {
           success = true;
           break;  //

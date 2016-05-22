@@ -47,13 +47,11 @@
 
     render: function () {
 
-      window.arangoHelper.buildNodesSubNav(this.toRender);
-
       var callback = function() {
         this.continueRender();
       }.bind(this);
 
-      if (!this.initDone) {
+      if (!this.initDoneCoords) {
         this.waitForCoordinators(callback);
       }
       else {
@@ -63,6 +61,7 @@
 
     continueRender: function() {
       var coords;
+
 
       if (this.toRender === 'coordinator') {
         coords = this.coordinators.toJSON();
@@ -75,6 +74,8 @@
         coords: coords,
         type: this.toRender
       }));
+
+      window.arangoHelper.buildNodesSubNav(this.toRender);
     },
 
     waitForCoordinators: function(callback) {
@@ -85,7 +86,7 @@
           self.waitForCoordinators(callback);
         }
         else {
-          this.initDone = true;
+          this.initDoneCoords = true;
           callback();
         }
       }, 200);

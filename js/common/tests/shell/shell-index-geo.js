@@ -48,20 +48,87 @@ function GeoIndexCreationSuite() {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-  setUp : function () {
-    internal.db._drop(cn);
-    collection = internal.db._create(cn, { waitForSync : false });
-  },
+    setUp : function () {
+      internal.db._drop(cn);
+      collection = internal.db._create(cn, { waitForSync : false });
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-  tearDown : function () {
-    collection.unload();
-    collection.drop();
-    internal.wait(0.0);
-  },
+    tearDown : function () {
+      collection.unload();
+      collection.drop();
+      internal.wait(0.0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: updates
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdates : function () {
+      collection.truncate();
+
+      collection.ensureGeoIndex("coordinates", true);
+
+      [ 
+        { _key: "a", coordinates : [ 138.46782, 36.199674 ] }, 
+        { _key: "b", coordinates : [ 135.827227, 34.755123 ] }, 
+        { _key: "c", coordinates : [ 140.362435, 37.41623 ] }, 
+        { _key: "d", coordinates : [ 135.820818, 34.736769 ] }, 
+        { _key: "e", coordinates : [ 140.371997, 37.397514 ] }, 
+        { _key: "f", coordinates : [ 140.375676, 37.442712 ] }, 
+        { _key: "g", coordinates : [ 136.711924, 35.405093 ] }, 
+        { _key: "h", coordinates : [ 138.609493, 36.208831 ] }, 
+        { _key: "i", coordinates : [ 136.715309, 35.406745 ] }, 
+        { _key: "j", coordinates : [ 139.781937, 35.894845 ] }, 
+        { _key: "k", coordinates : [ 134.888787, 34.339736 ] }, 
+        { _key: "l", coordinates : [ 134.899736, 34.341144 ] }, 
+        { _key: "m", coordinates : [ 134.846816, 34.316229 ] } 
+      ].forEach(function(doc) {
+        collection.insert(doc);
+      });
+
+      assertEqual(13, collection.count());
+
+      var query = "FOR doc IN " + collection.name() + " LET n = (" + 
+                  "LET c = doc.coordinates FOR other IN WITHIN(" + collection.name() + 
+                 ", c[1], c[0], 1000) RETURN other._key) " + 
+                  "UPDATE doc WITH {others: n} IN " + collection.name();
+
+      internal.db._query(query); 
+
+      query = "FOR doc IN " + collection.name() + " SORT doc._key " + 
+              "RETURN { key: doc._key, coordinates: doc.coordinates, others: doc.others }";
+      
+      var actual = internal.db._query(query).toArray();
+      var expected = [
+        { "key" : "a", "coordinates" : [ 138.46782, 36.199674 ], "others" : [ "a" ] }, 
+        { "key" : "b", "coordinates" : [ 135.827227, 34.755123 ], "others" : [ "b" ] }, 
+        { "key" : "c", "coordinates" : [ 140.362435, 37.41623 ], "others" : [ "c" ] }, 
+        { "key" : "d", "coordinates" : [ 135.820818, 34.736769 ], "others" : [ "d" ] }, 
+        { "key" : "e", "coordinates" : [ 140.371997, 37.397514 ], "others" : [ "e" ] }, 
+        { "key" : "f", "coordinates" : [ 140.375676, 37.442712 ], "others" : [ "f" ] }, 
+        { "key" : "g", "coordinates" : [ 136.711924, 35.405093 ], "others" : [ "g", "i" ] }, 
+        { "key" : "h", "coordinates" : [ 138.609493, 36.208831 ], "others" : [ "h" ] }, 
+        { "key" : "i", "coordinates" : [ 136.715309, 35.406745 ], "others" : [ "i", "g" ] }, 
+        { "key" : "j", "coordinates" : [ 139.781937, 35.894845 ], "others" : [ "j" ] }, 
+        { "key" : "k", "coordinates" : [ 134.888787, 34.339736 ], "others" : [ "k" ] }, 
+        { "key" : "l", "coordinates" : [ 134.899736, 34.341144 ], "others" : [ "l" ] }, 
+        { "key" : "m", "coordinates" : [ 134.846816, 34.316229 ], "others" : [ "m" ] } 
+      ];
+
+      assertEqual(expected.length, actual.length);
+      for (var i = 0; i < expected.length; ++i) {
+        expected[i].coordinates[0] = expected[i].coordinates[0].toFixed(4);    
+        expected[i].coordinates[1] = expected[i].coordinates[1].toFixed(4);    
+        actual[i].coordinates[0] = actual[i].coordinates[0].toFixed(4);    
+        actual[i].coordinates[1] = actual[i].coordinates[1].toFixed(4);    
+      }
+
+      assertEqual(expected, actual);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: index creation (list)

@@ -888,7 +888,7 @@ int CollectorThread::transferMarkers(Logfile* logfile,
 
     if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
       // now sync the datafile
-      res = syncDatafileCollection(document);
+      res = syncJournalCollection(document);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -1043,173 +1043,68 @@ int CollectorThread::updateDatafileStatistics(
 }
 
 /// @brief sync all journals of a collection
-int CollectorThread::syncDatafileCollection(
+int CollectorThread::syncJournalCollection(
     TRI_document_collection_t* document) {
   TRI_IF_FAILURE("CollectorThread::syncDatafileCollection") {
     return TRI_ERROR_DEBUG;
   }
 
-  TRI_collection_t* collection = document;
-  int res = TRI_ERROR_NO_ERROR;
-
-  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-  // note: only journals need to be handled here as the journal is the
-  // only place that's ever written to. if a journal is full, it will have been
-  // sealed and synced already
-  size_t const n = collection->_journals.size();
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_datafile_t* datafile = collection->_journals[i];
-
-    // we only need to care about physical datafiles
-    if (!datafile->isPhysical(datafile)) {
-      // anonymous regions do not need to be synced
-      continue;
-    }
-
-    char const* synced = datafile->_synced;
-    char* written = datafile->_written;
-
-    if (synced < written) {
-      bool ok = datafile->sync(datafile, synced, written);
-
-      if (ok) {
-        LOG_TOPIC(TRACE, Logger::COLLECTOR) << "msync succeeded " << (void*) synced << ", size "
-                   << (written - synced);
-        datafile->_synced = written;
-      } else {
-        res = TRI_errno();
-        if (res == TRI_ERROR_NO_ERROR) {
-          // oops, error code got lost
-          res = TRI_ERROR_INTERNAL;
-        }
-
-        LOG_TOPIC(ERR, Logger::COLLECTOR) << "msync failed with: " << TRI_last_error();
-        datafile->_state = TRI_DF_STATE_WRITE_ERROR;
-        break;
-      }
-    }
-  }
-
-  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-  return res;
+  return document->syncActiveJournal();
 }
 
 /// @brief get the next position for a marker of the specified size
 char* CollectorThread::nextFreeMarkerPosition(
     TRI_document_collection_t* document, TRI_voc_tick_t tick,
     TRI_df_marker_type_t type, TRI_voc_size_t size, CollectorCache* cache) {
-  TRI_collection_t* collection = document;
+  
+  // align the specified size
   size = DatafileHelper::AlignedSize<TRI_voc_size_t>(size);
 
-  char* dst = nullptr;
-  TRI_datafile_t* datafile = nullptr;
+  char* dst = nullptr; // will be modified by reserveJournalSpace()
+  TRI_datafile_t* datafile = nullptr; // will be modified by reserveJournalSpace()
+  int res = document->reserveJournalSpace(tick, size, dst, datafile);
 
-  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-  // start with configured journal size
-  TRI_voc_size_t targetSize = document->_info.maximalSize();
-
-  // make sure that the document fits
-  while (targetSize - 256 < size &&
-         targetSize < 512 * 1024 * 1024) {  // TODO: remove magic number
-    targetSize *= 2;
-  }
-
-  while (collection->_state == TRI_COL_STATE_WRITE) {
-    size_t const n = collection->_journals.size();
-
-    for (size_t i = 0; i < n; ++i) {
-      // select datafile
-      datafile = collection->_journals[i];
-
-      // try to reserve space
-
-      TRI_df_marker_t* position = nullptr;
-      int res =
-          TRI_ReserveElementDatafile(datafile, size, &position, targetSize);
-
-      // found a datafile with enough space left
-      if (res == TRI_ERROR_NO_ERROR) {
-        datafile->_written = ((char*)position) + size;
-        dst = reinterpret_cast<char*>(position);
-        TRI_ASSERT(dst != nullptr);
-        goto leave;
-      }
-
-      if (res != TRI_ERROR_ARANGO_DATAFILE_FULL) {
-        // some other error
-        LOG_TOPIC(ERR, Logger::COLLECTOR) << "cannot select journal: '" << TRI_last_error() << "'";
-        goto leave;
-      }
-    
-      // must rotate the existing journal. now update its stats
-      if (cache->lastFid > 0) {
-        auto& dfi = createDfi(cache, cache->lastFid);
-        document->_datafileStatistics.increaseUncollected(cache->lastFid,
-                                                          dfi.numberUncollected);
-        // and reset afterwards
-        dfi.numberUncollected = 0;
-      }
-
-      // journal is full, close it and sync
-      LOG_TOPIC(DEBUG, Logger::COLLECTOR) << "closing full journal '" << datafile->getName(datafile)
-                 << "'";
-      TRI_CloseDatafileDocumentCollection(document, i, false);
-    }
-
-    datafile =
-        TRI_CreateDatafileDocumentCollection(document, tick, targetSize, false);
-
-    if (datafile == nullptr) {
-      int res = TRI_errno();
-      // could not create a datafile, this is a serious error
-      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        // oops, error code got lost
-        res = TRI_ERROR_INTERNAL;
-      }
-
-      TRI_ASSERT(res != TRI_ERROR_NO_ERROR);
-
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    cache->lastDatafile = datafile;
-    cache->lastFid = datafile->_fid;
-  }  // next iteration
-
-leave:
-  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-  if (dst != nullptr) {
-    DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(dst), type, size);
-
-    TRI_ASSERT(datafile != nullptr);
-
-    if (datafile->_fid != cache->lastFid) {
-      // datafile has changed
-      cache->lastDatafile = datafile;
-      cache->lastFid = datafile->_fid;
-
-      // create a local datafile info struct
-      createDfi(cache, datafile->_fid);
-
-      // we only need the ditches when we are outside the recovery
-      // the compactor will not run during recovery
-      auto ditch =
-          document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
-
-      if (ditch == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      cache->addDitch(ditch);
-    }
-  } else {
+  if (res != TRI_ERROR_NO_ERROR) {
+    // could not reserve space, for whatever reason
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_NO_JOURNAL);
   }
+
+  // if we get here, we successfully reserved space in the datafile
+
+  TRI_ASSERT(datafile != nullptr);
+
+  if (cache->lastFid != datafile->_fid) {
+    if (cache->lastFid > 0) {
+      // rotated the existing journal... now update the old journal's stats
+      auto& dfi = createDfi(cache, cache->lastFid);
+      document->_datafileStatistics.increaseUncollected(cache->lastFid,
+                                                        dfi.numberUncollected);
+      // and reset them afterwards
+      dfi.numberUncollected = 0;
+    }
+ 
+    // reset datafile in cache   
+    cache->lastDatafile = datafile;
+    cache->lastFid = datafile->_fid;
+    
+    // create a local datafile info struct
+    createDfi(cache, datafile->_fid);
+
+    // we only need the ditches when we are outside the recovery
+    // the compactor will not run during recovery
+    auto ditch =
+        document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+
+    if (ditch == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    cache->addDitch(ditch);
+  }
+  
+  TRI_ASSERT(dst != nullptr);
+  
+  DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(dst), type, size);
 
   return dst;
 }

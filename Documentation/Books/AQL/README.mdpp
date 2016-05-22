@@ -26,5 +26,5 @@ The syntax of AQL queries is different to SQL, even if some keywords overlap.
 Nevertheless, AQL should be easy to understand for anyone with an SQL background.
 
 For some example queries, please refer to the pages [Data Modification Queries](DataModification.md)  and 
-[Usual query patterns](../AqlExamples/README.md).
+[Usual query patterns](Examples/README.md).
 

@@ -32,10 +32,12 @@ using namespace arangodb::rest;
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsServer::HttpsServer(double keepAliveTimeout,
-                         std::string const& authenticationRealm,
-                         bool allowMethodOverride, SSL_CTX* ctx)
-    : HttpServer(keepAliveTimeout, authenticationRealm, allowMethodOverride),
+HttpsServer::HttpsServer(
+    double keepAliveTimeout, std::string const& authenticationRealm,
+    bool allowMethodOverride,
+    std::vector<std::string> const& accessControlAllowOrigins, SSL_CTX* ctx)
+    : HttpServer(keepAliveTimeout, authenticationRealm, allowMethodOverride,
+                 accessControlAllowOrigins),
       _ctx(ctx),
       _verificationMode(SSL_VERIFY_NONE),
       _verificationCallback(0) {}

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionContext.h"
+#include "Basics/StringBuffer.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "VocBase/DatafileHelper.h"
@@ -152,6 +153,28 @@ DocumentDitch* TransactionContext::ditch(TRI_voc_cid_t cid) const {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief temporarily lease a StringBuffer object
+//////////////////////////////////////////////////////////////////////////////
+
+basics::StringBuffer* TransactionContext::leaseStringBuffer(size_t initialSize) {
+  if (_stringBuffer == nullptr) {
+    _stringBuffer.reset(new basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, initialSize, false));
+  } else {
+    _stringBuffer->reset();
+  }
+
+  return _stringBuffer.release();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return a temporary StringBuffer object
+//////////////////////////////////////////////////////////////////////////////
+
+void TransactionContext::returnStringBuffer(basics::StringBuffer* stringBuffer) {
+  _stringBuffer.reset(stringBuffer);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief temporarily lease a Builder object
 //////////////////////////////////////////////////////////////////////////////
 
@@ -172,7 +195,6 @@ VPackBuilder* TransactionContext::leaseBuilder() {
 
 void TransactionContext::returnBuilder(VPackBuilder* builder) {
   _builder.reset(builder);
-  _builder->clear();
 }
   
 //////////////////////////////////////////////////////////////////////////////

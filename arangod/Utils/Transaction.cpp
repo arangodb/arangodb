@@ -606,7 +606,8 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
 #ifdef ARANGODB_ENABLE_ROCKSDB
 rocksdb::Transaction* Transaction::rocksTransaction() {
   if (_trx->_rocksTransaction == nullptr) {
-    _trx->_rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
+    _trx->_rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(
+      rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
   }
   return _trx->_rocksTransaction;
 }
@@ -2577,14 +2578,16 @@ OperationResult Transaction::countLocal(std::string const& collectionName) {
  
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
-  VPackBuilder resultBuilder;
-  resultBuilder.add(VPackValue(document->size()));
+  uint64_t num = document->_numberDocuments;
 
   res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
   
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.add(VPackValue(num));
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
 }
@@ -3338,6 +3341,32 @@ void Transaction::freeTransaction() {
     this->_transactionContext->storeTransactionResult(id, hasFailedOperations);
     this->_transactionContext->unregisterTransaction();
   }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, leases a StringBuffer
+//////////////////////////////////////////////////////////////////////////////
+
+StringBufferLeaser::StringBufferLeaser(arangodb::Transaction* trx) 
+      : _transactionContext(trx->transactionContext().get()), 
+        _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, leases a StringBuffer
+//////////////////////////////////////////////////////////////////////////////
+
+StringBufferLeaser::StringBufferLeaser(arangodb::TransactionContext* transactionContext) 
+      : _transactionContext(transactionContext), 
+        _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief destructor, returns a StringBuffer
+//////////////////////////////////////////////////////////////////////////////
+
+StringBufferLeaser::~StringBufferLeaser() { 
+  _transactionContext->returnStringBuffer(_stringBuffer);
 }
   
 //////////////////////////////////////////////////////////////////////////////

@@ -21,8 +21,8 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-//XXX #warning MOP nope, include guards
-#pragma once
+#ifndef CLUSTER_AGENCYCALLACKREGISTRY_H
+#define CLUSTER_AGENCYCALLACKREGISTRY_H 1
 
 #include "Cluster/AgencyCallback.h"
 #include "Basics/ReadWriteLock.h"
@@ -69,3 +69,5 @@ private:
 };
 
 }
+
+#endif

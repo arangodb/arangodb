@@ -26,6 +26,7 @@
 #include "Agency/RestAgencyHandler.h"
 #include "Agency/RestAgencyPrivHandler.h"
 #include "Aql/RestAqlHandler.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
@@ -35,6 +36,7 @@
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
 #include "HttpServer/RestHandlerFactory.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
@@ -75,6 +77,7 @@ using namespace arangodb::options;
 
 rest::RestHandlerFactory* RestServerFeature::HANDLER_FACTORY = nullptr;
 rest::AsyncJobManager* RestServerFeature::JOB_MANAGER = nullptr;
+RestServerFeature* RestServerFeature::REST_SERVER = nullptr;
 
 RestServerFeature::RestServerFeature(
     application_features::ApplicationServer* server,
@@ -86,6 +89,7 @@ RestServerFeature::RestServerFeature(
       _authentication(true),
       _authenticationUnixSockets(true),
       _authenticationSystemOnly(false),
+      _proxyCheck(true),
       _handlerFactory(nullptr),
       _jobManager(nullptr) {
   setOptional(true);
@@ -135,9 +139,53 @@ void RestServerFeature::collectOptions(
       "--http.hide-product-header",
       "do not expose \"Server: ArangoDB\" header in HTTP responses",
       new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
+
+  options->addOption(
+      "--http.trusted-origin",
+      "trusted origin URLs for CORS requests with credentials",
+      new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
+
+  options->addSection("frontend", "Frontend options");
+
+  options->addOption("--frontend.proxy-request-check",
+                     "enable or disable proxy request checking",
+                     new BooleanParameter(&_proxyCheck));
+
+  options->addOption("--frontend.trusted-proxy",
+                     "list of proxies to trust (may be IP or network). Make "
+                     "sure --frontend.proxy-request-check is enabled",
+                     new VectorParameter<StringParameter>(&_trustedProxies));
 }
 
-void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
+void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+  if (!_accessControlAllowOrigins.empty()) {
+    // trim trailing slash from all members
+    for (auto& it : _accessControlAllowOrigins) {
+      if (it == "*" || it == "all") {
+        // special members "*" or "all" means all origins are allowed
+        _accessControlAllowOrigins.clear();
+        _accessControlAllowOrigins.push_back("*");
+        break;
+      } else if (it == "none") {
+        // "none" means no origins are allowed
+        _accessControlAllowOrigins.clear();
+        break;
+      } else if (it[it.size() - 1] == '/') {
+        // strip trailing slash
+        it = it.substr(0, it.size() - 1);
+      }
+    }
+
+    // remove empty members
+    _accessControlAllowOrigins.erase(
+        std::remove_if(_accessControlAllowOrigins.begin(),
+                       _accessControlAllowOrigins.end(),
+                       [](std::string const& value) {
+                         return basics::StringUtils::trim(value).empty();
+                       }),
+        _accessControlAllowOrigins.end());
+  }
+}
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request,
                                                 TRI_server_t* server) {
@@ -186,9 +234,11 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
 void RestServerFeature::prepare() { RestHandlerFactory::setMaintenance(true); }
 
 void RestServerFeature::start() {
+  REST_SERVER = this;
+
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
-  JOB_MANAGER = nullptr;
+  JOB_MANAGER = _jobManager.get();
 
   _handlerFactory.reset(new RestHandlerFactory(&SetRequestContext,
                                                DatabaseServerFeature::SERVER));
@@ -229,6 +279,7 @@ void RestServerFeature::stop() {
     delete server;
   }
 
+  REST_SERVER = nullptr;
   JOB_MANAGER = nullptr;
   HANDLER_FACTORY = nullptr;
 }
@@ -241,8 +292,9 @@ void RestServerFeature::buildServers() {
           "Endpoint");
 
   // unencrypted HTTP endpoints
-  HttpServer* httpServer = new HttpServer(
-      _keepAliveTimeout, _authenticationRealm, _allowMethodOverride);
+  HttpServer* httpServer =
+      new HttpServer(_keepAliveTimeout, _authenticationRealm,
+                     _allowMethodOverride, _accessControlAllowOrigins);
 
   // YYY #warning FRANK filter list
   auto const& endpointList = endpoint->endpointList();
@@ -266,7 +318,8 @@ void RestServerFeature::buildServers() {
 
     // https
     httpServer = new HttpsServer(_keepAliveTimeout, _authenticationRealm,
-                                 _allowMethodOverride, sslContext);
+                                 _allowMethodOverride,
+                                 _accessControlAllowOrigins, sslContext);
 
     httpServer->setEndpointList(&endpointList);
     _servers.push_back(httpServer);

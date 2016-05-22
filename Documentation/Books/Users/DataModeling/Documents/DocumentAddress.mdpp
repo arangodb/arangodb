@@ -32,11 +32,11 @@ For example:
 ```
 
 All documents contain special attributes: the 
-[document handle](../../Users/Appendix/Glossary.md#document-handle) is stored
+[document handle](../../Appendix/Glossary.md#document-handle) is stored
 as a string in `_id`, the
-[document's primary key](../../Users/Appendix/Glossary.md#document-key) in 
+[document's primary key](../../Appendix/Glossary.md#document-key) in 
 `_key` and the 
-[document revision](../../Users/Appendix/Glossary.md#document-revision) in
+[document revision](../../Appendix/Glossary.md#document-revision) in
 `_rev`. The value of the `_key` attribute can be specified by the user when
 creating a document. `_id` and `_key` values are immutable once the document
 has been created. The `_rev` value is maintained by ArangoDB automatically.

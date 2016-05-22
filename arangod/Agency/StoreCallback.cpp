@@ -31,4 +31,3 @@ StoreCallback::StoreCallback() {}
 bool StoreCallback::operator()(arangodb::ClusterCommResult* res) {
   return true;
 }
-  

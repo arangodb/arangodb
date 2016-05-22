@@ -31,7 +31,6 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Creation
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,60 +88,60 @@ function SkipListCorrSuite() {
       coll.save({a:7,_key:"9",v:3});
 
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v == 3 RETURN x").length, 4);
+                  "FOR x IN " + cn + " FILTER x.v == 3 RETURN x").length, 4);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 RETURN x").length, 4);
+                  "FOR x IN " + cn + " FILTER x.v < 3 RETURN x").length, 4);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v <= 3 RETURN x").length, 8);
+                  "FOR x IN " + cn + " FILTER x.v <= 3 RETURN x").length, 8);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 3 RETURN x").length, 1);
+                  "FOR x IN " + cn + " FILTER x.v > 3 RETURN x").length, 1);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v >= 3 RETURN x").length, 5);
+                  "FOR x IN " + cn + " FILTER x.v >= 3 RETURN x").length, 5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 0 RETURN x").length, 9);
+                  "FOR x IN " + cn + " FILTER x.v > 0 RETURN x").length, 9);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 10 RETURN x").length, 9);
+                  "FOR x IN " + cn + " FILTER x.v < 10 RETURN x").length, 9);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 || x.v > 3 RETURN x").length,5);
+                  "FOR x IN " + cn + " FILTER x.v < 3 || x.v > 3 RETURN x").length,5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 && x.v > 3 RETURN x").length,0);
+                  "FOR x IN " + cn + " FILTER x.v < 3 && x.v > 3 RETURN x").length,0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 1 RETURN x").length, 0);
+                  "FOR x IN " + cn + " FILTER x.v < 1 RETURN x").length, 0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v <= 1 RETURN x").length, 2);
+                  "FOR x IN " + cn + " FILTER x.v <= 1 RETURN x").length, 2);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 4 RETURN x").length, 0);
+                  "FOR x IN " + cn + " FILTER x.v > 4 RETURN x").length, 0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v >= 4 RETURN x").length, 1);
+                  "FOR x IN " + cn + " FILTER x.v >= 4 RETURN x").length, 1);
 
       coll.removeByExample({v:3});
 
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v == 3 RETURN x").length, 0);
+                  "FOR x IN " + cn + " FILTER x.v == 3 RETURN x").length, 0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 RETURN x").length, 4);
+                  "FOR x IN " + cn + " FILTER x.v < 3 RETURN x").length, 4);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v <= 3 RETURN x").length, 4);
+                  "FOR x IN " + cn + " FILTER x.v <= 3 RETURN x").length, 4);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 3 RETURN x").length, 1);
+                  "FOR x IN " + cn + " FILTER x.v > 3 RETURN x").length, 1);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v >= 3 RETURN x").length, 1);
+                  "FOR x IN " + cn + " FILTER x.v >= 3 RETURN x").length, 1);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 0 RETURN x").length, 5);
+                  "FOR x IN " + cn + " FILTER x.v > 0 RETURN x").length, 5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 10 RETURN x").length, 5);
+                  "FOR x IN " + cn + " FILTER x.v < 10 RETURN x").length, 5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 || x.v > 3 RETURN x").length,5);
+                  "FOR x IN " + cn + " FILTER x.v < 3 || x.v > 3 RETURN x").length,5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 && x.v > 3 RETURN x").length,0);
+                  "FOR x IN " + cn + " FILTER x.v < 3 && x.v > 3 RETURN x").length,0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 1 RETURN x").length, 0);
+                  "FOR x IN " + cn + " FILTER x.v < 1 RETURN x").length, 0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v <= 1 RETURN x").length, 2);
+                  "FOR x IN " + cn + " FILTER x.v <= 1 RETURN x").length, 2);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 4 RETURN x").length, 0);
+                  "FOR x IN " + cn + " FILTER x.v > 4 RETURN x").length, 0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v >= 4 RETURN x").length, 1);
+                  "FOR x IN " + cn + " FILTER x.v >= 4 RETURN x").length, 1);
     },
 
     testCorrectnessUnique : function () {
@@ -159,60 +158,60 @@ function SkipListCorrSuite() {
       coll.save({a:7,_key:"9",v:-7});
 
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v == 3 RETURN x").length, 1);
+                  "FOR x IN " + cn + " FILTER x.v == 3 RETURN x").length, 1);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 RETURN x").length, 5);
+                  "FOR x IN " + cn + " FILTER x.v < 3 RETURN x").length, 5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v <= 3 RETURN x").length, 6);
+                  "FOR x IN " + cn + " FILTER x.v <= 3 RETURN x").length, 6);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 3 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v > 3 RETURN x").length, 3);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v >= 3 RETURN x").length, 4);
+                  "FOR x IN " + cn + " FILTER x.v >= 3 RETURN x").length, 4);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 0 RETURN x").length, 6);
+                  "FOR x IN " + cn + " FILTER x.v > 0 RETURN x").length, 6);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 10 RETURN x").length, 9);
+                  "FOR x IN " + cn + " FILTER x.v < 10 RETURN x").length, 9);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 || x.v > 3 RETURN x").length,8);
+                  "FOR x IN " + cn + " FILTER x.v < 3 || x.v > 3 RETURN x").length,8);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 && x.v > 3 RETURN x").length,0);
+                  "FOR x IN " + cn + " FILTER x.v < 3 && x.v > 3 RETURN x").length,0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 1 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v < 1 RETURN x").length, 3);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v <= 1 RETURN x").length, 4);
+                  "FOR x IN " + cn + " FILTER x.v <= 1 RETURN x").length, 4);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 4 RETURN x").length, 2);
+                  "FOR x IN " + cn + " FILTER x.v > 4 RETURN x").length, 2);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v >= 4 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v >= 4 RETURN x").length, 3);
 
       coll.removeByExample({v:3});
 
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v == 3 RETURN x").length, 0);
+                  "FOR x IN " + cn + " FILTER x.v == 3 RETURN x").length, 0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 RETURN x").length, 5);
+                  "FOR x IN " + cn + " FILTER x.v < 3 RETURN x").length, 5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v <= 3 RETURN x").length, 5);
+                  "FOR x IN " + cn + " FILTER x.v <= 3 RETURN x").length, 5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 3 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v > 3 RETURN x").length, 3);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v >= 3 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v >= 3 RETURN x").length, 3);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 0 RETURN x").length, 5);
+                  "FOR x IN " + cn + " FILTER x.v > 0 RETURN x").length, 5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 10 RETURN x").length, 8);
+                  "FOR x IN " + cn + " FILTER x.v < 10 RETURN x").length, 8);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 || x.v > 3 RETURN x").length,8);
+                  "FOR x IN " + cn + " FILTER x.v < 3 || x.v > 3 RETURN x").length,8);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 && x.v > 3 RETURN x").length,0);
+                  "FOR x IN " + cn + " FILTER x.v < 3 && x.v > 3 RETURN x").length,0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 1 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v < 1 RETURN x").length, 3);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v <= 1 RETURN x").length, 4);
+                  "FOR x IN " + cn + " FILTER x.v <= 1 RETURN x").length, 4);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 4 RETURN x").length, 2);
+                  "FOR x IN " + cn + " FILTER x.v > 4 RETURN x").length, 2);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v >= 4 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v >= 4 RETURN x").length, 3);
     },
 
     testCorrectnessSparse : function () {
@@ -229,60 +228,60 @@ function SkipListCorrSuite() {
       coll.save({a:7,_key:"9",v:-7});
 
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v == 3 RETURN x").length, 1);
+                  "FOR x IN " + cn + " FILTER x.v == 3 RETURN x").length, 1);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 RETURN x").length, 5);
+                  "FOR x IN " + cn + " FILTER x.v < 3 RETURN x").length, 5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v <= 3 RETURN x").length, 6);
+                  "FOR x IN " + cn + " FILTER x.v <= 3 RETURN x").length, 6);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 3 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v > 3 RETURN x").length, 3);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v >= 3 RETURN x").length, 4);
+                  "FOR x IN " + cn + " FILTER x.v >= 3 RETURN x").length, 4);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 0 RETURN x").length, 6);
+                  "FOR x IN " + cn + " FILTER x.v > 0 RETURN x").length, 6);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 10 RETURN x").length, 9);
+                  "FOR x IN " + cn + " FILTER x.v < 10 RETURN x").length, 9);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 || x.v > 3 RETURN x").length,8);
+                  "FOR x IN " + cn + " FILTER x.v < 3 || x.v > 3 RETURN x").length,8);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 && x.v > 3 RETURN x").length,0);
+                  "FOR x IN " + cn + " FILTER x.v < 3 && x.v > 3 RETURN x").length,0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 1 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v < 1 RETURN x").length, 3);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v <= 1 RETURN x").length, 4);
+                  "FOR x IN " + cn + " FILTER x.v <= 1 RETURN x").length, 4);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 4 RETURN x").length, 2);
+                  "FOR x IN " + cn + " FILTER x.v > 4 RETURN x").length, 2);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v >= 4 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v >= 4 RETURN x").length, 3);
 
       coll.removeByExample({v:3});
 
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v == 3 RETURN x").length, 0);
+                  "FOR x IN " + cn + " FILTER x.v == 3 RETURN x").length, 0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 RETURN x").length, 5);
+                  "FOR x IN " + cn + " FILTER x.v < 3 RETURN x").length, 5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v <= 3 RETURN x").length, 5);
+                  "FOR x IN " + cn + " FILTER x.v <= 3 RETURN x").length, 5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 3 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v > 3 RETURN x").length, 3);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v >= 3 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v >= 3 RETURN x").length, 3);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 0 RETURN x").length, 5);
+                  "FOR x IN " + cn + " FILTER x.v > 0 RETURN x").length, 5);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 10 RETURN x").length, 8);
+                  "FOR x IN " + cn + " FILTER x.v < 10 RETURN x").length, 8);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 || x.v > 3 RETURN x").length,8);
+                  "FOR x IN " + cn + " FILTER x.v < 3 || x.v > 3 RETURN x").length,8);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 3 && x.v > 3 RETURN x").length,0);
+                  "FOR x IN " + cn + " FILTER x.v < 3 && x.v > 3 RETURN x").length,0);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v < 1 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v < 1 RETURN x").length, 3);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v <= 1 RETURN x").length, 4);
+                  "FOR x IN " + cn + " FILTER x.v <= 1 RETURN x").length, 4);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v > 4 RETURN x").length, 2);
+                  "FOR x IN " + cn + " FILTER x.v > 4 RETURN x").length, 2);
       assertEqual(getQueryResults(
-                  "FOR x IN "+cn+" FILTER x.v >= 4 RETURN x").length, 3);
+                  "FOR x IN " + cn + " FILTER x.v >= 4 RETURN x").length, 3);
     }
   };
 }
@@ -295,5 +294,3 @@ function SkipListCorrSuite() {
 jsunity.run(SkipListCorrSuite);
 
 return jsunity.done();
-
-

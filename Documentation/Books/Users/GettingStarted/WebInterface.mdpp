@@ -3,13 +3,15 @@
 ArangoDB comes with a built-in web interface for administration. The web 
 interface can be accessed via the URL
 
-    http://localhost:8529
+```
+http://localhost:8529
+```
 
 assuming you are using the standard port and no user routings. If you
 have any service installed, the home page might point to that
 service instead. In this case use
 
-  http://localhost:8529/_admin/aardvark/index.html
+http://localhost:8529/_admin/aardvark/index.html
 
 (note: _aardvark_ is the web interface's internal name).
 
@@ -17,13 +19,13 @@ If no database name is specified in the URL, you will in most cases get
 routed to the web interface for the *_system* database. To access the web 
 interface for any other ArangoDB database, put the database name into the
 request URI path as follows:
-  
-  http://localhost:8529/_db/mydb/
+
+http://localhost:8529/_db/mydb/
 
 The above will load the web interface for the database *mydb*.
 
 To restrict access to the web interface, use 
-[ArangoDB's authentication feature](../GeneralHttp/README.md#authentication).
+[ArangoDB's authentication feature](../../HTTP/General/index.html#authentication).
 
 !SECTION Select Functionality provided by the Web Interface
 
@@ -71,7 +73,7 @@ service can be installed multiple times using different mount points.
 
 The *Graphs* tab provides a viewer facility for graph data stored in ArangoDB. It
 allows browsing ArangoDB graphs stored in the *_graphs* system collection or a
-graph consisting of an arbitrary vertex and [edge collection](../Glossary/README.md#edge-collection). 
+graph consisting of an arbitrary vertex and [edge collection](../Appendix/Glossary.md#edge-collection). 
 
 Please note that the graph viewer requires client-side SVG and that you need a
 browser capable of rendering that. Especially Internet Explorer browsers older
@@ -79,7 +81,7 @@ than version 9 are likely to not support this.
 
 !SECTION AQL Editor Tab 
 
-The [AQL Editor tab](../Aql/AqlWithWebInterface.md) allows to execute ad-hoc AQL queries.
+The [AQL Editor tab](../../AQL/Invocation/WithWebInterface.html) allows to execute ad-hoc AQL queries.
 
 !SECTION Tools Tab
 
@@ -95,8 +97,8 @@ executed inside your browser. To contact the ArangoDB server you can use the
 *db* object, for example as follows:
 
 ```js
-    JSH> db._create("mycollection");
-    JSH> db.mycollection.save({ _key: "test", value: "something" });
+JSH> db._create("mycollection");
+JSH> db.mycollection.save({ _key: "test", value: "something" });
 ```
 
 You can use the *Logs* menu item allows browsing the most recent log entries provided by the

@@ -1,0 +1,249 @@
+shell> curl --dump - http://localhost:8529/_api/replication/inventory
+
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+
+{ 
+  <span class="hljs-string">"collections"</span> : [ 
+    { 
+      <span class="hljs-string">"parameters"</span> : { 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"46"</span>, 
+        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"maximalSize"</span> : <span class="hljs-number">2097152</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"_aqlfunctions"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
+    }, 
+    { 
+      <span class="hljs-string">"parameters"</span> : { 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"63"</span>, 
+        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"maximalSize"</span> : <span class="hljs-number">1048576</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"_frontend"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
+    }, 
+    { 
+      <span class="hljs-string">"parameters"</span> : { 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"23"</span>, 
+        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"maximalSize"</span> : <span class="hljs-number">1048576</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"_graphs"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
+    }, 
+    { 
+      <span class="hljs-string">"parameters"</span> : { 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"25"</span>, 
+        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"maximalSize"</span> : <span class="hljs-number">1048576</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"_modules"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
+    }, 
+    { 
+      <span class="hljs-string">"parameters"</span> : { 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"27"</span>, 
+        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"maximalSize"</span> : <span class="hljs-number">8388608</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"_routing"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
+    }, 
+    { 
+      <span class="hljs-string">"parameters"</span> : { 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"9"</span>, 
+        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"maximalSize"</span> : <span class="hljs-number">4194304</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"_users"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ 
+        { 
+          <span class="hljs-string">"fields"</span> : [ 
+            <span class="hljs-string">"user"</span> 
+          ], 
+          <span class="hljs-string">"id"</span> : <span class="hljs-string">"12"</span>, 
+          <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
+          <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
+          <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
+        } 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"parameters"</span> : { 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"104"</span>, 
+        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"maximalSize"</span> : <span class="hljs-number">33554432</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"animals"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
+    }, 
+    { 
+      <span class="hljs-string">"parameters"</span> : { 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"98"</span>, 
+        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"maximalSize"</span> : <span class="hljs-number">33554432</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"demo"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
+    }, 
+    { 
+      <span class="hljs-string">"parameters"</span> : { 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"10895"</span>, 
+        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"maximalSize"</span> : <span class="hljs-number">33554432</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"IndexedCollection1"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ 
+        { 
+          <span class="hljs-string">"fields"</span> : [ 
+            <span class="hljs-string">"name"</span> 
+          ], 
+          <span class="hljs-string">"id"</span> : <span class="hljs-string">"10898"</span>, 
+          <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
+          <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
+          <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span> 
+        }, 
+        { 
+          <span class="hljs-string">"fields"</span> : [ 
+            <span class="hljs-string">"a"</span>, 
+            <span class="hljs-string">"b"</span> 
+          ], 
+          <span class="hljs-string">"id"</span> : <span class="hljs-string">"10901"</span>, 
+          <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+          <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
+        } 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"parameters"</span> : { 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"10903"</span>, 
+        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"maximalSize"</span> : <span class="hljs-number">33554432</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"IndexedCollection2"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ 
+        { 
+          <span class="hljs-string">"fields"</span> : [ 
+            <span class="hljs-string">"text"</span> 
+          ], 
+          <span class="hljs-string">"id"</span> : <span class="hljs-string">"10906"</span>, 
+          <span class="hljs-string">"minLength"</span> : <span class="hljs-number">10</span>, 
+          <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"fulltext"</span>, 
+          <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span> 
+        }, 
+        { 
+          <span class="hljs-string">"fields"</span> : [ 
+            <span class="hljs-string">"a"</span> 
+          ], 
+          <span class="hljs-string">"id"</span> : <span class="hljs-string">"10909"</span>, 
+          <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+          <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span> 
+        } 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"parameters"</span> : { 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"10473"</span>, 
+        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"maximalSize"</span> : <span class="hljs-number">33554432</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"vertices"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
+    }, 
+    { 
+      <span class="hljs-string">"parameters"</span> : { 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"10475"</span>, 
+        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"maximalSize"</span> : <span class="hljs-number">33554432</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"edges"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-number">3</span>, 
+        <span class="hljs-string">"version"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
+      }, 
+      <span class="hljs-string">"indexes"</span> : [ ] 
+    } 
+  ], 
+  <span class="hljs-string">"state"</span> : { 
+    <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"10899"</span>, 
+    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"10910"</span>, 
+    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3724</span>, 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-05-18T14:17:09Z"</span> 
+  }, 
+  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"10910"</span> 
+}

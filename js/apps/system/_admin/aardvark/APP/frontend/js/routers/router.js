@@ -1,6 +1,6 @@
 /*jshint unused: false */
 /*global window, $, Backbone, document, arangoCollectionModel*/
-/*global arangoHelper, btoa, dashboardView, arangoDatabase, _*/
+/*global arangoHelper, btoa, dashboardView, arangoDatabase, _, frontendConfig */
 
 (function () {
   "use strict";
@@ -54,26 +54,45 @@
     },
 
     checkUser: function () {
+
       if (window.location.hash === '#login') {
         return;
       }
 
+      var startInit = function() {
+        this.initOnce();
+
+        //show hidden by default divs
+        $('.bodyWrapper').show();
+        $('.navbar').show();
+      }.bind(this);
+
       var callback = function(error, user) {
-        if (error || user === null) {
-          if (window.location.hash !== '#login') {
-            this.navigate("login", {trigger: true});
+        if (frontendConfig.authenticationEnabled) {
+          if (error || user === null) {
+            if (window.location.hash !== '#login') {
+              this.navigate("login", {trigger: true});
+            }
+          }
+          else {
+            startInit();
           }
         }
         else {
-          this.initOnce();
-
-          //show hidden by default divs
-          $('.bodyWrapper').show();
-          $('.navbar').show();
+          startInit();
         }
       }.bind(this);
 
-      this.userCollection.whoAmI(callback); 
+      if (frontendConfig.authenticationEnabled) {
+        this.userCollection.whoAmI(callback);
+      }
+      else {
+        this.initOnce();
+
+        //show hidden by default divs
+        $('.bodyWrapper').show();
+        $('.navbar').show();
+      }
     },
 
     waitForInit: function(origin, param1, param2) {
@@ -88,7 +107,7 @@
           if (param1 && param2) {
             origin(param1, param2, false);
           }
-        }, 250);
+        }, 350);
       } else {
         if (!param1) {
           origin(true);
@@ -105,6 +124,12 @@
     initFinished: false,
 
     initialize: function () {
+
+      //check frontend config for global conf settings
+      if (frontendConfig.isCluster === true) {
+        this.isCluster = true;
+      }
+
       // This should be the only global object
       window.modalView = new window.ModalView();
 
@@ -123,17 +148,13 @@
 
         var callback = function(error, isCoordinator) {
           self = this;
-          if (isCoordinator) {
-            self.isCluster = true;
+          if (isCoordinator === true) {
 
             self.coordinatorCollection.fetch({
               success: function() {
                 self.fetchDBS();
               }
             });
-          }
-          else {
-            self.isCluster = false;
           }
         }.bind(this);
 
@@ -209,11 +230,11 @@
 
     cluster: function (initialized) {
       this.checkUser();
-      if (!initialized || this.isCluster === undefined) {
+      if (!initialized) {
         this.waitForInit(this.cluster.bind(this));
         return;
       }
-      if (this.isCluster === false) {
+      if (this.isCluster === false || this.isCluster === undefined) {
         if (this.currentDB.get("name") === '_system') {
           this.routes[""] = 'dashboard';
           this.navigate("#dashboard", {trigger: true});
@@ -267,7 +288,6 @@
         this.navigate("#dashboard", {trigger: true});
         return;
       }
-
       this.nodesView = new window.NodesView({
         coordinators: this.coordinatorCollection,
         dbServers: this.dbServers[0],
@@ -285,6 +305,10 @@
       if (this.isCluster === false) {
         this.routes[""] = 'dashboard';
         this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+      if (this.dbServers.length === 0) {
+        this.navigate("#cNodes", {trigger: true});
         return;
       }
 
@@ -409,16 +433,16 @@
     login: function () {
 
       var callback = function(error, user) {
+        if (!this.loginView) {
+          this.loginView = new window.loginView({
+            collection: this.userCollection
+          });
+        }
         if (error || user === null) {
-          if (!this.loginView) {
-            this.loginView = new window.loginView({
-              collection: this.userCollection
-            });
-          }
           this.loginView.render();
         }
         else {
-          this.navigate("", {trigger: true});
+          this.loginView.render(true);
         }
       }.bind(this);
 

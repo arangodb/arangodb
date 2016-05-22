@@ -41,16 +41,18 @@ V8Expression::V8Expression(v8::Isolate* isolate, v8::Handle<v8::Function> func,
                            v8::Handle<v8::Object> constantValues, bool isSimple)
     : isolate(isolate),
       _func(),
+      _state(),
       _constantValues(),
-      _numExecutions(0),
       _isSimple(isSimple) {
   _func.Reset(isolate, func);
+  _state.Reset(isolate, v8::Object::New(isolate));
   _constantValues.Reset(isolate, constantValues);
 }
 
 /// @brief destroy the v8 expression
 V8Expression::~V8Expression() {
   _constantValues.Reset();
+  _state.Reset();
   _func.Reset();
 }
 
@@ -110,6 +112,8 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
   try {
     v8g->_query = static_cast<void*>(query);
     TRI_ASSERT(v8g->_query != nullptr);
+    
+    auto state = v8::Local<v8::Object>::New(isolate, _state);
 
     // set constant function arguments
     // note: constants are passed by reference so we can save re-creating them
@@ -121,9 +125,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     // won't modify their arguments is unsafe
     auto constantValues = v8::Local<v8::Object>::New(isolate, _constantValues);
 
-    v8::Handle<v8::Value> args[] = {
-        values, constantValues,
-        v8::Boolean::New(isolate, _numExecutions++ == 0)};
+    v8::Handle<v8::Value> args[] = { values, state, constantValues };
 
     // execute the function
     v8::TryCatch tryCatch;

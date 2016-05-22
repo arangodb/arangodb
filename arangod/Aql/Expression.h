@@ -221,15 +221,15 @@ class Expression {
 
   /// @brief build the expression (if appropriate, compile it into
   /// executable code)
-  void buildExpression();
+  void buildExpression(arangodb::AqlTransaction*);
 
   /// @brief execute an expression of type SIMPLE
   AqlValue executeSimpleExpression(AstNode const*,
-                                    arangodb::AqlTransaction*,
-                                    AqlItemBlock const*, size_t,
-                                    std::vector<Variable const*> const&,
-                                    std::vector<RegisterId> const&, 
-                                    bool& mustDestroy, bool);
+                                   arangodb::AqlTransaction*,
+                                   AqlItemBlock const*, size_t,
+                                   std::vector<Variable const*> const&,
+                                   std::vector<RegisterId> const&, 
+                                   bool& mustDestroy, bool);
 
   /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
   AqlValue executeSimpleExpressionAttributeAccess(
@@ -387,9 +387,6 @@ class Expression {
   /// by variable name
   std::unordered_map<Variable const*, std::unordered_set<std::string>>
       _attributes;
-
-  /// @brief buffer for temporary strings
-  arangodb::basics::StringBuffer _buffer;
 
   /// @brief variables only temporarily valid during execution
   std::unordered_map<Variable const*, arangodb::velocypack::Slice> _variables;

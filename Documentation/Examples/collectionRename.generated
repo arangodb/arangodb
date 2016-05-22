@@ -1,6 +1,6 @@
 arangosh&gt; c = db.example;
-[ArangoCollection <span class="hljs-number">15333</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">15283</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; c.rename(<span class="hljs-string">"better-example"</span>);
 <span class="hljs-built_in">TypeError</span>: Cannot read property <span class="hljs-string">'length'</span> <span class="hljs-keyword">of</span> <span class="hljs-literal">undefined</span>
 arangosh&gt; c;
-[ArangoCollection <span class="hljs-number">15333</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">15283</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]

@@ -554,7 +554,7 @@ var config = {
 The edges connected to a vertex are determined by the expander. So far we have used a 
 default expander (the default inbound expander to be precise). The default inbound 
 expander simply enumerates all connected ingoing edges for a vertex, based on the
-[edge collection](../Glossary/README.md#edge-collection) specified in the traversal configuration.
+[edge collection](../../Appendix/Glossary.md#edge-collection) specified in the traversal configuration.
 
 There is also a default outbound expander, which will enumerate all connected outgoing
 edges. Finally, there is an any expander, which will follow both ingoing and outgoing

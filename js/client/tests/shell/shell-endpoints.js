@@ -83,9 +83,9 @@ function EndpointsSuite () {
       db._createDatabase("UnitTestsDatabase0");
       db._useDatabase("UnitTestsDatabase0");
 
-      // _listEndpoints is forbidden
+      // _endpoints is forbidden
       try {
-        db._listEndpoints();
+        db._endpoints();
         fail();
       }
       catch (err2) {

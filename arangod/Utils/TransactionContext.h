@@ -34,6 +34,10 @@ struct TRI_transaction_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace basics {
+class StringBuffer;
+}
+
 namespace velocypack {
 class Builder;
 struct CustomTypeHandler;
@@ -90,6 +94,18 @@ class TransactionContext {
   //////////////////////////////////////////////////////////////////////////////
   
   DocumentDitch* ditch(TRI_voc_cid_t) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief temporarily lease a StringBuffer object
+  //////////////////////////////////////////////////////////////////////////////
+
+  basics::StringBuffer* leaseStringBuffer(size_t initialSize);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a temporary StringBuffer object
+  //////////////////////////////////////////////////////////////////////////////
+
+  void returnStringBuffer(basics::StringBuffer* stringBuffer);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief temporarily lease a Builder object
@@ -170,6 +186,7 @@ class TransactionContext {
   
   std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
   
+  std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
   std::unique_ptr<arangodb::velocypack::Builder> _builder;
 
   arangodb::velocypack::Options _options;

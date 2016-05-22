@@ -58,6 +58,9 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   ~HttpCommTask();
 
  public:
+  // return whether or not the task desires to start a dispatcher thread
+  bool startThread() const { return _startThread; }
+
   // handles response
   void handleResponse(HttpResponse*);
 
@@ -169,6 +172,12 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   // true if within a chunked response
   bool _isChunked;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief start a separate thread if the task is added to the dispatcher?
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool _startThread;
 
   // the request with possible incomplete body
   HttpRequest* _request;
