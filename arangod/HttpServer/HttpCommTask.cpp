@@ -840,12 +840,12 @@ void HttpCommTask::processRequest() {
     LOG(TRACE) << "no handler is known, giving up";
 
     clearRequest();
-    response.release();
 
     handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND);
     return;
   }
 
+  response.release();
   handler->setTaskId(_taskId, _loop);
 
   // clear request object
