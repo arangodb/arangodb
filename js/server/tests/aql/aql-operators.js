@@ -679,23 +679,23 @@ function ahuacatlOperatorsTestSuite () {
         {ex: "1 ", val: "'1 '"},
         {ex: "0", val: "'0'"},
         {ex: "-1", val: "'-1'"},
-        {ex: "", val: "[ ]"},
-        {ex: "0", val: "[ 0 ]"},
-        {ex: "0,1", val: "[ 0, 1 ]"},
-        {ex: "1,2", val: "[ 1, 2 ]"},
-        {ex: "-1,0", val: "[ -1, 0 ]"},
-        {ex: "0,1,1,2,9,4", val: "[ 0, 1, [1, 2], [ [ 9, 4 ] ] ]"},
-        {ex: "[object Object]", val: "[ { } ]"},
-        {ex: "0,1,[object Object]", val: "[ 0, 1, { } ]"},
-        {ex: "[object Object],[object Object]", val: "[ { }, { } ]"},
-        {ex: "", val: "['']"},
-        {ex: "false", val: "[ false ]"},
-        {ex: "true", val: "[ true ]"},
-        {ex: "[object Object]", val: "{ }"},
-        {ex: "[object Object]", val: "{ 'a' : true }"},
-        {ex: "[object Object]", val: "{ 'a' : true, 'b' : 0 }"},
-        {ex: "[object Object]", val: "{ 'a' : { }, 'b' : { } }"},
-        {ex: "[object Object]", val: "{ 'a' : [ ], 'b' : [ ] }"}
+        {ex: "[]", val: "[ ]"},
+        {ex: "[0]", val: "[ 0 ]"},
+        {ex: "[0,1]", val: "[ 0, 1 ]"},
+        {ex: "[1,2]", val: "[ 1, 2 ]"},
+        {ex: "[-1,0]", val: "[ -1, 0 ]"},
+        {ex: "[0,1,[1,2],[[9,4]]]", val: "[ 0, 1, [1, 2], [ [ 9, 4 ] ] ]"},
+        {ex: "[{}]", val: "[ { } ]"},
+        {ex: "[0,1,{}]", val: "[ 0, 1, { } ]"},
+        {ex: "[{},{}]", val: "[ { }, { } ]"},
+        {ex: "[\"\"]", val: "['']"},
+        {ex: "[false]", val: "[ false ]"},
+        {ex: "[true]", val: "[ true ]"},
+        {ex: "{}", val: "{ }"},
+        {ex: "{\"a\":true}", val: "{ 'a' : true }"},
+        {ex: "{\"a\":true,\"b\":0}", val: "{ 'a' : true, 'b' : 0 }"},
+        {ex: "{\"a\":{},\"b\":{}}", val: "{ 'a' : { }, 'b' : { } }"},
+        {ex: "{\"a\":[],\"b\":[]}", val: "{ 'a' : [ ], 'b' : [ ] }"}
       ];
       values.forEach(function(v) {
         var q = `RETURN TO_STRING(${v.val})`;
@@ -4126,22 +4126,22 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual("1", aql.AQL_CONCAT(undefined, 1));
       assertEqual("2", aql.AQL_CONCAT(undefined, 2));
       assertEqual("-1", aql.AQL_CONCAT(undefined, -1));
-      assertEqual("", aql.AQL_CONCAT(undefined, [ ]));
-      assertEqual("1", aql.AQL_CONCAT(undefined, [ 1 ]));
-      assertEqual("12", aql.AQL_CONCAT(undefined, [ 1, 2 ]));
-      assertEqual("[object Object]", aql.AQL_CONCAT(undefined, { }));
-      assertEqual("[object Object]", aql.AQL_CONCAT(undefined, { 'a' : 0 }));
+      assertEqual("[]", aql.AQL_CONCAT(undefined, [ ]));
+      assertEqual("[1]", aql.AQL_CONCAT(undefined, [ 1 ]));
+      assertEqual("[1,2]", aql.AQL_CONCAT(undefined, [ 1, 2 ]));
+      assertEqual("{}", aql.AQL_CONCAT(undefined, { }));
+      assertEqual("{\"a\":0}", aql.AQL_CONCAT(undefined, { 'a' : 0 }));
       assertEqual("false", aql.AQL_CONCAT(false, undefined));
       assertEqual("true", aql.AQL_CONCAT(true, undefined));
       assertEqual("0", aql.AQL_CONCAT(0, undefined));
       assertEqual("1", aql.AQL_CONCAT(1, undefined));
       assertEqual("2", aql.AQL_CONCAT(2, undefined));
       assertEqual("-1", aql.AQL_CONCAT(-1, undefined));
-      assertEqual("", aql.AQL_CONCAT([ ], undefined));
-      assertEqual("1", aql.AQL_CONCAT([ 1 ], undefined));
-      assertEqual("12", aql.AQL_CONCAT([ 1, 2 ], undefined));
-      assertEqual("[object Object]", aql.AQL_CONCAT({ }, undefined));
-      assertEqual("[object Object]", aql.AQL_CONCAT({ 'a' : 0 }, undefined));
+      assertEqual("[]", aql.AQL_CONCAT([ ], undefined));
+      assertEqual("[1]", aql.AQL_CONCAT([ 1 ], undefined));
+      assertEqual("[1,2]", aql.AQL_CONCAT([ 1, 2 ], undefined));
+      assertEqual("{}", aql.AQL_CONCAT({ }, undefined));
+      assertEqual("{\"a\":0}", aql.AQL_CONCAT({ 'a' : 0 }, undefined));
       assertEqual("1", aql.AQL_CONCAT(1, NaN));
       assertEqual("1", aql.AQL_CONCAT(1, null));
       assertEqual("1false", aql.AQL_CONCAT(1, false));
@@ -4151,10 +4151,10 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual("10", aql.AQL_CONCAT(1, '0'));
       assertEqual("11", aql.AQL_CONCAT(1, '1'));
       assertEqual("1a", aql.AQL_CONCAT(1, 'a'));
-      assertEqual("1", aql.AQL_CONCAT(1, [ ]));
-      assertEqual("10", aql.AQL_CONCAT(1, [ 0 ]));
-      assertEqual("1[object Object]", aql.AQL_CONCAT(1, { }));
-      assertEqual("1[object Object]", aql.AQL_CONCAT(1, { 'a' : 0 }));
+      assertEqual("1[]", aql.AQL_CONCAT(1, [ ]));
+      assertEqual("1[0]", aql.AQL_CONCAT(1, [ 0 ]));
+      assertEqual("1{}", aql.AQL_CONCAT(1, { }));
+      assertEqual("1{\"a\":0}", aql.AQL_CONCAT(1, { 'a' : 0 }));
       assertEqual("1", aql.AQL_CONCAT(NaN, 1));
       assertEqual("1", aql.AQL_CONCAT(null, 1));
       assertEqual("false1", aql.AQL_CONCAT(false, 1));
@@ -4164,10 +4164,10 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual("01", aql.AQL_CONCAT('0', 1));
       assertEqual("11", aql.AQL_CONCAT('1', 1));
       assertEqual("a1", aql.AQL_CONCAT('a', 1));
-      assertEqual("1", aql.AQL_CONCAT([ ], 1));
-      assertEqual("01", aql.AQL_CONCAT([ 0 ], 1));
-      assertEqual("[object Object]1", aql.AQL_CONCAT({ }, 1));
-      assertEqual("[object Object]1", aql.AQL_CONCAT({ 'a' : 0 }, 1));
+      assertEqual("[]1", aql.AQL_CONCAT([ ], 1));
+      assertEqual("[0]1", aql.AQL_CONCAT([ 0 ], 1));
+      assertEqual("{}1", aql.AQL_CONCAT({ }, 1));
+      assertEqual("{\"a\":0}1", aql.AQL_CONCAT({ 'a' : 0 }, 1));
       assertEqual("10", aql.AQL_CONCAT(1, 0));
       assertEqual("1000", aql.AQL_CONCAT(100, 0));
       assertEqual("-10", aql.AQL_CONCAT(-1, 0));
@@ -4175,12 +4175,13 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual("00", aql.AQL_CONCAT(0, 0));
       assertEqual("false", aql.AQL_CONCAT('', false));
       assertEqual("true", aql.AQL_CONCAT('', true));
-      assertEqual("", aql.AQL_CONCAT('', [ ]));
-      assertEqual("[object Object]", aql.AQL_CONCAT('', { }));
+      assertEqual("[]", aql.AQL_CONCAT('', [ ]));
+      assertEqual("{}", aql.AQL_CONCAT('', { }));
       assertEqual("afalse", aql.AQL_CONCAT('a', false));
       assertEqual("atrue", aql.AQL_CONCAT('a', true));
-      assertEqual("a", aql.AQL_CONCAT('a', [ ]));
-      assertEqual("a[object Object]", aql.AQL_CONCAT('a', { }));
+      assertEqual("a[]", aql.AQL_CONCAT('a', [ ]));
+      assertEqual("a{}", aql.AQL_CONCAT('a', { }));
+      assertEqual("a{\"foo\":\"bar\"}", aql.AQL_CONCAT('a', { foo: "bar" }));
     },
 
     ////////////////////////////////////////////////////////////////////////////////

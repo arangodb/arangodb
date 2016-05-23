@@ -45,4 +45,17 @@ actions.defineHttp({
   }
 });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JSF_get_admin_server_id
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/server/id",
+  prefix : false,
+
+  callback : function (req, res) {
+    actions.resultOk(req, res, actions.HTTP_OK, { id: ArangoServerState.id() });
+  }
+});
+
 

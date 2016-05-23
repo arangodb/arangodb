@@ -590,3 +590,22 @@ std::string Node::toJson() const {
 }
 
 Node const* Node::parent() const { return _parent; }
+
+std::vector<std::string> Node::exists(std::vector<std::string> const& rel) const {
+  std::vector<std::string> result;
+  Node const* cur = this;
+  for (auto const& sub : rel) {
+    auto tmp = cur->children().find(sub);
+    if (tmp != cur->children().end()) {
+      cur = tmp->second.get();
+      result.push_back(sub);
+    } else {
+      break;
+    }
+  }
+  return result;
+}
+
+std::vector<std::string> Node::exists(std::string const& rel) const {
+  return exists(split(rel, '/'));
+}

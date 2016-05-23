@@ -55,13 +55,20 @@ response body contains an error document in this case.
 Create an edge and read it back:
 
 @EXAMPLE_ARANGOSH_RUN{RestEdgeCreateEdge}
-    var Graph = require("@arangodb/graph-blueprint").Graph;
-    var g = new Graph("graph", "vertices", "edges");
-    g.addVertex(1);
-    g.addVertex(2);
-    var url = "/_api/document/?collection=edges&from=vertices/1&to=vertices/2";
+    try {
+    db._graphs.remove("graph");
+    db._drop("edges");
+    db._drop("vertices");
+    }
+    catch (e) {}
+    
+    var Graph = require("@arangodb/general-graph");
+    var g = Graph._create("graph", [Graph._relation("edges", "vertices", "vertices")]);
+    g.vertices.save({_key: "1"});
+    g.vertices.save({_key: "2"});
+    var url = "/_api/document/?collection=edges";
 
-    var response = logCurlRequest("POST", url, { "name": "Emil" });
+    var response = logCurlRequest("POST", url, { "name": "Emil", _from: "vertices/1", _to: "vertices/2"});
 
     assert(response.code === 202);
 
