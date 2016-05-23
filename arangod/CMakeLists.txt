@@ -166,7 +166,7 @@ add_executable(${BIN_ARANGOD}
   Cluster/HeartbeatThread.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestShardHandler.cpp
-  Cluster/ServerJob.cpp
+  Cluster/DBServerAgencySync.cpp
   Cluster/ServerState.cpp
   Cluster/v8-cluster.cpp
   Dispatcher/Dispatcher.cpp
