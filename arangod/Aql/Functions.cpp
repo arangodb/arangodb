@@ -61,6 +61,13 @@ thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
     nullptr;
 
 /// @brief convert a number value into an AqlValue
+static AqlValue NumberValue(arangodb::AqlTransaction* trx, int value) {
+  TransactionBuilderLeaser builder(trx);
+  builder->add(VPackValue(value));
+  return AqlValue(builder.get());
+}
+
+/// @brief convert a number value into an AqlValue
 static AqlValue NumberValue(arangodb::AqlTransaction* trx, double value) {
   if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
     return AqlValue(arangodb::basics::VelocyPackHelper::ZeroValue());
@@ -337,21 +344,9 @@ void Functions::Stringify(arangodb::AqlTransaction* trx,
     return;
   }
    
-  if (slice.isArray()) {
-    bool first = true;
-    for (auto const& sub : VPackArrayIterator(slice, true)) {
-      if (!first) {
-        buffer.push_back(',');
-      } else {
-        first = false;
-      }
-      Stringify(trx, buffer, sub);
-    }
-    return;
-  }
-
-  if (slice.isObject()) {
-    buffer.append("[object Object]");
+  if (slice.isObject() || slice.isArray()) {
+    VPackDumper dumper(&buffer, trx->transactionContext()->getVPackOptions());
+    dumper.dump(slice);
     return;
   } 
   
@@ -1156,6 +1151,62 @@ AqlValue Functions::Nth(arangodb::aql::Query* query,
   return value.at(index, mustDestroy, true);
 }
 
+/// @brief function CONTAINS
+AqlValue Functions::Contains(arangodb::aql::Query* query,
+                             arangodb::AqlTransaction* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "CONTAINS", 2, 3);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue search = ExtractFunctionParameterValue(trx, parameters, 1);
+  AqlValue returnIndex = ExtractFunctionParameterValue(trx, parameters, 2);
+
+  int result = -1; // default is "not found"
+  {
+    StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+    AppendAsString(trx, adapter, value);
+    size_t const valueLength = buffer->length();
+  
+    size_t const searchOffset = buffer->length();
+    AppendAsString(trx, adapter, search);
+    size_t const searchLength = buffer->length() - valueLength;
+
+    if (searchLength > 0) {
+      char const* found = static_cast<char const*>(memmem(buffer->c_str(), valueLength, buffer->c_str() + searchOffset, searchLength));
+
+      if (found != nullptr) {
+        // find offset into string
+        int bytePosition = static_cast<int>(found - buffer->c_str());
+        char const* p = buffer->c_str();
+        int pos = 0;
+        while (pos < bytePosition) {
+          unsigned char c = static_cast<unsigned char>(*p);
+          if (c < 128) {
+            ++pos;
+          } else if (c < 224) {
+            pos += 2;
+          } else if (c < 240) {
+            pos += 3;
+          } else if (c < 248) {
+            pos += 4;
+          }
+        }
+        result = pos;
+      }
+    }
+  }
+
+  if (returnIndex.toBoolean()) {
+    // return numeric value
+    return NumberValue(trx, result);
+  }
+
+  // return boolean
+  return AqlValue(result != -1);
+}
+
 /// @brief function CONCAT
 AqlValue Functions::Concat(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
@@ -1172,21 +1223,8 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
       continue;
     }
 
-    if (member.isArray()) {
-      // append each member individually
-      AqlValueMaterializer materializer(trx);
-      VPackSlice slice = materializer.slice(member, false);
-      for (auto const& sub : VPackArrayIterator(slice, true)) {
-        if (sub.isNone() || sub.isNull()) {
-          continue;
-        }
-
-        Stringify(trx, adapter, sub);
-      }
-    } else {
-      // convert member to a string and append
-      AppendAsString(trx, adapter, member);
-    }
+    // convert member to a string and append
+    AppendAsString(trx, adapter, member);
   }
 
   size_t length = buffer->length();

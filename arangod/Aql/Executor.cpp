@@ -150,7 +150,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
     {"SUBSTRING", Function("SUBSTRING", "AQL_SUBSTRING", "s,n|n", true, true,
                            false, true, true)},
     {"CONTAINS", Function("CONTAINS", "AQL_CONTAINS", "s,s|b", true, true,
-                          false, true, true)},
+                          false, true, true, &Functions::Contains)},
     {"LIKE", Function("LIKE", "AQL_LIKE", "s,r|b", true, true, false, true,
                       true, &Functions::Like)},
     {"LEFT",
@@ -858,16 +858,12 @@ void Executor::generateCodeExpression(AstNode const* node) {
 void Executor::generateCodeString(char const* value, size_t length) {
   TRI_ASSERT(value != nullptr);
 
-  _buffer->appendChar('"');
   _buffer->appendJsonEncoded(value, length);
-  _buffer->appendChar('"');
 }
 
 /// @brief generates code for a string value
 void Executor::generateCodeString(std::string const& value) {
-  _buffer->appendChar('"');
   _buffer->appendJsonEncoded(value.c_str(), value.size());
-  _buffer->appendChar('"');
 }
 
 /// @brief generate JavaScript code for an array
