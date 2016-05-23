@@ -276,6 +276,8 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       } else {
         if (type == GeneralRequest::RequestType::POST) {
           handleCommandHoldReadLockCollection();
+        } else if (type == GeneralRequest::RequestType::PUT) {
+          handleCommandCheckHoldReadLockCollection();
         } else if (type == GeneralRequest::RequestType::DELETE_REQ) {
           handleCommandCancelHoldReadLockCollection();
         } else if (type == GeneralRequest::RequestType::GET) {
@@ -3686,6 +3688,58 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
         break;
       }
       now = TRI_microtime();
+    }
+    auto it = _holdReadLockJobs.find(id);
+    if (it != _holdReadLockJobs.end()) {
+      _holdReadLockJobs.erase(it);
+    }
+  }
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+  }
+
+  generateResult(GeneralResponse::ResponseCode::OK, b.slice());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check the holding of a read lock on a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&VPackOptions::Defaults, success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "body needs to be an object with attribute 'id'");
+    return;
+  }
+  VPackSlice const idSlice = body.get("id");
+  if (!idSlice.isString()) {
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'id' needs to be a string");
+    return;
+  }
+  std::string id = idSlice.copyString();
+
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    auto it = _holdReadLockJobs.find(id);
+    if (it == _holdReadLockJobs.end()) {
+      generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+                    TRI_ERROR_HTTP_NOT_FOUND,
+                    "no hold read lock job found for 'id'");
+      return;
     }
   }
 
