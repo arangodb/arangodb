@@ -3290,8 +3290,8 @@ testFuncs.resilience = function(options) {
   findTests();
   options.propagateInstanceInfo = true;
   options.cluster = true;
-  if (options.clusterNodes === undefined) {
-    options.clusterNodes = 3;
+  if (options.clusterNodes < 5) {
+    options.clusterNodes = 5;
   }
   return performTests(options, testsCases.resilience, 'resilience');
 };

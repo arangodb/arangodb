@@ -163,6 +163,9 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool deleted() const {
+    if (!_slice.isObject()) {
+      return false;
+    }
     return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "deleted",
                                                          false);
   }
@@ -172,6 +175,9 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool doCompact() const {
+    if (!_slice.isObject()) {
+      return false;
+    }
     return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "doCompact",
                                                          false);
   }
@@ -181,6 +187,9 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool isSystem() const {
+    if (!_slice.isObject()) {
+      return false;
+    }
     return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "isSystem",
                                                          false);
   }
@@ -190,6 +199,9 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool isVolatile() const {
+    if (!_slice.isObject()) {
+      return false;
+    }
     return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "isVolatile",
                                                          false);
   }
@@ -235,6 +247,9 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool waitForSync() const {
+    if (!_slice.isObject()) {
+      return false;
+    }
     return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "waitForSync",
                                                          false);
   }
@@ -244,6 +259,9 @@ class CollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_size_t journalSize() const {
+    if (!_slice.isObject()) {
+      return 0;
+    }
     return arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
         _slice, "journalSize", 0);
   }
