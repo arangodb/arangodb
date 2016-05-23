@@ -84,7 +84,6 @@ function startReadLockOnLeader (endpoint, database, collName, timeout) {
 
   var count = 0;
   while (++count < 20) {   // wait for some time until read lock established:
-    wait(0.5);
     // Now check that we hold the read lock:
     r = request({ url: url + "/_api/replication/holdReadLockCollection", 
                   body: JSON.stringify(body),
@@ -93,9 +92,10 @@ function startReadLockOnLeader (endpoint, database, collName, timeout) {
       return id;
     }
     console.debug("startReadLockOnLeader: Do not see read lock yet...");
+    wait(0.5);
   }
   var asyncJobId = rr.headers["x-arango-async-id"];
-  r = require({ url: url + "/_api/job/" + asyncJobId, body: "", method: "PUT"});
+  r = request({ url: url + "/_api/job/" + asyncJobId, body: "", method: "PUT"});
   console.error("startReadLockOnLeader: giving up, async result:", r);
   return false;
 }
@@ -928,44 +928,56 @@ function synchronizeLocalFollowerCollections (plannedCollections,
                           if (sy.error) {
                             console.error("Could not initially synchronize shard ", shard, sy);
                           } else {
-                            var ok = false;
-                            // Now start a read transaction to stop writes:
-                            var lockJobId = false;
-                            try {
-                              lockJobId = startReadLockOnLeader(ep, database,
-                                                                shard, 300);
-                              console.debug("lockJobId:", lockJobId);
-                            }
-                            finally {
+                            if (sy.collections.length == 0 ||
+                                sy.collections[0].name != shard) {
                               cancelBarrier(ep, database, sy.barrierId);
-                            }
-                            if (lockJobId !== false) {
+                              throw "Shard seems to be gone from leader!";
+                            } else {
+                              var ok = false;
+                              // Now start a read transaction to stop writes:
+                              var lockJobId = false;
                               try {
-                                var sy2 = rep.syncCollectionFinalize(
-                                  database, shard, sy.collections[0].id, 
-                                  sy.lastLogTick, { endpoint: ep });
-                                if (sy2.error) {
-                                  console.error("Could not synchronize shard", shard,
-                                                sy2);
-                                  ok = false;
-                                } else {
-                                  ok = addShardFollower(ep, database, shard);
-                                }
+                                lockJobId = startReadLockOnLeader(ep, database,
+                                                                  shard, 300);
+                                console.debug("lockJobId:", lockJobId);
+                              }
+                              catch (err1) {
+                                console.error("Exception in startReadLockOnLeader:", err1);
                               }
                               finally {
-                                if (!cancelReadLockOnLeader(ep, database, 
-                                                            lockJobId)) {
-                                  console.error("Read lock has timed out for shard", shard);
-                                  ok = false;
-                                }
+                                cancelBarrier(ep, database, sy.barrierId);
                               }
-                            } else {
-                              console.error("lockJobId was false");
-                            }
-                            if (ok) {
-                              console.info("Synchronization worked for shard", shard);
-                            } else {
-                              throw "Did not work.";  // just to log below in catch
+                              if (lockJobId !== false) {
+                                try {
+                                  var sy2 = rep.syncCollectionFinalize(
+                                    database, shard, sy.collections[0].id, 
+                                    sy.lastLogTick, { endpoint: ep });
+                                  if (sy2.error) {
+                                    console.error("Could not synchronize shard", shard,
+                                                  sy2);
+                                    ok = false;
+                                  } else {
+                                    ok = addShardFollower(ep, database, shard);
+                                  }
+                                }
+                                catch (err3) {
+                                  console.error("Exception in syncCollectionFinalize:", err3);
+                                }
+                                finally {
+                                  if (!cancelReadLockOnLeader(ep, database, 
+                                                              lockJobId)) {
+                                    console.error("Read lock has timed out for shard", shard);
+                                    ok = false;
+                                  }
+                                }
+                              } else {
+                                console.error("lockJobId was false");
+                              }
+                              if (ok) {
+                                console.info("Synchronization worked for shard", shard);
+                              } else {
+                                throw "Did not work.";  // just to log below in catch
+                              }
                             }
                           }
                         }
