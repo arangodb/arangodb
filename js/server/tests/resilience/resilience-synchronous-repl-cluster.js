@@ -53,16 +53,26 @@ function SynchronousReplicationSuite () {
   var shards;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find out servers for the system collections
+////////////////////////////////////////////////////////////////////////////////
+
+  function findCollectionServers(database, collection) {
+    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
+    var shard = Object.keys(cinfo.shards)[0];
+    return cinfo.shards[shard];
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for synchronous replication
 ////////////////////////////////////////////////////////////////////////////////
 
-  function waitForSynchronousReplication() {
-    cinfo = global.ArangoClusterInfo.getCollectionInfo("_system", cn);
+  function waitForSynchronousReplication(database) {
+    cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
     while (++count <= 120) {
       ccinfo = shards.map(
-        s => global.ArangoClusterInfo.getCollectionInfoCurrent("_system", cn, s)
+        s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
       );
       let replicas = ccinfo.map(s => s.servers.length);
       if (_.all(replicas, x => x === 2)) {
@@ -270,8 +280,16 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      db._drop(cn);
-      c = db._create(cn, {numberOfShards: 1, replicationFactor: 2});
+      var systemCollServers = findCollectionServers("_system", "_graphs");
+      while (true) {
+        db._drop(cn);
+        c = db._create(cn, {numberOfShards: 1, replicationFactor: 2});
+        var servers = findCollectionServers("_system", cn);
+        if (_.intersection(systemCollServers, servers).length === 0) {
+          return;
+        }
+        console.info("Need to recreate collection to avoid system collection servers.");
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
