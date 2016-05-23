@@ -89,6 +89,8 @@ struct Functions {
                        VPackFunctionParameters const&);
   static AqlValue Nth(arangodb::aql::Query*, arangodb::AqlTransaction*,
                       VPackFunctionParameters const&);
+  static AqlValue Contains(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                           VPackFunctionParameters const&);
   static AqlValue Concat(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          VPackFunctionParameters const&);
   static AqlValue Like(arangodb::aql::Query*, arangodb::AqlTransaction*,
