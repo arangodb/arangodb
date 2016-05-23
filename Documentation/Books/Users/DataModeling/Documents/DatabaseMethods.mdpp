@@ -297,7 +297,7 @@ Remove a document:
       a1 = db.example.insert({ a : 1 });
       db._remove(a1);
       db._remove(a1);  // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-      db._remove(a1, true);
+      db._remove(a1, {overwrite: true}); // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock documentsCollectionRemoveSuccess
@@ -310,7 +310,7 @@ Remove a document with a conflict:
       a1 = db.example.insert({ a : 1 });
       a2 = db._replace(a1, { a : 2 });
       db._remove(a1);       // xpError(ERROR_ARANGO_CONFLICT)
-      db._remove(a1, true);
+      db._remove(a1, {overwrite: true} );
       db._document(a1);     // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND)
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -321,7 +321,7 @@ Remove a document using new signature:
     @startDocuBlockInline documentsCollectionRemoveSignature
     @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveSignature}
     ~ db._create("example");
-      db.example.insert({ a:  1 } );
+    db.example.insert({ _key: "11265325374", a:  1 } );
     | db.example.remove("example/11265325374",
            { overwrite: true, waitForSync: false})
     ~ db._drop("example");
