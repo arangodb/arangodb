@@ -486,7 +486,7 @@ the result to be created.
 Calls to the previous API can be translated as follows:
 
 - old: GET `/_api/document?collection=<collection>&type=<type>` without HTTP request body
-- 3.0: PUT `/_api/simple/all-keys` with HTTP request body `{"name":"<collection>","type":"id"}`
+- 3.0: PUT `/_api/simple/all-keys` with HTTP request body `{"collection":"<collection>","type":"id"}`
 
 The result format of this API has also changed slightly. In previous versions calls to
 the API returned a JSON object with a `documents` attribute. As the functionality is
