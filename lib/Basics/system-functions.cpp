@@ -52,8 +52,8 @@ void* memrchr(void const* block, int c, size_t size) {
 
 #ifdef _WIN32
 
-void* xmemmem(void const* haystack, size_t haystackLength, 
-              void const* needle, size_t needleLength) {
+void* memmem(void const* haystack, size_t haystackLength, 
+             void const* needle, size_t needleLength) {
   if (haystackLength == 0 || 
       needleLength == 0 || 
       haystackLength < needleLength) {

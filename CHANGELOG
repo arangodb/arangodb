@@ -1,6 +1,8 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* added C++ implementations for AQL functions `SLICE()` and `CONTAINS()`
+
 * as a consequence of the upgrade to V8 version 5, the implementation of the
   JavaScript `Buffer` object had to be changed. JavaScript `Buffer` objects in
   ArangoDB now always store their data on the heap. There is no shared pool
