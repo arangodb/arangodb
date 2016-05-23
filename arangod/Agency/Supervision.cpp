@@ -79,6 +79,8 @@ Job::Job(Node const& snapshot, Agent* agent, uint64_t jobId,
   _snapshot(snapshot), _agent(agent), _jobId(std::to_string(jobId)),
   _agencyPrefix(agencyPrefix) {}
 
+Job::~Job() {}
+
 unsigned Job::status () const {
   
   Node const& target = _snapshot("/Target");
@@ -198,6 +200,8 @@ struct FailedServer : public Job {
       }
     }
   }
+
+  virtual ~FailedServer () {}
 
   bool start() const {
 

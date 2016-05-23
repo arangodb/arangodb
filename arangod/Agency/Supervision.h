@@ -48,6 +48,7 @@ struct JobCallback {
 
 struct Job {
   Job(Node const&, Agent*, uint64_t, std::string const&);
+  virtual ~Job();
   virtual unsigned status () const;
   virtual bool exists () const;
   virtual bool create () const = 0;
