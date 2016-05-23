@@ -201,7 +201,7 @@ RX = [
     (re.compile(r"@brief(.+)\n(.+)\n(.+)\n\n"), r"@brief\g<1> \g<2> \g<3>\n\n"),
     (re.compile(r"@brief(.+)\n(.+)\n\n"), r"@brief\g<1> \g<2>\n\n"),
     # if there is an @brief above a RESTHEADER, swap the sequence
-    (re.compile(r"@brief(.+\n*)\n\n@RESTHEADER{([#\s\w\/\_{}-]*),([\s\w-]*)}"), r"###\g<3>\n\g<1>\n\n`\g<2>`"),
+    (re.compile(r"@brief(.+\n*)\n@RESTHEADER{([#\s\w\/\_{}-]*),([\s\w-]*)}"), r"###\g<3>\n\g<1>\n\n`\g<2>`"),
     # else simply put it into the text
     (re.compile(r"@brief(.+)"), r"\g<1>"),
     # there should be no RESTHEADER without brief, so we will fail offensively if by not doing
