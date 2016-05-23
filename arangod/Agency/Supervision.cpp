@@ -46,25 +46,80 @@ std::string printTimestamp(Supervision::TimePoint const& t) {
   return std::string(buffer, len);
 }
 
-inline arangodb::consensus::write_ret_t makeReport(Agent* _agent,
-                                                   Builder const& report) {
+inline arangodb::consensus::write_ret_t transact (
+  Agent* _agent, Builder const& toWrite,
+  Builder const& precond = Builder()) {
+  
   query_t envelope = std::make_shared<Builder>();
+
   try {
     envelope->openArray();
-    envelope->add(report.slice());
+    envelope->add(toWrite.slice());
+    if (!precond.isEmpty()) {
+      envelope->add(precond.slice());
+    }
     envelope->close();
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Supervision failed to make report.";
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Supervision failed to build transaction.";
     LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
   }
+  
+  LOG(INFO) << envelope->toJson();
   return _agent->write(envelope);
+  
 }
 
-static std::string const pendingPrefix = "/Supervision/Jobs/Pending/";
+static std::string const pendingPrefix = "/Target/Pending/";
 static std::string const collectionsPrefix = "/Plan/Collections/";
-static std::string const toDoPrefix = "/Target/ToDo";
+static std::string const toDoPrefix = "/Target/ToDo/";
+static std::string const blockedServersPrefix = "/Supervision/DBServers/";
 
-struct MoveShard : public Job {
+Job::Job(Node const& snapshot, Agent* agent, uint64_t jobId,
+         std::string const& agencyPrefix) :
+  _snapshot(snapshot), _agent(agent), _jobId(std::to_string(jobId)),
+  _agencyPrefix(agencyPrefix) {}
+
+unsigned Job::status () const {
+  
+  Node const& target = _snapshot("/Target");
+  unsigned res = 4;
+  
+  if        (target.exists(std::string("/ToDo/")     + _jobId).size() == 2) {
+    res = 0;
+    start(); // try to start job
+  } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
+    res = 1;
+    // Any sub jobs pending?
+    // If not, any subjobs failed? Move to failed
+    // Else move to Finished
+  } else {
+    // Remove any blocks on 
+  }
+  
+  return res;
+  
+}
+
+bool Job::exists() const {
+  
+  Node const& target = _snapshot("/Target");
+  unsigned res = 4;
+  
+  if        (target.exists(std::string("/ToDo/")     + _jobId).size() == 2) {
+    res = 0;
+  } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
+    res = 1;
+  } else if (target.exists(std::string("/Finished/") + _jobId).size() == 2) {
+    res = 2;
+  }  else if (target.exists(std::string("/Failed/")  + _jobId).size() == 2) {
+    res = 3;
+  } 
+  
+  return (res < 4);
+  
+}
+
+/*struct MoveShard : public Job {
 
   MoveShard (std::string const& creator,    std::string const& database,
              std::string const& collection, std::string const& shard,
@@ -84,8 +139,7 @@ struct MoveShard : public Job {
                   Agent* agent) {
     Builder todo;
     todo.openArray(); todo.openObject();
-    todo.add(VPackValue(agencyPrefix + toDoPrefix + "/"
-                        + std::to_string(jobId)));
+    todo.add(VPackValue(agencyPrefix + toDoPrefix + jobId));
     {
       VPackObjectBuilder entry(&todo);
       todo.add("creator", VPackValue(creator));
@@ -97,19 +151,19 @@ struct MoveShard : public Job {
       todo.add("toServer", VPackValue(toServer));
     }
     todo.close(); todo.close();
-    write_ret_t ret = makeReport(agent, todo);
+    write_ret_t ret = transact(agent, todo);
     
   }
 
   
-};
+  };*/
 
 struct FailedServer : public Job {
   FailedServer(Node const& snapshot, Agent* agent, uint64_t jobId,
-               std::string const& failed, std::string agencyPrefix) {
-    // 1. find all shards in plan, where failed was leader.
-    // 2. swap positions in plan between failed and a random in sync follower
-
+               std::string const& agencyPrefix, std::string const& failed) :
+    Job(snapshot, agent, jobId, agencyPrefix),
+    _failed(failed) {
+    
     Node::Children const& databases =
         snapshot("/Plan/Collections").children();
 
@@ -121,65 +175,104 @@ struct FailedServer : public Job {
           for (auto const& shard : collection("shards").children()) {
             VPackArrayIterator dbsit(shard.second->slice());
 
-            if ((*dbsit.begin()).copyString() != failed) {  // Cannot do much
-              continue;
-            }
+            if (exists()) {
 
-            //MoveShard ()
-            reportJobInSupervision(jobId, shard, failed, agencyPrefix);
-            planChanges(collptr, database, shard, agencyPrefix);
+              if (status() == 0) {
+                start();
+              } else {
+                status();
+              }
+
+            } else {                   // Create dbserver job
+
+              // Only proceed if leader and create job
+              if ((*dbsit.begin()).copyString() != failed) {
+                continue;
+              }
+              create();
+              start();
+
+            }
           }
         }
       }
     }
   }
 
-  void reportJobInSupervision(uint64_t jobId,
-                              std::pair<std::string,
-                              std::shared_ptr<Node>> const& shard,
-                              std::string const& serverID,
-                              std::string const& agencyPrefix) {
+  bool start() const {
 
-    std::string const& shardId = shard.first;
-    VPackSlice const& dbservers = shard.second->slice();
-    std::string path = agencyPrefix + pendingPrefix
-      + arangodb::basics::StringUtils::itoa(jobId);
-    query_t envelope = std::make_shared<Builder>();
+    // Copy todo to pending
+    Builder todo, pending;
 
-    Builder report;
-    report.openArray();
-    report.openObject();
-    report.add(path, VPackValue(VPackValueType::Object));
-    report.add("type", VPackValue("shard"));
-    report.add("action", VPackValue("DB server fail"));
-    report.add("failed", VPackValue(serverID));
-    report.add("shard", VPackValue(shardId));
-    report.add("dbservers", VPackValue(serverID));
-    report.add("old", dbservers);  // old order
+    // Get todo entry
+    _snapshot(toDoPrefix + _jobId).toBuilder(todo);
 
-    report.add("new", VPackValue(VPackValueType::Array));
-    for (size_t i = 1; i < dbservers.length(); ++i) {  // new order
-      report.add(dbservers[i]);
+    // Prepare peding entry, block toserver
+    pending.add(_agencyPrefix + pendingPrefix + _jobId,
+                VPackValue(VPackValueType::Object)); // Pending
+    pending.add("timeStarted",
+                VPackValue(printTimestamp(std::chrono::system_clock::now())));
+    for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
+      pending.add(obj.value);
     }
-    report.add(dbservers[0]);
-    report.close();
+    pending.close();
 
-    report.close();
-    report.close();
-    report.close();
-    // makeReport(envelope, report);
+    //#warning TOSERVER
+    pending.add(_agencyPrefix + blockedServersPrefix /*+ toServer*/, //TOSERVER!!!
+                Value(VPackValueType::Object));
+    pending.add("jobId", VPackValue(_jobId));
+    pending.close();
+      
+    // Precondition
+    Builder precond;         // server should not be blocked
+    precond.openObject();
+    //#warning TOSERVER
+    precond.add(_agencyPrefix + blockedServersPrefix/* + toServer*/, 
+               VPackValue(VPackValueType::Object));
+    precond.add("oldEmpty", VPackValue("true"));
+    precond.close();
+    precond.close();
+
+    // Transact to agency
+    write_ret_t res = transact(_agent, pending, precond);
+    
+    if (res.accepted && res.indices.size()==1 && res.indices[0]) {
+      return true;
+    }
+
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Precondition failed for inserting job";
+    return false;
+    
+  }
+
+  bool create () const {
+
+    std::string path = _agencyPrefix + pendingPrefix + _jobId;
+
+    Builder todo;
+    todo.openArray();
+    todo.openObject();
+    todo.add("type", VPackValue("failedServer"));
+    todo.add("server", VPackValue(_failed));
+    todo.add("jobId", VPackValue(_jobId));
+    todo.add("timeCreated",
+             VPackValue(printTimestamp(std::chrono::system_clock::now())));
+    todo.close(); todo.close();
+
+    write_ret_t res = transact(_agent, todo);
+
+    if (res.accepted && res.indices.size()==1 && res.indices[0]) {
+      return true;
+    }
+
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Precondition failed for inserting job";
+    return false;
 
   }
 
-  void planChanges(
-      std::pair<std::string, std::shared_ptr<Node>> const& database,
-      std::pair<std::string, std::shared_ptr<Node>> const& collection,
-      std::pair<std::string, std::shared_ptr<Node>> const& shard,
-      std::string const& agencyPrefix) {
-    std::string path = agencyPrefix + collectionsPrefix + database.first + "/" +
-                       collection.first + "/shards/" + shard.first;
-
-  }
+  
+  std::string const& _failed;
+  
 };
 }
 }
@@ -315,8 +408,9 @@ void Supervision::run() {
         break;
       }
 
-      MoveShard ("coordinator1", "_system", "41", "s42", "DBServer1",
-                 "DBServer2", _jobId++, _agencyPrefix, _agent);
+      //#warning MoveShard
+/*      MoveShard ("coordinator1", "_system", "41", "s42", "DBServer1",
+        "DBServer2", _jobId++, _agencyPrefix, _agent);*/
 
     }
 
@@ -394,7 +488,7 @@ bool Supervision::getUniqueIds() {
     uniq.close();
     uniq.close();
 
-    auto result = makeReport(_agent, uniq);
+    auto result = transact(_agent, uniq);
     if (result.indices[0]) {
       _agent->waitFor(result.indices[0]);
       success = true;
