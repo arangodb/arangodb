@@ -67,6 +67,7 @@ function SynchronousReplicationSuite () {
 
   function waitForSynchronousReplication(database) {
     console.info("Waiting for synchronous replication to settle...");
+    global.ArangoClusterInfo.flush();
     cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
@@ -80,6 +81,7 @@ function SynchronousReplicationSuite () {
         return true;
       }
       wait(0.5);
+      global.ArangoClusterInfo.flush();
     }
     return false;
   }
