@@ -184,12 +184,23 @@ class Node {
   /// @brief Is this node being observed by url
   bool observedBy(std::string const& url) const;
 
+  /// @brief Get our container
   Store& store();
+
+  /// @brief Get our container
   Store const& store() const;
 
+  /// @brief Create JSON representation of this node and below
   std::string toJson() const;
 
+  /// @brief Parent node
   Node const* parent() const;
+
+  /// @brief Part of relative path vector which exists
+  std::vector<std::string> exists(std::vector<std::string> const&) const;
+  
+  /// @brief Part of relative path which exists
+  std::vector<std::string> exists(std::string const&) const;
 
  protected:
   /// @brief Add time to live entry

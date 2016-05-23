@@ -107,6 +107,8 @@ class Store : public arangodb::Thread {
 
   friend class Node;
 
+  std::vector<std::string> exists(std::string const&) const;
+
  private:
   /// @brief Remove time to live entries for uri
   void removeTTL(std::string const&);

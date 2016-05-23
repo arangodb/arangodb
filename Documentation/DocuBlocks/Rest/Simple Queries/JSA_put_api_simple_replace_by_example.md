@@ -1,8 +1,5 @@
-
 @startDocuBlock JSA_put_api_simple_replace_by_example
-@brief replaces the body of all documents of a collection that match an
-example
-
+@brief replaces the body of all documents of a collection that match an example
 @RESTHEADER{PUT /_api/simple/replace-by-example, Replace documents by example}
 
 @RESTBODYPARAM{collection,string,required,string}

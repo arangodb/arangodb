@@ -64,6 +64,8 @@ inline std::vector<std::string> split(const std::string& value,
   return result;
 }
 
+
+
 inline static bool endpointPathFromUrl(std::string const& url,
                                        std::string& endpoint,
                                        std::string& path) {
@@ -576,3 +578,8 @@ void Store::removeTTL(std::string const& uri) {
     }
   }
 }
+
+std::vector<std::string> Store::exists(std::string const& abs) const {
+  return _node.exists(abs);
+}
+

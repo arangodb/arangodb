@@ -37,9 +37,9 @@ book-check-restheader-leftovers:
 # Check for all lines starting with exclamation marks, except image links which are exclamation mar + bracket
 book-check-mdpp-leftovers:
 	@echo "##### checking for mdpp leftovers for $(NAME)"
-	@if test "`find ppbooks/$(NAME) -name '*.md' -exec grep -- '^![^\[]' {} \; -print | wc -l`" -gt 0; then \
+	@if test "`find ppbooks/$(NAME) -name '*.md' -exec grep -- '^![^\[!]' {} \; -print | wc -l`" -gt 0; then \
 		echo "found these unconverted Markdown-PP tags: "; \
-		find ppbooks/$(NAME) -name '*.md' -exec grep '^![^\[]' {} \; -print; \
+		find ppbooks/$(NAME) -name '*.md' -exec grep '^![^\[!]' {} \; -print; \
 		exit 1; \
 	fi
 
@@ -167,7 +167,7 @@ build-book:
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	python ../Scripts/deprecated.py
 
-	make book-check-markdown-leftovers
+	# make book-check-markdown-leftovers
 
 clean-book:
 	@rm -rvf books/$(NAME)
