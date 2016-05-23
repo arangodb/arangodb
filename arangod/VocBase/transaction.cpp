@@ -700,6 +700,12 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
   try {
     arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, trx->_waitForSync).errorCode;
+#ifdef ARANGODB_ENABLE_ROCKSDB
+    if (trx->_waitForSync) {
+      // also sync RocksDB WAL
+      RocksDBFeature::syncWal();
+    }
+#endif
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
@@ -1118,6 +1124,12 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       // some error occurred
       return slotInfo.errorCode;
     }
+#ifdef ARANGODB_ENABLE_ROCKSDB
+    if (localWaitForSync) {
+      // also sync RocksDB WAL
+      RocksDBFeature::syncWal();
+    }
+#endif
     operation.tick = slotInfo.tick;
     fid = slotInfo.logfileId;
     position = slotInfo.mem;

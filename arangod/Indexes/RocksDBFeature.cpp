@@ -226,21 +226,24 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
     }
 #endif
 
+    // delete files in range lower..upper
     LOG(TRACE) << "dropping range: " << VPackSlice(l.c_str() + prefix.size()).toJson() << " - " << VPackSlice(u.c_str() + prefix.size()).toJson();
 
     rocksdb::Slice lower(l.c_str(), l.size());
     rocksdb::Slice upper(u.c_str(), u.size());
-    
-    rocksdb::Status status = rocksdb::DeleteFilesInRange(_db->GetBaseDB(), _db->GetBaseDB()->DefaultColumnFamily(), &lower, &upper);
 
-    if (!status.ok()) {
-      // if file deletion failed, we will still iterate over the remaining keys, so we
-      // don't need to abort and raise an error here
-      LOG(WARN) << "rocksdb file deletion failed";
+    {
+      rocksdb::Status status = rocksdb::DeleteFilesInRange(_db->GetBaseDB(), _db->GetBaseDB()->DefaultColumnFamily(), &lower, &upper);
+
+      if (!status.ok()) {
+        // if file deletion failed, we will still iterate over the remaining keys, so we
+        // don't need to abort and raise an error here
+        LOG(WARN) << "rocksdb file deletion failed";
+      }
     }
-
+    
     // go on and delete the remaining keys (delete files in range does not necessarily
-    // find them all, just complete files
+    // find them all, just complete files)
     
     auto comparator = RocksDBFeature::instance()->comparator();
     rocksdb::DB* db = _db->GetBaseDB();
@@ -251,19 +254,19 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
 
     it->Seek(lower);
     while (it->Valid()) {
-      batch.Delete(it->key());
-      
       int res = comparator->Compare(it->key(), upper);
 
       if (res >= 0) {
         break;
       }
+      
+      batch.Delete(it->key());
 
       it->Next();
     }
     
     // now apply deletion batch
-    status = db->Write(rocksdb::WriteOptions(), &batch);
+    rocksdb::Status status = db->Write(rocksdb::WriteOptions(), &batch);
 
     if (!status.ok()) {
       LOG(WARN) << "rocksdb key deletion failed";

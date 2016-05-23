@@ -606,7 +606,8 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
 #ifdef ARANGODB_ENABLE_ROCKSDB
 rocksdb::Transaction* Transaction::rocksTransaction() {
   if (_trx->_rocksTransaction == nullptr) {
-    _trx->_rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
+    _trx->_rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(
+      rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
   }
   return _trx->_rocksTransaction;
 }

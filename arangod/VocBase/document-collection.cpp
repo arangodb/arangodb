@@ -91,7 +91,8 @@ TRI_document_collection_t::TRI_document_collection_t(TRI_vocbase_t* vocbase)
       _masterPointers(),
       _keyGenerator(nullptr),
       _uncollectedLogfileEntries(0),
-      _cleanupIndexes(0) {
+      _cleanupIndexes(0), 
+      _persistentIndexes(0) {
   _tickMax = 0;
 
   setCompactionStatus("compaction not yet started");
@@ -111,7 +112,7 @@ TRI_document_collection_t::~TRI_document_collection_t() {
 std::string TRI_document_collection_t::label() const {
   return std::string(_vocbase->_name) + " / " + _info.name();
 }
-
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update statistics for a collection
 /// note: the write-lock for the collection must be held to call this
@@ -536,8 +537,12 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
 void TRI_document_collection_t::addIndex(arangodb::Index* idx) {
   _indexes.emplace_back(idx);
 
+  // update statistics
   if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
     ++_cleanupIndexes;
+  }
+  if (idx->isPersistent()) {
+    ++_persistentIndexes;
   }
 }
 
@@ -561,8 +566,12 @@ arangodb::Index* TRI_document_collection_t::removeIndex(TRI_idx_iid_t iid) {
 
       _indexes.erase(_indexes.begin() + i);
 
+      // update statistics
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
         --_cleanupIndexes;
+      }
+      if (idx->isPersistent()) {
+        --_persistentIndexes;
       }
 
       return idx;
@@ -1021,7 +1030,7 @@ static bool OpenIndexIterator(std::string const& filename, void* data) {
   }
 
   VPackSlice description = builder->slice();
-  // VelocyPack must be a index description
+  // VelocyPack must be an index description
   if (!description.isObject()) {
     LOG(ERR) << "cannot read index definition from '" << filename << "'";
     return false;
@@ -1029,9 +1038,9 @@ static bool OpenIndexIterator(std::string const& filename, void* data) {
 
   auto ctx = static_cast<OpenIndexIteratorContext*>(data);
   arangodb::Transaction* trx = ctx->trx;
-  TRI_document_collection_t* collection = ctx->collection;
+  TRI_document_collection_t* document = ctx->collection;
 
-  int res = TRI_FromVelocyPackIndexDocumentCollection(trx, collection,
+  int res = TRI_FromVelocyPackIndexDocumentCollection(trx, document,
                                                       description, nullptr);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1076,7 +1085,8 @@ static void DestroyBaseDocumentCollection(TRI_document_collection_t* document) {
 static bool InitDocumentCollection(TRI_document_collection_t* document) {
   TRI_ASSERT(document != nullptr);
 
-  document->_cleanupIndexes = false;
+  document->_cleanupIndexes = 0;
+  document->_persistentIndexes = 0;
   document->_uncollectedLogfileEntries.store(0);
 
   int res = InitBaseDocumentCollection(document);
@@ -1123,7 +1133,6 @@ static bool InitDocumentCollection(TRI_document_collection_t* document) {
     }
   }
 
-  // crud methods
   document->cleanupIndexes = CleanupIndexes;
 
   return true;
@@ -1372,6 +1381,20 @@ int TRI_FromVelocyPackIndexDocumentCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enumerate all indexes of the collection, but don't fill them yet
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::detectIndexes(arangodb::Transaction* trx) {
+  OpenIndexIteratorContext ctx;
+  ctx.trx = trx;
+  ctx.collection = this;
+
+  iterateIndexes(OpenIndexIterator, static_cast<void*>(&ctx));
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief helper struct for filling indexes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1406,24 +1429,6 @@ class IndexFiller {
 int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
                                       TRI_vocbase_col_t* collection,
                                       TRI_document_collection_t* document) {
-  auto old = document->useSecondaryIndexes();
-
-  // turn filling of secondary indexes off. we're now only interested in getting
-  // the indexes' definition. we'll fill them below ourselves.
-  document->useSecondaryIndexes(false);
-
-  try {
-    OpenIndexIteratorContext ctx;
-    ctx.trx = trx;
-    ctx.collection = document;
-
-    document->iterateIndexes(OpenIndexIterator, static_cast<void*>(&ctx));
-    document->useSecondaryIndexes(old);
-  } catch (...) {
-    document->useSecondaryIndexes(old);
-    return TRI_ERROR_INTERNAL;
-  }
-
   // distribute the work to index threads plus this thread
   auto const& indexes = document->allIndexes();
   size_t const n = indexes.size();
@@ -1623,7 +1628,31 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
+  // build the indexes meta-data, but do not fill the indexes yet
+  {
+    auto old = document->useSecondaryIndexes();
+
+    // turn filling of secondary indexes off. we're now only interested in getting
+    // the indexes' definition. we'll fill them below ourselves.
+    document->useSecondaryIndexes(false);
+
+    try {
+      document->detectIndexes(&trx);
+      document->useSecondaryIndexes(old);
+    } catch (...) {
+      document->useSecondaryIndexes(old);
+    
+      TRI_CloseCollection(collection);
+      TRI_FreeCollection(collection);
+    
+      LOG(ERR) << "cannot initialize collection indexes";
+      return nullptr;
+    }
+  }
+
+
   if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+    // build the index structures, and fill the indexes
     TRI_FillIndexesDocumentCollection(&trx, col, document);
   }
 
@@ -3791,14 +3820,7 @@ int TRI_document_collection_t::lookupDocument(
     return TRI_ERROR_INTERNAL;
   }
 
-  VPackBuilder searchValue;
-  searchValue.openArray();
-  searchValue.openObject();
-  searchValue.add(TRI_SLICE_KEY_EQUAL, key);
-  searchValue.close();
-  searchValue.close();
-    
-  header = primaryIndex()->lookup(trx, searchValue.slice());
+  header = primaryIndex()->lookupKey(trx, key);
 
   if (header == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -3973,7 +3995,8 @@ int TRI_document_collection_t::insertSecondaryIndexes(
     arangodb::Transaction* trx, TRI_doc_mptr_t const* header, bool isRollback) {
   TRI_IF_FAILURE("InsertSecondaryIndexes") { return TRI_ERROR_DEBUG; }
 
-  if (!useSecondaryIndexes()) {
+  bool const useSecondary = useSecondaryIndexes();
+  if (!useSecondary && _persistentIndexes == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -3984,6 +4007,11 @@ int TRI_document_collection_t::insertSecondaryIndexes(
 
   for (size_t i = 1; i < n; ++i) {
     auto idx = indexes[i];
+
+    if (!useSecondary && !idx->isPersistent()) {
+      continue;
+    }
+
     int res = idx->insert(trx, header, isRollback);
 
     // in case of no-memory, return immediately
@@ -4026,7 +4054,9 @@ int TRI_document_collection_t::deletePrimaryIndex(
 
 int TRI_document_collection_t::deleteSecondaryIndexes(
     arangodb::Transaction* trx, TRI_doc_mptr_t const* header, bool isRollback) {
-  if (!useSecondaryIndexes()) {
+
+  bool const useSecondary = useSecondaryIndexes();
+  if (!useSecondary && _persistentIndexes == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -4039,6 +4069,11 @@ int TRI_document_collection_t::deleteSecondaryIndexes(
 
   for (size_t i = 1; i < n; ++i) {
     auto idx = indexes[i];
+    
+    if (!useSecondary && !idx->isPersistent()) {
+      continue;
+    }
+
     int res = idx->remove(trx, header, isRollback);
 
     if (res != TRI_ERROR_NO_ERROR) {

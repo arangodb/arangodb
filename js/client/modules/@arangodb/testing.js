@@ -3065,6 +3065,7 @@ const recoveryTests = [
   "collections-reuse",
   "collections-different-attributes",
   "indexes-hash",
+  "indexes-rocksdb",
   "indexes-sparse-hash",
   "indexes-skiplist",
   "indexes-sparse-skiplist",

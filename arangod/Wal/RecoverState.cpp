@@ -29,6 +29,7 @@
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Indexes/RocksDBFeature.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
@@ -715,6 +716,10 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+        RocksDBFeature::dropIndex(databaseId, collectionId, indexId);
+#endif
+
         std::string const indexName("index-" + std::to_string(indexId) + ".json");
         std::string const filename(arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
 
@@ -727,6 +732,16 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return state->canContinue();
         } else {
           document->addIndexFile(filename);
+    
+          arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(vocbase),
+            collectionId, TRI_TRANSACTION_WRITE);
+          int res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document,
+                                                              payloadSlice, nullptr);
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG(WARN) << "cannot create index " << indexId << ", collection " << collectionId << " in database " << databaseId;
+            ++state->errorCount;
+            return state->canContinue();
+          }
         }
 
         break;
@@ -770,6 +785,10 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           // drop an existing collection
           TRI_DropCollectionVocBase(vocbase, collection, false);
         }
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+        RocksDBFeature::dropCollection(databaseId, collectionId);
+#endif
 
         // check if there is another collection with the same name as the one that
         // we attempt to create
@@ -892,6 +911,10 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           ++state->errorCount;
           return state->canContinue();
         }
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+        RocksDBFeature::dropDatabase(databaseId);
+#endif
         break;
       }
 
@@ -939,6 +962,11 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         // ignore any potential error returned by this call
         TRI_DropIndexDocumentCollection(document, indexId, false);
         document->removeIndexFile(indexId);
+        document->removeIndex(indexId);
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+        RocksDBFeature::dropIndex(databaseId, collectionId, indexId);
+#endif
 
         // additionally remove the index file
         std::string const indexName("index-" + std::to_string(indexId) + ".json");
@@ -974,6 +1002,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         if (collection != nullptr) {
           TRI_DropCollectionVocBase(vocbase, collection, false);
         }
+#ifdef ARANGODB_ENABLE_ROCKSDB
+        RocksDBFeature::dropCollection(databaseId, collectionId);
+#endif
         break;
       }
 
@@ -991,6 +1022,10 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           // ignore any potential error returned by this call
           TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
         }
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+        RocksDBFeature::dropDatabase(databaseId);
+#endif
         break;
       }
       
