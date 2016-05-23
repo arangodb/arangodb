@@ -30,7 +30,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
-#include "Cluster/ServerJob.h"
+#include "Cluster/DBServerAgencySync.h"
 #include "Cluster/ServerState.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherFeature.h"
@@ -453,7 +453,7 @@ bool HeartbeatThread::init() {
 /// @brief finished plan change
 ////////////////////////////////////////////////////////////////////////////////
 
-void HeartbeatThread::removeDispatchedJob(ServerJobResult result) {
+void HeartbeatThread::removeDispatchedJob(DBServerAgencySyncResult result) {
   LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Dispatched job returned!";
   {
     MUTEX_LOCKER(mutexLocker, _statusLock);
@@ -659,7 +659,7 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
 
     LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Dispatching Sync";
     // schedule a job for the change
-    std::unique_ptr<arangodb::rest::Job> job(new ServerJob(this));
+    std::unique_ptr<arangodb::rest::Job> job(new DBServerAgencySync(this));
 
     auto dispatcher = DispatcherFeature::DISPATCHER;
     if (dispatcher == nullptr) {
