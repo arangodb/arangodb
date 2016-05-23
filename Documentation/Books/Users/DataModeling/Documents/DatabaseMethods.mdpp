@@ -302,7 +302,7 @@ Remove a document:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock documentsCollectionRemoveSuccess
 
-Remove a document with a conflict:
+Remove the document in the revision `a1` with a conflict:
 
     @startDocuBlockInline documentsCollectionRemoveConflict
     @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveConflict}
