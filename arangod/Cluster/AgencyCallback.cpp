@@ -85,7 +85,7 @@ void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
   if (!_lastData || !_lastData->slice().equals(newData->slice())) {
-    LOG(DEBUG) << "Got new value " << newData->slice().typeName() << " " << newData->toJson();
+    LOG(DEBUG) << "AgencyCallback: Got new value " << newData->slice().typeName() << " " << newData->toJson();
     if (execute(newData)) {
       _lastData = newData;
     } else {
