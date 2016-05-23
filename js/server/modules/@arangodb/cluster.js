@@ -94,6 +94,9 @@ function startReadLockOnLeader (endpoint, database, collName, timeout) {
     }
     console.debug("startReadLockOnLeader: Do not see read lock yet...");
   }
+  var asyncJobId = rr.headers["x-arango-async-id"];
+  r = require({ url: url + "/_api/job/" + asyncJobId, body: "", method: "PUT"});
+  console.error("startReadLockOnLeader: giving up, async result:", r);
   return false;
 }
 
@@ -956,6 +959,8 @@ function synchronizeLocalFollowerCollections (plannedCollections,
                                   ok = false;
                                 }
                               }
+                            } else {
+                              console.error("lockJobId was false");
                             }
                             if (ok) {
                               console.info("Synchronization worked for shard", shard);

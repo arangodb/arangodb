@@ -34,7 +34,6 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const _ = require("lodash");
-const print = require("internal").print;
 const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
@@ -67,6 +66,7 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function waitForSynchronousReplication(database) {
+    console.info("Waiting for synchronous replication to settle...");
     cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
@@ -76,7 +76,7 @@ function SynchronousReplicationSuite () {
       );
       let replicas = ccinfo.map(s => s.servers.length);
       if (_.all(replicas, x => x === 2)) {
-        print("Replication up and running!");
+        console.info("Replication up and running!");
         return true;
       }
       wait(0.5);
@@ -280,15 +280,11 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      console.error("Dumdidum");
       var systemCollServers = findCollectionServers("_system", "_graphs");
-      console.error("Dumdidum");
       while (true) {
-        console.error("Dumdidei");
         db._drop(cn);
         c = db._create(cn, {numberOfShards: 1, replicationFactor: 2});
         var servers = findCollectionServers("_system", cn);
-        console.error("Dideldum:", systemCollServers, servers, _.intersection(systemCollServers, servers));
         if (_.intersection(systemCollServers, servers).length === 0) {
           return;
         }
