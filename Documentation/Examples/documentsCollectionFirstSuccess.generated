@@ -1,9 +1,0 @@
-arangosh&gt; db.example.first(<span class="hljs-number">1</span>);
-[ 
-  { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/318525000"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"318525000"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"318525000"</span>, 
-    <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"world"</span> 
-  } 
-]
