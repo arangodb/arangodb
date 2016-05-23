@@ -37,6 +37,7 @@ const _ = require("lodash");
 const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
+const print = require("internal").print;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,14 +284,16 @@ function SynchronousReplicationSuite () {
 
     setUp : function () {
       var systemCollServers = findCollectionServers("_system", "_graphs");
+      print("System collections using servers", systemCollServers);
       while (true) {
         db._drop(cn);
         c = db._create(cn, {numberOfShards: 1, replicationFactor: 2});
         var servers = findCollectionServers("_system", cn);
+        print("Test collection using servers", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
           return;
         }
-        console.info("Need to recreate collection to avoid system collection servers.");
+        console.error("Need to recreate collection to avoid system collection servers.");
       }
     },
 
