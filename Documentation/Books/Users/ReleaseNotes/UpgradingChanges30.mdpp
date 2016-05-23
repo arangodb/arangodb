@@ -125,6 +125,40 @@ Additionally, the `TO_STRING()` AQL function now converts `null` values into an 
 (`""`) instead of the string `"null"`, which is more in line with `LENGTH(null)` returning
 `0` and not `4` since v2.6.
 
+The output of `TO_STRING()` has also changed for arrays and objects as follows:
+
+- arrays are now converted into their JSON-stringify equivalents, e.g.
+
+  - `[ ]` is now converted to `[]`
+  - `[ 1, 2, 3 ]` is now converted to `[1,2,3]`
+  - `[ "test", 1, 2 ] is now converted to `["test",1,2]`
+   
+  Previous versions of ArangoDB converted arrays with no members into the
+  empty string, and non-empty arrays into a comma-separated list of member
+  values, without the surrounding angular brackets. Additionally, string
+  array members were not enclosed in quotes in the result string:
+
+  - `[ ]` was converted to ``
+  - `[ 1, 2, 3 ]` was converted to `1,2,3`
+  - `[ "test", 1, 2 ] was converted to `test,1,2`
+  
+- objects are now converted to their JSON-stringify equivalents, e.g.
+
+  - `{ }` is converted to `{}`
+  - `{ a: 1, b: 2 }` is converted to `{"a":1,"b":2}`
+  - `{ "test" : "foobar" }` is converted to `{"test":"foobar"}`
+    
+  Previous versions of ArangoDB always converted objects into the string
+  `[object Object]`  
+
+This change also affects other parts in AQL that used `TO_STRING()` to implicitly
+cast operands to strings. It also affects the AQL functions `CONCAT()` and 
+`CONCAT_SEPARATOR()` which treated array values differently. Previous versions
+of ArangoDB automatically flattened array values in the first level of the array, 
+e.g. `CONCAT([1, 2, 3, [ 4, 5, 6 ]])` produced `1,2,3,4,5,6`. Now this will produce
+`[1,2,3,[4,5,6]]`. To flatten array members on the top level, you can now use
+the more explicit `CONCAT(FLATTEN([1, 2, 3, [4, 5, 6]], 1))`.
+
 !SUBSECTION Arithmetic operators
 
 As the arithmetic operations in AQL implicitly convert their operands to numeric values using 

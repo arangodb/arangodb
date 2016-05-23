@@ -123,6 +123,8 @@ struct Functions {
                       VPackFunctionParameters const&);
   static AqlValue Average(arangodb::aql::Query*, arangodb::AqlTransaction*,
                           VPackFunctionParameters const&);
+  static AqlValue RandomToken(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
   static AqlValue Md5(arangodb::aql::Query*, arangodb::AqlTransaction*,
                       VPackFunctionParameters const&);
   static AqlValue Sha1(arangodb::aql::Query*, arangodb::AqlTransaction*,

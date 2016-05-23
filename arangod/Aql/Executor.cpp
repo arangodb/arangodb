@@ -121,7 +121,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
     {"IS_DATESTRING", Function("IS_DATESTRING", "AQL_IS_DATESTRING", ".", true,
                                true, false, true, true)},
     {"TYPENAME", Function("TYPENAME", "AQL_TYPENAME", ".", true,
-                               true, false, true, true)},
+                               true, false, true, true, &Functions::Typename)},
 
     // type cast functions
     {"TO_NUMBER", Function("TO_NUMBER", "AQL_TO_NUMBER", ".", true, true, false,
@@ -178,7 +178,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
     {"HASH", Function("HASH", "AQL_HASH", ".", true, true, false, true, true,
                       &Functions::Hash)},
     {"RANDOM_TOKEN", Function("RANDOM_TOKEN", "AQL_RANDOM_TOKEN", "n", false,
-                              false, true, true, true)},
+                              false, true, true, true, &Functions::RandomToken)},
 
     // numeric functions
     {"FLOOR", Function("FLOOR", "AQL_FLOOR", "n", true, true, false, true, true,

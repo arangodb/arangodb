@@ -1829,7 +1829,7 @@ static void JS_RandomNumbers(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "<length> must be between 0 and 65536");
   }
 
-  std::string&& str = JSNumGenerator.random(length);
+  std::string str = JSNumGenerator.random(length);
   TRI_V8_RETURN_STD_STRING(str);
   TRI_V8_TRY_CATCH_END
 }

@@ -45,6 +45,7 @@
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
 #include "Indexes/Index.h"
+#include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
@@ -1682,6 +1683,22 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
   } 
 
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
+/// @brief function RANDOM_TOKEN
+AqlValue Functions::RandomToken(arangodb::aql::Query* query,
+                                arangodb::AqlTransaction* trx,
+                                VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  int64_t const length = value.toInt64();
+  if (length <= 0 || length > 65536) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANDOM_TOKEN");
+  }
+
+  UniformCharacter JSNumGenerator("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+  return AqlValue(JSNumGenerator.random(static_cast<size_t>(length)));
 }
 
 /// @brief function MD5
