@@ -6,13 +6,13 @@
 
 @RESTQUERYPARAMETERS
 
-@RESTBODYPARAM{collection,string,optional}
+@RESTBODYPARAM{collection,string,optional,}
 The name of the collection. This is only for backward compatibility.
 In ArangoDB versions < 3.0, the URL path was */_api/document* and
 this was passed in via the query parameter "collection".
 This combination was removed.
 
-@RESTBODYPARAM{type,string,optional}
+@RESTBODYPARAM{type,string,optional,}
 The type of the result. The following values are allowed:
 
   - *id*: returns an array of document ids (*_id* attributes)
