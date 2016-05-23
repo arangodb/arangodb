@@ -85,9 +85,6 @@ function main(argv) {
     print("failed to parse the options: " + x.message);
     return -1;
   }
-
-  print(options);
-
   if (options.hasOwnProperty('withPython')) {
     thePython = options.withPython;
   }

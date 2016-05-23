@@ -524,7 +524,7 @@ def generateTestCases():
 ################################################################################
 
 loopDirectories()
-print >> sys.stderr, "filtering test cases %s" %(filterTestList)
+print >> sys.stderr, "filtering test %d cases" %(len(filterTestList))
 
 generateArangoshHeader()
 generateSetupFunction()
