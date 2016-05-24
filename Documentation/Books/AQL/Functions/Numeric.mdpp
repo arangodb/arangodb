@@ -225,13 +225,13 @@ SQRT(2) // 1.4142135623730951
 Other roots can be calculated with [POW()](#pow) like `POW(value, 1/n)`:
 
 ```js
-// 4th root of 8 * 8 * 8 * 8 = 4096
+// 4th root of 8*8*8*8 = 4096
 POW(4096, 1/4) // 8
 
-// cube root of 3 * 3 * 3 = 27
+// cube root of 3*3*3 = 27
 POW(27, 1/3) // 3
 
-// square root of 3 * 3 = 9
+// square root of 3*3 = 9
 POW(9, 1/2) // 3
 ```
 

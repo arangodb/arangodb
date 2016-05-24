@@ -43,13 +43,13 @@ we'll issue a query like this:
 
 ```js
 FOR u IN users
-  FILTER u.active == true
-  COLLECT age = u.age INTO usersByAge
-  SORT age DESC LIMIT 0, 5
-  RETURN {
-    age,
-    users: usersByAge[*].u.name
-  }
+    FILTER u.active == true
+    COLLECT age = u.age INTO usersByAge
+    SORT age DESC LIMIT 0, 5
+    RETURN {
+        age,
+        users: usersByAge[*].u.name
+    }
 ```
 
 ```json
@@ -99,14 +99,17 @@ the *COLLECT* statement.
 
 The *usersByAge* variable contains the full documents found, and as we're only
 interested in user names, we'll use the expansion operator <i>[\*]</i> to extract just the
-*name* attribute of all user documents in each group.
-
-The <i>[\*]</i> expansion operator is just a handy short-cut. Instead of <i>usersByAge[\*].u.name</i>
-we could also write:
+*name* attribute of all user documents in each group:
 
 ```js
-FOR temp IN usersByAge
-    RETURN temp.u.name
+usersByAge[*].u.name
+```
+
+The <i>[\*]</i> expansion operator is just a handy short-cut. We could also write
+a subquery:
+
+```js
+( FOR temp IN usersByAge RETURN temp.u.name )
 ```
 
 !SUBSECTION Grouping by multiple criteria

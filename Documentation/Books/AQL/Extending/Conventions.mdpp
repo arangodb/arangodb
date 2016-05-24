@@ -8,9 +8,8 @@ function groups if required.
 
 Examples:
 
-```
+```js
 RETURN myfunctions::myfunc()
-
 RETURN myfunctions::math::random()
 ```
 
