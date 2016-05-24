@@ -315,9 +315,6 @@ void HashIndexIterator::reset() {
   _index->lookup(_trx, _lookups.lookup(), _buffer);
 }
 
-
-
-
 TRI_doc_mptr_t* HashIndexIteratorVPack::next() {
   while (true) {
     if (_posInBuffer >= _buffer.size()) {
