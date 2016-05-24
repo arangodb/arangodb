@@ -55,7 +55,7 @@ function createStatisticsCollection (name) {
 
     try {
       r = db._create(name, { isSystem: true, waitForSync: false,
-                             replicationFactor: 2, 
+                             replicationFactor: 1, 
                              distributeShardsLike: "_graphs" });
     }
     catch (err) {
