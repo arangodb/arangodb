@@ -381,17 +381,17 @@ Dependencies to build documentation:
 
 Generate users documentation
 ============================
-If you've edited examples, see below howto regenerate them.
-If you've edited REST-Documentation, first invoke `./utils/generateSwagger.sh`.
+If you've edited examples, see below how to regenerate them.
+If you've edited REST documentation, first invoke `./utils/generateSwagger.sh`.
 Run the `make` command in `arangodb/Documentation/Books` to generate it.
-The documentation will be generated into `arangodb/Documentation/Books/books/Users` -
+The documentation will be generated in subfolders in `arangodb/Documentation/Books/books` -
 use your favorite browser to read it.
 
-You may encounter permission problem with gitbook and its NPM invokations;
-In that case you need to run the command as root / Administrator.
+You may encounter permission problems with gitbook and its npm invocations.
+In that case, you need to run the command as root / Administrator.
 
-On windows you may see "device busy" errors, retry. Make sure you don't have
-intermediate files in the ppbooks / books -sub folder open (i.e. browser or editor)
+If you see "device busy" errors on Windows, retry. Make sure you don't have
+intermediate files open in the ppbooks / books subfolder (i.e. browser or editor).
 It can also temporarily occur during phases of high HDD / SSD load.
 
 The build-scripts contain several sanity checks, i.e. whether all examples are
@@ -411,7 +411,7 @@ restrictions.
 
 To only regereneate one file (faster) you may specify a filter:
 
-    make FILTER=Users/Aql/Invoke.mdpp
+    make FILTER=Manual/Aql/Invoke.mdpp
 
 (regular expressions allowed)
 
@@ -420,21 +420,21 @@ Using Gitbook
 
 The `make` command in `arangodb/Documentation/Books/` generates a website
 version of the manual. If you want to generate PDF, ePUB etc., run below
-build commands in `arangodb/Documentation/Books/books/Users/`. Calibre's
+build commands in `arangodb/Documentation/Books/books/Manual/`. Calibre's
 `ebook-convert` will be used for the conversion.
 
 Generate a PDF:
 
-    gitbook pdf ./ppbooks/Users ./target/path/filename.pdf
+    gitbook pdf ./ppbooks/Manual ./target/path/filename.pdf
 
 Generate an ePub:
 
-    gitbook epub ./ppbooks/Users ./target/path/filename.epub
+    gitbook epub ./ppbooks/Manual ./target/path/filename.epub
 
 Where to add new...
 -------------------
  - Documentation/DocuBlocks/* - markdown comments with execution section
- - Documentation/Books/Users/SUMMARY.md - index of all sub documentations
+ - Documentation/Books/Manual/SUMMARY.md - index of all sub documentations
 
 generate
 --------
@@ -466,7 +466,7 @@ you need to place hooks:
 
 Read / use the documentation
 ----------------------------
- - `file:///Documentation/Books/books/Users/index.html` contains the generated documentation
+ - `file:///Documentation/Books/books/Manual/index.html` contains the generated manual
  - JS-Console - Tools/API - Interactive swagger documentation which you can play with.
 
 arangod Example tool

@@ -1,4 +1,4 @@
-ALLBOOKS=HTTP AQL Users
+ALLBOOKS=HTTP AQL Manual
 
 all: build-books
 
@@ -288,4 +288,4 @@ build-books:
 
 	make check-docublocks
 	make book-check-dangling-anchors
-	echo '<head><meta http-equiv="refresh" content="0; url=Users/"></head><body></body>' > books/index.html
+	echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html

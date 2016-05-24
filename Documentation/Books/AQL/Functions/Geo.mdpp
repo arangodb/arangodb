@@ -3,7 +3,7 @@
 !SECTION Geo index functions
 
 AQL offers the following functions to filter data based on
-[geo indexes](../../Users/Indexing/Geo.html). These functions require the collection to have at
+[geo indexes](../../Manual/Indexing/Geo.html). These functions require the collection to have at
 least one geo index. If no geo index can be found, calling this function will fail
 with an error.
 

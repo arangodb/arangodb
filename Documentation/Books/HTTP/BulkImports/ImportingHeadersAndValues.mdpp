@@ -37,6 +37,6 @@ errors occurred.
 !SECTION Importing into Edge Collections
 
 Please note that when importing documents into an
-[edge collection](../../Users/Appendix/Glossary.html#edge-collection), 
+[edge collection](../../Manual/Appendix/Glossary.html#edge-collection), 
 it is mandatory that all imported documents contain the *_from* and *_to* attributes,
 and that these contain references to existing collections.
