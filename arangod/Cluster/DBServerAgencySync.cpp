@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ServerJob.h"
+#include "DBServerAgencySync.h"
 
 #include "Basics/MutexLocker.h"
 #include "Cluster/ClusterInfo.h"
@@ -47,8 +47,8 @@ static arangodb::Mutex ExecutorLock;
 /// @brief constructs a new db server job
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerJob::ServerJob(HeartbeatThread* heartbeat)
-    : Job("HttpServerJob"),
+DBServerAgencySync::DBServerAgencySync(HeartbeatThread* heartbeat)
+    : Job("DBServerAgencySync"),
       _heartbeat(heartbeat),
       _shutdown(0),
       _abandon(false) {}
@@ -57,9 +57,9 @@ ServerJob::ServerJob(HeartbeatThread* heartbeat)
 /// @brief destructs a db server job
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerJob::~ServerJob() {}
+DBServerAgencySync::~DBServerAgencySync() {}
 
-void ServerJob::work() {
+void DBServerAgencySync::work() {
   LOG(TRACE) << "starting plan update handler";
 
   if (_shutdown != 0) {
@@ -68,7 +68,7 @@ void ServerJob::work() {
 
   _heartbeat->setReady();
 
-  ServerJobResult result;
+  DBServerAgencySyncResult result;
   {
     // only one plan change at a time
     MUTEX_LOCKER(mutexLocker, ExecutorLock);
@@ -79,9 +79,9 @@ void ServerJob::work() {
   _heartbeat->removeDispatchedJob(result);
 }
 
-bool ServerJob::cancel() { return false; }
+bool DBServerAgencySync::cancel() { return false; }
 
-void ServerJob::cleanup(DispatcherQueue* queue) {
+void DBServerAgencySync::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
@@ -90,7 +90,7 @@ void ServerJob::cleanup(DispatcherQueue* queue) {
 /// @brief execute job
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerJobResult ServerJob::execute() {
+DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
   DatabaseFeature* database = 
@@ -98,7 +98,7 @@ ServerJobResult ServerJob::execute() {
 
   TRI_vocbase_t* const vocbase = database->vocbase();
 
-  ServerJobResult result;
+  DBServerAgencySyncResult result;
   if (vocbase == nullptr) {
     return result;
   }

@@ -36,7 +36,8 @@ ${ARANGOSH} \
     --javascript.startup-directory js \
     --javascript.execute $SCRIPT \
     --server.password "" \
-    "${ARGS[@]}"
+    -- \
+    "$@"
 
 if test $? -eq 0; then
   echo "removing ${LOGFILE} ${DBDIR}"

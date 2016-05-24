@@ -46,14 +46,17 @@ is returned.
 
 @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierRename}
     var cn = "products1";
+    var cnn = "newname";
+    db._drop(cn);
+    db._drop(cnn);
     var coll = db._create(cn);
     var url = "/_api/collection/" + coll.name() + "/rename";
 
-    var response = logCurlRequest('PUT', url, { name: "newname" });
+    var response = logCurlRequest('PUT', url, { name: cnn });
 
     assert(response.code === 200);
     db._flushCache();
-    db._drop("newname");
+    db._drop(cnn);
 
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN

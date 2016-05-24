@@ -476,9 +476,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
 
   if (row == 0 || escaped) {
     // head line or escaped value
-    _lineBuffer.appendChar('"');
-    _lineBuffer.appendJsonEncoded(field);
-    _lineBuffer.appendChar('"');
+    _lineBuffer.appendJsonEncoded(field, fieldLength);
     return;
   }
 
@@ -514,9 +512,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       _lineBuffer.appendInteger(num);
     } catch (...) {
       // conversion failed
-      _lineBuffer.appendChar('"');
-      _lineBuffer.appendJsonEncoded(field);
-      _lineBuffer.appendChar('"');
+      _lineBuffer.appendJsonEncoded(field, fieldLength);
     }
   } else if (IsDecimal(field, fieldLength)) {
     // double value
@@ -539,9 +535,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     _lineBuffer.appendText(field, fieldLength);
     _lineBuffer.appendChar('"');
   } else {
-    _lineBuffer.appendChar('"');
-    _lineBuffer.appendJsonEncoded(field);
-    _lineBuffer.appendChar('"');
+    _lineBuffer.appendJsonEncoded(field, fieldLength);
   }
 }
 

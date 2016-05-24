@@ -152,6 +152,8 @@ RocksDBFeature* RocksDBFeature::instance() {
 }
 
 int RocksDBFeature::syncWal() {
+#ifndef _WIN32
+  // SyncWAL() always reports a "not implemented" error on Windows
   if (Instance == nullptr || !Instance->isEnabled()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -164,7 +166,7 @@ int RocksDBFeature::syncWal() {
     LOG(ERR) << "error syncing rocksdb WAL: " << status.ToString();
     return TRI_ERROR_INTERNAL;
   }
-
+#endif
   return TRI_ERROR_NO_ERROR;
 }
 

@@ -205,9 +205,9 @@ var mType = {
     REPLICATION_MARKER_REMOVE: 2302
   };
 
-function syncCollectionFinalize(collname, collid, from, config) {
-  var url = endpointToURL(config.endpoint) + "/_api/replication/logger-follow"
-            + "?collection=" + collid + "&from=";
+function syncCollectionFinalize(database, collname, collid, from, config) {
+  var url = endpointToURL(config.endpoint) + "/_db/" + database + 
+            "/_api/replication/logger-follow?collection=" + collid + "&from=";
 
   var coll = require("internal").db[collid];
 

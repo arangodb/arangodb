@@ -1543,7 +1543,7 @@ char const* TRI_GetStatusStringCollectionVocBase(
     case TRI_VOC_COL_STATUS_CORRUPTED:
     case TRI_VOC_COL_STATUS_NEW_BORN:
     default:
-      return "unkown";
+      return "unknown";
   }
 }
 

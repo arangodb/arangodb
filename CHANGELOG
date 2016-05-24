@@ -1,6 +1,46 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* forward ported V8 Comparator bugfix for inline heuristics from 
+  https://github.com/v8/v8/commit/5ff7901e24c2c6029114567de5a08ed0f1494c81
+
+* changed to-string conversion for AQL objects and arrays, used by the AQL 
+  function `TO_STRING()` and implicit to-string casts in AQL
+
+  - arrays are now converted into their JSON-stringify equivalents, e.g.
+
+    - `[ ]` is now converted to `[]`
+    - `[ 1, 2, 3 ]` is now converted to `[1,2,3]`
+    - `[ "test", 1, 2 ] is now converted to `["test",1,2]`
+    
+    Previous versions of ArangoDB converted arrays with no members into the
+    empty string, and non-empty arrays into a comma-separated list of member
+    values, without the surrounding angular brackets. Additionally, string
+    array members were not enclosed in quotes in the result string:
+
+    - `[ ]` was converted to ``
+    - `[ 1, 2, 3 ]` was converted to `1,2,3`
+    - `[ "test", 1, 2 ] was converted to `test,1,2`
+  
+  - objects are now converted to their JSON-stringify equivalents, e.g.
+
+    - `{ }` is converted to `{}`
+    - `{ a: 1, b: 2 }` is converted to `{"a":1,"b":2}`
+    - `{ "test" : "foobar" }` is converted to `{"test":"foobar"}`
+    
+    Previous versions of ArangoDB always converted objects into the string
+    `[object Object]`  
+
+  This change affects also the AQL functions `CONCAT()` and `CONCAT_SEPARATOR()`
+  which treated array values differently in previous versions. Previous versions
+  of ArangoDB automatically flattened array values on the first level of the array, 
+  e.g. `CONCAT([1, 2, 3, [ 4, 5, 6 ]])` produced `1,2,3,4,5,6`. Now this will produce
+  `[1,2,3,[4,5,6]]`. To flatten array members on the top level, you can now use
+  the more explicit `CONCAT(FLATTEN([1, 2, 3, [4, 5, 6]], 1))`.
+
+* added C++ implementations for AQL functions `SLICE()`, `CONTAINS()` and
+  `RANDOM_TOKEN()`
+
 * as a consequence of the upgrade to V8 version 5, the implementation of the
   JavaScript `Buffer` object had to be changed. JavaScript `Buffer` objects in
   ArangoDB now always store their data on the heap. There is no shared pool

@@ -37,9 +37,9 @@ book-check-restheader-leftovers:
 # Check for all lines starting with exclamation marks, except image links which are exclamation mar + bracket
 book-check-mdpp-leftovers:
 	@echo "##### checking for mdpp leftovers for $(NAME)"
-	@if test "`find ppbooks/$(NAME) -name '*.md' -exec grep -- '^![^\[]' {} \; -print | wc -l`" -gt 0; then \
+	@if test "`find ppbooks/$(NAME) -name '*.md' -exec grep -- '^![^\[!]' {} \; -print | wc -l`" -gt 0; then \
 		echo "found these unconverted Markdown-PP tags: "; \
-		find ppbooks/$(NAME) -name '*.md' -exec grep '^![^\[]' {} \; -print; \
+		find ppbooks/$(NAME) -name '*.md' -exec grep '^![^\[!]' {} \; -print; \
 		exit 1; \
 	fi
 
@@ -167,7 +167,7 @@ build-book:
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	python ../Scripts/deprecated.py
 
-	make book-check-markdown-leftovers
+	# make book-check-markdown-leftovers
 
 clean-book:
 	@rm -rvf books/$(NAME)
@@ -205,7 +205,7 @@ check-docublocks:
 		grep -v '.*#.*:.*' \
 		   >> /tmp/rawindoc.txt
 	cat /tmp/rawindoc.txt | sed  -e "s;.*ck ;;" -e "s;.*ne ;;" |sort -u > /tmp/indoc.txt
-	grep -R '^/// @startDocuBlock' ../DocuBlocks --include "*.md" --include "*.mdpp" |grep -v aardvark > /tmp/rawinprog.txt
+	grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" --include "*.mdpp" |grep -v aardvark > /tmp/rawinprog.txt
         # searching the Inline docublocks needs some more blacklisting:
 	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v ppbook |\
@@ -264,9 +264,9 @@ build-books:
 	make build-books-keep-md NAME=AQL
 	make build-books-keep-md NAME=HTTP
 
-	make ppbook-check-html-link NAME=Users
-	make ppbook-check-html-link NAME=AQL
-	make ppbook-check-html-link NAME=HTTP
+	#make ppbook-check-html-link NAME=Users
+	#make ppbook-check-html-link NAME=AQL
+	#make ppbook-check-html-link NAME=HTTP
 
 	make check-docublocks
 

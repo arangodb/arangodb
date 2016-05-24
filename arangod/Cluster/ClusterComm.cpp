@@ -1101,10 +1101,10 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                                   nullptr, timeout - (now - startTime),
                                   false);
           if (res.status == CL_COMM_ERROR) {
-            // We did not find the destination, this is could change in the
+            // We did not find the destination, this could change in the
             // future, therefore we will retry at some stage:
             drop("", 0, res.operationID, "");   // forget about it
-            dueTime[i] = (std::max)(now + 1.0, 
+            dueTime[i] = (std::max)(now + 0.2, 
                                     startTime + 2 * (now - startTime));
           } else {
             dueTime[i] = endTime + 10.0;  // Never retry
@@ -1182,7 +1182,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   // We only get here if the global timeout was triggered, not all
   // requests are marked by done!
 
-  LOG_TOPIC(ERR, logTopic) << "ClusterComm::performRequests: "
+  LOG_TOPIC(DEBUG, logTopic) << "ClusterComm::performRequests: "
       << "got timeout, this will be reported...";
 
   // Forget about 

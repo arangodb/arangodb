@@ -75,6 +75,8 @@ class TransactionContext;
 class Transaction {
  public:
 
+  double const TRX_FOLLOWER_TIMEOUT = 3.0;
+
   class IndexHandle {
     friend class Transaction;
     std::shared_ptr<arangodb::Index> _index;

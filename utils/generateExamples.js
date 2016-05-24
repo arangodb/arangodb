@@ -17,7 +17,7 @@ const testPort = internal.testPort;
 const yaml = require("js-yaml");
 
 const documentationSourceDirs = [
-  fs.join(fs.makeAbsolute(''), "Documentation/Examples/setup-arangosh.js"),
+  fs.join(fs.makeAbsolute(''), "Documentation/Scripts/setup-arangosh.js"),
   fs.join(fs.makeAbsolute(''), "Documentation/DocuBlocks"),
   fs.join(fs.makeAbsolute(''), "Documentation/Books/Users"),
   fs.join(fs.makeAbsolute(''), "Documentation/Books/AQL"),
@@ -85,9 +85,6 @@ function main(argv) {
     print("failed to parse the options: " + x.message);
     return -1;
   }
-
-  print(options);
-
   if (options.hasOwnProperty('withPython')) {
     thePython = options.withPython;
   }

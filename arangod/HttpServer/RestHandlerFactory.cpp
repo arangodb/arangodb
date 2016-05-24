@@ -94,13 +94,15 @@ RestHandler* RestHandlerFactory::createHandler(GeneralRequest* request,
 
   // In the bootstrap phase, we would like that coordinators answer the
   // following to endpoints, but not yet others:
-  if (MaintenanceMode &&
-      (!ServerState::instance()->isCoordinator() ||
-       (path != "/_api/shard-comm" &&
-        path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-        path.find("/_api/aql") == std::string::npos))) {
-    LOG(DEBUG) << "Maintenance mode: refused path: " << path;
-    return new MaintenanceHandler(request, response);
+  if (MaintenanceMode) {
+    if ((!ServerState::instance()->isCoordinator() &&
+         path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
+        (path != "/_api/shard-comm" &&
+         path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+         path.find("/_api/aql") == std::string::npos)) {
+      LOG(DEBUG) << "Maintenance mode: refused path: " << path;
+      return new MaintenanceHandler(request, response);
+    }
   }
 
   auto const& ii = _constructors;
