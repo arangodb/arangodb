@@ -36,5 +36,5 @@ following attribute naming constraints are not violated:
   attribute names may use more memory in result sets etc. Therefore the use
   of long attribute names is discouraged.
 * Attribute names are case-sensitive.
-* Attributes with empty names (the empty string) are disallowed.
+* Attributes with empty names (an empty string) are disallowed.
 

@@ -14,7 +14,7 @@ additional language constructs.
   The default is *false*.
 - **sort** (bool, *optional*): optionally sort the resulting array alphabetically.
   The default is *false* and will return the attribute names in a random order.
-- returns **attributes** (array): the attribute keys of the input **document** as an
+- returns **attributes** (array): the attribute keys of the input *document* as an
   array of strings
 
 ```js
@@ -198,14 +198,15 @@ Merge the documents *document1* to *documentN* into a single document.
 If document attribute keys are ambiguous, the merged result will contain the values
 of the documents contained later in the argument list.
 
-Note that merging will only be done for top-level attributes. If you wish to
-merge sub-attributes, use [MERGE_RECURSIVE()](#mergerecursive) instead.
 
 - **documents** (object, *repeatable*): an arbitrary number of documents as
   multiple arguments, at least 2
 - returns **mergedDocument** (object): a combined document
 
-For example, two documents with distinct attribute names can easily be merged into one:
+Note that merging will only be done for top-level attributes. If you wish to
+merge sub-attributes, use [MERGE_RECURSIVE()](#mergerecursive) instead.
+
+Two documents with distinct attribute names can easily be merged into one:
 
 ```js
 MERGE(

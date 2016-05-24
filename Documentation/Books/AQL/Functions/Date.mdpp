@@ -362,7 +362,7 @@ ambiguities like in `%mmonth` (unpadded month number + the string "month")
 between `%mm` + "onth" and `%m` + "month", use the escape sequence `%&`:
 `%m%&month`.
 
-Note that this is a rather costly operation and may not be suitable for large
+Note that *DATE_FORMAT()* is a rather costly operation and may not be suitable for large
 datasets (like over 1 million dates). If possible, avoid formatting dates on
 server-side and leave it up to the client to do so. This function should only
 be used for special date comparisons or to store the formatted dates in the
