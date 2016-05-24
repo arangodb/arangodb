@@ -247,23 +247,23 @@ pack-deb-cmake:
 .PHONY: pack-win32 pack-winXX winXX-cmake win64-relative win64-relative-debug
 
 pack-win32: 
-	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12"
+	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 14"
 
 pack-win64:
-	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64"
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 14 Win64"
 
 pack-win32-relative:
-	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 14" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
 
 pack-win64-relative:
-	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
 
 win64-relative:
-	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON"'
+	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "USE_RELATIVE=ON"'
 	$(MAKE) winXX-build BITS=64 BUILD_TARGET=RelWithDebInfo
 
 win64-relative-debug:
-	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
 	$(MAKE) winXX-build BITS=64 BUILD_TARGET=Debug
 
 pack-winXX:
@@ -291,7 +291,7 @@ winXX-cmake: checkcmake
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=4.11" \
-		-D "V8_VERSION=4.3.61" \
+		-D "V8_VERSION=V8-5.0.71.39" \
 		-D "ZLIB_VERSION=1.2.7" \
 		-D "BUILD_ID=${BUILD_ID}" \
 		$(MOREOPTS) \
