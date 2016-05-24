@@ -56,7 +56,6 @@ build/bin/arangod \
   --server.authentication false \
   --server.endpoint tcp://127.0.0.1:4001 \
   --server.statistics false \
-  --server.threads 16 \
   --agency.compaction-step-size 100 \
   --log.force-direct true \
   > cluster/4001.stdout 2>&1 &

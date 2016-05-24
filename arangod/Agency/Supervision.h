@@ -47,15 +47,17 @@ struct JobCallback {
 };
 
 struct Job {
-  Job(Node const&, Agent*, uint64_t, std::string const&);
+  Job(Node const&, Agent*, std::string const& jobId,
+      std::string const& creator, std::string const& agencyPrefix);
   virtual ~Job();
-  virtual unsigned status () const;
+  virtual unsigned status () const = 0;
   virtual bool exists () const;
   virtual bool create () const = 0;
   virtual bool start() const = 0;
   Node const& _snapshot;
   Agent* _agent;
   std::string const _jobId;
+  std::string const& _creator;
   std::string const& _agencyPrefix;
 };
 
@@ -91,23 +93,23 @@ class Supervision : public arangodb::Thread {
         : myTimestamp(std::chrono::system_clock::now()),
           serverStatus(s),
           serverTimestamp(t),
-          jobId(0) {}
+          jobId("0") {}
 
     void update(ServerStatus s, ServerTimestamp t) {
       myTimestamp = std::chrono::system_clock::now();
       serverStatus = s;
       serverTimestamp = t;
-      jobId = 0;
+      jobId = "0";
     }
 
-    void maintenance(uint64_t jid) { jobId = jid; }
+    void maintenance(std::string const& jid) { jobId = jid; }
 
-    uint64_t maintenance() { return jobId; }
+    std::string const& maintenance() const { return jobId; }
 
     TimePoint myTimestamp;
     ServerStatus serverStatus;
     ServerTimestamp serverTimestamp;
-    uint64_t jobId;
+    std::string jobId;
   };
 
   /// @brief Construct sanity checking
