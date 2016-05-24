@@ -46,17 +46,13 @@ std::string printTimestamp(Supervision::TimePoint const& t) {
 }
 
 inline arangodb::consensus::write_ret_t transact (
-  Agent* _agent, Builder const& toWrite,
-  Builder const& precond = Builder()) {
+  Agent* _agent, Builder const& transaction) {
   
   query_t envelope = std::make_shared<Builder>();
 
   try {
     envelope->openArray();
-    envelope->add(toWrite.slice());
-    if (!precond.isEmpty()) {
-      envelope->add(precond.slice());
-    }
+    envelope->add(transaction.slice());
     envelope->close();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Supervision failed to build transaction.";
@@ -244,7 +240,7 @@ struct MoveShard : public Job {
 
     pending.close(); pending.close();
 
-    // Transact to agency
+    // Transact 
     write_ret_t res = transact(_agent, pending);
 
     if (res.accepted && res.indices.size()==1 && res.indices[0]) {
@@ -261,21 +257,73 @@ struct MoveShard : public Job {
   virtual unsigned status () const {
     
     Node const& target = _snapshot("/Target");
-    unsigned res = 4;
     
     if        (target.exists(std::string("/ToDo/")     + _jobId).size() == 2) {
-      res = 0;
-      start(); // try to start job
+      
+      return 0;
+      
     } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
-      res = 1;
-      // Any sub jobs pending?
-      // If not, any subjobs failed? Move to failed
-      // Else move to Finished
-    } else {
-      // Remove any blocks on 
-    }
+
+      std::string planPath =
+        planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
+      std::string curPath =
+        curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
+
+      Node const& planned = _snapshot(planPath);
+      Node const& current = _snapshot(curPath);
+
+      if (planned.slice()[0] == current.slice()[0]) {
+
+        Builder pending, finished;
+        
+        // Get todo entry
+        pending.openArray();
+        _snapshot(pendingPrefix + _jobId).toBuilder(pending);
+        pending.close();
+        
+        // Prepare peding entry, block toserver
+        finished.openArray();
+
+        // --- Add finished
+        finished.openObject();
+        finished.add(_agencyPrefix + pendingPrefix + _jobId,
+                    VPackValue(VPackValueType::Object));
+        finished.add("timeStarted",
+                VPackValue(printTimestamp(std::chrono::system_clock::now())));
+        for (auto const& obj : VPackObjectIterator(pending.slice()[0])) {
+          finished.add(obj.key.copyString(), obj.value);
+        }
+        finished.close();
+
+        // --- Delete pending
+        pending.add(_agencyPrefix + pendingPrefix + _jobId,
+                    VPackValue(VPackValueType::Object));
+        pending.add("op", VPackValue("delete"));
+        pending.close();
+        
+        finished.close(); finished.close();
+
+        write_ret_t res = transact(_agent, finished);
+
+        if (res.accepted && res.indices.size()==1 && res.indices[0]) {
+          return 2;
+        }
+        
+      }
+
+      return 1;
+      
+    } else if (target.exists(std::string("/Finished/")  + _jobId).size() == 2) {
+      
+      return 2;
+      
+    } else if (target.exists(std::string("/Failed/")  + _jobId).size() == 2) {
+      
+      return 3;
+
+    } 
     
-    return res;
+    return 4;
     
   }
 
