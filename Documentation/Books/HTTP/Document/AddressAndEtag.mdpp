@@ -149,7 +149,7 @@ is:
     http://localhost:8529/_api/document/demo/362549736
 
 The above URL schema does not specify a 
-[database name](../../Manual/Appendix/Glossary..html#database-name) 
+[database name](../../Manual/Appendix/Glossary.html#database-name) 
 explicitly, so the 
 default database `_system` will be used. 
 To explicitly specify the database context, use
