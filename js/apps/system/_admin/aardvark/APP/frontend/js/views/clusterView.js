@@ -284,7 +284,7 @@
           self.chartsOptions[1].options[0].values.push({x:time, y: self.calcTotalHttp(data.http, key)});
 
           //AVERAGE
-          self.chartsOptions[2].options[0].values.push({x:time, y: data.avgRequestTime[key]});
+          self.chartsOptions[2].options[0].values.push({x:time, y: data.avgRequestTime[key] / self.coordinators.length});
         });
         self.historyInit = true;
       }
@@ -308,9 +308,8 @@
         //AVERAGE
         self.chartsOptions[2].options[0].values.push({
           x: data.times[data.times.length - 1],
-          y: data.avgRequestTime[data.bytesSentPerSecond.length - 1]
+          y: data.avgRequestTime[data.bytesSentPerSecond.length - 1] / self.coordinators.length
         });
-
 
       }
     },
@@ -318,6 +317,7 @@
     chartsOptions: [
       {
         id: "#clusterData",
+        type: 'bytes',
         count: 2,
         options: [
           {
@@ -340,6 +340,7 @@
       },
       {
         id: "#clusterHttp",
+        type: 'bytes',
         options: [{
           area: true,
           values: [],
@@ -351,10 +352,11 @@
       {
         id: "#clusterAverage",
         data: [],
+        type: 'seconds',
         options: [{
           area: true,
           values: [],
-          key: "Bytes",
+          key: "Seconds",
           color: "rgb(243, 156, 18)",
           fillOpacity: 0.1
         }]
@@ -392,11 +394,22 @@
           self.charts[c.id].yAxis
           .axisLabel('')
           .tickFormat(function(d) {
-            if (d === null) {
-              return 'N/A';
+            var formatted;
+
+            if (c.type === 'bytes') {
+              if (d === null) {
+                return 'N/A';
+              }
+              formatted = parseFloat(d3.format(".2f")(d));
+              return prettyBytes(formatted);
             }
-            var formatted = parseFloat(d3.format(".2f")(d));
-            return prettyBytes(formatted);
+            else if (c.type === 'seconds') {
+              if (d === null) {
+                return 'N/A';
+              }
+              formatted = parseFloat(d3.format(".2f")(d));
+              return formatted;
+            }
           });
 
           var data, lines = self.returnGraphOptions(c.id);
