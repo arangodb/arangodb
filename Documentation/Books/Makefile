@@ -1,3 +1,5 @@
+ALLBOOKS=HTTP AQL Users
+
 all: build-books
 
 .PHONY:
@@ -53,10 +55,13 @@ ppbook-precheck-bad-code-sections:
 
 ppbook-check-html-link:
 	@echo "##### checking for invalid HTML links in $(NAME)"
-	@if test "`egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME) |grep '\.md:' |grep html |grep -v http://|grep -v https:// |grep -v header.css |wc -l`" -gt 0; then \
+	@echo "$(ALLBOOKS)" |sed -e 's; ;\n;g' |sed -e 's;^;/;' -e 's;$$;/;' > /tmp/books.regex
+
+	@egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME)|grep '\.md:'| grep 'html'| grep -v 'http://' | grep -v 'https://' | grep -v 'header.css' | grep -v -f /tmp/books.regex > /tmp/relative_html_links.txt ||true
+	@if test "`cat /tmp/relative_html_links.txt |wc -l`" -gt 0; then \
 		echo "Found links to .html files inside of the document! use <foo>.md instead!"; \
 		echo; \
-		egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME)  | grep '\.md:' | grep html |grep -v http://|grep -v https:// |grep -v header.css ; \
+		cat  /tmp/relative_html_links.txt; \
 		exit 1; \
 	fi
 
@@ -99,18 +104,18 @@ book-check-dangling-anchors:
 	    FN=`echo $$i | cut '-d,' -f 2`; \
 	    SFN=`echo $$i | cut '-d,' -f 1`; \
 	    if test -z "$$FN"; then \
-	        FN=$$SFN; \
+		FN=$$SFN; \
 	    else \
-	        SFNP=`echo $$SFN | sed 's;/[a-zA-Z0-9]*.html;;'`; \
-	        FN="$${SFNP}/$${FN}"; \
+		SFNP=`echo $$SFN | sed 's;/[a-zA-Z0-9]*.html;;'`; \
+		FN="$${SFNP}/$${FN}"; \
 	    fi; \
 	    if test -n "$$ANCHOR"; then \
-	        if grep -q "id=\"$$ANCHOR\">" $$FN; then \
-	            /bin/true; \
-	        else \
-	            echo "$$i"; \
-	            NO=$$((NO + 1)); \
-	        fi; \
+		if grep -q "id=\"$$ANCHOR\">" $$FN; then \
+		    /bin/true; \
+		else \
+		    echo "$$i"; \
+		    NO=$$((NO + 1)); \
+		fi; \
 	    fi; \
 	done; \
 	if test "$${NO}" -gt 0; then \
@@ -133,8 +138,8 @@ build-book:
 	  mkdir -p ppbooks/$(NAME); \
 	  WD=`pwd`; \
 	  for dir in `find $(NAME) -type d `; do \
-	  	cd $${WD}/ppbooks; \
-	  	test -d $${dir} || mkdir -p $${dir}; \
+		cd $${WD}/ppbooks; \
+		test -d $${dir} || mkdir -p $${dir}; \
 	  done; \
 	fi
 	cd ppbooks/$(NAME); if ! test -L SUMMARY.md; then ln -s ../../$(NAME)/SUMMARY.md . ; fi
@@ -182,12 +187,12 @@ clean-book-intermediate:
 
 
 #************************************************************
-# Check docublocks - checks whether docublock are 
+# Check docublocks - checks whether docublock are
 #  - files in intermediate output directories and temporary
 #    files are excludes (with # in their names)
-#  - uniq in the source 
+#  - uniq in the source
 #  - all docublocks are used somewhere in the documentation
-#  
+#
 check-docublocks:
 	grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v '@startDocuBlockInline' |\
@@ -206,7 +211,7 @@ check-docublocks:
 		   >> /tmp/rawindoc.txt
 	cat /tmp/rawindoc.txt | sed  -e "s;.*ck ;;" -e "s;.*ne ;;" |sort -u > /tmp/indoc.txt
 	grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" --include "*.mdpp" |grep -v aardvark > /tmp/rawinprog.txt
-        # searching the Inline docublocks needs some more blacklisting:
+	# searching the Inline docublocks needs some more blacklisting:
 	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
@@ -257,16 +262,17 @@ build-books-keep-md:
 	make build-book NAME=$(NAME)
 
 build-books:
-	make clean-intermediate NAME=Users
-	make clean-intermediate NAME=AQL
-	make clean-intermediate NAME=HTTP
-	make build-books-keep-md NAME=Users
-	make build-books-keep-md NAME=AQL
-	make build-books-keep-md NAME=HTTP
+	for book in $(ALLBOOKS); do \
+		make clean-intermediate NAME=$${book}; \
+	done
 
-	#make ppbook-check-html-link NAME=Users
-	#make ppbook-check-html-link NAME=AQL
-	#make ppbook-check-html-link NAME=HTTP
+	for book in $(ALLBOOKS); do \
+		make build-books-keep-md NAME=$${book}; \
+	done
+
+	for book in $(ALLBOOKS); do \
+		make ppbook-check-html-link NAME=$${book}; \
+	done
 
 	make check-docublocks
-
+	echo '<head><meta http-equiv="refresh" content="0; url=Users/"></head><body></body>' > books/index.html
