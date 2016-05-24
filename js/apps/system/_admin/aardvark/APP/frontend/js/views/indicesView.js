@@ -76,9 +76,13 @@
         break;
         case 'Persistent':
           fields = $('#newPersistentFields').val();
+        unique = self.checkboxToValue('#newPersistentUnique');
+        sparse = self.checkboxToValue('#newPersistentSparse');
         postParameter = {
-          type: 'persistent',
-          fields: self.stringToArray(fields)
+          type: 'rocksdb',
+          fields: self.stringToArray(fields),
+          unique: unique,
+          sparse: sparse
         };
         break;
         case 'Hash':
