@@ -1,5 +1,5 @@
-v3.0.0-alpha5 (2015-05-17)
---------------------------
+v3.0.0-beta1 (2015-05-24)
+-------------------------
 
 * forward ported V8 Comparator bugfix for inline heuristics from 
   https://github.com/v8/v8/commit/5ff7901e24c2c6029114567de5a08ed0f1494c81

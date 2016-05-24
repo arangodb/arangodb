@@ -1,22 +1,15 @@
-<<<<<<< HEAD:Documentation/Examples/RestDocumentHandlerUpdateDocumentRevOther.generated
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/10407?rev=10411 &lt;&lt;EOF
-{"other":"content"}
-EOF
-
-=======
-shell> curl -X DELETE --header 'If-Match: "227105"' --dump - http://localhost:8529/_api/document/products/227101
+shell> curl -X DELETE --header 'If-Match: "10227"' --dump - http://localhost:8529/_api/document/products/10223
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">412</span> Precondition Failed
+etag: <span class="hljs-string">"10223"</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"227101"</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">412</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1200</span>, 
   <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"precondition failed"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/227101"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"227101"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"227101"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10223"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10223"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10223"</span> 
 }
->>>>>>> 2000601e84298e04126377d1e5c4a83636547b06:Documentation/Examples/RestDocumentHandlerDeleteDocumentIfMatchOtherMulti.generated

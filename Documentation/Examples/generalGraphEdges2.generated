@@ -4,10 +4,10 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_EDGES("</span>
 ........&gt; +<span class="hljs-string">"'routeplanner', 'germanCity/Hamburg', {direction: 'outbound', maxDepth: 2}) RETURN e"</span>
 ........&gt; ).toArray();
 [ 
-  <span class="hljs-string">"germanHighway/235825"</span>, 
-  <span class="hljs-string">"internationalHighway/235845"</span>, 
-  <span class="hljs-string">"internationalHighway/235848"</span>, 
-  <span class="hljs-string">"internationalHighway/235839"</span>, 
-  <span class="hljs-string">"frenchHighway/235828"</span>, 
-  <span class="hljs-string">"internationalHighway/235842"</span> 
+  <span class="hljs-string">"germanHighway/18927"</span>, 
+  <span class="hljs-string">"internationalHighway/18947"</span>, 
+  <span class="hljs-string">"internationalHighway/18950"</span>, 
+  <span class="hljs-string">"internationalHighway/18941"</span>, 
+  <span class="hljs-string">"frenchHighway/18930"</span>, 
+  <span class="hljs-string">"internationalHighway/18944"</span> 
 ]
