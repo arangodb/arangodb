@@ -23,6 +23,7 @@
 #include "DatabaseFeature.h"
 
 #include "Basics/StringUtils.h"
+#include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -161,6 +162,11 @@ void DatabaseFeature::start() {
 
   // update the contexts
   updateContexts();
+
+  // active deadlock detection in case we're not running in cluster mode
+  if (!arangodb::ServerState::instance()->isRunningInCluster()) {
+    TRI_EnableDeadlockDetectionDatabasesServer(DatabaseServerFeature::SERVER);
+  }
 }
 
 void DatabaseFeature::stop() {
