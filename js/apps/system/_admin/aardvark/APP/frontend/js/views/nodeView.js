@@ -49,7 +49,7 @@
       }.bind(this);
 
       var cb = function() {
-        console.log("node complete");
+        console.log("");
       };
 
       if (!this.initCoordDone) {
