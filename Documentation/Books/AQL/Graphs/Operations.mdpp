@@ -24,9 +24,9 @@ the amount of vertices in the graph, *x* the amount of start vertices and *y* th
 target vertices. Hence a suggestion may be to use Dijkstra when x\*y < n and the functions supports choosing your algorithm.
 
 !SUBSECTION Example Graph
-All examples in this chapter will use [this simple city graph](../../Users/Graphs/index.html#the-city-graph):
+All examples in this chapter will use [this simple city graph](../../Manual/Graphs/index.html#the-city-graph):
 
-![Cities Example Graph](../../Users/Graphs/cities_graph.png)
+![Cities Example Graph](../../Manual/Graphs/cities_graph.png)
 
 !SUBSECTION Edges and Vertices related functions
 

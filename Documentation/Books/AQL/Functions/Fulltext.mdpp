@@ -1,7 +1,7 @@
 !CHAPTER Fulltext functions
 
 AQL offers the following functions to filter data based on
-[fulltext indexes](../../Users/Indexing/Fulltext.html):
+[fulltext indexes](../../Manual/Indexing/Fulltext.html):
 
 !SUBSECTION FULLTEXT()
 
