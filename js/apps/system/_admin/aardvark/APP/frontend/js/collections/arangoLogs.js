@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, $, _ */
+/*global window, $, _, databaseUrl, arangoHelper */
 (function () {
 
   "use strict";
@@ -59,7 +59,7 @@
         type = 'level';
       }
       rtnStr = '/_admin/log?'+type+'='+this.loglevel+'&size='+size+'&offset='+inverseOffset;
-      return rtnStr;
+      return arangoHelper.databaseUrl(rtnStr);
     }
 
   });

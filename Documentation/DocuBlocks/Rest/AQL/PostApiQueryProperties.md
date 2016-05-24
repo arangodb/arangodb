@@ -4,6 +4,10 @@
 
 @RESTHEADER{POST /_api/query, Parse an AQL query}
 
+@RESTDESCRIPTION
+This endpoint is for query validation only. To actually query the database,
+see `/api/cursor`.
+
 @RESTBODYPARAM{query,string,required,string}
 To validate a query string without executing it, the query string can be
 passed to the server via an HTTP POST request.

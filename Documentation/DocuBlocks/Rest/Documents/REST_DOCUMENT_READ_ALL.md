@@ -2,17 +2,17 @@
 @startDocuBlock REST_DOCUMENT_READ_ALL
 @brief reads all documents from collection
 
-@RESTHEADER{GET /_api/document/{collection},Read all documents}
+@RESTHEADER{PUT /_api/simple/all-keys, Read all documents}
 
 @RESTQUERYPARAMETERS
 
-@RESTQUERYPARAM{collection,string,optional}
+@RESTBODYPARAM{collection,string,optional,}
 The name of the collection. This is only for backward compatibility.
 In ArangoDB versions < 3.0, the URL path was */_api/document* and
-this query parameter was required. This combination still works, but
-the recommended way is to specify the collection in the URL path.
+this was passed in via the query parameter "collection".
+This combination was removed.
 
-@RESTQUERYPARAM{type,string,optional}
+@RESTBODYPARAM{type,string,optional,}
 The type of the result. The following values are allowed:
 
   - *id*: returns an array of document ids (*_id* attributes)
@@ -29,7 +29,7 @@ not be relied on.
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200}
+@RESTRETURNCODE{201}
 All went well.
 
 @RESTRETURNCODE{404}
@@ -47,14 +47,15 @@ Return all document paths
     db.products.save({"hello1":"world1"});
     db.products.save({"hello2":"world1"});
     db.products.save({"hello3":"world1"});
-    var url = "/_api/document/" + cn;
+    var url = "/_api/simple/all-keys";
+    var body = {collection: cn};
 
-    var response = logCurlRequest('GET', url);
+    var response = logCurlRequest('PUT', url, body);
 
-    assert(response.code === 200);
+    assert(response.code === 201);
 
     logJsonResponse(response);
-  ~ db._drop(cn);
+    db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
 Return all document keys
@@ -67,14 +68,15 @@ Return all document keys
     db.products.save({"hello1":"world1"});
     db.products.save({"hello2":"world1"});
     db.products.save({"hello3":"world1"});
-    var url = "/_api/document/" + cn + "&type=key";
+    var url = "/_api/simple/all-keys";
+    var body = {collection: cn, type: "id"};
 
-    var response = logCurlRequest('GET', url);
+    var response = logCurlRequest('PUT', url, body);
 
-    assert(response.code === 200);
+    assert(response.code === 201);
 
     logJsonResponse(response);
-  ~ db._drop(cn);
+    db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
 Collection does not exist

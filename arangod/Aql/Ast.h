@@ -466,6 +466,9 @@ class Ast {
   /// FOR loop operand is actually a list
   AstNode* optimizeFor(AstNode*);
 
+  /// @brief optimizes an object literal or an object expression
+  AstNode* optimizeObject(AstNode*);
+
   /// @brief traverse the AST, using pre- and post-order visitors
   static AstNode* traverseAndModify(AstNode*,
                                     std::function<bool(AstNode const*, void*)>,

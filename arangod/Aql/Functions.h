@@ -29,6 +29,10 @@
 #include "Utils/AqlTransaction.h"
 
 namespace arangodb {
+namespace basics {
+class VPackStringBufferAdapter;
+}
+
 namespace aql {
 
 class Query;
@@ -49,6 +53,11 @@ struct Functions {
   /// @brief called when a query ends
   /// its responsibility is to clear any thread-local storage
   static void DestroyThreadContext();
+
+  /// @brief helper function. not callable as a "normal" AQL function
+  static void Stringify(arangodb::AqlTransaction* trx,
+                        arangodb::basics::VPackStringBufferAdapter& buffer,
+                        VPackSlice const& slice);
 
   static AqlValue IsNull(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          VPackFunctionParameters const&);
@@ -80,6 +89,8 @@ struct Functions {
                        VPackFunctionParameters const&);
   static AqlValue Nth(arangodb::aql::Query*, arangodb::AqlTransaction*,
                       VPackFunctionParameters const&);
+  static AqlValue Contains(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                           VPackFunctionParameters const&);
   static AqlValue Concat(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          VPackFunctionParameters const&);
   static AqlValue Like(arangodb::aql::Query*, arangodb::AqlTransaction*,
@@ -112,6 +123,8 @@ struct Functions {
                       VPackFunctionParameters const&);
   static AqlValue Average(arangodb::aql::Query*, arangodb::AqlTransaction*,
                           VPackFunctionParameters const&);
+  static AqlValue RandomToken(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
   static AqlValue Md5(arangodb::aql::Query*, arangodb::AqlTransaction*,
                       VPackFunctionParameters const&);
   static AqlValue Sha1(arangodb::aql::Query*, arangodb::AqlTransaction*,
@@ -144,6 +157,8 @@ struct Functions {
   static AqlValue ParseIdentifier(arangodb::aql::Query*,
                                   arangodb::AqlTransaction*,
                                   VPackFunctionParameters const&);
+  static AqlValue Slice(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                        VPackFunctionParameters const&);
   static AqlValue Minus(arangodb::aql::Query*, arangodb::AqlTransaction*,
                         VPackFunctionParameters const&);
   static AqlValue Document(arangodb::aql::Query*, arangodb::AqlTransaction*,

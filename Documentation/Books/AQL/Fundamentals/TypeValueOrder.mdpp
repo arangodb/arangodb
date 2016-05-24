@@ -9,7 +9,7 @@ data values if the operands have the same data types.
 
 The following type order is used when comparing data types:
 
-    null < bool < number < string < array < object / document
+    null < bool < number < string < array/list < object/document
 
 This means *null* is the smallest type in AQL and *document* is the type with
 the highest order. If the compared operands have a different type, then the

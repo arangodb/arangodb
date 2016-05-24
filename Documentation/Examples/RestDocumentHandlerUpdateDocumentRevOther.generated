@@ -1,4 +1,0 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/10407?rev=10411 &lt;&lt;EOF
-{"other":"content"}
-EOF
-

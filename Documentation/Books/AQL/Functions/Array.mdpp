@@ -1,220 +1,371 @@
 !CHAPTER Array functions
 
-AQL supports the following functions to operate on array values:
+AQL provides functions for higher-level array manipulation. Also see the
+[numeric functions](Numeric.md) for functions that work on number arrays.
+Apart from that, AQL also offers several language constructs:
 
-- *LENGTH(array)*: Returns the length (number of array elements) of *array*. If 
-  *array* is an object / document, returns the number of attribute keys of the document, 
-  regardless of their values. If *array* is a collection, returns the number of documents
-  in it.
-
-- *FLATTEN(array, depth)*: Turns an array of arrays into a flat array. All 
-  array elements in *array* will be expanded in the result array. Non-array elements 
-  are added as they are. The function will recurse into sub-arrays up to a depth of
-  *depth*. *depth* has a default value of 1.
-
-  *Examples*
-  
-      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ])
-
-    will produce:
-
-      [ 1, 2, 3, 4, 5, 6, 7, 8, [ 9, 10 ] ]
-
-    To fully flatten the array, use a *depth* of 2:
-      
-      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ], 2)
-
-    This will produce:
-      
-      [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
-
-- *REVERSE(array)*: Returns the elements in *array* in reversed order.
-
-- *FIRST(array)*: Returns the first element in *array* or *null* if the
-  array is empty.
-
-- *LAST(array)*: Returns the last element in *array* or *null* if the
-  array is empty.
-
-- *NTH(array, position)*: Returns the array element at position *position*.
-  Positions start at 0. If *position* is negative or beyond the upper bound of the array
-  specified by *array*, then *null* will be returned.
-
-- *POSITION(array, search, return-index)*: Returns the position of the
-  element *search* in *array*. Positions start at 0. If the element is not 
-  found, then *-1* is returned. If *return-index* is *false*, then instead of the
-  position only *true* or *false* are returned, depending on whether the sought element
-  is contained in the array.
-
-- *SLICE(array, start, length)*: Extracts a slice of the array specified
-  by *array*. The extraction will start at array element with position *start*. 
-  Positions start at 0. Up to *length* elements will be extracted. If *length* is
-  not specified, all array elements starting at *start* will be returned.
-  If *start* is negative, it can be used to indicate positions from the end of the
-  array.
-
-  *Examples*
-
-      SLICE([ 1, 2, 3, 4, 5 ], 0, 1)
-      
-    will return *[ 1 ]*
-  
-      SLICE([ 1, 2, 3, 4, 5 ], 1, 2)
-      
-    will return *[ 2, 3 ]*
-  
-      SLICE([ 1, 2, 3, 4, 5 ], 3) 
-  
-    will return *[ 4, 5 ]*
-  
-      SLICE([ 1, 2, 3, 4, 5 ], 1, -1) 
-      
-    will return *[ 2, 3, 4 ]*
-  
-      SLICE([ 1, 2, 3, 4, 5 ], 0, -2)
-      
-    will return *[ 1, 2, 3 ]*
-
-- *UNIQUE(array)*: Returns all unique elements in *array*. To determine
-  uniqueness, the function will use the comparison order.
-  Calling this function may return the unique elements in any order.
-
-- *UNION(array1, array2, ...)*: Returns the union of all arrays specified.
-  The function expects at least two array values as its arguments. The result is an array
-  of values in an undefined order.
-
-  Note: No duplicates will be removed. In order to remove duplicates, please use either
-  *UNION_DISTINCT* function or apply the *UNIQUE* on the result of *union*.
-
-  *Examples*
-
-      RETURN UNION(
-        [ 1, 2, 3 ],
-        [ 1, 2 ]
-      )
-
-    will produce:
-
-      [ [ 1, 2, 3, 1, 2 ] ]
-
-    with duplicate removal:
-
-      RETURN UNIQUE(
-        UNION(
-          [ 1, 2, 3 ],
-          [ 1, 2 ]
-        )
-      )
-  
-    will produce:
-
-      [ [ 1, 2, 3 ] ]
-
-- *UNION_DISTINCT(array1, array2, ...)*: Returns the union of distinct values of
-  all arrays specified. The function expects at least two array values as its arguments. 
-  The result is an array of values in an undefined order.
-
-- *MINUS(array1, array2, ...)*: Returns the difference of all arrays specified.
-  The function expects at least two array values as its arguments.
-  The result is an array of values that occur in the first array but not in any of the
-  subsequent arrays. The order of the result array is undefined and should not be relied on.
-  Note: duplicates will be removed.
-
-- *INTERSECTION(array1, array2, ...)*: Returns the intersection of all arrays specified.
-  The function expects at least two array values as its arguments.
-  The result is an array of values that occur in all arguments. The order of the result array
-  is undefined and should not be relied on.
-  
-  Note: Duplicates will be removed.
-
-- *APPEND(array, values, unique)*: Adds all elements from the array *values* to the array
-  specified by *array*. If *unique* is set to true, then only those *values* will be added
-  that are not already contained in *array*.
-  The modified array is returned. All values are added at the end of the array (right side).
-
-      /* [ 1, 2, 3, 5, 6, 9 ] */
-      APPEND([ 1, 2, 3 ], [ 5, 6, 9 ])
-
-      /* [ 1, 2, 3, 4, 5, 9 ] */
-      APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
-
-- *PUSH(array, value, unique)*: Adds *value* to the array specified by *array*. If
-  *unique* is set to true, then *value* is not added if already present in the array. 
-  The modified array is returned. The value is added at the end of the array (right side).
-
-  Note: non-unique elements will not be removed from the array if they were already present 
-  before the call to `PUSH`. The *unique* flag will only control if the value will
-  be added again to the array if already present. To make a array unique, use the `UNIQUE` 
-  function.
-
-      /* [ 1, 2, 3, 4 ] */
-      PUSH([ 1, 2, 3 ], 4)
-
-      /* [ 1, 2, 3 ] */
-      PUSH([ 1, 2, 3 ], 2, true)
-
-- *UNSHIFT(array, value, unique)*: Adds *value* to the array specified by *array*. If
-  *unique* is set to true, then *value* is not added if already present in the array.
-  The modified array is returned. The value is added at the start of the array (left side).
-  
-  Note: non-unique elements will not be removed from the array if they were already present 
-  before the call to `UNSHIFT`. The *unique* flag will only control if the value will
-  be added again to the array if already present. To make a array unique, use the `UNIQUE` 
-  function.
-
-      /* [ 4, 1, 2, 3 ] */
-      UNSHIFT([ 1, 2, 3 ], 4)
-
-      /* [ 1, 2, 3 ] */
-      UNSHIFT([ 1, 2, 3 ], 2, true)
-
-- *POP(array)*: Removes the element at the end (right side) of *array*. The modified array 
-  is returned. If the array is already empty or *null*, an empty array is returned. 
-
-      /* [ 1, 2, 3 ] */
-      POP([ 1, 2, 3, 4 ])
-
-- *SHIFT(array)*: Removes the element at the start (left side) of *array*. The modified array 
-  is returned. If the array is already empty or *null*, an empty array is returned. 
-
-      /* [ 2, 3, 4 ] */
-      SHIFT([ 1, 2, 3, 4 ])
-
-- *REMOVE_VALUE(array, value, limit)*: Removes all occurrences of *value* in the array
-  specified by *array*. If the optional *limit* is specified, only *limit* occurrences
-  will be removed.
-
-      /* [ "b", "b", "c" ] */
-      REMOVE_VALUE([ "a", "b", "b", "a", "c" ], "a")
-
-      /* [ "b", "b", "a", "c" ] */
-      REMOVE_VALUE([ "a", "b", "b", "a", "c" ], "a", 1)
-
-- *REMOVE_VALUES(array, values)*: Removes all occurrences of any of the values specified
-  in array *values* from the array specified by *array*.
- 
-      /* [ "b", "c", "e", "g" ] */
-      REMOVE_VALUES([ "a", "b", "c", "d", "e", "f", "g" ], [ "a", "f", "d" ])
-
-- *REMOVE_NTH(array, position)*: Removes the element at position *position* from the
-  array specified by *array*. Positions start at 0. Negative positions are supported, 
-  with -1 being the last array element. If *position* is out of bounds, the array is
-  returned unmodified. Otherwise, the modified array is returned.
- 
-      /* [ "a", "c", "d", "e" ] */
-      REMOVE_NTH([ "a", "b", "c", "d", "e" ], 1)
-
-      /* [ "a", "b", "c", "e" ] */
-      REMOVE_NTH([ "a", "b", "c", "d", "e" ], -2)
-
-
-Also see the [numeric functions](NumericFunctions.md) for more functions that work on
-number arrays. Apart from that, AQL also offers several language constructs:
-
-- [array operators](ArrayOperators.md) for array expansion and contraction, 
-- [array comparison operators](Operators.md#array-comparison-operators) to compare
+- simple [array access](../Fundamentals/DataTypes.md#arrays) of individual elements,
+- [array operators](../Advanced/ArrayOperators.md) for array expansion and contraction,
+  optionally with inline filter, limit and projection,
+- [array comparison operators](../Operators.md#array-comparison-operators) to compare
   each element in an array to a value or the elements of another array,
-- operations for array manipulations like [FOR](../Operations/For.md),
+- loop-based operations like [FOR](../Operations/For.md),
   [SORT](../Operations/Sort.md), [LIMIT](../Operations/Limit.md),
   as well as grouping with [COLLECT](../Operations/Collect.md),
   which also offers efficient aggregation.
+
+!SUBSECTION APPEND()
+
+`APPEND(anyArray, values, unique) → newArray`
+
+Add all elements of an array to another array. All values are added at the end of the
+array (right side).
+
+- **anyArray** (array): array with elements of arbitrary type
+- **values** (array): array, whose elements shall be added to *anyArray*
+- **unique** (bool, *optional*): if set to *true*, only those *values* will be added
+  that are not already contained in *anyArray*. The default is *false*.
+- returns **newArray** (array): the modified array
+
+```js
+APPEND([ 1, 2, 3 ], [ 5, 6, 9 ])
+// [ 1, 2, 3, 5, 6, 9 ]
+
+APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
+// [ 1, 2, 3, 4, 5, 9 ]
+```
+
+!SUBSECTION FIRST()
+
+`FIRST(anyArray) → firstElement`
+
+Get the first element of an array. It is the same as `anyArray[0]`.
+
+- **anyArray** (array): array with elements of arbitrary type
+- returns **firstElement** (any|null): the first element of *anyArray*, or *null* if
+  the array is empty.
+
+!SUBSECTION FLATTEN()
+
+`FLATTEN(anyArray, depth) → flatArray`
+
+Turn an array of arrays into a flat array. All array elements in *array* will be
+expanded in the result array. Non-array elements are added as they are. The function
+will recurse into sub-arrays up to the specified depth. Duplicates will not be removed.
+
+- **array** (array): array with elements of arbitrary type, including nested arrays
+- **depth** (number, *optional*):  flatten up to this many levels, the default is 1
+- returns **flatArray** (array): a flattened array
+
+```js
+FLATTEN( [ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ] )
+// [ 1, 2, 3, 4, 5, 6, 7, 8, [ 9, 10 ] ]
+```
+
+To fully flatten the example array, use a *depth* of 2:
+
+```js
+FLATTEN( [ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ], 2 )
+// [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
+```
+
+!SUBSECTION INTERSECTION()
+
+`INTERSECTION(array1, array2, ... arrayN) → newArray`
+
+Return the intersection of all arrays specified. The result is an array of values that
+occur in all arguments.
+
+- **arrays** (array, *repeatable*): an arbitrary number of arrays as multiple arguments
+  (at least 2)
+- returns **newArray** (array): a single array with only the elements, which exist in all
+  provided arrays. The element order is random. Duplicates are removed.
+
+!SUBSECTION LAST()
+
+`LAST(anyArray) → lastElement`
+
+Get the last element of an array. It is the same as `anyArray[-1]`.
+
+- **anyArray** (array): array with elements of arbitrary type
+- returns **lastElement** (any|null): the last element of *anyArray* or *null* if the
+  array is empty.
+
+!SUBSECTION LENGTH()
+
+`LENGTH(anyArray) → length`
+
+Determine the number of elements in an array,
+the [number of attribute keys](Document.md#length) of an object / document,
+the [amount of documents](Miscellaneous.md#length) in a collection,
+or the [character length](String.md#length) of a string.
+
+- **anyArray** (array): array with elements of arbitrary type
+- returns **length** (number): the number of array elements in *anyArray*.
+
+!SUBSECTION MINUS()
+
+`MINUS(array1, array2, ... arrayN) → newArray`
+
+Return the difference of all arrays specified.
+
+- **arrays** (array, *repeatable*): an arbitrary of arrays as multiple arguments,
+  at least two
+- returns **newArray** (array): an array of values that occur in the first array,
+  but not in any of the subsequent arrays. The order of the result array is undefined
+  and should not be relied on. Duplicates will be removed.
+
+!SUBSECTION NTH()
+
+`NTH(anyArray, position) → nthElement`
+
+Get the element of an array at a given position. It is the same as `anyArray[position]`
+for positive positions, but does not support negative positions.
+
+- **anyArray** (array): array with elements of arbitrary type
+- **position** (number): position of desired element in array, positions start at 0
+- returns **nthElement** (any|null): the array element at the given *position*.
+  If *position* is negative or beyond the upper bound of the array,
+  then *null* will be returned.
+
+!SUBSECTION POP()
+
+`POP(anyArray) → newArray`
+
+Remove the element at the end (right side) of *array*.
+
+- **anyArray** (array): an array with elements of arbitrary type
+- returns **newArray** (array): *anyArray* without the last element. If it's already
+  empty or has only a single element left, an empty array is returned.
+
+```js
+POP( [ 1, 2, 3, 4 ] ) // [ 1, 2, 3 ]
+POP( [ 1 ] ) // []
+```
+
+!SUBSECTION POSITION()
+
+`POSITION(anyArray, search, returnIndex) → position`
+
+Return whether *search* is contained in *array*. Optionally return the position.
+
+- **anyArray** (array): the haystack, an array with elements of arbitrary type
+- **search** (any): the needle, an element of arbitrary type
+- **returnIndex** (bool, *optional*): if set to *true*, the position of the match
+  is returned instead of a boolean. The default is *false*.
+- returns **position** (bool|number): *true* if *search* is contained in *anyArray*,
+  *false* otherwise. If *returnIndex* is enabled, the position of the match is
+  returned (positions start at 0), or *-1* if it's not found.
+
+!SUBSECTION PUSH()
+
+`PUSH(anyArray, value, unique) → newArray`
+
+Append *value* to the array specified by *anyArray*.
+
+- **anyArray** (array): array with elements of arbitrary type
+- **value** (any): an element of arbitrary type
+- **unique** (bool): if set to *true*, then *value* is not added if already
+  present in the array. The default is *false*.
+- returns **newArray** (array): *anyArray* with *value* added at the end
+  (right side)
+
+Note: The *unique* flag only controls if *value* is added if it's already present
+in *anyArray*. Duplicate elements that already exist in *anyArray* will not be
+removed. To make an array unique, use the [UNIQUE()](#unique) function.
+
+```js
+PUSH([ 1, 2, 3 ], 4)
+// [ 1, 2, 3, 4 ]
+
+PUSH([ 1, 2, 2, 3 ], 2, true)
+// [ 1, 2, 2, 3 ]
+```
+
+!SUBSECTION REMOVE_NTH()
+
+`REMOVE_NTH(anyArray, position) → newArray`
+
+Remove the element at *position* from the *anyArray*.
+
+- **anyArray** (array): array with elements of arbitrary type
+- **position** (number): the position of the element to remove. Positions start
+  at 0. Negative positions are supported, with -1 being the last array element.
+  If *position* is out of bounds, the array is returned unmodified.
+- returns **newArray** (array): *anyArray* without the element at *position*
+
+```js
+REMOVE_NTH( [ "a", "b", "c", "d", "e" ], 1 )
+// [ "a", "c", "d", "e" ]
+
+REMOVE_NTH( [ "a", "b", "c", "d", "e" ], -2 )
+// [ "a", "b", "c", "e" ]
+```
+
+!SUBSECTION REMOVE_VALUE()
+
+`REMOVE_VALUE(anyArray, value, limit) → newArray`
+
+Remove all occurrences of *value* in *anyArray*. Optionally with a *limit*
+to the number of removals.
+
+- **anyArray** (array): array with elements of arbitrary type
+- **value** (any): an element of arbitrary type
+- **limit** (number, *optional*): cap the number of removals to this value
+- returns **newArray** (array): *anyArray* with *value* removed
+
+```js
+REMOVE_VALUE( [ "a", "b", "b", "a", "c" ], "a" )
+// [ "b", "b", "c" ]
+
+REMOVE_VALUE( [ "a", "b", "b", "a", "c" ], "a", 1 )
+// [ "b", "b", "a", "c" ]
+```
+
+!SUBSECTION REMOVE_VALUES()
+
+`REMOVE_VALUES(anyArray, values) → newArray`
+
+Remove all occurrences of any of the *values* from *anyArray*.
+
+- **anyArray** (array): array with elements of arbitrary type
+- **values** (array): an array with elements of arbitrary type, that shall
+  be removed from *anyArray*
+- returns **newArray** (array): *anyArray* with all individual *values* removed
+
+```js
+REMOVE_VALUES( [ "a", "a", "b", "c", "d", "e", "f" ], [ "a", "f", "d" ] )
+// [ "b", "c", "e" ]
+```
+
+!SUBSECTION REVERSE()
+
+`REVERSE(anyArray) → reversedArray`
+
+Return an array with its elements reversed.
+
+- **anyArray** (array): array with elements of arbitrary type
+- returns **reversedArray** (array): a new array with all elements of *anyArray* in
+  reversed order
+
+!SUBSECTION SHIFT()
+
+`SHIFT(anyArray) → newArray`
+
+Remove the element at the start (left side) of *anyArray*.
+
+- **anyArray** (array): array with elements with arbitrary type
+- returns **newArray** (array): *anyArray* without the left-most element. If *anyArray*
+  is already empty or has only one element left, an empty array is returned.
+
+```js
+SHIFT( [ 1, 2, 3, 4 ] ) // [ 2, 3, 4 ]
+SHIFT( [ 1 ] ) // []
+```
+
+!SUBSECTION SLICE()
+
+`SLICE(anyArray, start, length) → newArray`
+
+Extract a slice of *anyArray*.
+
+- **anyArray** (array): array with elements of arbitrary type
+- **start** (number): start extraction at this element. Positions start at 0.
+  Negative values indicate positions from the end of the array.
+- **length** (number, *optional*): extract up to *length* elements, or all
+  elements from *start* up to *length* if negative (exclusive)
+- returns **newArray** (array): the specified slice of *anyArray*. If *length*
+  is not specified, all array elements starting at *start* will be returned.
+
+```js
+SLICE( [ 1, 2, 3, 4, 5 ], 0, 1 ) // [ 1 ]
+SLICE( [ 1, 2, 3, 4, 5 ], 1, 2 ) // [ 2, 3 ]
+SLICE( [ 1, 2, 3, 4, 5 ], 3 ) // [ 4, 5 ]
+SLICE( [ 1, 2, 3, 4, 5 ], 1, -1 ) // [ 2, 3, 4 ]
+SLICE( [ 1, 2, 3, 4, 5 ], 0, -2 ) // [ 1, 2, 3 ]
+SLICE( [ 1, 2, 3, 4, 5 ], -3, 2 ) // [ 3, 4 ]
+```
+
+!SUBSECTION UNION()
+
+`UNION(array1, array2, ... arrayN) → newArray`
+
+Return the union of all arrays specified.
+
+- **arrays** (array, *repeatable*): an arbitrary number of arrays as multiple
+  arguments, at least 2
+- returns **newArray** (array): all array elements combined in a single array,
+  in any order
+
+```js
+UNION(
+    [ 1, 2, 3 ],
+    [ 1, 2 ]
+)
+// [ 1, 2, 3, 1, 2 ]
+```
+
+Note: No duplicates will be removed. In order to remove duplicates, please use
+either [UNION_DISTINCT()](#uniondistinct) or apply [UNIQUE()](#unique) on the
+result of *UNION()*:
+
+```js
+UNIQUE(
+    UNION(
+        [ 1, 2, 3 ],
+        [ 1, 2 ]
+    )
+)
+// [ 1, 2, 3 ]
+```
+
+!SUBSECTION UNION_DISTINCT()
+
+`UNION_DISTINCT(array1, array2, ... arrayN) → newArray`
+
+Return the union of distinct values of all arrays specified.
+
+- **arrays** (array, *repeatable*): an arbitrary number of arrays as multiple
+  arguments, at least 2
+- returns **newArray** (array): the elements of all given arrays in a single
+  array, without duplicates, in any order
+
+```js
+UNION_DISTINCT(
+    [ 1, 2, 3 ],
+    [ 1, 2 ]
+)
+// [ 1, 2, 3 ]
+```
+
+!SUBSECTION UNIQUE()
+
+`UNIQUE(anyArray) → newArray`
+
+Return all unique elements in *anyArray*. To determine uniqueness, the
+function will use the comparison order.
+
+- **anyArray** (array): array with elements of arbitrary type
+- returns **newArray** (array): *anyArray* without duplicates, in any order
+
+!SUBSECTION UNSHIFT()
+
+`UNSHIFT(anyArray, value, unique) → newArray`
+
+Prepend *value* to *anyArray*.
+
+- **anyArray** (array): array with elements of arbitrary type
+- **value** (any): an element of arbitrary type
+- **unique** (bool): if set to *true*, then *value* is not added if already
+  present in the array. The default is *false*.
+- returns **newArray** (array): *anyArray* with *value* added at the start
+  (left side)
+
+Note: The *unique* flag only controls if *value* is added if it's already present
+in *anyArray*. Duplicate elements that already exist in *anyArray* will not be
+removed. To make an array unique, use the [UNIQUE()](#unique) function.
+
+```js
+UNSHIFT( [ 1, 2, 3 ], 4 ) // [ 4, 1, 2, 3 ]
+UNSHIFT( [ 1, 2, 3 ], 2, true ) // [ 1, 2, 3 ]
+```

@@ -76,4 +76,4 @@ Checks whether a fulltext index on the given attribute *attribute* exists.
 
 !SECTION Fulltext AQL Functions
 
-Fulltext AQL functions are detailed in [Fulltext functions](../Aql/FulltextFunctions.md).
+Fulltext AQL functions are detailed in [Fulltext functions](../../AQL/Functions/Fulltext.html).

@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global arangoHelper, Backbone, templateEngine, $, window*/
+/*global frontendConfig, arangoHelper, Backbone, templateEngine, $, window*/
 (function () {
   "use strict";
 
@@ -11,6 +11,7 @@
       "click .tab"                    : "navigateByTab",
       "mouseenter .dropdown"          : "showDropdown",
       "mouseleave .dropdown"          : "hideDropdown",
+      "click #userLogoutIcon"         : "userLogout",
       "click #userLogout"             : "userLogout"
     },
 
@@ -53,6 +54,11 @@
     },
 
     render: function () {
+
+      if (frontendConfig.authenticationEnabled === false) {
+        return;
+      }
+
       var self = this;
 
       var callback = function(error, username) {

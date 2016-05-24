@@ -508,7 +508,7 @@
                 "new-replication-factor",
                 "Replication factor",
                 "",
-                "Numeric value. Default is '1'. Description: TODO",
+                "Numeric value. Must be at least 1. Description: TODO",
                 "",
                 false,
                 [

@@ -2,7 +2,7 @@
 /*global fail, assertEqual, assertTrue, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the unique constraint
+/// @brief test the hash index
 ///
 /// @file
 ///
@@ -303,7 +303,6 @@ function HashIndexSuite() {
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites

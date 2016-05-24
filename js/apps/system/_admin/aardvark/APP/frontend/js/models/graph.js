@@ -1,4 +1,4 @@
-/*global window, Backbone, $ */
+/*global window, Backbone, $, arangoHelper */
 (function() {
   "use strict";
 
@@ -6,7 +6,7 @@
 
     idAttribute: "_key",
 
-    urlRoot: "/_api/gharial",
+    urlRoot: arangoHelper.databaseUrl("/_api/gharial"),
 
     isNew: function() {
       return !this.get("_id");

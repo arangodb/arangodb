@@ -41,8 +41,10 @@ module.exports = router;
 
 
 router.use((req, res, next) => {
-  if (!req.session.uid) {
-    res.throw('unauthorized');
+  if (global.AUTHENTICATION_ENABLED()) {
+    if (!req.session.uid) {
+      res.throw('unauthorized');
+    }
   }
   next();
 });

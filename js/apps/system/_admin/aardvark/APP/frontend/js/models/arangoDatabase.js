@@ -1,4 +1,4 @@
-/*global window, Backbone */
+/*global window, Backbone, arangoHelper */
 
 window.DatabaseModel = Backbone.Model.extend({
 
@@ -20,7 +20,7 @@ window.DatabaseModel = Backbone.Model.extend({
     return Backbone.sync(method, model, options);
   },
 
-  url: "/_api/database",
+  url: arangoHelper.databaseUrl("/_api/database"),
 
   defaults: {
   }

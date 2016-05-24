@@ -58,6 +58,7 @@ build/bin/arangod \
   --server.statistics false \
   --server.threads 16 \
   --agency.compaction-step-size 100 \
+  --log.force-direct true \
   > cluster/4001.stdout 2>&1 &
 sleep 1
 
@@ -81,6 +82,7 @@ start() {
                 --log.file cluster/$PORT.log \
                 --log.level info \
                 --server.statistics false \
+                --server.threads 5 \
                 --javascript.startup-directory ./js \
                 --server.authentication false \
                 --javascript.app-path ./js/apps \
@@ -107,6 +109,7 @@ startTerminal() {
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
                 --server.statistics false \
+                --server.threads 5 \
                 --javascript.startup-directory ./js \
                 --javascript.app-path ./js/apps \
                 --server.authentication false \
@@ -132,6 +135,7 @@ startDebugger() {
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
                 --server.statistics false \
+                --server.threads 5 \
                 --javascript.startup-directory ./js \
                 --javascript.app-path ./js/apps \
                 --server.authentication false &
@@ -158,6 +162,7 @@ startRR() {
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
                 --server.statistics false \
+                --server.threads 5 \
                 --javascript.startup-directory ./js \
                 --javascript.app-path ./js/apps \
                 --server.authentication false \

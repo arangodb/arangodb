@@ -104,9 +104,17 @@ js/apps/*
 !js/apps/system/_admin/aardvark/APP/build/*
 !js/apps/system/_admin/aardvark/APP/frontend/build
 !js/apps/system/_admin/aardvark/APP/frontend/build/*
-!js/apps/system/_admin/aardvark/APP/clusterFrontend/build
-!js/apps/system/_admin/aardvark/APP/clusterFrontend/build/*
 js/apps/system/_admin/aardvark/APP/node_modules/*
+
+js/apps/system/_admin/aardvark/APP/frontend/build/app.js
+js/apps/system/_admin/aardvark/APP/frontend/build/app.js.gz
+js/apps/system/_admin/aardvark/APP/frontend/build/extra.css
+js/apps/system/_admin/aardvark/APP/frontend/build/extra.css.gz
+js/apps/system/_admin/aardvark/APP/frontend/build/index.html
+js/apps/system/_admin/aardvark/APP/frontend/build/libs.js
+js/apps/system/_admin/aardvark/APP/frontend/build/libs.js.gz
+js/apps/system/_admin/aardvark/APP/frontend/build/style.css
+js/apps/system/_admin/aardvark/APP/frontend/build/scripts.html.part
 
 3rdParty/etcd/src/
 

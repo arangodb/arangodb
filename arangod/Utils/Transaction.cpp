@@ -606,7 +606,8 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
 #ifdef ARANGODB_ENABLE_ROCKSDB
 rocksdb::Transaction* Transaction::rocksTransaction() {
   if (_trx->_rocksTransaction == nullptr) {
-    _trx->_rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
+    _trx->_rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(
+      rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
   }
   return _trx->_rocksTransaction;
 }
@@ -1673,8 +1674,8 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
       }
       auto cc = arangodb::ClusterComm::instance();
       size_t nrDone = 0;
-      size_t nrGood = cc->performRequests(requests, 15.0, nrDone,
-                                          Logger::REPLICATION);
+      size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT, 
+                                          nrDone, Logger::REPLICATION);
       if (nrGood < followers->size()) {
         // we drop all followers that were not successful:
         for (size_t i = 0; i < followers->size(); ++i) {
@@ -2024,7 +2025,7 @@ OperationResult Transaction::modifyLocal(
           path, body);
     }
     size_t nrDone = 0;
-    size_t nrGood = cc->performRequests(requests, 15.0, nrDone,
+    size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT, nrDone,
                                         Logger::REPLICATION);
     if (nrGood < followers->size()) {
       // we drop all followers that were not successful:
@@ -2281,7 +2282,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
                             path, body);
     }
     size_t nrDone = 0;
-    size_t nrGood = cc->performRequests(requests, 15.0, nrDone,
+    size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT, nrDone,
                                         Logger::REPLICATION);
     if (nrGood < followers->size()) {
       // we drop all followers that were not successful:
@@ -2496,8 +2497,8 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
                               path, body);
       }
       size_t nrDone = 0;
-      size_t nrGood = cc->performRequests(requests, 15.0, nrDone,
-                                          Logger::REPLICATION);
+      size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
+                                          nrDone, Logger::REPLICATION);
       if (nrGood < followers->size()) {
         // we drop all followers that were not successful:
         for (size_t i = 0; i < followers->size(); ++i) {
@@ -2577,14 +2578,16 @@ OperationResult Transaction::countLocal(std::string const& collectionName) {
  
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
-  VPackBuilder resultBuilder;
-  resultBuilder.add(VPackValue(document->size()));
+  uint64_t num = document->_numberDocuments;
 
   res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
   
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.add(VPackValue(num));
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
 }

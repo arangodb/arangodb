@@ -207,8 +207,8 @@ class CollectorThread : public Thread {
   /// @brief update a collection's datafile information
   int updateDatafileStatistics(TRI_document_collection_t*, CollectorCache*);
 
-  /// @brief sync the journals of a collection
-  int syncDatafileCollection(struct TRI_document_collection_t*);
+  /// @brief sync the journal of a collection
+  int syncJournalCollection(struct TRI_document_collection_t*);
 
   /// @brief get the next free position for a new marker of the specified size
   char* nextFreeMarkerPosition(struct TRI_document_collection_t*,

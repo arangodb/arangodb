@@ -253,7 +253,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 
   if (slice.isObject()) {  // single document case
     std::string const rev =
-        VelocyPackHelper::getStringValue(slice, StaticStrings::KeyString, "");
+        VelocyPackHelper::getStringValue(slice, StaticStrings::RevString, "");
     _response->setHeaderNC(StaticStrings::Etag, "\"" + rev + "\"");
   }
   VPackBuilder builder;
@@ -291,8 +291,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   builder.openObject();
   builder.add(StaticStrings::IdString,
               VPackValue(assembleDocumentId(collectionName, key, false)));
-  builder.add(StaticStrings::KeyString, VPackValue(std::to_string(rev)));
-  builder.add(StaticStrings::RevString, VPackValue(key));
+  builder.add(StaticStrings::KeyString, VPackValue(key));
+  builder.add(StaticStrings::RevString, VPackValue(std::to_string(rev)));
   builder.close();
 
   generatePreconditionFailed(builder.slice());

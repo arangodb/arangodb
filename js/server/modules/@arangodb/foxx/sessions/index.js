@@ -84,7 +84,8 @@ module.exports = function sessionMiddleware(cfg) {
   assert(transports.length > 0, 'Must specify at least one session transport');
   const autoCreate = cfg.autoCreate !== false;
   return {
-    config: {storage, transport: transports},
+    storage,
+    transport: transports,
     register() {
       return (req, res, next) => {
         let sid = null;
@@ -106,6 +107,7 @@ module.exports = function sessionMiddleware(cfg) {
             payload = {};
           }
         }
+        req.sessionStorage = storage;
         req.session = payload;
         next();
         if (req.session) {

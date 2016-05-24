@@ -36,10 +36,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
 
-        collections = doc.parsed_response['collections']
-        names = doc.parsed_response['names']
-
-        collections.length.should eq(names.length)
+        collections = doc.parsed_response["result"];
 
         total = 0
         realCollections = [ ]
@@ -50,21 +47,8 @@ describe ArangoDB do
           total = total + 1
         }
 
-        realNames = { }
-        names.each do |name, collection| 
-          if [ "units", "employees", "locations" ].include? name
-            realNames[name] = collection
-          end
-        end
-
-        for collection in realCollections do
-          realNames[collection['name']].should eq(collection)
-        end
-        
         realCollections.length.should eq(3)
-        realNames.length.should eq(3)
         total.should be > 3
-
       end
 
       it "returns all collections, exclude system collections" do
@@ -76,10 +60,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
         
-        collections = doc.parsed_response['collections']
-        names = doc.parsed_response['names']
-        collections.length.should eq(names.length)
-
+        collections = doc.parsed_response["result"]
         realCollections = [ ]
 
         total = 0
@@ -90,16 +71,7 @@ describe ArangoDB do
           total = total + 1
         }
 
-        realNames = { }
-        names.each do |name, collection| 
-          if [ "units", "employees", "locations" ].include? name
-            realNames[name] = collection
-          end
-        end
-
         realCollections.length.should eq(3)
-        realNames.length.should eq(3)
-        
         total.should >= 3
       end
 

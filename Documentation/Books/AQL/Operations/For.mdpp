@@ -14,7 +14,7 @@ There also is a special case for graph traversals:
 FOR vertex-variable-name, edge-variable-name, path-variable-name IN traversal-expression
 ```
 
-For this special case see [the graph traversals chapter](../Aql/GraphTraversals.md).
+For this special case see [the graph traversals chapter](../Graphs/Traversals.md).
 For all other cases read on:
 
 Each array element returned by *expression* is visited exactly once. It is

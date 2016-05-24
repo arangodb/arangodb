@@ -46,6 +46,7 @@ const functionsDocumentation = {
   "replication_ongoing": "replication ongoing tests",
   "replication_static": "replication static tests",
   "replication_sync": "replication sync tests",
+  "resilience": "resilience tests",
   "shell_client": "shell client tests",
   "shell_replication": "shell replication tests",
   "shell_server": "shell server tests",
@@ -71,7 +72,7 @@ const optionsDocumentation = [
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipArangoBenchNonConnKeepAlive`: if set to true benchmark do not use keep-alive',
   '   - `skipArangoBench`: if set to true benchmark tests are skipped',
-  '   - `skipAuthenication : testing authentication and authentication_paramaters will be skipped.',
+  '   - `skipAuthentication : testing authentication and authentication_paramaters will be skipped.',
   '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipConfig`: omit the noisy configuration tests',
   '   - `skipFoxxQueues`: omit the test for the foxx queues',
@@ -108,6 +109,8 @@ const optionsDocumentation = [
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '   - `rspec`: the location of rspec program',
   '   - `ruby`: the location of ruby program; if empty start rspec directly',
+  '',
+  '   - `rr`: if set to true arangod instances are run with rr',
   '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer tomeouts',
@@ -147,13 +150,14 @@ const optionsDefaults = {
   "onlyNightly": false,
   "password": "",
   "replication": false,
+  "rr": false,
   "rspec": "rspec",
   "ruby": "",
   "sanitizer": false,
   "skipAql": false,
   "skipArangoBench": false,
   "skipArangoBenchNonConnKeepAlive": true,
-  "skipAuthenication": false,
+  "skipAuthentication": false,
   "skipBoost": false,
   "skipGeo": false,
   "skipLogAnalysis": false,
@@ -290,6 +294,7 @@ function makeArgsArangod(options, appDir) {
     "javascript.app-path": appDir,
     "javascript.startup-directory": JS_DIR,
     "javascript.v8-contexts": "5",
+    "http.trusted-origin": "all",
     "log.level": "warning",
     "server.allow-use-database": "true",
     "server.authentication": "false",
@@ -894,8 +899,11 @@ function executeValgrind(cmd, args, options, valgrindTest) {
 
     args = toArgv(valgrindOpts, true).concat([cmd]).concat(args);
     cmd = options.valgrind;
+  } else if (options.rr) {
+    args = [cmd].concat(args);
+    cmd = "rr";
   }
-  
+
   if (options.extremeVerbosity) {
     print("starting process " + cmd + " with arguments: " + JSON.stringify(args));
   }
@@ -1737,6 +1745,14 @@ function findTests() {
       return fs.join(makePathUnix("js/client/tests/agency"), x);
     }).sort();
 
+  testsCases.resilience = _.filter(fs.list(makePathUnix("js/server/tests/resilience")),
+    function(p) {
+      return p.substr(-3) === ".js";
+    }).map(
+    function(x) {
+      return fs.join(makePathUnix("js/server/tests/resilience"), x);
+    }).sort();
+
   testsCases.server = testsCases.common.concat(testsCases.server_only);
   testsCases.client = testsCases.common.concat(testsCases.client_only);
 
@@ -2215,7 +2231,7 @@ testFuncs.arangobench = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.authentication = function(options) {
-  if (options.skipAuthenication === true) {
+  if (options.skipAuthentication === true) {
     print("skipping Authentication tests!");
 
     return {
@@ -2299,7 +2315,7 @@ function checkBodyForJsonToParse(request) {
 }
 
 testFuncs.authentication_parameters = function(options) {
-  if (options.skipAuthenication === true) {
+  if (options.skipAuthentication === true) {
     print(CYAN + "skipping Authentication with parameters tests!" + RESET);
     return {
       authentication_parameters: {
@@ -2480,12 +2496,15 @@ testFuncs.config = function(options) {
     }
   };
 
-  const ts = ["arangod",
+  const ts = [
+    "arangod",
     "arangobench",
     "arangodump",
     "arangoimp",
     "arangorestore",
-    "arangosh"
+    "arangosh",
+    "arango-dfdb",
+    "foxx-manager"
   ];
 
   print("--------------------------------------------------------------------------------");
@@ -3046,6 +3065,7 @@ const recoveryTests = [
   "collections-reuse",
   "collections-different-attributes",
   "indexes-hash",
+  "indexes-rocksdb",
   "indexes-sparse-hash",
   "indexes-skiplist",
   "indexes-sparse-skiplist",
@@ -3260,6 +3280,20 @@ testFuncs.replication_sync = function(options) {
   print("done.");
 
   return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: resilience
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.resilience = function(options) {
+  findTests();
+  options.propagateInstanceInfo = true;
+  options.cluster = true;
+  if (options.clusterNodes < 5) {
+    options.clusterNodes = 5;
+  }
+  return performTests(options, testsCases.resilience, 'resilience');
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -32,18 +32,12 @@ var arangodb = require("@arangodb");
 var actions = require("@arangodb/actions");
 var cluster = require("@arangodb/cluster");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a prefixed URL
 ////////////////////////////////////////////////////////////////////////////////
 
 function databasePrefix (req, url) {
-  if (req.hasOwnProperty('compatibility') && req.compatibility < 10400) {
-    // pre 1.4-style location response (e.g. /_api/collection/xyz)
-    return url;
-  }
-
-  // 1.4-style location response (e.g. /_db/dbname/_api/collection/xyz)
+  // location response (e.g. /_db/dbname/_api/collection/xyz)
   return "/_db/" + encodeURIComponent(arangodb.db._name()) + url;
 }
 
@@ -71,6 +65,7 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
     if (cluster.isCoordinator()) {
       result.shardKeys = properties.shardKeys;
       result.numberOfShards = properties.numberOfShards;
+      result.replicationFactor = properties.replicationFactor;
     }
   }
 
@@ -112,7 +107,7 @@ function parseBodyForCreateCollection (req, res) {
   else {
     r.name = body.name;
   }
-  r.parameters = { waitForSync : false };
+  r.parameters = { waitForSync : require("internal").options()["database.wait-for-sync"] };
   r.type = arangodb.ArangoCollection.TYPE_DOCUMENT;
 
   if (body.hasOwnProperty("doCompact")) {
@@ -241,9 +236,6 @@ function post_api_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_collections (req, res) {
-  var i;
-  var list = [];
-  var names = {};
   var excludeSystem;
   var collections = arangodb.db._collections();
 
@@ -255,20 +247,18 @@ function get_api_collections (req, res) {
     }
   }
 
-  for (i = 0;  i < collections.length;  ++i) {
+  var list = [];
+  for (var i = 0;  i < collections.length;  ++i) {
     var collection = collections[i];
     var rep = collectionRepresentation(collection);
 
     // include system collections or exclude them?
     if (! excludeSystem || rep.name.substr(0, 1) !== '_') {
       list.push(rep);
-      names[rep.name] = rep;
     }
   }
 
-  var result = { collections : list, names : names };
-
-  actions.resultOk(req, res, actions.HTTP_OK, result);
+  actions.resultOk(req, res, actions.HTTP_OK, { result : list });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

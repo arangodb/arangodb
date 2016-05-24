@@ -28,6 +28,7 @@ test -f ${OUTPUT} || exit 1
 cat ${OUTPUT} \
   | sed -e 's:yy_n_chars, (size_t) num_to_read );:yy_n_chars, (int) num_to_read );:' \
   | sed -e 's:int yyl;:size_t yyl;:' \
+  | sed -e 's:(int) (yyg->yy_n_chars + number_to_move):(yy_size_t) (yyg->yy_n_chars + number_to_move):' \
   | sed -e 's:register ::g' \
   > ${OUTPUT}.tmp
 

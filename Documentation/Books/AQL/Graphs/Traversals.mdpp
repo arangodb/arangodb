@@ -18,7 +18,7 @@ For all vertices that where visited during this process in the range between *mi
 Let's take a look at a simple example to explain how it works.
 This is the graph that we are going to traverse:
 
-![traversal graph](../Graphs/traversal_graph.png)
+![traversal graph](../../Users/Graphs/traversal_graph.png)
 
 Now we use the following parameters for our query:
 
@@ -27,36 +27,36 @@ Now we use the following parameters for our query:
 3. We use a *max-depth* of 2.
 4. We follow only *outbound* direction of edges
 
-![traversal graph step 1](../Graphs/traversal_graph1.png)
+![traversal graph step 1](../../Users/Graphs/traversal_graph1.png)
 
 Now it walks to one of the direct neighbors of **A**, say **B** (NOTE: ordering is not guaranteed):
 
-![traversal graph step 2](../Graphs/traversal_graph2.png)
+![traversal graph step 2](../../Users/Graphs/traversal_graph2.png)
 
 The query will remember the state (red circle) and will emit the first result **A** -> **B** (black box).
 This will also prevent the traverser to be trapped in cycles.
 Now again it will visit one of the direct neighbors of **B**, say **E**:
 
-![traversal graph step 3](../Graphs/traversal_graph3.png)
+![traversal graph step 3](../../Users/Graphs/traversal_graph3.png)
 
 We have limited the query with a *max-depth* of *2* then it will not pick any neighbor of **E** as the path from **A** to **E** already requires *2* steps.
 Instead we will go back one level to **B** and continue with any other direct neighbor there:
 
-![traversal graph step 4](../Graphs/traversal_graph4.png)
+![traversal graph step 4](../../Users/Graphs/traversal_graph4.png)
 
 Again after we produced this result we will step back to **B**.
 But there is no neighbor of **B** left that we have not yet visited.
 Hence we go another step back to **A** and continue with any other neighbor there.
 
-![traversal graph step 5](../Graphs/traversal_graph5.png)
+![traversal graph step 5](../../Users/Graphs/traversal_graph5.png)
 
 And identical to the iterations before we will visit **H**:
 
-![traversal graph step 6](../Graphs/traversal_graph6.png)
+![traversal graph step 6](../../Users/Graphs/traversal_graph6.png)
 
 And **J**:
 
-![traversal graph step 7](../Graphs/traversal_graph7.png)
+![traversal graph step 7](../../Users/Graphs/traversal_graph7.png)
 
 And after these steps there is no further result left.
 So all together this query has returned the following paths:
@@ -72,7 +72,7 @@ So all together this query has returned the following paths:
 !SUBSECTION Syntax
 
 Now let's see how we can write a query that follows this schema.
-You have two options here, you can either use a named graph (see [the graphs chapter](../Graphs/README.md) on how to create it) or anonymous graphs.
+You have two options here, you can either use a named graph (see [the graphs chapter](index.html) on how to create it) or anonymous graphs.
 
 !SUBSUBSECTION Working on named graphs:
 
@@ -81,18 +81,18 @@ You have two options here, you can either use a named graph (see [the graphs cha
  `OUTBOUND|INBOUND|ANY` startVertex
  `GRAPH` graphName
 
- - `FOR` - emits up to three variables:
-   - **vertex**: the current vertex in a traversal
-   - **edge**: *(optional)* the current edge in a traversal
-   - **path**: *(optional, requires edge to be present)* an object representing the current path with two members:
-     - `vertices`: an array of all vertices on this path.
-     - `edges`: an array of all edges on this path.
- - `IN` `MIN`..`MAX` `OUTBOUND` startVertex `GRAPH` graphName
-   - `OUTBOUND|INBOUND|ANY` traversal will be done for outbound / inbound / inbound+outbound pointing edges
-   - **startVertex**: one vertex where the traversal will originate from, this can be specified in the form of an id string or in the form of a document with the attribute `_id`. All other values will lead to a warning and an empty result. If the specified id does not exist, the result is empty as well and there is no warning.
-   - **graphName**: the name identifying the named graph. It's vertex and edge collections will be looked up.
-   - `MIN`: edges and vertices returned by this query will start at the traversal depth of `MIN` (thus edges and vertices below will not be returned). If not specified, defaults to `1`, which is the minimal possible value.
-   - `MAX`: up to `MAX` length paths are traversed. If omitted in the query, `MAX` equals `MIN`. Thus only the vertices and edges in the range of `MIN` are returned.
+- `FOR` - emits up to three variables:
+  - **vertex**: the current vertex in a traversal
+  - **edge**: *(optional)* the current edge in a traversal
+  - **path**: *(optional, requires edge to be present)* an object representing the current path with two members:
+    - `vertices`: an array of all vertices on this path.
+    - `edges`: an array of all edges on this path.
+- `IN` `MIN`..`MAX` `OUTBOUND` startVertex `GRAPH` graphName
+  - `OUTBOUND|INBOUND|ANY` traversal will be done for outbound / inbound / inbound+outbound pointing edges
+  - **startVertex**: one vertex where the traversal will originate from, this can be specified in the form of an id string or in the form of a document with the attribute `_id`. All other values will lead to a warning and an empty result. If the specified id does not exist, the result is empty as well and there is no warning.
+  - **graphName**: the name identifying the named graph. It's vertex and edge collections will be looked up.
+  - `MIN`: edges and vertices returned by this query will start at the traversal depth of `MIN` (thus edges and vertices below will not be returned). If not specified, defaults to `1`, which is the minimal possible value.
+  - `MAX`: up to `MAX` length paths are traversed. If omitted in the query, `MAX` equals `MIN`. Thus only the vertices and edges in the range of `MIN` are returned.
 
 !SUBSUBSECTION Working on collection sets:
 
@@ -171,7 +171,7 @@ This is because for all results in depth `1` the second edge does not exist and 
 
 !SUBSUBSECTION Examples
 We will create a simple symmetric traversal demonstration graph:
-![traversal graph](../Graphs/traversal_graph.png)
+![traversal graph](../../Users/Graphs/traversal_graph.png)
 
     @startDocuBlockInline GRAPHTRAV_01_create_graph
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_01_create_graph}
@@ -260,7 +260,8 @@ Due to this we will see duplicate nodes in the result.
 
 !SUBSUBSECTION Use the AQL explainer for optimizations
 
-Now lets have a look what the optimizer does behind the curtains and inspect traversal queries using [the explainer](Optimizer.md):
+Now lets have a look what the optimizer does behind the curtains and inspect traversal queries using
+[the explainer](../ExecutionAndPerformance/Optimizer.md):
 
 
     @startDocuBlockInline GRAPHTRAV_07_traverse_7
@@ -284,6 +285,6 @@ And finally clean it up again:
     @endDocuBlock GRAPHTRAV_99_drop_graph
 
 
-If this traversal is not powerful enough for your needs, so you cannot describe your conditions as AQL filter statements you might want to look at [manually crafted traverser](../Traversals/README.md).
+If this traversal is not powerful enough for your needs, so you cannot describe your conditions as AQL filter statements you might want to look at [manually crafted traverser](../../Users/Graphs/Traversals/index.html).
 
-[See here for more traversal examples](../AqlExamples/CombiningGraphTraversals.md).
+[See here for more traversal examples](../Examples/CombiningGraphTraversals.md).

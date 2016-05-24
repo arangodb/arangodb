@@ -28,7 +28,6 @@ namespace arangodb {
 namespace consensus {
 
 struct config_t {
-  
   arangodb::consensus::id_t id;
   double minPing;
   double maxPing;
@@ -39,44 +38,45 @@ struct config_t {
   bool waitForSync;
   double supervisionFrequency;
   uint64_t compactionStepSize;
-  config_t () :
-    id(0),
-    minPing(0.3f),
-    maxPing(1.0f),
-    endpoint("tcp://localhost:8529"),
-    notify(false),
-    supervision(false),
-    waitForSync(true),
-    supervisionFrequency(5.0),
-    compactionStepSize(1000) {}
-  
-  config_t (uint32_t i, double minp, double maxp, std::string ep,
-            std::vector<std::string> const& eps, bool n,
-            bool s, bool w, double f, uint64_t c) :
-    id(i),
-    minPing(minp),
-    maxPing(maxp),
-    endpoint(ep),
-    endpoints(eps),
-    notify(n),
-    supervision(s),
-    waitForSync(w),
-    supervisionFrequency(f),
-    compactionStepSize(c) {}
-  
-  inline size_t size() const {return endpoints.size();}
+  config_t()
+      : id(0),
+        minPing(0.3f),
+        maxPing(1.0f),
+        endpoint("tcp://localhost:8529"),
+        notify(false),
+        supervision(false),
+        waitForSync(true),
+        supervisionFrequency(5.0),
+        compactionStepSize(1000) {}
 
-  query_t const toBuilder () const {
+  config_t(uint32_t i, double minp, double maxp, std::string ep,
+           std::vector<std::string> const& eps, bool n, bool s, bool w,
+           double f, uint64_t c)
+      : id(i),
+        minPing(minp),
+        maxPing(maxp),
+        endpoint(ep),
+        endpoints(eps),
+        notify(n),
+        supervision(s),
+        waitForSync(w),
+        supervisionFrequency(f),
+        compactionStepSize(c) {}
+
+  inline size_t size() const { return endpoints.size(); }
+
+  query_t const toBuilder() const {
     query_t ret = std::make_shared<arangodb::velocypack::Builder>();
     ret->openObject();
     ret->add("endpoints", VPackValue(VPackValueType::Array));
-    for (auto const& i : endpoints)
+    for (auto const& i : endpoints) {
       ret->add(VPackValue(i));
+    }
     ret->close();
     ret->add("endpoint", VPackValue(endpoint));
-    ret->add("id",VPackValue(id));
-    ret->add("minPing",VPackValue(minPing));
-    ret->add("maxPing",VPackValue(maxPing));
+    ret->add("id", VPackValue(id));
+    ret->add("minPing", VPackValue(minPing));
+    ret->add("maxPing", VPackValue(maxPing));
     ret->add("notify peers", VPackValue(notify));
     ret->add("supervision", VPackValue(supervision));
     ret->add("supervision frequency", VPackValue(supervisionFrequency));
@@ -84,9 +84,8 @@ struct config_t {
     ret->close();
     return ret;
   }
-  
 };
+}
+}
 
-}}
-
-#endif 
+#endif

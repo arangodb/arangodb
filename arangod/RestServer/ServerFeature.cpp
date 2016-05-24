@@ -125,7 +125,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
   if (!_restServer) {
     ApplicationServer::disableFeatures({"Daemon", "Dispatcher", "Endpoint",
-                                        "RestServer", "Scheduler", "Ssl",
+                                        "RestServer", "Scheduler", "SslServer",
                                         "Supervisor"});
 
     DatabaseFeature* database = 

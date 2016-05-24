@@ -165,6 +165,69 @@ function ahuacatlParseTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test string parsing
+////////////////////////////////////////////////////////////////////////////////
+
+    testStrings : function () {
+      function getRoot(query) { return getParseResults(query).ast[0]; }
+
+      var returnNode = getRoot("return 'abcdef'").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual("abcdef", returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return 'abcdef ghi'").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual("abcdef ghi", returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return 'abcd\"\\'ab\\nc'").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual("abcd\"'ab\nc", returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return '\\'abcd\"\\'ab\nnc'").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual("'abcd\"'ab\nnc", returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return \"abcdef\"").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual("abcdef", returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return \"abcdef ghi\"").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual("abcdef ghi", returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return \"abcd\\\"\\'ab\\nc\"").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual("abcd\"'ab\nc", returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return \"\\'abcd\\\"\\'ab\nnc\"").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual("'abcd\"'ab\nnc", returnNode.subNodes[0].value);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string parsing
+////////////////////////////////////////////////////////////////////////////////
+
+    testStringsAfterNot : function () {
+      function getRoot(query) { return getParseResults(query).ast[0]; }
+
+      var returnNode = getRoot("return NOT ('abc' == 'def')").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("unary not", returnNode.subNodes[0].type);
+      assertEqual("compare ==", returnNode.subNodes[0].subNodes[0].type);
+      assertEqual("abc", returnNode.subNodes[0].subNodes[0].subNodes[0].value);
+      assertEqual("def", returnNode.subNodes[0].subNodes[0].subNodes[1].value);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test too many collections
 ////////////////////////////////////////////////////////////////////////////////
 

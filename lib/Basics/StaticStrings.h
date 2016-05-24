@@ -80,6 +80,7 @@ class StaticStrings {
   static std::string const Origin;
   static std::string const Queue;
   static std::string const Server;
+  static std::string const StartThread;
   static std::string const WwwAuthenticate;
 
   // mime types

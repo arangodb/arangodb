@@ -121,7 +121,7 @@ key.
     assert(response.code === 201);
 
     logJsonResponse(response);
-  ~ db._drop(cn);
+    db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
 Create a document in a collection named *products* with a collection-level
@@ -140,7 +140,7 @@ Create a document in a collection named *products* with a collection-level
     assert(response.code === 202);
 
     logJsonResponse(response);
-  ~ db._drop(cn);
+    db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
 Create a document in a collection with a collection-level *waitForSync*
@@ -151,7 +151,7 @@ value of *false*, but using the *waitForSync* query parameter.
     db._drop(cn);
     db._create(cn, { waitForSync: false });
 
-    var url = "/_api/document/" + cn + "&waitForSync=true";
+    var url = "/_api/document/" + cn + "?waitForSync=true";
     var body = '{ "Hello": "World" }';
 
     var response = logCurlRequest('POST', url, body);
@@ -159,14 +159,13 @@ value of *false*, but using the *waitForSync* query parameter.
     assert(response.code === 201);
 
     logJsonResponse(response);
-  ~ db._drop(cn);
+    db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
 Unknown collection name
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostUnknownCollection1}
     var cn = "products";
-    db._drop(cn);
 
     var url = "/_api/document/" + cn;
     var body = '{ "Hello": "World" }';
@@ -183,6 +182,7 @@ Illegal document
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostBadJson1}
     var cn = "products";
     db._drop(cn);
+    db._create(cn);
 
     var url = "/_api/document/" + cn;
     var body = '{ 1: "World" }';
@@ -192,40 +192,43 @@ Illegal document
     assert(response.code === 400);
 
     logJsonResponse(response);
+    db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
 Insert multiple documents:
-TODO, make this example work.
 
-@ EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostMulti}
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostMulti1}
     var cn = "products";
     db._drop(cn);
+    db._create(cn);
 
     var url = "/_api/document/" + cn;
     var body = '[{"Hello":"Earth"}, {"Hello":"Venus"}, {"Hello":"Mars"}]';
 
     var response = logCurlRequest('POST', url, body);
 
-    assert(response.code === 200);
+    assert(response.code === 202);
 
     logJsonResponse(response);
-@ END_EXAMPLE_ARANGOSH_RUN
+    db._drop(cn);
+@END_EXAMPLE_ARANGOSH_RUN
 
 Use of returnNew:
-TODO, make this example work.
 
-@ EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostMulti}
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostMulti2}
     var cn = "products";
     db._drop(cn);
+    db._create(cn);
 
     var url = "/_api/document/" + cn + "?returnNew=true";
     var body = '{"Hello":"World"}';
 
     var response = logCurlRequest('POST', url, body);
 
-    assert(response.code === 200);
+    assert(response.code === 202);
 
     logJsonResponse(response);
-@ END_EXAMPLE_ARANGOSH_RUN
+    db._drop(cn);
+@END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
 

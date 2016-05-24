@@ -943,9 +943,14 @@ static int LoadCollectionVocBase(TRI_vocbase_t* vocbase,
     // status while it is loading (loading may take a long time because of
     // disk activity, index creation etc.)
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+      
+    bool ignoreDatafileErrors = false;
+    if (DatabaseFeature::DATABASE != nullptr) {
+      ignoreDatafileErrors = DatabaseFeature::DATABASE->ignoreDatafileErrors();
+    }
 
     TRI_document_collection_t* document =
-      TRI_OpenDocumentCollection(vocbase, collection, DatabaseFeature::DATABASE->ignoreDatafileErrors());
+      TRI_OpenDocumentCollection(vocbase, collection, ignoreDatafileErrors);
 
     // lock again the adjust the status
     TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
@@ -1075,8 +1080,7 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
     bool doSync = (vocbase->_settings.forceSyncProperties &&
                    !arangodb::wal::LogfileManager::instance()->isInRecovery());
     VPackSlice slice;
-    int res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, slice,
-                                       doSync);
+    int res = collection->_collection->updateCollectionInfo(vocbase, slice, doSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1539,7 +1543,7 @@ char const* TRI_GetStatusStringCollectionVocBase(
     case TRI_VOC_COL_STATUS_CORRUPTED:
     case TRI_VOC_COL_STATUS_NEW_BORN:
     default:
-      return "unkown";
+      return "unknown";
   }
 }
 

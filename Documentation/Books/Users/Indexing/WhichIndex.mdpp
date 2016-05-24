@@ -63,12 +63,6 @@ different usage scenarios:
   The index supports complete match queries (full words) and prefix queries.
   Fulltext indexes will only be invoked via special functions.
 
-- cap constraint: the cap constraint provided by ArangoDB indexes documents
-  not to speed up search queries, but to limit (cap) the number or size of
-  documents in a collection. This can be used to prevent collections from growing 
-  permanently.
-
-
 !SUBSECTION Sparse vs. non-sparse indexes
 
 Hash indexes and skiplist indexes can optionally be created sparse. A sparse index
@@ -128,7 +122,7 @@ will not know beforehand whether the values which are compared to `doc.attr` wil
 Sparse skiplist indexes can be used for sorting if the optimizer can safely detect that the 
 index range does not include `null` for any of the index attributes. 
 
-Note that if you intend to use [joins](../AqlExamples/Join.md) it may be clever
+Note that if you intend to use [joins](../../AQL/Examples/Join.html) it may be clever
 to use non-sparsity and maybe even uniqueness for that attribute, else all items containing
 the `null` value will match against each other and thus produce large results.
 

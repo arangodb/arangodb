@@ -2122,7 +2122,7 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
 function AQL_CONCAT () {
   'use strict';
 
-  var result = '', i, j;
+  var result = '', i;
 
   for (i = 0; i < arguments.length; ++i) {
     var element = arguments[i];
@@ -2130,16 +2130,7 @@ function AQL_CONCAT () {
     if (weight === TYPEWEIGHT_NULL) {
       continue;
     }
-    else if (weight === TYPEWEIGHT_ARRAY) {
-      for (j = 0; j < element.length; ++j) {
-        if (TYPEWEIGHT(element[j]) !== TYPEWEIGHT_NULL) {
-          result += AQL_TO_STRING(element[j]);
-        }
-      } 
-    }
-    else {
-      result += AQL_TO_STRING(element);
-    }
+    result += AQL_TO_STRING(element);
   }
 
   return result;
@@ -2161,28 +2152,13 @@ function AQL_CONCAT_SEPARATOR () {
     if (i > 0 && weight === TYPEWEIGHT_NULL) {
       continue;
     }
-
     if (i === 0) {
       separator = AQL_TO_STRING(element);
-      continue;
-    }
-    else if (found) {
-      result += separator;
-    }
-
-    if (weight === TYPEWEIGHT_ARRAY) {
-      found = false;
-      for (j = 0; j < element.length; ++j) {
-        if (TYPEWEIGHT(element[j]) !== TYPEWEIGHT_NULL) {
-          if (found) {
-            result += separator;
-          }
-          result += AQL_TO_STRING(element[j]);
-          found = true;
-        }
-      } 
     }
     else {
+      if (found) {
+        result += separator;
+      }
       result += AQL_TO_STRING(element);
       found = true;
     }
@@ -2718,9 +2694,10 @@ function AQL_TO_STRING (value) {
     case TYPEWEIGHT_STRING:
       return value;
     case TYPEWEIGHT_NUMBER:
+      return value.toString();
     case TYPEWEIGHT_ARRAY:
     case TYPEWEIGHT_OBJECT:
-      return value.toString();
+      return JSON.stringify(value);
   }
 }
 
@@ -3519,6 +3496,13 @@ function AQL_SLICE (value, from, to, nonNegative) {
   }
 
   from = AQL_TO_NUMBER(from);
+  if (from < 0) {
+    from = value.length + from;
+    if (from < 0) {
+      from = 0;
+    }
+  }
+
   if (TYPEWEIGHT(to) !== TYPEWEIGHT_NULL) {
     to = AQL_TO_NUMBER(to);
   }
@@ -3533,6 +3517,11 @@ function AQL_SLICE (value, from, to, nonNegative) {
   else {
     if (to >= 0) {
       to += from;
+    } else {
+      to = value.length + to;
+      if (to < 0) {
+        to = 0;
+      }
     }
   }
 

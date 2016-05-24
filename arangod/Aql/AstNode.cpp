@@ -1701,7 +1701,7 @@ bool AstNode::isSimple() const {
 
   if (type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT ||
       type == NODE_TYPE_EXPANSION || type == NODE_TYPE_ITERATOR ||
-      type == NODE_TYPE_ARRAY_LIMIT) {
+      type == NODE_TYPE_ARRAY_LIMIT || type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
@@ -1715,12 +1715,6 @@ bool AstNode::isSimple() const {
 
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
-  }
-
-  if (type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-    // this one is explicitly non-simple!
-    setFlag(DETERMINED_SIMPLE);
-    return false;
   }
 
   if (type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_ATTRIBUTE_ACCESS ||
@@ -2033,6 +2027,53 @@ bool AstNode::canRunOnDBServer() const {
   return true;
 }
 
+/// @brief whether or not an object's keys must be checked for uniqueness
+bool AstNode::mustCheckUniqueness() const {
+  if (hasFlag(DETERMINED_CHECKUNIQUENESS)) {
+    // fast track exit
+    return hasFlag(VALUE_CHECKUNIQUENESS);
+  }
+
+  TRI_ASSERT(type == NODE_TYPE_OBJECT);
+
+  bool mustCheck = false;
+
+  // check the actual key members now
+  size_t const n = numMembers();
+
+  if (n >= 2) {
+    std::unordered_set<std::string> keys;
+
+    // only useful to check when there are 2 or more keys
+    for (size_t i = 0; i < n; ++i) {
+      auto member = getMemberUnchecked(i);
+
+      if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+        // constant key
+        if (!keys.emplace(member->getString()).second) {
+          // duplicate key
+          mustCheck = true;
+          break;
+        }
+      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+        // dynamic key... we don't know the key yet, so there's no
+        // way around check it at runtime later
+        mustCheck = true;
+        break;
+      }
+    }
+  }
+        
+  if (mustCheck) {
+    // we have duplicate keys, or we can't tell yet
+    setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
+  } else {
+    // all keys unique, or just one or zero keys in object
+    setFlag(DETERMINED_CHECKUNIQUENESS);
+  }
+  return mustCheck;
+}
+
 /// @brief whether or not a node (and its subnodes) is deterministic
 bool AstNode::isDeterministic() const {
   if (hasFlag(DETERMINED_NONDETERMINISTIC)) {
@@ -2178,70 +2219,59 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
 
-    if (verbose || n > 0) {
-      if (verbose || n > 1) {
-        buffer->appendChar('[');
+    buffer->appendChar('[');
+    for (size_t i = 0; i < n; ++i) {
+      if (i > 0) {
+        buffer->appendChar(',');
       }
-      for (size_t i = 0; i < n; ++i) {
-        if (i > 0) {
-          buffer->appendChar(',');
-        }
 
-        AstNode* member = getMember(i);
-        if (member != nullptr) {
-          member->stringify(buffer, verbose, failIfLong);
-        }
-      }
-      if (verbose || n > 1) {
-        buffer->appendChar(']');
+      AstNode* member = getMember(i);
+      if (member != nullptr) {
+        member->stringify(buffer, verbose, failIfLong);
       }
     }
+    buffer->appendChar(']');
     return;
   }
 
   if (type == NODE_TYPE_OBJECT) {
     // must be JavaScript-compatible!
-    if (verbose) {
-      buffer->appendChar('{');
-      size_t const n = numMembers();
+    buffer->appendChar('{');
+    size_t const n = numMembers();
 
-      if (failIfLong && n > TooLongThreshold) {
-        // intentionally do not stringify this node because the output would be
-        // too long
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-      }
-
-      for (size_t i = 0; i < n; ++i) {
-        if (i > 0) {
-          buffer->appendChar(',');
-        }
-
-        AstNode* member = getMember(i);
-
-        if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
-          TRI_ASSERT(member->numMembers() == 1);
-
-          buffer->appendChar('"');
-          buffer->appendJsonEncoded(member->getStringValue(),
-                                    member->getStringLength());
-          buffer->appendText(TRI_CHAR_LENGTH_PAIR("\":"));
-
-          member->getMember(0)->stringify(buffer, verbose, failIfLong);
-        } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-          TRI_ASSERT(member->numMembers() == 2);
-
-          buffer->appendText(TRI_CHAR_LENGTH_PAIR("$["));
-          member->getMember(0)->stringify(buffer, verbose, failIfLong);
-          buffer->appendText(TRI_CHAR_LENGTH_PAIR("]:"));
-          member->getMember(1)->stringify(buffer, verbose, failIfLong);
-        } else {
-          TRI_ASSERT(false);
-        }
-      }
-      buffer->appendChar('}');
-    } else {
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("[object Object]"));
+    if (failIfLong && n > TooLongThreshold) {
+      // intentionally do not stringify this node because the output would be
+      // too long
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
+
+    for (size_t i = 0; i < n; ++i) {
+      if (i > 0) {
+        buffer->appendChar(',');
+      }
+
+      AstNode* member = getMember(i);
+
+      if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+        TRI_ASSERT(member->numMembers() == 1);
+
+        buffer->appendJsonEncoded(member->getStringValue(),
+                                  member->getStringLength());
+        buffer->appendChar(':');
+
+        member->getMember(0)->stringify(buffer, verbose, failIfLong);
+      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+        TRI_ASSERT(member->numMembers() == 2);
+
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("$["));
+        member->getMember(0)->stringify(buffer, verbose, failIfLong);
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("]:"));
+        member->getMember(1)->stringify(buffer, verbose, failIfLong);
+      } else {
+        TRI_ASSERT(false);
+      }
+    }
+    buffer->appendChar('}');
     return;
   }
 
@@ -2768,9 +2798,7 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
     }
 
     case VALUE_TYPE_STRING: {
-      buffer->appendChar('"');
       buffer->appendJsonEncoded(value.value._string, value.length);
-      buffer->appendChar('"');
       break;
     }
 

@@ -28,50 +28,6 @@
 #include "Zip/zip.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief escape tables
-////////////////////////////////////////////////////////////////////////////////
-
-#define Z16 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escape values for characters used in JSON string printing
-/// use when forward slashes need no escaping
-////////////////////////////////////////////////////////////////////////////////
-
-static char const JsonEscapeTableWithoutSlash[256] = {
-    // 0    1    2    3    4    5    6    7    8    9    A    B    C    D    E F
-    'u', 'u',  'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n',
-    'u', 'f',  'r', 'u', 'u',  // 00
-    'u', 'u',  'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u',
-    'u', 'u',  'u', 'u', 'u',  // 10
-    0,   0,    '"', 0,   0,   0,   0,   0,   0,   0,   0,
-    0,   0,    0,   0,   0,  // 20
-    Z16, Z16,                // 30~4F
-    0,   0,    0,   0,   0,   0,   0,   0,   0,   0,   0,
-    0,   '\\', 0,   0,   0,                            // 50
-    Z16, Z16,  Z16, Z16, Z16, Z16, Z16, Z16, Z16, Z16  // 60~FF
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escape values for characters used in JSON string printing
-/// use when forward slashes need escaping
-////////////////////////////////////////////////////////////////////////////////
-
-static char const JsonEscapeTableWithSlash[256] = {
-    // 0    1    2    3    4    5    6    7    8    9    A    B    C    D    E F
-    'u', 'u',  'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n',
-    'u', 'f',  'r', 'u', 'u',  // 00
-    'u', 'u',  'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u',
-    'u', 'u',  'u', 'u', 'u',  // 10
-    0,   0,    '"', 0,   0,   0,   0,   0,   0,   0,   0,
-    0,   0,    0,   0,   '/',  // 20
-    Z16, Z16,                  // 30~4F
-    0,   0,    0,   0,   0,   0,   0,   0,   0,   0,   0,
-    0,   '\\', 0,   0,   0,                            // 50
-    Z16, Z16,  Z16, Z16, Z16, Z16, Z16, Z16, Z16, Z16  // 60~FF
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief append a character without check
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -131,266 +87,6 @@ static int AppendString(TRI_string_buffer_t* self, char const* str,
 
     memcpy(self->_current, str, len);
     self->_current += len;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes UTF-8 range U+0000 to U+007F
-////////////////////////////////////////////////////////////////////////////////
-
-static void EscapeUtf8Range0000T007F(TRI_string_buffer_t* self,
-                                     char const** src) {
-  uint8_t c = (uint8_t) * (*src);
-
-  uint16_t i1 = (((uint16_t)c) & 0xF0) >> 4;
-  uint16_t i2 = (((uint16_t)c) & 0x0F);
-
-  AppendString(self, "00", 2);
-  AppendChar(self, (i1 < 10) ? ('0' + i1) : ('A' + i1 - 10));
-  AppendChar(self, (i2 < 10) ? ('0' + i2) : ('A' + i2 - 10));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes UTF-8 range U+0080 to U+07FF
-////////////////////////////////////////////////////////////////////////////////
-
-static void EscapeUtf8Range0080T07FF(TRI_string_buffer_t* self,
-                                     char const** src) {
-  uint8_t c = (uint8_t) * ((*src) + 0);
-  uint8_t d = (uint8_t) * ((*src) + 1);
-
-  // correct UTF-8
-  if ((d & 0xC0) == 0x80) {
-    uint16_t n = ((c & 0x1F) << 6) | (d & 0x3F);
-    TRI_ASSERT(n >= 128);
-
-    uint16_t i1 = (n & 0xF000) >> 12;
-    uint16_t i2 = (n & 0x0F00) >> 8;
-    uint16_t i3 = (n & 0x00F0) >> 4;
-    uint16_t i4 = (n & 0x000F);
-
-    AppendChar(self, '\\');
-    AppendChar(self, 'u');
-
-    AppendChar(self, (i1 < 10) ? ('0' + i1) : ('A' + i1 - 10));
-    AppendChar(self, (i2 < 10) ? ('0' + i2) : ('A' + i2 - 10));
-    AppendChar(self, (i3 < 10) ? ('0' + i3) : ('A' + i3 - 10));
-    AppendChar(self, (i4 < 10) ? ('0' + i4) : ('A' + i4 - 10));
-
-    (*src) += 1;
-  }
-
-  // corrupted UTF-8
-  else {
-    AppendChar(self, *(*src));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes UTF-8 range U+0800 to U+D7FF and U+E000 to U+FFFF
-////////////////////////////////////////////////////////////////////////////////
-
-static void EscapeUtf8Range0800TFFFF(TRI_string_buffer_t* self,
-                                     char const** src) {
-  uint8_t c = (uint8_t) * ((*src) + 0);
-  uint8_t d = (uint8_t) * ((*src) + 1);
-  uint8_t e = (uint8_t) * ((*src) + 2);
-
-  // correct UTF-8 (3-byte sequence UTF-8 1110xxxx 10xxxxxx)
-  if ((d & 0xC0) == 0x80 && (e & 0xC0) == 0x80) {
-    uint16_t n = ((c & 0x0F) << 12) | ((d & 0x3F) << 6) | (e & 0x3F);
-
-    TRI_ASSERT(n >= 2048 && (n < 55296 || n > 57343));
-
-    uint16_t i1 = (n & 0xF000) >> 12;
-    uint16_t i2 = (n & 0x0F00) >> 8;
-    uint16_t i3 = (n & 0x00F0) >> 4;
-    uint16_t i4 = (n & 0x000F);
-
-    AppendChar(self, '\\');
-    AppendChar(self, 'u');
-
-    AppendChar(self, (i1 < 10) ? ('0' + i1) : ('A' + i1 - 10));
-    AppendChar(self, (i2 < 10) ? ('0' + i2) : ('A' + i2 - 10));
-    AppendChar(self, (i3 < 10) ? ('0' + i3) : ('A' + i3 - 10));
-    AppendChar(self, (i4 < 10) ? ('0' + i4) : ('A' + i4 - 10));
-
-    (*src) += 2;
-  }
-
-  // corrupted UTF-8
-  else {
-    AppendChar(self, *(*src));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes UTF-8 range U+10000 to U+10FFFF
-////////////////////////////////////////////////////////////////////////////////
-
-static void EscapeUtf8Range10000T10FFFF(TRI_string_buffer_t* self,
-                                        char const** src) {
-  uint8_t c = (uint8_t) * ((*src) + 0);
-  uint8_t d = (uint8_t) * ((*src) + 1);
-  uint8_t e = (uint8_t) * ((*src) + 2);
-  uint8_t f = (uint8_t) * ((*src) + 3);
-
-  // correct UTF-8 (4-byte sequence UTF-8 1110xxxx 10xxxxxx 10xxxxxx)
-  if ((d & 0xC0) == 0x80 && (e & 0xC0) == 0x80 && (f & 0xC0) == 0x80) {
-    uint32_t n = ((c & 0x0F) << 18) | ((d & 0x3F) << 12) | ((e & 0x3F) << 6) |
-                 (f & 0x3F);
-    TRI_ASSERT(n >= 65536 && n <= 1114111);
-
-    // construct the surrogate pairs
-    n -= 0x10000;
-
-    uint32_t s1 = ((n & 0xFFC00) >> 10) + 0xD800;
-    uint32_t s2 = (n & 0x3FF) + 0xDC00;
-
-    // encode high surrogate
-    uint16_t i1 = (s1 & 0xF000) >> 12;
-    uint16_t i2 = (s1 & 0x0F00) >> 8;
-    uint16_t i3 = (s1 & 0x00F0) >> 4;
-    uint16_t i4 = (s1 & 0x000F);
-
-    AppendChar(self, '\\');
-    AppendChar(self, 'u');
-
-    AppendChar(self, (i1 < 10) ? ('0' + i1) : ('A' + i1 - 10));
-    AppendChar(self, (i2 < 10) ? ('0' + i2) : ('A' + i2 - 10));
-    AppendChar(self, (i3 < 10) ? ('0' + i3) : ('A' + i3 - 10));
-    AppendChar(self, (i4 < 10) ? ('0' + i4) : ('A' + i4 - 10));
-
-    // encode low surrogate
-    i1 = (s2 & 0xF000) >> 12;
-    i2 = (s2 & 0x0F00) >> 8;
-    i3 = (s2 & 0x00F0) >> 4;
-    i4 = (s2 & 0x000F);
-
-    AppendChar(self, '\\');
-    AppendChar(self, 'u');
-
-    AppendChar(self, (i1 < 10) ? ('0' + i1) : ('A' + i1 - 10));
-    AppendChar(self, (i2 < 10) ? ('0' + i2) : ('A' + i2 - 10));
-    AppendChar(self, (i3 < 10) ? ('0' + i3) : ('A' + i3 - 10));
-    AppendChar(self, (i4 < 10) ? ('0' + i4) : ('A' + i4 - 10));
-
-    // advance src
-    (*src) += 3;
-  }
-
-  // corrupted UTF-8
-  else {
-    AppendChar(self, *(*src));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends characters but json-encode the string
-////////////////////////////////////////////////////////////////////////////////
-
-static int AppendJsonEncodedValue(TRI_string_buffer_t* self, char const*& ptr,
-                                  bool escapeSlash) {
-  int res = Reserve(self, 2);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  // next character as unsigned char
-  uint8_t c = (uint8_t)*ptr;
-
-  // character is in the normal latin1 range
-  if ((c & 0x80) == 0) {
-    // special character, escape
-    char esc;
-    if (escapeSlash) {
-      esc = JsonEscapeTableWithSlash[c];
-    } else {
-      esc = JsonEscapeTableWithoutSlash[c];
-    }
-
-    if (esc) {
-      AppendChar(self, '\\');
-      AppendChar(self, esc);
-
-      if (esc == 'u') {
-        // unicode output, must allocate more memory
-        res = Reserve(self, 4);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
-        }
-
-        EscapeUtf8Range0000T007F(self, &ptr);
-      }
-    }
-
-    // normal latin1
-    else {
-      AppendChar(self, *ptr);
-    }
-  }
-
-  // unicode range 0080 - 07ff (2-byte sequence UTF-8)
-  else if ((c & 0xE0) == 0xC0) {
-    // hopefully correct UTF-8
-    if (*(ptr + 1) != '\0') {
-      res = Reserve(self, 6);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
-      EscapeUtf8Range0080T07FF(self, &ptr);
-    }
-
-    // corrupted UTF-8
-    else {
-      AppendChar(self, *ptr);
-    }
-  }
-
-  // unicode range 0800 - ffff (3-byte sequence UTF-8)
-  else if ((c & 0xF0) == 0xE0) {
-    // hopefully correct UTF-8
-    if (*(ptr + 1) != '\0' && *(ptr + 2) != '\0') {
-      res = Reserve(self, 6);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
-      EscapeUtf8Range0800TFFFF(self, &ptr);
-    }
-
-    // corrupted UTF-8
-    else {
-      AppendChar(self, *ptr);
-    }
-  }
-
-  // unicode range 10000 - 10ffff (4-byte sequence UTF-8)
-  else if ((c & 0xF8) == 0xF0) {
-    // hopefully correct UTF-8
-    if (*(ptr + 1) != '\0' && *(ptr + 2) != '\0' && *(ptr + 3) != '\0') {
-      res = Reserve(self, 12);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
-      EscapeUtf8Range10000T10FFFF(self, &ptr);
-    }
-
-    // corrupted UTF-8
-    else {
-      AppendChar(self, *ptr);
-    }
-  }
-
-  // unicode range above 10ffff -- NOT IMPLEMENTED
-  else {
-    AppendChar(self, *ptr);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -803,25 +499,112 @@ int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str,
   return AppendString(self, str, len);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends characters but json-encode the null-terminated string
-////////////////////////////////////////////////////////////////////////////////
+int AppendJsonEncoded(TRI_string_buffer_t* self, char const* src, 
+                      size_t length, bool escapeForwardSlashes) {
+  static char const EscapeTable[256] = {
+      // 0    1    2    3    4    5    6    7    8    9    A    B    C    D    E
+      // F
+      'u',  'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f', 'r',
+      'u',
+      'u',  // 00
+      'u',  'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u',
+      'u',
+      'u',  // 10
+      0,    0,   '"', 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,
+      '/',  // 20
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,
+      0,  // 30~4F
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      '\\', 0,   0,   0,  // 50
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,
+      0,  // 60~FF
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0};
 
-int TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self,
-                                            char const* src, bool escapeSlash) {
-  char const* ptr = src;
+  // reserve enough room for the whole string at once 
+  int res = Reserve(self, 6 * length + 2);
 
-  while (*ptr != '\0') {
-    int res = AppendJsonEncodedValue(self, ptr, escapeSlash);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+  
+  AppendChar(self, '"');      
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+  uint8_t const* p = reinterpret_cast<uint8_t const*>(src);
+  uint8_t const* e = p + length;
+  while (p < e) {
+    uint8_t c = *p;
+
+    if ((c & 0x80) == 0) {
+      // check for control characters
+      char esc = EscapeTable[c];
+
+      if (esc) {
+        if (c != '/' || escapeForwardSlashes) {
+          // escape forward slashes only when requested
+          AppendChar(self, '\\');
+        }
+        AppendChar(self, static_cast<char>(esc));
+
+        if (esc == 'u') {
+          uint16_t i1 = (((uint16_t)c) & 0xf0) >> 4;
+          uint16_t i2 = (((uint16_t)c) & 0x0f);
+
+          AppendChar(self, '0');
+          AppendChar(self, '0');
+          AppendChar(self, static_cast<char>((i1 < 10) ? ('0' + i1) : ('A' + i1 - 10)));
+          AppendChar(self, static_cast<char>((i2 < 10) ? ('0' + i2) : ('A' + i2 - 10)));
+        }
+      } else {
+        AppendChar(self, static_cast<char>(c));
+      }
+    } else if ((c & 0xe0) == 0xc0) {
+      // two-byte sequence
+      if (p + 1 >= e) {
+        return TRI_ERROR_INTERNAL;
+      }
+
+      memcpy(self->_current, reinterpret_cast<char const*>(p), 2);
+      self->_current += 2;
+      ++p;
+    } else if ((c & 0xf0) == 0xe0) {
+      // three-byte sequence
+      if (p + 2 >= e) {
+        return TRI_ERROR_INTERNAL;
+      }
+
+      memcpy(self->_current, reinterpret_cast<char const*>(p), 3);
+      self->_current += 3;
+      p += 2;
+    } else if ((c & 0xf8) == 0xf0) {
+      // four-byte sequence
+      if (p + 3 >= e) {
+        return TRI_ERROR_INTERNAL;
+      }
+
+      memcpy(self->_current, reinterpret_cast<char const*>(p), 4);
+      self->_current += 4;
+      p += 3;
     }
 
-    ++ptr;
+    ++p;
   }
 
-  return TRI_ERROR_NO_ERROR;
+  AppendChar(self, '"');
+  return TRI_ERROR_NO_ERROR;  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -831,20 +614,7 @@ int TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self,
 int TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self,
                                             char const* src, size_t length,
                                             bool escapeSlash) {
-  char const* ptr = src;
-  char const* end = src + length;
-
-  while (ptr < end) {
-    int res = AppendJsonEncodedValue(self, ptr, escapeSlash);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    ++ptr;
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return AppendJsonEncoded(self, src, length, escapeSlash);  
 }
 
 ////////////////////////////////////////////////////////////////////////////////

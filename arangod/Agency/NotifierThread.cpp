@@ -7,29 +7,36 @@
 
 using namespace arangodb::consensus;
 
-NotifierThread::NotifierThread(const std::string& path, std::shared_ptr<VPackBuilder> body, const std::vector<std::string> &endpoints)
-  : Thread("AgencyNotifiaction"), _path(path), _body(body), _endpoints(endpoints)
-{}
+NotifierThread::NotifierThread(const std::string& path,
+                               std::shared_ptr<VPackBuilder> body,
+                               const std::vector<std::string>& endpoints)
+    : Thread("AgencyNotifiaction"),
+      _path(path),
+      _body(body),
+      _endpoints(endpoints) {}
 
 void NotifierThread::scheduleNotification(const std::string& endpoint) {
-  LOG(DEBUG) << "Scheduling " << endpoint << _path << " " << _body->toJson() << " " << endpoint;
+  LOG(DEBUG) << "Scheduling " << endpoint << _path << " " << _body->toJson()
+             << " " << endpoint;
 
-  auto cb = [this, endpoint] (bool result) {
-    LOG(DEBUG) << "Agencynotification for " << endpoint << ". Result: " << result;
+  auto cb = [this, endpoint](bool result) {
+    LOG(DEBUG) << "Agencynotification for " << endpoint
+               << ". Result: " << result;
 
     CONDITION_LOCKER(guard, _cv);
     _openResults.emplace_back(NotificationResult({result, endpoint}));
     _cv.signal();
   };
-  
-  auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
-  
-  while (true) { 
+
+  auto headerFields =
+      std::make_unique<std::unordered_map<std::string, std::string>>();
+
+  while (true) {
     auto res = arangodb::ClusterComm::instance()->asyncRequest(
-        "", TRI_NewTickServer(), endpoint, GeneralRequest::RequestType::POST, _path,
-        std::make_shared<std::string>(_body->toJson()), headerFields,
+        "", TRI_NewTickServer(), endpoint, GeneralRequest::RequestType::POST,
+        _path, std::make_shared<std::string>(_body->toJson()), headerFields,
         std::make_shared<NotifyCallback>(cb), 5.0, true);
-    
+
     if (res.status == CL_COMM_SUBMITTED) {
       break;
     }
@@ -37,14 +44,13 @@ void NotifierThread::scheduleNotification(const std::string& endpoint) {
   }
 }
 
-bool NotifierThread::start() {
-  return Thread::start();
-}
+bool NotifierThread::start() { return Thread::start(); }
 
 void NotifierThread::run() {
   try {
     LOG(DEBUG) << "Starting Agencynotifications";
-    // mop: locker necessary because if scheduledNotifications may return earlier than this thread reaching the while
+    // mop: locker necessary because if scheduledNotifications may return
+    // earlier than this thread reaching the while
     CONDITION_LOCKER(locker, _cv);
     size_t numEndpoints = _endpoints.size();
     for (auto& endpoint : _endpoints) {
@@ -58,8 +64,8 @@ void NotifierThread::run() {
         LOG(DEBUG) << "Agencynotifications stopping";
         break;
       }
-      
-      for (auto& result: _openResults) {
+
+      for (auto& result : _openResults) {
         if (result.success) {
           numEndpoints--;
         } else {
@@ -86,6 +92,4 @@ void NotifierThread::beginShutdown() {
 }
 
 // Shutdown if not already
-NotifierThread::~NotifierThread() {
-  shutdown();
-}
+NotifierThread::~NotifierThread() { shutdown(); }

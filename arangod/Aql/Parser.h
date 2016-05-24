@@ -94,6 +94,13 @@ class Parser {
 
   /// @brief adjust the current parse position
   inline void increaseOffset(size_t offset) { _offset += offset; }
+  
+  inline void decreaseOffset(int offset) {
+    _offset -= static_cast<size_t>(offset);
+  }
+  
+  /// @brief adjust the current parse position
+  inline void decreaseOffset(size_t offset) { _offset -= offset; }
 
   /// @brief fill the output buffer with a fragment of the query
   void fillBuffer(char* result, size_t length) {

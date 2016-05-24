@@ -1,11 +1,11 @@
 !CHAPTER How to invoke AQL 
 
 You can run AQL queries from your application via the HTTP REST API. The full
-API description is available at [HTTP Interface for AQL Query Cursors](../HttpAqlQueryCursor/README.md).
+API description is available at [HTTP Interface for AQL Query Cursors](../../HTTP/AqlQueryCursor/index.html).
 
-The ArangoDB Web Interface has a [specific tab for AQL queries execution](AqlWithWebInterface.md).
+The ArangoDB Web Interface has a [specific tab for AQL queries execution](../Invocation/WithWebInterface.md).
 
-You can run [AQL queries from the ArangoDB Shell](AqlWithArangosh.md) with the  *_query*  and  *_createStatement*  methods of the  *db*  object. 
+You can run [AQL queries from the ArangoDB Shell](../Invocation/WithArangosh.md) with the  *_query*  and  *_createStatement*  methods of the  *db*  object. 
 This chapter also describes how to use bind parameters, statistics, counting and cursors with arangosh. 
 
 
