@@ -1,4 +1,11 @@
 *.md
 **/*.md
 !SUMMARY.md
+*/manual.epub
+*/manual.mobi
+*/manual.pdf
+*/node_modules/
 books
+ppbooks
+Makefile
+allComments.txt

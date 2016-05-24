@@ -19,7 +19,7 @@ const yaml = require("js-yaml");
 const documentationSourceDirs = [
   fs.join(fs.makeAbsolute(''), "Documentation/Scripts/setup-arangosh.js"),
   fs.join(fs.makeAbsolute(''), "Documentation/DocuBlocks"),
-  fs.join(fs.makeAbsolute(''), "Documentation/Books/Users"),
+  fs.join(fs.makeAbsolute(''), "Documentation/Books/Manual"),
   fs.join(fs.makeAbsolute(''), "Documentation/Books/AQL"),
   fs.join(fs.makeAbsolute(''), "Documentation/Books/HTTP")
 ];
