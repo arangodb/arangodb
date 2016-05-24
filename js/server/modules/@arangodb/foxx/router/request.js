@@ -153,7 +153,7 @@ module.exports = class SyntheticRequest {
     return JSON.parse(this.rawBody.toString('utf-8'));
   }
 
-  params(name) {
+  param(name) {
     if (hasOwnProperty.call(this.pathParams, name)) {
       return this.pathParams[name];
     }
