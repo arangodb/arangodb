@@ -79,7 +79,6 @@ router.get('/config.js', function(req, res) {
       && isTrustedProxy(req.remoteAddress)) {
     basePath = req.headers['x-script-name'];
   }
-  console.log(Object.keys(global));
   res.set('content-type', 'text/javascript');
   res.send("var frontendConfig = " + JSON.stringify({
     "basePath": basePath, 
