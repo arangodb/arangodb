@@ -115,7 +115,7 @@ module.exports = class SyntheticRequest {
     if (!range) {
       return undefined;
     }
-    return parseRange(size, range);
+    return parseRange((size || size === 0) ? size : Infinity, range);
   }
 
   get(name) {
