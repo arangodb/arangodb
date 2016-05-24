@@ -792,9 +792,6 @@ add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoimp     zlibstatic)
 add_dependencies(arangorestore zlibstatic)
 add_dependencies(arangosh      zlibstatic)
-if (TARGET prepare_debian)
-  add_dependencies(arangod       prepare_debian)
-endif()
 
 if (NOT USE_PRECOMPILED_V8)
   # all binaries depend on v8_build because it contains ICU as well
