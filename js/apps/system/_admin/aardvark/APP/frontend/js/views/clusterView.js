@@ -408,7 +408,7 @@
               if (d === null) {
                 return 'N/A';
               }
-              formatted = parseFloat(d3.format(".2f")(d));
+              formatted = parseFloat(d3.format(".3f")(d));
               return formatted;
             }
           });
