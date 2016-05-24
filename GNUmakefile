@@ -67,11 +67,6 @@ help:
 	@echo "    if ON, enables building amd64 assembly implementation"
 
 
-VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
-VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
-VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
-VERSION_PATCH := $(wordlist 1,1,$(subst -, ,$(VERSION_PATCH)))
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                     CMAKE & CPACK
 ## -----------------------------------------------------------------------------
@@ -92,9 +87,6 @@ pack-dmg-cmake:
 	cd Build && cmake \
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "OPENSSL_INCLUDE=`brew --prefix`/opt/openssl/include" \
 		-D "OPENSSL_LIB_PATH=`brew --prefix`/opt/openssl/lib" \
 		-D "OPENSSL_LIBS=`brew --prefix`/opt/openssl/lib/libssl.a;`brew --prefix`/opt/openssl/lib/libcrypto.a" \
@@ -130,9 +122,6 @@ pack-macosxcode-cmake:
 	cd Build && cmake \
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "OPENSSL_INCLUDE=`brew --prefix`/opt/openssl/include" \
 		-D "OPENSSL_LIB_PATH=`brew --prefix`/opt/openssl/lib" \
 		-D "OPENSSL_LIBS=`brew --prefix`/opt/openssl/lib/libssl.a;`brew --prefix`/opt/openssl/lib/libcrypto.a" \
@@ -160,9 +149,6 @@ pack-macosx-cmake:
 	cd Build && cmake \
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "OPENSSL_INCLUDE=`brew --prefix`/opt/openssl/include" \
 		-D "OPENSSL_LIB_PATH=`brew --prefix`/opt/openssl/lib" \
 		-D "OPENSSL_LIBS=`brew --prefix`/opt/openssl/lib/libssl.a;`brew --prefix`/opt/openssl/lib/libcrypto.a" \
@@ -193,14 +179,10 @@ pack-arm:
 
 pack-arm-cmake:
 	cd Build && cmake \
-		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "BUILD_PACKAGE=raspbian" \
 		-D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		-D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "ETCDIR=${sysconfdir}" \
 		-D "VARDIR=${localstatedir}" \
 		$(MOREOPTS) \
@@ -219,13 +201,9 @@ pack-arm-cmake:
 pack-deb-cmake:
 	mkdir Build
 	cd Build && cmake \
-		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		-D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "ETCDIR=${sysconfdir}" \
 		-D "VARDIR=${localstatedir}" \
 		$(MOREOPTS) \
@@ -253,30 +231,30 @@ pack-win64:
 	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 14 Win64"
 
 pack-win32-relative:
-	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 14" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 14" MOREOPTS='-D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
 
 pack-win64-relative:
-	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
 
 win64-relative:
-	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "USE_RELATIVE=ON"'
+	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS=''
 	$(MAKE) winXX-build BITS=64 BUILD_TARGET=RelWithDebInfo
 
 win64-relative-debug:
-	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS=' -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
 	$(MAKE) winXX-build BITS=64 BUILD_TARGET=Debug
 
 pack-winXX:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
-	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
+	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)"
 	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=RelWithDebInfo
 	${MAKE} packXX BITS="$(BITS)"
 
 pack-winXX-MOREOPTS:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
-	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`" MOREOPTS=$(MOREOPTS)
+	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" MOREOPTS=$(MOREOPTS)
 	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 	${MAKE} packXX BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 
@@ -284,15 +262,8 @@ winXX-cmake: checkcmake
 	rm -f ./.file-list-js
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
-		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
 		-D "BUILD_TYPE=RelWithDebInfo" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-		-D "LIBEV_VERSION=4.11" \
-		-D "V8_VERSION=V8-5.0.71.39" \
-		-D "ZLIB_VERSION=1.2.7" \
 		-D "BUILD_ID=${BUILD_ID}" \
 		$(MOREOPTS) \
 		..
