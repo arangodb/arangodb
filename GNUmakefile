@@ -258,7 +258,7 @@ pack-winXX-MOREOPTS:
 	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 	${MAKE} packXX BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 
-winXX-cmake: checkcmake
+winXX-cmake:
 	rm -f ./.file-list-js
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
