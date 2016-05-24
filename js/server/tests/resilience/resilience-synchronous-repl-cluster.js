@@ -539,6 +539,7 @@ function SynchronousReplicationSuite () {
 /// @brief run a standard check with failures:
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
     testBasicOperationsFailureLeader : function () {
       assertTrue(waitForSynchronousReplication("_system"));
       failLeader();
@@ -546,7 +547,7 @@ function SynchronousReplicationSuite () {
       healLeader();
       assertTrue(waitForSynchronousReplication("_system"));
     },
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief just to allow a trailing comma at the end of the last test
 ////////////////////////////////////////////////////////////////////////////////

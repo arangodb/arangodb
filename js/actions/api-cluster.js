@@ -797,7 +797,6 @@ actions.defineHttp({
     if (body === undefined) {
       return;
     }
-    require("console").log("FUXX: " + JSON.stringify(body));
     if (! body.hasOwnProperty("primary") ||
         typeof(body.primary) !== "string" ||
         ! body.hasOwnProperty("secondary") ||
@@ -912,3 +911,144 @@ actions.defineHttp({
     }
   }
 });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_getNumberOfServers
+/// (intentionally not in manual)
+/// @brief gets the number of coordinators desired, which are stored in
+/// /Target/NumberOfDBServers in the agency.
+///
+/// @ RESTHEADER{GET /_admin/cluster/numberOfServers, Get desired number of coordinators and DBServers.}
+///
+/// @ RESTQUERYPARAMETERS
+///
+/// @ RESTDESCRIPTION gets the number of coordinators and DBServers desired, 
+/// which are stored in `/Target` in the agency. A body of the form
+///     { "numberOfCoordinators": 12, "numberOfDBServers": 12 }
+/// is returned. Note that both value can be `null` indicating that the
+/// cluster cannot be scaled.
+///
+/// @ RESTRETURNCODES
+///
+/// @ RESTRETURNCODE{200} is returned when everything went well.
+///
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not GET
+/// or PUT.
+///
+/// @ RESTRETURNCODE{503} the get operation did not work.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_putNumberOfServers
+/// (intentionally not in manual)
+/// @brief sets the number of coordinators and or DBServers desired, which 
+/// are stored in /Target in the agency.
+///
+/// @ RESTHEADER{PUT /_admin/cluster/numberOfServers, Set desired number of coordinators and or DBServers.}
+///
+/// @ RESTQUERYPARAMETERS
+///
+/// @ RESTDESCRIPTION sets the number of coordinators and DBServers desired, 
+/// which are stored in `/Target` in the agency. A body of the form
+///     { "numberOfCoordinators": 12, "numberOfDBServers": 12 }
+/// must be supplied. Either one of the values can be left out and will 
+/// then not be changed. Either value can be `null` to indicate that the
+/// cluster cannot be scaled.
+///
+/// @ RESTRETURNCODES
+///
+/// @ RESTRETURNCODE{200} is returned when everything went well.
+///
+/// @ RESTRETURNCODE{400} body is not valid JSON.
+///
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not GET
+/// or PUT.
+///
+/// @ RESTRETURNCODE{503} the agency operation did not work.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/numberOfServers",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require("@arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only coordinators can serve this request");
+      return;
+    }
+    if (req.requestType !== actions.GET &&
+        req.requestType !== actions.PUT) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only GET and PUT methods are allowed");
+      return;
+    }
+
+    var timeout = 60.0;
+
+    // Now get to work:
+    if (req.requestType === actions.GET) {
+      var nrCoordinators;
+      var nrDBServers;
+      try {
+        nrCoordinators = ArangoAgency.get("Target/NumberOfCoordinators");
+        nrCoordinators = nrCoordinators.arango.Target.NumberOfCoordinators;
+        nrDBServers = ArangoAgency.get("Target/NumberOfDBServers");
+        nrDBServers = nrDBServers.arango.Target.NumberOfDBServers;
+      }
+      catch (e1) {
+        actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+                            "Cannot read from agency.");
+        return;
+      }
+      actions.resultOk(req, res, actions.HTTP_OK,
+                       {numberOfCoordinators: nrCoordinators,
+                        numberOfDBServers: nrDBServers});
+    } else {
+      var body = actions.getJsonBody(req, res);
+      if (body === undefined) {
+        return;
+      }
+      if (typeof body !== "object") {
+        actions.resultError(req, res, actions.HTTP_BAD,
+                            "body must be an object"); 
+        return;
+      }
+      var ok = true;
+      try {
+        if (body.hasOwnProperty("numberOfCoordinators") &&
+            (typeof body.numberOfCoordinators === "number" ||
+             body.numberOfCoordinators === null)) {
+          ArangoAgency.set("Target/NumberOfCoordinators",
+                           body.numberOfCoordinators);
+        }
+      }
+      catch (e1) {
+        ok = false;
+      }
+      try {
+        if (body.hasOwnProperty("numberOfDBServers") &&
+            (typeof body.numberOfDBServers === "number" ||
+             body.numberOfDBServers === null)) {
+          ArangoAgency.set("Target/NumberOfDBServers",
+                           body.numberOfDBServers);
+        }
+      }
+      catch (e2) {
+        ok = false;
+      }
+      if (!ok) {
+        actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+                            "Cannot write to agency.");
+        return;
+      }
+      actions.resultOk(req, res, actions.HTTP_OK, true);
+    }
+  }
+});
+

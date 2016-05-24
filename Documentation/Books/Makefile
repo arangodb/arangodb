@@ -1,4 +1,4 @@
-ALLBOOKS=HTTP AQL Users
+ALLBOOKS=HTTP AQL Manual
 
 all: build-books
 
@@ -93,8 +93,15 @@ book-check-markdown-leftovers:
 	fi
 
 book-check-dangling-anchors:
-	@echo "##### checking for dangling anchors in $(NAME)"
-	@grep -R "a href.*#" books/$(NAME) | \
+	@echo "##### checking for dangling anchors"
+	for htmlf in `find books/ -name \*.html `; do \
+	    fn=`basename $${htmlf}` ; \
+	    dir=`echo $$htmlf |sed "s;/$$fn;;"`; \
+	    mkdir -p /tmp/tags/$${dir}; \
+	    cat $${htmlf} |grep '<h. ' |sed -e 's;.*id=";;' -e 's;".*;;' > /tmp/tags/$${dir}/$${fn}; \
+	done
+
+	@grep -R "a href.*#" books/ | \
 		egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://|href=\"#\")" | \
 		sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' | grep -v " " > /tmp/anchorlist.txt
 
@@ -110,18 +117,23 @@ book-check-dangling-anchors:
 		FN="$${SFNP}/$${FN}"; \
 	    fi; \
 	    if test -n "$$ANCHOR"; then \
-		if grep -q "id=\"$$ANCHOR\">" $$FN; then \
-		    /bin/true; \
-		else \
-		    echo "$$i"; \
-		    NO=$$((NO + 1)); \
-		fi; \
+		if test ! -f /tmp/tags/$${FN}; then \
+			echo "File referenced by $${i} doesn't exist."; \
+			NO=$$((NO + 1)); \
+		else if grep -q "^$$ANCHOR$$" /tmp/tags/$$FN; then \
+			    /bin/true; \
+			else \
+			    echo "Anchor not found in $$i"; \
+			    NO=$$((NO + 1)); \
+			fi; \
+		    fi; \
 	    fi; \
 	done; \
 	if test "$${NO}" -gt 0; then \
 	    echo "$${NO} Dangling anchors found!"; \
 	    exit 1; \
 	fi
+	rm -rf /tmp/anchorlist.txt /tmp/tags
 
 build-book-symlinks:
 	echo "##### generate backwards compatibility symlinks for $(NAME)"
@@ -275,4 +287,5 @@ build-books:
 	done
 
 	make check-docublocks
-	echo '<head><meta http-equiv="refresh" content="0; url=Users/"></head><body></body>' > books/index.html
+	make book-check-dangling-anchors
+	echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html

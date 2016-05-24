@@ -12,7 +12,7 @@
     knownServers: [],
 
     events: {
-      "click .pure-table-body .pure-table-row" : "navigateToNode"
+      "click #nodesContent .pure-table-body .pure-table-row" : "navigateToNode"
     },
 
     initialize: function (options) {

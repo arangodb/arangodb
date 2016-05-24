@@ -516,7 +516,7 @@ path is a document consisting of the following attributes:
         RETURN p.vertices[*].name
 
 !SECTION Graph consistency
-When [using the graph management functions to remove vertices](Management.md#remove-a-vertex)
+When [using the graph management functions to remove vertices](../../Manual/Graphs/GeneralGraphs/Management.html#remove-a-vertex)
 you have the guaranty that all referencing edges are also removed.
 However, if you use document features alone to remove vertices, no edge collections will be adjusted.
 This results in an edge with its  `_from` or `_to` attribute referring to vanished vertices.

@@ -4,7 +4,7 @@ AQL provides functions for higher-level array manipulation. Also see the
 [numeric functions](Numeric.md) for functions that work on number arrays.
 Apart from that, AQL also offers several language constructs:
 
-- simple [array access](../Fundamentals/DataTypes.md#arrays) of individual elements,
+- simple [array access](../Fundamentals/DataTypes.md#arrays--lists) of individual elements,
 - [array operators](../Advanced/ArrayOperators.md) for array expansion and contraction,
   optionally with inline filter, limit and projection,
 - [array comparison operators](../Operators.md#array-comparison-operators) to compare

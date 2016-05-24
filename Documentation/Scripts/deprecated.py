@@ -29,7 +29,7 @@ def replaceCode(pathOfFile, newVersionNumber):
   f.close()
 
 if __name__ == '__main__':
-  path = ["Documentation/Books/books/Users"]
+  path = ["Documentation/Books/books/Manual"]
   g = open(os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir, "ArangoDB/../../VERSION")))
   if g:
     newVersionNumber=g.read()
