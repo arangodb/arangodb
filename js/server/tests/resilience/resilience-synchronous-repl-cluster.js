@@ -115,15 +115,42 @@ function SynchronousReplicationSuite () {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fail the leader
+////////////////////////////////////////////////////////////////////////////////
+
+  function failLeader() {
+    var leader = cinfo.shards[shards[0]][0];
+    var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
+    // Now look for instanceInfo:
+    var pos = _.findIndex(global.instanceInfo.arangods,
+                          x => x.endpoint === endpoint);
+    assertTrue(pos >= 0);
+    assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief heal the follower
+////////////////////////////////////////////////////////////////////////////////
+
+  function healLeader() {
+    var leader = cinfo.shards[shards[0]][0];
+    var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
+    // Now look for instanceInfo:
+    var pos = _.findIndex(global.instanceInfo.arangods,
+                          x => x.endpoint === endpoint);
+    assertTrue(pos >= 0);
+    assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief produce failure
 ////////////////////////////////////////////////////////////////////////////////
 
   function makeFailure(failure) {
     if (failure.follower) {
       failFollower();
-/*    } else {
-      failLeader(); // TODO: function does not exist 
-*/      
+    } else {
+      failLeader();
     }
   }
 
@@ -134,9 +161,8 @@ function SynchronousReplicationSuite () {
   function healFailure(failure) {
     if (failure.follower) {
       healFollower();
-/*    } else {
-      healLeader(); // TODO: function does not exist 
-*/      
+    } else {
+      healLeader();
     }
   }
 
@@ -506,6 +532,18 @@ function SynchronousReplicationSuite () {
     testBasicOperationsFollowerFail17 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations({place:17, follower:true}, {place:17, follower: true});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run a standard check with failures:
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsFailureLeader : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      failLeader();
+      runBasicOperations({}, {});
+      healLeader();
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
