@@ -8,25 +8,25 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"10450"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/edges/<span class="hljs-number">10450</span>
+etag: <span class="hljs-string">"10456"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/edges/<span class="hljs-number">10456</span>
 
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/10450"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10450"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10450"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/10456"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10456"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10456"</span> 
 }
-shell> curl --dump - http://localhost:8529/_api/document/edges/10450
+shell> curl --dump - http://localhost:8529/_api/document/edges/10456
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-etag: <span class="hljs-string">"10450"</span>
+etag: <span class="hljs-string">"10456"</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10450"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/10450"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10456"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/10456"</span>, 
   <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/1"</span>, 
   <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/2"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10450"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10456"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Emil"</span> 
 }
