@@ -1,7 +1,7 @@
 !CHAPTER Document functions
 
 AQL provides below listed functions to operate on objects / document values.
-Also see [object access](../Fundamentals/DataTypes.md#objects-documents) for
+Also see [object access](../Fundamentals/DataTypes.md#objects--documents) for
 additional language constructs.
 
 !SUBSECTION ATTRIBUTES()

@@ -8,7 +8,7 @@
 Creates a new edge in the collection.
 Within the body the has to contain a *\_from* and *\_to* value referencing to valid vertices in the graph.
 Furthermore the edge has to be valid in the definition of this
-[edge collection](../Glossary/README.md#edge-collection).
+[edge collection](../../Manual/Appendix/Glossary.html#edge-collection).
 
 @RESTURLPARAMETERS
 
