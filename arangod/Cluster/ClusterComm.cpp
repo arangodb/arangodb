@@ -1164,7 +1164,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   // We only get here if the global timeout was triggered, not all
   // requests are marked by done!
 
-  LOG_TOPIC(ERR, logTopic) << "ClusterComm::performRequests: "
+  LOG_TOPIC(DEBUG, logTopic) << "ClusterComm::performRequests: "
       << "got timeout, this will be reported...";
 
   // Forget about 
