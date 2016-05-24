@@ -11,7 +11,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     <span class="hljs-string">"asan"</span> : <span class="hljs-string">"false"</span>, 
     <span class="hljs-string">"asm-crc32"</span> : <span class="hljs-string">"true"</span>, 
     <span class="hljs-string">"boost-version"</span> : <span class="hljs-string">"1.61.0b1"</span>, 
-    <span class="hljs-string">"build-date"</span> : <span class="hljs-string">"2016-05-18 15:51:17"</span>, 
+    <span class="hljs-string">"build-date"</span> : <span class="hljs-string">"2016-05-23 09:41:08"</span>, 
     <span class="hljs-string">"compiler"</span> : <span class="hljs-string">"gcc"</span>, 
     <span class="hljs-string">"cplusplus"</span> : <span class="hljs-string">"201103"</span>, 
     <span class="hljs-string">"endianness"</span> : <span class="hljs-string">"little"</span>, 
@@ -30,6 +30,6 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     <span class="hljs-string">"v8-version"</span> : <span class="hljs-string">"5.0.71.39"</span>, 
     <span class="hljs-string">"vpack-version"</span> : <span class="hljs-string">"0.1.30"</span>, 
     <span class="hljs-string">"zlib-version"</span> : <span class="hljs-string">"1.2.8"</span>, 
-    <span class="hljs-string">"mode"</span> : <span class="hljs-string">"server"</span> 
+    <span class="hljs-string">"mode"</span> : <span class="hljs-string">"console"</span> 
   } 
 }

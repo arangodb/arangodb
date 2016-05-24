@@ -849,7 +849,7 @@ the edge will not be stored.
 
 
 
-Replaces the data of an edge in collection edgeCollectionName
+Replaces the data of an edge in collection edgeCollectionName. Note that `_from` and `_to` are mandatory.
 
 `graph.edgeCollectionName.replace(edgeId, data, options)`
 
@@ -869,7 +869,7 @@ Replaces the data of an edge in collection edgeCollectionName
       var examples = require("@arangodb/graph-examples/example-graph.js");
       var graph = examples.loadGraph("social");
       graph.relation.save("female/alice", "female/diana", {typo: "nose", _key: "aliceAndDiana"});
-      graph.relation.replace("relation/aliceAndDiana", {type: "knows"});
+      graph.relation.replace("relation/aliceAndDiana", {type: "knows", _from: "female/alice", _to: "female/diana"});
     ~ examples.dropGraph("social");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock generalGraphEdgeCollectionReplace

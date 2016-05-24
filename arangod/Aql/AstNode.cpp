@@ -2219,70 +2219,59 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
 
-    if (verbose || n > 0) {
-      if (verbose || n > 1) {
-        buffer->appendChar('[');
+    buffer->appendChar('[');
+    for (size_t i = 0; i < n; ++i) {
+      if (i > 0) {
+        buffer->appendChar(',');
       }
-      for (size_t i = 0; i < n; ++i) {
-        if (i > 0) {
-          buffer->appendChar(',');
-        }
 
-        AstNode* member = getMember(i);
-        if (member != nullptr) {
-          member->stringify(buffer, verbose, failIfLong);
-        }
-      }
-      if (verbose || n > 1) {
-        buffer->appendChar(']');
+      AstNode* member = getMember(i);
+      if (member != nullptr) {
+        member->stringify(buffer, verbose, failIfLong);
       }
     }
+    buffer->appendChar(']');
     return;
   }
 
   if (type == NODE_TYPE_OBJECT) {
     // must be JavaScript-compatible!
-    if (verbose) {
-      buffer->appendChar('{');
-      size_t const n = numMembers();
+    buffer->appendChar('{');
+    size_t const n = numMembers();
 
-      if (failIfLong && n > TooLongThreshold) {
-        // intentionally do not stringify this node because the output would be
-        // too long
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-      }
-
-      for (size_t i = 0; i < n; ++i) {
-        if (i > 0) {
-          buffer->appendChar(',');
-        }
-
-        AstNode* member = getMember(i);
-
-        if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
-          TRI_ASSERT(member->numMembers() == 1);
-
-          buffer->appendChar('"');
-          buffer->appendJsonEncoded(member->getStringValue(),
-                                    member->getStringLength());
-          buffer->appendText(TRI_CHAR_LENGTH_PAIR("\":"));
-
-          member->getMember(0)->stringify(buffer, verbose, failIfLong);
-        } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-          TRI_ASSERT(member->numMembers() == 2);
-
-          buffer->appendText(TRI_CHAR_LENGTH_PAIR("$["));
-          member->getMember(0)->stringify(buffer, verbose, failIfLong);
-          buffer->appendText(TRI_CHAR_LENGTH_PAIR("]:"));
-          member->getMember(1)->stringify(buffer, verbose, failIfLong);
-        } else {
-          TRI_ASSERT(false);
-        }
-      }
-      buffer->appendChar('}');
-    } else {
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("[object Object]"));
+    if (failIfLong && n > TooLongThreshold) {
+      // intentionally do not stringify this node because the output would be
+      // too long
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
+
+    for (size_t i = 0; i < n; ++i) {
+      if (i > 0) {
+        buffer->appendChar(',');
+      }
+
+      AstNode* member = getMember(i);
+
+      if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+        TRI_ASSERT(member->numMembers() == 1);
+
+        buffer->appendJsonEncoded(member->getStringValue(),
+                                  member->getStringLength());
+        buffer->appendChar(':');
+
+        member->getMember(0)->stringify(buffer, verbose, failIfLong);
+      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+        TRI_ASSERT(member->numMembers() == 2);
+
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("$["));
+        member->getMember(0)->stringify(buffer, verbose, failIfLong);
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("]:"));
+        member->getMember(1)->stringify(buffer, verbose, failIfLong);
+      } else {
+        TRI_ASSERT(false);
+      }
+    }
+    buffer->appendChar('}');
     return;
   }
 
@@ -2809,9 +2798,7 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
     }
 
     case VALUE_TYPE_STRING: {
-      buffer->appendChar('"');
       buffer->appendJsonEncoded(value.value._string, value.length);
-      buffer->appendChar('"');
       break;
     }
 

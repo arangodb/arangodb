@@ -29,8 +29,8 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Cluster/AgencyComm.h"
+#include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"
-#include "Cluster/ServerJob.h"
 
 struct TRI_server_t;
 struct TRI_vocbase_t;
@@ -43,7 +43,7 @@ struct AgencyVersions {
   
   AgencyVersions(uint64_t _plan, uint64_t _current) : plan(_plan), current(_plan) {}
 
-  explicit AgencyVersions(const ServerJobResult& result)
+  explicit AgencyVersions(const DBServerAgencySyncResult& result)
     : plan(result.planVersion),
     current(result.currentVersion) {
   }
@@ -83,7 +83,7 @@ class HeartbeatThread : public Thread {
   /// if the job was finished successfully and false otherwise
   //////////////////////////////////////////////////////////////////////////////
 
-  void removeDispatchedJob(ServerJobResult);
+  void removeDispatchedJob(DBServerAgencySyncResult);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the thread has run at least once.

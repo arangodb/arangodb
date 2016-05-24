@@ -1305,7 +1305,10 @@
         id: "currentFrontendQuery"
       };
 
-      if (sizeBox.val() !== 'all') {
+      if (sizeBox.val() === 'all') {
+        data.batchSize = 1000000;
+      }
+      else {
         data.batchSize = parseInt(sizeBox.val(), 10);
       }
 

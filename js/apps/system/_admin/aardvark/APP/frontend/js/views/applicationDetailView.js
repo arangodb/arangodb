@@ -44,6 +44,7 @@
         $('#swagger').show();
       }
       else if (e.currentTarget.id === 'service-info') {
+        this.render();
         $('#information').show();
         $('#sideinformation').show();
       }

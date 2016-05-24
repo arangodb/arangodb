@@ -110,6 +110,8 @@ const optionsDocumentation = [
   '   - `rspec`: the location of rspec program',
   '   - `ruby`: the location of ruby program; if empty start rspec directly',
   '',
+  '   - `rr`: if set to true arangod instances are run with rr',
+  '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer tomeouts',
   '',
@@ -148,6 +150,7 @@ const optionsDefaults = {
   "onlyNightly": false,
   "password": "",
   "replication": false,
+  "rr": false,
   "rspec": "rspec",
   "ruby": "",
   "sanitizer": false,
@@ -896,8 +899,11 @@ function executeValgrind(cmd, args, options, valgrindTest) {
 
     args = toArgv(valgrindOpts, true).concat([cmd]).concat(args);
     cmd = options.valgrind;
+  } else if (options.rr) {
+    args = [cmd].concat(args);
+    cmd = "rr";
   }
-  
+
   if (options.extremeVerbosity) {
     print("starting process " + cmd + " with arguments: " + JSON.stringify(args));
   }
@@ -3284,8 +3290,8 @@ testFuncs.resilience = function(options) {
   findTests();
   options.propagateInstanceInfo = true;
   options.cluster = true;
-  if (options.clusterNodes === undefined) {
-    options.clusterNodes = 3;
+  if (options.clusterNodes < 5) {
+    options.clusterNodes = 5;
   }
   return performTests(options, testsCases.resilience, 'resilience');
 };

@@ -78,27 +78,17 @@ static int StringifyJson(TRI_memory_zone_t* zone, TRI_string_buffer_t* buffer,
 
     case TRI_JSON_STRING:
     case TRI_JSON_STRING_REFERENCE: {
-      res = TRI_AppendCharStringBuffer(buffer, '\"');
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
-
       if (object->_value._string.length > 0) {
         // optimisation for the empty string
         res = TRI_AppendJsonEncodedStringStringBuffer(
             buffer, object->_value._string.data,
             object->_value._string.length - 1, false);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return TRI_ERROR_OUT_OF_MEMORY;
-        }
+      } else {
+        res = TRI_AppendString2StringBuffer(buffer, "\"\"", 2);
       }
-
-      res = TRI_AppendCharStringBuffer(buffer, '\"');
-
+        
       if (res != TRI_ERROR_NO_ERROR) {
-        return res;
+        return TRI_ERROR_OUT_OF_MEMORY;
       }
 
       break;

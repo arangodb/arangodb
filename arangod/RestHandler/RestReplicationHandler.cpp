@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestReplicationHandler.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
@@ -267,6 +268,23 @@ HttpHandler::status_t RestReplicationHandler::execute() {
                       TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
       } else {
         handleCommandAddFollower();
+      }
+    } else if (command == "holdReadLockCollection") {
+      if (!ServerState::instance()->isDBServer()) {
+        generateError(GeneralResponse::ResponseCode::FORBIDDEN,
+                      TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+      } else {
+        if (type == GeneralRequest::RequestType::POST) {
+          handleCommandHoldReadLockCollection();
+        } else if (type == GeneralRequest::RequestType::PUT) {
+          handleCommandCheckHoldReadLockCollection();
+        } else if (type == GeneralRequest::RequestType::DELETE_REQ) {
+          handleCommandCancelHoldReadLockCollection();
+        } else if (type == GeneralRequest::RequestType::GET) {
+          handleCommandGetIdForReadLockCollection();
+        } else {
+          goto BAD_CALL;
+        }
       }
     } else {
       generateError(GeneralResponse::ResponseCode::BAD,
@@ -3580,3 +3598,230 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   generateResult(GeneralResponse::ResponseCode::OK, b.slice());
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hold a read lock on a collection to stop writes temporarily
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandHoldReadLockCollection() {
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&VPackOptions::Defaults, success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "body needs to be an object with attributes 'collection', 'ttl' and 'id'");
+    return;
+  }
+  VPackSlice const collection = body.get("collection");
+  VPackSlice const ttlSlice = body.get("ttl");
+  VPackSlice const idSlice = body.get("id");
+  if (!collection.isString() || !ttlSlice.isNumber() || !idSlice.isString()) {
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'collection' must be a string and 'ttl' a number and "
+                  "'id' a string");
+    return;
+  }
+  std::string id = idSlice.copyString();
+
+  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, collection.copyString());
+  if (col == nullptr) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  "did not find collection");
+    return;
+  }
+
+  double ttl = 0.0;
+  if (ttlSlice.isInteger()) {
+    try {
+      ttl = ttlSlice.getInt();
+    } catch (...) {
+    }
+  } else {
+    try {
+      ttl = ttlSlice.getDouble();
+    } catch (...) {
+    }
+  }
+
+  TRI_document_collection_t* docColl = col->_collection;
+  if (docColl == nullptr) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
+                  "collection not loaded");
+    return;
+  }
+
+  auto trxContext = StandaloneTransactionContext::Create(_vocbase);
+  SingleCollectionTransaction trx(trxContext, col->_cid, TRI_TRANSACTION_READ);
+  trx.addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_TRANSACTION_INTERNAL,
+                  "cannot begin read transaction");
+    return;
+  }
+
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    _holdReadLockJobs.insert(id);
+  }
+
+  double now = TRI_microtime();
+  double startTime = now;
+  double endTime = startTime + ttl;
+  
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    while (now < endTime) {
+      _condVar.wait(100000);
+      auto it = _holdReadLockJobs.find(id);
+      if (it == _holdReadLockJobs.end()) {
+        break;
+      }
+      now = TRI_microtime();
+    }
+    auto it = _holdReadLockJobs.find(id);
+    if (it != _holdReadLockJobs.end()) {
+      _holdReadLockJobs.erase(it);
+    }
+  }
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+  }
+
+  generateResult(GeneralResponse::ResponseCode::OK, b.slice());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check the holding of a read lock on a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&VPackOptions::Defaults, success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "body needs to be an object with attribute 'id'");
+    return;
+  }
+  VPackSlice const idSlice = body.get("id");
+  if (!idSlice.isString()) {
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'id' needs to be a string");
+    return;
+  }
+  std::string id = idSlice.copyString();
+
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    auto it = _holdReadLockJobs.find(id);
+    if (it == _holdReadLockJobs.end()) {
+      generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+                    TRI_ERROR_HTTP_NOT_FOUND,
+                    "no hold read lock job found for 'id'");
+      return;
+    }
+  }
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+  }
+
+  generateResult(GeneralResponse::ResponseCode::OK, b.slice());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cancel the holding of a read lock on a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&VPackOptions::Defaults, success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "body needs to be an object with attribute 'id'");
+    return;
+  }
+  VPackSlice const idSlice = body.get("id");
+  if (!idSlice.isString()) {
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'id' needs to be a string");
+    return;
+  }
+  std::string id = idSlice.copyString();
+
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    auto it = _holdReadLockJobs.find(id);
+    if (it != _holdReadLockJobs.end()) {
+      _holdReadLockJobs.erase(it);
+    }
+  }
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+  }
+
+  generateResult(GeneralResponse::ResponseCode::OK, b.slice());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get ID for a read lock job
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
+  std::string id = std::to_string(TRI_NewTickServer());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("id", VPackValue(id));
+  }
+
+  generateResult(GeneralResponse::ResponseCode::OK, b.slice());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief condition locker to wake up holdReadLockCollection jobs
+//////////////////////////////////////////////////////////////////////////////
+
+arangodb::basics::ConditionVariable RestReplicationHandler::_condVar;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief global table of flags to cancel holdReadLockCollection jobs, if
+/// the flag is set of the ID of a job, the job is cancelled
+//////////////////////////////////////////////////////////////////////////////
+
+std::unordered_set<std::string> RestReplicationHandler::_holdReadLockJobs;

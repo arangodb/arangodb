@@ -90,7 +90,6 @@ documents.
 The `_from` and `_to` attributes will of course be preserved and are still required when 
 saving edges.
 
-
 !SECTION AQL
 
 !SUBSECTION Edges handling
@@ -124,6 +123,40 @@ The type casting applied by the `TO_NUMBER()` AQL function has changed as follow
 Additionally, the `TO_STRING()` AQL function now converts `null` values into an empty string
 (`""`) instead of the string `"null"`, which is more in line with `LENGTH(null)` returning
 `0` and not `4` since v2.6.
+
+The output of `TO_STRING()` has also changed for arrays and objects as follows:
+
+- arrays are now converted into their JSON-stringify equivalents, e.g.
+
+  - `[ ]` is now converted to `[]`
+  - `[ 1, 2, 3 ]` is now converted to `[1,2,3]`
+  - `[ "test", 1, 2 ] is now converted to `["test",1,2]`
+   
+  Previous versions of ArangoDB converted arrays with no members into the
+  empty string, and non-empty arrays into a comma-separated list of member
+  values, without the surrounding angular brackets. Additionally, string
+  array members were not enclosed in quotes in the result string:
+
+  - `[ ]` was converted to ``
+  - `[ 1, 2, 3 ]` was converted to `1,2,3`
+  - `[ "test", 1, 2 ] was converted to `test,1,2`
+  
+- objects are now converted to their JSON-stringify equivalents, e.g.
+
+  - `{ }` is converted to `{}`
+  - `{ a: 1, b: 2 }` is converted to `{"a":1,"b":2}`
+  - `{ "test" : "foobar" }` is converted to `{"test":"foobar"}`
+    
+  Previous versions of ArangoDB always converted objects into the string
+  `[object Object]`  
+
+This change also affects other parts in AQL that used `TO_STRING()` to implicitly
+cast operands to strings. It also affects the AQL functions `CONCAT()` and 
+`CONCAT_SEPARATOR()` which treated array values differently. Previous versions
+of ArangoDB automatically flattened array values in the first level of the array, 
+e.g. `CONCAT([1, 2, 3, [ 4, 5, 6 ]])` produced `1,2,3,4,5,6`. Now this will produce
+`[1,2,3,[4,5,6]]`. To flatten array members on the top level, you can now use
+the more explicit `CONCAT(FLATTEN([1, 2, 3, [4, 5, 6]], 1))`.
 
 !SUBSECTION Arithmetic operators
 
@@ -486,7 +519,7 @@ the result to be created.
 Calls to the previous API can be translated as follows:
 
 - old: GET `/_api/document?collection=<collection>&type=<type>` without HTTP request body
-- 3.0: PUT `/_api/simple/all-keys` with HTTP request body `{"name":"<collection>","type":"id"}`
+- 3.0: PUT `/_api/simple/all-keys` with HTTP request body `{"collection":"<collection>","type":"id"}`
 
 The result format of this API has also changed slightly. In previous versions calls to
 the API returned a JSON object with a `documents` attribute. As the functionality is
@@ -813,6 +846,19 @@ This option was only honored in a handful of cases (described above) and was rem
 in 3.0 because the changes in server behavior controlled by this option were changed
 even before ArangoDB 2.0. This should have left enough time for client applications
 to adapt to the new behavior, making the option superfluous in 3.0.
+
+!SECTION Authentication
+
+The default value for `--server.authentication` is now `true` in the configuration
+files shipped with ArangoDB. This means the server will be started with authentication 
+enabled by default, requiring all client connections to provide authentication data 
+when connecting to ArangoDB. Previous ArangoDB versions used the setting
+`--server.disable-authentication true`, effectively disabling authentication by default.
+
+Though enabling the authentication is recommended for production setups, it may be
+overkill in a development environment. To turn off authentication, the option 
+`--server.authentication` can be set to `false` in ArangoDB's configuration file or
+on the command-line.
 
 !SECTION Web Admin Interface
 
