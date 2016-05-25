@@ -47,10 +47,18 @@ struct RecoverState {
 
   /// @brief destroys the recover state
   ~RecoverState();
+  
+  /// @brief checks if there will be a drop marker for the database or collection
+  bool willBeDropped(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const {
+    if (totalDroppedDatabases.find(databaseId) != totalDroppedDatabases.end()) {
+      return true;
+    }
+    return (totalDroppedCollections.find(collectionId) != totalDroppedCollections.end());
+  }
 
   /// @brief checks if there will be a drop marker for the collection
   bool willBeDropped(TRI_voc_cid_t collectionId) const {
-    return (droppedIds.find(collectionId) != droppedIds.end());
+    return (totalDroppedCollections.find(collectionId) != totalDroppedCollections.end());
   }
 
   /// @brief checks if a database is dropped already
@@ -149,7 +157,8 @@ struct RecoverState {
       failedTransactions;
   std::unordered_set<TRI_voc_cid_t> droppedCollections;
   std::unordered_set<TRI_voc_tick_t> droppedDatabases;
-  std::unordered_set<TRI_voc_cid_t> droppedIds;
+  std::unordered_set<TRI_voc_cid_t> totalDroppedCollections;
+  std::unordered_set<TRI_voc_tick_t> totalDroppedDatabases;
 
   TRI_voc_tick_t lastTick;
   std::vector<Logfile*> logfilesToProcess;
