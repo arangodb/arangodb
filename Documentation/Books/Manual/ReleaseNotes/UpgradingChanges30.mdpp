@@ -963,6 +963,9 @@ For all client tools, the option `--server.disable-authentication` was renamed t
 `--server.authentication`. Note that the meaning of the option `--server.authentication` 
 is the opposite of the previous `--server.disable-authentication`.
 
+The option `--server.ssl-protocol` was renamed to `--ssl.protocol`. The meaning of 
+the option is unchanged.
+
 The command-line option `--quiet` was removed from all client tools except arangosh 
 because it had no effect in them.
 
