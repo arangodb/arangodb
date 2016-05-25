@@ -873,7 +873,9 @@ function synchronizeOneShard(database, shard, planId, leader) {
     var ep = ArangoClusterInfo.getServerEndpoint(leader);
     // First once without a read transaction:
     var sy;
-    var count = 60;
+    var count = 3600;   // Try for a full hour, this is because there
+                        // can only be one syncCollection in flight
+                        // at a time
     while (true) {
       try {
         sy = rep.syncCollection(shard, 
@@ -882,15 +884,15 @@ function synchronizeOneShard(database, shard, planId, leader) {
         break;
       }
       catch (err) {
-        console.debug("synchronizeOneShard: syncCollection did not work,",
-                      "trying again later for shard", shard);
+        console.info("synchronizeOneShard: syncCollection did not work,",
+                     "trying again later for shard", shard);
       }
       if (--count <= 0) {
         console.error("synchronizeOneShard: syncCollection did not work",
                       "after many tries, giving up on shard", shard);
         throw "syncCollection did not work";
       }
-      wait(5);
+      wait(1.0);
     }
 
     if (sy.error) {
@@ -991,29 +993,29 @@ function scheduleOneShardSynchronization(database, shard, planId, leader) {
     jobInfo = scheduledJobs[shard];
     if (jobInfo.completed === undefined) {
       console.debug("old task still running, ignoring scheduling request");
-      return;
+      return false;
     }
     global.KEY_REMOVE("shardSynchronization", shard);
     if (jobInfo.completed) {  // success!
       console.debug("old task just finished successfully,",
                    "ignoring scheduling request");
-      return;
+      return false;
     }
     console.debug("old task finished unsuccessfully, scheduling a new one");
   }
 
   // If we reach this, we actually have to schedule a new task:
   jobInfo = { database, shard, planId, leader };
-  var job = registerTask({
+  registerTask({
     database: database,
     params: {database, shard, planId, leader},
     command: function(params) {
       require("@arangodb/cluster").synchronizeOneShard(
         params.database, params.shard, params.planId, params.leader);
     }});
-  console.debug("scheduleOneShardSynchronization: job:", job);
   global.KEY_SET("shardSynchronization", shard, jobInfo);
   console.debug("scheduleOneShardSynchronization: have scheduled job", jobInfo);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1023,6 +1025,7 @@ function scheduleOneShardSynchronization(database, shard, planId, leader) {
 
 function synchronizeLocalFollowerCollections (plannedCollections,
                                               currentCollections) {
+  var ok = true;
   var ourselves = global.ArangoServerState.id();
 
   var db = require("internal").db;
@@ -1069,9 +1072,11 @@ function synchronizeLocalFollowerCollections (plannedCollections,
                                     "come back later to this shard...");
                     } else {
                       if (inCurrent.servers.indexOf(ourselves) === -1) {
-                        scheduleOneShardSynchronization(
-                            database, shard, collInfo.planId,
-                            inCurrent.servers[0]);
+                        if (!scheduleOneShardSynchronization(
+                                database, shard, collInfo.planId,
+                                inCurrent.servers[0])) {
+                          ok = false;
+                        }
                       }
                     }
                   }
@@ -1090,6 +1095,7 @@ function synchronizeLocalFollowerCollections (plannedCollections,
       }
     }
   }
+  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1111,7 +1117,12 @@ function handleCollectionChanges (plan, current, takeOverResponsibility,
     dropLocalCollections(plannedCollections, writeLocked);
     cleanupCurrentCollections(plannedCollections, currentCollections,
                               writeLocked);
-    synchronizeLocalFollowerCollections(plannedCollections, currentCollections);
+    if (!synchronizeLocalFollowerCollections(plannedCollections,
+                                             currentCollections)) {
+      // If not all needed jobs have been scheduled, then work is still
+      // ongoing, therefore we want to revisit this soon.
+      ok = false;
+    }
   }
   catch (err) {
     console.error("Caught error in handleCollectionChanges: " + 
