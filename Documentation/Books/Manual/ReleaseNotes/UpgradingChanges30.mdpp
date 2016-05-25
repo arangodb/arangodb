@@ -904,6 +904,30 @@ in 3.0 because the changes in server behavior controlled by this option were cha
 even before ArangoDB 2.0. This should have left enough time for client applications
 to adapt to the new behavior, making the option superfluous in 3.0.
 
+!SUBSECTION Thread options
+
+The options `--server.threads` and `--scheduler.threads` now have a default value of 
+`0`. When `--server.threads` is set to `0` on startup, the suitable number of
+threads will be determined by ArangoDB by asking the OS for the number of available
+CPUs and using that as a baseline. If the number of CPUs is lower than 4, ArangoDB
+will still start 4 dispatcher threads. When `--scheduler.threads` is set to `0`,
+then ArangoDB will automatically determine the number of scheduler threads to start.
+This will normally create 2 scheduler threads. 
+
+If the exact number of threads needs to be set by the admin, then it is still possible
+to set `--server.threads` and `--scheduler.threads` to non-zero values. ArangoDB will
+use these values and start that many threads (note that some threads may be created
+lazily so they may not be present directly after startup). 
+
+The number of V8 JavaScript contexts to be created (`--javascript.v8-contexts`) now 
+has a default value of `0` too, meaning that ArangoDB will create as many V8 contexts
+as there will be dispatcher threads (controlled by the `--server.threads` option).
+Setting this option to a non-zero value will create exactly as many V8 contexts as
+specified.
+
+Setting these options explicitly to non-zero values may be beneficial in environments
+that have few resources (processing time, maximum thread count, available memory). 
+
 !SECTION Authentication
 
 The default value for `--server.authentication` is now `true` in the configuration
