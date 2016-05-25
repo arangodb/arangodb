@@ -514,7 +514,6 @@ function createLocalCollections (plannedCollections, planVersion,
                     }
                     catch(err) {
                     }
-                    console.error("Fuxxen:", shard, isLeader, wasLeader);
 
                     // found a shard we are responsible for
 
