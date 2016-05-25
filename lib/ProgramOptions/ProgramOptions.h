@@ -218,11 +218,21 @@ class ProgramOptions {
 
   // prints the names for all section help options
   void printSectionsHelp() const {
+    char const* colorStart;
+    char const* colorEnd;
+
+    if (isatty(STDOUT_FILENO)) {
+      colorStart = TRI_SHELL_COLOR_BRIGHT;
+      colorEnd = TRI_SHELL_COLOR_RESET;
+    } else {
+      colorStart = colorEnd = "";
+    }
+
     // print names of sections
     std::cout << _more;
     for (auto const& it : _sections) {
       if (!it.second.name.empty() && it.second.hasOptions()) {
-        std::cout << " --help-" << it.second.name;
+        std::cout << "  " << colorStart << "--help-" << it.second.name << colorEnd;
       }
     }
     std::cout << std::endl;
