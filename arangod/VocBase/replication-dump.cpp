@@ -439,9 +439,9 @@ static int DumpCollection(TRI_replication_dump_t* dump,
 
     // we are reading from a journal that might be modified in parallel
     // so we must read-lock it
-    if (e._isJournal) {
-      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-    } else {
+    CONDITIONAL_READ_LOCKER(readLocker, document->_filesLock, e._isJournal); 
+
+    if (!e._isJournal) {
       TRI_ASSERT(datafile->_isSealed);
     }
 
@@ -530,11 +530,6 @@ static int DumpCollection(TRI_replication_dump_t* dump,
     }
 
   NEXT_DF:
-    if (e._isJournal) {
-      // read-unlock the journal
-      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-    }
-
     if (res != TRI_ERROR_NO_ERROR || !hasMore || bufferFull) {
       break;
     }

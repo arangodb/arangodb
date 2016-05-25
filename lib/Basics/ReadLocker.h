@@ -58,6 +58,8 @@
 
 #define TRY_READ_LOCKER(obj, lock) arangodb::basics::TryReadLocker obj(&lock)
 
+#define CONDITIONAL_READ_LOCKER(obj, lock, condition) arangodb::basics::ConditionalReadLocker obj(&lock, (condition))
+
 namespace arangodb {
 namespace basics {
 
@@ -74,7 +76,7 @@ class ReadLocker {
 
  public:
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires a read-lock
+/// @brief acquires a read-lock
 ///
 /// The constructors read-locks the lock, the destructors unlocks the lock.
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,7 +100,7 @@ class ReadLocker {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires a read-lock, with periodic sleeps while not acquired
+/// @brief acquires a read-lock, with periodic sleeps while not acquired
 /// sleep time is specified in nanoseconds
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -183,9 +185,9 @@ class TryReadLocker {
 
  public:
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief tries to aquire a read-lock
+  /// @brief tries to acquire a read-lock
   ///
-  /// The constructors tries to read-lock the lock, the destructors unlocks the
+  /// The constructor tries to read-lock the lock, the destructors unlocks the
   /// lock if it was acquired in the constructor
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -199,6 +201,69 @@ class TryReadLocker {
   //////////////////////////////////////////////////////////////////////////////
 
   ~TryReadLocker() {
+    if (_isLocked) {
+      _readWriteLock->unlock();
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not we acquired the lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isLocked() const { return _isLocked; }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief unlocks the read-write lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool unlock() {
+    if (_isLocked) {
+      _readWriteLock->unlock();
+      _isLocked = false;
+      return true;
+    }
+    return false;
+  }
+
+ private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the read-write lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  ReadWriteLock* _readWriteLock;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not we acquired the lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool _isLocked;
+};
+
+class ConditionalReadLocker {
+  ConditionalReadLocker(ConditionalReadLocker const&) = delete;
+  ConditionalReadLocker& operator=(ConditionalReadLocker const&) = delete;
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief acquire a read-lock
+  ///
+  /// The constructor tries to read-lock the lock, the destructors unlocks the
+  /// lock if it was acquired in the constructor
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ConditionalReadLocker(ReadWriteLock* readWriteLock, bool condition)
+      : _readWriteLock(readWriteLock), _isLocked(false) {
+    if (condition) {
+      _readWriteLock->readLock();
+      _isLocked = true;
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief releases the read-lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  ~ConditionalReadLocker() {
     if (_isLocked) {
       _readWriteLock->unlock();
     }
