@@ -3031,6 +3031,7 @@ const recoveryTests = [
   "create-with-temp",
   "create-with-temp-old",
   "create-collection-fail",
+  "create-database-existing",
   "create-database-fail",
   "empty-datafiles",
   "flush-drop-database-and-fail",
