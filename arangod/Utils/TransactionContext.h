@@ -83,7 +83,8 @@ class TransactionContext {
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief order a document ditch for the collection
-  /// this will create one if none exists
+  /// this will create one if none exists. if no ditch can be created, the
+  /// function will return a nullptr!
   //////////////////////////////////////////////////////////////////////////////
 
   DocumentDitch* orderDitch(TRI_document_collection_t*);
