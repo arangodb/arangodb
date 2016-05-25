@@ -444,6 +444,12 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
                << "' does not contain parameters file or parameters file "
                   "cannot be read";
 
+      if (TRI_FilesDirectory(parametersFile.c_str()).empty()) {
+        // directory is fully empty
+        LOG(WARN) << "ignoring empty database directory '" << databaseDirectory << "'";
+        continue;
+      }
+
       // abort
       res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
       break;
