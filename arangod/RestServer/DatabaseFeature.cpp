@@ -69,6 +69,8 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
+  
+  options->addOldOption("server.disable-replication-applier", "database.replication-applier");
 
   options->addOption("--database.directory", "path to the database directory",
                      new StringParameter(&_directory));

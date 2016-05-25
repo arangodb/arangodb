@@ -64,6 +64,12 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
 }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addOldOption("log.tty", "log.foreground-tty");
+  options->addOldOption("log.content-filter", "");
+  options->addOldOption("log.source-filter", "");
+  options->addOldOption("log.application", "");
+  options->addOldOption("log.facility", "");
+  
   options->addHiddenOption("--log", "the global or topic-specific log level",
                            new VectorParameter<StringParameter>(&_levels));
 
