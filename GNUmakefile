@@ -276,7 +276,7 @@ winXX-build:
 
 packXX:
 	./Installation/file-copy-js.sh . ../b
-	cd ../b && find -name cmake_install.cmake -exec sed -i {} -e "s;(Configuration);{CMAKE_INSTALL_CONFIG_NAME};" \\;
+	cd ../b && find -name cmake_install.cmake -exec sed -i {} -e "s;(Configuration);{CMAKE_INSTALL_CONFIG_NAME};" \;
 	cd ../b && cpack -G NSIS -C $(BUILD_TARGET)
 	cd ../b && cpack -G ZIP  -C $(BUILD_TARGET)
 
