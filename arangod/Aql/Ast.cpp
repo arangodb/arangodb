@@ -1272,7 +1272,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         if (length > 0 && stringValue[0] >= '0' && stringValue[0] <= '9') {
           // emergency translation of collection id to name
           arangodb::CollectionNameResolver resolver(_query->vocbase());
-          std::string collectionName = resolver.getCollectionName(basics::StringUtils::uint64(stringValue, length));
+          std::string collectionName = resolver.getCollectionNameCluster(basics::StringUtils::uint64(stringValue, length));
           if (collectionName.empty()) {
             THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                           value.copyString().c_str());
