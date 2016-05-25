@@ -52,7 +52,9 @@ The *LIKE* operator checks whether its left operand matches the pattern specifie
 in its right operand. The pattern can consist of regular characters and wildcards.
 The supported wildcards are *_* to match a single arbitrary character, and *%* to 
 match any number of arbitrary characters. Literal *%* and *_* need to be escaped
-with a backslash.
+with a backslash. Backslashes need to be escaped themselves, which effectively
+means that two reverse solidus characters need to preceed a literal percent sign
+or underscore.
 
 ```
 "abc" LIKE "a%"              // true

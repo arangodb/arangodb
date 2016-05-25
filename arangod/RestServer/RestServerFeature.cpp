@@ -108,6 +108,14 @@ void RestServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
   
+  options->addOldOption("server.disable-authentication", "server.authentication");
+  options->addOldOption("server.disable-authentication-unix-sockets", "server.authentication-unix-sockets");
+  options->addOldOption("server.authenticate-system-only", "server.authentication-system-only");
+  options->addOldOption("server.allow-method-override", "http.allow-method-override");
+  options->addOldOption("server.hide-product-header", "http.hide-product-header");
+  options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
+  options->addOldOption("server.default-api-compatibility", "");
+
   options->addOption("--server.authentication",
                      "enable or disable authentication for ALL client requests",
                      new BooleanParameter(&_authentication));

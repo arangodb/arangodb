@@ -54,6 +54,8 @@ CheckVersionFeature::CheckVersionFeature(
 void CheckVersionFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
+  
+  options->addOldOption("check-version", "database.check-version");
 
   options->addHiddenOption("--database.check-version",
                            "checks the versions of the database and exit",

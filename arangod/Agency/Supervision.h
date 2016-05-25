@@ -50,8 +50,9 @@ struct Job {
   Job(Node const&, Agent*, std::string const& jobId,
       std::string const& creator, std::string const& agencyPrefix);
   virtual ~Job();
-  virtual unsigned status () const = 0;
   virtual bool exists () const;
+  virtual bool finish (bool) const;
+  virtual unsigned status () const = 0;
   virtual bool create () const = 0;
   virtual bool start() const = 0;
   Node const& _snapshot;
