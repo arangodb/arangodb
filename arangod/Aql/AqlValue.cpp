@@ -378,7 +378,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
-      doCopy = false; 
+      doCopy = false;
     case VPACK_INLINE:
       // fall-through intentional
     case VPACK_MANAGED: {
@@ -871,6 +871,7 @@ void AqlValue::destroy() {
 VPackSlice AqlValue::slice() const {
   switch (type()) {
     case VPACK_SLICE_POINTER: {
+
       return VPackSlice(_data.pointer);
     }
     case VPACK_INLINE: {

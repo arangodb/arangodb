@@ -2261,6 +2261,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
   arangodb::Index* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
+  TRI_ASSERT(trx->hasDitch(cid));
 
   GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->nearQuery(
       trx, latitude.toDouble(), longitude.toDouble(), static_cast<size_t>(limitValue));
@@ -2311,6 +2312,7 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
   arangodb::Index* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
+  TRI_ASSERT(trx->hasDitch(cid));
 
   GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->withinQuery(
       trx, latitudeValue.toDouble(), longitudeValue.toDouble(), radiusValue.toDouble());
@@ -3792,6 +3794,8 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   if (queryResult == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
+  
+  TRI_ASSERT(trx->hasDitch(cid));
 
   TransactionBuilderLeaser builder(trx);
   try {
