@@ -2653,3 +2653,13 @@ void FollowerInfo::remove(ServerID const& sid) {
              << path;
   }
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief clear follower list, no changes in agency necesary
+//////////////////////////////////////////////////////////////////////////////
+
+void FollowerInfo::clear() {
+  MUTEX_LOCKER(locker, _mutex);
+  auto v = std::make_shared<std::vector<ServerID>>();
+  _followers = v;  // will cast to std::vector<ServerID> const
+}

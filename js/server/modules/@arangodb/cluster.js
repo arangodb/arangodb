@@ -450,6 +450,7 @@ function handleDatabaseChanges (plan, current, writeLocked) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function createLocalCollections (plannedCollections, planVersion,
+                                 currentCollections,
                                  takeOverResponsibility, writeLocked) {
   var ourselves = global.ArangoServerState.id();
   
@@ -506,6 +507,15 @@ function createLocalCollections (plannedCollections, planVersion,
                   var didWrite = false;
                   if (shards[shard].indexOf(ourselves) >= 0) {
                     var isLeader = shards[shard][0] === ourselves;
+                    var wasLeader = isLeader;
+                    try {
+                      var currentServers = currentCollections[database][collection][shard].servers;
+                      wasLeader = currentServers[0] === ourselves;
+                    }
+                    catch(err) {
+                    }
+                    console.error("Fuxxen:", shard, isLeader, wasLeader);
+
                     // found a shard we are responsible for
 
                     var error = { error: false, errorNum: 0,
@@ -546,6 +556,10 @@ function createLocalCollections (plannedCollections, planVersion,
                       }
                     }
                     else {
+                      if (!isLeader && wasLeader) {
+                        db._collection(shard).leaderResign();
+                      }
+
                       if (localCollections[shard].status !== collInfo.status) {
                         console.info("detected status change for local shard '%s/%s'",
                             database,
@@ -695,7 +709,8 @@ function createLocalCollections (plannedCollections, planVersion,
                       }
                     }
 
-                    if (takeOverResponsibility && !didWrite && isLeader) {
+                    if ((takeOverResponsibility && !didWrite && isLeader) ||
+                        (!didWrite && isLeader && !wasLeader)) {
                       writeLocked({ part: "Current" },
                           takeOver,
                           [ database, shard, collInfo, error ]);
@@ -1130,10 +1145,11 @@ function handleCollectionChanges (plan, current, takeOverResponsibility,
   var ok = true;
 
   try {
-    // Note that createLocalCollections and dropLocalCollections do not 
+    createLocalCollections(plannedCollections, plan.Version, currentCollections,
+                           takeOverResponsibility, writeLocked);
+    // Note that dropLocalCollections does not 
     // need the currentCollections, since they compare the plan with
     // the local situation.
-    createLocalCollections(plannedCollections, plan.Version, takeOverResponsibility, writeLocked);
     dropLocalCollections(plannedCollections, writeLocked);
     cleanupCurrentCollections(plannedCollections, currentCollections,
                               writeLocked);
