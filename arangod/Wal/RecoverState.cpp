@@ -400,11 +400,18 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
       state->failedTransactions[tid] = std::make_pair(databaseId, true);
       break;
     }
+    
+    case TRI_DF_MARKER_VPACK_DROP_DATABASE: {
+      // note that the database was dropped and doesn't need to be recovered
+      TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+      state->totalDroppedDatabases.emplace(databaseId);
+      break;
+    }
 
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION: {
       // note that the collection was dropped and doesn't need to be recovered
-      TRI_voc_cid_t const cid = DatafileHelper::CollectionId(marker);
-      state->droppedIds.emplace(cid);
+      TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
+      state->totalDroppedCollections.emplace(collectionId);
       break;
     }
 
@@ -661,7 +668,10 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        int res = document->updateCollectionInfo(vocbase, payloadSlice, vocbase->_settings.forceSyncProperties);
+        // turn off sync temporarily if the database or collection are going to be
+        // dropped later
+        bool const forceSync = state->willBeDropped(databaseId, collectionId);
+        int res = document->updateCollectionInfo(vocbase, payloadSlice, forceSync);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "cannot change collection properties for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);
@@ -723,8 +733,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         std::string const indexName("index-" + std::to_string(indexId) + ".json");
         std::string const filename(arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
 
+        bool const forceSync = state->willBeDropped(databaseId, collectionId);
         bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-            filename.c_str(), payloadSlice, vocbase->_settings.forceSyncProperties);
+            filename.c_str(), payloadSlice, forceSync);
 
         if (!ok) {
           LOG(WARN) << "cannot create index " << indexId << ", collection " << collectionId << " in database " << databaseId;
