@@ -429,8 +429,6 @@ struct FailedServer : public Job {
 
     pending.close(); pending.close();
 
-    size_t sub = 0;
-
     // Transact to agency
     write_ret_t res = transact(_agent, pending);
 
@@ -441,6 +439,8 @@ struct FailedServer : public Job {
       
       Node::Children const& databases =
         _snapshot("/Plan/Collections").children();
+
+      size_t sub = 0;
 
       for (auto const& database : databases) {
         for (auto const& collptr : database.second->children()) {
@@ -647,8 +647,6 @@ struct CleanOutServer : public Job {
 
     pending.close(); pending.close();
     
-    size_t sub = 0;
-    
     // Transact to agency
     write_ret_t res = transact(_agent, pending);
     
@@ -659,6 +657,8 @@ struct CleanOutServer : public Job {
       Node::Children const& databases =
         _snapshot("/Plan/Collections").children();
       
+      size_t sub = 0;
+    
       for (auto const& database : databases) {
         for (auto const& collptr : database.second->children()) {
           Node const& collection = *(collptr.second);
