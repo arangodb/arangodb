@@ -628,7 +628,6 @@
           self.history[self.server] = {};
         }
       }
-      console.log(url);
 
       $.ajax(
         url + urlParams,
