@@ -129,6 +129,10 @@
         $('#healthStatus').addClass('negative');
         $('.health-state').html(window.location.host + ' OFFLINE');
         $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+
+        //show offline overlay
+        $('#offlinePlaceholder').show();
+        this.reconnectAnimation(0);
       }
     },
 
