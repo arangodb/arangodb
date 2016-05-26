@@ -34,6 +34,12 @@
 
     &.disabled {
       cursor: not-allowed;
+
+      &:hover {
+        a {
+          color: rgba(51, 51, 51, .6);
+        }
+      }
     }
 
     &:hover {
@@ -52,7 +58,6 @@
       -o-transition: all .2s ease-in;
       -webkit-transition: all .2s ease-in;
       transition: all .2s ease-in;
-
     }
 
   }
@@ -125,6 +130,12 @@
 
       &.disabled {
         cursor: not-allowed;
+
+        &:hover {
+          a {
+            color: rgba(51, 51, 51, .6);
+          }
+        }
       }
 
       &:hover {
