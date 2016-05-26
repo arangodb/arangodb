@@ -100,6 +100,8 @@
       var error = 0;
 
       if (connection) {
+        $('#offlinePlaceholder').hide();
+
         this.collection.each(function(value) {
           if (value.toJSON().status !== 'ok') {
             error++;
