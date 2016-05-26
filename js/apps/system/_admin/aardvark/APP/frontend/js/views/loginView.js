@@ -28,7 +28,9 @@
       $(this.el3).hide();
 
       if (frontendConfig.authenticationEnabled && loggedIn !== true) {
-        $('#loginUsername').focus();
+        window.setTimeout(function() {
+          $('#loginUsername').focus();
+        }, 300);
       }
       else {
         var url = arangoHelper.databaseUrl("/_api/database/user");
@@ -132,7 +134,9 @@
     renderDBS: function() {
       var db = $('#loginDatabase').val();
       $('#goToDatabase').html("Select: "  + db);
-      $('#goToDatabase').focus();
+      window.setInterval(function() {
+        $('#goToDatabase').focus();
+      }, 300);
     },
 
     logout: function() {
