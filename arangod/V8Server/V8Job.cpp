@@ -50,13 +50,17 @@ V8Job::V8Job(TRI_vocbase_t* vocbase, std::string const& command,
       _command(command),
       _parameters(parameters),
       _canceled(false),
-      _allowUseDatabase(allowUseDatabase) {}
+      _allowUseDatabase(allowUseDatabase) {
+  TRI_UseVocBase(vocbase);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Job::~V8Job() {}
+V8Job::~V8Job() {
+  TRI_ReleaseVocBase(_vocbase);
+}
 
 void V8Job::work() {
   if (_canceled) {
