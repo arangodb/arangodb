@@ -2536,7 +2536,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
 
-  if (func->externalName == "LENGTH") {
+  if (func->externalName == "LENGTH" || func->externalName == "COUNT") {
     // shortcut LENGTH(collection) to COLLECTION_COUNT(collection)
     auto args = node->getMember(0);
     if (args->numMembers() == 1) {
