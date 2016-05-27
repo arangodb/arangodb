@@ -135,14 +135,15 @@ KEEP(doc, [ "firstname", "name", "likes" ])
 
 `LENGTH(doc) → attrCount`
 
-Determine the [number of elements](Array.md#length) in an array,
-the number of attribute keys of an object / document,
-the [amount of documents](Miscellaneous.md#length) in a collection,
-or the [character length](String.md#length) of a string.
+Determine the number of attribute keys of an object / document.
 
 - **doc** (object): a document / object
 - returns **attrCount** (number): the number of attribute keys in *doc*, regardless
   of their values
+
+*LENGTH()* can also determine the [number of elements](Array.md#length) in an array,
+the [amount of documents](Miscellaneous.md#length) in a collection and
+the [character length](String.md#length) of a string.
 
 !SUBSECTION MATCHES()
 

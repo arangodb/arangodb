@@ -10,8 +10,8 @@ aborts.
 Type casts can also be performed upon request by invoking a type cast function.
 This is called explicit type casting. AQL offers several functions for this.
 Each of the these functions takes an operand of any data type and returns a result
-value with the type corresponding to the function name (e.g. *TO_NUMBER()* will
-return a numeric value):
+value with the type corresponding to the function name. For example, *TO_NUMBER()*
+will return a numeric value.
 
 !SUBSECTION TO_BOOL()
 

@@ -119,15 +119,16 @@ DOCUMENT( [ "users/john", "users/amy" ] )
 
 `LENGTH(coll) → documentCount`
 
-Determine the [number of elements](Array.md#length) in an array,
-the [number of attribute keys](Document.md#length) of an object / document,
-the amount of documents in a collection,
-or the [character length](String.md#length) of a string.
+Determine the amount of documents in a collection.
 
 It calls [COLLECTION_COUNT()](#collectioncount) internally.
 
 - **coll** (collection): a collection (not string)
 - returns **documentCount** (number): the total amount of documents in *coll*
+
+*LENGTH()* can also determine the [number of elements](Array.md#length) in an array,
+the [number of attribute keys](Document.md#length) of an object / document and
+the [character length](String.md#length) of a string.
 
 !SECTION Hash functions
 
