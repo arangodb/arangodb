@@ -50,8 +50,8 @@ DispatcherThread::DispatcherThread(DispatcherQueue* queue)
 }
 
 void DispatcherThread::run() {
-  double worked = 0;
-  double const grace = 0.01;
+  double worked = 0.0;
+  double const grace = 0.002;
 
   // iterate until we are shutting down
   while (!_queue->_stopping.load(std::memory_order_relaxed)) {
@@ -97,6 +97,7 @@ void DispatcherThread::run() {
         if (_queue->tooManyThreads()) {
           break;
         }
+#ifndef _WIN32
       } else if (worked < now) {
         // we worked earlier, but not now
         uintptr_t n = (uintptr_t) this;
@@ -104,6 +105,7 @@ void DispatcherThread::run() {
       } else {
         // we worked just now. sleep a little while to avoid completely busy waiting
         usleep(20);
+#endif
       }
     }
   }
