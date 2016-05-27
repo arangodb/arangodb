@@ -117,12 +117,16 @@ void RestServerFeature::collectOptions(
       "--server.authentication-system-only",
       "use HTTP authentication only for requests to /_api and /_admin",
       new BooleanParameter(&_authenticationSystemOnly));
-
+  
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   options->addOption("--server.authentication-unix-sockets",
                      "authentication for requests via UNIX domain sockets",
                      new BooleanParameter(&_authenticationUnixSockets));
 #endif
+  
+  options->addOption("--server.jwt-secret",
+                     "secret to use when doing jwt authentication",
+                     new StringParameter(&_jwtSecretArgument));
 
   options->addSection("http", "HttpServer features");
 
@@ -232,6 +236,25 @@ void RestServerFeature::prepare() {
 
 void RestServerFeature::start() {
   RESTSERVER = this;
+  
+  size_t maxSize = sizeof(_jwtSecret);
+  if (!_jwtSecretArgument.empty()) {
+    if (_jwtSecretArgument.length() > maxSize) {
+      LOG(WARN) << "Given JWT secret too long. Will be truncated to " << maxSize;
+    }
+
+    _jwtSecretLength = std::min(maxSize, _jwtSecretArgument.length());
+    std::copy_n(_jwtSecretArgument.begin(), _jwtSecretLength, _jwtSecret);
+  } else {
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> distribution(0,255);
+
+    for (size_t i=0;i<maxSize;i++) {
+      _jwtSecret[i] = distribution(generator);
+    }
+    _jwtSecretLength = maxSize;
+  }
+
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
   _httpOptions._vocbase = DatabaseFeature::DATABASE->vocbase();

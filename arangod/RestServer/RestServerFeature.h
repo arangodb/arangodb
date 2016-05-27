@@ -76,6 +76,8 @@ class RestServerFeature final
   bool _authentication;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
+  std::string _jwtSecret;
+
   bool _proxyCheck;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
