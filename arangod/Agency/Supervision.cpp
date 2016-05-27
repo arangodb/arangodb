@@ -102,7 +102,7 @@ bool Job::exists() const {
 }
 
 
-bool Job::finish(bool success = true) const {
+bool Job::finish(std::string const& type, bool success = true) const {
 
   Builder pending, finished;
   
@@ -127,6 +127,12 @@ bool Job::finish(bool success = true) const {
   
   // --- Delete pending
   finished.add(_agencyPrefix + pendingPrefix + _jobId,
+               VPackValue(VPackValueType::Object));
+  finished.add("op", VPackValue("delete"));
+  finished.close();
+
+  // --- Remove block
+  finished.add(_agencyPrefix + "/Supervision/" + type + _jobId,
                VPackValue(VPackValueType::Object));
   finished.add("op", VPackValue("delete"));
   finished.close();
@@ -329,7 +335,7 @@ struct MoveShard : public Job {
 
       if (planned.slice()[0] == current.slice()[0]) {
 
-        if (finish()) {
+        if (finish("Shards/" + _shard + "/")) {
           return FINISHED;
         }
         
@@ -530,7 +536,7 @@ struct FailedServer : public Job {
       }
 
       if (!found) {
-        if (finish()) {
+        if (finish("DBServers/" + _failed + "/")) {
           return FINISHED;
         }
       }
@@ -609,7 +615,7 @@ struct CleanOutServer : public Job {
     _snapshot(toDoPrefix + _jobId).toBuilder(todo);
     todo.close();
 
-    // Prepare peding entry, block toserver
+    // Enter peding, remove todo, block toserver
     pending.openArray();
     
     // --- Add pending

@@ -51,7 +51,7 @@ struct Job {
       std::string const& creator, std::string const& agencyPrefix);
   virtual ~Job();
   virtual bool exists () const;
-  virtual bool finish (bool) const;
+  virtual bool finish (std::string const&, bool) const;
   virtual unsigned status () const = 0;
   virtual bool create () const = 0;
   virtual bool start() const = 0;
