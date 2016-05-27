@@ -174,7 +174,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
   else()
     set(ROCKSDB_MALLOC_USABLE_SIZE "-DROCKSDB_MALLOC_USABLE_SIZE")
   endif()
-  set(BASE_FLAGS "${BASE_FLAGS} -W -Wextra -Wall -Wsign-compare -Wshadow -Wno-unused-parameter -fno-omit-frame-pointer -momit-leaf-frame-pointer -fno-builtin-memcmp -Woverloaded-virtual -Wnon-virtual-dtor -Wno-missing-field-initializers  ${ROCKSDB_MALLOC_USABLE_SIZE} -march=native -isystem -fPIC -D${OS_DEFINE} ${POSIX_FLAG}")
+  set(BASE_FLAGS "${BASE_FLAGS} -W -Wextra -Wall -Wsign-compare -Wshadow -Wno-unused-parameter -fno-omit-frame-pointer -momit-leaf-frame-pointer -fno-builtin-memcmp -Woverloaded-virtual -Wnon-virtual-dtor -Wno-missing-field-initializers  ${ROCKSDB_MALLOC_USABLE_SIZE} -isystem -fPIC -D${OS_DEFINE} ${POSIX_FLAG}")
 
   set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -Werror"                         CACHE INTERNAL "C debug flags")
