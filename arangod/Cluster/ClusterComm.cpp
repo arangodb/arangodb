@@ -171,11 +171,6 @@ void ClusterComm::cleanup() {
 void ClusterComm::startBackgroundThread() {
   _backgroundThread = new ClusterCommThread();
 
-  if (nullptr == _backgroundThread) {
-    LOG(FATAL) << "unable to start ClusterComm background thread";
-    FATAL_ERROR_EXIT();
-  }
-
   if (!_backgroundThread->start()) {
     LOG(FATAL) << "ClusterComm background thread does not work";
     FATAL_ERROR_EXIT();

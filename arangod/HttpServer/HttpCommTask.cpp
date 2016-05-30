@@ -1042,8 +1042,6 @@ void HttpCommTask::signalTask(TaskData* data) {
     } else {
       StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
 
-      TRI_ASSERT(buffer != nullptr);
-
       buffer->appendHex(len);
       buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
       buffer->appendText(data->_data.c_str(), len);

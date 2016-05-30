@@ -1,9 +1,9 @@
 ; CPack install script designed for a nmake build
-!addplugindir  '@CPACK_PLUGIN_PATH@\Plugins\NSIS_Simple_Service_Plugin_1.30'
-!addplugindir  '@CPACK_PLUGIN_PATH@\Plugins\UAC-plug-in-NSIS\Ansi'
-!addplugindir  '@CPACK_PLUGIN_PATH@\Plugins\AccessControl\Plugins'
-!addplugindir  '@CPACK_PLUGIN_PATH@\Plugins\SharedMemory\Plugins'
-!addincludedir '@CPACK_PLUGIN_PATH@\Plugins\UAC-plug-in-NSIS'
+!addplugindir  '@CPACK_PLUGIN_PATH@/NSIS_Simple_Service_Plugin_1.30'
+!addplugindir  '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS/Ansi'
+!addplugindir  '@CPACK_PLUGIN_PATH@/AccessControl/Plugins'
+!addplugindir  '@CPACK_PLUGIN_PATH@/SharedMemory/Plugins'
+!addincludedir '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS'
 
 ;--------------------------------
 ; Include LogicLib for more readable code
