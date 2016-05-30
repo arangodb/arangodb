@@ -69,4 +69,4 @@ Returns the session middleware.
 [COLLECTIONSTORAGE]: ./Storages/Collection.md
 [COOKIETRANSPORT]: ./Transports/Cookie.md
 [HEADERTRANSPORT]: ./Transports/Header.md
-[REQUEST]: ./Router/Request.md
+[REQUEST]: ../Router/Request.md
