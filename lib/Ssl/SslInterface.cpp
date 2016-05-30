@@ -256,8 +256,7 @@ std::string sslHMAC(char const* key, size_t keyLength, char const* message,
   HMAC(evp_md, key, (int)keyLength, (const unsigned char*)message, messageLen,
        md, &md_len);
 
-  // return value as hex
-  std::string result = StringUtils::encodeHex(std::string((char*)md, md_len));
+  std::string result = std::string((char*)md, md_len);
   TRI_SystemFree(md);
 
   return result;
@@ -271,7 +270,7 @@ bool verifyHMAC(char const* challenge, size_t challengeLength,
   // result must == BASE64(response, responseLen)
 
   std::string s =
-      sslHMAC(challenge, challengeLength, secret, secretLen, algorithm);
+      StringUtils::encodeHex(sslHMAC(challenge, challengeLength, secret, secretLen, algorithm));
 
   if (s.length() == responseLen &&
       s.compare(std::string(response, responseLen)) == 0) {

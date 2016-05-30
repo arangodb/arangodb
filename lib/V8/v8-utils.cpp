@@ -3154,8 +3154,8 @@ static void JS_HMAC(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::string result = SslInterface::sslHMAC(
-      key.c_str(), key.size(), message.c_str(), message.size(), al);
+  std::string result = StringUtils::encodeHex(SslInterface::sslHMAC(
+      key.c_str(), key.size(), message.c_str(), message.size(), al));
   TRI_V8_RETURN_STD_STRING(result);
   TRI_V8_TRY_CATCH_END
 }

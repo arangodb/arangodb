@@ -204,6 +204,7 @@ add_executable(${BIN_ARANGOD}
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp
   RestHandler/RestAdminLogHandler.cpp
+  RestHandler/RestAuthHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
   RestHandler/RestCursorHandler.cpp

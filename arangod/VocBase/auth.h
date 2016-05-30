@@ -153,4 +153,10 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t*, char const* hash,
                                      char const* username, char const* password,
                                      bool* mustChange);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check username password
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CheckUsernamePassword(TRI_vocbase_t*, char const* username, char const* password, bool* mustChange);
+
 #endif

@@ -41,6 +41,7 @@
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
@@ -510,6 +511,10 @@ void RestServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/shutdown",
       RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
+  
+  _handlerFactory->addPrefixHandler(
+      "/_open/auth",
+      RestHandlerCreator<arangodb::RestAuthHandler>::createData<std::string const*>, &_jwtSecret);
 
   // ...........................................................................
   // /_admin

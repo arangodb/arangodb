@@ -272,18 +272,37 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   }
 
   std::string const& authStr = _request->header(StaticStrings::Authorization, found);
-
-  if (!found || !TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
+  
+  if (!found) {
     return GeneralResponse::ResponseCode::UNAUTHORIZED;
   }
 
+  size_t methodPos = authStr.find_first_of(' ');
+  if (methodPos == std::string::npos) {
+    return GeneralResponse::ResponseCode::UNAUTHORIZED;
+  }
+  
   // skip over "basic "
-  char const* auth = authStr.c_str() + 6;
-
+  char const* auth = authStr.c_str() + methodPos;
   while (*auth == ' ') {
     ++auth;
   }
 
+  if (!TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
+    return basicAuthentication(auth);
+  } else if (TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
+    return jwtAuthentication(auth);
+  } else {
+    // mop: hmmm is 403 the correct status code? or 401? or 400? :S
+    return GeneralResponse::ResponseCode::FORBIDDEN;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the authentication via basic
+////////////////////////////////////////////////////////////////////////////////
+
+GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(const char* auth) {
   if (useClusterAuthentication()) {
     std::string const expected = ServerState::instance()->getAuthentication();
 
@@ -346,4 +365,12 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   }
 
   return GeneralResponse::ResponseCode::OK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the authentication via jwt
+////////////////////////////////////////////////////////////////////////////////
+
+GeneralResponse::ResponseCode VocbaseContext::jwtAuthentication(const char* auth) {
+  return GeneralResponse::ResponseCode::FORBIDDEN;
 }

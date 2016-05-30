@@ -354,6 +354,37 @@ bool TRI_ExistsAuthenticationAuthInfo(TRI_vocbase_t* vocbase,
 bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
                                      char const* username, char const* password,
                                      bool* mustChange) {
+  bool res = TRI_CheckUsernamePassword(vocbase, username, password, mustChange);
+
+  if (res && hash != nullptr) {
+    // insert item into the cache
+    auto cached = std::make_unique<VocbaseAuthCache>();
+
+    cached->_hash = std::string(hash);
+    cached->_username = std::string(username);
+    cached->_mustChange = *mustChange;
+
+    if (cached->_hash.empty() || cached->_username.empty()) {
+      return res;
+    }
+
+    WRITE_LOCKER(writeLocker, vocbase->_authInfoLock);
+
+    auto it = vocbase->_authCache.find(cached->_hash);
+
+    if (it != vocbase->_authCache.end()) {
+      delete (*it).second;
+      (*it).second = nullptr;
+    }
+
+    vocbase->_authCache[cached->_hash] = cached.get();
+    cached.release();
+  }
+
+  return res;
+}
+
+bool TRI_CheckUsernamePassword(TRI_vocbase_t* vocbase, char const* username, char const* password, bool* mustChange) {
   TRI_ASSERT(vocbase != nullptr);
   bool res = false;
   VocbaseAuthInfo* auth = nullptr;
@@ -443,31 +474,6 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, salted);
   }
-
-  if (res && hash != nullptr) {
-    // insert item into the cache
-    auto cached = std::make_unique<VocbaseAuthCache>();
-
-    cached->_hash = std::string(hash);
-    cached->_username = std::string(username);
-    cached->_mustChange = auth->mustChange();
-
-    if (cached->_hash.empty() || cached->_username.empty()) {
-      return res;
-    }
-
-    WRITE_LOCKER(writeLocker, vocbase->_authInfoLock);
-
-    auto it = vocbase->_authCache.find(cached->_hash);
-
-    if (it != vocbase->_authCache.end()) {
-      delete (*it).second;
-      (*it).second = nullptr;
-    }
-
-    vocbase->_authCache[cached->_hash] = cached.get();
-    cached.release();
-  }
-
+  
   return res;
 }
