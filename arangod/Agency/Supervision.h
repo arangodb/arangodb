@@ -176,8 +176,8 @@ class Supervision : public arangodb::Thread {
 
   long _frequency;
   long _gracePeriod;
-  long _jobId;
-  long _jobIdMax;
+  uint64_t _jobId;
+  uint64_t _jobIdMax;
 
   static std::string _agencyPrefix;
 };
