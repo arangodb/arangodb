@@ -763,7 +763,7 @@ int HashIndex::insertMulti(arangodb::Transaction* trx,
         FreeElement(elements[j]);
       }
       for (size_t j = 0; j < i; ++j) {
-        // Remove all allready indexed elements and free them
+        // Remove all already indexed elements and free them
         if (elements[j] != nullptr) {
           removeMultiElement(trx, elements[j], isRollback);
         }

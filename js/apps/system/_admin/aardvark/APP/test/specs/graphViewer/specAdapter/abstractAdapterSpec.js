@@ -1343,7 +1343,7 @@
         expect(e3.target).toEqual(comm);
       });
       */
-      describe('if a community allready exists', function() {
+      describe('if a community already exists', function() {
 
         var n1, n2, n3, n4,
         e1, e2, e3, comm,

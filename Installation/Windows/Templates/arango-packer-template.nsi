@@ -44,7 +44,7 @@ Section "" ;No components page, name is not important
   IfFileExists "$INSTDIR\@INSTALLERNAME@-internal.exe" 0 install_files
   Fileopen $0 "$INSTDIR\@INSTALLERNAME@-internal.exe" "w"
   IfErrors 0 install_files
-    MessageBox MB_OK "@INSTALLERNAME@ is allready runing"
+    MessageBox MB_OK "@INSTALLERNAME@ is already runing"
     Quit
  ; files are copied
  install_files:
