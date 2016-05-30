@@ -116,6 +116,9 @@ book-check-dangling-anchors:
 		SFNP=`echo $$SFN | sed 's;/[a-zA-Z0-9]*.html;;'`; \
 		FN="$${SFNP}/$${FN}"; \
 	    fi; \
+	    if test -d "$$FN"; then \
+		FN="$${FN}index.html"; \
+	    fi; \
 	    if test -n "$$ANCHOR"; then \
 		if test ! -f /tmp/tags/$${FN}; then \
 			echo "File referenced by $${i} doesn't exist."; \
