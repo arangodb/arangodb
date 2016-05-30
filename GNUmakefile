@@ -4,6 +4,8 @@
 ## --SECTION--                                                  COMMON VARIABLES
 ## -----------------------------------------------------------------------------
 
+SRC=$(shell pwd |sed "s;.*/;;")
+
 .PHONY: warning help
 
 warning:
@@ -245,14 +247,14 @@ win64-relative-debug:
 	$(MAKE) winXX-build BITS=64 BUILD_TARGET=Debug
 
 pack-winXX:
-	rm -rf Build$(BITS) && mkdir Build$(BITS)
+	rm -rf ../b && mkdir ../b
 
 	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)"
 	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=RelWithDebInfo
 	${MAKE} packXX BITS="$(BITS)"
 
 pack-winXX-MOREOPTS:
-	rm -rf Build$(BITS) && mkdir Build$(BITS)
+	rm -rf ../b && mkdir ../b
 
 	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" MOREOPTS=$(MOREOPTS)
 	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
@@ -260,22 +262,22 @@ pack-winXX-MOREOPTS:
 
 winXX-cmake:
 	rm -f ./.file-list-js
-	cd Build$(BITS) && cmake \
+	cd ../b && cmake \
 		-G "$(TARGET)" \
 		-D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
 		-D "BUILD_TYPE=RelWithDebInfo" \
 		-D "BUILD_ID=${BUILD_ID}" \
 		$(MOREOPTS) \
-		..
+		../$(SRC)/
 
 winXX-build:
-	cp Installation/Windows/Icons/arangodb.ico Build$(BITS) 
-	cd Build$(BITS) && cmake --build . --config $(BUILD_TARGET)
+	cp Installation/Windows/Icons/arangodb.ico ../b
+	cd ../b && cmake --build . --config $(BUILD_TARGET)
 
 packXX:
-	./Installation/file-copy-js.sh . Build$(BITS)
+	./Installation/file-copy-js.sh . ../b
+	cd ../b && find -name cmake_install.cmake -exec sed -i {} -e "s;(Configuration);{CMAKE_INSTALL_CONFIG_NAME};" \;
+	cd ../b && cpack -G NSIS -C $(BUILD_TARGET)
+	cd ../b && cpack -G ZIP  -C $(BUILD_TARGET)
 
-	cd Build$(BITS) && cpack -G NSIS -C $(BUILD_TARGET)
-	cd Build$(BITS) && cpack -G ZIP  -C $(BUILD_TARGET)
-
-	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
+	./Installation/Windows/installer-generator.sh $(BITS) ..\\b

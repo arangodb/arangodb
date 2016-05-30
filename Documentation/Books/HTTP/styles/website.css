@@ -19,6 +19,10 @@ div.example_show_button {
   background-color: rgba(240,240,0,0.4);
 }
 
+.book .book-body li:last-child {
+  margin-bottom: 0.85em;
+}
+
 .columns-3 {
   -webkit-column-count: 3;
   -moz-column-count: 3;

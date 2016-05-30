@@ -1,18 +1,17 @@
 !CHAPTER Type cast functions
 
-As mentioned before, some of the operators expect their operands to have a
-certain data type. For example, the logical operators expect their operands to
-be boolean values, and the arithmetic operators expect their operands to be
-numeric values.  If an operation is performed with operands of an unexpected type,
-the operation will fail with an error. To avoid such failures, value types can
-be converted explicitly in a query. This is called type casting.
+Some operators expect their operands to have a certain data type. For example,
+logical operators expect their operands to be boolean values, and the arithmetic
+operators expect their operands to be numeric values. If an operation is performed
+with operands of other types, an automatic conversion to the expected types is
+tried. This is called implicit type casting. It helps to avoid query
+aborts.
 
-In an AQL query, type casts are performed only upon request and not implicitly.
-This helps avoiding unexpected results. All type casts have to be performed by
-invoking a type cast function. AQL offers several type cast functions for this
-task. Each of the these functions takes an operand of any data type and returns
-a result value of type corresponding to the function name (e.g. `TO_NUMBER()`
-will return a numeric value):
+Type casts can also be performed upon request by invoking a type cast function.
+This is called explicit type casting. AQL offers several functions for this.
+Each of the these functions takes an operand of any data type and returns a result
+value with the type corresponding to the function name. For example, *TO_NUMBER()*
+will return a numeric value.
 
 !SUBSECTION TO_BOOL()
 
@@ -77,18 +76,32 @@ Take an input *value* of any type and convert it into a numeric value.
 -{} // 0
     ```
 
-- *TO_STRING(value)*: Takes an input *value* of any type and converts it 
-  into a string value as follows:
-  - *null* is converted to the the empty string *""*
+!SUBSECTION TO_STRING()
+
+`TO_STRING(value) → str`
+
+Take an input *value* of any type and convert it into a string value.
+
+- **value** (any): input of arbitrary type
+- returns **str** (string):
+  - *null* is converted to an empty string *""*
   - *false* is converted to the string *"false"*, *true* to the string *"true"*
   - Numbers are converted to their string representations. This can also be a
-    scientific notation: `TO_STRING(0.0000002) // "2e-7"`
-  - An empty array is converted to the empty string. An array with one member is
-    converted to the result of `TO_STRING()` for its sole member. An array with
-    two or more members is converted to a comma-separated array with the string
-    representation of its members: `TO_STRING([1,2,3]) // "1,2,3"`
-  - An object / document is converted to the string `"[object Object]"`.
-    `CONCAT(value)` behaves identical if a single parameter is passed only.
+    scientific notation (e.g. "2e-7")
+  - Arrays and objects / documents are converted to string representations,
+    which means JSON-encoded strings with no additional whitespace
+
+```js
+TO_STRING(null) // ""
+TO_STRING(true) // "true"
+TO_STRING(false) // "false"
+TO_STRING(123) // "123"
+TO_STRING(+1.23) // "1.23"
+TO_STRING(-1.23) // "-1.23"
+TO_STRING(0.0000002) // "2e-7"
+TO_STRING( [1, 2, 3] ) // "[1,2,3]"
+TO_STRING( { foo: "bar", baz: null } ) // "{\"foo\":\"bar\",\"baz\":null}"
+```
 
 !SUBSECTION TO_ARRAY()
 

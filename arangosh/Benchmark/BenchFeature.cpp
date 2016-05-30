@@ -247,7 +247,7 @@ void BenchFeature::start() {
       nextReportValue += stepValue;
     }
 
-    usleep(20000);
+    usleep(10000);
   }
 
   double time = TRI_microtime() - start;

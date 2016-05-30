@@ -50,8 +50,9 @@ struct Job {
   Job(Node const&, Agent*, std::string const& jobId,
       std::string const& creator, std::string const& agencyPrefix);
   virtual ~Job();
-  virtual unsigned status () const = 0;
   virtual bool exists () const;
+  virtual bool finish (std::string const&, bool) const;
+  virtual unsigned status () const = 0;
   virtual bool create () const = 0;
   virtual bool start() const = 0;
   Node const& _snapshot;
@@ -175,8 +176,8 @@ class Supervision : public arangodb::Thread {
 
   long _frequency;
   long _gracePeriod;
-  long _jobId;
-  long _jobIdMax;
+  uint64_t _jobId;
+  uint64_t _jobIdMax;
 
   static std::string _agencyPrefix;
 };

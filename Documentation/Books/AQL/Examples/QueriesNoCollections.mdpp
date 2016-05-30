@@ -20,7 +20,7 @@ FOR year in [ 2011, 2012, 2013 ]
     RETURN { 
       "y" : "year", 
       "q" : quarter, 
-      "nice" : CONCAT(TO_STRING(quarter), "/", TO_STRING(year)) 
+      "nice" : CONCAT(quarter, "/", year) 
     }
 [ 
   { "y" : "year", "q" : 1, "nice" : "1/2011" }, 

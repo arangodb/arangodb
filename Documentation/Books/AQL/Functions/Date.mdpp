@@ -39,7 +39,7 @@ You are free to store age determinations of specimens, incomplete or fuzzy dates
 the like in different, more appropriate ways of course. AQL's date functions will
 most certainly not be of any help for such dates, but you can still use language
 constructs like [SORT](../Operations/Sort.md) (which also supports sorting of arrays)
-and [indexes](../../Users/Indexing/index.html) like skiplists.
+and [indexes](../../Manual/Indexing/index.html) like skiplists.
 
 !SECTION Current date and time
 
@@ -362,7 +362,7 @@ ambiguities like in `%mmonth` (unpadded month number + the string "month")
 between `%mm` + "onth" and `%m` + "month", use the escape sequence `%&`:
 `%m%&month`.
 
-Note that this is a rather costly operation and may not be suitable for large
+Note that *DATE_FORMAT()* is a rather costly operation and may not be suitable for large
 datasets (like over 1 million dates). If possible, avoid formatting dates on
 server-side and leave it up to the client to do so. This function should only
 be used for special date comparisons or to store the formatted dates in the
@@ -623,7 +623,7 @@ There are two recommended ways to store timestamps in ArangoDB:
 The sort order of both is identical due to the sort properties of ISO date strings.
 You can't mix both types, numbers and strings, in a single attribute however.
 
-You can use [skiplist indices](../../Users/Indexing/Skiplist.html) with both date types.
+You can use [skiplist indices](../../Manual/Indexing/Skiplist.html) with both date types.
 When chosing string representations, you can work with string comparisons (less than,
 greater than etc.) to express time ranges in your queries while still utilizing
 skiplist indices:

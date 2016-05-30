@@ -11,29 +11,31 @@ This is a synonym for [LENGTH()](#length).
 
 !SUBSECTION CONCAT()
 
-`CONCAT(value1, value2, ... valueN) → joinedString`
+`CONCAT(value1, value2, ... valueN) → str`
 
-Concatenate the strings passed as *value1* to *valueN*.
+Concatenate the values passed as *value1* to *valueN*.
 
-- **values** (string|array, *repeatable*): strings or arrays of strings as multiple
-  arguments, at least one
-- returns **joinedString** (string): a concatenated string of the elements. *null*
-  values are ignored. Array value arguments are expanded automatically, and their
-  individual members will be concatenated. Nested arrays will be expanded too, but
-  with their elements separated by commas if they have more than a single element.
+- **values** (any, *repeatable*): elements of arbitrary type, at least one
+- returns **str** (string): a concatenation of the elements. *null* values
+  are ignored.
 
 ```js
-CONCAT("foo", "bar", "baz")
-// "foobarbaz"
+CONCAT("foo", "bar", "baz") // "foobarbaz"
+CONCAT(1, 2, 3) // "123"
+CONCAT("foo", [5, 6], {bar: "baz"}) // "foo[5,6]{\"bar\":\"baz\"}"
+```
 
-CONCAT([ "foo", "bar", "baz" ])
-// "foobarbaz"
+`CONCAT(anyArray) → str`
 
-CONCAT([ "he", ["ll"] ], "o!")
-// "hello!"
+If a single array is passed to *CONCAT()*, its members are concatenated.
 
-CONCAT([ "he", ["l", "l"] ], "o!")
-// "hel,lo!"
+- **anyArray** (array): array with elements of arbitrary type
+- returns **str** (string): a concatenation of the array elements. *null* values
+  are ignored.
+
+```js
+CONCAT( [ "foo", "bar", "baz" ] ) // "foobarbaz"
+CONCAT( [1, 2, 3] ) // "123"
 ```
 
 !SUBSECTION CONCAT_SEPARATOR()
@@ -154,10 +156,8 @@ LEFT("foobar", 10) // "foobar"
 
 `LENGTH(str) → length`
 
-Determine the [number of elements](Array.md#length) in an array,
-the [number of attribute keys](Document.md#length) of an object / document,
-the [amount of documents](Miscellaneous.md#length) in a collection,
-or the character length of a string.
+
+Determine the character length of a string.
 
 - **str** (string): a string. If a number is passed, it will be casted to string first.
 - returns **length** (number): the character length of *str* (not byte length)
@@ -166,6 +166,10 @@ or the character length of a string.
 LENGTH("foobar") // 6
 LENGTH("电脑坏了") // 4
 ```
+
+*LENGTH()* can also determine the [number of elements](Array.md#length) in an array,
+the [number of attribute keys](Document.md#length) of an object / document and
+the [amount of documents](Miscellaneous.md#length) in a collection.
 
 !SUBSECTION LIKE()
 

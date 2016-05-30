@@ -33,6 +33,12 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
  public:
   void start() override final;
   void stop() override final;
+  bool isReady() const {
+    return _isReady;
+  }
+
+ private:
+  bool _isReady;
 };
 }
 

@@ -18,7 +18,7 @@ For all vertices that where visited during this process in the range between *mi
 Let's take a look at a simple example to explain how it works.
 This is the graph that we are going to traverse:
 
-![traversal graph](../../Users/Graphs/traversal_graph.png)
+![traversal graph](../../Manual/Graphs/traversal_graph.png)
 
 Now we use the following parameters for our query:
 
@@ -27,36 +27,36 @@ Now we use the following parameters for our query:
 3. We use a *max-depth* of 2.
 4. We follow only *outbound* direction of edges
 
-![traversal graph step 1](../../Users/Graphs/traversal_graph1.png)
+![traversal graph step 1](../../Manual/Graphs/traversal_graph1.png)
 
 Now it walks to one of the direct neighbors of **A**, say **B** (NOTE: ordering is not guaranteed):
 
-![traversal graph step 2](../../Users/Graphs/traversal_graph2.png)
+![traversal graph step 2](../../Manual/Graphs/traversal_graph2.png)
 
 The query will remember the state (red circle) and will emit the first result **A** -> **B** (black box).
 This will also prevent the traverser to be trapped in cycles.
 Now again it will visit one of the direct neighbors of **B**, say **E**:
 
-![traversal graph step 3](../../Users/Graphs/traversal_graph3.png)
+![traversal graph step 3](../../Manual/Graphs/traversal_graph3.png)
 
 We have limited the query with a *max-depth* of *2* then it will not pick any neighbor of **E** as the path from **A** to **E** already requires *2* steps.
 Instead we will go back one level to **B** and continue with any other direct neighbor there:
 
-![traversal graph step 4](../../Users/Graphs/traversal_graph4.png)
+![traversal graph step 4](../../Manual/Graphs/traversal_graph4.png)
 
 Again after we produced this result we will step back to **B**.
 But there is no neighbor of **B** left that we have not yet visited.
 Hence we go another step back to **A** and continue with any other neighbor there.
 
-![traversal graph step 5](../../Users/Graphs/traversal_graph5.png)
+![traversal graph step 5](../../Manual/Graphs/traversal_graph5.png)
 
 And identical to the iterations before we will visit **H**:
 
-![traversal graph step 6](../../Users/Graphs/traversal_graph6.png)
+![traversal graph step 6](../../Manual/Graphs/traversal_graph6.png)
 
 And **J**:
 
-![traversal graph step 7](../../Users/Graphs/traversal_graph7.png)
+![traversal graph step 7](../../Manual/Graphs/traversal_graph7.png)
 
 And after these steps there is no further result left.
 So all together this query has returned the following paths:
@@ -171,7 +171,7 @@ This is because for all results in depth `1` the second edge does not exist and 
 
 !SUBSUBSECTION Examples
 We will create a simple symmetric traversal demonstration graph:
-![traversal graph](../../Users/Graphs/traversal_graph.png)
+![traversal graph](../../Manual/Graphs/traversal_graph.png)
 
     @startDocuBlockInline GRAPHTRAV_01_create_graph
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_01_create_graph}
@@ -285,6 +285,6 @@ And finally clean it up again:
     @endDocuBlock GRAPHTRAV_99_drop_graph
 
 
-If this traversal is not powerful enough for your needs, so you cannot describe your conditions as AQL filter statements you might want to look at [manually crafted traverser](../../Users/Graphs/Traversals/index.html).
+If this traversal is not powerful enough for your needs, so you cannot describe your conditions as AQL filter statements you might want to look at [manually crafted traverser](../../Manual/Graphs/Traversals/index.html).
 
 [See here for more traversal examples](../Examples/CombiningGraphTraversals.md).

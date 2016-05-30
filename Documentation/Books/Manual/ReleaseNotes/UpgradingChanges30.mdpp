@@ -686,6 +686,19 @@ In ArangoDB 3.0 this parameter is obsolete, as `_from` and `_to` are stored as s
 string values all the time, so they cannot get invalid when referenced collections are
 dropped.
 
+The result format of the API GET `/_api/replication/logger-follow` has changed slightly in
+the following aspects:
+
+- documents and edges are reported in the same way. The type for document insertions/updates
+  and edge insertions/updates is now always `2300`. Previous versions of ArangoDB returned
+  a `type` value of `2300` for documents and `2301` for edges.
+- records about insertions, updates or removals of documents and edges do not have the
+  `key` and `rev` attributes on the top-level anymore. Instead, `key` and `rev` can be 
+  accessed by peeking into the `_key` and `_rev` attributes of the `data` sub-attributes
+  of the change record.
+
+The same is true for the collection-specific changes API GET `/_api/replication/dump`.
+
 !SUBSECTION Undocumented APIs
 
 The following undocumented HTTP REST endpoints have been removed from ArangoDB's REST
@@ -698,8 +711,52 @@ API:
   versions of ArangoDB but have been marked as not intended to be called by end
   users since ArangoDB version 2.3. These methods should not have been part of any
   ArangoDB manual since version 2.4.
-- `/_api/structure`: an unfinished API for data format and type checks, superseded
-  by Foxx.
+- `/_api/structure`: an older unfinished and unpromoted API for data format and type 
+  checks, superseded by Foxx applications.
+
+!SUBSECTION Handling of CORS requests
+
+It can now be controlled in detail for which origin hosts CORS (Cross-origin resource 
+sharing) requests with credentials will be allowed. ArangoDB 3.0 provides the startup
+option `--http.trusted-origin` that can be used to specify one or many origins from
+which CORS requests are treated as "trustworthy".
+
+The option can be specified multiple times, once per trusted origin, e.g.
+
+```
+--http.trusted-origin http://127.0.0.1:8529 --http.trusted-origin https://127.0.0.1:8599
+```
+
+This will make the ArangoDB server respond to CORS requests from these origins with an
+`Access-Control-Allow-Credentials` HTTP header with a value of `true`. Web browsers can
+inspect this header and can allow passing ArangoDB web interface credentials (if stored 
+in the browser) to the requesting site. ArangoDB will not forward or provide any credentials.
+
+Setting this option is only required if applications on other hosts need to access the 
+ArangoDB web interface or other HTTP REST APIs from a web browser with the same credentials 
+that the user has entered when logging into the web interface. When a web browser finds 
+the `Access-Control-Allow-Credentials` HTTP response header, it may forward the credentials
+entered into the browser for the ArangoDB web interface login to the other site. 
+
+This is a potential security issue, so there are no trusted origins by default. It may
+be required to set some trusted origins if you're planning to issue AJAX requests to ArangoDB
+from other sites from the browser, with the credentials entered during the ArangoDB interface 
+login (i.e. single sign-on). If such functionality is not used, the option should not
+be set.
+
+To specify a trusted origin, specify the option once per trusted origin as shown above.
+Note that the trusted origin values specified in this option will be compared bytewise
+with the `Origin` HTTP header value sent by clients, and only exact matches will pass.
+
+There is also the wildcard `all` for enabling CORS access from all origins in a 
+test or development setup:
+
+```
+--http.trusted-origin all
+```
+
+Setting this option will lead to the ArangoDB server responding with an 
+`Access-Control-Allow-Origin: true` HTTP header to all incoming CORS requests.
 
 !SECTION Command-line options
 
@@ -847,6 +904,30 @@ in 3.0 because the changes in server behavior controlled by this option were cha
 even before ArangoDB 2.0. This should have left enough time for client applications
 to adapt to the new behavior, making the option superfluous in 3.0.
 
+!SUBSECTION Thread options
+
+The options `--server.threads` and `--scheduler.threads` now have a default value of 
+`0`. When `--server.threads` is set to `0` on startup, the suitable number of
+threads will be determined by ArangoDB by asking the OS for the number of available
+CPUs and using that as a baseline. If the number of CPUs is lower than 4, ArangoDB
+will still start 4 dispatcher threads. When `--scheduler.threads` is set to `0`,
+then ArangoDB will automatically determine the number of scheduler threads to start.
+This will normally create 2 scheduler threads. 
+
+If the exact number of threads needs to be set by the admin, then it is still possible
+to set `--server.threads` and `--scheduler.threads` to non-zero values. ArangoDB will
+use these values and start that many threads (note that some threads may be created
+lazily so they may not be present directly after startup). 
+
+The number of V8 JavaScript contexts to be created (`--javascript.v8-contexts`) now 
+has a default value of `0` too, meaning that ArangoDB will create as many V8 contexts
+as there will be dispatcher threads (controlled by the `--server.threads` option).
+Setting this option to a non-zero value will create exactly as many V8 contexts as
+specified.
+
+Setting these options explicitly to non-zero values may be beneficial in environments
+that have few resources (processing time, maximum thread count, available memory). 
+
 !SECTION Authentication
 
 The default value for `--server.authentication` is now `true` in the configuration
@@ -882,12 +963,15 @@ For all client tools, the option `--server.disable-authentication` was renamed t
 `--server.authentication`. Note that the meaning of the option `--server.authentication` 
 is the opposite of the previous `--server.disable-authentication`.
 
+The option `--server.ssl-protocol` was renamed to `--ssl.protocol`. The meaning of 
+the option is unchanged.
+
 The command-line option `--quiet` was removed from all client tools except arangosh 
-because it had no effect in those tools.
+because it had no effect in them.
 
 !SUBSECTION Arangobench
 
-In order to make its purpose more apparent, the former `arangob` client tool has 
+In order to make its purpose more apparent the former `arangob` client tool has 
 been renamed to `arangobench` in 3.0.
 
 !SECTION Miscellaneous changes

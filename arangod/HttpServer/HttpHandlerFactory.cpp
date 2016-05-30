@@ -143,9 +143,7 @@ HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
                                                char const* ptr, size_t length) {
   HttpRequest* request = new HttpRequest(info, ptr, length, _allowMethodOverride);
 
-  if (request != nullptr) {
-    setRequestContext(request);
-  }
+  setRequestContext(request);
 
   return request;
 }

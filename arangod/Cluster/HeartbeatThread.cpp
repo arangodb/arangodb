@@ -455,6 +455,7 @@ bool HeartbeatThread::init() {
 
 void HeartbeatThread::removeDispatchedJob(DBServerAgencySyncResult result) {
   LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Dispatched job returned!";
+  bool doSleep = false;
   {
     MUTEX_LOCKER(mutexLocker, _statusLock);
     if (result.success) {
@@ -465,9 +466,12 @@ void HeartbeatThread::removeDispatchedJob(DBServerAgencySyncResult result) {
     } else {
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Sync request failed!";
       // mop: we will retry immediately so wait at least a LITTLE bit
-      usleep(10000);
+      doSleep = true;
     }
     _isDispatchingChange = false;
+  }
+  if (doSleep) {
+    usleep(10000);
   }
   CONDITION_LOCKER(guard, _condition);
   _wasNotified = true;

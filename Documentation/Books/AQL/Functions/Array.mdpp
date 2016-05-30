@@ -4,14 +4,14 @@ AQL provides functions for higher-level array manipulation. Also see the
 [numeric functions](Numeric.md) for functions that work on number arrays.
 Apart from that, AQL also offers several language constructs:
 
-- simple [array access](../Fundamentals/DataTypes.md#arrays) of individual elements,
+- simple [array access](../Fundamentals/DataTypes.md#arrays--lists) of individual elements,
 - [array operators](../Advanced/ArrayOperators.md) for array expansion and contraction,
   optionally with inline filter, limit and projection,
 - [array comparison operators](../Operators.md#array-comparison-operators) to compare
   each element in an array to a value or the elements of another array,
-- loop-based operations like [FOR](../Operations/For.md),
+- loop-based operations using [FOR](../Operations/For.md),
   [SORT](../Operations/Sort.md), [LIMIT](../Operations/Limit.md),
-  as well as grouping with [COLLECT](../Operations/Collect.md),
+  as well as [COLLECT](../Operations/Collect.md) for grouping,
   which also offers efficient aggregation.
 
 !SUBSECTION APPEND()
@@ -95,13 +95,14 @@ Get the last element of an array. It is the same as `anyArray[-1]`.
 
 `LENGTH(anyArray) → length`
 
-Determine the number of elements in an array,
-the [number of attribute keys](Document.md#length) of an object / document,
-the [amount of documents](Miscellaneous.md#length) in a collection,
-or the [character length](String.md#length) of a string.
+Determine the number of elements in an array.
 
 - **anyArray** (array): array with elements of arbitrary type
 - returns **length** (number): the number of array elements in *anyArray*.
+
+*LENGTH()* can also determine the [number of attribute keys](Document.md#length)
+of an object / document, the [amount of documents](Miscellaneous.md#length) in a
+collection and the [character length](String.md#length) of a string.
 
 !SUBSECTION MINUS()
 

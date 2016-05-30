@@ -39,6 +39,10 @@
 #include "Basics/build-date.h"
 #include "Basics/conversions.h"
 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include <rocksdb/version.h>
+#endif
+
 using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
@@ -104,6 +108,10 @@ void Version::initialize() {
   Values["v8-version"] = getV8Version();
   Values["vpack-version"] = getVPackVersion();
   Values["zlib-version"] = getZLibVersion();
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  Values["rocksdb-version"] = std::to_string(ROCKSDB_MAJOR) + "." + std::to_string(ROCKSDB_MINOR) + "." + std::to_string(ROCKSDB_PATCH);
+#endif  
 
 #ifdef __cplusplus
   Values["cplusplus"] = std::to_string(__cplusplus);

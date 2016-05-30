@@ -205,7 +205,7 @@ SimpleQueryNear.prototype.execute = function () {
     "@collection": this._collection.name(), 
     latitude: this._latitude, 
     longitude: this._longitude, 
-    limit: parseInt(this._limit + this._skip, 10)
+    limit: parseInt((this._skip || 0) + (this._limit || 99999999999), 10)
   };
   
   var mustSort = false;
@@ -505,7 +505,7 @@ SimpleQueryFulltext.prototype.execute = function () {
       "@collection": this._collection.name(), 
       attribute: this._attribute, 
       query: this._query, 
-      limit: parseInt(this._limit + this._skip, 10)
+      limit: parseInt((this._skip || 0) + (this._limit || 99999999999), 10)
     };
 
     var query = "FOR doc IN FULLTEXT(@@collection, @attribute, @query, @limit) " + 

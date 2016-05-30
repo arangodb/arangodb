@@ -30,7 +30,6 @@
 #include "VocBase/server.h"
 
 #include <thread>
-
 using namespace arangodb;
 
 using namespace arangodb::consensus;
@@ -46,17 +45,13 @@ std::string printTimestamp(Supervision::TimePoint const& t) {
 }
 
 inline arangodb::consensus::write_ret_t transact (
-  Agent* _agent, Builder const& toWrite,
-  Builder const& precond = Builder()) {
+  Agent* _agent, Builder const& transaction) {
   
   query_t envelope = std::make_shared<Builder>();
 
   try {
     envelope->openArray();
-    envelope->add(toWrite.slice());
-    if (!precond.isEmpty()) {
-      envelope->add(precond.slice());
-    }
+    envelope->add(transaction.slice());
     envelope->close();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Supervision failed to build transaction.";
@@ -68,12 +63,17 @@ inline arangodb::consensus::write_ret_t transact (
   
 }
 
+enum JOB_STATUS {TODO, PENDING, FINISHED, FAILED, NOTFOUND};
+
 static std::string const pendingPrefix = "/Target/Pending/";
+static std::string const finishedPrefix = "/Target/Finished/";
+static std::string const failedPrefix = "/Target/Failed/";
 static std::string const planColPrefix = "/Plan/Collections/";
 static std::string const curColPrefix = "/Current/Collections/";
 static std::string const toDoPrefix = "/Target/ToDo/";
 static std::string const blockedServersPrefix = "/Supervision/DBServers/";
 static std::string const blockedShardsPrefix = "/Supervision/Shards/";
+static std::string const serverStatePrefix = "/Sync/ServerStates/";
 static std::string const planVersion = "/Plan/Version";
 
 Job::Job(Node const& snapshot, Agent* agent, std::string const& jobId,
@@ -103,13 +103,64 @@ bool Job::exists() const {
 }
 
 
-struct MoveShard : public Job {
+bool Job::finish(std::string const& type, bool success = true) const {
+
+  Builder pending, finished;
   
-  MoveShard(Node const& snapshot, Agent* agent, std::string const& jobId,
+  // Get todo entry
+  pending.openArray();
+  _snapshot(pendingPrefix + _jobId).toBuilder(pending);
+  pending.close();
+  
+  // Prepare peding entry, block toserver
+  finished.openArray();
+  
+  // --- Add finished
+  finished.openObject();
+  finished.add(_agencyPrefix + (success ? finishedPrefix : failedPrefix)
+               + _jobId, VPackValue(VPackValueType::Object));
+  finished.add("timeFinished",
+               VPackValue(printTimestamp(std::chrono::system_clock::now())));
+  for (auto const& obj : VPackObjectIterator(pending.slice()[0])) {
+    finished.add(obj.key.copyString(), obj.value);
+  }
+  finished.close();
+  
+  // --- Delete pending
+  finished.add(_agencyPrefix + pendingPrefix + _jobId,
+               VPackValue(VPackValueType::Object));
+  finished.add("op", VPackValue("delete"));
+  finished.close();
+
+  // --- Remove block
+  finished.add(_agencyPrefix + "/Supervision/" + type + _jobId,
+               VPackValue(VPackValueType::Object));
+  finished.add("op", VPackValue("delete"));
+  finished.close();
+
+  // --- Need precond? 
+  finished.close(); finished.close();
+  
+  write_ret_t res = transact(_agent, finished);
+  
+  if (res.accepted && res.indices.size()==1 && res.indices[0]) {
+    return true;
+  }
+
+  return false;
+  
+}
+
+
+struct FailedLeader : public Job {
+
+  FailedLeader(Node const& snapshot, Agent* agent, std::string const& jobId,
             std::string const& creator, std::string const& agencyPrefix,
-            std::string const& database, std::string const& collection,
-            std::string const& shard, std::string const& from,
-            std::string const& to) :
+            std::string const& database = std::string(),
+            std::string const& collection = std::string(),
+            std::string const& shard = std::string(),
+            std::string const& from = std::string(),
+            std::string const& to = std::string()) :
     Job(snapshot, agent, jobId, creator, agencyPrefix), _database(database),
     _collection(collection), _shard(shard), _from(from), _to(to) {
     
@@ -124,7 +175,7 @@ struct MoveShard : public Job {
 
   }
 
-  virtual ~MoveShard() {}
+  virtual ~FailedLeader() {}
 
   virtual bool create () const {
 
@@ -138,7 +189,7 @@ struct MoveShard : public Job {
     todo.openObject();
     todo.add(path, VPackValue(VPackValueType::Object));
     todo.add("creator", VPackValue(_creator));
-    todo.add("type", VPackValue("moveShard"));
+    todo.add("type", VPackValue("failedLeader"));
     todo.add("database", VPackValue(_database));
     todo.add("collection", VPackValue(_collection));
     todo.add("shard", VPackValue(_shard));
@@ -166,10 +217,9 @@ struct MoveShard : public Job {
     // DBservers
     std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-    //Node const& planned = _snapshot(planPath);
-    
     std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
+
     Node const& current = _snapshot(curPath);
     
     if (current.slice().length() == 1) {
@@ -219,6 +269,7 @@ struct MoveShard : public Job {
     pending.add(_agencyPrefix +  blockedShardsPrefix + _shard,
                 VPackValue(VPackValueType::Object));
     pending.add("jobId", VPackValue(_jobId));
+    pending.add("jobId", VPackValue(_jobId));
     pending.close();
 
     // --- Increment Plan/Version
@@ -244,10 +295,13 @@ struct MoveShard : public Job {
 
     pending.close(); pending.close();
 
-    // Transact to agency
+    // Transact 
     write_ret_t res = transact(_agent, pending);
 
     if (res.accepted && res.indices.size()==1 && res.indices[0]) {
+      
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Move shard " + _shard
+        + " from " + _from + " to " + _to;
       return true;
     }    
 
@@ -259,23 +313,48 @@ struct MoveShard : public Job {
 
 
   virtual unsigned status () const {
-    
+
     Node const& target = _snapshot("/Target");
-    unsigned res = 4;
     
     if        (target.exists(std::string("/ToDo/")     + _jobId).size() == 2) {
-      res = 0;
-      start(); // try to start job
+      
+      return TODO;
+      
     } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
-      res = 1;
-      // Any sub jobs pending?
-      // If not, any subjobs failed? Move to failed
-      // Else move to Finished
-    } else {
-      // Remove any blocks on 
-    }
+      
+      Node const& job = _snapshot(pendingPrefix + _jobId);
+      std::string database = job("database").toJson(),
+        collection = job("collection").toJson(),
+        shard = job("shard").toJson(),
+        planPath = planColPrefix + database + "/" + collection + "/shards/"
+          + shard,
+        curPath = curColPrefix + database + "/" + collection + "/" + shard
+          + "/servers";
+
+      Node const& planned = _snapshot(planPath);
+      Node const& current = _snapshot(curPath);
+
+      if (planned.slice()[0] == current.slice()[0]) {
+
+        if (finish("Shards/" + _shard + "/")) {
+          return FINISHED;
+        }
+        
+      }
+
+      return PENDING;
+      
+    } else if (target.exists(std::string("/Finished/")  + _jobId).size() == 2) {
+      
+      return FINISHED;
+      
+    } else if (target.exists(std::string("/Failed/")  + _jobId).size() == 2) {
+      
+      return FAILED;
+
+    } 
     
-    return res;
+    return NOTFOUND;
     
   }
 
@@ -297,7 +376,7 @@ struct FailedServer : public Job {
     Job(snapshot, agent, jobId, creator, agencyPrefix), _failed(failed) {
     
     if (exists()) {
-      if (!status()) {  
+      if (status() == TODO) {  
         start();        
       } 
     } else {            
@@ -310,9 +389,6 @@ struct FailedServer : public Job {
   virtual ~FailedServer () {}
 
   virtual bool start() const {
-
-    LOG_TOPIC(INFO, Logger::AGENCY) <<
-      "Pending: DB Server " + _failed + " failed.";
 
     // Copy todo to pending
     Builder todo, pending;
@@ -360,15 +436,18 @@ struct FailedServer : public Job {
 
     pending.close(); pending.close();
 
-    size_t sub = 0;
-
     // Transact to agency
     write_ret_t res = transact(_agent, pending);
 
     if (res.accepted && res.indices.size()==1 && res.indices[0]) {
       
+      LOG_TOPIC(INFO, Logger::AGENCY) <<
+        "Pending: DB Server " + _failed + " failed.";
+      
       Node::Children const& databases =
         _snapshot("/Plan/Collections").children();
+
+      size_t sub = 0;
 
       for (auto const& database : databases) {
         for (auto const& collptr : database.second->children()) {
@@ -383,7 +462,7 @@ struct FailedServer : public Job {
                 continue;
               }
 
-              MoveShard(
+              FailedLeader(
                 _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
                 _agencyPrefix, database.first, collptr.first, shard.first,
                 _failed, shard.second->slice()[1].copyString());
@@ -428,8 +507,7 @@ struct FailedServer : public Job {
       return true;
     }
 
-    LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Failed to insert job " + _jobId;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
     return false;
     
   }
@@ -437,25 +515,198 @@ struct FailedServer : public Job {
   virtual unsigned status () const {
     
     Node const& target = _snapshot("/Target");
-    unsigned res = 4;
     
     if        (target.exists(std::string("/ToDo/")     + _jobId).size() == 2) {
-      res = 0;
-      start(); // try to start job
+
+      return TODO;
+
     } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
-      res = 1;
-      // Any sub jobs pending?
-      // If not, any subjobs failed? Move to failed
-      // Else move to Finished
-    } else {
-      // Remove any blocks on 
+
+      Node::Children const& subJobs = _snapshot(pendingPrefix).children();
+
+      size_t found = 0;
+      
+      for (auto const& subJob : subJobs) {
+        if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
+          found++;
+          Node const& sj = *(subJob.second);
+          std::string subJobId = sj("jobId").slice().copyString();
+          std::string creator  = sj("creator").slice().copyString();
+          FailedLeader(_snapshot, _agent, subJobId, creator, _agencyPrefix);
+        }
+      }
+
+      if (!found) {
+        if (finish("DBServers/" + _failed + "/")) {
+          return FINISHED;
+        }
+      }
+      
+      return PENDING;
+      
+    } else if (target.exists(std::string("/Finished/")  + _jobId).size() == 2) {
+      
+      return FINISHED;
+      
+    } else if (target.exists(std::string("/Failed/")  + _jobId).size() == 2) {
+      
+      return FAILED;
+      
     }
     
-    return res;
+    return NOTFOUND;
     
   }
   
   std::string const& _failed;
+  
+};
+
+
+struct CleanOutServer : public Job {
+  
+  CleanOutServer (Node const& snapshot, Agent* agent, std::string const& jobId,
+                  std::string const& creator, std::string const& prefix,
+                  std::string const& server) : 
+    Job(snapshot, agent, jobId, creator, prefix), _server(server) {
+  }
+
+  virtual ~CleanOutServer () {}
+
+  virtual unsigned status () const {
+    return 0;
+  }
+
+  virtual bool create () const {
+
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: Clean out server " + _server;
+    
+    std::string path = _agencyPrefix + toDoPrefix + _jobId;
+
+    Builder todo;
+    todo.openArray();
+    todo.openObject();
+    todo.add(path, VPackValue(VPackValueType::Object));
+    todo.add("type", VPackValue("cleanOutServer"));
+    todo.add("server", VPackValue(_server));
+    todo.add("jobId", VPackValue(_jobId));
+    todo.add("creator", VPackValue(_creator));
+    todo.add("timeCreated",
+             VPackValue(printTimestamp(std::chrono::system_clock::now())));
+    todo.close(); todo.close(); todo.close();
+
+    write_ret_t res = transact(_agent, todo);
+
+    if (res.accepted && res.indices.size()==1 && res.indices[0]) {
+      return true;
+    }
+
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
+    return false;
+
+  };
+
+  virtual bool start() const {
+
+    // Copy todo to pending
+    Builder todo, pending;
+    
+    // Get todo entry
+    todo.openArray();
+    _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+    todo.close();
+
+    // Enter peding, remove todo, block toserver
+    pending.openArray();
+    
+    // --- Add pending
+    pending.openObject();
+    pending.add(_agencyPrefix + pendingPrefix + _jobId,
+                VPackValue(VPackValueType::Object));
+    pending.add("timeStarted",
+                VPackValue(printTimestamp(std::chrono::system_clock::now())));
+    for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
+      pending.add(obj.key.copyString(), obj.value);
+    }
+    pending.close();
+    
+    // --- Delete todo
+    pending.add(_agencyPrefix + toDoPrefix + _jobId,
+                VPackValue(VPackValueType::Object));
+    pending.add("op", VPackValue("delete"));
+    pending.close();
+    
+    // --- Block toServer
+    pending.add(_agencyPrefix +  blockedServersPrefix + _server,
+                VPackValue(VPackValueType::Object));
+    pending.add("jobId", VPackValue(_jobId));
+    pending.close();
+
+    // --- Announce in Sync that server is cleaning out
+    pending.add(_agencyPrefix + serverStatePrefix + _server,
+                VPackValue(VPackValueType::Object));
+    pending.add("cleaning", VPackValue(true));
+    pending.close();
+      
+    pending.close();
+    
+    // Preconditions
+    // --- Check that toServer not blocked
+    pending.openObject();
+    pending.add(_agencyPrefix +  blockedServersPrefix + _server,
+                VPackValue(VPackValueType::Object));
+    pending.add("oldEmpty", VPackValue(true));
+    pending.close();
+
+    pending.close(); pending.close();
+    
+    // Transact to agency
+    write_ret_t res = transact(_agent, pending);
+    
+    if (res.accepted && res.indices.size()==1 && res.indices[0]) {
+      
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Clean out server " + _server;
+      
+      Node::Children const& databases =
+        _snapshot("/Plan/Collections").children();
+      
+      size_t sub = 0;
+    
+      for (auto const& database : databases) {
+        for (auto const& collptr : database.second->children()) {
+          Node const& collection = *(collptr.second);
+          Node const& replicationFactor = collection("replicationFactor");
+          if (replicationFactor.slice().getUInt() > 1) {
+            for (auto const& shard : collection("shards").children()) {
+              VPackArrayIterator dbsit(shard.second->slice());
+              
+              // Only proceed if leader and create job
+              if ((*dbsit.begin()).copyString() != _server) {
+                continue;
+              }
+
+              FailedLeader(
+                _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
+                _agencyPrefix, database.first, collptr.first, shard.first,
+                _server, shard.second->slice()[1].copyString());
+              
+            } 
+          }
+        }
+      }
+          
+      return true;
+    }
+
+    LOG_TOPIC(INFO, Logger::AGENCY) <<
+      "Precondition failed for starting job " + _jobId;
+
+    return false;
+    
+    
+  };
+
+  std::string const& _server;
   
 };
 
@@ -467,7 +718,7 @@ Supervision::Supervision()
       _agent(nullptr),
       _snapshot("Supervision"),
       _frequency(5),
-      _gracePeriod(10),
+      _gracePeriod(15),
       _jobId(0),
       _jobIdMax(0) {}
 

@@ -209,6 +209,11 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
     std::string l;
     l.reserve(prefix.size() + builder.slice().byteSize());
     l.append(prefix);
+    // extend the prefix to at least 24 bytes
+    while (l.size() < RocksDBIndex::keyPrefixSize()) {
+      uint64_t value = 0;
+      l.append(reinterpret_cast<char const*>(&value), sizeof(uint64_t));
+    }
     l.append(builder.slice().startAs<char const>(), builder.slice().byteSize());
     
     builder.clear();
@@ -219,6 +224,11 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
     std::string u;
     u.reserve(prefix.size() + builder.slice().byteSize());
     u.append(prefix);
+    // extend the prefix to at least 24 bytes
+    while (u.size() < RocksDBIndex::keyPrefixSize()) {
+      uint64_t value = UINT64_MAX;
+      u.append(reinterpret_cast<char const*>(&value), sizeof(uint64_t));
+    }
     u.append(builder.slice().startAs<char const>(), builder.slice().byteSize());
  
 #if 0 

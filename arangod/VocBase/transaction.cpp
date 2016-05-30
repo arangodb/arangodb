@@ -371,11 +371,11 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
   if (type == TRI_TRANSACTION_READ) {
     LOG_TRX(trx, nestingLevel) << "read-locking collection " << trxCollection->_cid;
     res = document->beginReadTimed(timeout,
-                                   TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
+                                   TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
   } else {
     LOG_TRX(trx, nestingLevel) << "write-locking collection " << trxCollection->_cid;
     res = document->beginWriteTimed(timeout,
-                                    TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
+                                    TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {

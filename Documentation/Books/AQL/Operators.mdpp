@@ -52,7 +52,9 @@ The *LIKE* operator checks whether its left operand matches the pattern specifie
 in its right operand. The pattern can consist of regular characters and wildcards.
 The supported wildcards are *_* to match a single arbitrary character, and *%* to 
 match any number of arbitrary characters. Literal *%* and *_* need to be escaped
-with a backslash.
+with a backslash. Backslashes need to be escaped themselves, which effectively
+means that two reverse solidus characters need to preceed a literal percent sign
+or underscore.
 
 ```
 "abc" LIKE "a%"              // true
@@ -146,13 +148,13 @@ The *conversion to a boolean value* works as follows:
 - `null` will be converted to `false`
 - boolean values remain unchanged
 - all numbers unequal to zero are `true`, zero is `false`
-- the empty string is `false`, all other strings are `true`
+- an empty string is `false`, all other strings are `true`
 - arrays (`[ ]`) and objects / documents (`{ }`) are `true`, regardless of their contents
 
 The result of *logical and* and *logical or* operations can now have any data 
 type and is not necessarily a boolean value.
 
-For example, the following logical operations will return a boolean values:
+For example, the following logical operations will return boolean values:
 
     25 > 1 && 42 != 7                          // true
     22 IN [ 23, 42 ] || 23 NOT IN [ 22, 7 ]    // true
@@ -182,11 +184,11 @@ AQL supports the following arithmetic operators:
 
 The unary plus and unary minus are supported as well.
 
-For exponentiation, there is a [numeric function](Functions/Numeric.md#pow) `POW()`.
+For exponentiation, there is a [numeric function](Functions/Numeric.md#pow) *POW()*.
 
 For string concatenation, you must use the [string function](Functions/String.md#concat)
-`CONCAT()`. Combining two strings with a plus operator (`"foo" + "bar"`) will not work!
-Also see [Common Errors](CommonErrors.md)
+*CONCAT()*. Combining two strings with a plus operator (`"foo" + "bar"`) will not work!
+Also see [Common Errors](CommonErrors.md).
 
 Some example arithmetic operations:
 

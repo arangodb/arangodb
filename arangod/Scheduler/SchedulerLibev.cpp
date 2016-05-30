@@ -274,7 +274,7 @@ SchedulerLibev::~SchedulerLibev() {
   }
 
   for (size_t i = 0; i < 100 && isRunning(); ++i) {
-    usleep(100);
+    usleep(1000);
   }
 
   // shutdown loops
@@ -434,9 +434,9 @@ void SchedulerLibev::startSocketEvents(EventToken token) {
 
   ev_io* w = (ev_io*)watcher;
 
-  if (!ev_is_active(w)) {
-    ev_io_start(watcher->loop, w);
-  }
+  // no need t ocheck if w is inactive, because ev_io_start()
+  // will already do this
+  ev_io_start(watcher->loop, w);
 }
 
 void SchedulerLibev::stopSocketEvents(EventToken token) {
@@ -448,9 +448,9 @@ void SchedulerLibev::stopSocketEvents(EventToken token) {
 
   ev_io* w = (ev_io*)watcher;
 
-  if (ev_is_active(w)) {
-    ev_io_stop(watcher->loop, w);
-  }
+  // no need to check here if w is active, because ev_io_stop()
+  // will already do this
+  ev_io_stop(watcher->loop, w);
 }
 
 EventToken SchedulerLibev::installTimerEvent(EventLoop loop, Task* task,

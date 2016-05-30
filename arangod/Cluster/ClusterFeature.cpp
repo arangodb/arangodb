@@ -400,11 +400,6 @@ void ClusterFeature::start() {
                                            _agencyCallbackRegistry.get(),
                                            _heartbeatInterval * 1000, 5);
     
-    if (_heartbeatThread == nullptr) {
-      LOG(FATAL) << "unable to start cluster heartbeat thread";
-      FATAL_ERROR_EXIT();
-    }
-    
     if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
       LOG(FATAL) << "heartbeat could not connect to agency endpoints ("
                  << endpoints << ")";

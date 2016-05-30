@@ -116,6 +116,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     return result;
   }
 
+  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+
   auto isolate = context->_isolate;
   
   try {
@@ -185,8 +187,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     clusterInfo->flush();
   } catch (...) {
   }
-
-  V8DealerFeature::DEALER->exitContext(context);
 
   return result;
 }

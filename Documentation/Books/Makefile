@@ -1,4 +1,4 @@
-ALLBOOKS=HTTP AQL Users
+ALLBOOKS=HTTP AQL Manual
 
 all: build-books
 
@@ -116,6 +116,9 @@ book-check-dangling-anchors:
 		SFNP=`echo $$SFN | sed 's;/[a-zA-Z0-9]*.html;;'`; \
 		FN="$${SFNP}/$${FN}"; \
 	    fi; \
+	    if test -d "$$FN"; then \
+		FN="$${FN}index.html"; \
+	    fi; \
 	    if test -n "$$ANCHOR"; then \
 		if test ! -f /tmp/tags/$${FN}; then \
 			echo "File referenced by $${i} doesn't exist."; \
@@ -180,6 +183,7 @@ build-book:
 	make book-check-mdpp-leftovers
 	make ppbook-check-directory-link
 
+	cd ppbooks/$(NAME) && gitbook fetch 2.6.7
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	python ../Scripts/deprecated.py
@@ -288,4 +292,4 @@ build-books:
 
 	make check-docublocks
 	make book-check-dangling-anchors
-	echo '<head><meta http-equiv="refresh" content="0; url=Users/"></head><body></body>' > books/index.html
+	echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html

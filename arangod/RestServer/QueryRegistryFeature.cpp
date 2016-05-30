@@ -46,6 +46,10 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
 void QueryRegistryFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("query", "Configure queries");
+  
+  options->addOldOption("database.query-cache-mode", "query.cache-mode");
+  options->addOldOption("database.query-cache-max-results", "query.cache-entries");
+  options->addOldOption("database.disable-query-tracking", "query.tracking");
 
   options->addOption("--query.tracking", "whether to track queries",
                      new BooleanParameter(&_queryTracking));

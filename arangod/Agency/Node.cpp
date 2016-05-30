@@ -112,6 +112,8 @@ Node::Node(Node&& other) :
 
 Node::Node(Node const& other) :
   _node_name(other._node_name),
+  _parent(nullptr),
+  _store(nullptr),
   _children(other._children),
   _value(other._value) {}
 
