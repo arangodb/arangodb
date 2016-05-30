@@ -1088,7 +1088,7 @@ SendMessage $HWNDPARENT ${WM_SETTEXT} 0 "STR:Hallo"
   sharedmem::ExistsSharedMem
   pop $0
   ${If} $0 == '1'
-    MessageBox MB_OK "Installer is allready running" 
+    MessageBox MB_OK "Installer is already running" 
     Quit
   ${EndIf}
   sharedmem::CreateSharedMemory
