@@ -88,6 +88,7 @@ RestServerFeature::RestServerFeature(
       _authenticationUnixSockets(true),
       _authenticationSystemOnly(false),
       _proxyCheck(true),
+      _jwtSecret(""),
       _handlerFactory(nullptr),
       _jobManager(nullptr) {
   setOptional(true);
@@ -126,7 +127,7 @@ void RestServerFeature::collectOptions(
   
   options->addOption("--server.jwt-secret",
                      "secret to use when doing jwt authentication",
-                     new StringParameter(&_jwtSecretArgument));
+                     new StringParameter(&_jwtSecret));
 
   options->addSection("http", "HttpServer features");
 
@@ -184,6 +185,15 @@ void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                        return basics::StringUtils::trim(value).empty(); 
                      }), _accessControlAllowOrigins.end());
   }
+  
+  if (!_jwtSecret.empty()) {
+    if (_jwtSecret.length() > RestServerFeature::_maxSecretLength) {
+      LOG(ERR) << "Given JWT secret too long. Max length is " << RestServerFeature::_maxSecretLength;
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    generateNewJwtSecret();
+  }
 }
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
@@ -230,30 +240,23 @@ static bool SetRequestContext(HttpRequest* request, void* data) {
   return true;
 }
 
+void RestServerFeature::generateNewJwtSecret() {
+  _jwtSecret = "";
+  std::random_device rd;
+  std::mt19937 rng(rd());
+  std::uniform_int_distribution<int> distribution(0,255);
+
+  for (size_t i=0;i<RestServerFeature::_maxSecretLength;i++) {
+    _jwtSecret += distribution(rng);
+  }
+}
+
 void RestServerFeature::prepare() {
   HttpHandlerFactory::setMaintenance(true);
 }
 
 void RestServerFeature::start() {
   RESTSERVER = this;
-  
-  size_t maxSize = sizeof(_jwtSecret);
-  if (!_jwtSecretArgument.empty()) {
-    if (_jwtSecretArgument.length() > maxSize) {
-      LOG(WARN) << "Given JWT secret too long. Will be truncated to " << maxSize;
-    }
-
-    _jwtSecretLength = std::min(maxSize, _jwtSecretArgument.length());
-    std::copy_n(_jwtSecretArgument.begin(), _jwtSecretLength, _jwtSecret);
-  } else {
-    std::default_random_engine generator;
-    std::uniform_int_distribution<int> distribution(0,255);
-
-    for (size_t i=0;i<maxSize;i++) {
-      _jwtSecret[i] = distribution(generator);
-    }
-    _jwtSecretLength = maxSize;
-  }
 
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
