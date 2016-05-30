@@ -184,7 +184,8 @@ build-book:
 	make ppbook-check-directory-link
 
 	cd ppbooks/$(NAME) && gitbook install
-	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
+	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME) --gitbook=2.6.7
+	rm -f ./books/$(NAME)/HEADER.html
 	python ../Scripts/deprecated.py
 
 	# make book-check-markdown-leftovers
