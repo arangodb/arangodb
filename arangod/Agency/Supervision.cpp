@@ -73,6 +73,7 @@ static std::string const curColPrefix = "/Current/Collections/";
 static std::string const toDoPrefix = "/Target/ToDo/";
 static std::string const blockedServersPrefix = "/Supervision/DBServers/";
 static std::string const blockedShardsPrefix = "/Supervision/Shards/";
+static std::string const serverStatePrefix = "/Sync/ServerStates/";
 static std::string const planVersion = "/Plan/Version";
 
 Job::Job(Node const& snapshot, Agent* agent, std::string const& jobId,
@@ -151,9 +152,9 @@ bool Job::finish(std::string const& type, bool success = true) const {
 }
 
 
-struct MoveShard : public Job {
+struct FailedLeader : public Job {
 
-  MoveShard(Node const& snapshot, Agent* agent, std::string const& jobId,
+  FailedLeader(Node const& snapshot, Agent* agent, std::string const& jobId,
             std::string const& creator, std::string const& agencyPrefix,
             std::string const& database = std::string(),
             std::string const& collection = std::string(),
@@ -174,7 +175,7 @@ struct MoveShard : public Job {
 
   }
 
-  virtual ~MoveShard() {}
+  virtual ~FailedLeader() {}
 
   virtual bool create () const {
 
@@ -188,7 +189,7 @@ struct MoveShard : public Job {
     todo.openObject();
     todo.add(path, VPackValue(VPackValueType::Object));
     todo.add("creator", VPackValue(_creator));
-    todo.add("type", VPackValue("moveShard"));
+    todo.add("type", VPackValue("failedLeader"));
     todo.add("database", VPackValue(_database));
     todo.add("collection", VPackValue(_collection));
     todo.add("shard", VPackValue(_shard));
@@ -216,10 +217,9 @@ struct MoveShard : public Job {
     // DBservers
     std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-    //Node const& planned = _snapshot(planPath);
-    
     std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
+
     Node const& current = _snapshot(curPath);
     
     if (current.slice().length() == 1) {
@@ -268,6 +268,7 @@ struct MoveShard : public Job {
     // --- Block shard
     pending.add(_agencyPrefix +  blockedShardsPrefix + _shard,
                 VPackValue(VPackValueType::Object));
+    pending.add("jobId", VPackValue(_jobId));
     pending.add("jobId", VPackValue(_jobId));
     pending.close();
 
@@ -461,7 +462,7 @@ struct FailedServer : public Job {
                 continue;
               }
 
-              MoveShard(
+              FailedLeader(
                 _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
                 _agencyPrefix, database.first, collptr.first, shard.first,
                 _failed, shard.second->slice()[1].copyString());
@@ -531,7 +532,7 @@ struct FailedServer : public Job {
           Node const& sj = *(subJob.second);
           std::string subJobId = sj("jobId").slice().copyString();
           std::string creator  = sj("creator").slice().copyString();
-          MoveShard(_snapshot, _agent, subJobId, creator, _agencyPrefix);
+          FailedLeader(_snapshot, _agent, subJobId, creator, _agencyPrefix);
         }
       }
 
@@ -640,7 +641,13 @@ struct CleanOutServer : public Job {
                 VPackValue(VPackValueType::Object));
     pending.add("jobId", VPackValue(_jobId));
     pending.close();
-    
+
+    // --- Announce in Sync that server is cleaning out
+    pending.add(_agencyPrefix + serverStatePrefix + _server,
+                VPackValue(VPackValueType::Object));
+    pending.add("cleaning", VPackValue(true));
+    pending.close();
+      
     pending.close();
     
     // Preconditions
@@ -678,7 +685,7 @@ struct CleanOutServer : public Job {
                 continue;
               }
 
-              MoveShard(
+              FailedLeader(
                 _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
                 _agencyPrefix, database.first, collptr.first, shard.first,
                 _server, shard.second->slice()[1].copyString());
@@ -711,7 +718,7 @@ Supervision::Supervision()
       _agent(nullptr),
       _snapshot("Supervision"),
       _frequency(5),
-      _gracePeriod(10),
+      _gracePeriod(15),
       _jobId(0),
       _jobIdMax(0) {}
 
