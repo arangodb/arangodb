@@ -861,11 +861,6 @@ void V8DealerFeature::initializeContext(size_t i) {
 
   V8Context* context = _contexts[i] = new V8Context();
 
-  if (context == nullptr) {
-    LOG(FATAL) << "cannot initialize V8 context #" << i;
-    FATAL_ERROR_EXIT();
-  }
-
   TRI_ASSERT(context->_locker == nullptr);
 
   // enter a new isolate
