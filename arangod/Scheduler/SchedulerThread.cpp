@@ -47,7 +47,6 @@ SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
       _scheduler(scheduler),
       _defaultLoop(defaultLoop),
       _loop(loop),
-      _hasWork(false),
       _numberTasks(0),
       _taskData(100) {}
 
@@ -101,7 +100,6 @@ bool SchedulerThread::registerTask(Scheduler* scheduler, Task* task) {
   MUTEX_LOCKER(mutexLocker, _queueLock);
 
   _queue.push_back(w);
-  _hasWork = true;
 
   scheduler->wakeupLoop(_loop);
 
@@ -132,7 +130,6 @@ void SchedulerThread::unregisterTask(Task* task) {
     MUTEX_LOCKER(mutexLocker, _queueLock);
 
     _queue.push_back(w);
-    _hasWork = true;
 
     _scheduler->wakeupLoop(_loop);
   }
@@ -164,7 +161,6 @@ void SchedulerThread::destroyTask(Task* task) {
     MUTEX_LOCKER(mutexLocker, _queueLock);
 
     _queue.push_back(w);
-    _hasWork = true;
 
     _scheduler->wakeupLoop(_loop);
   }
@@ -229,7 +225,7 @@ void SchedulerThread::run() {
         MUTEX_LOCKER(mutexLocker,
                      _queueLock);  // TODO(fc) XXX goto boost lockfree
 
-        if (!_hasWork.load() || _queue.empty()) {
+        if (_queue.empty()) {
           break;
         }
 
