@@ -183,6 +183,7 @@ build-book:
 	make book-check-mdpp-leftovers
 	make ppbook-check-directory-link
 
+	cd ppbooks/$(NAME) && gitbook fetch 2.6.7
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	python ../Scripts/deprecated.py
