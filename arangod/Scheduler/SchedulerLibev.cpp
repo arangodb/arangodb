@@ -274,7 +274,7 @@ SchedulerLibev::~SchedulerLibev() {
   }
 
   for (size_t i = 0; i < 100 && isRunning(); ++i) {
-    usleep(100);
+    usleep(1000);
   }
 
   // shutdown loops

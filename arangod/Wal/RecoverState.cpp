@@ -99,7 +99,7 @@ static int WaitForDeletion(TRI_server_t* server, TRI_voc_tick_t databaseId,
     }
 
     ++iterations;
-    usleep(100000);
+    usleep(50000);
   }
 
   return TRI_ERROR_NO_ERROR;

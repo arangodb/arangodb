@@ -1120,7 +1120,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
             break;
           }
           usleep( (std::min)(500000,
-                             static_cast<int>((actionNeeded-now)*1000000)) );
+                             static_cast<int>((actionNeeded - now) * 1000000)) );
           continue;
         }
         auto it = opIDtoIndex.find(res.operationID);
