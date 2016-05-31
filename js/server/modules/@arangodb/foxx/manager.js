@@ -519,8 +519,7 @@ function computeRootServicePath(mount) {
 
 function transformMountToPath(mount) {
   var list = mount.split('/');
-  list.push('APP');
-  return joinPath(...list);
+  return joinPath(...list, 'APP');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -806,6 +805,31 @@ function installServiceFromRemote(url, targetPath) {
   extractServiceToPath(tempFile, targetPath);
 }
 
+function patchManifestFile(servicePath, patchData) {
+  if (!patchData || !Object.keys(patchData).length) {
+    return;
+  }
+  const filename = joinPath(servicePath, 'manifest.json');
+  let manifest;
+  try {
+    const rawManifest = fs.read(filename);
+    manifest = JSON.parse(rawManifest);
+  } catch (e) {
+    throw Object.assign(
+      new ArangoError({
+        errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
+        errorMessage: dd`
+          ${errors.ERROR_MALFORMED_MANIFEST_FILE.message}
+          File: ${filename}
+          Cause: ${e.stack}
+        `
+      }), {cause: e}
+    );
+  }
+  Object.assign(manifest, patchData);
+  fs.write(filename, JSON.stringify(manifest));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Copies a service from local, either zip file or folder, to mount path
 ////////////////////////////////////////////////////////////////////////////////
@@ -1004,12 +1028,16 @@ function _buildServiceInPath(serviceInfo, path, options) {
       serviceInfo = joinPath(fs.getTempPath(), serviceInfo);
       installServiceFromLocal(serviceInfo, path);
     } else {
-      try {
-        store.update();
-      } catch (e) {
-        console.warnLines(`Failed to update Foxx store: ${e.stack}`);
+      if (!options || options.refresh !== false) {
+        try {
+          store.update();
+        } catch (e) {
+          console.warnLines(`Failed to update Foxx store: ${e.stack}`);
+        }
       }
-      installServiceFromRemote(store.buildUrl(serviceInfo), path);
+      const info = store.installationInfo(serviceInfo);
+      installServiceFromRemote(info.url, path);
+      patchManifestFile(path, info.manifest);
     }
   } catch (e) {
     try {

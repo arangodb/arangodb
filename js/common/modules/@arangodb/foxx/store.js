@@ -310,14 +310,22 @@ function availableJson(matchEngine) {
 
   while (cursor.hasNext()) {
     let doc = cursor.next();
-    let maxVersion = extractMaxVersion(matchEngine, doc.versions);
+    let latestVersion = extractMaxVersion(matchEngine, doc.versions);
 
-    if (maxVersion) {
+    if (latestVersion) {
+      let serverVersion = plainServerVersion();
+      let versionInfo = doc.versions[latestVersion];
+      let legacy = Boolean(
+        versionInfo.engines
+        && versionInfo.engines.arangodb
+        && !semver.satisfies(serverVersion, versionInfo.engines.arangodb)
+      );
       let res = {
         name: doc.name,
         description: doc.description || "",
         author: doc.author || "",
-        latestVersion: maxVersion
+        latestVersion,
+        legacy
       };
 
       result.push(res);
@@ -426,7 +434,7 @@ var infoJson = function (name) {
 /// @brief create a download URL for the given service information
 ////////////////////////////////////////////////////////////////////////////////
 
-var buildUrl = function(serviceInfo) {
+var installationInfo = function(serviceInfo) {
 
   // TODO Validate
   let infoSplit = serviceInfo.split(":");
@@ -435,7 +443,7 @@ var buildUrl = function(serviceInfo) {
   let storeInfo = infoJson(name);
 
   if (storeInfo === undefined) {
-    throw "Service not found";
+    throw new Error('Service not found');
   }
 
   let versions = storeInfo.versions;
@@ -449,20 +457,49 @@ var buildUrl = function(serviceInfo) {
     }
 
     if (! maxVersion) {
-      throw "No version known";
+      throw new Error('No available version');
     }
 
     versionInfo = versions[maxVersion];
   }
   else {
     if (!versions.hasOwnProperty(version)) {
-      throw "Unknown version";
+      throw new Error('Unknown version');
     }
 
     versionInfo = versions[version];
   }
 
-  return utils.buildGithubUrl(versionInfo.location, versionInfo.tag);
+  let url;
+  if (!versionInfo.type) {
+    url = versionInfo.location;
+  } else if (versionInfo.type === 'github') {
+    url = utils.buildGithubUrl(versionInfo.location, versionInfo.tag);
+  } else {
+    throw new Error(`Unknown location type ${versionInfo.type}`);
+  }
+  const manifest = {name};
+
+  if (serviceInfo.author) {
+    manifest.author = serviceInfo.author;
+  }
+  if (serviceInfo.description) {
+    manifest.description = serviceInfo.description;
+  }
+  if (serviceInfo.license) {
+    manifest.license = serviceInfo.license;
+  }
+  if (serviceInfo.keywords) {
+    manifest.keywords = serviceInfo.keywords;
+  }
+  if (versionInfo.engines) {
+    manifest.engines = versionInfo.engines;
+  }
+  if (versionInfo.provides) {
+    manifest.provides = versionInfo.provides;
+  }
+
+  return {url, manifest};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -515,7 +552,7 @@ var info = function (name) {
 
 exports.available = available;
 exports.availableJson = availableJson;
-exports.buildUrl = buildUrl;
+exports.installationInfo = installationInfo;
 exports.getFishbowlStorage = getFishbowlStorage;
 exports.info = info;
 exports.search = search;
