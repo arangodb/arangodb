@@ -56,7 +56,6 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
   startsAfter("Recovery");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("Bootstrap");
 }
 
 AgencyFeature::~AgencyFeature() {}
