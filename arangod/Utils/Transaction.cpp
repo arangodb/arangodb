@@ -938,7 +938,11 @@ void Transaction::extractKeyAndRevFromDocument(VPackSlice slice,
     } else if (*p == basics::VelocyPackHelper::RevAttribute) {
       VPackSlice revSlice(p + 1);
       if (revSlice.isString()) {
-        revisionId = basics::StringUtils::uint64(revSlice.copyString());
+        // use specialized conversion method for trusted input, that also 
+        // does not create a temporary std::string
+        VPackValueLength revLength;
+        char const* rev = revSlice.getString(revLength);
+        revisionId = basics::StringUtils::uint64_trusted(rev, revLength);
       } else if (revSlice.isNumber()) {
         revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
       }

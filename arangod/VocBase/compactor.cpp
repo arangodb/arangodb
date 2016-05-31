@@ -475,10 +475,14 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
 
   // new or updated document
   if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
-    VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+    VPackSlice slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
-    VPackSlice const keySlice(Transaction::extractKeyFromDocument(slice));
-    TRI_voc_rid_t const rid = std::stoull(slice.get(StaticStrings::RevString).copyString());
+
+    // use specialized conversion method for trusted input that does not 
+    // create a temporary std::string 
+    VPackSlice keySlice;
+    TRI_voc_rid_t rid;
+    Transaction::extractKeyAndRevFromDocument(slice, keySlice, rid);
 
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();

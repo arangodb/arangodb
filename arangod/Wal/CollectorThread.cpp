@@ -49,19 +49,6 @@
 using namespace arangodb;
 using namespace arangodb::wal;
 
-/// @brief convert a slice value into its numeric equivalent
-template <typename T>
-static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
-  VPackSlice v = slice.get(attribute);
-  if (v.isString()) {
-    return static_cast<T>(std::stoull(v.copyString()));
-  }
-  if (v.isNumber()) {
-    return v.getNumber<T>();
-  }
-  return 0;
-}
-
 /// @brief return a reference to an existing datafile statistics struct
 static inline DatafileStatisticsContainer& getDfi(CollectorCache* cache,
                                                   TRI_voc_fid_t fid) {
