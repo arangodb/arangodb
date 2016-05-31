@@ -1069,22 +1069,27 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
               << "ClusterComm::performRequests: sending request to "
               << requests[i].destination << ":" << requests[i].path
               << "body:" << requests[i].body;
+          double localTimeOut 
+              = (std::min)((std::max)(1.0, now - startTime), 10.0);
+          if (localTimeOut <= endTime - now) {
+            dueTime[i] = now + localTimeOut;
+          } else {
+            localTimeOut = endTime - now;
+            dueTime[i] = endTime + 10;
+          }
           auto res = asyncRequest("", coordinatorTransactionID,
                                   requests[i].destination,
                                   requests[i].requestType,
                                   requests[i].path,
                                   requests[i].body,
                                   requests[i].headerFields,
-                                  nullptr, timeout - (now - startTime),
+                                  nullptr, localTimeOut,
                                   false);
           if (res.status == CL_COMM_ERROR) {
             // We did not find the destination, this could change in the
             // future, therefore we will retry at some stage:
             drop("", 0, res.operationID, "");   // forget about it
-            dueTime[i] = (std::max)(now + 0.2, 
-                                    startTime + 2 * (now - startTime));
           } else {
-            dueTime[i] = endTime + 10.0;  // Never retry
             opIDtoIndex.insert(std::make_pair(res.operationID, i));
           }
         }
@@ -1106,6 +1111,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         }
         auto res = wait("", coordinatorTransactionID, 0, "", actionNeeded - now);
         if (res.status == CL_COMM_TIMEOUT && res.operationID == 0) {
+          // Did not receive any result until the timeout (of wait) was hit.
           break;
         }
         if (res.status == CL_COMM_DROPPED) {
@@ -1134,10 +1140,15 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
               << "got answer from " << requests[index].destination << ":"
               << requests[index].path << " with return code " 
               << (int) res.answer_code;
-        } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE) {
-          dueTime[index] = (std::max)(now + 1.0, 
-                                  startTime + 2 * (now - startTime));
-        } else {
+        } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE ||
+                   (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
+          LOG_TOPIC(TRACE, logTopic) << "ClusterComm::performRequests: "
+              << "got BACKEND_UNAVAILABLE or TIMEOUT from "
+              << requests[index].destination << ":"
+              << requests[index].path << " with return code " 
+              << (int) res.answer_code;
+          // In this case we will retry at the dueTime
+        } else {   // a "proper error"
           requests[index].result = res;
           requests[index].done = true;
           nrDone++;
@@ -1265,14 +1276,20 @@ void ClusterCommThread::run() {
             if (client->getErrorMessage() == "Request timeout reached") {
               op->result.status = CL_COMM_TIMEOUT;
               op->result.errorMessage = "timeout";
+              auto r = op->result.result->getResultType();
+              op->result.sendWasComplete =
+                  (r == arangodb::httpclient::SimpleHttpResult::READ_ERROR) ||
+                  (r == arangodb::httpclient::SimpleHttpResult::UNKNOWN);
             } else {
               op->result.status = CL_COMM_BACKEND_UNAVAILABLE;
               op->result.errorMessage = client->getErrorMessage();
+              op->result.sendWasComplete = false;
             }
             cm->brokenConnection(connection);
             client->invalidateConnection();
           } else {
             cm->returnConnection(connection);
+            op->result.sendWasComplete = true;
             if (op->result.result->wasHttpError()) {
               op->result.status = CL_COMM_ERROR;
               op->result.errorMessage = "HTTP error, status ";

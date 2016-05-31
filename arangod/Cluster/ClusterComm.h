@@ -112,12 +112,19 @@ struct ClusterCommResult {
   // answer_code is valid iff answer is != 0
   std::shared_ptr<HttpRequest> answer;
   GeneralResponse::ResponseCode answer_code;
+  
+  // The following flag indicates whether or not the complete request was
+  // sent to the other side. This is often important to judge whether or
+  // not the operation could have been completed on the server, for example
+  // in the case of a timeout.
+  bool sendWasComplete;
 
   ClusterCommResult()
       : status(CL_COMM_ERROR),
         dropped(false),
         single(false),
-        answer_code(GeneralResponse::ResponseCode::PROCESSING) {}
+        answer_code(GeneralResponse::ResponseCode::PROCESSING),
+        sendWasComplete(false) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief routine to set the destination
