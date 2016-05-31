@@ -46,7 +46,7 @@ std::string RestAuthHandler::generateJwt(std::string const& username, std::strin
   {
     VPackObjectBuilder h(&headerBuilder);
     headerBuilder.add("alg", VPackValue("HS256"));
-    headerBuilder.add("typ", VPackValue("jwt"));
+    headerBuilder.add("typ", VPackValue("JWT"));
   }
 
   std::chrono::seconds exp = std::chrono::duration_cast<std::chrono::seconds>(

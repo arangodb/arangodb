@@ -456,8 +456,7 @@ bool VocbaseContext::validateJwtHeader(std::string const& header) {
   }
   
   std::string typ = typSlice.copyString();
-  std::transform(typ.begin(), typ.end(), typ.begin(), ::tolower);
-  if (typ != "jwt") {
+  if (typ != "JWT") {
     return false;
   }
 
