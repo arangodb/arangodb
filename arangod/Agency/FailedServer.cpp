@@ -33,14 +33,18 @@ FailedServer::FailedServer(Node const& snapshot, Agent* agent, std::string const
                            std::string const& creator, std::string const& agencyPrefix,
                            std::string const& failed) :
   Job(snapshot, agent, jobId, creator, agencyPrefix), _failed(failed) {
-    
-  if (exists()) {
-    if (status() == TODO) {  
-      start();        
-    } 
-  } else {            
-    create();
-    start();
+
+  try {
+    if (exists()) {
+      if (status() == TODO) {  
+        start();        
+      } 
+    } else {            
+      create();
+      start();
+    }
+  } catch (...) {
+    finish("DBServers/" + _failed);
   }
 
 }
