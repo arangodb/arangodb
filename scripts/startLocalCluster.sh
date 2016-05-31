@@ -81,7 +81,7 @@ start() {
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
                 --log.level info \
-                --server.statistics false \
+                --server.statistics true \
                 --server.threads 5 \
                 --javascript.startup-directory ./js \
                 --server.authentication false \
@@ -108,7 +108,7 @@ startTerminal() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
-                --server.statistics false \
+                --server.statistics true \
                 --server.threads 5 \
                 --javascript.startup-directory ./js \
                 --javascript.app-path ./js/apps \
@@ -161,7 +161,7 @@ startRR() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
-                --server.statistics false \
+                --server.statistics true \
                 --server.threads 5 \
                 --javascript.startup-directory ./js \
                 --javascript.app-path ./js/apps \
