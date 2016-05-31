@@ -479,10 +479,8 @@ thread_local std::unordered_set<std::string>* Transaction::_makeNolockHeaders =
     nullptr;
   
       
-Transaction::Transaction(std::shared_ptr<TransactionContext> transactionContext,
-                         TRI_voc_tid_t externalId)
-    : _externalId(externalId),
-      _serverRole(ServerState::ROLE_UNDEFINED),
+Transaction::Transaction(std::shared_ptr<TransactionContext> transactionContext)
+    : _serverRole(ServerState::ROLE_UNDEFINED),
       _setupState(TRI_ERROR_NO_ERROR),
       _nestingLevel(0),
       _errorData(),
@@ -534,12 +532,9 @@ Transaction::~Transaction() {
 
 std::vector<std::string> Transaction::collectionNames() const {
   std::vector<std::string> result;
-  result.reserve(_trx->_collections._length);
+  result.reserve(_trx->_collections.size());
 
-  for (size_t i = 0; i < _trx->_collections._length; ++i) {
-    auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-        TRI_AtVectorPointer(&_trx->_collections, i));
-
+  for (auto& trxCollection : _trx->_collections) {
     if (trxCollection->_collection != nullptr) {
       result.emplace_back(trxCollection->_collection->_name);
     }
@@ -3347,11 +3342,13 @@ int Transaction::setupToplevel() {
   TRI_ASSERT(_nestingLevel == 0);
 
   // we are not embedded. now start our own transaction
-  _trx = TRI_CreateTransaction(_vocbase, _externalId, _timeout, _waitForSync);
-
-  if (_trx == nullptr) {
+  try {
+    _trx = new TRI_transaction_t(_vocbase, _timeout, _waitForSync);
+  } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+
+  TRI_ASSERT(_trx != nullptr);
 
   // register the transaction in the context
   return this->_transactionContext->registerTransaction(_trx);
@@ -3366,12 +3363,13 @@ void Transaction::freeTransaction() {
 
   if (_trx != nullptr) {
     auto id = _trx->_id;
-    bool hasFailedOperations = TRI_FreeTransaction(_trx);
+    bool hasFailedOperations = _trx->hasFailedOperations();
+    delete _trx;
     _trx = nullptr;
       
     // store result
-    this->_transactionContext->storeTransactionResult(id, hasFailedOperations);
-    this->_transactionContext->unregisterTransaction();
+    _transactionContext->storeTransactionResult(id, hasFailedOperations);
+    _transactionContext->unregisterTransaction();
   }
 }
 
