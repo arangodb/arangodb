@@ -856,11 +856,9 @@ function cleanupCurrentCollections (plannedCollections, currentCollections,
           for (shard in shards) {
             if (shards.hasOwnProperty(shard)) {
 
-              if (shards[shard].servers[0] === ourselves &&
-                  (! shardMap.hasOwnProperty(shard) ||
-                   shardMap[shard].indexOf(ourselves) !== 0)) {
-                // found an entry in current of a shard that we used to be 
-                // leader for but that we are no longer leader for
+              if (! shardMap.hasOwnProperty(shard)) {
+                // found an entry in current of a shard that is no longer
+                // mentioned in the plan
                 console.info("cleaning up entry for shard '%s' of '%s/%s",
                              shard,
                              database,
