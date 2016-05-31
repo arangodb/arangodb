@@ -177,7 +177,7 @@
         * [Sequential Access](Appendix/Deprecated/SimpleQueries/Access.md)
         * [Pagination](Appendix/Deprecated/SimpleQueries/Pagination.md)
         * [Modification Queries](Appendix/Deprecated/SimpleQueries/ModificationQueries.md)
-        * [Geo Queries](Appendix/Deprecated/SimpleQueries/GeoQueries.md)
+        * [Geo Queries](Appendix/Deprecated/SimpleQueriesGeoQueries.md)
         * [Fulltext Queries](Appendix/Deprecated/SimpleQueries/FulltextQueries.md)
       * [Actions](Appendix/Deprecated/Actions/README.md)
         * [Delivering HTML Pages](Appendix/Deprecated/Actions/HtmlExample.md)
