@@ -35,7 +35,7 @@ var expect = require('expect.js');
 
 FoxxManager.update();
 
-var list = FoxxManager.availableJson("match-engines");
+var list = FoxxManager.availableJson(true);
 
 describe("Foxx Manager", function() {
   it("should fetch services from the servicestore", function() {

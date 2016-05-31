@@ -95,57 +95,6 @@ var compareServices =  function(l, r) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief comparator for versions
-////////////////////////////////////////////////////////////////////////////////
-
-var compareVersions = function (a, b) {
-  var i;
-
-  if (a === b) {
-    return 0;
-  }
-
-  // error handling
-  if (typeof a !== "string") {
-    return -1;
-  }
-  if (typeof b !== "string") {
-    return 1;
-  }
-
-  var aComponents = a.split(".");
-  var bComponents = b.split(".");
-  var len = Math.min(aComponents.length, bComponents.length);
-
-  // loop while the components are equal
-  for (i = 0; i < len; i++) {
-
-    // A bigger than B
-    if (parseInt(aComponents[i], 10) > parseInt(bComponents[i], 10)) {
-      return 1;
-    }
-
-    // B bigger than A
-    if (parseInt(aComponents[i], 10) < parseInt(bComponents[i], 10)) {
-      return -1;
-    }
-  }
-
-  // If one's a prefix of the other, the longer one is bigger one.
-  if (aComponents.length > bComponents.length) {
-    return 1;
-  }
-
-  if (aComponents.length < bComponents.length) {
-    return -1;
-  }
-
-  // Otherwise they are the same.
-  return 0;
-};
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the fishbowl from a zip archive
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -322,27 +271,32 @@ var search = function (name) {
 function extractMaxVersion(matchEngine, versionDoc) {
   let serverVersion = plainServerVersion();
   let versions = Object.keys(versionDoc);
-  versions.sort(compareVersions).reverse();
+  versions.sort(semver.compare).reverse();
+  let fallback;
 
   for (let version of versions) {
-    if (matchEngine) {
-      let info = versionDoc[version];
-
-      if (info.engines && info.engines.arangodb) {
-        if (semver.satisfies(serverVersion, info.engines.arangodb)) {
-          return version;
-        }
-      }
-      else if (matchEngine !== "match-engines") {
+    let info = versionDoc[version];
+    if (!info.engines || Object.keys(info.engines).length === 0) {
+      // No known compatibility requirements indicated: use as last resort
+      if (!matchEngine) {
         return version;
       }
+      if (!fallback) {
+        fallback = version;
+      }
+      continue;
     }
-    else {
+    let versionRange = info.engines.arangodb;
+    if (!versionRange || semver.outside(serverVersion, versionRange, '<')) {
+      // Explicitly backwards-incompatible with the server version: ignore
+      continue;
+    }
+    if (!matchEngine || semver.satisfies(serverVersion, versionRange)) {
       return version;
     }
   }
 
-  return undefined;
+  return fallback;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -532,7 +486,7 @@ var info = function (name) {
 
   var header = false;
   var versions = Object.keys(desc.versions);
-  versions.sort(compareVersions);
+  versions.sort(semver.compare);
 
   versions.forEach(function (v) {
     var version = desc.versions[v];
@@ -567,8 +521,3 @@ exports.info = info;
 exports.search = search;
 exports.searchJson = searchJson;
 exports.update = update;
-
-// Temporary export to avoid breaking the client
-exports.compareVersions = compareVersions;
-
-
