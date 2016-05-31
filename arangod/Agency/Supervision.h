@@ -36,32 +36,6 @@ namespace consensus {
 class Agent;
 class Store;
 
-struct JobResult {
-  JobResult() {}
-};
-
-struct JobCallback {
-  JobCallback() {}
-  virtual ~JobCallback(){};
-  virtual bool operator()(JobResult*) = 0;
-};
-
-struct Job {
-  Job(Node const&, Agent*, std::string const& jobId,
-      std::string const& creator, std::string const& agencyPrefix);
-  virtual ~Job();
-  virtual bool exists () const;
-  virtual bool finish (std::string const&, bool) const;
-  virtual unsigned status () const = 0;
-  virtual bool create () const = 0;
-  virtual bool start() const = 0;
-  Node const& _snapshot;
-  Agent* _agent;
-  std::string const _jobId;
-  std::string const& _creator;
-  std::string const& _agencyPrefix;
-};
-
 struct check_t {
   bool good;
   std::string name;
@@ -183,7 +157,30 @@ class Supervision : public arangodb::Thread {
 
   static std::string _agencyPrefix;
 };
+
+inline std::string timepointToString(Supervision::TimePoint const& t) {
+  time_t tt = std::chrono::system_clock::to_time_t(t);
+  struct tm tb;
+  size_t const len (21);
+  char buffer[len];
+  TRI_localtime(tt, &tb);
+  ::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
+  return std::string(buffer, len-1);
 }
+
+inline Supervision::TimePoint stringToTimepoint(std::string const& s) {
+  std::tm tt;
+  tt.tm_year  = std::stoi(s.substr(0,4)) - 1900;
+  tt.tm_mon   = std::stoi(s.substr(5,2)) - 1;
+  tt.tm_mday  = std::stoi(s.substr(8,2));
+  tt.tm_hour  = std::stoi(s.substr(11,2));
+  tt.tm_min   = std::stoi(s.substr(14,2));
+  tt.tm_sec   = std::stoi(s.substr(17,2));
+  tt.tm_isdst = -1;
+  auto time_c = ::mktime(&tt);
+  return std::chrono::system_clock::from_time_t(time_c);
 }
+
+}} // Name spaces
 
 #endif

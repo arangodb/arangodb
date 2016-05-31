@@ -606,10 +606,12 @@
 ///   The options used to configure the foxx are invalid.
 /// - 3007: @LIT{mountpoint is invalid}
 ///   mountpoint is invalid
-/// - 3009: @LIT{App not found}
-///   No app found at this mountpoint
-/// - 3010: @LIT{App not configured}
-///   The app has to be configured before it can be used
+/// - 3009: @LIT{Service not found}
+///   No service found at this mountpoint
+/// - 3010: @LIT{Service not configured}
+///   The service has to be configured before it can be used
+/// - 3011: @LIT{mountpoint already in use}
+///   A service has already been installed at this mountpoint
 /// - 3100: @LIT{cannot locate module}
 ///   The module path could not be resolved.
 /// - 3103: @LIT{failed to invoke module}
@@ -3215,9 +3217,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3009: ERROR_APP_NOT_FOUND
 ///
-/// App not found
+/// Service not found
 ///
-/// No app found at this mountpoint
+/// No service found at this mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_APP_NOT_FOUND                                           (3009)
@@ -3225,12 +3227,22 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3010: ERROR_APP_NEEDS_CONFIGURATION
 ///
-/// App not configured
+/// Service not configured
 ///
-/// The app has to be configured before it can be used
+/// The service has to be configured before it can be used
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_APP_NEEDS_CONFIGURATION                                 (3010)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3011: ERROR_APP_MOUNTPOINT_CONFLICT
+///
+/// mountpoint already in use
+///
+/// A service has already been installed at this mountpoint
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APP_MOUNTPOINT_CONFLICT                                 (3011)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3100: ERROR_MODULE_NOT_FOUND
