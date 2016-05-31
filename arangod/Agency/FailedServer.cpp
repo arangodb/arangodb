@@ -54,7 +54,13 @@ bool FailedServer::start() const {
 
   // Get todo entry
   todo.openArray();
-  _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+  try {
+    _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(INFO, Logger::AGENCY) <<
+      "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+    return false;
+  }
   todo.close();
 
   // Prepare peding entry, block toserver

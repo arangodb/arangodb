@@ -105,7 +105,13 @@ bool FailedLeader::start() const {
   
   // Get todo entry
   todo.openArray();
-  _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+  try {
+    _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(INFO, Logger::AGENCY) <<
+      "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+    return false;
+  }
   todo.close();
   
   // Transaction
@@ -193,13 +199,14 @@ unsigned FailedLeader::status () const {
     return TODO;
     
   } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
-    
+
     Node const& job = _snapshot(pendingPrefix + _jobId);
     std::string database = job("database").toJson(),
       collection = job("collection").toJson(),
-      shard = job("shard").toJson(),
-      planPath = planColPrefix + database + "/" + collection + "/shards/"
-      + shard,
+      shard = job("shard").toJson();
+    
+    std::string planPath = planColPrefix + database + "/" + collection
+      + "/shards/" + shard,
       curPath = curColPrefix + database + "/" + collection + "/" + shard
       + "/servers";
     
@@ -213,7 +220,7 @@ unsigned FailedLeader::status () const {
       }
         
     }
-
+    
     return PENDING;
       
   } else if (target.exists(std::string("/Finished/")  + _jobId).size() == 2) {
