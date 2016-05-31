@@ -247,12 +247,16 @@ static std::string const syncLatest = "/Sync/LatestID";
 bool Supervision::getUniqueIds() {
   uint64_t latestId;
 
-  try {
-    latestId = std::stoul(
+  while (true) {
+    try {
+      latestId = std::stoul(
         _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
-  } catch (std::exception const& e) {
-    LOG(WARN) << e.what();
-    return false;
+      continue;
+    } catch (std::exception const& e) {
+      LOG(WARN) << e.what();
+      //return false;
+    }
+    std::this_thread::sleep_for (std::chrono::seconds(1));
   }
 
   bool success = false;
