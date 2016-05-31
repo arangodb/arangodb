@@ -224,6 +224,8 @@ struct FunctionDefiner {
                       &Functions::Acos});
     add({"ATAN", "AQL_ATAN", "n", true, true, false, true, true,
                       &Functions::Atan});
+    add({"ATAN2", "AQL_ATAN2", "n,n", true, true, false, true, true,
+                      &Functions::Atan2});
     add({"RADIANS", "AQL_RADIANS", "n", true, true, false, true, true,
                       &Functions::Radians});
     add({"DEGREES", "AQL_DEGREES", "n", true, true, false, true, true,

@@ -3130,6 +3130,22 @@ AqlValue Functions::Atan(arangodb::aql::Query* query,
   return NumberValue(trx, std::atan(input));  
 }
 
+/// @brief function ATAN2
+AqlValue Functions::Atan2(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "ATAN2", 2, 2);
+  
+  AqlValue value1 = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value2 = ExtractFunctionParameterValue(trx, parameters, 1);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double input1 = value1.toDouble(failed);
+  double input2 = value2.toDouble(failed);
+
+  return NumberValue(trx, std::atan2(input1, input2));  
+}
+
 /// @brief function RADIANS
 AqlValue Functions::Radians(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
