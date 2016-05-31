@@ -294,7 +294,11 @@ bool State::loadCompacted() {
     for (auto const& i : VPackArrayIterator(result)) {
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
       (*_agent) = i;
-      _cur = std::stoul(i.get("_key").copyString());
+      try {
+        _cur = std::stoul(i.get("_key").copyString());
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+      }
     }
   }
 
@@ -331,7 +335,10 @@ bool State::loadRemaining() {
             static_cast<term_t>(i.get("term").getUInt()),
             static_cast<arangodb::consensus::id_t>(i.get("leader").getUInt()),
             tmp));
-      } catch (...) {
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::AGENCY) <<
+          "Failed to convert " + i.get(StaticStrings::KeyString).copyString() +
+          " to integer via std::stoi." << e.what(); 
       }
     }
   }
