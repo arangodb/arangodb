@@ -322,7 +322,6 @@ function AuthSuite () {
       });
 
       var jwt = JSON.parse(res.body).jwt;
-      
       var res = request.get({
         url: baseUrl() + "/_api/version",
         auth: {
@@ -340,8 +339,7 @@ function AuthSuite () {
       var res = request.get({
         url: baseUrl() + "/_api/version",
         auth: {
-          //bearer: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE0NjczMDU5MzIsImlzcyI6ImFyYW5nb2RiIiwicHJlZmVycmVkX3VzZXJuYW1lIjoicm9vdCJ9.79d6C8FxSSii7W37QiyXzYD6eJmNT2JLgom3LX7cnh4",
-          bearer: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE0NjczMDU5MzIsImlzcyI6ImFyYW5nb2RiIiwicHJlZmVycmVkX3VzZXJuYW1lIjoicm9vdGEifQ.taTTZoB12MUtDvUJWoosgq_pfcxQSxRYAvJAU71cw9Y",
+          bearer: jwt,
         }
       })
       expect(res).to.be.a(request.Response);
