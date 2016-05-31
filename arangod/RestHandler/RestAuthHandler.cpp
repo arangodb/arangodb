@@ -63,7 +63,7 @@ std::string RestAuthHandler::generateJwt(std::string const& username, std::strin
   std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) + "." + StringUtils::encodeBase64(bodyBuilder.toJson()));
   std::string signature = sslHMAC(_jwtSecret.c_str(), _jwtSecret.length(), fullMessage.c_str(), fullMessage.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
   
-  return fullMessage + "." + StringUtils::encodeBase64(signature);
+  return fullMessage + "." + StringUtils::encodeBase64U(signature);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

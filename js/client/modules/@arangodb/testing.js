@@ -2245,7 +2245,8 @@ testFuncs.authentication = function(options) {
   print(CYAN + "Authentication tests..." + RESET);
 
   let instanceInfo = startInstance("tcp", options, {
-    "server.authentication": "true"
+    "server.authentication": "true",
+    "server.jwt-secret": "haxxmann",
   }, "authentication");
 
   if (instanceInfo === false) {

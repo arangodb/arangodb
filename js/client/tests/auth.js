@@ -32,7 +32,10 @@ var jsunity = require("jsunity");
 var arango = require("@arangodb").arango;
 var db = require("internal").db;
 var users = require("@arangodb/users");
-
+var request = require('@arangodb/request');
+var crypto = require('@arangodb/crypto');
+var expect = require('expect.js');
+var print = require('internal').print;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -40,6 +43,12 @@ var users = require("@arangodb/users");
 
 function AuthSuite () {
   'use strict';
+  var baseUrl = function () {
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+  }
+
+  const jwtSecret = 'haxxmann';
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,8 +234,184 @@ function AuthSuite () {
       }
       catch (err3) {
       }
-    }
+    },
+    
+    testAuthOpen: function() {
+      var res = request(baseUrl() + "/_open/auth");
+      expect(res).to.be.a(request.Response);
+      // mop: GET is an unsupported method, but it is skipping auth
+      expect(res).to.have.property('statusCode', 405);
+    },
+    
+    testAuth: function() {
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({"username": "root", "password": ""})
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 200);
 
+      expect(res.body).to.be.an('string');
+      var obj = JSON.parse(res.body);
+      expect(obj).to.have.property('jwt');
+      expect(obj).to.have.property('must_change_password');
+      expect(obj.jwt).to.be.a('string');
+      expect(obj.jwt.split('.').length).to.be(3);
+      expect(obj.must_change_password).to.be.a('boolean');
+    },
+    
+    testAuthNewUser: function() {
+      users.save("hackers@arangodb.com", "foobar");
+      users.reload();
+
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({"username": "hackers@arangodb.com", "password": "foobar"})
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+      expect(res.body).to.be.an('string');
+      var obj = JSON.parse(res.body);
+      expect(obj).to.have.property('jwt');
+      expect(obj).to.have.property('must_change_password');
+      expect(obj.jwt).to.be.a('string');
+      expect(obj.jwt.split('.').length).to.be(3);
+      expect(obj.must_change_password).to.be.a('boolean');
+    },
+    
+    testAuthNewWrongPassword: function() {
+      users.save("hackers@arangodb.com", "foobarJAJA");
+      users.reload();
+
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({"username": "hackers@arangodb.com", "password": "foobar"})
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+    
+    testAuthNoPassword: function() {
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({"username": "hackers@arangodb.com", "passwordaa": "foobar"}),
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 400);
+    },
+    
+    testAuthNoUsername: function() {
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({"usern": "hackers@arangodb.com", "password": "foobar"}),
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 400);
+    },
+
+    testAuthRequired: function() {
+      var res = request.get(baseUrl() + "/_api/version");
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+    
+    testFullAuthWorkflow: function() {
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({"username": "root", "password": ""}),
+      });
+
+      var jwt = JSON.parse(res.body).jwt;
+      
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      });
+
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+    },
+    
+    testViaJS: function() {
+      var jwt = crypto.jwtEncode(jwtSecret, {"iss": "arangodb", "exp": 90000000000 }, 'HS256');
+
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          //bearer: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE0NjczMDU5MzIsImlzcyI6ImFyYW5nb2RiIiwicHJlZmVycmVkX3VzZXJuYW1lIjoicm9vdCJ9.79d6C8FxSSii7W37QiyXzYD6eJmNT2JLgom3LX7cnh4",
+          bearer: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE0NjczMDU5MzIsImlzcyI6ImFyYW5nb2RiIiwicHJlZmVycmVkX3VzZXJuYW1lIjoicm9vdGEifQ.taTTZoB12MUtDvUJWoosgq_pfcxQSxRYAvJAU71cw9Y",
+        }
+      })
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+    },
+    
+    testNoneAlgDisabled: function() {
+      var jwt = (new Buffer(JSON.stringify({"typ": "JWT","alg": "none"})).toString('base64')) + "." + (new Buffer(JSON.stringify({"iss": "arangodb"})).toString('base64'));
+      // not supported
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      })
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+    
+    testIssRequired: function() {
+      var jwt = crypto.jwtEncode(jwtSecret, {"exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
+      // not supported
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      })
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+    
+    testIssArangodb: function() {
+      var jwt = crypto.jwtEncode(jwtSecret, {"iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
+      // not supported
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      })
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+    
+    testExpOptional: function() {
+      var jwt = crypto.jwtEncode(jwtSecret, {"iss": "arangodb" }, 'HS256');
+      // not supported
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      })
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+    },
+    
+    testExp: function() {
+      var jwt = crypto.jwtEncode(jwtSecret, {"iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) - 1000 }, 'HS256');
+      // not supported
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      })
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
   };
 }
 
