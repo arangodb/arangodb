@@ -1045,7 +1045,7 @@ function _install(serviceInfo, mount, options, runSetup) {
   var collection = utils.getStorage();
   options = options || {};
   if (fs.exists(targetPath)) {
-    throw new Error('An service is already installed at this location.');
+    throw new Error('A service has already been installed at this location.');
   }
   fs.makeDirectoryRecursive(targetPath);
   // Remove the empty APP folder.
