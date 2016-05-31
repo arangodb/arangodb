@@ -27,7 +27,7 @@ For startup parameters, installation in a cluster and so on, see
 
 The server itself speaks REST and VelocyStream, but you can use the
 graphical web interface to keep it simple. There's also
-[../Administration/Arangosh/README.md](arangosh), a synchronous shell for
+[arangosh](../Administration/Arangosh/README.md), a synchronous shell for
 interaction with the server. If you're a developer, you might prefer the shell
 over the GUI. It does not provide features like syntax highlighting however.
 
