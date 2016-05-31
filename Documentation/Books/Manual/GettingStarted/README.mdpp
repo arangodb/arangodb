@@ -52,8 +52,8 @@ Every server instance comes with a `_system` database.
 !SECTION ArangoDB programs 
 
 The ArangoDB package comes with the following programs:
-
-- `arangod`: The [ArangoDB database daemon](Arangod.md).
+<!-- TODO: the next link has gone away, bent it over. -->
+- `arangod`: The [ArangoDB database daemon](../Administration/Configuration/Arangod.md).
   This server program is intended to run as a daemon process and to serve the
   various clients connection to the server via TCP / HTTP.
   
