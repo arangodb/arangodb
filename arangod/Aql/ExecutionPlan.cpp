@@ -39,6 +39,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/SmallVector.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 
@@ -1486,31 +1487,27 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 }
 
 /// @brief find nodes of a certain type
-std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType(
-    ExecutionNode::NodeType type, bool enterSubqueries) {
-  std::vector<ExecutionNode*> result;
+void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
+                                    ExecutionNode::NodeType type,
+                                    bool enterSubqueries) {
   NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
   root()->walk(&finder);
-  return result;
 }
 
+
 /// @brief find nodes of a certain types
-std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType(
+void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
     std::vector<ExecutionNode::NodeType> const& types, bool enterSubqueries) {
-  std::vector<ExecutionNode*> result;
   NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result,
                                                           enterSubqueries);
   root()->walk(&finder);
-  return result;
 }
 
 /// @brief find all end nodes in a plan
-std::vector<ExecutionNode*> ExecutionPlan::findEndNodes(
+void ExecutionPlan::findEndNodes(SmallVector<ExecutionNode*>& result,
     bool enterSubqueries) const {
-  std::vector<ExecutionNode*> result;
   EndNodeFinder finder(result, enterSubqueries);
   root()->walk(&finder);
-  return result;
 }
 
 /// @brief check linkage of execution plan
