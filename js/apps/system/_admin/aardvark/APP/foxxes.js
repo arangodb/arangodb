@@ -99,6 +99,18 @@ installer.use(function (req, res, next) {
     ].indexOf(e.errorNum) !== -1) {
       res.throw('bad request', e);
     }
+    if (
+      e.isArangoError &&
+      e.errorNum === errors.ERROR_APP_NOT_FOUND.code
+    ) {
+      res.throw('not found', e);
+    }
+    if (
+      e.isArangoError &&
+      e.errorNum === errors.ERROR_APP_MOUNTPOINT_CONFLICT.code
+    ) {
+      res.throw('conflict', e);
+    }
     throw e;
   }
   const configuration = FoxxManager.configuration(mount);
