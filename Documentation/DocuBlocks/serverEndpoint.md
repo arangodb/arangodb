@@ -36,7 +36,7 @@ business
 the path to a server certificate using the \-\-server.keyfile option.
 
 Endpoints can also be changed at runtime.
-Please refer to [HTTP Interface for Endpoints](../HttpEndpoints/README.md)
+Please refer to [HTTP Interface for Endpoints](../../HTTP/HttpEndpoints/index.html)
 for more details.
 @endDocuBlock
 
