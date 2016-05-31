@@ -245,7 +245,7 @@ function lookupService(mount) {
       errorNum: errors.ERROR_APP_NOT_FOUND.code,
       errorMessage: dd`
         ${errors.ERROR_APP_NOT_FOUND.message}
-        Service not found at "${mount}".
+        Mount path: "${mount}".
       `
     });
   }
@@ -928,7 +928,13 @@ function _scanFoxx(mount, options, activateDevelopment) {
           }
           var old = utils.getStorage().firstExample({ mount: mount });
           if (old === null) {
-            throw new Error(`Could not find service for mountpoint "${mount}"`);
+            throw new ArangoError({
+              errorNum: errors.ERROR_APP_NOT_FOUND.code,
+              errorMessage: dd`
+                ${errors.ERROR_APP_NOT_FOUND.message}
+                Mount path: "${mount}".
+              `
+            });
           }
           var data = Object.assign({}, old);
           data.manifest = service.toJSON().manifest;
@@ -1045,7 +1051,13 @@ function _install(serviceInfo, mount, options, runSetup) {
   var collection = utils.getStorage();
   options = options || {};
   if (fs.exists(targetPath)) {
-    throw new Error('A service has already been installed at this location.');
+    throw new ArangoError({
+      errorNum: errors.ERROR_APP_MOUNTPOINT_CONFLICT.code,
+      errorMessage: dd`
+        ${errors.ERROR_APP_MOUNTPOINT_CONFLICT.message}
+        Mount path: "${mount}".
+      `
+    });
   }
   fs.makeDirectoryRecursive(targetPath);
   // Remove the empty APP folder.
