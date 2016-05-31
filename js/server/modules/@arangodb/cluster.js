@@ -826,8 +826,6 @@ function dropLocalCollections (plannedCollections, writeLocked) {
 
 function cleanupCurrentCollections (plannedCollections, currentCollections,
                                     writeLocked) {
-  var ourselves = global.ArangoServerState.id();
-
   var dropCollectionAgency = function (database, collection, shardID) {
     try {
       global.ArangoAgency.remove("Current/Collections/" + database + "/" + collection + "/" + shardID);
