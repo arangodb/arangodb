@@ -45,7 +45,6 @@ BootstrapFeature::BootstrapFeature(application_features::ApplicationServer* serv
   startsAfter("Endpoint");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("Agency");
   startsAfter("LogfileManager");
   startsAfter("Database");
   startsAfter("Upgrade");
