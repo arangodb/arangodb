@@ -296,13 +296,15 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
     ++auth;
   }
 
-  if (!TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
+  LOG(DEBUG) << "Authorization header: " << authStr;
+
+  if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
     return basicAuthentication(auth);
   } else if (TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
     return jwtAuthentication(std::string(auth));
   } else {
     // mop: hmmm is 403 the correct status code? or 401? or 400? :S
-    return GeneralResponse::ResponseCode::FORBIDDEN;
+    return GeneralResponse::ResponseCode::UNAUTHORIZED;
   }
 }
 
@@ -383,7 +385,7 @@ GeneralResponse::ResponseCode VocbaseContext::jwtAuthentication(std::string cons
   std::vector<std::string> const parts = StringUtils::split(auth, '.');
   
   if (parts.size() != 3) {
-    return GeneralResponse::ResponseCode::FORBIDDEN;
+    return GeneralResponse::ResponseCode::UNAUTHORIZED;
   }
 
   std::string const& header = parts[0];
@@ -394,17 +396,17 @@ GeneralResponse::ResponseCode VocbaseContext::jwtAuthentication(std::string cons
 
   if (!validateJwtHeader(header)) {
     LOG(DEBUG) << "Couldn't validate jwt header " << header;
-    return GeneralResponse::ResponseCode::FORBIDDEN;
+    return GeneralResponse::ResponseCode::UNAUTHORIZED;
   }
   
   if (!validateJwtBody(body)) {
     LOG(DEBUG) << "Couldn't validate jwt body " << body;
-    return GeneralResponse::ResponseCode::FORBIDDEN;
+    return GeneralResponse::ResponseCode::UNAUTHORIZED;
   }
   
   if (!validateJwtHMAC256Signature(message, signature)) {
     LOG(DEBUG) << "Couldn't validate jwt signature " << signature;
-    return GeneralResponse::ResponseCode::FORBIDDEN;
+    return GeneralResponse::ResponseCode::UNAUTHORIZED;
   }
 
   return GeneralResponse::ResponseCode::OK;
@@ -452,8 +454,10 @@ bool VocbaseContext::validateJwtHeader(std::string const& header) {
   if (algSlice.copyString() != "HS256") {
     return false;
   }
-
-  if (typSlice.copyString() != "jwt") {
+  
+  std::string typ = typSlice.copyString();
+  std::transform(typ.begin(), typ.end(), typ.begin(), ::tolower);
+  if (typ != "jwt") {
     return false;
   }
 
@@ -500,5 +504,5 @@ bool VocbaseContext::validateJwtBody(std::string const& body) {
 
 bool VocbaseContext::validateJwtHMAC256Signature(std::string const& message, std::string const& signature) {
   std::string decodedSignature = StringUtils::decodeBase64(signature);
-  return verifyHMAC(_jwtSecret.c_str(), _jwtSecret.length(), message.c_str(), message.length(), signature.c_str(), signature.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
+  return verifyHMAC(_jwtSecret.c_str(), _jwtSecret.length(), message.c_str(), message.length(), decodedSignature.c_str(), decodedSignature.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
 }
