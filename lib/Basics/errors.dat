@@ -361,7 +361,7 @@ ERROR_INVALID_FOXX_OPTIONS,3004,"invalid foxx options","The options used to conf
 ERROR_INVALID_MOUNTPOINT,3007,"mountpoint is invalid","mountpoint is invalid"
 ERROR_APP_NOT_FOUND,3009,"Service not found","No service found at this mountpoint"
 ERROR_APP_NEEDS_CONFIGURATION,3010,"Service not configured","The service has to be configured before it can be used"
-ERROR_APP_MOUNTPOINT_CONFLICT,3011,"mounpoint already in use","A service has already been installed at this mountpoint"
+ERROR_APP_MOUNTPOINT_CONFLICT,3011,"mountpoint already in use","A service has already been installed at this mountpoint"
 
 ################################################################################
 ## JavaScript module loader
