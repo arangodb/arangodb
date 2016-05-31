@@ -270,7 +270,7 @@ bool verifyHMAC(char const* challenge, size_t challengeLength,
   // result must == BASE64(response, responseLen)
 
   std::string s =
-      StringUtils::encodeHex(sslHMAC(challenge, challengeLength, secret, secretLen, algorithm));
+      sslHMAC(challenge, challengeLength, secret, secretLen, algorithm);
 
   if (s.length() == responseLen &&
       s.compare(std::string(response, responseLen)) == 0) {

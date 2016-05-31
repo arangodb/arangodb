@@ -24,6 +24,9 @@
 #ifndef ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H
 #define ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H 1
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Common.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -66,7 +69,7 @@ class VocbaseContext : public arangodb::RequestContext {
   static double accessSid(std::string const& database, std::string const& sid);
 
  public:
-  VocbaseContext(HttpRequest*, TRI_server_t*, TRI_vocbase_t*);
+  VocbaseContext(HttpRequest*, TRI_server_t*, TRI_vocbase_t*, std::string const&);
 
   ~VocbaseContext();
 
@@ -95,6 +98,7 @@ class VocbaseContext : public arangodb::RequestContext {
 
   GeneralResponse::ResponseCode authenticate() override final;
   
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks the authentication (basic)
   //////////////////////////////////////////////////////////////////////////////
@@ -105,7 +109,13 @@ class VocbaseContext : public arangodb::RequestContext {
   /// @brief checks the authentication (jwt)
   //////////////////////////////////////////////////////////////////////////////
 
-  GeneralResponse::ResponseCode jwtAuthentication(const char*);
+  GeneralResponse::ResponseCode jwtAuthentication(std::string const&);
+
+  std::shared_ptr<VPackBuilder> parseJson(std::string const&, std::string const&);
+
+  bool validateJwtHeader(std::string const&);
+  bool validateJwtBody(std::string const&);
+  bool validateJwtHMAC256Signature(std::string const&, std::string const&);
 
  public:
   ////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +136,8 @@ class VocbaseContext : public arangodb::RequestContext {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_vocbase_t* _vocbase;
+
+  std::string const _jwtSecret;
 };
 }
 

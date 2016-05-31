@@ -54,6 +54,11 @@ class RestServerFeature final
     return RESTSERVER->trustedProxies();
   }
 
+  static std::string getJwtSecret() {
+    TRI_ASSERT(RESTSERVER != nullptr);
+    return RESTSERVER->jwtSecret();
+  }
+
  private:
   static RestServerFeature* RESTSERVER;
   static const size_t _maxSecretLength = 64;

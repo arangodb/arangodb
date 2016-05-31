@@ -55,7 +55,7 @@ std::string RestAuthHandler::generateJwt(std::string const& username, std::strin
   VPackBuilder bodyBuilder;
   {
     VPackObjectBuilder p(&bodyBuilder);
-    bodyBuilder.add("username", VPackValue(username));
+    bodyBuilder.add("preferred_username", VPackValue(username));
     bodyBuilder.add("iss", VPackValue("arangodb"));
     bodyBuilder.add("exp", VPackValue(exp.count()));
   }
