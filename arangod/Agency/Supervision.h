@@ -152,6 +152,8 @@ class Supervision : public arangodb::Thread {
   std::vector<check_t> checkDBServers();
   std::vector<check_t> checkShards();
 
+  void workJobs();
+
   /// @brief Get unique ids from agency
   bool getUniqueIds();
 
@@ -172,7 +174,7 @@ class Supervision : public arangodb::Thread {
 
   ///@brief last vital signs as reported through heartbeats to agency
   ///
-  std::map<ServerID, std::shared_ptr<VitalSign>> _vitalSigns;
+//  std::map<ServerID, std::shared_ptr<VitalSign>> _vitalSigns;
 
   long _frequency;
   long _gracePeriod;
