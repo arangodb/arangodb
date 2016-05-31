@@ -2122,10 +2122,15 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
 function AQL_CONCAT () {
   'use strict';
 
-  var result = '', i;
+  var result = '', what = arguments;
+  if (what.length === 1 && Array.isArray(what[0])) {
+    what = arguments[0];
+  }
+  
+  var i, n = what.length;
 
-  for (i = 0; i < arguments.length; ++i) {
-    var element = arguments[i];
+  for (i = 0; i < n; ++i) {
+    var element = what[i];
     var weight = TYPEWEIGHT(element);
     if (weight === TYPEWEIGHT_NULL) {
       continue;
@@ -2143,13 +2148,28 @@ function AQL_CONCAT () {
 function AQL_CONCAT_SEPARATOR () {
   'use strict';
 
-  var separator, found = false, result = '', i, j;
+  var separator, found = false, result = '', i, element;
+
+  if (arguments.length === 2 && Array.isArray(arguments[1])) {
+    separator = AQL_TO_STRING(arguments[0]);
+    for (i = 0; i < arguments[1].length; ++i) {
+      element = arguments[1][i];
+      if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+        continue;
+      }
+      if (found) {
+        result += separator;
+      }
+      result += AQL_TO_STRING(element);
+      found = true;
+    }
+    return result;
+  }
 
   for (i = 0; i < arguments.length; ++i) {
-    var element = arguments[i];
-    var weight = TYPEWEIGHT(element);
+    element = arguments[i];
  
-    if (i > 0 && weight === TYPEWEIGHT_NULL) {
+    if (i > 0 && TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
       continue;
     }
     if (i === 0) {

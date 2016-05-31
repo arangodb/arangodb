@@ -1215,17 +1215,37 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
   StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
+  bool handled = false;
   size_t const n = parameters.size();
 
-  for (size_t i = 0; i < n; ++i) {
-    AqlValue member = ExtractFunctionParameterValue(trx, parameters, i);
+  if (n == 1) {
+    AqlValue member = ExtractFunctionParameterValue(trx, parameters, 0);
+    if (member.isArray()) {
+      AqlValueMaterializer materializer(trx);
+      VPackSlice slice = materializer.slice(member, false);
 
-    if (member.isNull(true)) {
-      continue;
+      for (auto const& it : VPackArrayIterator(slice, true)) {
+        if (it.isNull()) {
+          continue;
+        }
+        // convert member to a string and append
+        AppendAsString(trx, adapter, AqlValue(it.begin()));
+      }
+      handled = true;
     }
+  }
 
-    // convert member to a string and append
-    AppendAsString(trx, adapter, member);
+  if (!handled) {
+    for (size_t i = 0; i < n; ++i) {
+      AqlValue member = ExtractFunctionParameterValue(trx, parameters, i);
+
+      if (member.isNull(true)) {
+        continue;
+      }
+
+      // convert member to a string and append
+      AppendAsString(trx, adapter, member);
+    }
   }
 
   size_t length = buffer->length();
