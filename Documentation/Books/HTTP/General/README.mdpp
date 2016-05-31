@@ -100,7 +100,7 @@ when they have strict durability requirements or if they rely on the immediate
 result of the request they send.
 
 For details on the subsequent processing
-[read on under Async Result handling](../HttpAsyncResultsManagement/README.md).
+[read on under Async Result handling](../AsyncResultsManagement/README.md).
 
 !SECTION Authentication
 
@@ -118,12 +118,11 @@ will be generic and not expose any private data.
 Please note that when authentication is turned on in ArangoDB, it will by
 default affect all incoming requests. 
 
-There is an additional option [-server.authenticate-system-only](../../Manual/Administration/Configuration/Arangod.html)
-"--server.authenticate-system-only" to restrict authentication to requests to the ArangoDB 
-internal APIs and the admin interface. 
+There is an additional option [--server.authenticate-system-only](../../Manual/Administration/Configuration/Arangod.html)
+to restrict authentication to requests to the ArangoDB internal APIs and the admin interface. 
 This option can be used to expose a public API built with ArangoDB to the outside
 world without the need for HTTP authentication, but to still protect the usage of the
-ArangoDB API (i.e. */_api/**) and the admin interface (i.e. */_admin/**) with
+ArangoDB API (i.e. */_api/*) and the admin interface (i.e. */_admin/*) with
 HTTP authentication.
 
 If the server is started with the *--server.authenticate-system-only* parameter set 

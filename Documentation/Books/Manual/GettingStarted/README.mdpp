@@ -70,7 +70,7 @@ The ArangoDB package comes with the following programs:
 - `arangorestore`: A tool to [load data of a backup](../Administration/Arangorestore.md)
   back into an ArangoDB database.
   
-- `arango-dfdb`: A [datafile debugger](../Troubleshooting/ArangoDfdb.md) for
+- `arango-dfdb`: A [datafile debugger](../Troubleshooting/DatafileDebugger.md) for
   ArangoDB. It is primarily intended to be used during development of ArangoDB.
   
 - `arangobench`: A [benchmark and test tool](../Troubleshooting/Arangobench.md).
