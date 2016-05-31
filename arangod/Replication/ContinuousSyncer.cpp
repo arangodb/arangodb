@@ -633,7 +633,7 @@ int ContinuousSyncer::startTransaction(VPackSlice const& slice) {
 
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
-  auto trx = std::make_unique<ReplicationTransaction>(_server, _vocbase, tid);
+  auto trx = std::make_unique<ReplicationTransaction>(_server, _vocbase);
 
   int res = trx->begin();
 

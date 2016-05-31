@@ -440,12 +440,21 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
 
     if (!TRI_ExistsFile(parametersFile.c_str())) {
       // no parameter.json file
-      LOG(ERR) << "database directory '" << databaseDirectory
-               << "' does not contain parameters file or parameters file "
-                  "cannot be read";
+      
+      if (TRI_FilesDirectory(databaseDirectory.c_str()).empty()) {
+        // directory is otherwise empty, continue!
+        LOG(WARN) << "ignoring empty database directory '" << databaseDirectory
+                  << "' without parameters file";
 
-      // abort
-      res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+        res = TRI_ERROR_NO_ERROR;
+      } else {
+        // abort
+        LOG(ERR) << "database directory '" << databaseDirectory
+                 << "' does not contain parameters file or parameters file "
+                    "cannot be read";
+
+        res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+      }
       break;
     }
 

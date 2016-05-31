@@ -38,7 +38,7 @@ using namespace arangodb;
 SingleCollectionTransaction::SingleCollectionTransaction(
   std::shared_ptr<TransactionContext> transactionContext, TRI_voc_cid_t cid, 
   TRI_transaction_type_e accessType)
-      : Transaction(transactionContext, 0),
+      : Transaction(transactionContext),
         _cid(cid),
         _trxCollection(nullptr),
         _documentCollection(nullptr),
@@ -57,7 +57,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 SingleCollectionTransaction::SingleCollectionTransaction(
   std::shared_ptr<TransactionContext> transactionContext,
   std::string const& name, TRI_transaction_type_e accessType)
-      : Transaction(transactionContext, 0),
+      : Transaction(transactionContext),
         _cid(0),
         _trxCollection(nullptr),
         _documentCollection(nullptr),

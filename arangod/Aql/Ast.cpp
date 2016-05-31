@@ -24,6 +24,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Arithmetic.h"
 #include "Aql/Executor.h"
+#include "Aql/Function.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"

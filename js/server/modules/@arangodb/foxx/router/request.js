@@ -115,7 +115,7 @@ module.exports = class SyntheticRequest {
     if (!range) {
       return undefined;
     }
-    return parseRange(size, range);
+    return parseRange((size || size === 0) ? size : Infinity, range);
   }
 
   get(name) {
@@ -153,7 +153,7 @@ module.exports = class SyntheticRequest {
     return JSON.parse(this.rawBody.toString('utf-8'));
   }
 
-  params(name) {
+  param(name) {
     if (hasOwnProperty.call(this.pathParams, name)) {
       return this.pathParams[name];
     }

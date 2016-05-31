@@ -45,7 +45,7 @@ class AqlTransaction : public Transaction {
       std::shared_ptr<TransactionContext> transactionContext, 
       std::map<std::string, arangodb::aql::Collection*> const* collections,
       bool isMainTransaction)
-      : Transaction(transactionContext, 0),
+      : Transaction(transactionContext),
         _collections(*collections) {
     if (!isMainTransaction) {
       this->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, true);

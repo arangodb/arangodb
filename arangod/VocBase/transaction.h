@@ -25,7 +25,7 @@
 #define ARANGOD_VOC_BASE_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/vector.h"
+#include "Basics/SmallVector.h"
 #include "VocBase/voc-types.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
@@ -42,14 +42,9 @@ struct DocumentOperation;
 }
 }
 
+struct TRI_transaction_collection_t;
 struct TRI_vocbase_t;
 class TRI_vocbase_col_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief top level of a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_TRANSACTION_TOP_LEVEL 0
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief time (in µs) that is spent waiting for a lock
@@ -114,11 +109,19 @@ enum TRI_transaction_hint_e {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_transaction_t {
+  TRI_transaction_t(TRI_vocbase_t* vocbase, double timeout, bool waitForSync);
+  ~TRI_transaction_t();
+
+  bool hasFailedOperations() const {
+    return (_hasOperations && _status == TRI_TRANSACTION_ABORTED);
+  }
+  
   TRI_vocbase_t* _vocbase;            // vocbase
   TRI_voc_tid_t _id;                  // local trx id
   TRI_transaction_type_e _type;       // access type (read|write)
   TRI_transaction_status_e _status;   // current status
-  TRI_vector_pointer_t _collections;  // list of participating collections
+  arangodb::SmallVector<TRI_transaction_collection_t*>::allocator_type::arena_type _arena; // memory for collections
+  arangodb::SmallVector<TRI_transaction_collection_t*> _collections; // list of participating collections
 #ifdef ARANGODB_ENABLE_ROCKSDB
   rocksdb::Transaction* _rocksTransaction;
 #endif
@@ -147,19 +150,6 @@ struct TRI_transaction_collection_t {
       _compactionLocked;  // was the compaction lock grabbed for the collection?
   bool _waitForSync;      // whether or not the collection has waitForSync
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new transaction
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_transaction_t* TRI_CreateTransaction(TRI_vocbase_t*, TRI_voc_tid_t, double,
-                                         bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_FreeTransaction(TRI_transaction_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the transaction as a string

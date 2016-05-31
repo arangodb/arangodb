@@ -21,9 +21,9 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "TraversalConditionFinder.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/TraversalConditionFinder.h"
 #include "Aql/TraversalNode.h"
 
 using namespace arangodb::aql;
