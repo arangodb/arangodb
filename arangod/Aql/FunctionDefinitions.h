@@ -35,7 +35,7 @@ struct FunctionDefinitions {
   static std::unordered_map<int, std::string const> const InternalFunctionNames;
   
   /// @brief AQL user-callable function names
-  static std::unordered_map<std::string, Function const> const FunctionNames;
+  static std::unordered_map<std::string, Function const> FunctionNames;
 };
 }
 }

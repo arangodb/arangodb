@@ -149,13 +149,7 @@ class Utf8Helper {
   /// @brief whether or not value matches a regex
   //////////////////////////////////////////////////////////////////////////////
 
-  bool matches(RegexMatcher*, std::string const&, bool&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not value matches a regex
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool matches(RegexMatcher*, char const*, size_t, bool&);
+  bool matches(RegexMatcher*, char const*, size_t, bool partial, bool& error);
 
  private:
   Collator* _coll;

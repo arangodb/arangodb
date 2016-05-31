@@ -57,8 +57,11 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-/// @brief thread-local cache for compiled regexes
+/// @brief thread-local cache for compiled regexes (REGEX function)
 thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
+    nullptr;
+/// @brief thread-local cache for compiled regexes (LIKE function)
+thread_local std::unordered_map<std::string, RegexMatcher*>* LikeCache =
     nullptr;
 
 /// @brief convert a number value into an AqlValue
@@ -113,9 +116,20 @@ static void ClearRegexCache() {
   }
 }
 
-/// @brief compile a regex pattern from a string
-static std::string BuildRegexPattern(char const* ptr, size_t length,
-                                     bool caseInsensitive) {
+/// @brief clear the like cache in a thread
+static void ClearLikeCache() {
+  if (LikeCache != nullptr) {
+    for (auto& it : *LikeCache) {
+      delete it.second;
+    }
+    delete LikeCache;
+    LikeCache = nullptr;
+  }
+}
+
+/// @brief compile a LIKE pattern from a string
+static std::string BuildLikePattern(char const* ptr, size_t length,
+                                    bool caseInsensitive) {
   // pattern is always anchored
   std::string pattern("^");
   if (caseInsensitive) {
@@ -172,6 +186,22 @@ static std::string BuildRegexPattern(char const* ptr, size_t length,
 
   // always anchor the pattern
   pattern.push_back('$');
+
+  return pattern;
+}
+
+/// @brief compile a REGEX pattern from a string
+static std::string BuildRegexPattern(char const* ptr, size_t length,
+                                     bool caseInsensitive) {
+  std::string pattern;
+  if (caseInsensitive) {
+    pattern.reserve(length + 4);
+    pattern.append("(?i)");
+  } else {
+    pattern.reserve(length);
+  }
+
+  pattern.append(ptr, length);
 
   return pattern;
 }
@@ -886,7 +916,7 @@ void Functions::InitializeThreadContext() {}
 
 /// @brief called when a query ends
 /// its responsibility is to clear any thread-local storage
-void Functions::DestroyThreadContext() { ClearRegexCache(); }
+void Functions::DestroyThreadContext() { ClearRegexCache(); ClearLikeCache(); }
 
 /// @brief function IS_NULL
 AqlValue Functions::IsNull(arangodb::aql::Query* query,
@@ -1269,10 +1299,75 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
   AqlValue regex = ExtractFunctionParameterValue(trx, parameters, 1);
   AppendAsString(trx, adapter, regex);
 
-  size_t const length = buffer->length();
+  std::string const pattern =
+      BuildLikePattern(buffer->c_str(), buffer->length(), caseInsensitive);
+  RegexMatcher* matcher = nullptr;
+
+  if (LikeCache != nullptr) {
+    auto it = LikeCache->find(pattern);
+
+    // check regex cache
+    if (it != LikeCache->end()) {
+      matcher = (*it).second;
+    }
+  }
+
+  if (matcher == nullptr) {
+    matcher =
+        arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
+
+    try {
+      if (LikeCache == nullptr) {
+        LikeCache = new std::unordered_map<std::string, RegexMatcher*>();
+      }
+      // insert into cache, no matter if pattern is valid or not
+      LikeCache->emplace(pattern, matcher);
+    } catch (...) {
+      delete matcher;
+      ClearLikeCache();
+      throw;
+    }
+  }
+
+  if (matcher == nullptr) {
+    // compiling regular expression failed
+    RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  // extract value
+  buffer->clear();
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AppendAsString(trx, adapter, value);
+
+  bool error = false;
+  bool const result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.matches(
+      matcher, buffer->c_str(), buffer->length(), false, error);
+
+  if (error) {
+    // compiling regular expression failed
+    RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  } 
+  
+  return AqlValue(result);
+}
+
+/// @brief function REGEX
+AqlValue Functions::Regex(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "REGEX", 2, 3);
+  bool const caseInsensitive = GetBooleanParameter(trx, parameters, 2, false);
+  StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  // build pattern from parameter #1
+  AqlValue regex = ExtractFunctionParameterValue(trx, parameters, 1);
+  AppendAsString(trx, adapter, regex);
 
   std::string const pattern =
-      BuildRegexPattern(buffer->c_str(), length, caseInsensitive);
+      BuildRegexPattern(buffer->c_str(), buffer->length(), caseInsensitive);
   RegexMatcher* matcher = nullptr;
 
   if (RegexCache != nullptr) {
@@ -1303,7 +1398,7 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
 
   if (matcher == nullptr) {
     // compiling regular expression failed
-    RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
+    RegisterWarning(query, "REGEX", TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
@@ -1314,11 +1409,11 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
 
   bool error = false;
   bool const result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.matches(
-      matcher, buffer->c_str(), buffer->length(), error);
+      matcher, buffer->c_str(), buffer->length(), true, error);
 
   if (error) {
     // compiling regular expression failed
-    RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
+    RegisterWarning(query, "REGEX", TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   } 
   
