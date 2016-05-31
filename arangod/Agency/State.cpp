@@ -324,11 +324,15 @@ bool State::loadRemaining() {
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
       auto req = i.get("request");
       tmp->append(req.startAs<char const>(), req.byteSize());
-      _log.push_back(log_t(
-          std::stoi(i.get(StaticStrings::KeyString).copyString()),
-          static_cast<term_t>(i.get("term").getUInt()),
-          static_cast<arangodb::consensus::id_t>(i.get("leader").getUInt()),
-          tmp));
+      try {
+        _log.push_back(
+          log_t(
+            std::stoi(i.get(StaticStrings::KeyString).copyString()),
+            static_cast<term_t>(i.get("term").getUInt()),
+            static_cast<arangodb::consensus::id_t>(i.get("leader").getUInt()),
+            tmp));
+      } catch (...) {
+      }
     }
   }
 

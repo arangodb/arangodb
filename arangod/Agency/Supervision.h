@@ -170,15 +170,19 @@ inline std::string timepointToString(Supervision::TimePoint const& t) {
 
 inline Supervision::TimePoint stringToTimepoint(std::string const& s) {
   std::tm tt;
-  tt.tm_year  = std::stoi(s.substr(0,4)) - 1900;
-  tt.tm_mon   = std::stoi(s.substr(5,2)) - 1;
-  tt.tm_mday  = std::stoi(s.substr(8,2));
-  tt.tm_hour  = std::stoi(s.substr(11,2));
-  tt.tm_min   = std::stoi(s.substr(14,2));
-  tt.tm_sec   = std::stoi(s.substr(17,2));
-  tt.tm_isdst = -1;
-  auto time_c = ::mktime(&tt);
-  return std::chrono::system_clock::from_time_t(time_c);
+  try {
+    tt.tm_year  = std::stoi(s.substr(0,4)) - 1900;
+    tt.tm_mon   = std::stoi(s.substr(5,2)) - 1;
+    tt.tm_mday  = std::stoi(s.substr(8,2));
+    tt.tm_hour  = std::stoi(s.substr(11,2));
+    tt.tm_min   = std::stoi(s.substr(14,2));
+    tt.tm_sec   = std::stoi(s.substr(17,2));
+    tt.tm_isdst = -1;
+    auto time_c = ::mktime(&tt);
+    return std::chrono::system_clock::from_time_t(time_c);
+  } catch (...) {
+    return std::chrono::system_clock::now();
+  }
 }
 
 }} // Name spaces
