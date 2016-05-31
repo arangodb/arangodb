@@ -154,7 +154,11 @@ void Supervision::run() {
 
     // Get agency prefix after cluster init
     if (_jobId == 0) {
-      if (!updateAgencyPrefix(10)) {
+      // We need the agency prefix to work, but it is only initialized by
+      // some other server in the cluster. Since the supervision does not
+      // make sense at all without other ArangoDB servers, we wait pretty
+      // long here before giving up:
+      if (!updateAgencyPrefix(1000, 1)) {
         LOG_TOPIC(ERR, Logger::AGENCY)
           << "Cannot get prefix from Agency. Stopping supervision for good.";
         break;
@@ -163,12 +167,7 @@ void Supervision::run() {
 
     // Get bunch of job IDs from agency for future jobs
     if (_jobId == 0 || _jobId == _jobIdMax) {
-      if (!getUniqueIds()) {
-        LOG_TOPIC(ERR, Logger::AGENCY)
-          << "Cannot get unique IDs from Agency. Stopping supervision for good.";
-        break;
-      }
-
+      getUniqueIds();  // cannot fail but only hang
     }
 
     // Do nothing unless leader 
@@ -244,19 +243,19 @@ bool Supervision::updateAgencyPrefix (size_t nTries, int intervalSec) {
 
 static std::string const syncLatest = "/Sync/LatestID";
 // Get bunch of cluster's unique ids from agency 
-bool Supervision::getUniqueIds() {
+void Supervision::getUniqueIds() {
   uint64_t latestId;
+  // Run forever, supervision does not make sense before the agency data
+  // is initialized by some other server...
+  while (true) {
+    try {
+      latestId = std::stoul(
+          _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
+    } catch (std::exception const& e) {
+      std::this_thread::sleep_for (std::chrono::seconds(1));
+      continue;
+    }
 
-  try {
-    latestId = std::stoul(
-        _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
-  } catch (std::exception const& e) {
-    LOG(WARN) << e.what();
-    return false;
-  }
-
-  bool success = false;
-  while (!success) {
     Builder uniq;
     uniq.openArray();
     uniq.openObject();
@@ -270,16 +269,11 @@ bool Supervision::getUniqueIds() {
     auto result = transact(_agent, uniq);
     if (result.indices[0]) {
       _agent->waitFor(result.indices[0]);
-      success = true;
       _jobId = latestId;
       _jobIdMax = latestId + 100000;
+      return;
     }
-
-    latestId = std::stoul(
-        _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
   }
-
-  return success;
 }
 
 void Supervision::updateFromAgency() {

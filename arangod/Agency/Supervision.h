@@ -129,7 +129,7 @@ class Supervision : public arangodb::Thread {
   void workJobs();
 
   /// @brief Get unique ids from agency
-  bool getUniqueIds();
+  void getUniqueIds();
 
   /// @brief Update local cache from agency
   void updateFromAgency();
