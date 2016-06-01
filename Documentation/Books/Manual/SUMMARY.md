@@ -96,6 +96,12 @@
 #
 # Use cases / Advanced usage / Best practice (?)
 #
+* [Deployment](Deployment/README.md)
+  * [Single instance](Deployment/Single.md)
+  * [Cluster: DC/OS](Deployment/Mesos.md)
+  * [Cluster: Docker](Deployment/Docker.md)
+  * [Cluster: Local test](Deployment/Local.md)
+#
 * [Administration](Administration/README.md)
   * [ArangoDB Shell](Administration/Arangosh/README.md)
     * [Shell Output](Administration/Arangosh/Output.md)
@@ -131,12 +137,6 @@
     * [Implementation](Administration/Sharding/StatusOfImplementation.md)
     * [Authentication](Administration/Sharding/Authentication.md)
     * [Firewall setup](Administration/Sharding/FirewallSetup.md)
-#
-* [Deployment](Deployment/README.md)
-  * [Single instance](Deployment/Single.md)
-  * [Cluster: DC/OS](Deployment/Mesos.md)
-  * [Cluster: Docker](Deployment/Docker.md)
-  * [Cluster: Local test](Deployment/Local.md)
 #
 * [Troubleshooting](Troubleshooting/README.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
