@@ -153,7 +153,6 @@ bool AuthInfo::reload() {
     return false;
   }
 
-
   clear();
 
   if (usersSlice.length() == 0) {
@@ -161,7 +160,7 @@ bool AuthInfo::reload() {
   } else {
 
     for (VPackSlice const& userSlice : VPackArrayIterator(usersSlice)) {
-      AuthEntry auth = CreateAuthEntry(userSlice);
+      AuthEntry auth = CreateAuthEntry(userSlice.resolveExternal());
 
       if (auth.isActive()) {
 	_authInfo[auth.username()] = auth;
@@ -261,8 +260,8 @@ void AuthInfo::insertInitial() {
 
     builder.add("active", VPackValue(true));
 
-    builder.add("databases", VPackValue(VPackValueType::Array));
-    builder.add(VPackValue("*"));
+    builder.add("databases", VPackValue(VPackValueType::Object));
+    builder.add("*", VPackValue("rw"));
     builder.close();
 
     builder.close();  // authData

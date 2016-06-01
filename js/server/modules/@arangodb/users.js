@@ -145,6 +145,7 @@ exports.save = function(username, password, active, userData, changePassword) {
 
   const data = {
     user: username,
+    databases: {},  
     userData: userData || {},
     authData: {
       simple: hashPassword(password),
@@ -194,6 +195,7 @@ exports.replace = function(username, password, active, userData, changePassword)
 
   const data = {
     user: username,
+    databases: user.databases,  
     userData: userData || {},
     authData: {
       simple: hashPassword(password),
@@ -422,3 +424,66 @@ exports.changePassword = function(token, password) {
 
   return true;
 };
+
+// changes the allowed databases
+exports.grantDatabase = function(username, database, type) {
+  const users = getStorage();
+
+  if (type === undefined) {
+    type = "rw";
+  } else if (type !== "rw" && type !== "ro") {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = "expecting access type 'rw' or 'ro'";
+    throw err;
+  }
+
+  // validate name
+  validateName(username);
+
+  const user = users.firstExample({
+    user: username
+  });
+
+  if (user === null) {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+    throw err;
+  }
+
+  let databases = user.databases || {};
+  databases[database] = type;
+
+  users.update(user, { databases: databases });
+
+  return databases;  
+};
+
+// changes the allowed databases
+exports.revokeDatabase = function(username, database) {
+  const users = getStorage();
+
+  // validate name
+  validateName(username);
+
+  const user = users.firstExample({
+    user: username
+  });
+
+  if (user === null) {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+    throw err;
+  }
+
+  let databases = user.databases || {};
+  databases[database] = null;
+
+  users.update(user, { databases: databases }, false, false);
+
+  delete databases[database];
+  return databases;  
+};
+
