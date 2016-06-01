@@ -91,18 +91,21 @@ function AuthSuite () {
       assertTrue(db._collections().length > 0);
 
       // double check with wrong passwords
+      let isBroken;
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar2");
-        fail();
       }
       catch (err1) {
+        isBroken = false;
       }
 
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
-        fail();
       }
       catch (err2) {
+        isBroken = false;
       }
     },
 
@@ -120,11 +123,13 @@ function AuthSuite () {
       assertTrue(db._collections().length > 0);
 
       // double check with wrong password
+      let isBroken;
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
-        fail();
       }
       catch (err1) {
+        isBroken = false;
       }
     },
 
@@ -142,25 +147,41 @@ function AuthSuite () {
       assertTrue(db._collections().length > 0);
 
       // double check with wrong passwords
+      let isBroken;
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "Foobar");
-        fail();
+        console.error("HASSMANN HIHI");
+        assertTrue(db._collections().length > 0);
       }
       catch (err1) {
+        console.error("HASSMANN");
+        isBroken = false;
+      }
+      if (isBroken) {
+        throw new Error("Wurst");
       }
 
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
-        fail();
       }
       catch (err2) {
+        isBroken = false;
       }
-
-      try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "FOOBAR");
+      if (isBroken) {
         fail();
       }
+
+      isBroken = true;
+      try {
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "FOOBAR");
+      }
       catch (err3) {
+        isBroken = false;
+      }
+      if (isBroken) {
+        fail();
       }
     },
 
@@ -178,25 +199,38 @@ function AuthSuite () {
       assertTrue(db._collections().length > 0);
 
       // double check with wrong passwords
+      let isBroken;
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "fuxx");
-        fail();
       }
       catch (err1) {
+        isBroken = false;
+      }
+      if (isBroken) {
+        fail();
       }
 
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "bar");
-        fail();
       }
       catch (err2) {
+        isBroken = false;
       }
-
-      try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+      if (isBroken) {
         fail();
       }
+
+      isBroken = true;
+      try {
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+      }
       catch (err3) {
+        isBroken = false;
+      }
+      if (isBroken) {
+        fail();
       }
     },
 
@@ -214,25 +248,38 @@ function AuthSuite () {
       assertTrue(db._collections().length > 0);
 
       // double check with wrong passwords
+      let isBroken;
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
-        fail();
       }
       catch (err1) {
+        isBroken = false;
+      }
+      if (isBroken) {
+        fail();
       }
 
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "\\abc'def: x-a");
-        fail();
       }
       catch (err2) {
+        isBroken = false;
       }
-
-      try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+      if (isBroken) {
         fail();
       }
+
+      isBroken = true;
+      try {
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+      }
       catch (err3) {
+        isBroken = false;
+      }
+      if (isBroken) {
+        fail();
       }
     },
     
