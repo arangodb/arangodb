@@ -1,5 +1,5 @@
 {
-  "gitbook": ">=2.0.0",
+  "gitbook": "^2.6.7",
   "title": "ArangoDB VERSION_NUMBER HTTP API Documentation",
   "author": "ArangoDB GmbH",
   "description": "Official HTTP API manual for ArangoDB - the multi-model NoSQL database",

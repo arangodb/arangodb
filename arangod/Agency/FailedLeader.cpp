@@ -36,13 +36,22 @@ FailedLeader::FailedLeader(
   Job(snapshot, agent, jobId, creator, agencyPrefix), _database(database),
   _collection(collection), _shard(shard), _from(from), _to(to) {
   
-  if (exists()) {
-    if (!status()) {  
-      start();        
-    } 
-  } else {            
-    create();
-    start();
+  try{
+    if (exists()) {
+      if (!status()) {  
+        start();        
+      } 
+    } else {            
+      create();
+      start();
+    }
+  } catch (...) {
+    std::string tmp = shard;
+    if (tmp == "") {
+      Node const& job = _snapshot(pendingPrefix + _jobId);
+      tmp = job("shard").toJson();
+    }
+    finish("Shards/" + tmp);
   }
   
 }
@@ -91,7 +100,7 @@ bool FailedLeader::start() const {
     planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
   std::string curPath =
     curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
-  
+
   Node const& current = _snapshot(curPath);
   
   if (current.slice().length() == 1) {
