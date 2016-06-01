@@ -1,10 +1,10 @@
 {
-  "gitbook": ">=2.0.0",
+  "gitbook": "^2.6.7",
   "title": "ArangoDB VERSION_NUMBER AQL Documentation",
   "author": "ArangoDB GmbH",
   "description": "Official AQL manual for ArangoDB - the multi-model NoSQL database",
   "language": "en",
-  "plugins":["-search", "-sharing", "toggle-chapters", "addcssjs", "heading-anchors", "add-header"],
+  "plugins":["-search", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "add-header", "piwik"],
   "pdf": {
     "fontSize": 12,
     "toc": true,
@@ -25,6 +25,10 @@
     },
     "add-header": {
         "BASE_PATH": "https://docs.arangodb.com/devel"
+    },
+    "piwik": {
+        "URL": "www.arangodb.com/piwik/",
+        "siteId": 12
     }
   }
 }

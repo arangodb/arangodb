@@ -1,9 +1,9 @@
 ; CPack install script designed for a nmake build
-!addplugindir '..\..\..\..\Installation\Windows\Plugins\NSIS_Simple_Service_Plugin_1.30'
-!addplugindir '..\..\..\..\Installation\Windows\Plugins\UAC-plug-in-NSIS\Ansi'
-!addplugindir '..\..\..\..\Installation\Windows\Plugins\AccessControl\Plugins'
-!addplugindir '..\..\..\..\Installation\Windows\Plugins\SharedMemory\Plugins'
-!addincludedir '..\..\..\..\Installation\Windows\Plugins\UAC-plug-in-NSIS'
+!addplugindir  '@CPACK_PLUGIN_PATH@/NSIS_Simple_Service_Plugin_1.30'
+!addplugindir  '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS/Ansi'
+!addplugindir  '@CPACK_PLUGIN_PATH@/AccessControl/Plugins'
+!addplugindir  '@CPACK_PLUGIN_PATH@/SharedMemory/Plugins'
+!addincludedir '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS'
 
 ;--------------------------------
 ; Include LogicLib for more readable code
@@ -1088,7 +1088,7 @@ SendMessage $HWNDPARENT ${WM_SETTEXT} 0 "STR:Hallo"
   sharedmem::ExistsSharedMem
   pop $0
   ${If} $0 == '1'
-    MessageBox MB_OK "Installer is allready running" 
+    MessageBox MB_OK "Installer is already running" 
     Quit
   ${EndIf}
   sharedmem::CreateSharedMemory

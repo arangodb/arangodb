@@ -49,6 +49,11 @@
 
   function upgrade () {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default replication factor for system collections
+////////////////////////////////////////////////////////////////////////////////
+
+    const DEFAULT_REPLICATION_FACTOR_SYSTEM = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief for production mode
@@ -518,7 +523,7 @@
         return createSystemCollection("_graphs", {
           waitForSync : false,
           journalSize: 1024 * 1024,
-          replicationFactor: 2
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM
         });
       }
     });
@@ -542,7 +547,7 @@
           waitForSync : false, 
           shardKeys: [ "user" ],
           journalSize: 4 * 1024 * 1024,
-          replicationFactor: 2,
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: "_graphs"
         });
       }
@@ -704,7 +709,7 @@
         return createSystemCollection("_sessions", {
           waitForSync: false,
           journalSize: 4 * 1024 * 1024,
-          replicationFactor: 2,
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: "_graphs"
         });
       }
@@ -797,7 +802,7 @@
       task: function () {
         return createSystemCollection("_modules", {
           journalSize: 1024 * 1024,
-          replicationFactor: 2,
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: "_graphs"
         });
       }
@@ -821,7 +826,7 @@
         // needs to be big enough for assets
         return createSystemCollection("_routing", {
           journalSize: 8 * 1024 * 1024,
-          replicationFactor: 2,
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: "_graphs"
         });
       }
@@ -994,7 +999,7 @@
       task: function () {
         return createSystemCollection("_aqlfunctions", {
           journalSize: 2 * 1024 * 1024,
-          replicationFactor: 2,
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: "_graphs"
         });
       }
@@ -1112,7 +1117,7 @@
         var result = createSystemCollection(name, {
           waitForSync: false,
           journalSize: 1024 * 1024,
-          replicationFactor: 2,
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: "_graphs"
         });
 
@@ -1178,7 +1183,7 @@
       task: function () {
         return createSystemCollection("_queues", {
           journalSize: 1024 * 1024,
-          replicationFactor: 2,
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: "_graphs"
         });
       }
@@ -1201,7 +1206,7 @@
       task: function () {
         return createSystemCollection("_jobs", {
           journalSize: 4 * 1024 * 1024,
-          replicationFactor: 2,
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: "_graphs"
         });
       }

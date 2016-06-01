@@ -156,7 +156,7 @@ The example can alternatively written as:
 Collection names can be used in queries as they are. If a collection happens to
 have the same name as a keyword, the name must be enclosed in backticks.
 
-Please refer to the [Naming Conventions in ArangoDB](../../Users/DataModeling/NamingConventions/CollectionNames.html)
+Please refer to the [Naming Conventions in ArangoDB](../../Manual/DataModeling/NamingConventions/CollectionNames.html)
 about collection naming conventions.
 
 !SUBSUBSECTION Attribute names
@@ -166,7 +166,7 @@ attribute name must be used. This is because multiple collections with ambiguous
 attribute names may be used in a query.  To avoid any ambiguity, it is not
 allowed to refer to an unqualified attribute name.
 
-Please refer to the [Naming Conventions in ArangoDB](../../Users/DataModeling/NamingConventions/AttributeNames.html)
+Please refer to the [Naming Conventions in ArangoDB](../../Manual/DataModeling/NamingConventions/AttributeNames.html)
 for more information about the attribute naming conventions.
 
     FOR u IN users

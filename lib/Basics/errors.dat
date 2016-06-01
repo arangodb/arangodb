@@ -359,8 +359,9 @@ ERROR_MALFORMED_MANIFEST_FILE,3000,"malformed manifest file","The manifest file 
 ERROR_INVALID_APPLICATION_MANIFEST,3001,"manifest file is invalid","The manifest file of this application is invalid."
 ERROR_INVALID_FOXX_OPTIONS,3004,"invalid foxx options","The options used to configure the foxx are invalid."
 ERROR_INVALID_MOUNTPOINT,3007,"mountpoint is invalid","mountpoint is invalid"
-ERROR_APP_NOT_FOUND,3009,"App not found","No app found at this mountpoint"
-ERROR_APP_NEEDS_CONFIGURATION,3010,"App not configured","The app has to be configured before it can be used"
+ERROR_APP_NOT_FOUND,3009,"Service not found","No service found at this mountpoint"
+ERROR_APP_NEEDS_CONFIGURATION,3010,"Service not configured","The service has to be configured before it can be used"
+ERROR_APP_MOUNTPOINT_CONFLICT,3011,"mountpoint already in use","A service has already been installed at this mountpoint"
 
 ################################################################################
 ## JavaScript module loader

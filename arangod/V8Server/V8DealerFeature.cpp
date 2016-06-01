@@ -417,7 +417,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
 
   // this is for TESTING / DEBUGGING / INIT only
   if (forceContext != -1) {
-    size_t id = (size_t)forceContext;
+    size_t id = static_cast<size_t>(forceContext);
 
     if (id >= _nrContexts) {
       LOG(ERR) << "internal error, not enough contexts";
@@ -462,7 +462,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       }
 
       LOG(DEBUG) << "waiting for V8 context " << id << " to become available";
-      usleep(100 * 1000);
+      usleep(50 * 1000);
     }
 
     if (context == nullptr) {
@@ -860,11 +860,6 @@ void V8DealerFeature::initializeContext(size_t i) {
   v8::Isolate* isolate = v8::Isolate::New(createParams);
 
   V8Context* context = _contexts[i] = new V8Context();
-
-  if (context == nullptr) {
-    LOG(FATAL) << "cannot initialize V8 context #" << i;
-    FATAL_ERROR_EXIT();
-  }
 
   TRI_ASSERT(context->_locker == nullptr);
 

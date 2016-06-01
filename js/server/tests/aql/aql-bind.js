@@ -425,6 +425,17 @@ function ahuacatlBindTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test collection bind variable with id
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindCollectionWithId : function () {
+      var expected = [ 5, 63 ];
+      var actual = getQueryResults("FOR u IN @@collection FILTER u.value IN [ @value1, @value2 ] SORT u.value RETURN u.value", { "@collection" : numbers._id, "value1" : 5, "value2" : 63 });
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test collection bind variable
 ////////////////////////////////////////////////////////////////////////////////
 

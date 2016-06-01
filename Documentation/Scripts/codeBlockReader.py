@@ -7,7 +7,7 @@ validExtensions = (".cpp", ".h", ".js", ".mdpp", ".md")
 # specify the paths in which docublocks are searched. note that js/apps/* must not be included because it contains js/apps/system/
 # and that path also contains copies of some files present in js/ anyway.
 searchPaths = [
-  "Documentation/Books/Users/",
+  "Documentation/Books/Manual/",
   "Documentation/Books/AQL/",
   "Documentation/Books/HTTP/",
   "Documentation/DocuBlocks/"

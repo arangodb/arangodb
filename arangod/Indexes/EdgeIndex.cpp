@@ -402,8 +402,6 @@ void EdgeIndex::buildSearchValue(TRI_edge_direction_e dir,
   builder.close();
 }
 
-
-
 void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
                                           VPackSlice const ids,
                                           VPackBuilder& builder) {
@@ -456,8 +454,6 @@ void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
   }
   builder.close();
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a selectivity estimate for the index

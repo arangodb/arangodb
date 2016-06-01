@@ -1261,7 +1261,7 @@ int TRI_VerifyLockFile(char const* filename) {
   // try to lock pid file
   int canLock = fcntl(fd, F_SETLK, &lock);  // Exclusive (write) lock
 
-  // file was not yet locken; could be locked
+  // file was not yet locked; could be locked
   if (canLock == 0) {
     lock.l_type = F_UNLCK;
     fcntl(fd, F_GETLK, &lock);
@@ -1332,14 +1332,14 @@ int TRI_DestroyLockFile(char const* filename) {
   lock.l_len = 0;
   lock.l_type = F_UNLCK;
   lock.l_whence = SEEK_SET;
-  // relesae the lock
-  int res = fcntl(fd, F_GETLK, &lock);
+  // release the lock
+  int res = fcntl(fd, F_SETLK, &lock);
   TRI_CLOSE(fd);
 
   if (res == 0) {
     TRI_UnlinkFile(filename);
   }
-
+  
   // close lock file descriptor
   fd = *(int*)TRI_AtVector(&FileDescriptors, n);
   TRI_CLOSE(fd);

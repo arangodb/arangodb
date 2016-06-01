@@ -112,6 +112,8 @@ Node::Node(Node&& other) :
 
 Node::Node(Node const& other) :
   _node_name(other._node_name),
+  _parent(nullptr),
+  _store(nullptr),
   _children(other._children),
   _value(other._value) {}
 
@@ -608,4 +610,40 @@ std::vector<std::string> Node::exists(std::vector<std::string> const& rel) const
 
 std::vector<std::string> Node::exists(std::string const& rel) const {
   return exists(split(rel, '/'));
+}
+
+int Node::getInt() const {
+
+  if (type() == NODE) {
+    throw StoreException("Must not convert NODE type to int");
+  }
+  return slice().getInt();
+  
+}
+
+uint64_t Node::getUInt() const {
+
+  if (type() == NODE) {
+    throw StoreException("Must not convert NODE type to unsigned int");
+  }
+  return slice().getUInt();
+  
+}
+
+double Node::getDouble() const {
+
+  if (type() == NODE) {
+    throw StoreException("Must not convert NODE type to int");
+  }
+  return slice().getDouble();
+  
+}
+
+std::string Node::getString() const {
+
+  if (type() == NODE) {
+    throw StoreException("Must not convert NODE type to string");
+  }
+  return slice().copyString();
+  
 }

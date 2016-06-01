@@ -1,0 +1,85 @@
+!CHAPTER Response objects
+
+TODO
+
+The response object specifies the following properties:
+
+* **body**: `Buffer | string`
+
+  TODO
+
+* **context**: `Context`
+
+  TODO
+
+* **headers**: `object`
+
+  TODO
+
+* **statusCode**: `number`
+
+  TODO
+
+!SECTION getHeader
+
+TODO
+
+!SECTION removeHeader
+
+TODO
+
+!SECTION setHeader
+
+TODO
+
+!SECTION write
+
+TODO
+
+!SECTION attachment
+
+TODO
+
+!SECTION download
+
+TODO
+
+!SECTION json
+
+TODO
+
+!SECTION redirect
+
+TODO
+
+!SECTION sendFile
+
+TODO
+
+!SECTION sendStatus
+
+TODO
+
+!SECTION set
+
+TODO
+
+!SECTION status
+
+TODO
+
+!SECTION vary
+
+TODO
+
+!SECTION cookie
+
+TODO
+
+!SECTION throw
+
+TODO
+
+!SECTION send
+
+TODO

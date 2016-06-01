@@ -1,4 +1,4 @@
-ALLBOOKS=HTTP AQL Users
+ALLBOOKS=HTTP AQL Manual
 
 all: build-books
 
@@ -10,7 +10,7 @@ newVersionNumber = $(shell cat ../../VERSION)
 # per book targets
 check-summary:
 	@echo "##### checking summary for $(NAME)"
-	@find ppbooks/$(NAME) -name \*.md |sed -e "s;ppbooks/$(NAME)/;;" |grep -vf SummaryBlacklist.txt |sort > /tmp/is_md.txt
+	@find ppbooks/$(NAME) -name \*.md |sed -e "s;ppbooks/$(NAME)/;;" |grep -vf SummaryBlacklist.txt |grep -v gitbook-plugin |sort > /tmp/is_md.txt
 	@cat $(NAME)/SUMMARY.md |grep -v '^ *# '|grep '(' |sed -e "s;.*(;;" -e "s;).*;;" |sort  > /tmp/is_summary.txt
 	@if test "`comm -3 /tmp/is_md.txt /tmp/is_summary.txt|wc -l`" -ne 0; then \
 		echo "not all files are mapped to the summary!"; \
@@ -101,10 +101,12 @@ book-check-dangling-anchors:
 	    cat $${htmlf} |grep '<h. ' |sed -e 's;.*id=";;' -e 's;".*;;' > /tmp/tags/$${dir}/$${fn}; \
 	done
 
+	@echo "fetching anchors from generated http files"
 	@grep -R "a href.*#" books/ | \
 		egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://|href=\"#\")" | \
 		sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' | grep -v " " > /tmp/anchorlist.txt
 
+	@echo "cross checking anchors"
 	@NO=0; \
 	for i in `cat /tmp/anchorlist.txt`; do \
 	    ANCHOR=`echo $$i | cut '-d,' -f 3`; \
@@ -115,6 +117,9 @@ book-check-dangling-anchors:
 	    else \
 		SFNP=`echo $$SFN | sed 's;/[a-zA-Z0-9]*.html;;'`; \
 		FN="$${SFNP}/$${FN}"; \
+	    fi; \
+	    if test -d "$$FN"; then \
+		FN="$${FN}index.html"; \
 	    fi; \
 	    if test -n "$$ANCHOR"; then \
 		if test ! -f /tmp/tags/$${FN}; then \
@@ -156,7 +161,11 @@ build-book:
 	fi
 	cd ppbooks/$(NAME); if ! test -L SUMMARY.md; then ln -s ../../$(NAME)/SUMMARY.md . ; fi
 	cd ppbooks/$(NAME); if ! test -f HEADER.html ; then cp ../../$(NAME)/HEADER.html . ; fi
-	cd ppbooks/$(NAME); if ! test -f book.json ; then cp ../../$(NAME)/book.json . ; fi
+	if test -z "${RELEASE_DIRECTORY}"; then \
+		if ! test -f ppbooks/$(NAME)/book.json ; then cp $(NAME)/book.json ppbooks/$(NAME) ; fi; \
+	else \
+		if ! test -f ppbooks/$(NAME)/book.json ; then cat $(NAME)/book.json |sed "s;/devel;/${RELEASE_DIRECTORY};" > ppbooks/$(NAME)/book.json ; fi; \
+	fi
 	cd ppbooks/$(NAME); cp -a ../../$(NAME)/styles/* styles/
 	WD=`pwd`; \
 	for pic in `find $(NAME) -name \*.png`; do \
@@ -182,9 +191,10 @@ build-book:
 
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
+	rm -f ./books/$(NAME)/HEADER.html
 	python ../Scripts/deprecated.py
 
-	# make book-check-markdown-leftovers
+	make book-check-markdown-leftovers
 
 clean-book:
 	@rm -rvf books/$(NAME)
@@ -274,6 +284,7 @@ build-books-keep-md:
 	make build-book NAME=$(NAME)
 
 build-books:
+	rm -rf /tmp/tags
 	for book in $(ALLBOOKS); do \
 		make clean-intermediate NAME=$${book}; \
 	done
@@ -288,4 +299,4 @@ build-books:
 
 	make check-docublocks
 	make book-check-dangling-anchors
-	echo '<head><meta http-equiv="refresh" content="0; url=Users/"></head><body></body>' > books/index.html
+	echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html

@@ -141,6 +141,16 @@ class ProgramOptions {
   // set context for error reporting
   void setContext(std::string const& value) { _context = value; }
 
+  // sets the old options map
+  void setOldOptions(std::unordered_map<std::string, std::string> const& old) {
+    _oldOptions = old;
+  }
+ 
+  // sets a single old option and its replacement name 
+  void addOldOption(std::string const& old, std::string const& replacement) {
+    _oldOptions[old] = replacement;
+  }
+
   // adds a section to the options
   void addSection(Section const& section) {
     checkIfSealed();
@@ -208,11 +218,21 @@ class ProgramOptions {
 
   // prints the names for all section help options
   void printSectionsHelp() const {
+    char const* colorStart;
+    char const* colorEnd;
+
+    if (isatty(STDOUT_FILENO)) {
+      colorStart = TRI_SHELL_COLOR_BRIGHT;
+      colorEnd = TRI_SHELL_COLOR_RESET;
+    } else {
+      colorStart = colorEnd = "";
+    }
+
     // print names of sections
     std::cout << _more;
     for (auto const& it : _sections) {
       if (!it.second.name.empty() && it.second.hasOptions()) {
-        std::cout << " --help-" << it.second.name;
+        std::cout << "  " << colorStart << "--help-" << it.second.name << colorEnd;
       }
     }
     std::cout << std::endl;
@@ -364,7 +384,7 @@ class ProgramOptions {
     return (*it2).second.parameter->requiresValue();
   }
 
-  // returns a pointer to an option, specified by option name
+  // returns a pointer to an option value, specified by option name
   // returns a nullptr if the option is unknown
   template <typename T>
   T* get(std::string const& name) {
@@ -385,20 +405,83 @@ class ProgramOptions {
 
     return dynamic_cast<T>(option.parameter.get());
   }
+  
+  // returns an option description
+  std::string getDescription(std::string const& name) {
+    auto parts = Option::splitName(name);
+    auto it = _sections.find(parts.first);
+
+    if (it == _sections.end()) {
+      return "";
+    }
+
+    auto it2 = (*it).second.options.find(parts.second);
+
+    if (it2 == (*it).second.options.end()) {
+      return "";
+    }
+
+    return (*it2).second.description;
+  }
 
   // handle an unknown option
   bool unknownOption(std::string const& name) {
-    fail("unknown option '--" + name + "'");
+    char const* colorStart;
+    char const* colorEnd;
+
+    if (isatty(STDERR_FILENO)) {
+      colorStart = TRI_SHELL_COLOR_BRIGHT;
+      colorEnd = TRI_SHELL_COLOR_RESET;
+    } else {
+      colorStart = colorEnd = "";
+    }
+
+    fail(std::string("unknown option '") + colorStart + "--" + name + colorEnd + "'");
 
     auto similarOptions = similar(name, 8, 4);
     if (!similarOptions.empty()) {
-      std::cerr << "Did you mean one of these?" << std::endl;
+      if (similarOptions.size() == 1) {
+        std::cerr << "Did you mean this?" << std::endl;
+      } else {
+        std::cerr << "Did you mean one of these?" << std::endl;
+      }
+      // determine maximum width
+      size_t maxWidth = 0;
       for (auto const& it : similarOptions) {
-        std::cerr << "  " << it << std::endl;
+        maxWidth = (std::max)(maxWidth, it.size());
+      }
+
+      for (auto const& it : similarOptions) {
+        std::cerr << "  " << colorStart << Option::pad(it, maxWidth) << colorEnd
+                  << "    " << getDescription(it) 
+                  << std::endl;
       }
       std::cerr << std::endl;
     }
-    std::cerr << "Use --help or --help-all to get an overview of available options" 
+    
+    auto it = _oldOptions.find(name);
+    if (it != _oldOptions.end()) {
+      // a now removed or renamed option was specified...
+      auto& now = (*it).second;
+      if (now.empty()) {
+        std::cerr << "Please note that the specified option '"
+                  << colorStart << "--" << name << colorEnd 
+                  << "' has been removed in this ArangoDB version"; 
+      } else {
+        std::cerr << "Please note that the specified option '" 
+                  << colorStart << "--" << name << colorEnd 
+                  << "' has been renamed to '--" << colorStart
+                  << now << colorEnd << "' in this ArangoDB version"; 
+      }
+
+      std::cerr << std::endl 
+                << "Please be sure to read the manual section about changed options" 
+                << std::endl << std::endl;
+    }
+
+    std::cerr << "Use " << colorStart << "--help" << colorEnd 
+              << " or " << colorStart << "--help-all" << colorEnd
+              << " to get an overview of available options"
               << std::endl << std::endl; 
     
     return false;
@@ -507,6 +590,9 @@ class ProgramOptions {
   // shorthands for options, translating from short options to long option names
   // e.g. "-c" to "--configuration"
   std::unordered_map<std::string, std::string> _shorthands;
+  // map with old options and their new equivalents, used for printing more
+  // meaningful error messages when an invalid (but once valid) option was used
+  std::unordered_map<std::string, std::string> _oldOptions;
   // callback function for determining the terminal width
   TerminalWidthFuncType _terminalWidth;
   // callback function for determining the similarity between two option names

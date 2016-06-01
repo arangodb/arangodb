@@ -479,10 +479,8 @@ thread_local std::unordered_set<std::string>* Transaction::_makeNolockHeaders =
     nullptr;
   
       
-Transaction::Transaction(std::shared_ptr<TransactionContext> transactionContext,
-                         TRI_voc_tid_t externalId)
-    : _externalId(externalId),
-      _serverRole(ServerState::ROLE_UNDEFINED),
+Transaction::Transaction(std::shared_ptr<TransactionContext> transactionContext)
+    : _serverRole(ServerState::ROLE_UNDEFINED),
       _setupState(TRI_ERROR_NO_ERROR),
       _nestingLevel(0),
       _errorData(),
@@ -534,11 +532,9 @@ Transaction::~Transaction() {
 
 std::vector<std::string> Transaction::collectionNames() const {
   std::vector<std::string> result;
+  result.reserve(_trx->_collections.size());
 
-  for (size_t i = 0; i < _trx->_collections._length; ++i) {
-    auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-        TRI_AtVectorPointer(&_trx->_collections, i));
-
+  for (auto& trxCollection : _trx->_collections) {
     if (trxCollection->_collection != nullptr) {
       result.emplace_back(trxCollection->_collection->_name);
     }
@@ -597,6 +593,14 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   return ditch;
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a ditch has been created for the collection
+//////////////////////////////////////////////////////////////////////////////
+  
+bool Transaction::hasDitch(TRI_voc_cid_t cid) const {
+  return (_transactionContext->ditch(cid) != nullptr);
 }
   
 //////////////////////////////////////////////////////////////////////////////
@@ -929,7 +933,11 @@ void Transaction::extractKeyAndRevFromDocument(VPackSlice slice,
     } else if (*p == basics::VelocyPackHelper::RevAttribute) {
       VPackSlice revSlice(p + 1);
       if (revSlice.isString()) {
-        revisionId = basics::StringUtils::uint64(revSlice.copyString());
+        // use specialized conversion method for trusted input, that also 
+        // does not create a temporary std::string
+        VPackValueLength revLength;
+        char const* rev = revSlice.getString(revLength);
+        revisionId = basics::StringUtils::uint64_trusted(rev, revLength);
       } else if (revSlice.isNumber()) {
         revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
       }
@@ -1264,9 +1272,9 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
 
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief return one  document from a collection, fast path
+/// @brief return one document from a collection, fast path
 ///        If everything went well the result will contain the found document
-///        (as an external on single_server)  and this function will return TRI_ERROR_NO_ERROR.
+///        (as an external on single_server) and this function will return TRI_ERROR_NO_ERROR.
 ///        If there was an error the code is returned and it is guaranteed
 ///        that result remains unmodified.
 ///        Does not care for revision handling!
@@ -1302,9 +1310,13 @@ int Transaction::documentFastPath(std::string const& collectionName,
 
   TRI_doc_mptr_t mptr;
   int res = document->read(this, key, &mptr, !isLocked(document, TRI_TRANSACTION_READ));
+  
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
+  
+  TRI_ASSERT(hasDitch(cid));
+
   TRI_ASSERT(mptr.vpack() != nullptr);
   result.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
   return TRI_ERROR_NO_ERROR;
@@ -1379,7 +1391,9 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
-  orderDitch(cid); // will throw when it fails
+  if (!options.silent) {
+    orderDitch(cid); // will throw when it fails
+  }
  
   VPackBuilder resultBuilder;
 
@@ -1406,6 +1420,8 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
+  
+    TRI_ASSERT(hasDitch(cid));
   
     TRI_ASSERT(mptr.vpack() != nullptr);
     if (!expectedRevision.isNone()) {
@@ -1542,6 +1558,10 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     auto const& followerInfo = document->followers();
     followers = followerInfo->get();
     doingSynchronousReplication = followers->size() > 0;
+  }
+
+  if (options.returnNew) {
+    orderDitch(cid); // will throw when it fails 
   }
 
   VPackBuilder resultBuilder;
@@ -1874,6 +1894,10 @@ OperationResult Transaction::modifyLocal(
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  
+  if (options.returnOld || options.returnNew) {
+    orderDitch(cid); // will throw when it fails 
+  }
 
   // First see whether or not we have to do synchronous replication:
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -2138,6 +2162,10 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
                                          OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  
+  if (options.returnOld) {
+    orderDitch(cid); // will throw when it fails 
+  }
  
   // First see whether or not we have to do synchronous replication:
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -2378,6 +2406,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   std::vector<TRI_doc_mptr_t*> result;
   result.reserve(1000);
   while (cursor->hasMore()) {
+    result.clear();
     cursor->getMoreMptr(result, 1000);
     for (auto const& mptr : result) {
       resultBuilder.add(VPackValue(mptr->vpack(), VPackValueType::External));
@@ -2818,6 +2847,8 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  
+  orderDitch(cid); // will throw when it fails 
 
   std::unique_ptr<IndexIterator> iterator;
 
@@ -3315,11 +3346,13 @@ int Transaction::setupToplevel() {
   TRI_ASSERT(_nestingLevel == 0);
 
   // we are not embedded. now start our own transaction
-  _trx = TRI_CreateTransaction(_vocbase, _externalId, _timeout, _waitForSync);
-
-  if (_trx == nullptr) {
+  try {
+    _trx = new TRI_transaction_t(_vocbase, _timeout, _waitForSync);
+  } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+
+  TRI_ASSERT(_trx != nullptr);
 
   // register the transaction in the context
   return this->_transactionContext->registerTransaction(_trx);
@@ -3334,12 +3367,13 @@ void Transaction::freeTransaction() {
 
   if (_trx != nullptr) {
     auto id = _trx->_id;
-    bool hasFailedOperations = TRI_FreeTransaction(_trx);
+    bool hasFailedOperations = _trx->hasFailedOperations();
+    delete _trx;
     _trx = nullptr;
       
     // store result
-    this->_transactionContext->storeTransactionResult(id, hasFailedOperations);
-    this->_transactionContext->unregisterTransaction();
+    _transactionContext->storeTransactionResult(id, hasFailedOperations);
+    _transactionContext->unregisterTransaction();
   }
 }
 

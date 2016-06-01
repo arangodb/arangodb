@@ -50,23 +50,21 @@ DispatcherThread::DispatcherThread(DispatcherQueue* queue)
 }
 
 void DispatcherThread::run() {
-  double worked = 0;
-  double const grace = 0.01;
+  int idleTries = 0;
 
   // iterate until we are shutting down
   while (!_queue->_stopping.load(std::memory_order_relaxed)) {
-    double now = TRI_microtime();
-
     // drain the job queue
     {
+      ++idleTries;
       Job* job = nullptr;
 
       while (_queue->_readyJobs.pop(job)) {
         if (job != nullptr) {
-          --(_queue->_numberJobs);
+          --_queue->_numberJobs;
 
-          worked = now;
           handleJob(job);
+          idleTries = 0;
         }
       }
 
@@ -75,35 +73,25 @@ void DispatcherThread::run() {
       // using "memory_order_seq_cst", this guarantees that we do not
       // miss a signal.
 
-      if (worked + grace < now) {
+      if (idleTries >= 2) {
         ++_queue->_nrWaiting;
 
-        CONDITION_LOCKER(guard, _queue->_waitLock);
-
-        if (!_queue->_readyJobs.empty()) {
-          --_queue->_nrWaiting;
-          continue;
-        }
-
-        // wait at most 100ms
+        // wait at most 1000ms
         uintptr_t n = (uintptr_t) this;
-        _queue->_waitLock.wait((1 + ((n >> 3) % 9)) * 100 * 1000);
+        uint64_t waitTime = (1 + ((n >> 3) % 9)) * 100 * 1000;
+
+        CONDITION_LOCKER(guard, _queue->_waitLock);
+        
+        // perform the waiting
+        bool gotSignal = _queue->_waitLock.wait(waitTime);
 
         --_queue->_nrWaiting;
 
-        // there is a chance, that we created more threads than necessary
-        // because
-        // we ignore race conditions for the statistic variables
-        if (_queue->tooManyThreads()) {
+        // there is a chance that we created more threads than necessary
+        // because we ignore race conditions for the statistic variables
+        if (!gotSignal && _queue->tooManyThreads()) {
           break;
         }
-      } else if (worked < now) {
-        // we worked earlier, but not now
-        uintptr_t n = (uintptr_t) this;
-        usleep(20 + ((n >> 3) % 19));
-      } else {
-        // we worked just now. sleep a little while to avoid completely busy waiting
-        usleep(20);
       }
     }
   }

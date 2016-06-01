@@ -22,7 +22,6 @@
 
 #include "V8ShellFeature.h"
 
-#include "ApplicationFeatures/ClientFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -33,6 +32,7 @@
 #include "ProgramOptions/Section.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
+#include "Shell/ClientFeature.h"
 #include "Shell/V8ClientConnection.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "V8/JSLoader.h"

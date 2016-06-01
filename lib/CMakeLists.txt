@@ -119,9 +119,7 @@ add_library(${LIB_ARANGO} STATIC
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeature.cpp
   ApplicationFeatures/ApplicationServer.cpp
-  ApplicationFeatures/ClientFeature.cpp
   ApplicationFeatures/ConfigFeature.cpp
-  ApplicationFeatures/ConsoleFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp

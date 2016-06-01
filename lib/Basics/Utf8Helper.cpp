@@ -522,17 +522,8 @@ RegexMatcher* Utf8Helper::buildMatcher(std::string const& pattern) {
 /// @brief whether or not value matches a regex
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Utf8Helper::matches(RegexMatcher* matcher, std::string const& value,
-                         bool& error) {
-  return matches(matcher, value.c_str(), value.size(), error);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not value matches a regex
-////////////////////////////////////////////////////////////////////////////////
-
 bool Utf8Helper::matches(RegexMatcher* matcher, char const* value,
-                         size_t valueLength, bool& error) {
+                         size_t valueLength, bool partial, bool& error) {
   TRI_ASSERT(value != nullptr);
   UnicodeString v = UnicodeString::fromUTF8(
       StringPiece(value, static_cast<int32_t>(valueLength)));
@@ -543,7 +534,15 @@ bool Utf8Helper::matches(RegexMatcher* matcher, char const* value,
   error = false;
 
   TRI_ASSERT(matcher != nullptr);
-  UBool result = matcher->matches(status);
+  UBool result;
+
+  if (partial) {
+    // partial match
+    result = matcher->find(status);
+  } else {
+    // full match
+    result = matcher->matches(status);
+  }
   if (U_FAILURE(status)) {
     error = true;
   }

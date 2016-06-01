@@ -24,10 +24,13 @@
 #include "Aql/Ast.h"
 #include "Aql/Arithmetic.h"
 #include "Aql/Executor.h"
+#include "Aql/Function.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/collection.h"
 
 #include <velocypack/Iterator.h>
@@ -1263,11 +1266,26 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         }
 
         // turn node into a collection node
+        char const* name = nullptr;
         VPackValueLength length;
         char const* stringValue = value.getString(length);
-        // TODO: can we get away without registering the string value here?
-        char const* name =
-            _query->registerString(stringValue, static_cast<size_t>(length));
+
+        if (length > 0 && stringValue[0] >= '0' && stringValue[0] <= '9') {
+          // emergency translation of collection id to name
+          arangodb::CollectionNameResolver resolver(_query->vocbase());
+          std::string collectionName = resolver.getCollectionNameCluster(basics::StringUtils::uint64(stringValue, length));
+          if (collectionName.empty()) {
+            THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                          value.copyString().c_str());
+          }
+
+          name = _query->registerString(collectionName.c_str(), collectionName.size());
+        } else {
+          // TODO: can we get away without registering the string value here?
+          name = _query->registerString(stringValue, static_cast<size_t>(length));
+        }
+
+        TRI_ASSERT(name != nullptr);
 
         node = createNodeCollection(name, isWriteCollection
                                               ? TRI_TRANSACTION_WRITE
@@ -2519,7 +2537,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
 
-  if (func->externalName == "LENGTH") {
+  if (func->externalName == "LENGTH" || func->externalName == "COUNT") {
     // shortcut LENGTH(collection) to COLLECTION_COUNT(collection)
     auto args = node->getMember(0);
     if (args->numMembers() == 1) {

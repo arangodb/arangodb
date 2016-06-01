@@ -51,14 +51,6 @@ lib/CMakeFiles/
 lib/cmake_install.cmake
 
 Documentation/Examples/*.generated
-Documentation/Books/Users/book.json
-Documentation/Books/Users/manual.epub
-Documentation/Books/Users/manual.mobi
-Documentation/Books/Users/manual.pdf
-Documentation/Books/Makefile
-Documentation/Books/Users/node_modules/
-Documentation/Books/ppbooks/
-Documentation/Books/allComments.txt
 
 UnitTests/HttpInterface/logs/
 

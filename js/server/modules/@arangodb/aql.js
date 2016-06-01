@@ -40,6 +40,7 @@ var graphModule = require("@arangodb/general-graph");
 /// @brief cache for compiled regexes
 ////////////////////////////////////////////////////////////////////////////////
 
+var LikeCache = { };
 var RegexCache = { };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,6 +357,7 @@ function clearCaches () {
   'use strict';
 
   RegexCache        = { 'i' : { }, '' : { } };
+  LikeCache         = { 'i' : { }, '' : { } };
   ISODurationCache = { };
 }
 
@@ -874,6 +876,16 @@ function CREATE_REGEX_PATTERN (chars) {
 function COMPILE_REGEX (regex, modifiers) {
   'use strict';
 
+  return new RegExp(AQL_TO_STRING(regex), modifiers);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compile a regex from a string pattern
+////////////////////////////////////////////////////////////////////////////////
+
+function COMPILE_LIKE (regex, modifiers) {
+  'use strict';
+
   regex = AQL_TO_STRING(regex);
   var i, n = regex.length;
   var escaped = false;
@@ -1042,10 +1054,13 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
 /// @brief return the numeric value or undefined if it is out of range
 ////////////////////////////////////////////////////////////////////////////////
 
-function NUMERIC_VALUE (value) {
+function NUMERIC_VALUE (value, nullify) {
   'use strict';
 
-  if (isNaN(value) || ! isFinite(value)) {
+  if (value === null || isNaN(value) || ! isFinite(value)) {
+    if (nullify) {
+      return null;
+    }
     return 0;
   }
 
@@ -2122,10 +2137,15 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
 function AQL_CONCAT () {
   'use strict';
 
-  var result = '', i;
+  var result = '', what = arguments;
+  if (what.length === 1 && Array.isArray(what[0])) {
+    what = arguments[0];
+  }
+  
+  var i, n = what.length;
 
-  for (i = 0; i < arguments.length; ++i) {
-    var element = arguments[i];
+  for (i = 0; i < n; ++i) {
+    var element = what[i];
     var weight = TYPEWEIGHT(element);
     if (weight === TYPEWEIGHT_NULL) {
       continue;
@@ -2143,13 +2163,28 @@ function AQL_CONCAT () {
 function AQL_CONCAT_SEPARATOR () {
   'use strict';
 
-  var separator, found = false, result = '', i, j;
+  var separator, found = false, result = '', i, element;
+
+  if (arguments.length === 2 && Array.isArray(arguments[1])) {
+    separator = AQL_TO_STRING(arguments[0]);
+    for (i = 0; i < arguments[1].length; ++i) {
+      element = arguments[1][i];
+      if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+        continue;
+      }
+      if (found) {
+        result += separator;
+      }
+      result += AQL_TO_STRING(element);
+      found = true;
+    }
+    return result;
+  }
 
   for (i = 0; i < arguments.length; ++i) {
-    var element = arguments[i];
-    var weight = TYPEWEIGHT(element);
+    element = arguments[i];
  
-    if (i > 0 && weight === TYPEWEIGHT_NULL) {
+    if (i > 0 && TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
       continue;
     }
     if (i === 0) {
@@ -2249,15 +2284,42 @@ function AQL_LIKE (value, regex, caseInsensitive) {
 
   regex = AQL_TO_STRING(regex);
 
-  if (RegexCache[modifiers][regex] === undefined) {
-    RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
+  if (LikeCache[modifiers][regex] === undefined) {
+    LikeCache[modifiers][regex] = COMPILE_LIKE(regex, modifiers);
   }
 
   try {
-    return RegexCache[modifiers][regex].test(AQL_TO_STRING(value));
+    return LikeCache[modifiers][regex].test(AQL_TO_STRING(value));
   }
   catch (err) {
     WARN("LIKE", INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
+    return false;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief searches a substring in a string, using a regex
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_REGEX (value, regex, caseInsensitive) {
+  'use strict';
+
+  var modifiers = '';
+  if (caseInsensitive) {
+    modifiers += 'i';
+  }
+
+  regex = AQL_TO_STRING(regex);
+
+  try {
+    if (RegexCache[modifiers][regex] === undefined) {
+      RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
+    }
+
+    return RegexCache[modifiers][regex].test(AQL_TO_STRING(value));
+  }
+  catch (err) {
+    WARN("REGEX", INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
     return false;
   }
 }
@@ -2663,7 +2725,7 @@ function AQL_TO_NUMBER (value) {
     case TYPEWEIGHT_NUMBER:
       return value;
     case TYPEWEIGHT_STRING:
-      var result = NUMERIC_VALUE(Number(value));
+      var result = NUMERIC_VALUE(Number(value), false);
       return ((TYPEWEIGHT(result) === TYPEWEIGHT_NUMBER) ? result : null);
     case TYPEWEIGHT_ARRAY:
       if (value.length === 0) {
@@ -2840,7 +2902,7 @@ function AQL_IS_DATESTRING (value) {
 function AQL_FLOOR (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.floor(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.floor(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2850,7 +2912,7 @@ function AQL_FLOOR (value) {
 function AQL_CEIL (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.ceil(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.ceil(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2860,7 +2922,7 @@ function AQL_CEIL (value) {
 function AQL_ROUND (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.round(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.round(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2870,7 +2932,7 @@ function AQL_ROUND (value) {
 function AQL_ABS (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.abs(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.abs(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2890,7 +2952,7 @@ function AQL_RAND () {
 function AQL_SQRT (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.sqrt(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.sqrt(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2900,7 +2962,147 @@ function AQL_SQRT (value) {
 function AQL_POW (base, exp) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.pow(AQL_TO_NUMBER(base), AQL_TO_NUMBER(exp)));
+  return NUMERIC_VALUE(Math.pow(AQL_TO_NUMBER(base), AQL_TO_NUMBER(exp)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log(n)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_LOG (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.log(AQL_TO_NUMBER(value)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log(2)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_LOG2 (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.log2(AQL_TO_NUMBER(value)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log(10)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_LOG10 (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.log10(AQL_TO_NUMBER(value)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exp(n)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_EXP (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.exp(AQL_TO_NUMBER(value)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exp(2)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_EXP2 (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.pow(2, AQL_TO_NUMBER(value)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sin
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_SIN (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.sin(AQL_TO_NUMBER(value)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cos
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_COS (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.cos(AQL_TO_NUMBER(value)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tan
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_TAN (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.tan(AQL_TO_NUMBER(value)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief asin
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ASIN (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.asin(AQL_TO_NUMBER(value)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief acos
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ACOS (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.acos(AQL_TO_NUMBER(value)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atan
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ATAN (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.atan(AQL_TO_NUMBER(value)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atan2
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ATAN2 (value1, value2) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.atan2(AQL_TO_NUMBER(value1), AQL_TO_NUMBER(value2)), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief radians
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_RADIANS (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(value * (Math.PI / 180));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief degrees
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DEGREES (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(value * (180 / Math.PI));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8146,6 +8348,7 @@ exports.AQL_UPPER = AQL_UPPER;
 exports.AQL_SUBSTRING = AQL_SUBSTRING;
 exports.AQL_CONTAINS = AQL_CONTAINS;
 exports.AQL_LIKE = AQL_LIKE;
+exports.AQL_REGEX = AQL_REGEX;
 exports.AQL_LEFT = AQL_LEFT;
 exports.AQL_RIGHT = AQL_RIGHT;
 exports.AQL_TRIM = AQL_TRIM;
@@ -8182,6 +8385,20 @@ exports.AQL_ABS = AQL_ABS;
 exports.AQL_RAND = AQL_RAND;
 exports.AQL_SQRT = AQL_SQRT;
 exports.AQL_POW = AQL_POW;
+exports.AQL_LOG = AQL_LOG;
+exports.AQL_LOG2 = AQL_LOG2;
+exports.AQL_LOG10 = AQL_LOG10;
+exports.AQL_EXP = AQL_EXP;
+exports.AQL_EXP2 = AQL_EXP2;
+exports.AQL_SIN = AQL_SIN;
+exports.AQL_COS = AQL_COS;
+exports.AQL_TAN = AQL_TAN;
+exports.AQL_ASIN = AQL_ASIN;
+exports.AQL_ACOS = AQL_ACOS;
+exports.AQL_ATAN = AQL_ATAN;
+exports.AQL_ATAN2 = AQL_ATAN2;
+exports.AQL_RADIANS = AQL_RADIANS;
+exports.AQL_DEGREES = AQL_DEGREES;
 exports.AQL_LENGTH = AQL_LENGTH;
 exports.AQL_FIRST = AQL_FIRST;
 exports.AQL_LAST = AQL_LAST;

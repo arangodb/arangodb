@@ -226,7 +226,8 @@ class VelocyPackHelper {
   /// @brief Compares two VelocyPack number values
   //////////////////////////////////////////////////////////////////////////////
 
-  static int compareNumberValues(arangodb::velocypack::Slice lhs,
+  static int compareNumberValues(arangodb::velocypack::ValueType,
+                                 arangodb::velocypack::Slice lhs,
                                  arangodb::velocypack::Slice rhs);
 
   //////////////////////////////////////////////////////////////////////////////

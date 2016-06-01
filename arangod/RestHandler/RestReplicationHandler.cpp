@@ -3641,7 +3641,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   double ttl = 0.0;
   if (ttlSlice.isInteger()) {
     try {
-      ttl = ttlSlice.getInt();
+      ttl = static_cast<double>(ttlSlice.getInt());
     } catch (...) {
     }
   } else {

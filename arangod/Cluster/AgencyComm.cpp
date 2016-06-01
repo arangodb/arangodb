@@ -596,6 +596,8 @@ bool AgencyComm::tryInitializeStructure() {
           builder.add("id", VPackValue("1"));
         }
       }
+      builder.add("NumberOfCoordinators", VPackSlice::nullSlice());
+      builder.add("NumberOfDBServers", VPackSlice::nullSlice());
       builder.add("Lock", VPackValue("UNLOCKED"));
       addEmptyVPackObject("MapLocalToID", builder);
       addEmptyVPackObject("Failed", builder);

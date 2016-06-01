@@ -12,14 +12,14 @@
 ; !include "Library.nsh"
 
 ; The name of the installer
-Name ""@INSTALLERNAME@"
+Name "@INSTALLERNAME@"
 
 ; The file to write
 OutFile "@INSTALLERNAME@.exe"
 
 ; The default installation directory
 !define APPNAME "Unpacker"
-!define COMPANYNAME "Triagens"
+!define COMPANYNAME "ArangoDB"
 InstallDir $TEMP\${COMPANYNAME}\${APPNAME}
 
 
@@ -44,7 +44,7 @@ Section "" ;No components page, name is not important
   IfFileExists "$INSTDIR\@INSTALLERNAME@-internal.exe" 0 install_files
   Fileopen $0 "$INSTDIR\@INSTALLERNAME@-internal.exe" "w"
   IfErrors 0 install_files
-    MessageBox MB_OK "@INSTALLERNAME@ is allready runing"
+    MessageBox MB_OK "@INSTALLERNAME@ is already runing"
     Quit
  ; files are copied
  install_files:
@@ -55,7 +55,7 @@ Section "" ;No components page, name is not important
   SetOutPath $INSTDIR
   ; Put file there
 ; !insertmacro InstallLib DLL SHARED NOREBOOT_PROTECTED "exdll.dll" $INSTDIR $TEMP
-	file "..\Installation\Windows\Plugins\SharedMemory\Plugins\@BITS@\msvcr120.dll"
+	file "@SRCDIR@\Installation\Windows\Plugins\SharedMemory\Plugins\@BITS@\msvcr120.dll"
 	file "@INSTALLERNAME@-internal.exe"
         Rename "$INSTDIR\Installation\Windows\Plugins\SharedMemory\Plugins\@BITS@\msvcr120.dll" "$INSTDIR\msvcr120.dll"
         Rename "$INSTDIR\Build@BITS@\@INSTALLERNAME@-internal.exe" "$INSTDIR\@INSTALLERNAME@-internal.exe"

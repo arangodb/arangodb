@@ -95,21 +95,19 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
       _client = new SimpleHttpClient(_connection,
                                      _configuration._requestTimeout, false);
 
-      if (_client != nullptr) {
-        std::string username = _configuration._username;
-        std::string password = _configuration._password;
+      std::string username = _configuration._username;
+      std::string password = _configuration._password;
 
-        _client->setUserNamePassword("/", username, password);
-        _client->setLocationRewriter(this, &rewriteLocation);
+      _client->setUserNamePassword("/", username, password);
+      _client->setLocationRewriter(this, &rewriteLocation);
 
-        _client->_maxRetries = 2;
-        _client->_retryWaitTime = 2 * 1000 * 1000;
-        _client->_retryMessage =
-            std::string("retrying failed HTTP request for endpoint '") +
-            _configuration._endpoint +
-            std::string("' for replication applier in database '" +
-                        std::string(_vocbase->_name) + "'");
-      }
+      _client->_maxRetries = 2;
+      _client->_retryWaitTime = 2 * 1000 * 1000;
+      _client->_retryMessage =
+          std::string("retrying failed HTTP request for endpoint '") +
+          _configuration._endpoint +
+          std::string("' for replication applier in database '" +
+                      std::string(_vocbase->_name) + "'");
     }
   }
 }

@@ -40,12 +40,11 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 BootstrapFeature::BootstrapFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Bootstrap") {
+    : ApplicationFeature(server, "Bootstrap"), _isReady(false) {
   startsAfter("Dispatcher");
   startsAfter("Endpoint");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("Agency");
   startsAfter("LogfileManager");
   startsAfter("Database");
   startsAfter("Upgrade");
@@ -148,6 +147,8 @@ void BootstrapFeature::start() {
   arangodb::rest::HttpHandlerFactory::setMaintenance(false);
   LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
+
+  _isReady = true;
 }
 
 void BootstrapFeature::stop() {

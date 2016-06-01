@@ -23,9 +23,9 @@
 #include "ShellFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ClientFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Shell/ClientFeature.h"
 #include "Shell/V8ShellFeature.h"
 
 using namespace arangodb;

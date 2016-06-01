@@ -107,6 +107,8 @@ VPackCustomTypeHandler* TransactionContext::createCustomTypeHandler(TRI_vocbase_
   
 //////////////////////////////////////////////////////////////////////////////
 /// @brief order a document ditch for the collection
+/// this will create one if none exists. if no ditch can be created, the
+/// function will return a nullptr!
 //////////////////////////////////////////////////////////////////////////////
 
 DocumentDitch* TransactionContext::orderDitch(TRI_document_collection_t* document) {

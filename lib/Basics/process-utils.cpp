@@ -1276,4 +1276,9 @@ void TRI_InitializeProcess() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownProcess() {
+  MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+  for (auto* e : ExternalProcesses) {
+    FreeExternal(e);
+  }
+  ExternalProcesses.clear();
 }

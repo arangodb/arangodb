@@ -37,6 +37,7 @@
       "nodes": "cNodes",
       "cNodes": "cNodes",
       "dNodes": "dNodes",
+      "sNodes": "sNodes",
       "node/:name": "node",
       //"nLogs/:name": "nLogs",
       "logs": "logs",
@@ -160,7 +161,10 @@
 
         window.isCoordinator(callback);
 
-        this.initFinished = true;
+        if (frontendConfig.isCluster === false) {
+          this.initFinished = true;
+        }
+
         this.arangoDatabase = new window.ArangoDatabase();
         this.currentDB = new window.CurrentDatabase();
 
@@ -318,6 +322,25 @@
         toRender: 'dbserver'
       });
       this.nodesView.render();
+    },
+
+    sNodes: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.sNodes.bind(this));
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      this.scaleView = new window.ScaleView({
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers[0]
+      });
+      this.scaleView.render();
     },
 
     addAuth: function (xhr) {
@@ -823,8 +846,9 @@
       this.userManagementView.render(true);
     },
     
-    fetchDBS: function() {
+    fetchDBS: function(callback) {
       var self = this;
+      var cb = false;
 
       this.coordinatorCollection.each(function(coordinator) {
         self.dbServers.push(
@@ -833,8 +857,20 @@
           })
         );
       });
+
+      this.initFinished = true;
+
       _.each(this.dbServers, function(dbservers) {
-        dbservers.fetch();
+        dbservers.fetch({
+          success: function() {
+            if (cb === false) {
+              if (callback) {
+                callback();
+                cb = true;
+              }
+            }
+          }
+        });
       });
     },
 

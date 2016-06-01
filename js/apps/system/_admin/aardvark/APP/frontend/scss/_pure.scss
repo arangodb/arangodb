@@ -74,8 +74,10 @@
     }
 
     .actions {
-      float: right;
-      padding-right: 5px;
+      i {
+        margin-left: 5px;
+        margin-right: 5px;
+      }
     }
 
     &:hover {
@@ -90,6 +92,14 @@
       }
     }
 
+    &.noHover {
+      &:hover {
+        background-color: $c-white;
+        cursor: default;
+      }
+    }
+
+
     .left {
       text-align: left;
     }
@@ -100,6 +110,18 @@
 
     .mid {
       text-align: center;
+    }
+
+    .positive {
+      color: $c-positive;
+    }
+
+    .negative {
+      color: $c-negative;
+    }
+
+    .warning {
+      color: $c-warning;
     }
 
     .fa {

@@ -8,9 +8,8 @@ function groups if required.
 
 Examples:
 
-```
+```js
 RETURN myfunctions::myfunc()
-
 RETURN myfunctions::math::random()
 ```
 
@@ -123,6 +122,6 @@ Documents in the *_aqlfunctions* collection (or any other system collection)
 should not be accessed directly, but only via the dedicated interfaces.
 
 Keep in mind that system collections are excluded from dumps created with
-[arangodump](../../Users/Administration/Arangodump.html) by default. To include AQL user
+[arangodump](../../Manual/Administration/Arangodump.html) by default. To include AQL user
 functions in a dump, the dump needs to be started with the
 option *--include-system-collections true*.

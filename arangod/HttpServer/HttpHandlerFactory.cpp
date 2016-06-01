@@ -85,6 +85,14 @@ void HttpHandlerFactory::setMaintenance(bool value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets maintenance mode
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpHandlerFactory::isMaintenance() {
+  return MaintenanceMode ? true : false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request
 ///
 /// wrapper method that will consider disabled authentication etc.
@@ -123,9 +131,7 @@ HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
                                                char const* ptr, size_t length) {
   HttpRequest* request = new HttpRequest(info, ptr, length, _allowMethodOverride);
 
-  if (request != nullptr) {
-    setRequestContext(request);
-  }
+  setRequestContext(request);
 
   return request;
 }

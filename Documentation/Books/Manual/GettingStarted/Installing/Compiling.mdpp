@@ -1,0 +1,224 @@
+!CHAPTER Compiling ArangoDB from scratch
+
+The following sections describe how to compile and build the ArangoDB from
+scratch. ArangoDB will compile on most Linux and Mac OS X systems. We assume
+that you use the GNU C/C++ compiler or clang/clang++ to compile the
+source. ArangoDB has been tested with the GNU C/C++ compiler and clang/clang++,
+but should be able to compile with any Posix-compliant, C++11-enabled compiler.
+Please let us know whether you successfully compiled it with another C/C++
+compiler.
+
+By default, cloning the github repository will checkout **devel**. This version
+contains the development version of the ArangoDB.  Use this branch if you want
+to make changes to the ArangoDB source.
+
+!SECTION Devel Version
+
+Note: a separate [blog
+article](http://jsteemann.github.io/blog/2014/10/16/how-to-compile-arangodb-from-source/)
+is available that describes how to compile ArangoDB from source on Ubuntu.
+
+!SUBSECTION Basic System Requirements
+
+Verify that your system contains
+
+* git (to obtain the sources)
+* a modern C/C++ compiler C++11 capable including full regex support:
+  * GNU "gcc" and "g++" version 4.9.0 or higher
+  * "clang" and "clang++" version 3.6 or higher
+  * Visual C++ 2015 [(see the "compiling under windows" cookbook for more details)](https://docs.arangodb.com/cookbook/Compiling/Windows30.html)
+* cmake
+* GNU make
+* Python, version 2 in order to use gyp for V8
+* the OpenSSL library, version 1.0.1g or higher (development package)
+* jemalloc or tcmalloc development packages
+* the GNU scanner generator FLEX, at least version 2.3.35 (optional)
+* the GNU parser generator BISON, at least version 2.4 (optional)
+
+Most Linux systems already supply RPMs or DPKGs for these packages. 
+Some older distributions, for example Ubuntu 12.04 or Centos 5, provide only very out-dated 
+versions of compilers, FLEX and BISON. In that case you need to compile 
+newer versions of the programs and/or libraries.
+
+!SUBSECTION Download the Source
+
+Download the latest source using ***git***:
+    
+    unix> git clone git://github.com/arangodb/arangodb.git
+
+This will automatically clone the **devel** branch.
+
+Note: if you only plan to compile ArangoDB locally and do not want to modify or push
+any changes, you can speed up cloning substantially by using the *--single-branch* and 
+*--depth* parameters for the clone command as follows:
+    
+    unix> git clone --single-branch --depth 1 git://github.com/arangodb/arangodb.git
+
+!SUBSECTION Setup
+
+Switch into the ArangoDB directory
+
+    unix> cd ArangoDB
+    unix> mkdir build
+    unix> cd build
+
+In order to generate the build environment please execute
+
+    unix> cmake .. 
+
+to setup the makefiles. This will check the various system characteristics and
+installed libraries. If you installed the compiler in a non standard location, you may need to specify it:
+
+    cmake -DCMAKE_C_COMPILER=/opt/bin/gcc -DCMAKE_CXX_COMPILER=/opt/bin/g++ ..
+
+If you compile on MacOS, you should add the following options to the cmake command:
+
+    cmake .. -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_BUILD_TYPE=RelWithDebInfo  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11
+
+If you also plan to make changes to the source code of ArangoDB, you should compile with the `Debug` target;
+The `Debug` target enables additional sanity checks etc. which would slow down production binaries.
+
+Other options valuable for development:
+
+    -DARANGODB_ENABLE_MAINTAINER_MODE
+
+Needed, if you plan to make changes to AQL language (which is implemented using a lexer and parser
+files in `arangod/Aql/grammar.y` and `arangod/Aql/tokens.ll`) your system has to contain the tools FLEX and BISON.
+
+    -DARANGODB_ENABLE_BACKTRACE
+
+(requires the maintainer mode) If you want to have c++ stacktraces attached to your exceptions.
+This can be usefull to more quick locate the place where an exception or an assertion was thrown.
+
+
+scripts. It allows to run ArangoDB from the compile directory directly, without the
+need for a *make install* command and specifying much configuration parameters. 
+When used, you can start ArangoDB using this command:
+
+    bin/arangod /tmp/database-dir
+
+ArangoDB will then automatically use the configuration from file *etc/relative/arangod.conf*.
+
+    -DUSE_FAILURE_TESTS
+
+This option activates additional code in the server that intentionally makes the
+server crash or misbehave (e.g. by pretending the system ran out of
+memory). This option is useful for writing tests.
+
+By default the libc allocator is chosen. If your system offers the jemalloc it will be
+prefered over tcmalloc and the system allocator. 
+
+!SUBSUBSECTION shared memory
+Gyp is used as makefile generator by V8. Gyp requires shared memory to be available,
+which may not if you i.e. compile in a chroot. You can make it available like this:
+
+    none /opt/chroots/ubuntu_precise_x64/dev/shm tmpfs rw,nosuid,nodev,noexec 0 2
+    devpts    /opt/chroots/ubuntu_precise_x64/dev/pts    devpts    gid=5,mode=620    0  0
+
+
+!SUBSECTION Compile
+
+Compile the programs (server, client, utilities) by executing
+
+    make
+
+This will compile ArangoDB and create a binary of the server in
+
+    ./bin/arangod
+
+!SUBSECTION Test
+
+Create an empty directory
+
+    unix> mkdir /tmp/database-dir
+
+Check the binary by starting it using the command line.
+
+    unix> ./bin/arangod -c etc/relative/arangod.conf --server.endpoint tcp://127.0.0.1:8529 /tmp/database-dir
+
+This will start up the ArangoDB and listen for HTTP requests on port 8529 bound
+to IP address 127.0.0.1. You should see the startup messages similar to the
+following:
+
+```
+2016-06-01T12:47:29Z [29266] INFO ArangoDB xxx ... 
+2016-06-10T12:47:29Z [29266] INFO using endpoint 'tcp://127.0.0.1.8529' for non-encrypted requests
+2016-06-01T12:47:30Z [29266] INFO Authentication is turned on
+2016-60-01T12:47:30Z [29266] INFO ArangoDB (version xxx) is ready for business. Have fun!
+```
+
+If it fails with a message about the database directory, please make sure the
+database directory you specified exists and can be written into.
+
+Use your favorite browser to access the URL
+
+    http://127.0.0.1:8529/_api/version
+
+This should produce a JSON object like
+
+    {"server" : "arango", "version" : "..."}
+
+as result.
+
+!SUBSECTION Re-building ArangoDB after an update
+
+To stay up-to-date with changes made in the main ArangoDB repository, you will
+need to pull the changes from it and re-run `make`.
+
+Normally, this will be as simple as follows:
+
+    unix> git pull
+    unix> make
+
+From time to time there will be bigger structural changes in ArangoDB, which may
+render the old Makefiles invalid. Should this be the case and `make` complains
+about missing files etc., the following commands should fix it:
+
+
+    unix> rm -f CMakeCache.txt
+    unix> cmake .. 
+    unix> make
+
+In order to reset everything and also recompile all 3rd party libraries, issue
+the following commands:
+
+    unix> git checkout -- .
+    unix> cd ..; rm -rf build; mkdir build; cd build
+
+This will clean up ArangoDB and the 3rd party libraries, and rebuild everything.
+
+Sometimes you can get away with the less intrusive commands.
+
+!SUBSECTION Install
+
+Install everything by executing
+
+    make install
+
+You must be root to do this or at least have write permission to the
+corresponding directories.
+
+The server will by default be installed in
+
+    /usr/local/sbin/arangod
+
+The configuration file will be installed in
+
+    /usr/local/etc/arangodb/arangod.conf
+
+The database will be installed in
+
+    /usr/local/var/lib/arangodb
+
+The ArangoShell will be installed in
+
+    /usr/local/bin/arangosh
+
+**Note:** The installation directory will be different if you use one of the
+`precompiled` packages. Please check the default locations of your operating
+system, e. g. `/etc` and `/var/lib`.
+
+When upgrading from a previous version of ArangoDB, please make sure you inspect
+ArangoDB's log file after an upgrade. It may also be necessary to start ArangoDB
+with the *--database.upgrade* parameter once to perform required upgrade or
+initialization tasks.

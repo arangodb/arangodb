@@ -23,7 +23,6 @@
 
 #include "Basics/Common.h"
 
-#include "ApplicationFeatures/ClientFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -33,6 +32,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Restore/RestoreFeature.h"
+#include "Shell/ClientFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

@@ -25,8 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Shell/ClientFeature.h"
 #include "V8Client/ArangoClientHelper.h"
 
 namespace arangodb {

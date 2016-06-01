@@ -35,6 +35,10 @@ function appendHeader() {
   };
   addGoogleSrc();
 
+  $("#version-switcher").on("change", function(e) {
+    window.location.href = "https://docs.arangodb.com/" + e.target.value;
+  });
+
 });
 
 };
