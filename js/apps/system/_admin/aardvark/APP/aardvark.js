@@ -33,7 +33,6 @@ const errors = require('@arangodb').errors;
 const joinPath = require('path').posix.join;
 const notifications = require('@arangodb/configuration').notifications;
 const examples = require('@arangodb/graph-examples/example-graph');
-const systemStorage = require('@arangodb/foxx/sessions/storages/_system');
 const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
 const cluster = require('@arangodb/cluster');
@@ -42,7 +41,6 @@ const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
 const API_DOCS = require(module.context.fileName('api-docs.json'));
 API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 
-const sessions = systemStorage();
 const router = createRouter();
 module.exports = router;
 
@@ -89,7 +87,7 @@ router.get('/config.js', function(req, res) {
 });
 
 router.get('/whoAmI', function(req, res) {
-  res.json({user: req.session.uid || null});
+  res.json({user: req.user || null});
 })
 .summary('Return the current user')
 .description(dd`
@@ -98,63 +96,12 @@ router.get('/whoAmI', function(req, res) {
 `);
 
 
-router.post('/logout', function (req, res) {
-  sessions.clear(req.session);
-  delete req.session;
-  res.json({success: true});
-})
-.summary('Log out')
-.description(dd`
-  Destroys the current session and revokes any authentication.
-`);
-
-
-router.post('/login', function (req, res) {
-  const currentDb = db._name();
-  /*
-  const actualDb = req.body.database;
-  if (actualDb !== currentDb) {
-    res.redirect(307, joinPath(
-      '/_db',
-      encodeURIComponent(actualDb),
-      module.context.mount,
-      '/login'
-    ));
-    return;
-  }
-  */
-  const user = req.body.username;
-  const valid = users.isValid(user, req.body.password);
-
-  if (!valid) {
-    res.throw('unauthorized', 'Bad username or password');
-  }
-
-  sessions.setUser(req.session, user);
-  sessions.save(req.session);
-
-  res.json({user});
-})
-.body({
-  username: joi.string().required(),
-  password: joi.string().required().allow('')
-  //database: joi.string().default(db._name())
-}, 'Login credentials.')
-.error('unauthorized', 'Invalid credentials.')
-.summary('Log in')
-.description(dd`
-  Authenticates the user for the active session with a username and password.
-  Creates a new session if none exists.
-`);
-
-
 const authRouter = createRouter();
 router.use(authRouter);
 
-
 authRouter.use((req, res, next) => {
   if (global.AUTHENTICATION_ENABLED()) {
-    if (!req.session.uid) {
+    if (!req.user) {
       res.throw('unauthorized');
     }
   }
@@ -233,12 +180,11 @@ authRouter.post('/query/upload/:user', function(req, res) {
   let user;
 
   try {
-    user = users.document(req.session.uid);
+    user = users.document(req.user);
   } catch (e) {
     if (!e.isArangoError || e.errorNum !== ERROR_USER_NOT_FOUND) {
       throw e;
     }
-    sessions.setUser(req.session);
     res.throw('not found');
   }
 
@@ -276,12 +222,11 @@ authRouter.get('/query/download/:user', function(req, res) {
   let user;
 
   try {
-    user = users.document(req.session.uid);
+    user = users.document(req.user);
   } catch (e) {
     if (!e.isArangoError || e.errorNum !== ERROR_USER_NOT_FOUND) {
       throw e;
     }
-    sessions.setUser(req.session);
     res.throw('not found');
   }
 

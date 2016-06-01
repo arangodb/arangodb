@@ -58,9 +58,15 @@ class RestServerFeature final
     return RESTSERVER->trustedProxies();
   }
 
+  static std::string getJwtSecret() {
+    TRI_ASSERT(RESTSERVER != nullptr);
+    return RESTSERVER->jwtSecret();
+  }
+
  private:
   static RestServerFeature* RESTSERVER;
- 
+  static const size_t _maxSecretLength = 64;
+
  public:
   explicit RestServerFeature(application_features::ApplicationServer*);
 
@@ -77,9 +83,12 @@ class RestServerFeature final
   bool _authentication;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
+
   bool _proxyCheck;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
+  
+  std::string _jwtSecret;
 
  public:
   bool authentication() const { return _authentication; }
@@ -87,6 +96,9 @@ class RestServerFeature final
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
   bool proxyCheck() const { return _proxyCheck; }
   std::vector<std::string> trustedProxies() const { return _trustedProxies; }
+  std::string jwtSecret() const { return _jwtSecret; }
+  void generateNewJwtSecret();
+  void setJwtSecret(std::string const& jwtSecret) { _jwtSecret = jwtSecret; }
 
  private:
   void buildServers();

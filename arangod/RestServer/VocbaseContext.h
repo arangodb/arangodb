@@ -24,6 +24,9 @@
 #ifndef ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H
 #define ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H 1
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Common.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -35,7 +38,11 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class VocbaseContext : public arangodb::RequestContext {
  public:
-  VocbaseContext(HttpRequest*, TRI_vocbase_t*);
+  static double ServerSessionTtl;
+
+ public:
+  VocbaseContext(HttpRequest*, TRI_vocbase_t*, std::string const&);
+  ~VocbaseContext();
 
  public:
   TRI_vocbase_t* vocbase() const { return _vocbase; }
@@ -46,11 +53,35 @@ class VocbaseContext : public arangodb::RequestContext {
  private:
   bool useClusterAuthentication() const;
 
- public:
-  static double ServerSessionTtl;
+ private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief checks the authentication (basic)
+  //////////////////////////////////////////////////////////////////////////////
+
+  GeneralResponse::ResponseCode basicAuthentication(const char*);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief checks the authentication (jwt)
+  //////////////////////////////////////////////////////////////////////////////
+
+  GeneralResponse::ResponseCode jwtAuthentication(std::string const&);
+
+  std::shared_ptr<VPackBuilder> parseJson(std::string const&, std::string const&);
+
+  bool validateJwtHeader(std::string const&);
+  bool validateJwtBody(std::string const&, std::string*);
+  bool validateJwtHMAC256Signature(std::string const&, std::string const&);
+ 
+ private: 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief checks the authentication header and sets user if successful
+  //////////////////////////////////////////////////////////////////////////////
+
+  GeneralResponse::ResponseCode authenticateRequest();
 
  private:
   TRI_vocbase_t* _vocbase;
+  std::string const _jwtSecret;
 };
 }
 

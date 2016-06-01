@@ -557,6 +557,11 @@ bool HttpCommTask::processRead() {
   // not authenticated
   else {
     HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED);
+    std::string realm =
+      "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
+
+    response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
+
     clearRequest();
     handleResponse(&response);
   }

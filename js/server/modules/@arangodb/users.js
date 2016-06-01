@@ -146,6 +146,7 @@ exports.save = function(username, password, active, userData, changePassword) {
   const data = {
     user: username,
     databases: {},  
+    configData: {},
     userData: userData || {},
     authData: {
       simple: hashPassword(password),
@@ -196,6 +197,7 @@ exports.replace = function(username, password, active, userData, changePassword)
   const data = {
     user: username,
     databases: user.databases,  
+    configData: user.configData,
     userData: userData || {},
     authData: {
       simple: hashPassword(password),
@@ -457,6 +459,9 @@ exports.grantDatabase = function(username, database, type) {
 
   users.update(user, { databases: databases });
 
+  // not exports.reload() as this is an abstract method...
+  require("@arangodb/users").reload();
+
   return databases;  
 };
 
@@ -482,6 +487,9 @@ exports.revokeDatabase = function(username, database) {
   databases[database] = null;
 
   users.update(user, { databases: databases }, false, false);
+
+  // not exports.reload() as this is an abstract method...
+  require("@arangodb/users").reload();
 
   delete databases[database];
   return databases;  

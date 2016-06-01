@@ -31,8 +31,10 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Ssl/SslInterface.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/MasterPointer.h"
@@ -94,139 +96,18 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
   bool mustChange =
       VelocyPackHelper::getBooleanValue(slice, "changePassword", false);
 
-  std::cout
-    << "user: " << userSlice.copyString() << "\n"
-    << "method: " << methodSlice.copyString() << "\n"
-    << "salt: " << saltSlice.copyString() << "\n"
-    << "hash: " << hashSlice.copyString() << "\n"
-    << "active: " << active << "\n"
-    << "must change: " << mustChange << "\n";
-
   return AuthEntry(userSlice.copyString(), methodSlice.copyString(),
                    saltSlice.copyString(), hashSlice.copyString(), active,
                    mustChange);
 }
 
+AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
+  return AuthLevel::NONE;
+}
+
 void AuthInfo::clear() {
   _authInfo.clear();
-  _authCache.clear();
-}
-
-bool AuthInfo::reload() {
-  insertInitial();
-
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->vocbase();
-
-  if (vocbase == nullptr) {
-    LOG(DEBUG) << "system database is unknown, cannot load authentication "
-	       << "and authorization information";
-    return false;
-  }
-
-  LOG(DEBUG) << "starting to load authentication and authorization information";
-
-  WRITE_LOCKER(writeLocker, _authInfoLock);
-
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
-                                  TRI_COL_NAME_USERS, TRI_TRANSACTION_READ);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return false;
-  }
-
-  OperationResult users =
-    trx.all(TRI_COL_NAME_USERS, 0, UINT64_MAX, OperationOptions());
-
-  trx.finish(users.code);
-
-  if (users.failed()) {
-    LOG(ERR) << "cannot read users from _users collection";
-    return false;
-  }
-
-  auto usersSlice = users.slice();
-
-  if (!usersSlice.isArray()) {
-    LOG(ERR) << "cannot read users from _users collection";
-    return false;
-  }
-
-  clear();
-
-  if (usersSlice.length() == 0) {
-    insertInitial();
-  } else {
-
-    for (VPackSlice const& userSlice : VPackArrayIterator(usersSlice)) {
-      AuthEntry auth = CreateAuthEntry(userSlice.resolveExternal());
-
-      if (auth.isActive()) {
-	_authInfo[auth.username()] = auth;
-      }
-    };
-  }
-
-  return true;
-}
-
-std::string AuthInfo::checkCache(std::string const& authorizationField,
-                                 bool* mustChange) {
-  READ_LOCKER(readLocker, _authInfoLock);
-
-  auto const& it = _authCache.find(authorizationField);
-
-  if (it != _authCache.end()) {
-    AuthCache const& cached = it->second;
-
-#warning expires
-    *mustChange = cached.mustChange();
-    return cached.username();
-  }
-
-  // sorry, not found
-  return "";
-}
-
-bool AuthInfo::canUseDatabase(std::string const& username,
-                              char const* databaseName) {
-#warning TODO
-#if 0
-  READ_LOCKER(readLocker, _authInfoLock);
-
-  AuthEntry const& entry = findUser(username);
-
-  if (!entry.isActive()) {
-    return false;
-  }
-
-  return entry._databases.find(databaseName) != entry.databases.end();
-#endif
-  return true;
-}
-
-AuthResult AuthInfo::checkAuthentication(std::string const& authorizationField,
-                                         char const* databaseName) {
-  return AuthResult();
-}
-
-bool AuthInfo::populate(VPackSlice const& slice) {
-  TRI_ASSERT(slice.isArray());
-
-  WRITE_LOCKER(writeLocker, _authInfoLock);
-
-  clear();
-
-  for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
-    AuthEntry auth = CreateAuthEntry(authSlice);
-
-    if (auth.isActive()) {
-      _authInfo.emplace(auth.username(), auth);
-    }
-  }
-
-  return true;
+  _authBasicCache.clear();
 }
 
 void AuthInfo::insertInitial() {
@@ -274,42 +155,199 @@ void AuthInfo::insertInitial() {
   }
 }
 
-#if 0
+bool AuthInfo::populate(VPackSlice const& slice) {
+  TRI_ASSERT(slice.isArray());
 
-    // no entry found in cache, decode the basic auth info and look it up
-    std::string const up = StringUtils::decodeBase64(auth);
-    std::string::size_type n = up.find(':', 0);
+  WRITE_LOCKER(writeLocker, _authInfoLock);
 
-    if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG(TRACE) << "invalid authentication data found, cannot extract "
-                    "username/password";
-      return GeneralResponse::ResponseCode::BAD;
+  clear();
+
+  for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
+    AuthEntry auth = CreateAuthEntry(authSlice.resolveExternal());
+
+    if (auth.isActive()) {
+      _authInfo.emplace(auth.username(), auth);
     }
-
-    username = up.substr(0, n);
-
-    LOG(TRACE) << "checking authentication for user '" << username << "'";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a user can see a database
-/// note: "seeing" here does not necessarily mean the user can access the db.
-/// it only means there is a user account (with whatever password) present
-/// in the database
-////////////////////////////////////////////////////////////////////////////////
-
-static bool CanUseDatabase(TRI_vocbase_t* vocbase, char const* username) {
-  if (!vocbase->_settings.requireAuthentication) {
-    // authentication is turned off
-    return true;
   }
 
-  if (strlen(username) == 0) {
-    // will happen if username is "" (when converting it from a null value)
-    // this will happen if authentication is turned off
-    return true;
-  }
-
-  return TRI_ExistsAuthenticationAuthInfo(vocbase, username);
+  return true;
 }
 
-#endif
+bool AuthInfo::reload() {
+  insertInitial();
+
+  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->vocbase();
+
+  if (vocbase == nullptr) {
+    LOG(DEBUG) << "system database is unknown, cannot load authentication "
+	       << "and authorization information";
+    return false;
+  }
+
+  LOG(DEBUG) << "starting to load authentication and authorization information";
+
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
+                                  TRI_COL_NAME_USERS, TRI_TRANSACTION_READ);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
+
+  OperationResult users =
+    trx.all(TRI_COL_NAME_USERS, 0, UINT64_MAX, OperationOptions());
+
+  trx.finish(users.code);
+
+  if (users.failed()) {
+    LOG(ERR) << "cannot read users from _users collection";
+    return false;
+  }
+
+  auto usersSlice = users.slice();
+
+  if (!usersSlice.isArray()) {
+    LOG(ERR) << "cannot read users from _users collection";
+    return false;
+  }
+
+  if (usersSlice.length() == 0) {
+    insertInitial();
+  } else {
+    populate(usersSlice);
+  }
+
+  return true;
+}
+
+AuthResult AuthInfo::checkPassword(std::string const& username,
+				   std::string const& password) {
+  AuthResult result;
+
+  // look up username
+  READ_LOCKER(readLocker, _authInfoLock);
+
+  auto it = _authInfo.find(username);
+
+  if (it == _authInfo.end()) {
+    return result;
+  }
+
+  AuthEntry const& auth = it->second;
+
+  if (!auth.isActive()) {
+    return result;
+  }
+
+  result._username = username;
+  result._mustChange = auth.mustChange();
+
+  std::string salted = auth.passwordSalt() + password;
+  size_t len = salted.size();
+
+  std::string const& passwordMethod = auth.passwordMethod();
+
+  // default value is false
+  char* crypted = nullptr;
+  size_t cryptedLength;
+
+  try {
+    if (passwordMethod == "sha1") {
+      arangodb::rest::SslInterface::sslSHA1(salted.c_str(), len, crypted,
+					    cryptedLength);
+    } else if (passwordMethod == "sha512") {
+      arangodb::rest::SslInterface::sslSHA512(salted.c_str(), len, crypted,
+					      cryptedLength);
+    } else if (passwordMethod == "sha384") {
+      arangodb::rest::SslInterface::sslSHA384(salted.c_str(), len, crypted,
+					      cryptedLength);
+    } else if (passwordMethod == "sha256") {
+      arangodb::rest::SslInterface::sslSHA256(salted.c_str(), len, crypted,
+					      cryptedLength);
+    } else if (passwordMethod == "sha224") {
+      arangodb::rest::SslInterface::sslSHA224(salted.c_str(), len, crypted,
+					      cryptedLength);
+    } else if (passwordMethod == "md5") {
+      arangodb::rest::SslInterface::sslMD5(salted.c_str(), len, crypted,
+					   cryptedLength);
+    } else {
+      // invalid algorithm...
+    }
+  } catch (...) {
+    // SslInterface::ssl....() allocate strings with new, which might throw
+    // exceptions
+  }
+
+  if (crypted != nullptr) {
+    if (0 < cryptedLength) {
+      size_t hexLen;
+      char* hex = TRI_EncodeHexString(crypted, cryptedLength, &hexLen);
+
+      if (hex != nullptr) {
+	result._authorized = auth.checkPasswordHash(hex);
+	TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
+      }
+    }
+
+    delete[] crypted;
+  }
+
+  return result;
+}
+
+AuthLevel AuthInfo::canUseDatabase(std::string const& username, std::string const& dbname) {
+  auto const& it = _authInfo.find(username);
+
+  if (it == _authInfo.end()) {
+    return AuthLevel::NONE;
+  }
+
+  AuthEntry const& entry = it->second;
+
+  return entry.canUseDatabase(dbname);
+}
+
+AuthResult AuthInfo::checkAuthentication(AuthType authType, std::string const& secret) {
+  switch (authType) {
+  case AuthType::BASIC:
+    return checkAuthenticationBasic(secret);
+
+  case AuthType::JWT:
+    return checkAuthenticationJWT(secret);
+  }
+
+  return AuthResult();
+}
+
+AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
+  auto const& it = _authBasicCache.find(secret);
+
+  if (it != _authBasicCache.end()) {
+    return it->second;
+  }
+
+  std::string const up = StringUtils::decodeBase64(secret);
+  std::string::size_type n = up.find(':', 0);
+
+  if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
+    LOG(TRACE) << "invalid authentication data found, cannot extract "
+      "username/password";
+    return AuthResult();
+  }
+
+  std::string username = up.substr(0, n);
+  std::string password = up.substr(n + 1);
+
+  AuthResult result = checkPassword(username, password);
+
+  if (result._authorized) {
+    _authBasicCache.emplace(secret, result);
+  }
+
+  return result;
+}
+
+AuthResult AuthInfo::checkAuthenticationJWT(std::string const& secret) {
+  return AuthResult();
+}

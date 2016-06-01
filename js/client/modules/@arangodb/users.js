@@ -31,12 +31,7 @@ var internal = require("internal");
 var arangodb = require("@arangodb");
 var arangosh = require("@arangodb/arangosh");
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new user
-////////////////////////////////////////////////////////////////////////////////
-
+// creates a new user
 exports.save = function (user, passwd, active, extra, changePassword) {
   var db = internal.db;
 
@@ -63,10 +58,7 @@ exports.save = function (user, passwd, active, extra, changePassword) {
   return arangosh.checkRequestResult(requestResult);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replaces an existing user
-////////////////////////////////////////////////////////////////////////////////
-
+// replaces an existing user
 exports.replace = function (user, passwd, active, extra, changePassword) {
   var db = internal.db;
 
@@ -82,10 +74,7 @@ exports.replace = function (user, passwd, active, extra, changePassword) {
   return arangosh.checkRequestResult(requestResult);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates an existing user
-////////////////////////////////////////////////////////////////////////////////
-
+// updates an existing user
 exports.update = function (user, passwd, active, extra, changePassword) {
   var db = internal.db;
 
@@ -112,10 +101,7 @@ exports.update = function (user, passwd, active, extra, changePassword) {
   return arangosh.checkRequestResult(requestResult);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes an existing user
-////////////////////////////////////////////////////////////////////////////////
-
+// deletes an existing user
 exports.remove = function (user) {
   var db = internal.db;
 
@@ -125,10 +111,7 @@ exports.remove = function (user) {
   arangosh.checkRequestResult(requestResult);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets an existing user
-////////////////////////////////////////////////////////////////////////////////
-
+// gets an existing user
 exports.document = function (user) {
   var db = internal.db;
 
@@ -138,10 +121,7 @@ exports.document = function (user) {
   return arangosh.checkRequestResult(requestResult);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether a combination of username / password is valid.
-////////////////////////////////////////////////////////////////////////////////
-
+// checks whether a combination of username / password is valid.
 exports.isValid = function (user, password) {
   var db = internal.db;
 
@@ -161,10 +141,7 @@ exports.isValid = function (user, password) {
   return requestResult.result;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets all existing users
-////////////////////////////////////////////////////////////////////////////////
-
+// gets all existing users
 exports.all = function () {
   var db = internal.db;
 
@@ -174,10 +151,7 @@ exports.all = function () {
   return arangosh.checkRequestResult(requestResult).result;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reloads the user authentication data
-////////////////////////////////////////////////////////////////////////////////
-
+// reloads the user authentication data
 exports.reload = function () {
   var db = internal.db;
 

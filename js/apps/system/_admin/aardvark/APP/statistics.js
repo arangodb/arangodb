@@ -396,7 +396,7 @@ function computeStatisticsLong (attrs, clusterId) {
 
 router.use((req, res, next) => {
   if (global.AUTHENTICATION_ENABLED()) {
-    if (!req.session.uid) {
+    if (!req.user) {
       throw new httperr.Unauthorized();
     }
   }

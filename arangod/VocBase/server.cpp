@@ -1991,8 +1991,9 @@ int TRI_GetUserDatabasesServer(TRI_server_t* server, char const* username,
       char const* dbName = p.second->_name;
       TRI_ASSERT(dbName != nullptr);
 
-      if (!RestServerFeature::AUTH_INFO.canUseDatabase(username, dbName)) {
-        // user cannot see database
+      auto level = RestServerFeature::AUTH_INFO.canUseDatabase(username, dbName);
+
+      if (level == AuthLevel::NONE) {
         continue;
       }
 

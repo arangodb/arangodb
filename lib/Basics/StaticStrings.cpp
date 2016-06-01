@@ -30,7 +30,6 @@ std::string const StaticStrings::Binary("binary");
 std::string const StaticStrings::Empty("");
 std::string const StaticStrings::N1800("1800");
 
-
 // system attribute names
 std::string const StaticStrings::IdString("_id");
 std::string const StaticStrings::KeyString("_key");
@@ -75,7 +74,7 @@ std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::Queue("x-arango-queue");
 std::string const StaticStrings::Server("server");
 std::string const StaticStrings::StartThread("x-arango-start-thread");
-    
+std::string const StaticStrings::WwwAuthenticate("www-authenticate");    
 
 // mime types
 std::string const StaticStrings::MimeTypeJson("application/json; charset=utf-8");

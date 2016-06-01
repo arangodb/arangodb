@@ -33,13 +33,10 @@ namespace velocypack {
 class Slice;
 }
 
-class AuthResult {
- public:
-  std::string _username;
-  bool _authorized;
-  bool _mustChange;
+enum class AuthLevel {
+  NONE, RO, RW
 };
-
+  
 class AuthEntry {
  public:
   AuthEntry() : _active(false), _mustChange(false) {}
@@ -66,6 +63,8 @@ class AuthEntry {
     return _passwordHash == hash;
   }
 
+  AuthLevel canUseDatabase(std::string const& dbname) const;
+
  private:
   std::string _username;
   std::string _passwordMethod;
@@ -75,48 +74,44 @@ class AuthEntry {
   bool _mustChange;
 };
 
-class AuthCache {
+class AuthResult {
  public:
-  AuthCache(std::string const& authorizationField, AuthEntry const& authEntry,
-            double expires)
-      : _authorizationField(authorizationField),
-        _username(authEntry.username()),
-        _mustChange(authEntry.mustChange()),
-        _expires(expires) {}
-
- public:
-  std::string const& username() const { return _username; }
-  bool mustChange() const { return _mustChange; }
-
- private:
-  std::string const _authorizationField;
-  std::string const _username;
-  bool const _mustChange;
-  double const _expires;
+  std::string _username;
+  bool _authorized;
+  bool _mustChange;
 };
 
 class AuthInfo {
  public:
-  bool canUseDatabase(std::string const& username, char const* databaseName);
+  enum class AuthType {
+    BASIC, JWT
+  };
 
-  AuthResult checkAuthentication(std::string const& authorizationField,
-                                 char const* databaseName);
-
+ public:
   bool reload();
+
+  AuthResult checkPassword(std::string const& username,
+			   std::string const& password);
+
+  AuthResult checkAuthentication(AuthType authType,
+				std::string const& secret);
+
+  AuthLevel canUseDatabase(std::string const& username,
+			   std::string const& dbname);
 
  private:
   void clear();
-
-  bool populate(velocypack::Slice const& slice);
   void insertInitial();
+  bool populate(velocypack::Slice const& slice);
 
-  std::string checkCache(std::string const& authorizationField,
-                         bool* mustChange);
+  AuthResult checkAuthenticationBasic(std::string const& secret);
+  AuthResult checkAuthenticationJWT(std::string const& secret);
 
  private:
-  std::unordered_map<std::string, arangodb::AuthEntry> _authInfo;
-  std::unordered_map<std::string, arangodb::AuthCache> _authCache;
   basics::ReadWriteLock _authInfoLock;
+
+  std::unordered_map<std::string, arangodb::AuthEntry> _authInfo;
+  std::unordered_map<std::string, arangodb::AuthResult> _authBasicCache;
 };
 }
 

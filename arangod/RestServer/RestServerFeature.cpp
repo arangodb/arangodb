@@ -41,6 +41,7 @@
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
@@ -87,6 +88,7 @@ RestServerFeature::RestServerFeature(
       _authenticationUnixSockets(true),
       _authenticationSystemOnly(false),
       _proxyCheck(true),
+      _jwtSecret(""),
       _handlerFactory(nullptr),
       _jobManager(nullptr) {
   setOptional(true);
@@ -123,12 +125,16 @@ void RestServerFeature::collectOptions(
       "--server.authentication-system-only",
       "use HTTP authentication only for requests to /_api and /_admin",
       new BooleanParameter(&_authenticationSystemOnly));
-
+  
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   options->addOption("--server.authentication-unix-sockets",
                      "authentication for requests via UNIX domain sockets",
                      new BooleanParameter(&_authenticationUnixSockets));
 #endif
+  
+  options->addOption("--server.jwt-secret",
+                     "secret to use when doing jwt authentication",
+                     new StringParameter(&_jwtSecret));
 
   options->addSection("http", "HttpServer features");
 
@@ -190,6 +196,15 @@ void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                        }),
         _accessControlAllowOrigins.end());
   }
+  
+  if (!_jwtSecret.empty()) {
+    if (_jwtSecret.length() > RestServerFeature::_maxSecretLength) {
+      LOG(ERR) << "Given JWT secret too long. Max length is " << RestServerFeature::_maxSecretLength;
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    generateNewJwtSecret();
+  }
 }
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
@@ -215,6 +230,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
 }
 
 static bool SetRequestContext(HttpRequest* request, void* data) {
+  TRI_ASSERT(RestServerFeature::RESTSERVER != nullptr);
   TRI_server_t* server = static_cast<TRI_server_t*>(data);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
 
@@ -229,17 +245,31 @@ static bool SetRequestContext(HttpRequest* request, void* data) {
     return false;
   }
 
-  VocbaseContext* ctx = new arangodb::VocbaseContext(request, vocbase);
+  VocbaseContext* ctx = new arangodb::VocbaseContext(request, vocbase, RestServerFeature::getJwtSecret());
   request->setRequestContext(ctx, true);
 
   // the "true" means the request is the owner of the context
   return true;
 }
 
-void RestServerFeature::prepare() { HttpHandlerFactory::setMaintenance(true); }
+void RestServerFeature::generateNewJwtSecret() {
+  _jwtSecret = "";
+  std::random_device rd;
+  std::mt19937 rng(rd());
+  std::uniform_int_distribution<int> distribution(0,255);
+
+  for (size_t i=0;i<RestServerFeature::_maxSecretLength;i++) {
+    _jwtSecret += distribution(rng);
+  }
+}
+
+void RestServerFeature::prepare() {
+  HttpHandlerFactory::setMaintenance(true);
+}
 
 void RestServerFeature::start() {
   RESTSERVER = this;
+
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
   _httpOptions._vocbase = DatabaseFeature::DATABASE->vocbase();
@@ -495,6 +525,10 @@ void RestServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/shutdown",
       RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
+  
+  _handlerFactory->addPrefixHandler(
+      "/_open/auth",
+      RestHandlerCreator<arangodb::RestAuthHandler>::createData<std::string const*>, &_jwtSecret);
 
   // ...........................................................................
   // /_admin
