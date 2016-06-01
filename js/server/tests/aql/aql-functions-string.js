@@ -34,6 +34,7 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
+var assertQueryWarningAndFalse = helper.assertQueryWarningAndFalse;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -54,6 +55,135 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test regex function, invalid arguments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRegexInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX(\"test\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX(\"test\", \"meow\", \"foo\", \"bar\")"); 
+      
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"[\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"[^\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"a.(\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"(a\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"(a]\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"**\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"?\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"*\")");
+    },
+
+    testRegex : function () {
+      var values = [
+        // whole words
+        ["the quick brown fox", "the", true],
+        ["the quick brown fox", "quick", true],
+        ["the quick brown fox", "quicK", false],
+        ["the quick brown fox", "quIcK", false],
+        ["the quick brown fox", "brown", true],
+        ["the quick brown fox", "fox", true],
+        ["the quick brown fox", "The", false],
+        ["the quick brown fox", "THE", false],
+        ["the quick brown fox", "foxx", false],
+        ["the quick brown fox", "hasi", false],
+        
+        // anchored
+        ["the quick brown fox", "^the", true],
+        ["the quick brown fox", "^the$", false],
+        ["the quick brown fox", "^the quick", true],
+        ["the quick brown fox", "^the quick brown", true],
+        ["the quick brown fox", "^the quick brown fo", true],
+        ["the quick brown fox", "^th", true],
+        ["the quick brown fox", "^t", true],
+        ["the quick brown fox", "^the quick$", false],
+        ["the quick brown fox", "^quick", false],
+        ["the quick brown fox", "quick$", false],
+        ["the quick brown fox", "^quick$", false],
+        ["the quick brown fox", "^brown", false],
+        ["the quick brown fox", "brown$", false],
+        ["the quick brown fox", "^brown$", false],
+        ["the quick brown fox", "fox", true],
+        ["the quick brown fox", "fox$", true],
+        ["the quick brown fox", "^fox$", false],
+        ["the quick brown fox", "The", false],
+        ["the quick brown fox", "^The", false],
+        ["the quick brown fox", "THE", false],
+        ["the quick brown fox", "^THE", false],
+        ["the quick brown fox", "foxx", false],
+        ["the quick brown fox", "foxx$", false],
+        ["the quick brown fox", "the quick brown fox$", true],
+        ["the quick brown fox", "brown fox$", true],
+        ["the quick brown fox", "quick brown fox$", true],
+        ["the quick brown fox", "he quick brown fox$", true],
+        ["the quick brown fox", "e quick brown fox$", true],
+        ["the quick brown fox", "quick brown fox$", true],
+        ["the quick brown fox", "x$", true],
+        ["the quick brown fox", "^", true],
+        ["the quick brown fox", "$", true],
+        ["the quick brown fox", "^.*$", true],
+        ["the quick brown fox", ".*", true],
+        ["the quick brown fox", "^.*", true],
+        ["the quick brown fox", "^.*$", true],
+
+        // partials
+        ["the quick brown fox", " quick", true],
+        ["the quick brown fox", " Quick", false],
+        ["the quick brown fox", "the quick", true],
+        ["the quick brown fox", "the slow", false],
+        ["the quick brown fox", "the quick brown", true],
+        ["the quick brown fox", "the quick browne", false],
+        ["the quick brown fox", "the quick brownfox", false],
+        ["the quick brown fox", "the quick brown fox", true],
+        ["the quick brown fox", "the quick brown foxx", false],
+        ["the quick brown fox", "quick brown fox", true],
+        ["the quick brown fox", "a quick brown fox", false],
+        ["the quick brown fox", "brown fox", true],
+        ["the quick brown fox", "rown fox", true],
+        ["the quick brown fox", "rown f", true],
+        ["the quick brown fox", "e q", true],
+        ["the quick brown fox", "f z", false],
+        ["the quick brown fox", "red fo", false],
+        ["the quick brown fox", "köter", false],
+        ["the quick brown fox", "ö", false],
+        ["the quick brown fox", "z", false],
+        ["the quick brown fox", "z", false],
+        ["the quick brown fox", " ", true],
+        ["the quick brown fox", "  ", false],
+        ["the quick brown fox", "", true],
+
+        // wildcards
+        ["the quick brown fox", "the.*fox", true],
+        ["the quick brown fox", "^the.*fox$", true],
+        ["the quick brown fox", "^the.*dog$", false],
+        ["the quick brown fox", "the (quick|slow) (red|green|brown) (dog|cat|fox)", true],
+        ["the quick brown fox", "the .*(red|green|brown) (dog|cat|fox)", true],
+        ["the quick brown fox", "^the .*(red|green|brown) (dog|cat|fox)", true],
+        ["the quick brown fox", "the (quick|slow) (red|green|brown) (dog|cat)", false],
+        ["the quick brown fox", "^the (quick|slow) (red|green|brown) (dog|cat)", false],
+        ["the quick brown fox", "^the .*(red|green|brown) (dog|cat)", false],
+        ["the quick brown fox", "the .*(red|green|brown) (dog|cat)", false],
+        ["the quick brown fox", "the (slow|lazy) brown (fox|wolf)", false],
+        ["the quick brown fox", "the.*brown (fox|wolf)", true],
+        ["the quick brown fox", "^t.*(fox|wolf)", true],
+        ["the quick brown fox", "^t.*(fox|wolf)$", true],
+        ["the quick brown fox", "^t.*(fo|wolf)x$", true],
+        ["the quick brown fox", "^t.*(fo|wolf)xx", false],
+      ];
+
+      values.forEach(function(v) {
+        var query = "RETURN REGEX(@what, @re)";
+        assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        
+        query = "RETURN NOOPT(REGEX(@what, @re))";
+        assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        
+        query = "RETURN NOOPT(V8(REGEX(@what, @re)))";
+        assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+      });
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
