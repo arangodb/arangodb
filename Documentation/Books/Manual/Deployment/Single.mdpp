@@ -1,0 +1,31 @@
+!SECTION Single instance deployment
+
+TODO:
+
+!SUBSECTION Docker
+
+Basically show the startup of a Docker image and explain about
+authentication options.
+
+Explain how to mount an external volume for the data (or link to external
+information). 
+
+Mention the official `arangodb` and `arangodb/arangodb` images
+as well as the `arangodb/arangodb-preview` image?
+
+Explain specialities for Mac OSX. Say that as of June 2016, Windows not
+supported with this. List fundamental operating systems we support.
+
+!SUBSECTION Precompiled binaries and packages
+
+Link to download page.
+
+Linux:
+For debian and rpm based Linux explain about directories of the data and
+configuration.
+
+OSX:
+Explain specialities for OSX.
+
+Windows:
+Explain setup as service and for a single user, both supported?

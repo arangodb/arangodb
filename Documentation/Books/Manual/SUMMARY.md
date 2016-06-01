@@ -133,6 +133,10 @@
     * [Firewall setup](Administration/Sharding/FirewallSetup.md)
 #
 * [Deployment](Deployment/README.md)
+  * [Single instance](Deployment/Single.md)
+  * [Cluster: DC/OS](Deployment/Mesos.md)
+  * [Cluster: Docker](Deployment/Docker.md)
+  * [Cluster: Local test](Deployment/Local.md)
 #
 * [Troubleshooting](Troubleshooting/README.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)

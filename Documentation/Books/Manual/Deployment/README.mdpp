@@ -1,1 +1,6 @@
 !CHAPTER Deployment
+
+- [Single instance](Single.md)
+- [Cluster: DC/OS, Apache Mesos and Marathon](Mesos.md)
+- [Cluster: Launching an ArangoDB cluster using Docker containers](Docker.md)
+- [Cluster: Local test setup](Local.md)
