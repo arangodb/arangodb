@@ -139,7 +139,7 @@ std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
     : RestBaseHandler(request),
       _context(static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context->getVocbase()),
+      _vocbase(_context->vocbase()),
       _nolockHeaderSet(nullptr) {}
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}

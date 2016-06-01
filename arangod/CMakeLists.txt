@@ -290,19 +290,19 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
+  VocBase/AuthInfo.cpp
   VocBase/DatafileStatistics.cpp
   VocBase/Ditch.cpp
   VocBase/ExampleMatcher.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
+  VocBase/MasterPointers.cpp
   VocBase/Traverser.cpp
-  VocBase/auth.cpp
   VocBase/cleanup.cpp
   VocBase/collection.cpp
   VocBase/compactor.cpp
   VocBase/datafile.cpp
   VocBase/document-collection.cpp
-  VocBase/MasterPointers.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp

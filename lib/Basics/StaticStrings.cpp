@@ -71,12 +71,10 @@ std::string const StaticStrings::ExposedCorsHeaders("etag, content-encoding, con
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::Location("location");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
-std::string const StaticStrings::OmitWwwAuthenticate("x-omit-www-authenticate");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::Queue("x-arango-queue");
 std::string const StaticStrings::Server("server");
 std::string const StaticStrings::StartThread("x-arango-start-thread");
-std::string const StaticStrings::WwwAuthenticate("www-authenticate");
     
 
 // mime types

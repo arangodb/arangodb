@@ -557,14 +557,6 @@ bool HttpCommTask::processRead() {
   // not authenticated
   else {
     HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED);
-    if (sendWwwAuthenticateHeader()) {
-      std::string realm =
-          "basic realm=\"" +
-          _server->handlerFactory()->authenticationRealm(_request) + "\"";
-
-      response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
-    }
-
     clearRequest();
     handleResponse(&response);
   }
@@ -985,17 +977,6 @@ void HttpCommTask::resetState(bool close) {
   _newRequest = true;
   _readRequestBody = false;
   _startThread = false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decides whether or not we should send back a www-authenticate header
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpCommTask::sendWwwAuthenticateHeader() const {
-  bool found;
-  _request->header(StaticStrings::OmitWwwAuthenticate, found);
-
-  return !found;
 }
 
 bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {

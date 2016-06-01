@@ -75,14 +75,13 @@ using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
 
+AuthInfo* RestServerFeature::AUTH_INFO = nullptr;
 RestServerFeature* RestServerFeature::RESTSERVER = nullptr;
 
 RestServerFeature::RestServerFeature(
-    application_features::ApplicationServer* server,
-    std::string const& authenticationRealm)
+    application_features::ApplicationServer* server)
     : ApplicationFeature(server, "RestServer"),
       _keepAliveTimeout(300.0),
-      _authenticationRealm(authenticationRealm),
       _allowMethodOverride(false),
       _authentication(true),
       _authenticationUnixSockets(true),
@@ -107,11 +106,10 @@ RestServerFeature::RestServerFeature(
 void RestServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
-  
+
   options->addOption("--server.authentication",
                      "enable or disable authentication for ALL client requests",
                      new BooleanParameter(&_authentication));
-  
 
   options->addOption(
       "--server.authentication-system-only",
@@ -139,10 +137,11 @@ void RestServerFeature::collectOptions(
       "do not expose \"Server: ArangoDB\" header in HTTP responses",
       new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
 
-  options->addOption("--http.trusted-origin",
-                     "trusted origin URLs for CORS requests with credentials",
-                     new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
-  
+  options->addOption(
+      "--http.trusted-origin",
+      "trusted origin URLs for CORS requests with credentials",
+      new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
+
   options->addSection("frontend", "Frontend options");
 
   options->addOption("--frontend.proxy-request-check",
@@ -150,7 +149,8 @@ void RestServerFeature::collectOptions(
                      new BooleanParameter(&_proxyCheck));
 
   options->addOption("--frontend.trusted-proxy",
-                     "list of proxies to trust (may be IP or network). Make sure --frontend.proxy-request-check is enabled",
+                     "list of proxies to trust (may be IP or network). Make "
+                     "sure --frontend.proxy-request-check is enabled",
                      new VectorParameter<StringParameter>(&_trustedProxies));
 }
 
@@ -172,13 +172,15 @@ void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
         it = it.substr(0, it.size() - 1);
       }
     }
- 
-    // remove empty members 
+
+    // remove empty members
     _accessControlAllowOrigins.erase(
-      std::remove_if(_accessControlAllowOrigins.begin(), _accessControlAllowOrigins.end(), 
-                     [](std::string const& value) { 
-                       return basics::StringUtils::trim(value).empty(); 
-                     }), _accessControlAllowOrigins.end());
+        std::remove_if(_accessControlAllowOrigins.begin(),
+                       _accessControlAllowOrigins.end(),
+                       [](std::string const& value) {
+                         return basics::StringUtils::trim(value).empty();
+                       }),
+        _accessControlAllowOrigins.end());
   }
 }
 
@@ -219,16 +221,14 @@ static bool SetRequestContext(HttpRequest* request, void* data) {
     return false;
   }
 
-  VocbaseContext* ctx = new arangodb::VocbaseContext(request, server, vocbase);
+  VocbaseContext* ctx = new arangodb::VocbaseContext(request, vocbase);
   request->setRequestContext(ctx, true);
 
   // the "true" means the request is the owner of the context
   return true;
 }
 
-void RestServerFeature::prepare() {
-  HttpHandlerFactory::setMaintenance(true);
-}
+void RestServerFeature::prepare() { HttpHandlerFactory::setMaintenance(true); }
 
 void RestServerFeature::start() {
   RESTSERVER = this;
@@ -237,8 +237,7 @@ void RestServerFeature::start() {
   _httpOptions._vocbase = DatabaseFeature::DATABASE->vocbase();
 
   _handlerFactory.reset(new HttpHandlerFactory(
-      _authenticationRealm, _allowMethodOverride,
-      &SetRequestContext, DatabaseServerFeature::SERVER));
+      _allowMethodOverride, &SetRequestContext, DatabaseServerFeature::SERVER));
 
   defineHandlers();
   buildServers();
@@ -286,10 +285,10 @@ void RestServerFeature::buildServers() {
           "Endpoint");
 
   // unencrypted HTTP endpoints
-  HttpServer* httpServer = new HttpServer(
-      SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
-      _handlerFactory.get(), _jobManager.get(), _keepAliveTimeout,
-      _accessControlAllowOrigins);
+  HttpServer* httpServer =
+      new HttpServer(SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
+                     _handlerFactory.get(), _jobManager.get(),
+                     _keepAliveTimeout, _accessControlAllowOrigins);
 
   // YYY #warning FRANK filter list
   auto const& endpointList = endpoint->endpointList();
@@ -299,7 +298,8 @@ void RestServerFeature::buildServers() {
   // ssl endpoints
   if (endpointList.hasSsl()) {
     SslServerFeature* ssl =
-        application_features::ApplicationServer::getFeature<SslServerFeature>("SslServer");
+        application_features::ApplicationServer::getFeature<SslServerFeature>(
+            "SslServer");
 
     // check the ssl context
     if (ssl->sslContext() == nullptr) {
@@ -311,11 +311,10 @@ void RestServerFeature::buildServers() {
     SSL_CTX* sslContext = ssl->sslContext();
 
     // https
-    httpServer =
-        new HttpsServer(SchedulerFeature::SCHEDULER,
-                        DispatcherFeature::DISPATCHER, _handlerFactory.get(),
-                        _jobManager.get(), _keepAliveTimeout, _accessControlAllowOrigins,
-                        sslContext);
+    httpServer = new HttpsServer(
+        SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
+        _handlerFactory.get(), _jobManager.get(), _keepAliveTimeout,
+        _accessControlAllowOrigins, sslContext);
 
     httpServer->setEndpointList(&endpointList);
     _servers.push_back(httpServer);
@@ -472,8 +471,7 @@ void RestServerFeature::defineHandlers() {
       RestHandlerCreator<WorkMonitorHandler>::createNoData);
 
   _handlerFactory->addHandler(
-      "/_admin/json-echo",
-      RestHandlerCreator<RestEchoHandler>::createNoData);
+      "/_admin/json-echo", RestHandlerCreator<RestEchoHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers

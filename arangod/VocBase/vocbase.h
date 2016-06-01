@@ -264,11 +264,6 @@ struct TRI_vocbase_t {
   arangodb::CursorRepository* _cursorRepository;
   arangodb::CollectionKeysRepository* _collectionKeys;
 
-  std::unordered_map<std::string, arangodb::VocbaseAuthInfo*> _authInfo;
-  std::unordered_map<std::string, arangodb::VocbaseAuthCache*> _authCache;
-  arangodb::basics::ReadWriteLock _authInfoLock;
-  bool _authInfoLoaded;  // flag indicating whether the authentication info was
-                         // loaded successfully
   bool _hasCompactor;
   bool _isOwnAppsDirectory;
 

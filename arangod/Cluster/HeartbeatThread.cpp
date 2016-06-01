@@ -23,10 +23,13 @@
 
 #include "HeartbeatThread.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/ConditionLocker.h"
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -35,14 +38,12 @@
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "Dispatcher/Job.h"
+#include "Logger/Logger.h"
+#include "RestServer/RestServerFeature.h"
 #include "V8/v8-globals.h"
-#include "VocBase/auth.h"
+#include "VocBase/AuthInfo.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-#include <functional>
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -373,7 +374,7 @@ void HeartbeatThread::runCoordinator() {
             TRI_vocbase_t* vocbase =
                 TRI_UseCoordinatorDatabaseServer(_server, i->c_str());
 
-            if (vocbase != nullptr) {
+            if (vocbase != nullptr && TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
               LOG_TOPIC(DEBUG, Logger::HEARTBEAT) 
                   << "Reloading users for database " << vocbase->_name
                   << ".";
@@ -381,7 +382,7 @@ void HeartbeatThread::runCoordinator() {
               if (!fetchUsers(vocbase)) {
                 // something is wrong... probably the database server
                 // with the _users collection is not yet available
-                TRI_InsertInitialAuthInfo(vocbase);
+                RestServerFeature::AUTH_INFO->insertInitial();
                 allOK = false;
                 // we will not set oldUserVersion such that we will try this
                 // very same exercise again in the next heartbeat
@@ -557,7 +558,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         TRI_CreateCoordinatorDatabaseServer(_server, id, name.c_str(),
                                             &defaults, &vocbase);
         
-        if (vocbase != nullptr) {
+        if (vocbase != nullptr && TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
           HasRunOnce = 1;
           
           // insert initial user(s) for database
@@ -567,7 +568,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
                            // next heartbeat
           }
         }
-      } else {
+      } else if (TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
         if (_refetchUsers.find(vocbase) != _refetchUsers.end()) {
           // must re-fetch users for an existing database
           if (!fetchUsers(vocbase)) {
@@ -577,7 +578,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         
         TRI_ReleaseVocBase(vocbase);
       }
-      
     }
     
     // get the list of databases that we know about locally
@@ -752,17 +752,17 @@ bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
 
     if (users.length() == 0) {
       // no users found, now insert initial default user
-      TRI_InsertInitialAuthInfo(vocbase);
+      RestServerFeature::AUTH_INFO->insertInitial();
     } else {
       // users found in collection, insert them into cache
-      TRI_PopulateAuthInfo(vocbase, users);
+      RestServerFeature::AUTH_INFO->populate(users);
     }
 
     result = true;
   } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
     // could not access _users collection, probably the cluster
     // was just created... insert initial default user
-    TRI_InsertInitialAuthInfo(vocbase);
+    RestServerFeature::AUTH_INFO->insertInitial();
     result = true;
   } else if (res == TRI_ERROR_INTERNAL) {
     // something is wrong... probably the database server with the

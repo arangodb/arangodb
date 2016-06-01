@@ -165,10 +165,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new QueryRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RecoveryFeature(&server));
-  server.addFeature(new RestServerFeature(&server, "arangodb"));
-#ifdef ARANGODB_ENABLE_ROCKSDB
-  server.addFeature(new RocksDBFeature(&server));
-#endif
+  server.addFeature(new RestServerFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ScriptFeature(&server, &ret));
   server.addFeature(new ServerFeature(&server, &ret));
@@ -183,6 +180,10 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new V8PlatformFeature(&server));
   server.addFeature(new VersionFeature(&server));
   server.addFeature(new WorkMonitorFeature(&server));
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  server.addFeature(new RocksDBFeature(&server));
+#endif
 
 #ifdef ARANGODB_HAVE_FORK
   server.addFeature(new DaemonFeature(&server));

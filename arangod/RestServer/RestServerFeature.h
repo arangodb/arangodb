@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Actions/RestActionHandler.h"
+#include "VocBase/AuthInfo.h"
 
 namespace arangodb {
 namespace rest {
@@ -38,6 +39,9 @@ class RestServerThread;
 
 class RestServerFeature final
     : public application_features::ApplicationFeature {
+ public:
+  static AuthInfo* AUTH_INFO;
+
  public:
   static bool authenticationEnabled() {
     return RESTSERVER != nullptr && RESTSERVER->authentication();
@@ -56,11 +60,9 @@ class RestServerFeature final
 
  private:
   static RestServerFeature* RESTSERVER;
-
  
  public:
-  RestServerFeature(application_features::ApplicationServer*,
-                    std::string const&);
+  explicit RestServerFeature(application_features::ApplicationServer*);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -71,7 +73,6 @@ class RestServerFeature final
 
  private:
   double _keepAliveTimeout;
-  std::string const _authenticationRealm;
   bool _allowMethodOverride;
   bool _authentication;
   bool _authenticationUnixSockets;

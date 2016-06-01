@@ -71,7 +71,6 @@
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/auth.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
@@ -936,11 +935,11 @@ static bool ReloadAuthCoordinator(TRI_vocbase_t* vocbase) {
   VPackBuilder builder;
   builder.openArray();
 
-  int res = usersOnCoordinator(std::string(vocbase->_name), builder, 60.0);
+  int res = usersOnCoordinator(TRI_VOC_SYSTEM_DATABASE, builder, 60.0);
 
   if (res == TRI_ERROR_NO_ERROR) {
     builder.close();
-    return TRI_PopulateAuthInfo(vocbase, builder.slice());
+    return RestServerFeature::AUTH_INFO->populate(builder.slice());
   }
 
   return false;
@@ -968,7 +967,7 @@ static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ServerState::instance()->isCoordinator()) {
     result = ReloadAuthCoordinator(vocbase);
   } else {
-    result = TRI_ReloadAuthInfo(vocbase);
+    result = RestServerFeature::AUTH_INFO->reload();
   }
   if (result) {
     TRI_V8_RETURN_TRUE();
@@ -3201,7 +3200,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // populate the authentication cache. otherwise no one can access the new
   // database
-  TRI_ReloadAuthInfo(database);
+  RestServerFeature::AUTH_INFO->reload();
 
   // finally decrease the reference-counter
   TRI_ReleaseVocBase(database);
@@ -3235,9 +3234,6 @@ static void DropDatabaseCoordinator(
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
-
-  // clear local sid cache for database
-  arangodb::VocbaseContext::clearSid(name);
 
   int res = ci->dropDatabaseCoordinator(name, errorMsg, 120.0);
 
@@ -3305,9 +3301,6 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
-  // clear local sid cache for the database
-  arangodb::VocbaseContext::clearSid(name);
 
   // run the garbage collection in case the database held some objects which can
   // now be freed
