@@ -103,11 +103,13 @@ class AuthInfo {
                                  char const* databaseName);
 
   bool reload();
-  bool insertInitial();
-  bool populate(velocypack::Slice const& slice);
 
  private:
   void clear();
+
+  bool populate(velocypack::Slice const& slice);
+  void insertInitial();
+
   std::string checkCache(std::string const& authorizationField,
                          bool* mustChange);
 
@@ -115,7 +117,6 @@ class AuthInfo {
   std::unordered_map<std::string, arangodb::AuthEntry> _authInfo;
   std::unordered_map<std::string, arangodb::AuthCache> _authCache;
   basics::ReadWriteLock _authInfoLock;
-  bool _authInfoLoaded = false;
 };
 }
 

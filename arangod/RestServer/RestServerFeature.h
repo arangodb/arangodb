@@ -40,7 +40,7 @@ class RestServerThread;
 class RestServerFeature final
     : public application_features::ApplicationFeature {
  public:
-  static AuthInfo* AUTH_INFO;
+  static AuthInfo AUTH_INFO;
 
  public:
   static bool authenticationEnabled() {

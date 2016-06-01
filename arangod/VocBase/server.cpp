@@ -1363,9 +1363,6 @@ int TRI_InitDatabasesServer(TRI_server_t* server) {
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
 
-    // initialize the authentication data for the database
-    RestServerFeature::AUTH_INFO->reload();
-
     // start the compactor for the database
     TRI_StartCompactorVocBase(vocbase);
 
@@ -1618,7 +1615,6 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
     CreateApplicationDirectory(vocbase->_name, appPath.c_str());
 
     if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
-      RestServerFeature::AUTH_INFO->reload();
       TRI_StartCompactorVocBase(vocbase);
 
       // start the replication applier
@@ -1986,7 +1982,7 @@ int TRI_GetUserDatabasesServer(TRI_server_t* server, char const* username,
       char const* dbName = p.second->_name;
       TRI_ASSERT(dbName != nullptr);
 
-      if (!RestServerFeature::AUTH_INFO->canUseDatabase(username, dbName)) {
+      if (!RestServerFeature::AUTH_INFO.canUseDatabase(username, dbName)) {
         // user cannot see database
         continue;
       }

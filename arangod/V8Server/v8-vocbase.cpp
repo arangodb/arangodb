@@ -928,24 +928,6 @@ static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reloads the authentication info, coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ReloadAuthCoordinator(TRI_vocbase_t* vocbase) {
-  VPackBuilder builder;
-  builder.openArray();
-
-  int res = usersOnCoordinator(TRI_VOC_SYSTEM_DATABASE, builder, 60.0);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    builder.close();
-    return RestServerFeature::AUTH_INFO->populate(builder.slice());
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reloads the authentication info from collection _users
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -963,15 +945,12 @@ static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("RELOAD_AUTH()");
   }
 
-  bool result;
-  if (ServerState::instance()->isCoordinator()) {
-    result = ReloadAuthCoordinator(vocbase);
-  } else {
-    result = RestServerFeature::AUTH_INFO->reload();
-  }
+  bool result = RestServerFeature::AUTH_INFO.reload();
+
   if (result) {
     TRI_V8_RETURN_TRUE();
   }
+
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
@@ -3197,10 +3176,6 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // and switch back
   v8g->_vocbase = orig;
-
-  // populate the authentication cache. otherwise no one can access the new
-  // database
-  RestServerFeature::AUTH_INFO->reload();
 
   // finally decrease the reference-counter
   TRI_ReleaseVocBase(database);

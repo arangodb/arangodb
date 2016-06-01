@@ -29,9 +29,9 @@
 #include "Endpoint/ConnectionInfo.h"
 #include "Logger/Logger.h"
 #include "RestServer/RestServerFeature.h"
+#include "VocBase/AuthInfo.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-#include "Vocbase/AuthInfo.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -147,7 +147,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   }
 
   AuthResult result =
-      RestServerFeature::AUTH_INFO->checkAuthentication(auth, _vocbase->_name);
+      RestServerFeature::AUTH_INFO.checkAuthentication(auth, _vocbase->_name);
 
   if (!result._authorized) {
     return GeneralResponse::ResponseCode::UNAUTHORIZED;

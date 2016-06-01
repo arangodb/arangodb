@@ -75,7 +75,7 @@ using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
 
-AuthInfo* RestServerFeature::AUTH_INFO = nullptr;
+AuthInfo RestServerFeature::AUTH_INFO;
 RestServerFeature* RestServerFeature::RESTSERVER = nullptr;
 
 RestServerFeature::RestServerFeature(
@@ -258,10 +258,13 @@ void RestServerFeature::start() {
               << (_authenticationUnixSockets ? "on" : "off");
 #endif
   }
+
+  // populate the authentication cache. otherwise no one can access the new
+  // database
+  RestServerFeature::AUTH_INFO.reload();
 }
 
 void RestServerFeature::stop() {
-  RESTSERVER = nullptr;
   for (auto& server : _servers) {
     server->stopListening();
   }
@@ -275,6 +278,8 @@ void RestServerFeature::stop() {
   }
 
   _httpOptions._vocbase = nullptr;
+
+  RESTSERVER = nullptr;
 }
 
 void RestServerFeature::buildServers() {

@@ -23,6 +23,8 @@
 
 #include "AuthInfo.h"
 
+#include <iostream>
+
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -38,6 +40,7 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+using namespace arangodb::velocypack;
 
 static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
   if (slice.isNone() || !slice.isObject()) {
@@ -91,6 +94,14 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
   bool mustChange =
       VelocyPackHelper::getBooleanValue(slice, "changePassword", false);
 
+  std::cout
+    << "user: " << userSlice.copyString() << "\n"
+    << "method: " << methodSlice.copyString() << "\n"
+    << "salt: " << saltSlice.copyString() << "\n"
+    << "hash: " << hashSlice.copyString() << "\n"
+    << "active: " << active << "\n"
+    << "must change: " << mustChange << "\n";
+
   return AuthEntry(userSlice.copyString(), methodSlice.copyString(),
                    saltSlice.copyString(), hashSlice.copyString(), active,
                    mustChange);
@@ -99,27 +110,25 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
 void AuthInfo::clear() {
   _authInfo.clear();
   _authCache.clear();
-  _authInfoLoaded = false;
 }
 
 bool AuthInfo::reload() {
+  insertInitial();
+
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->vocbase();
+
+  if (vocbase == nullptr) {
+    LOG(DEBUG) << "system database is unknown, cannot load authentication "
+	       << "and authorization information";
+    return false;
+  }
 
   LOG(DEBUG) << "starting to load authentication and authorization information";
 
   WRITE_LOCKER(writeLocker, _authInfoLock);
 
-  TRI_vocbase_col_t* collection =
-      TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_USERS);
-
-  if (collection == nullptr) {
-    LOG(INFO) << "collection '_users' does not exist, no authentication will "
-                 "be available";
-    return false;
-  }
-
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
-                                  collection->_cid, TRI_TRANSACTION_READ);
+                                  TRI_COL_NAME_USERS, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -127,40 +136,37 @@ bool AuthInfo::reload() {
     return false;
   }
 
-  auto work = [&](TRI_doc_mptr_t const* ptr) {
-    VPackSlice slice(ptr->vpack());
-    AuthEntry auth = CreateAuthEntry(slice);
+  OperationResult users =
+    trx.all(TRI_COL_NAME_USERS, 0, UINT64_MAX, OperationOptions());
 
-    if (auth.isActive()) {
-      _authInfo[auth.username()] = auth;
-    }
+  trx.finish(users.code);
 
-    return true;
-  };
+  if (users.failed()) {
+    LOG(ERR) << "cannot read users from _users collection";
+    return false;
+  }
 
-  clear();
+  auto usersSlice = users.slice();
 
-  trx.invokeOnAllElements(collection->_name, work);
+  if (!usersSlice.isArray()) {
+    LOG(ERR) << "cannot read users from _users collection";
+    return false;
+  }
 
-  trx.finish(TRI_ERROR_NO_ERROR);
-
-  _authInfoLoaded = true;
-  return true;
-}
-
-bool AuthInfo::populate(VPackSlice const& slice) {
-  TRI_ASSERT(slice.isArray());
-
-  WRITE_LOCKER(writeLocker, _authInfoLock);
 
   clear();
 
-  for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
-    AuthEntry auth = CreateAuthEntry(authSlice);
+  if (usersSlice.length() == 0) {
+    insertInitial();
+  } else {
 
-    if (auth.isActive()) {
-      _authInfo.emplace(auth.username(), auth);
-    }
+    for (VPackSlice const& userSlice : VPackArrayIterator(usersSlice)) {
+      AuthEntry auth = CreateAuthEntry(userSlice);
+
+      if (auth.isActive()) {
+	_authInfo[auth.username()] = auth;
+      }
+    };
   }
 
   return true;
@@ -206,7 +212,29 @@ AuthResult AuthInfo::checkAuthentication(std::string const& authorizationField,
   return AuthResult();
 }
 
-bool AuthInfo::insertInitial() {
+bool AuthInfo::populate(VPackSlice const& slice) {
+  TRI_ASSERT(slice.isArray());
+
+  WRITE_LOCKER(writeLocker, _authInfoLock);
+
+  clear();
+
+  for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
+    AuthEntry auth = CreateAuthEntry(authSlice);
+
+    if (auth.isActive()) {
+      _authInfo.emplace(auth.username(), auth);
+    }
+  }
+
+  return true;
+}
+
+void AuthInfo::insertInitial() {
+  if (!_authInfo.empty()) {
+    return;
+  }
+
   try {
     VPackBuilder builder;
     builder.openArray();
@@ -234,7 +262,7 @@ bool AuthInfo::insertInitial() {
     builder.add("active", VPackValue(true));
 
     builder.add("databases", VPackValue(VPackValueType::Array));
-    builder.add(VPackValue(TRI_VOC_SYSTEM_DATABASE));
+    builder.add(VPackValue("*"));
     builder.close();
 
     builder.close();  // authData
@@ -242,13 +270,9 @@ bool AuthInfo::insertInitial() {
     builder.close();  // The Array
 
     populate(builder.slice());
-
-    return true;
   } catch (...) {
     // No action
   }
-  // We get here only through error
-  return false;
 }
 
 #if 0

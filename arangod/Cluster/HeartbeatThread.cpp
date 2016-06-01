@@ -63,7 +63,7 @@ HeartbeatThread::HeartbeatThread(TRI_server_t* server,
       _statusLock(),
       _agency(),
       _condition(),
-      _refetchUsers(),
+      _refetchUsers(true),
       _myId(ServerState::instance()->getId()),
       _interval(interval),
       _maxFailsBeforeWarning(maxFailsBeforeWarning),
@@ -379,10 +379,9 @@ void HeartbeatThread::runCoordinator() {
                   << "Reloading users for database " << vocbase->_name
                   << ".";
 
-              if (!fetchUsers(vocbase)) {
+              if (!fetchUsers()) {
                 // something is wrong... probably the database server
                 // with the _users collection is not yet available
-                RestServerFeature::AUTH_INFO->insertInitial();
                 allOK = false;
                 // we will not set oldUserVersion such that we will try this
                 // very same exercise again in the next heartbeat
@@ -562,16 +561,16 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
           HasRunOnce = 1;
           
           // insert initial user(s) for database
-          if (!fetchUsers(vocbase)) {
+          if (!fetchUsers()) {
             TRI_ReleaseVocBase(vocbase);
             return false;  // We give up, we will try again in the
                            // next heartbeat
           }
         }
       } else if (TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
-        if (_refetchUsers.find(vocbase) != _refetchUsers.end()) {
+        if (_refetchUsers) {
           // must re-fetch users for an existing database
-          if (!fetchUsers(vocbase)) {
+          if (!fetchUsers()) {
             fetchingUsersFailed = true;
           }
         }
@@ -734,52 +733,23 @@ bool HeartbeatThread::sendState() {
 /// @brief fetch users for a database (run on coordinator only)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
-  bool result = false;
+bool HeartbeatThread::fetchUsers() {
   VPackBuilder builder;
   builder.openArray();
 
   LOG_TOPIC(TRACE, Logger::HEARTBEAT) 
-      << "fetching users for database '" << vocbase->_name << "'";
+      << "fetching users for database";
 
-  int res = usersOnCoordinator(std::string(vocbase->_name), builder, 10.0);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    builder.close();
-    VPackSlice users = builder.slice();
-    // we were able to read from the _users collection
-    TRI_ASSERT(users.isArray());
-
-    if (users.length() == 0) {
-      // no users found, now insert initial default user
-      RestServerFeature::AUTH_INFO->insertInitial();
-    } else {
-      // users found in collection, insert them into cache
-      RestServerFeature::AUTH_INFO->populate(users);
-    }
-
-    result = true;
-  } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-    // could not access _users collection, probably the cluster
-    // was just created... insert initial default user
-    RestServerFeature::AUTH_INFO->insertInitial();
-    result = true;
-  } else if (res == TRI_ERROR_INTERNAL) {
-    // something is wrong... probably the database server with the
-    // _users collection is not yet available
-    // try again next time
-    result = false;
-  }
+  bool result = RestServerFeature::AUTH_INFO.reload();
 
   if (result) {
     LOG_TOPIC(TRACE, Logger::HEARTBEAT) 
-        << "fetching users for database '" << vocbase->_name << "' successful";
-    _refetchUsers.erase(vocbase);
+      << "fetching users successful";
+    _refetchUsers = false;
   } else {
     LOG_TOPIC(TRACE, Logger::HEARTBEAT) 
-        << "fetching users for database '" << vocbase->_name
-        << "' failed with error: " << TRI_errno_string(res);
-    _refetchUsers.insert(vocbase);
+      << "fetching users failed";
+    _refetchUsers = true;
   }
 
   return result;
