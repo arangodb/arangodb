@@ -381,13 +381,15 @@ void Agent::beginShutdown() {
   // Personal hygiene
   Thread::beginShutdown();
 
+  // Stop supervision
+  if (_config.supervision) {
+    _supervision.beginShutdown();
+  }
+
   // Stop constituent and key value stores
   _constituent.beginShutdown();
   _spearhead.beginShutdown();
   _readDB.beginShutdown();
-  if (_config.supervision) {
-    _supervision.beginShutdown();
-  }
 
   // Wake up all waiting REST handler (waitFor)
   CONDITION_LOCKER(guard, _appendCV);
