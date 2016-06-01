@@ -27,14 +27,14 @@
 #include <iostream>
 #include <v8.h>
 
-#include "ApplicationFeatures/ClientFeature.h"
-#include "ApplicationFeatures/ConsoleFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Import/ImportHelper.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
+#include "Shell/ClientFeature.h"
+#include "Shell/ConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"

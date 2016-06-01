@@ -20,9 +20,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ConsoleFeature.h"
+#include "ConsoleFeature.h"
 
-#include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/StringUtils.h"
 #include "Basics/messages.h"
 #include "Basics/shell-colors.h"
@@ -30,6 +29,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Shell/ClientFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

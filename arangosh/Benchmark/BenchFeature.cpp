@@ -25,13 +25,13 @@
 #include <iostream>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/StringUtils.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
