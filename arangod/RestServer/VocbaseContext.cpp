@@ -200,7 +200,21 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
     // no authentication required at all
     return GeneralResponse::ResponseCode::OK;
   }
+  
+  std::string const& path = _request->requestPath();
+  // mop: inside authenticateRequest() _request->user will be populated
+  GeneralResponse::ResponseCode result = authenticateRequest();
+  if (result == GeneralResponse::ResponseCode::UNAUTHORIZED || result == GeneralResponse::ResponseCode::FORBIDDEN) {
+    if (StringUtils::isPrefix(path, "/_open/") ||
+      StringUtils::isPrefix(path, "/_admin/aardvark/") || path == "/") {
+      // mop: these paths are always callable...they will be able to check req.user when it could be validated
+      result = GeneralResponse::ResponseCode::OK;
+    }
+  }
+  return result;
+}
 
+GeneralResponse::ResponseCode VocbaseContext::authenticateRequest() {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   // check if we need to run authentication for this type of
   // endpoint
@@ -228,11 +242,6 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
         return GeneralResponse::ResponseCode::OK;
       }
     }
-  }
-
-  if (StringUtils::isPrefix(path, "/_open/") ||
-      StringUtils::isPrefix(path, "/_admin/aardvark/") || path == "/") {
-    return GeneralResponse::ResponseCode::OK;
   }
 
   // .............................................................................
@@ -399,7 +408,8 @@ GeneralResponse::ResponseCode VocbaseContext::jwtAuthentication(std::string cons
     return GeneralResponse::ResponseCode::UNAUTHORIZED;
   }
   
-  if (!validateJwtBody(body)) {
+  std::string username;
+  if (!validateJwtBody(body, &username)) {
     LOG(DEBUG) << "Couldn't validate jwt body " << body;
     return GeneralResponse::ResponseCode::UNAUTHORIZED;
   }
@@ -408,6 +418,7 @@ GeneralResponse::ResponseCode VocbaseContext::jwtAuthentication(std::string cons
     LOG(DEBUG) << "Couldn't validate jwt signature " << signature;
     return GeneralResponse::ResponseCode::UNAUTHORIZED;
   }
+  _request->setUser(username);
 
   return GeneralResponse::ResponseCode::OK;
 }
@@ -463,7 +474,7 @@ bool VocbaseContext::validateJwtHeader(std::string const& header) {
   return true;
 }
 
-bool VocbaseContext::validateJwtBody(std::string const& body) {
+bool VocbaseContext::validateJwtBody(std::string const& body, std::string* username) {
   std::shared_ptr<VPackBuilder> bodyBuilder = parseJson(StringUtils::decodeBase64(body), "jwt body");
   if (bodyBuilder.get() == nullptr) {
     return false;
@@ -482,6 +493,13 @@ bool VocbaseContext::validateJwtBody(std::string const& body) {
   if (issSlice.copyString() != "arangodb") {
     return false;
   }
+  
+  VPackSlice const usernameSlice = bodySlice.get("preferred_username");
+  if (!usernameSlice.isString()) {
+    return false;
+  }
+  
+  *username = usernameSlice.copyString();
   
   // mop: optional exp (cluster currently uses non expiring jwts)
   if (bodySlice.hasKey("exp")) {

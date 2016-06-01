@@ -559,7 +559,7 @@ bool HttpCommTask::processRead() {
     HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED);
     if (sendWwwAuthenticateHeader()) {
       std::string realm =
-          "basic realm=\"" +
+          "Bearer token_type=\"JWT\", realm=\"" +
           _server->handlerFactory()->authenticationRealm(_request) + "\"";
 
       response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
