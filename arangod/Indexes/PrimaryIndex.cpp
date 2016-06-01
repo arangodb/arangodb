@@ -93,6 +93,25 @@ TRI_doc_mptr_t* PrimaryIndexIterator::next() {
   return nullptr;
 }
 
+void PrimaryIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& buffer, size_t limit) {
+  size_t atMost = limit;
+
+  buffer.clear();
+  
+  while (_iterator.valid() && atMost > 0) {
+    auto result = _index->lookup(_trx, _iterator.value());
+    _iterator.next();
+
+    if (result == nullptr) {
+      return;
+    }
+
+    buffer.emplace_back(result);
+    --atMost;
+  }
+}
+
+
 void PrimaryIndexIterator::reset() { _iterator.reset(); }
 
 TRI_doc_mptr_t* AllIndexIterator::next() {
@@ -101,6 +120,23 @@ TRI_doc_mptr_t* AllIndexIterator::next() {
   }
   return _index->findSequential(_trx, _position, _total);
 };
+
+void AllIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& buffer, size_t limit) {
+  size_t atMost = limit;
+
+  buffer.clear();
+
+  while (atMost > 0) {
+    auto result = next();
+
+    if (result == nullptr) {
+      return;
+    }
+
+    buffer.emplace_back(result);
+    --atMost;
+  }
+}
 
 void AllIndexIterator::reset() { _position.reset(); }
 
