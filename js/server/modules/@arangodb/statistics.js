@@ -29,10 +29,7 @@
 
 var internal = require("internal");
 var cluster = require("@arangodb/cluster");
-
 var db = internal.db;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialized
@@ -415,7 +412,6 @@ function compute15Minute (start, clusterId) {
   return result;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics interval
 ////////////////////////////////////////////////////////////////////////////////
@@ -590,7 +586,7 @@ exports.installPeriodicTasks = function () {
     return;
   }
 
-  console.info("Statistics: Installing regular tasks...");
+  console.debug("Statistics: Installing regular tasks...");
 
   var interval = exports.STATISTICS_INTERVAL;
   var interval15 = exports.STATISTICS_HISTORY_INTERVAL;
