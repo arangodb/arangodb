@@ -40,11 +40,9 @@ class ReplicationTransaction : public Transaction {
   /// @brief create the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  ReplicationTransaction(TRI_server_t* server, TRI_vocbase_t* vocbase,
-                         TRI_voc_tid_t externalId)
-      : Transaction(StandaloneTransactionContext::Create(vocbase), externalId),
-        _server(server),
-        _externalId(externalId) {
+  ReplicationTransaction(TRI_server_t* server, TRI_vocbase_t* vocbase)
+      : Transaction(StandaloneTransactionContext::Create(vocbase)),
+        _server(server) {
     TRI_UseDatabaseServer(_server, vocbase->_name);
   }
 
@@ -55,11 +53,6 @@ class ReplicationTransaction : public Transaction {
   ~ReplicationTransaction() { TRI_ReleaseDatabaseServer(_server, vocbase()); }
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the remote (external) id of the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline TRI_voc_tid_t externalId() const { return _externalId; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a collection by id
@@ -93,8 +86,6 @@ class ReplicationTransaction : public Transaction {
 
  private:
   TRI_server_t* _server;
-
-  TRI_voc_tid_t _externalId;
 };
 }
 

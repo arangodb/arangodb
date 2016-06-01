@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
 #include "Aql/Executor.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"

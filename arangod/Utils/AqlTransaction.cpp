@@ -82,9 +82,7 @@ int AqlTransaction::processCollectionNormal(aql::Collection* collection) {
 int AqlTransaction::lockCollections() {
   auto trx = getInternals();
 
-  for (size_t i = 0; i < trx->_collections._length; i++) {
-    auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-        TRI_AtVectorPointer(&trx->_collections, i));
+  for (auto& trxCollection : trx->_collections) {
     int res = TRI_LockCollectionTransaction(trxCollection,
                                             trxCollection->_accessType, 0);
     if (res != TRI_ERROR_NO_ERROR) {

@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
-#include "Aql/Function.h"
 #include "Aql/Variable.h"
 #include "V8/v8-globals.h"
 
@@ -40,8 +39,8 @@ class Builder;
 }
 
 namespace aql {
-
 struct AstNode;
+struct Function;
 class Query;
 struct V8Expression;
 
@@ -169,12 +168,6 @@ class Executor {
 
   /// @brief local value for literal object size threshold
   size_t const _literalSizeThreshold;
-
-  /// @brief AQL internal function names
-  static std::unordered_map<int, std::string const> const InternalFunctionNames;
-
-  /// @brief AQL user-callable function names
-  static std::unordered_map<std::string, Function const> const FunctionNames;
 
  public:
   /// @brief minimum number of array members / object attributes for considering

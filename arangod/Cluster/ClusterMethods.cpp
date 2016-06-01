@@ -860,14 +860,15 @@ int createDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::REQUESTS);
+  size_t nrGood = cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone,
+                                      Logger::REQUESTS);
 
   // Now listen to the results:
   if (!useMultiple) {
     TRI_ASSERT(requests.size() == 1);
     auto const& req = requests[0];
     auto res = req.result;
-    if (nrDone == 0) {
+    if (nrGood == 0) {
       // There has been Communcation error. Handle and return it.
       return handleGeneralCommErrors(&res);
     }
@@ -1018,14 +1019,15 @@ int deleteDocumentOnCoordinator(
 
     // Perform the requests
     size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::REQUESTS);
+    size_t nrGood = cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone,
+                                        Logger::REQUESTS);
 
     // Now listen to the results:
     if (!useMultiple) {
       TRI_ASSERT(requests.size() == 1);
       auto const& req = requests[0];
       auto res = req.result;
-      if (nrDone == 0) {
+      if (nrGood == 0) {
         return handleGeneralCommErrors(&res);
       }
       responseCode = res.answer_code;

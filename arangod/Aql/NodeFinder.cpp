@@ -29,7 +29,7 @@ namespace aql {
 /// @brief node finder for one node type
 template <>
 NodeFinder<ExecutionNode::NodeType>::NodeFinder(
-    ExecutionNode::NodeType lookingFor, std::vector<ExecutionNode*>& out,
+    ExecutionNode::NodeType lookingFor, SmallVector<ExecutionNode*>& out,
     bool enterSubqueries)
     : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
 
@@ -37,7 +37,7 @@ NodeFinder<ExecutionNode::NodeType>::NodeFinder(
 template <>
 NodeFinder<std::vector<ExecutionNode::NodeType>>::NodeFinder(
     std::vector<ExecutionNode::NodeType> lookingFor,
-    std::vector<ExecutionNode*>& out, bool enterSubqueries)
+    SmallVector<ExecutionNode*>& out, bool enterSubqueries)
     : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
 
 /// @brief before method for one node type
@@ -66,7 +66,7 @@ bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(
 }
 
 /// @brief node finder for one node type
-EndNodeFinder::EndNodeFinder(std::vector<ExecutionNode*>& out,
+EndNodeFinder::EndNodeFinder(SmallVector<ExecutionNode*>& out,
                              bool enterSubqueries)
     : _out(out), _found({false}), _enterSubqueries(enterSubqueries) {}
 

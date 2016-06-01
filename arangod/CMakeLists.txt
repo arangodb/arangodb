@@ -122,6 +122,7 @@ add_executable(${BIN_ARANGOD}
   Aql/ExecutionStats.cpp
   Aql/Executor.cpp
   Aql/Expression.cpp
+  Aql/FunctionDefinitions.cpp
   Aql/Function.cpp
   Aql/Functions.cpp
   Aql/Graphs.cpp

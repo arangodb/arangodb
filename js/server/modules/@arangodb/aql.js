@@ -2122,10 +2122,15 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
 function AQL_CONCAT () {
   'use strict';
 
-  var result = '', i;
+  var result = '', what = arguments;
+  if (what.length === 1 && Array.isArray(what[0])) {
+    what = arguments[0];
+  }
+  
+  var i, n = what.length;
 
-  for (i = 0; i < arguments.length; ++i) {
-    var element = arguments[i];
+  for (i = 0; i < n; ++i) {
+    var element = what[i];
     var weight = TYPEWEIGHT(element);
     if (weight === TYPEWEIGHT_NULL) {
       continue;
@@ -2143,13 +2148,28 @@ function AQL_CONCAT () {
 function AQL_CONCAT_SEPARATOR () {
   'use strict';
 
-  var separator, found = false, result = '', i, j;
+  var separator, found = false, result = '', i, element;
+
+  if (arguments.length === 2 && Array.isArray(arguments[1])) {
+    separator = AQL_TO_STRING(arguments[0]);
+    for (i = 0; i < arguments[1].length; ++i) {
+      element = arguments[1][i];
+      if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+        continue;
+      }
+      if (found) {
+        result += separator;
+      }
+      result += AQL_TO_STRING(element);
+      found = true;
+    }
+    return result;
+  }
 
   for (i = 0; i < arguments.length; ++i) {
-    var element = arguments[i];
-    var weight = TYPEWEIGHT(element);
+    element = arguments[i];
  
-    if (i > 0 && weight === TYPEWEIGHT_NULL) {
+    if (i > 0 && TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
       continue;
     }
     if (i === 0) {
@@ -2901,6 +2921,136 @@ function AQL_POW (base, exp) {
   'use strict';
 
   return NUMERIC_VALUE(Math.pow(AQL_TO_NUMBER(base), AQL_TO_NUMBER(exp)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log(n)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_LOG (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.log(AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log(2)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_LOG2 (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.log2(AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log(10)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_LOG10 (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.log10(AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exp(n)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_EXP (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.exp(AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exp(2)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_EXP2 (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.pow(2, AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sin
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_SIN (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.sin(AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cos
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_COS (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.cos(AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tan
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_TAN (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.tan(AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief asin
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ASIN (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.asin(AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief acos
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ACOS (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.acos(AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atan
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ATAN (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.atan(AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief radians
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_RADIANS (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(value * (Math.PI / 180));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief degrees
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DEGREES (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(value * (180 / Math.PI));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8182,6 +8332,19 @@ exports.AQL_ABS = AQL_ABS;
 exports.AQL_RAND = AQL_RAND;
 exports.AQL_SQRT = AQL_SQRT;
 exports.AQL_POW = AQL_POW;
+exports.AQL_LOG = AQL_LOG;
+exports.AQL_LOG2 = AQL_LOG2;
+exports.AQL_LOG10 = AQL_LOG10;
+exports.AQL_EXP = AQL_EXP;
+exports.AQL_EXP2 = AQL_EXP2;
+exports.AQL_SIN = AQL_SIN;
+exports.AQL_COS = AQL_COS;
+exports.AQL_TAN = AQL_TAN;
+exports.AQL_ASIN = AQL_ASIN;
+exports.AQL_ACOS = AQL_ACOS;
+exports.AQL_ATAN = AQL_ATAN;
+exports.AQL_RADIANS = AQL_RADIANS;
+exports.AQL_DEGREES = AQL_DEGREES;
 exports.AQL_LENGTH = AQL_LENGTH;
 exports.AQL_FIRST = AQL_FIRST;
 exports.AQL_LAST = AQL_LAST;

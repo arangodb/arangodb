@@ -35,6 +35,7 @@
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "Dispatcher/Job.h"
+#include "HttpServer/HttpHandlerFactory.h"
 #include "V8/v8-globals.h"
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
@@ -109,6 +110,16 @@ void HeartbeatThread::run() {
 void HeartbeatThread::runDBServer() {
   LOG_TOPIC(TRACE, Logger::HEARTBEAT) 
       << "starting heartbeat thread (DBServer version)";
+  
+  // mop: the heartbeat thread itself is now ready
+  setReady();
+  // mop: however we need to wait for the rest server here to come up
+  // otherwise we would already create collections and the coordinator would think
+  // ohhh the dbserver is online...pump some documents into it
+  // which fails when it is still in maintenance mode
+  while (arangodb::rest::HttpHandlerFactory::isMaintenance()) {
+    usleep(100000);
+  }
 
   // convert timeout to seconds
   double const interval = (double)_interval / 1000.0 / 1000.0;

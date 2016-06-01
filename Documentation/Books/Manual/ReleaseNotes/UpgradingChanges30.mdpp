@@ -585,7 +585,7 @@ of these operations return HTTP 200 regardless of the `waitForSync` value.
 
 The REST routes PUT `/_api/simple/first` and `/_api/simple/last` have been removed
 entirely. These APIs were responsible for returning the first-inserted and
-least-inserted documents in a collection. This feature was built on cap constraints
+last-inserted documents in a collection. This feature was built on cap constraints
 internally, which have been removed in 3.0.
 
 Calling one of these endpoints in 3.0 will result in an HTTP 404 error.
@@ -706,7 +706,7 @@ API:
 
 - `/_open/cerberus` and `/_system/cerberus`: these endpoints were intended for some 
   ArangoDB-internal applications only
-- PUT /_api/simple/by-example-hash`, PUT `/_api/simple/by-example-skiplist` and
+- PUT `/_api/simple/by-example-hash`, PUT `/_api/simple/by-example-skiplist` and
   PUT `/_api/simple/by-condition-skiplist`: these methods were documented in early
   versions of ArangoDB but have been marked as not intended to be called by end
   users since ArangoDB version 2.3. These methods should not have been part of any

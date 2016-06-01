@@ -1215,17 +1215,37 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
   StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
+  bool handled = false;
   size_t const n = parameters.size();
 
-  for (size_t i = 0; i < n; ++i) {
-    AqlValue member = ExtractFunctionParameterValue(trx, parameters, i);
+  if (n == 1) {
+    AqlValue member = ExtractFunctionParameterValue(trx, parameters, 0);
+    if (member.isArray()) {
+      AqlValueMaterializer materializer(trx);
+      VPackSlice slice = materializer.slice(member, false);
 
-    if (member.isNull(true)) {
-      continue;
+      for (auto const& it : VPackArrayIterator(slice, true)) {
+        if (it.isNull()) {
+          continue;
+        }
+        // convert member to a string and append
+        AppendAsString(trx, adapter, AqlValue(it.begin()));
+      }
+      handled = true;
     }
+  }
 
-    // convert member to a string and append
-    AppendAsString(trx, adapter, member);
+  if (!handled) {
+    for (size_t i = 0; i < n; ++i) {
+      AqlValue member = ExtractFunctionParameterValue(trx, parameters, i);
+
+      if (member.isNull(true)) {
+        continue;
+      }
+
+      // convert member to a string and append
+      AppendAsString(trx, adapter, member);
+    }
   }
 
   size_t length = buffer->length();
@@ -2786,7 +2806,7 @@ AqlValue Functions::Round(arangodb::aql::Query* query,
   double input = value.toDouble(failed);
 
   // Rounds down for < x.4999 and up for > x.50000
-  return NumberValue(trx, floor(input + 0.5));  
+  return NumberValue(trx, std::floor(input + 0.5));  
 }
 
 /// @brief function ABS
@@ -2814,7 +2834,7 @@ AqlValue Functions::Ceil(arangodb::aql::Query* query,
   bool failed = false; // we're intentionally ignoring this variable
   double input = value.toDouble(failed);
 
-  return NumberValue(trx, ceil(input));  
+  return NumberValue(trx, std::ceil(input));  
 }
 
 /// @brief function FLOOR
@@ -2828,7 +2848,7 @@ AqlValue Functions::Floor(arangodb::aql::Query* query,
   bool failed = false; // we're intentionally ignoring this variable
   double input = value.toDouble(failed);
 
-  return NumberValue(trx, floor(input));  
+  return NumberValue(trx, std::floor(input));  
 }
 
 /// @brief function SQRT
@@ -2842,7 +2862,7 @@ AqlValue Functions::Sqrt(arangodb::aql::Query* query,
   bool failed = false; // we're intentionally ignoring this variable here
   double input = value.toDouble(failed);
 
-  return NumberValue(trx, sqrt(input));  
+  return NumberValue(trx, std::sqrt(input));  
 }
 
 /// @brief function POW
@@ -2858,7 +2878,191 @@ AqlValue Functions::Pow(arangodb::aql::Query* query,
   double base = baseValue.toDouble(failed);
   double exp = expValue.toDouble(failed);
 
-  return NumberValue(trx, pow(base, exp));
+  return NumberValue(trx, std::pow(base, exp));
+}
+
+/// @brief function LOG
+AqlValue Functions::Log(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "LOG", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double input = value.toDouble(failed);
+
+  return NumberValue(trx, std::log(input));  
+}
+
+/// @brief function LOG2
+AqlValue Functions::Log2(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "LOG2", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double input = value.toDouble(failed);
+
+  return NumberValue(trx, std::log2(input));  
+}
+
+/// @brief function LOG10
+AqlValue Functions::Log10(arangodb::aql::Query* query,
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "LOG10", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double input = value.toDouble(failed);
+
+  return NumberValue(trx, std::log10(input));  
+}
+
+/// @brief function EXP
+AqlValue Functions::Exp(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "EXP", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double input = value.toDouble(failed);
+
+  return NumberValue(trx, std::exp(input));  
+}
+
+/// @brief function EXP2
+AqlValue Functions::Exp2(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "EXP2", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double input = value.toDouble(failed);
+
+  return NumberValue(trx, std::exp2(input));  
+}
+
+/// @brief function SIN
+AqlValue Functions::Sin(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "SIN", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double input = value.toDouble(failed);
+
+  return NumberValue(trx, std::sin(input));  
+}
+
+/// @brief function COS
+AqlValue Functions::Cos(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "COS", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double input = value.toDouble(failed);
+
+  return NumberValue(trx, std::cos(input));  
+}
+
+/// @brief function TAN
+AqlValue Functions::Tan(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TAN", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double input = value.toDouble(failed);
+
+  return NumberValue(trx, std::tan(input));  
+}
+
+/// @brief function ASIN
+AqlValue Functions::Asin(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "ASIN", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double input = value.toDouble(failed);
+
+  return NumberValue(trx, std::asin(input));  
+}
+
+/// @brief function ACOS
+AqlValue Functions::Acos(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "ACOS", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double input = value.toDouble(failed);
+
+  return NumberValue(trx, std::acos(input));  
+}
+
+/// @brief function ATAN
+AqlValue Functions::Atan(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "ATAN", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double input = value.toDouble(failed);
+
+  return NumberValue(trx, std::atan(input));  
+}
+
+/// @brief function RADIANS
+AqlValue Functions::Radians(arangodb::aql::Query* query,
+                            arangodb::AqlTransaction* trx,
+                            VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "RADIANS", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double degrees = value.toDouble(failed);
+
+  // acos(-1) == PI
+  return NumberValue(trx, degrees * (std::acos(-1) / 180.0));
+}
+
+/// @brief function DEGREES
+AqlValue Functions::Degrees(arangodb::aql::Query* query,
+                            arangodb::AqlTransaction* trx,
+                            VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "DEGREES", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false; // we're intentionally ignoring this variable here
+  double radians = value.toDouble(failed);
+
+  // acos(-1) == PI
+  return NumberValue(trx, radians * (180.0 / std::acos(-1)));
 }
 
 /// @brief function RAND
