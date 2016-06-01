@@ -617,7 +617,7 @@ int Node::getInt() const {
   if (type() == NODE) {
     throw StoreException("Must not convert NODE type to int");
   }
-  return slice().getInt();
+  return static_cast<int>(slice().getInt());
   
 }
 

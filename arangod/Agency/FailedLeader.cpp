@@ -114,7 +114,7 @@ bool FailedLeader::start() const {
   todo.openArray();
   try {
     _snapshot(toDoPrefix + _jobId).toBuilder(todo);
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     LOG_TOPIC(INFO, Logger::AGENCY) <<
       "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
     return false;
