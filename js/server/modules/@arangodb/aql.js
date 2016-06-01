@@ -876,6 +876,16 @@ function CREATE_REGEX_PATTERN (chars) {
 function COMPILE_REGEX (regex, modifiers) {
   'use strict';
 
+  return new RegExp(AQL_TO_STRING(regex), modifiers);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compile a regex from a string pattern
+////////////////////////////////////////////////////////////////////////////////
+
+function COMPILE_LIKE (regex, modifiers) {
+  'use strict';
+
   regex = AQL_TO_STRING(regex);
   var i, n = regex.length;
   var escaped = false;
@@ -1044,10 +1054,13 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
 /// @brief return the numeric value or undefined if it is out of range
 ////////////////////////////////////////////////////////////////////////////////
 
-function NUMERIC_VALUE (value) {
+function NUMERIC_VALUE (value, nullify) {
   'use strict';
 
-  if (isNaN(value) || ! isFinite(value)) {
+  if (value === null || isNaN(value) || ! isFinite(value)) {
+    if (nullify) {
+      return null;
+    }
     return 0;
   }
 
@@ -2272,7 +2285,7 @@ function AQL_LIKE (value, regex, caseInsensitive) {
   regex = AQL_TO_STRING(regex);
 
   if (LikeCache[modifiers][regex] === undefined) {
-    LikeCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
+    LikeCache[modifiers][regex] = COMPILE_LIKE(regex, modifiers);
   }
 
   try {
@@ -2298,11 +2311,11 @@ function AQL_REGEX (value, regex, caseInsensitive) {
 
   regex = AQL_TO_STRING(regex);
 
-  if (RegexCache[modifiers][regex] === undefined) {
-    RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
-  }
-
   try {
+    if (RegexCache[modifiers][regex] === undefined) {
+      RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
+    }
+
     return RegexCache[modifiers][regex].test(AQL_TO_STRING(value));
   }
   catch (err) {
@@ -2712,7 +2725,7 @@ function AQL_TO_NUMBER (value) {
     case TYPEWEIGHT_NUMBER:
       return value;
     case TYPEWEIGHT_STRING:
-      var result = NUMERIC_VALUE(Number(value));
+      var result = NUMERIC_VALUE(Number(value), false);
       return ((TYPEWEIGHT(result) === TYPEWEIGHT_NUMBER) ? result : null);
     case TYPEWEIGHT_ARRAY:
       if (value.length === 0) {
@@ -2889,7 +2902,7 @@ function AQL_IS_DATESTRING (value) {
 function AQL_FLOOR (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.floor(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.floor(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2899,7 +2912,7 @@ function AQL_FLOOR (value) {
 function AQL_CEIL (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.ceil(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.ceil(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2909,7 +2922,7 @@ function AQL_CEIL (value) {
 function AQL_ROUND (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.round(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.round(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2919,7 +2932,7 @@ function AQL_ROUND (value) {
 function AQL_ABS (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.abs(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.abs(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2939,7 +2952,7 @@ function AQL_RAND () {
 function AQL_SQRT (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.sqrt(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.sqrt(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2949,7 +2962,7 @@ function AQL_SQRT (value) {
 function AQL_POW (base, exp) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.pow(AQL_TO_NUMBER(base), AQL_TO_NUMBER(exp)));
+  return NUMERIC_VALUE(Math.pow(AQL_TO_NUMBER(base), AQL_TO_NUMBER(exp)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2959,7 +2972,7 @@ function AQL_POW (base, exp) {
 function AQL_LOG (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.log(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.log(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2969,7 +2982,7 @@ function AQL_LOG (value) {
 function AQL_LOG2 (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.log2(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.log2(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2979,7 +2992,7 @@ function AQL_LOG2 (value) {
 function AQL_LOG10 (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.log10(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.log10(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2989,7 +3002,7 @@ function AQL_LOG10 (value) {
 function AQL_EXP (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.exp(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.exp(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2999,7 +3012,7 @@ function AQL_EXP (value) {
 function AQL_EXP2 (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.pow(2, AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.pow(2, AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3009,7 +3022,7 @@ function AQL_EXP2 (value) {
 function AQL_SIN (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.sin(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.sin(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3019,7 +3032,7 @@ function AQL_SIN (value) {
 function AQL_COS (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.cos(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.cos(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3029,7 +3042,7 @@ function AQL_COS (value) {
 function AQL_TAN (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.tan(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.tan(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3039,7 +3052,7 @@ function AQL_TAN (value) {
 function AQL_ASIN (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.asin(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.asin(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3049,7 +3062,7 @@ function AQL_ASIN (value) {
 function AQL_ACOS (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.acos(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.acos(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3059,7 +3072,7 @@ function AQL_ACOS (value) {
 function AQL_ATAN (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.atan(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.atan(AQL_TO_NUMBER(value)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3069,7 +3082,7 @@ function AQL_ATAN (value) {
 function AQL_ATAN2 (value1, value2) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.atan2(AQL_TO_NUMBER(value1), AQL_TO_NUMBER(value2)));
+  return NUMERIC_VALUE(Math.atan2(AQL_TO_NUMBER(value1), AQL_TO_NUMBER(value2)), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
