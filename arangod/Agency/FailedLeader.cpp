@@ -36,7 +36,7 @@ FailedLeader::FailedLeader(
   Job(snapshot, agent, jobId, creator, agencyPrefix), _database(database),
   _collection(collection), _shard(shard), _from(from), _to(to) {
   
-  try{
+  try {
     if (exists()) {
       if (!status()) {  
         start();        
@@ -46,12 +46,10 @@ FailedLeader::FailedLeader(
       start();
     }
   } catch (...) {
-    std::string tmp = shard;
-    if (tmp == "") {
-      Node const& job = _snapshot(pendingPrefix + _jobId);
-      tmp = job("shard").toJson();
+    if (_shard == "") {
+      _shard = _snapshot(pendingPrefix + _jobId + "/shard").getString();
     }
-    finish("Shards/" + tmp);
+    finish("Shards/" + _shard, false);
   }
   
 }

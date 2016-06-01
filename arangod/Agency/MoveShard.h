@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_FAILED_LEADER_H
-#define ARANGOD_CONSENSUS_FAILED_LEADER_H 1
+#ifndef ARANGOD_CONSENSUS_MOVE_SHARD_FROM_FOLLOWER_H
+#define ARANGOD_CONSENSUS_MOVE_SHARD_FROM_FOLLOWER_H 1
 
 #include "Job.h"
 #include "Supervision.h"
@@ -30,35 +30,33 @@
 namespace arangodb {
 namespace consensus {
 
-struct FailedLeader : public Job {
+struct MoveShard : public Job {
   
-  FailedLeader(Node const& snapshot,
-               Agent* agent,
-               std::string const& jobId,
-               std::string const& creator,
-               std::string const& agencyPrefix,
-               std::string const& database = std::string(),
-               std::string const& collection = std::string(),
-               std::string const& shard = std::string(),
-               std::string const& from = std::string(),
-               std::string const& to = std::string());
-
-  virtual ~FailedLeader();
-
-  virtual bool create () const override;
-  virtual bool start() const override; 
+  MoveShard (Node const& snapshot,
+             Agent* agent,
+             std::string const& jobId,
+             std::string const& creator,
+             std::string const& prefix,
+             std::string const& database = std::string(),
+             std::string const& collection = std::string(),
+             std::string const& shard = std::string(),
+             std::string const& from = std::string(),
+             std::string const& to = std::string());
+  
+  virtual ~MoveShard ();
+  
   virtual unsigned status () const override;
-    
+  virtual bool create () const override;
+  virtual bool start() const override;
+
   std::string _database;
   std::string _collection;
   std::string _shard;
   std::string _from;
   std::string _to;
-  
+
 };
 
-}} //namespaces
+}}
 
-#endif 
-
-
+#endif
