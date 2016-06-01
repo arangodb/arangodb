@@ -149,6 +149,20 @@ system. Note that when this option is set, a tcmalloc library must be present
 and exposed under the name `libtcmalloc`, `libtcmalloc_minimal` or
 `libtcmalloc_debug`.
 
+Please also make sure that relevant compiler optimizations flags are set. This
+can be achieved by setting the `CFLAGS` and `CXXFLAGS` environment variables
+when invoking the configure command. For example, to build with optimizations
+use:
+
+`CFLAGS="-O3" CXXFLAGS="-O3" ./configure ...`
+
+Please also note that specific compilers may need specific configuration in order
+to make ArangoDB compile and run. For example, g++ 6.0 and higher by default 
+perform some optimizations that are unsafe for V8 and may make it crash. For
+g++ 6 or higher, the following environment variables need to be set:
+
+`CFLAGS="-fno-delete-null-pointer-checks" CXXFLAGS="-fno-delete-null-pointer-checks" ./configure ...`
+
 !SUBSECTION Compiling Go
 
 Users F21 and duralog told us that some systems don't provide an update-to-date

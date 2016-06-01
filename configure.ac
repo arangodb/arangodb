@@ -759,6 +759,14 @@ echo $FLAG_INFO | tr "|" "\n" | while read a; do
 done
 
 AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+AC_MSG_NOTICE([                                                                                ])
+AC_MSG_NOTICE([NOTE: if you are compiling ArangoDB with g++ 6.0 or higher, please make sure to ])
+AC_MSG_NOTICE([set the following environment variables when compiling ArangoDB:                ])
+AC_MSG_NOTICE([                                                                                ])
+AC_MSG_NOTICE([  CFLAGS="-fno-omit-null-pointer-checks"                                        ])
+AC_MSG_NOTICE([  CXXFLAGS="-fno-omit-null-pointer-checks"                                      ])
+AC_MSG_NOTICE([                                                                                ])
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 
 dnl ============================================================================
 dnl --SECTION--                                                      END-OF-FILE
