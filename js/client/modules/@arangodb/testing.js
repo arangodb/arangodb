@@ -4023,7 +4023,7 @@ function unitTest(cases, options) {
     ARANGORESTORE_BIN,
     ARANGOSH_BIN];
   for (let b = 0; b < checkFiles.length; ++b) {
-    if (! fs.isFile(checkFiles[b])) {
+    if (! fs.isFile(checkFiles[b]) && ! fs.isFile(checkFiles[b]+ ".exe" )) {
       throw "unable to locate " + checkFiles[b];
     }
   }

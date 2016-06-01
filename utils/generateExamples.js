@@ -36,20 +36,20 @@ let ARANGOSH;
 
 function locateArangod() {
   ARANGOD = fs.join(fs.join(fs.makeAbsolute('')), "build/bin/arangod");
-  if(!fs.isFile(ARANGOD)) {
+  if(!fs.isFile(ARANGOD) && !!fs.isFile(ARANGOD + ".exe")) {
     ARANGOD = fs.join(fs.join(fs.makeAbsolute('')), "bin/arangod");
   }
-  if(!fs.isFile(ARANGOD)) {
+  if(!fs.isFile(ARANGOD) && !!fs.isFile(ARANGOD + ".exe")) {
     throw "Cannot find Aarangod to execute tests against";
   }
 }
 
 function locateArangosh() {
   ARANGOSH = fs.join(fs.join(fs.makeAbsolute('')), "build/bin/arangosh");
-  if(!fs.isFile(ARANGOSH)) {
+  if(!fs.isFile(ARANGOSH) && !!fs.isFile(ARANGOSH + ".exe")) {
     ARANGOSH = fs.join(fs.join(fs.makeAbsolute('')), "bin/arangosh");
   }
-  if(!fs.isFile(ARANGOSH)) {
+  if(!fs.isFile(ARANGOSH) && !!fs.isFile(ARANGOSH + ".exe")) {
     throw "Cannot find arangosh to run tests with";
   }
 }
