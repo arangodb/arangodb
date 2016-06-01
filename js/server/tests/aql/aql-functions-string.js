@@ -995,9 +995,19 @@ function ahuacatlStringFunctionsTestSuite () {
 /// @brief test concat function
 ////////////////////////////////////////////////////////////////////////////////
     
-    testConcatList : function () {
+    testConcatList1 : function () {
       var expected = [ "theQuickBrownアボカドJumps名称について" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について' )");
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT([ 'the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について' ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatList2 : function () {
+      var expected = [ "[\"the\",\"Quick\",\"\",null,\"Brown\",null,\"アボカド\",\"Jumps\",\"名称について\"]" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT([ 'the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について' ], null)");
       assertEqual(expected, actual);
     },
 
@@ -1015,6 +1025,8 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "4yes" ], getQueryResults("RETURN CONCAT(4, \"yes\")")); 
       assertEqual([ "[]yes" ], getQueryResults("RETURN CONCAT([ ], \"yes\")")); 
       assertEqual([ "{}yes" ], getQueryResults("RETURN CONCAT({ }, \"yes\")")); 
+      assertEqual([ "{\"a\":\"foo\",\"b\":2}yes" ], getQueryResults("RETURN CONCAT({ a: \"foo\", b: 2 }, \"yes\")")); 
+      assertEqual([ "[1,\"Quick\"][\"Brown\"]falseFox" ], getQueryResults("RETURN CONCAT([ 1, 'Quick' ], '', null, [ 'Brown' ], false, 'Fox')")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1041,9 +1053,19 @@ function ahuacatlStringFunctionsTestSuite () {
 /// @brief test concat function
 ////////////////////////////////////////////////////////////////////////////////
     
-    testConcatCxxList : function () {
+    testConcatCxxList1 : function () {
       var expected = [ "theQuickBrownアボカドJumps名称について" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(CONCAT('the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について'))");
+      var actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(CONCAT([ 'the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について' ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatCxxList2 : function () {
+      var expected = [ "[\"the\",\"Quick\",\"\",null,\"Brown\",null,\"アボカド\",\"Jumps\",\"名称について\"]false" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(CONCAT([ 'the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について' ], null, false))");
       assertEqual(expected, actual);
     },
 
@@ -1064,6 +1086,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "[1,2,3]yes" ], getQueryResults("RETURN NOOPT(CONCAT([ 1 , 2, 3 ], \"yes\"))")); 
       assertEqual([ "{}yes" ], getQueryResults("RETURN NOOPT(CONCAT({ }, \"yes\"))")); 
       assertEqual([ "{\"a\":\"foo\",\"b\":2}yes" ], getQueryResults("RETURN NOOPT(CONCAT({ a: \"foo\", b: 2 }, \"yes\"))")); 
+      assertEqual([ "[1,\"Quick\"][\"Brown\"]falseFox" ], getQueryResults("RETURN NOOPT(CONCAT([ 1, 'Quick' ], '', null, [ 'Brown' ], false, 'Fox'))")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1119,6 +1142,26 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test concat_separator function
 ////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorList4 : function () {
+      var expected = [ "the*/*/Quick*/*/Brown*/*/*/*/Fox*/*/Jumps" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT_SEPARATOR('*/*/', [ 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps' ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorList5 : function () {
+      var expected = [ "the*/*/Quick*/*/Brown*/*/*/*/Fox*/*/Jumps*/*/[]*/*/higher*/*/[\"than\",\"you\"]" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT_SEPARATOR('*/*/', [ 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps', [ ], 'higher', [ 'than', 'you' ] ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
 
     testConcatSeparatorInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT_SEPARATOR()"); 
@@ -1137,6 +1180,8 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "yesyes[]" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", [ ])"));
       assertEqual([ "yesyes[1,2,3]" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", [ 1,2,3 ])"));
       assertEqual([ "yesyes{}" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", { })"));
+      assertEqual([ "yesyes{}" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", [ \"yes\", { } ])"));
+      assertEqual([ "[\"yes\",{}]yestrue" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", [ \"yes\", { } ], null, true)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

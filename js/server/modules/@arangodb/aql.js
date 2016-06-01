@@ -3063,6 +3063,16 @@ function AQL_ATAN (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief atan2
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ATAN2 (value1, value2) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.atan2(AQL_TO_NUMBER(value1), AQL_TO_NUMBER(value2)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief radians
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8373,6 +8383,7 @@ exports.AQL_TAN = AQL_TAN;
 exports.AQL_ASIN = AQL_ASIN;
 exports.AQL_ACOS = AQL_ACOS;
 exports.AQL_ATAN = AQL_ATAN;
+exports.AQL_ATAN2 = AQL_ATAN2;
 exports.AQL_RADIANS = AQL_RADIANS;
 exports.AQL_DEGREES = AQL_DEGREES;
 exports.AQL_LENGTH = AQL_LENGTH;
