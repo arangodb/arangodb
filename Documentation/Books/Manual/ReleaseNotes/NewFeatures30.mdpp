@@ -105,6 +105,35 @@ The following AQL functions have been added in 3.0:
 - *TYPENAME(value)*: Returns the data type name of *value*. The data type name can
   be either *null*, *bool*, *number*, *string*, *array* or *object*.
 
+- *LOG(value)*: Returns the natural logarithm of *value*. The base is Euler's constant 
+  (2.71828...).
+
+- *LOG2(value)*: Returns the base 2 logarithm of *value*.
+
+- *LOG10(value)*: Returns the base 10 logarithm of *value*.
+
+- *EXP(value)*: Returns Euler's constant (2.71828...) raised to the power of *value*.
+
+- *EXP2(value)*: Returns 2 raised to the power of *value*.
+
+- *SIN(value)*: Returns the sine of *value*.
+
+- *COS(value)*: Returns the cosine of *value*.
+
+- *TAN(value)*: Returns the tangent of *value*.
+
+- *ASIN(value)*: Returns the arcsine of *value*.
+
+- *ACOS(value)*: Returns the arccosine of *value*.
+
+- *ATAN(value)*: Returns the arctangent of *value*.
+
+- *ATAN2(y, x)*: Returns the arctangent of the quotient of *y* and *x*.
+
+- *RADIANS(value)*: Returns the angle converted from degrees to radians.
+
+- *DEGREES(value)*: Returns the angle converted from radians to degrees.
+
 !SUBSECTION Optimizer improvements
 
 !SUBSUBSECTION "inline-subqueries" rule

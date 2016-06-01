@@ -321,6 +321,13 @@ ATAN(0) // 0
 ATAN(10) // 1.4711276743037347
 ```
 
+!SUBSECTION ATAN2()
+
+`ATAN2(y, x) → num`
+
+Returns the arctangent of quotient of *y* and *x*.
+```
+
 !SUBSECTION DEGREES()
 
 `DEGREES(rad) → num`
