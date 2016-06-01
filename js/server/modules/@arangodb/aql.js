@@ -40,6 +40,7 @@ var graphModule = require("@arangodb/general-graph");
 /// @brief cache for compiled regexes
 ////////////////////////////////////////////////////////////////////////////////
 
+var LikeCache = { };
 var RegexCache = { };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,6 +357,7 @@ function clearCaches () {
   'use strict';
 
   RegexCache        = { 'i' : { }, '' : { } };
+  LikeCache         = { 'i' : { }, '' : { } };
   ISODurationCache = { };
 }
 
@@ -2269,6 +2271,33 @@ function AQL_LIKE (value, regex, caseInsensitive) {
 
   regex = AQL_TO_STRING(regex);
 
+  if (LikeCache[modifiers][regex] === undefined) {
+    LikeCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
+  }
+
+  try {
+    return LikeCache[modifiers][regex].test(AQL_TO_STRING(value));
+  }
+  catch (err) {
+    WARN("LIKE", INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
+    return false;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief searches a substring in a string, using a regex
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_REGEX (value, regex, caseInsensitive) {
+  'use strict';
+
+  var modifiers = '';
+  if (caseInsensitive) {
+    modifiers += 'i';
+  }
+
+  regex = AQL_TO_STRING(regex);
+
   if (RegexCache[modifiers][regex] === undefined) {
     RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
   }
@@ -2277,7 +2306,7 @@ function AQL_LIKE (value, regex, caseInsensitive) {
     return RegexCache[modifiers][regex].test(AQL_TO_STRING(value));
   }
   catch (err) {
-    WARN("LIKE", INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
+    WARN("REGEX", INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
     return false;
   }
 }
@@ -3031,6 +3060,16 @@ function AQL_ATAN (value) {
   'use strict';
 
   return NUMERIC_VALUE(Math.atan(AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atan2
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ATAN2 (value1, value2) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.atan2(AQL_TO_NUMBER(value1), AQL_TO_NUMBER(value2)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8296,6 +8335,7 @@ exports.AQL_UPPER = AQL_UPPER;
 exports.AQL_SUBSTRING = AQL_SUBSTRING;
 exports.AQL_CONTAINS = AQL_CONTAINS;
 exports.AQL_LIKE = AQL_LIKE;
+exports.AQL_REGEX = AQL_REGEX;
 exports.AQL_LEFT = AQL_LEFT;
 exports.AQL_RIGHT = AQL_RIGHT;
 exports.AQL_TRIM = AQL_TRIM;
@@ -8343,6 +8383,7 @@ exports.AQL_TAN = AQL_TAN;
 exports.AQL_ASIN = AQL_ASIN;
 exports.AQL_ACOS = AQL_ACOS;
 exports.AQL_ATAN = AQL_ATAN;
+exports.AQL_ATAN2 = AQL_ATAN2;
 exports.AQL_RADIANS = AQL_RADIANS;
 exports.AQL_DEGREES = AQL_DEGREES;
 exports.AQL_LENGTH = AQL_LENGTH;

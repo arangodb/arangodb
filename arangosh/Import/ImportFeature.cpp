@@ -23,12 +23,12 @@
 #include "ImportFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ClientFeature.h"
-#include "Basics/StringUtils.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
 #include "Import/ImportHelper.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 

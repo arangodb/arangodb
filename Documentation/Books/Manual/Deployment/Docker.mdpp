@@ -1,0 +1,17 @@
+!SECTION Launching an ArangoDB cluster using Docker containers
+
+Essentially describe that the standard image can be used and explain
+needed command line options. Details can be found in 
+`scripts/startLocalDockerCluster.sh`.
+
+Explain which command line options play which role in connecting
+the cluster.
+
+Link to script in github repo.
+
+Explain that later more servers can be added by launching more docker 
+containers.
+
+Reiterate that this allows for synchronous replication with automatic
+failover but that it cannot replace failed instances or automatically
+scale up or down.

@@ -140,7 +140,7 @@ const optionsDefaults = {
   "concurrency": 3,
   "coreDirectory": "/var/tmp",
   "duration": 10,
-  "extraArgs": [],
+  "extraArgs": {},
   "extremeVerbosity": false,
   "force": true,
   "jsonReply": false,
@@ -1402,6 +1402,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
     instanceArgs["agency.id"] = String(i);
     instanceArgs["agency.size"] = String(N);
     instanceArgs["agency.wait-for-sync"] = String(wfs);
+    instanceArgs["agency.supervision"] = "true";
+    instanceArgs["agency.supervision-frequency"] = "5";
 
     if (i === N - 1) {
       let l = [];

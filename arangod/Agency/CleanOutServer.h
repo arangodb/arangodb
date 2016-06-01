@@ -18,26 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FUNCTION_DEFINITIONS_H
-#define ARANGOD_AQL_FUNCTION_DEFINITIONS_H 1
+#ifndef ARANGOD_CONSENSUS_CLEAN_OUT_SERVER_H
+#define ARANGOD_CONSENSUS_CLEAN_OUT_SERVER_H 1
 
-#include "Basics/Common.h"
-#include "Aql/Function.h"
+#include "Job.h"
+#include "Supervision.h"
 
 namespace arangodb {
-namespace aql {
+namespace consensus {
 
-struct FunctionDefinitions {
-  /// @brief AQL internal function names
-  static std::unordered_map<int, std::string const> const InternalFunctionNames;
+struct CleanOutServer : public Job {
   
-  /// @brief AQL user-callable function names
-  static std::unordered_map<std::string, Function const> FunctionNames;
+  CleanOutServer (Node const& snapshot, Agent* agent, std::string const& jobId,
+                  std::string const& creator, std::string const& prefix,
+                  std::string const& server);
+
+  virtual ~CleanOutServer ();
+
+  virtual unsigned status () const override;
+  virtual bool create () const override;
+  virtual bool start() const override;
+
+  std::string const& _server;
+  
 };
-}
-}
+
+}}
 
 #endif

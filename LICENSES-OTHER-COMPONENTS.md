@@ -23,19 +23,24 @@
 * Project Home: https://github.com/Cyan4973/xxHash/
 * License: [BSD License](https://github.com/Cyan4973/xxHash/blob/master/LICENSE)
 
-### Google V8 4.3.61
+### short_alloc
 
-* Project Home: https://code.google.com/p/v8/
+* Project Home: https://howardhinnant.github.io/stack_alloc.html
+* License: [MIT License](https://howardhinnant.github.io/short_alloc.h/)
+
+### Google V8 5.0.71.39
+
+* Project Home: https://github.com/v8/v8/
 * GITHUB: https://github.com/v8/v8
-* License: V8 [BSD-style 3-Clause License](https://github.com/v8/v8/blob/4.3.61/LICENSE.v8)
-* License: strongtalk [BSD-style 3-Clause License](https://github.com/v8/v8/blob/4.3.61/LICENSE.strongtalk)
-* License: valgrind [BSD-style 4-Clause license](https://github.com/v8/v8/blob/4.3.61/LICENSE.valgrind)
-* License: vtune, Dual-License [BSD 3-Clause License](https://github.com/v8/v8/blob/4.3.61/src/third_party/vtune/v8-vtune.h)
-* License: gmock [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gmock/LICENSE)
-* License: gtest [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gtest/LICENSE)
-* License: fdlibm [free as-is license](https://github.com/v8/v8/blob/4.3.61/src/third_party/fdlibm/LICENSE)
-* License: PCRE [BSD 3-Clause license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/regexp-pcre.js)
-* License: object-keys [BSD-style 3-Clause license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/object-keys.js) 
+* License: V8 [BSD-style 3-Clause License](https://github.com/v8/v8/blob/5.0.71.39/LICENSE.v8)
+* License: strongtalk [BSD-style 3-Clause License](https://github.com/v8/v8/blob/5.0.71.39/LICENSE.strongtalk)
+* License: valgrind [BSD-style 4-Clause license](https://github.com/v8/v8/blob/5.0.71.39/LICENSE.valgrind)
+* License: vtune, Dual-License [BSD 3-Clause License](https://github.com/v8/v8/blob/5.0.71.39/src/third_party/vtune/v8-vtune.h)
+* License: gmock [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-5.0.71.39/testing/gmock/LICENSE)
+* License: gtest [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-5.0.71.39/testing/gtest/LICENSE)
+* License: fdlibm [free as-is license](https://github.com/v8/v8/blob/5.0.71.39/src/third_party/fdlibm/LICENSE)
+* License: PCRE [BSD 3-Clause license](https://github.com/v8/v8/blob/5.0.71.39/test/mjsunit/third_party/regexp-pcre.js)
+* License: object-keys [BSD-style 3-Clause license](https://github.com/v8/v8/blob/5.0.71.39/test/mjsunit/third_party/object-keys.js) 
 
 ### ICU 54.1
 

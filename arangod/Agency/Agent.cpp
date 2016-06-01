@@ -424,7 +424,11 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   MUTEX_LOCKER(mutexLocker, _ioLock);
   _spearhead = compaction.get("readDB");
   _readDB = compaction.get("readDB");
-  _lastCommitIndex = std::stoul(compaction.get("_key").copyString());
+  try {
+    _lastCommitIndex = std::stoul(compaction.get("_key").copyString());
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+  }
   _nextCompationAfter = _lastCommitIndex + _config.compactionStepSize;
   return *this;
 }

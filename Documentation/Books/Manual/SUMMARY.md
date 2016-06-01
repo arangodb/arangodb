@@ -96,6 +96,12 @@
 #
 # Use cases / Advanced usage / Best practice (?)
 #
+* [Deployment](Deployment/README.md)
+  * [Single instance](Deployment/Single.md)
+  * [Cluster: DC/OS](Deployment/Mesos.md)
+  * [Cluster: Docker](Deployment/Docker.md)
+  * [Cluster: Local test](Deployment/Local.md)
+#
 * [Administration](Administration/README.md)
   * [ArangoDB Shell](Administration/Arangosh/README.md)
     * [Shell Output](Administration/Arangosh/Output.md)
@@ -131,8 +137,6 @@
     * [Implementation](Administration/Sharding/StatusOfImplementation.md)
     * [Authentication](Administration/Sharding/Authentication.md)
     * [Firewall setup](Administration/Sharding/FirewallSetup.md)
-#
-* [Deployment](Deployment/README.md)
 #
 * [Troubleshooting](Troubleshooting/README.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
@@ -177,7 +181,7 @@
         * [Sequential Access](Appendix/Deprecated/SimpleQueries/Access.md)
         * [Pagination](Appendix/Deprecated/SimpleQueries/Pagination.md)
         * [Modification Queries](Appendix/Deprecated/SimpleQueries/ModificationQueries.md)
-        * [Geo Queries](Appendix/Deprecated/SimpleQueries/GeoQueries.md)
+        * [Geo Queries](Appendix/Deprecated/SimpleQueriesGeoQueries.md)
         * [Fulltext Queries](Appendix/Deprecated/SimpleQueries/FulltextQueries.md)
       * [Actions](Appendix/Deprecated/Actions/README.md)
         * [Delivering HTML Pages](Appendix/Deprecated/Actions/HtmlExample.md)

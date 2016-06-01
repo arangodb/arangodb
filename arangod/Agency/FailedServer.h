@@ -18,26 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FUNCTION_DEFINITIONS_H
-#define ARANGOD_AQL_FUNCTION_DEFINITIONS_H 1
+#ifndef ARANGOD_CONSENSUS_FAILED_SERVER_H
+#define ARANGOD_CONSENSUS_FAILED_SERVER_H 1
 
-#include "Basics/Common.h"
-#include "Aql/Function.h"
+#include "Job.h"
+#include "Supervision.h"
 
 namespace arangodb {
-namespace aql {
+namespace consensus {
 
-struct FunctionDefinitions {
-  /// @brief AQL internal function names
-  static std::unordered_map<int, std::string const> const InternalFunctionNames;
+struct FailedServer : public Job {
+
+  FailedServer(Node const& snapshot, Agent* agent, std::string const& jobId,
+               std::string const& creator, std::string const& agencyPrefix,
+               std::string const& failed);
   
-  /// @brief AQL user-callable function names
-  static std::unordered_map<std::string, Function const> FunctionNames;
+  virtual ~FailedServer ();
+
+  virtual bool start() const override;
+  virtual bool create () const override;
+  virtual unsigned status () const override;
+  
+  std::string const& _failed;
+  
 };
-}
-}
+
+
+}}
 
 #endif

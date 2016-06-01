@@ -25,6 +25,8 @@ add_executable(${BIN_ARANGOBENCH}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Benchmark/BenchFeature.cpp
   Benchmark/arangobench.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp
 )
 
 target_link_libraries(${BIN_ARANGOBENCH}
@@ -67,6 +69,8 @@ add_executable(${BIN_ARANGODUMP}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Dump/DumpFeature.cpp
   Dump/arangodump.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp
   V8Client/ArangoClientHelper.cpp
 )
 
@@ -111,6 +115,8 @@ add_executable(${BIN_ARANGOIMP}
   Import/ImportFeature.cpp
   Import/ImportHelper.cpp
   Import/arangoimp.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp
   V8Client/ArangoClientHelper.cpp
 )
 
@@ -154,6 +160,8 @@ add_executable(${BIN_ARANGORESTORE}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Restore/RestoreFeature.cpp
   Restore/arangorestore.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp
   V8Client/ArangoClientHelper.cpp
 )
 
@@ -196,6 +204,8 @@ add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Import/ImportHelper.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp
   Shell/ShellFeature.cpp
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
