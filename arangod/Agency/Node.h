@@ -202,6 +202,18 @@ class Node {
   /// @brief Part of relative path which exists
   std::vector<std::string> exists(std::string const&) const;
 
+  /// @brief Get integer value (throws if type NODE or if conversion fails)
+  int getInt() const;
+
+  /// @brief Get insigned value (throws if type NODE or if conversion fails)
+  uint64_t getUInt() const;
+
+  /// @brief Get double value (throws if type NODE or if conversion fails)
+  double getDouble() const;
+
+  /// @brief Get string value (throws if type NODE or if conversion fails)
+  std::string getString() const;
+
  protected:
   /// @brief Add time to live entry
   virtual bool addTimeToLive(long millis);

@@ -154,6 +154,210 @@ POW( 5, -1 ) // 0.2
 POW( 5, 0 ) // 1
 ```
 
+!SUBSECTION LOG()
+
+`LOG(value) → num`
+
+Returns the natural logarithm of *value*. The base is Euler's
+constant (2.71828...).
+
+- **value** (number): the input value
+- returns **num** (number): the natural logarithm of *value*
+
+```js
+LOG(2.718281828459045) // 1
+LOG(10) // 2.302585092994046
+LOG(0) // null
+```
+
+!SUBSECTION LOG2()
+
+`LOG2(value) → num`
+
+Returns the base 2 logarithm of *value*.
+
+- **value** (number): the input value
+- returns **num** (number): the base 2 logarithm of *value*
+
+```js
+LOG2(1024) // 10
+LOG2(8) // 3
+LOG2(0) // null
+```
+
+!SUBSECTION LOG10()
+
+`LOG10(value) → num`
+
+Returns the base 10 logarithm of *value*.
+
+- **value** (number): the input value
+- returns **num** (number): the base 10 logarithm of *value*
+
+```js
+LOG10(10000) // 10
+LOG10(10) // 1
+LOG10(0) // null
+```
+
+!SUBSECTION EXP()
+
+`EXP(value) → num`
+
+Returns Euler's constant (2.71828...) raised to the power of *value*.
+
+- **value** (number): the input value
+- returns **num** (number): Euler's constant raised to the power of *value*
+
+```js
+EXP(1) // 2.718281828459045
+EXP(10) // 22026.46579480671
+EXP(0) // 1
+```
+
+!SUBSECTION EXP2()
+
+`EXP2(value) → num`
+
+Returns 2 raised to the power of *value*.
+
+- **value** (number): the input value
+- returns **num** (number): 2 raised to the power of *value*
+
+```js
+EXP2(16) // 65536
+EXP2(1) // 2
+EXP2(0) // 1
+```
+
+!SUBSECTION SIN()
+
+`SIN(value) → num`
+
+Returns the sine of *value*.
+
+- **value** (number): the input value
+- returns **num** (number): the sine of *value*
+
+```js
+SIN(3.141592653589783 / 2) // 1
+SIN(0) // 0
+SIN(-3.141592653589783 / 2) // -1
+```
+
+!SUBSECTION COS()
+
+`COS(value) → num`
+
+Returns the cosine of *value*.
+
+- **value** (number): the input value
+- returns **num** (number): the cosine of *value*
+
+```js
+COS(1) // 0.5403023058681398 
+COS(0) // 1
+COS(-3.141592653589783) // -1
+```
+
+!SUBSECTION TAN()
+
+`TAN(value) → num`
+
+Returns the tangent of *value*.
+
+- **value** (number): the input value
+- returns **num** (number): the tangent of *value*
+
+```js
+TAN(10) // 0.6483608274590866
+TAN(5) // -3.380515006246586
+TAN(0) // 0
+```
+
+!SUBSECTION ASIN()
+
+`ASIN(value) → num`
+
+Returns the arcsine of *value*.
+
+- **value** (number): the input value
+- returns **num** (number): the arcsine of *value*
+
+```js
+ASIN(-1) // -1.5707963267948966
+ASIN(0) // 0
+ASIN(2) // null
+2) // null
+```
+
+!SUBSECTION ACOS()
+
+`ACOS(value) → num`
+
+Returns the arccosine of *value*.
+
+- **value** (number): the input value
+- returns **num** (number): the arccosine of *value*
+
+```js
+ACOS(-1) // 3.141592653589793
+ACOS(0) // 1.5707963267948966
+ACOS(1) // 0
+```
+
+!SUBSECTION ATAN()
+
+`ATAN(value) → num`
+
+Returns the arctangent of *value*.
+
+- **value** (number): the input value
+- returns **num** (number): the arctangent of *value*
+
+```js
+ATAN(-1) // -0.7853981633974483
+ATAN(0) // 0
+ATAN(10) // 1.4711276743037347
+```
+
+!SUBSECTION ATAN2()
+
+`ATAN2(y, x) → num`
+
+Returns the arctangent of quotient of *y* and *x*.
+```
+
+!SUBSECTION DEGREES()
+
+`DEGREES(rad) → num`
+
+Returns the angle converted from radians to degrees.
+
+- **rad** (number): the input value
+- returns **num** (number): the angle in degrees
+
+```js
+DEGREES(0.7853981633974483) // 45
+DEGREES(0) // 0
+DEGREES(3.141592653589793) // 180
+```
+
+!SUBSECTION RADIANS()
+
+`RADIANS(deg) → num`
+
+Returns the angle converted from degrees to radians.
+
+- **deg** (number): the input value
+- returns **num** (number): the angle in radians
+
+```js
+RADIANS(180) // 3.141592653589793
+RADIANS(90) // 1.5707963267948966
+RADIANS(0) // 0
+```
+
 !SUBSECTION RAND()
 
 `RAND() → randomNumber`

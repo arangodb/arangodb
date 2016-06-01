@@ -102,6 +102,23 @@ TRI_doc_mptr_t* AllIndexIterator::next() {
   return _index->findSequential(_trx, _position, _total);
 };
 
+void AllIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& buffer, size_t limit) {
+  size_t atMost = limit;
+
+  buffer.clear();
+
+  while (atMost > 0) {
+    auto result = next();
+
+    if (result == nullptr) {
+      return;
+    }
+
+    buffer.emplace_back(result);
+    --atMost;
+  }
+}
+
 void AllIndexIterator::reset() { _position.reset(); }
 
 TRI_doc_mptr_t* AnyIndexIterator::next() {

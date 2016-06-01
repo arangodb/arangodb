@@ -53,7 +53,9 @@ Supervision::~Supervision() { shutdown(); };
 
 void Supervision::wakeUp() {
   TRI_ASSERT(_agent != nullptr);
-  _snapshot = _agent->readDB().get(_agencyPrefix);
+  if (!this->isStopping()) {
+    _snapshot = _agent->readDB().get(_agencyPrefix);
+  }
   _cv.signal();
 }
 
@@ -124,7 +126,9 @@ std::vector<check_t> Supervision::checkDBServers() {
     report->close();
     report->close();
     report->close();
-    _agent->write(report);
+    if (!this->isStopping()) {
+      _agent->write(report);
+    }
       
   }
 
@@ -132,7 +136,8 @@ std::vector<check_t> Supervision::checkDBServers() {
 }
 
 bool Supervision::doChecks(bool timedout) {
-  if (_agent == nullptr) {
+
+  if (_agent == nullptr || this->isStopping()) {
     return false;
   }
 
@@ -235,7 +240,7 @@ bool Supervision::start(Agent* agent) {
 bool Supervision::updateAgencyPrefix (size_t nTries, int intervalSec) {
 
   // Try nTries to get agency's prefix in intervals 
-  for (size_t i = 0; i < nTries; i++) {
+  while (!this->isStopping()) {
     _snapshot = _agent->readDB().get("/");
     if (_snapshot.children().size() > 0) {
       _agencyPrefix = std::string("/") + _snapshot.children().begin()->first;
@@ -256,11 +261,11 @@ void Supervision::getUniqueIds() {
   uint64_t latestId;
   // Run forever, supervision does not make sense before the agency data
   // is initialized by some other server...
-  while (true) {
+  while (!this->isStopping()) {
     try {
       latestId = std::stoul(
           _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
-    } catch (std::exception const& e) {
+    } catch (std::exception const&) {
       std::this_thread::sleep_for (std::chrono::seconds(1));
       continue;
     }

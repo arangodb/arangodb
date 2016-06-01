@@ -4016,6 +4016,19 @@ function unitTest(cases, options) {
   LOGS_DIR = fs.join(TOP_DIR, "logs");
   PEM_FILE = fs.join(TOP_DIR, "UnitTests", "server.pem");
 
+  let checkFiles = [
+    ARANGOBENCH_BIN,
+    ARANGODUMP_BIN,
+    ARANGOD_BIN,
+    ARANGOIMP_BIN,
+    ARANGORESTORE_BIN,
+    ARANGOSH_BIN];
+  for (let b = 0; b < checkFiles.length; ++b) {
+    if (! fs.isFile(checkFiles[b]) && ! fs.isFile(checkFiles[b]+ ".exe" )) {
+      throw "unable to locate " + checkFiles[b];
+    }
+  }
+  
   const jsonReply = options.jsonReply;
   delete options.jsonReply;
 

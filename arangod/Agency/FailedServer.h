@@ -42,7 +42,7 @@ struct FailedServer : public Job {
   virtual bool create () const override;
   virtual unsigned status () const override;
   
-  std::string const& _failed;
+  std::string _server;
   
 };
 

@@ -32,8 +32,8 @@ using namespace arangodb::consensus;
 FailedServer::FailedServer(Node const& snapshot, Agent* agent, std::string const& jobId,
                            std::string const& creator, std::string const& agencyPrefix,
                            std::string const& failed) :
-  Job(snapshot, agent, jobId, creator, agencyPrefix), _failed(failed) {
-
+  Job(snapshot, agent, jobId, creator, agencyPrefix), _server(failed) {
+  
   try {
     if (exists()) {
       if (status() == TODO) {  
@@ -44,9 +44,13 @@ FailedServer::FailedServer(Node const& snapshot, Agent* agent, std::string const
       start();
     }
   } catch (...) {
-    finish("DBServers/" + _failed);
+    if (_server == "") {
+      _server = _snapshot(pendingPrefix + _jobId + "/server").getString();
+    }
+    
+    finish("DBServers/" + _server, false);
   }
-
+  
 }
   
 FailedServer::~FailedServer () {}
@@ -60,7 +64,7 @@ bool FailedServer::start() const {
   todo.openArray();
   try {
     _snapshot(toDoPrefix + _jobId).toBuilder(todo);
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     LOG_TOPIC(INFO, Logger::AGENCY) <<
       "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
     return false;
@@ -88,7 +92,7 @@ bool FailedServer::start() const {
   pending.close();
 
   // --- Block toServer
-  pending.add(_agencyPrefix +  blockedServersPrefix + _failed,
+  pending.add(_agencyPrefix +  blockedServersPrefix + _server,
               VPackValue(VPackValueType::Object));
   pending.add("jobId", VPackValue(_jobId));
   pending.close();
@@ -98,7 +102,7 @@ bool FailedServer::start() const {
   // Preconditions
   // --- Check that toServer not blocked
   pending.openObject();
-  pending.add(_agencyPrefix +  blockedServersPrefix + _failed,
+  pending.add(_agencyPrefix +  blockedServersPrefix + _server,
               VPackValue(VPackValueType::Object));
   pending.add("oldEmpty", VPackValue(true));
   pending.close();
@@ -111,7 +115,7 @@ bool FailedServer::start() const {
   if (res.accepted && res.indices.size()==1 && res.indices[0]) {
       
     LOG_TOPIC(INFO, Logger::AGENCY) <<
-      "Pending: DB Server " + _failed + " failed.";
+      "Pending: DB Server " + _server + " failed.";
       
     Node::Children const& databases =
       _snapshot("/Plan/Collections").children();
@@ -127,14 +131,14 @@ bool FailedServer::start() const {
             VPackArrayIterator dbsit(shard.second->slice());
               
             // Only proceed if leader and create job
-            if ((*dbsit.begin()).copyString() != _failed) {
+            if ((*dbsit.begin()).copyString() != _server) {
               continue;
             }
 
             FailedLeader(
               _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
               _agencyPrefix, database.first, collptr.first, shard.first,
-              _failed, shard.second->slice()[1].copyString());
+              _server, shard.second->slice()[1].copyString());
               
           } 
         }
@@ -154,7 +158,7 @@ bool FailedServer::start() const {
 bool FailedServer::create () const {
 
   LOG_TOPIC(INFO, Logger::AGENCY)
-    << "Todo: DB Server " + _failed + " failed.";
+    << "Todo: DB Server " + _server + " failed.";
 
   std::string path = _agencyPrefix + toDoPrefix + _jobId;
 
@@ -163,7 +167,7 @@ bool FailedServer::create () const {
   todo.openObject();
   todo.add(path, VPackValue(VPackValueType::Object));
   todo.add("type", VPackValue("failedServer"));
-  todo.add("server", VPackValue(_failed));
+  todo.add("server", VPackValue(_server));
   todo.add("jobId", VPackValue(_jobId));
   todo.add("creator", VPackValue(_creator));
   todo.add("timeCreated",
@@ -206,7 +210,7 @@ unsigned FailedServer::status () const {
     }
 
     if (!found) {
-      if (finish("DBServers/" + _failed)) {
+      if (finish("DBServers/" + _server)) {
         return FINISHED;
       }
     }
