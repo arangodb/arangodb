@@ -1,4 +1,4 @@
-!SECTION Distributed deployment using DC/OS, Mesos and Marathon
+!SECTION Distributed deployment using Apache Mesos
 
 Philosophie: Es muss extrem einfach aussehen, trotzdem sollte die Section
 hinreichend viel Detailinformation liefern. Ich weiß, dass das ein 
