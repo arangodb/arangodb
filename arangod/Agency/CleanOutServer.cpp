@@ -25,6 +25,7 @@
 
 #include "Agent.h"
 #include "Job.h"
+#include "MoveShard.h"
 
 using namespace arangodb::consensus;
 
@@ -35,6 +36,9 @@ CleanOutServer::CleanOutServer (
   Job(snapshot, agent, jobId, creator, prefix), _server(server) {
 
   if (exists()) {
+    if (_server == "") {
+      _server = _snapshot(pendingPrefix + _jobId + "/server").getString();
+    }
     if (status() == TODO) {  
       start();        
     } 
@@ -108,52 +112,67 @@ bool CleanOutServer::start() const {
     
   // Transact to agency
   write_ret_t res = transact(_agent, pending);
-    
+  
   if (res.accepted && res.indices.size()==1 && res.indices[0]) {
-      
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Clean out server " + _server;
-      
-    Node::Children const& databases =
-      _snapshot("/Plan/Collections").children();
-      
-    size_t sub = 0;
     
-    for (auto const& database : databases) {
-      for (auto const& collptr : database.second->children()) {
-        Node const& collection = *(collptr.second);
-        Node const& replicationFactor = collection("replicationFactor");
-        if (replicationFactor.slice().getUInt() > 1) {
-          for (auto const& shard : collection("shards").children()) {
-            VPackArrayIterator dbsit(shard.second->slice());
-              
-            // Only proceed if leader and create job
-            if ((*dbsit.begin()).copyString() != _server) {
-/*                MoveShardFromLeader (
-                  _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, _agencyPrefix, database.first, collptr.first,
-                  shard.first, _server, shard.second->slice()[1].copyString());*/
-              sub++;
-            } else {
-/*                MoveShardFromFollower (
-                  _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, _agencyPrefix, database.first, collptr.first,
-                  shard.first, _server, shard.second->slice()[1].copyString());*/
-              sub++;
-            }
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Clean out server " + _server;
 
-          } 
-        }
-      }
+    // Check if we can get things done in the first place
+    if (!checkFeasibility()) {
+      finish("DBServers/" + _server);
+      return false;
     }
-          
-    return true;
-  }
 
+    // Schedule shard relocations
+    scheduleMoveShards();
+    
+    return true;
+    
+  }
+  
   LOG_TOPIC(INFO, Logger::AGENCY) <<
     "Precondition failed for starting job " + _jobId;
 
   return false;
     
-    
 }
 
+bool CleanOutServer::scheduleMoveShards() const {
+  return true;
+}
+
+bool CleanOutServer::checkFeasibility () const {
+
+  // Check if server is already in cleaned servers: fail!
+  Node::Children const& cleanedServers =
+    _snapshot("/Target/CleanedServers").children();
+  for (auto const cleaned : cleanedServers) {
+    if (cleaned.first == _server) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << _server <<
+        " has been cleaned out already!";
+      return false;
+    }
+  }
+
+  // Determine number of available servers
+  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
+  uint64_t nservers = dbservers.size() - cleanedServers.size() - 1;
+
+  // See if available servers after cleanout satisfy all replication factors
+  Node::Children const& databases = _snapshot("/Plan/Collections").children();
+  for (auto const& database : databases) {
+    for (auto const& collptr : database.second->children()) {
+      try {
+        uint64_t replFactor = (*collptr.second)("replicationFactor").getUInt();
+        if (replFactor > nservers) {
+          LOG_TOPIC(ERR, Logger::AGENCY) <<
+            "Cannot house all shard replics after cleaning out " << _server;
+          return false;
+        }
+      } catch (...) {}
+    }
+  }
+
+  return true;
+  
+}

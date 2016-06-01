@@ -32,17 +32,21 @@ namespace consensus {
 
 struct CleanOutServer : public Job {
   
-  CleanOutServer (Node const& snapshot, Agent* agent, std::string const& jobId,
-                  std::string const& creator, std::string const& prefix,
-                  std::string const& server);
-
-  virtual ~CleanOutServer ();
-
-  virtual unsigned status () const override;
-  virtual bool create () const override;
+  CleanOutServer(Node const& snapshot, Agent* agent, std::string const& jobId,
+                 std::string const& creator, std::string const& prefix,
+                 std::string const& server);
+  
+  virtual ~CleanOutServer();
+  
+  virtual unsigned status() const override;
+  virtual bool create() const override;
   virtual bool start() const override;
+  
+  // Check if all shards' replication factors can be satisfied after clean out.
+  bool checkFeasibility() const;
+  bool scheduleMoveShards() const;
 
-  std::string const& _server;
+  std::string _server;
   
 };
 

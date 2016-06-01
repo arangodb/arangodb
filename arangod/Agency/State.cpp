@@ -91,7 +91,13 @@ bool State::persist(arangodb::consensus::index_t index, term_t term,
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  OperationResult result = trx.insert("log", body.slice(), _options);
+  OperationResult result;
+  try {
+    result = trx.insert("log", body.slice(), _options);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY) <<
+      "Failed to persist log entry:" << e.what();
+  }
   res = trx.finish(result.code);
 
   return (res == TRI_ERROR_NO_ERROR);
@@ -113,7 +119,7 @@ std::vector<arangodb::consensus::index_t> State::log(
       buf->append((char const*)i[0].begin(), i[0].byteSize());
       idx[j] = _log.back().index + 1;
       _log.push_back(log_t(idx[j], term, lid, buf));  // log to RAM
-      persist(idx[j], term, lid, i[0]);               // log to disk
+      persist(idx[j], term, lid, i[0]);             // log to disk
       ++j;
     }
   }
