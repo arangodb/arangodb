@@ -146,44 +146,53 @@ bool Supervision::doChecks(bool timedout) {
 
 void Supervision::run() {
 
-  CONDITION_LOCKER(guard, _cv);
-  TRI_ASSERT(_agent != nullptr);
-  bool timedout = false;
+  // We do a try/catch around everything to prevent agency crashes until
+  // debugging of the Supervision is finished:
 
-  while (!this->isStopping()) {
+  try {
+    CONDITION_LOCKER(guard, _cv);
+    TRI_ASSERT(_agent != nullptr);
+    bool timedout = false;
 
-    // Get agency prefix after cluster init
-    if (_jobId == 0) {
-      // We need the agency prefix to work, but it is only initialized by
-      // some other server in the cluster. Since the supervision does not
-      // make sense at all without other ArangoDB servers, we wait pretty
-      // long here before giving up:
-      if (!updateAgencyPrefix(1000, 1)) {
-        LOG_TOPIC(ERR, Logger::AGENCY)
-          << "Cannot get prefix from Agency. Stopping supervision for good.";
-        break;
+    while (!this->isStopping()) {
+
+      // Get agency prefix after cluster init
+      if (_jobId == 0) {
+        // We need the agency prefix to work, but it is only initialized by
+        // some other server in the cluster. Since the supervision does not
+        // make sense at all without other ArangoDB servers, we wait pretty
+        // long here before giving up:
+        if (!updateAgencyPrefix(1000, 1)) {
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "Cannot get prefix from Agency. Stopping supervision for good.";
+          break;
+        }
       }
+
+      // Get bunch of job IDs from agency for future jobs
+      if (_jobId == 0 || _jobId == _jobIdMax) {
+        getUniqueIds();  // cannot fail but only hang
+      }
+
+      // Do nothing unless leader 
+      if (_agent->leading()) {
+        timedout = _cv.wait(_frequency * 1000000);  // quarter second
+      } else {
+        _cv.wait();
+      }
+
+      // Do supervision
+      doChecks(timedout);
+      workJobs();
+      
+
     }
-
-    // Get bunch of job IDs from agency for future jobs
-    if (_jobId == 0 || _jobId == _jobIdMax) {
-      getUniqueIds();  // cannot fail but only hang
-    }
-
-    // Do nothing unless leader 
-    if (_agent->leading()) {
-      timedout = _cv.wait(_frequency * 1000000);  // quarter second
-    } else {
-      _cv.wait();
-    }
-
-    // Do supervision
-    doChecks(timedout);
-    workJobs();
-    
-
   }
-  
+  catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY) 
+        << "Supervision thread has caught an exception and is terminated: "
+        << e.what();
+  }
 }
 
 void Supervision::workJobs() {
