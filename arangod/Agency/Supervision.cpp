@@ -53,7 +53,9 @@ Supervision::~Supervision() { shutdown(); };
 
 void Supervision::wakeUp() {
   TRI_ASSERT(_agent != nullptr);
-  _snapshot = _agent->readDB().get(_agencyPrefix);
+  if (!this->isStopping()) {
+    _snapshot = _agent->readDB().get(_agencyPrefix);
+  }
   _cv.signal();
 }
 
@@ -134,7 +136,8 @@ std::vector<check_t> Supervision::checkDBServers() {
 }
 
 bool Supervision::doChecks(bool timedout) {
-  if (_agent == nullptr) {
+
+  if (_agent == nullptr || this->isStopping()) {
     return false;
   }
 

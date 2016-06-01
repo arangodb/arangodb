@@ -190,9 +190,22 @@ void AgencyFeature::start() {
 }
 
 void AgencyFeature::stop() {
+
   if (!isEnabled()) {
     return;
   }
 
   _agent->beginShutdown();
+
+  if (_agent != nullptr) {
+    int counter = 0;
+    while (_agent->isRunning()) {
+      usleep(100000);
+      // emit warning after 5 seconds
+      if (++counter == 10 * 5) {
+        LOG(WARN) << "waiting for agent thread to finish";
+      }
+    }
+  }
+
 }
