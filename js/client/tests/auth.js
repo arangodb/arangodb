@@ -334,7 +334,7 @@ function AuthSuite () {
     },
     
     testViaJS: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"iss": "arangodb", "exp": 90000000000 }, 'HS256');
+      var jwt = crypto.jwtEncode(jwtSecret, {"iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600}, 'HS256');
 
       var res = request.get({
         url: baseUrl() + "/_api/version",
