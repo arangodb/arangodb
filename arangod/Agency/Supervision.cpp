@@ -153,8 +153,8 @@ void Supervision::run() {
 
   // We do a try/catch around everything to prevent agency crashes until
   // debugging of the Supervision is finished:
-
-  try {
+  //  try {
+  
     CONDITION_LOCKER(guard, _cv);
     TRI_ASSERT(_agent != nullptr);
     bool timedout = false;
@@ -192,12 +192,12 @@ void Supervision::run() {
       
 
     }
-  }
+    /*} 
   catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY) 
         << "Supervision thread has caught an exception and is terminated: "
         << e.what();
-  }
+        }*/
 }
 
 void Supervision::workJobs() {
