@@ -495,3 +495,59 @@ exports.revokeDatabase = function(username, database) {
   return databases;  
 };
 
+// create/update (value != null) or delete (value == null)
+exports.updateConfigData = function(username, key, value) {
+  const users = getStorage();
+
+  validateName(username);
+
+  const user = users.firstExample({
+    user: username
+  });
+
+  if (user === null) {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+    throw err;
+  }
+
+  if (value === undefined) {
+    value = null;
+  }
+
+  var options = user.configData;
+
+  if (key === undefined || key === null) {
+    var data = shallowCopy(user);
+    data.configData = {};
+    users.replace(user, data);
+  } else {
+    options[key] = value;
+    users.update(user, { configData: options }, false, false );
+  }
+};
+
+// one config data (key != null) or all (key == null)    
+exports.configData = function(username, key) {
+  const users = getStorage();
+
+  validateName(username);
+
+  const user = users.firstExample({
+    user: username
+  });
+
+  if (user === null) {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+    throw err;
+  }
+
+  if (key === undefined || key === null) {
+    return user.configData;
+  } else {
+    return user.configData[key];
+  }
+};
