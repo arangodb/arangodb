@@ -75,7 +75,7 @@
         unique = self.checkboxToValue('#newPersistentUnique');
         sparse = self.checkboxToValue('#newPersistentSparse');
         postParameter = {
-          type: 'rocksdb',
+          type: 'persistent',
           fields: self.stringToArray(fields),
           unique: unique,
           sparse: sparse

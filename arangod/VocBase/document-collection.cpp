@@ -1353,7 +1353,7 @@ int TRI_FromVelocyPackIndexDocumentCollection(
   // ...........................................................................
   // ROCKSDB INDEX
   // ...........................................................................
-  if (typeStr == "rocksdb") {
+  if (typeStr == "persistent" || typeStr == "rocksdb") {
 #ifdef ARANGODB_ENABLE_ROCKSDB
     return RocksDBIndexFromVelocyPack(trx, document, slice, iid, idx);
 #else
