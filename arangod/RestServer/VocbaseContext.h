@@ -67,12 +67,6 @@ class VocbaseContext : public arangodb::RequestContext {
 
   GeneralResponse::ResponseCode jwtAuthentication(std::string const&);
 
-  std::shared_ptr<VPackBuilder> parseJson(std::string const&, std::string const&);
-
-  bool validateJwtHeader(std::string const&);
-  bool validateJwtBody(std::string const&, std::string*);
-  bool validateJwtHMAC256Signature(std::string const&, std::string const&);
- 
  private: 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks the authentication header and sets user if successful

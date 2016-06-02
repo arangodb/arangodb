@@ -26,6 +26,9 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
@@ -111,6 +114,10 @@ class AuthInfo {
 
   AuthResult checkAuthenticationBasic(std::string const& secret);
   AuthResult checkAuthenticationJWT(std::string const& secret);
+  bool validateJwtHeader(std::string const&);
+  bool validateJwtBody(std::string const&, std::string*);
+  bool validateJwtHMAC256Signature(std::string const&, std::string const&);
+  std::shared_ptr<VPackBuilder> parseJson(std::string const&, std::string const&);
 
  private:
   basics::ReadWriteLock _authInfoLock;

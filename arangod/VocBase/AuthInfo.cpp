@@ -23,8 +23,9 @@
 
 #include "AuthInfo.h"
 
-#include <iostream>
+#include <chrono>
 
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -34,6 +35,7 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/RestServerFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -43,6 +45,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
+using namespace arangodb::rest;
 
 static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
   if (slice.isNone() || !slice.isObject()) {
@@ -216,7 +219,7 @@ bool AuthInfo::populate(VPackSlice const& slice) {
 
 bool AuthInfo::reload() {
   insertInitial();
-
+  
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->vocbase();
 
   if (vocbase == nullptr) {
@@ -390,5 +393,142 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
 }
 
 AuthResult AuthInfo::checkAuthenticationJWT(std::string const& secret) {
-  return AuthResult();
+  LOG(DEBUG) << "JWT Auth " << secret;
+  std::vector<std::string> const parts = StringUtils::split(secret, '.');
+  
+  if (parts.size() != 3) {
+    LOG(DEBUG) << "Secret contains " << parts.size() << " parts";
+    return AuthResult();
+  }
+
+  std::string const& header = parts[0];
+  std::string const& body = parts[1];
+  std::string const& signature = parts[2];
+  
+  std::string const message = header + "." + body;
+
+  if (!validateJwtHeader(header)) {
+    LOG(DEBUG) << "Couldn't validate jwt header " << header;
+    return AuthResult();
+  }
+  
+  std::string username;
+  if (!validateJwtBody(body, &username)) {
+    LOG(DEBUG) << "Couldn't validate jwt body " << body;
+    return AuthResult();
+  }
+  
+  if (!validateJwtHMAC256Signature(message, signature)) {
+    LOG(DEBUG) << "Couldn't validate jwt signature " << signature;
+    return AuthResult();
+  }
+  
+  AuthResult result;
+  result._username = username;
+  result._authorized = true;
+  
+  return result;
+}
+
+std::shared_ptr<VPackBuilder> AuthInfo::parseJson(std::string const& str, std::string const& hint) {
+  std::shared_ptr<VPackBuilder> result;
+  VPackParser parser;
+  try {
+    parser.parse(str);
+    result = parser.steal();
+  } catch (std::bad_alloc const&) {
+    LOG(ERR) << "Out of memory parsing " << hint << "!";
+  } catch (VPackException const& ex) {
+    LOG(DEBUG) << "Couldn't parse " << hint << ": " << ex.what();
+  } catch (...) {
+    LOG(ERR) << "Got unknown exception trying to parse " << hint;
+  }
+  
+  return result;
+}
+
+bool AuthInfo::validateJwtHeader(std::string const& header) {
+  std::shared_ptr<VPackBuilder> headerBuilder = parseJson(StringUtils::decodeBase64(header), "jwt header");
+  if (headerBuilder.get() == nullptr) {
+    return false;
+  }
+
+  VPackSlice const headerSlice = headerBuilder->slice();
+  if (!headerSlice.isObject()) {
+    return false;
+  }
+
+  VPackSlice const algSlice = headerSlice.get("alg");
+  VPackSlice const typSlice = headerSlice.get("typ");
+
+  if (!algSlice.isString()) {
+    return false;
+  }
+  
+  if (!typSlice.isString()) {
+    return false;
+  }
+  
+  if (algSlice.copyString() != "HS256") {
+    return false;
+  }
+  
+  std::string typ = typSlice.copyString();
+  if (typ != "JWT") {
+    return false;
+  }
+
+  return true;
+}
+
+bool AuthInfo::validateJwtBody(std::string const& body, std::string* username) {
+  std::shared_ptr<VPackBuilder> bodyBuilder = parseJson(StringUtils::decodeBase64(body), "jwt body");
+  if (bodyBuilder.get() == nullptr) {
+    return false;
+  }
+
+  VPackSlice const bodySlice = bodyBuilder->slice();
+  if (!bodySlice.isObject()) {
+    return false;
+  }
+
+  VPackSlice const issSlice = bodySlice.get("iss");
+  if (!issSlice.isString()) {
+    return false;
+  }
+  
+  if (issSlice.copyString() != "arangodb") {
+    return false;
+  }
+  
+  VPackSlice const usernameSlice = bodySlice.get("preferred_username");
+  if (!usernameSlice.isString()) {
+    return false;
+  }
+  
+  *username = usernameSlice.copyString();
+  
+  // mop: optional exp (cluster currently uses non expiring jwts)
+  if (bodySlice.hasKey("exp")) {
+    VPackSlice const expSlice = bodySlice.get("exp");
+    
+    if (!expSlice.isNumber()) {
+      return false;
+    }
+    
+    std::chrono::system_clock::time_point expires(std::chrono::seconds(expSlice.getNumber<uint64_t>()));
+    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+
+    if (now >= expires) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool AuthInfo::validateJwtHMAC256Signature(std::string const& message, std::string const& signature) {
+  std::string decodedSignature = StringUtils::decodeBase64U(signature);
+  
+  std::string const& jwtSecret = RestServerFeature::getJwtSecret();
+  return verifyHMAC(jwtSecret.c_str(), jwtSecret.length(), message.c_str(), message.length(), decodedSignature.c_str(), decodedSignature.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
 }
