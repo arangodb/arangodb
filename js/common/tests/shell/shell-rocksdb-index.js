@@ -73,39 +73,39 @@ function RocksDBIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreation : function () {
-      var idx = collection.ensureIndex({ type: "rocksdb", fields: ["a"] });
+      var idx = collection.ensureIndex({ type: "persistent", fields: ["a"] });
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("rocksdb", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(false, idx.sparse);
       assertEqual(["a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
-      idx = collection.ensureIndex({ type: "rocksdb", fields: ["a"] });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["a"] });
 
       assertEqual(id, idx.id);
-      assertEqual("rocksdb", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(false, idx.sparse);
       assertEqual(["a"], idx.fields);
       assertEqual(false, idx.isNewlyCreated);
 
-      idx = collection.ensureIndex({ type: "rocksdb", fields: ["a"], sparse: true });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["a"], sparse: true });
 
       assertNotEqual(id, idx.id);
-      assertEqual("rocksdb", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(true, idx.sparse);
       assertEqual(["a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
       id = idx.id;
 
-      idx = collection.ensureIndex({ type: "rocksdb", fields: ["a"], sparse: true });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["a"], sparse: true });
 
       assertEqual(id, idx.id);
-      assertEqual("rocksdb", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(true, idx.sparse);
       assertEqual(["a"], idx.fields);
@@ -117,36 +117,36 @@ function RocksDBIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationPermuted : function () {
-      var idx = collection.ensureIndex({ type: "rocksdb", fields: ["a", "b"] });
+      var idx = collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("rocksdb", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(["a","b"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
-      idx = collection.ensureIndex({ type: "rocksdb", fields: ["a", "b"] });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
 
       assertEqual(id, idx.id);
-      assertEqual("rocksdb", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(["a","b"], idx.fields);
       assertEqual(false, idx.isNewlyCreated);
       
-      idx = collection.ensureIndex({ type: "rocksdb", fields: ["b", "a"] });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["b", "a"] });
 
       assertNotEqual(id, idx.id);
       id = idx.id;
-      assertEqual("rocksdb", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(["b","a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
       
-      idx = collection.ensureIndex({ type: "rocksdb", fields: ["b", "a"] });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["b", "a"] });
 
       assertEqual(id, idx.id);
-      assertEqual("rocksdb", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(["b","a"], idx.fields);
       assertEqual(false, idx.isNewlyCreated);
@@ -157,9 +157,9 @@ function RocksDBIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUniqueDocuments : function () {
-      var idx = collection.ensureIndex({ type: "rocksdb", fields: ["a", "b"] });
+      var idx = collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
 
-      assertEqual("rocksdb", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(["a","b"], idx.fields.sort());
       assertEqual(true, idx.isNewlyCreated);
@@ -180,9 +180,9 @@ function RocksDBIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUniqueDocumentsSparseIndex : function () {
-      var idx = collection.ensureIndex({ type: "rocksdb", fields: ["a", "b"], sparse: true });
+      var idx = collection.ensureIndex({ type: "persistent", fields: ["a", "b"], sparse: true });
 
-      assertEqual("rocksdb", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(false, idx.unique);
       assertEqual(["a","b"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
@@ -203,8 +203,8 @@ function RocksDBIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiIndexViolation1 : function () {
-      collection.ensureIndex({ type: "rocksdb", fields: ["a"], unique: true });
-      collection.ensureIndex({ type: "rocksdb", fields: ["b"] });
+      collection.ensureIndex({ type: "persistent", fields: ["a"], unique: true });
+      collection.ensureIndex({ type: "persistent", fields: ["b"] });
 
       collection.save({ a : "test1", b : 1});
       try {
@@ -233,8 +233,8 @@ function RocksDBIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiIndexViolationSparse1 : function () {
-      collection.ensureIndex({ type: "rocksdb", fields: ["a"], unique: true, sparse: true });
-      collection.ensureIndex({ type: "rocksdb", fields: ["b"], sparse: true });
+      collection.ensureIndex({ type: "persistent", fields: ["a"], unique: true, sparse: true });
+      collection.ensureIndex({ type: "persistent", fields: ["b"], sparse: true });
 
       collection.save({ a : "test1", b : 1});
       try {
@@ -263,8 +263,8 @@ function RocksDBIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiIndexViolation2 : function () {
-      collection.ensureIndex({ type: "rocksdb", fields: ["a"], unique: true });
-      collection.ensureIndex({ type: "rocksdb", fields: ["b"] });
+      collection.ensureIndex({ type: "persistent", fields: ["a"], unique: true });
+      collection.ensureIndex({ type: "persistent", fields: ["b"] });
 
       collection.save({ a : "test1", b : 1});
       try {
@@ -293,8 +293,8 @@ function RocksDBIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiIndexViolationSparse2 : function () {
-      collection.ensureIndex({ type: "rocksdb", fields: ["a"], unique: true, sparse: true });
-      collection.ensureIndex({ type: "rocksdb", fields: ["b"], sparse: true });
+      collection.ensureIndex({ type: "persistent", fields: ["a"], unique: true, sparse: true });
+      collection.ensureIndex({ type: "persistent", fields: ["b"], sparse: true });
 
       collection.save({ a : "test1", b : 1});
       try {

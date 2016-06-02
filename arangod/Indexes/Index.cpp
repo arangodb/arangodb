@@ -112,7 +112,7 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "skiplist") == 0) {
     return TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
-  if (::strcmp(type, "rocksdb") == 0) {
+  if (::strcmp(type, "persistent") == 0 || ::strcmp(type, "rocksdb") == 0) {
     return TRI_IDX_TYPE_ROCKSDB_INDEX;
   }
   if (::strcmp(type, "fulltext") == 0) {
@@ -143,7 +143,7 @@ char const* Index::typeName(Index::IndexType type) {
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
       return "skiplist";
     case TRI_IDX_TYPE_ROCKSDB_INDEX:
-      return "rocksdb";
+      return "persistent";
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
       return "fulltext";
     case TRI_IDX_TYPE_GEO1_INDEX:
