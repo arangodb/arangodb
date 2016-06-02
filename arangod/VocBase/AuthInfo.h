@@ -39,17 +39,20 @@ enum class AuthLevel {
   
 class AuthEntry {
  public:
-  AuthEntry() : _active(false), _mustChange(false) {}
+ AuthEntry() : _active(false), _mustChange(false) {}
 
   AuthEntry(std::string const& username, std::string const& passwordMethod,
             std::string const& passwordSalt, std::string const& passwordHash,
-            bool active, bool mustChange)
+            std::unordered_map<std::string, AuthLevel> databases, AuthLevel allDatabases,
+	    bool active, bool mustChange)
       : _username(username),
         _passwordMethod(passwordMethod),
         _passwordSalt(passwordSalt),
         _passwordHash(passwordHash),
         _active(active),
-        _mustChange(mustChange) {}
+        _mustChange(mustChange),
+        _databases(databases),
+        _allDatabases(allDatabases) {}
 
  public:
   std::string const& username() const { return _username; }
@@ -72,6 +75,8 @@ class AuthEntry {
   std::string _passwordHash;
   bool _active;
   bool _mustChange;
+  std::unordered_map<std::string, AuthLevel> _databases;
+  AuthLevel _allDatabases;
 };
 
 class AuthResult {

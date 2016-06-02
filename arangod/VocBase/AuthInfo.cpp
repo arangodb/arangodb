@@ -96,13 +96,53 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
   bool mustChange =
       VelocyPackHelper::getBooleanValue(slice, "changePassword", false);
 
+  // extract "databases" attribute
+  VPackSlice const databasesSlice = authDataSlice.get("databases");
+  std::unordered_map<std::string, AuthLevel> databases;
+  AuthLevel allDatabases = AuthLevel::NONE;
+  
+  if (databasesSlice.isObject()) {
+    for (auto const& obj : VPackObjectIterator(databasesSlice)) {
+      std::string const key = obj.key.copyString();
+
+      ValueLength length;
+      char const* value = obj.value.getString(length);
+
+      if (TRI_CaseEqualString(value, "rw", 2)) {
+	if (key == "*") {
+	  allDatabases = AuthLevel::RW;
+	} else {
+	  databases.emplace(key, AuthLevel::RW);
+	}
+      }
+      else if (TRI_CaseEqualString(value, "ro", 2)) {
+	if (key == "*") {
+	  allDatabases = AuthLevel::RO;
+	} else {
+	  databases.emplace(key, AuthLevel::RO);
+	}
+      }
+    }
+  }
+
+  // build authentication entry
   return AuthEntry(userSlice.copyString(), methodSlice.copyString(),
-                   saltSlice.copyString(), hashSlice.copyString(), active,
-                   mustChange);
+                   saltSlice.copyString(), hashSlice.copyString(),
+		   databases, allDatabases, active, mustChange);
 }
 
 AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
-  return AuthLevel::NONE;
+  if (_allDatabases == AuthLevel::RW) {
+    return _allDatabases;
+  }
+
+  auto const& it = _databases.find(dbname);
+
+  if (it == _databases.end()) {
+    return _allDatabases;
+  }
+
+  return it->second;
 }
 
 void AuthInfo::clear() {

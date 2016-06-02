@@ -92,15 +92,35 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   }
   
   std::string const& path = _request->requestPath();
+
   // mop: inside authenticateRequest() _request->user will be populated
   GeneralResponse::ResponseCode result = authenticateRequest();
+  bool forceOpen = false;
+
   if (result == GeneralResponse::ResponseCode::UNAUTHORIZED || result == GeneralResponse::ResponseCode::FORBIDDEN) {
     if (StringUtils::isPrefix(path, "/_open/") ||
       StringUtils::isPrefix(path, "/_admin/aardvark/") || path == "/") {
       // mop: these paths are always callable...they will be able to check req.user when it could be validated
       result = GeneralResponse::ResponseCode::OK;
+      forceOpen = true;
     }
   }
+
+  // check that we are allowed to see the database
+  if (result == GeneralResponse::ResponseCode::OK && !forceOpen) {
+    std::string const& username = _request->user();
+    std::string const& dbname = _request->databaseName();
+
+    if (!username.empty() || !dbname.empty()) {
+      AuthLevel level =
+	RestServerFeature::AUTH_INFO.canUseDatabase(username, dbname);
+
+      if (level != AuthLevel::RW) {
+	result = GeneralResponse::ResponseCode::UNAUTHORIZED;
+      }
+    }
+  }
+
   return result;
 }
 
