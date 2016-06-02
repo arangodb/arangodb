@@ -81,33 +81,42 @@ bool MoveShard::create () const {
   
   LOG_TOPIC(INFO, Logger::AGENCY)
     << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;
+
+  std::string path, now(timepointToString(std::chrono::system_clock::now()));
+
+  Builder job;
+  job.openArray();
+  job.openObject();
   
-  std::string path = _agencyPrefix + toDoPrefix + _jobId;
+  if (_from == _to) {
+    path = _agencyPrefix + failedPrefix + _jobId;
+    job.add("timeFinished", VPackValue(now));
+    job.add("result",
+            VPackValue("Source and destination of moveShard must be different"));
+  } else {
+    path = _agencyPrefix + toDoPrefix + _jobId;
+  }
   
-  Builder todo;
-  todo.openArray();
-  todo.openObject();
-  todo.add(path, VPackValue(VPackValueType::Object));
-  todo.add("creator", VPackValue(_creator));
-  todo.add("type", VPackValue("failedLeader"));
-  todo.add("database", VPackValue(_database));
-  todo.add("collection", VPackValue(_collection));
-  todo.add("shard", VPackValue(_shard));
-  todo.add("fromServer", VPackValue(_from));
-  todo.add("toServer", VPackValue(_to));
+  job.add(path, VPackValue(VPackValueType::Object));
+  job.add("creator", VPackValue(_creator));
+  job.add("type", VPackValue("failedLeader"));
+  job.add("database", VPackValue(_database));
+  job.add("collection", VPackValue(_collection));
+  job.add("shard", VPackValue(_shard));
+  job.add("fromServer", VPackValue(_from));
+  job.add("toServer", VPackValue(_to));
+  job.add("isLeader", VPackValue(true));    
+  job.add("jobId", VPackValue(_jobId));
+  job.add("timeCreated", VPackValue(now));
+
+  job.close(); job.close(); job.close();
   
-  todo.add("isLeader", VPackValue(true));    
-  todo.add("jobId", VPackValue(_jobId));
-  todo.add("timeCreated",
-           VPackValue(timepointToString(std::chrono::system_clock::now())));
-  todo.close(); todo.close(); todo.close();
-  
-  write_ret_t res = transact(_agent, todo);
-  
+  write_ret_t res = transact(_agent, job);
+
   if (res.accepted && res.indices.size()==1 && res.indices[0]) {
     return true;
   }
-
+  
   LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
   return false;
 
@@ -118,6 +127,8 @@ bool MoveShard::start() const {
 
   LOG_TOPIC(INFO, Logger::AGENCY)
     << "Pending: Move shard " + _shard + " from " + _from + " to " << _to;
+
+  Builder todo, pending;
 
   // Copy todo to pending
 /*  Builder todo, pending;

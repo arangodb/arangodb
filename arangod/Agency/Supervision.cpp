@@ -203,21 +203,35 @@ void Supervision::run() {
 void Supervision::workJobs() {
 
   for (auto const& todoEnt : _snapshot(toDoPrefix).children()) {
-    Node const& todo = *todoEnt.second;
-    if (todo("type").toJson() == "failedServer") {
-      FailedServer fs (
-        _snapshot, _agent, todo("jobId").toJson(), todo("creator").toJson(),
-        _agencyPrefix, todo("server").toJson());
+
+    Node const& job = *todoEnt.second;
+
+    std::string jobType = job("type").getString(),
+      jobId = job("jobId").getString(),
+      creator = job("creator").getString();
+      
+    if (jobType == "failedServer") {
+      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "cleanOutServer") {
+      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
+    
   }
 
-  for (auto const& todoEnt : _snapshot(pendingPrefix).children()) {
-    Node const& todo = *todoEnt.second;
-    if (todo("type").toJson() == "failedServer") {
-      FailedServer fs (
-        _snapshot, _agent, todo("jobId").toJson(), todo("creator").toJson(),
-        _agencyPrefix, todo("server").toJson());
+  for (auto const& pendEnt : _snapshot(pendingPrefix).children()) {
+
+    Node const& job = *pendEnt.second;
+
+    std::string jobType = job("type").getString(),
+      jobId = job("jobId").getString(),
+      creator = job("creator").getString();
+    
+    if (jobType == "failedServer") {
+      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "cleanOutServer") {
+      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
+
   }
 
 }
