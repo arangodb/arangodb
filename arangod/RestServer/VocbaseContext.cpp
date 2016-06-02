@@ -49,7 +49,6 @@ double VocbaseContext::ServerSessionTtl =
 VocbaseContext::VocbaseContext(HttpRequest* request,
                                TRI_vocbase_t* vocbase, std::string const& jwtSecret)
     : RequestContext(request), _vocbase(vocbase), _jwtSecret(jwtSecret) {
-  TRI_ASSERT(_server != nullptr);
   TRI_ASSERT(_vocbase != nullptr);
 }
 

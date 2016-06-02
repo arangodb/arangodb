@@ -230,7 +230,6 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
 }
 
 static bool SetRequestContext(HttpRequest* request, void* data) {
-  TRI_ASSERT(RestServerFeature::RESTSERVER != nullptr);
   TRI_server_t* server = static_cast<TRI_server_t*>(data);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
 
