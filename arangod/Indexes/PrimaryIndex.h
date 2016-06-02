@@ -79,6 +79,8 @@ class AllIndexIterator final : public IndexIterator {
   ~AllIndexIterator() {}
 
   TRI_doc_mptr_t* next() override;
+  
+  void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override;
 
   void reset() override;
 

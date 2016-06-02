@@ -93,6 +93,8 @@ struct Functions {
                            VPackFunctionParameters const&);
   static AqlValue Concat(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          VPackFunctionParameters const&);
+  static AqlValue ConcatSeparator(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                                  VPackFunctionParameters const&);
   static AqlValue Like(arangodb::aql::Query*, arangodb::AqlTransaction*,
                        VPackFunctionParameters const&);
   static AqlValue Regex(arangodb::aql::Query*, arangodb::AqlTransaction*,

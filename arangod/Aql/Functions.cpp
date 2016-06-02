@@ -1250,7 +1250,6 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
   StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
-  bool handled = false;
   size_t const n = parameters.size();
 
   if (n == 1) {
@@ -1266,26 +1265,88 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
         // convert member to a string and append
         AppendAsString(trx, adapter, AqlValue(it.begin()));
       }
-      handled = true;
+      return AqlValue(buffer->c_str(), buffer->length());
     }
   }
 
-  if (!handled) {
-    for (size_t i = 0; i < n; ++i) {
-      AqlValue member = ExtractFunctionParameterValue(trx, parameters, i);
+  for (size_t i = 0; i < n; ++i) {
+    AqlValue member = ExtractFunctionParameterValue(trx, parameters, i);
 
-      if (member.isNull(true)) {
-        continue;
-      }
-
-      // convert member to a string and append
-      AppendAsString(trx, adapter, member);
+    if (member.isNull(true)) {
+      continue;
     }
+
+    // convert member to a string and append
+    AppendAsString(trx, adapter, member);
   }
 
-  size_t length = buffer->length();
   try {
-    return AqlValue(buffer->c_str(), length);
+    return AqlValue(buffer->c_str(), buffer->length());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+}
+
+/// @brief function CONCAT_SEPARATOR
+AqlValue Functions::ConcatSeparator(arangodb::aql::Query* query,
+                                    arangodb::AqlTransaction* trx,
+                                    VPackFunctionParameters const& parameters) {
+  StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  bool found = false;
+  size_t const n = parameters.size();
+    
+  AqlValue separator = ExtractFunctionParameterValue(trx, parameters, 0);
+  AppendAsString(trx, adapter, separator);
+  std::string const s(buffer->c_str(), buffer->length());
+
+  buffer->clear();
+
+  if (n == 2) {
+    AqlValue member = ExtractFunctionParameterValue(trx, parameters, 1);
+
+    if (member.isArray()) {
+      // reserve *some* space
+      buffer->reserve((s.size() + 10) * member.length());
+
+      AqlValueMaterializer materializer(trx);
+      VPackSlice slice = materializer.slice(member, false);
+
+      for (auto const& it : VPackArrayIterator(slice, true)) {
+        if (it.isNull()) {
+          continue;
+        }
+        if (found) {
+          buffer->appendText(s);
+        }
+        // convert member to a string and append
+        AppendAsString(trx, adapter, AqlValue(it.begin()));
+        found = true;
+      }
+      return AqlValue(buffer->c_str(), buffer->length());
+    }
+  }
+
+  // reserve *some* space
+  buffer->reserve((s.size() + 10) * n);
+  for (size_t i = 1; i < n; ++i) {
+    AqlValue member = ExtractFunctionParameterValue(trx, parameters, i);
+
+    if (member.isNull(true)) {
+      continue;
+    }
+    if (found) {
+      buffer->appendText(s);
+    }
+
+    // convert member to a string and append
+    AppendAsString(trx, adapter, member);
+    found = true;
+  }
+
+  try {
+    return AqlValue(buffer->c_str(), buffer->length());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }

@@ -279,7 +279,7 @@ void Supervision::getUniqueIds() {
     try {
       latestId = std::stoul(
           _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
-    } catch (std::exception const& e) {
+    } catch (std::exception const&) {
       std::this_thread::sleep_for (std::chrono::seconds(1));
       continue;
     }

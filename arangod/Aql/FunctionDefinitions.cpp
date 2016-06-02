@@ -149,9 +149,9 @@ struct FunctionDefiner {
   void addStringFunctions() {
     // string functions
     add({"CONCAT", "AQL_CONCAT", "szl|+", true, true, false,
-                        true, true, &Functions::Concat});
+         true, true, &Functions::Concat});
     add({"CONCAT_SEPARATOR", "AQL_CONCAT_SEPARATOR",
-                                  "s,szl|+", true, true, false, true, true});
+         "s,szl|+", true, true, false, true, true, &Functions::ConcatSeparator});
     add({"CHAR_LENGTH", "AQL_CHAR_LENGTH", "s", true, true,
                              false, true, true});
     add({"LOWER", "AQL_LOWER", "s", true, true, false, true, true});
