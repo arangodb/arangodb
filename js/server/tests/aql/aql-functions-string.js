@@ -34,6 +34,7 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
+var assertQueryWarningAndFalse = helper.assertQueryWarningAndFalse;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -54,6 +55,135 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test regex function, invalid arguments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRegexInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX(\"test\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX(\"test\", \"meow\", \"foo\", \"bar\")"); 
+      
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"[\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"[^\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"a.(\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"(a\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"(a]\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"**\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"?\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"*\")");
+    },
+
+    testRegex : function () {
+      var values = [
+        // whole words
+        ["the quick brown fox", "the", true],
+        ["the quick brown fox", "quick", true],
+        ["the quick brown fox", "quicK", false],
+        ["the quick brown fox", "quIcK", false],
+        ["the quick brown fox", "brown", true],
+        ["the quick brown fox", "fox", true],
+        ["the quick brown fox", "The", false],
+        ["the quick brown fox", "THE", false],
+        ["the quick brown fox", "foxx", false],
+        ["the quick brown fox", "hasi", false],
+        
+        // anchored
+        ["the quick brown fox", "^the", true],
+        ["the quick brown fox", "^the$", false],
+        ["the quick brown fox", "^the quick", true],
+        ["the quick brown fox", "^the quick brown", true],
+        ["the quick brown fox", "^the quick brown fo", true],
+        ["the quick brown fox", "^th", true],
+        ["the quick brown fox", "^t", true],
+        ["the quick brown fox", "^the quick$", false],
+        ["the quick brown fox", "^quick", false],
+        ["the quick brown fox", "quick$", false],
+        ["the quick brown fox", "^quick$", false],
+        ["the quick brown fox", "^brown", false],
+        ["the quick brown fox", "brown$", false],
+        ["the quick brown fox", "^brown$", false],
+        ["the quick brown fox", "fox", true],
+        ["the quick brown fox", "fox$", true],
+        ["the quick brown fox", "^fox$", false],
+        ["the quick brown fox", "The", false],
+        ["the quick brown fox", "^The", false],
+        ["the quick brown fox", "THE", false],
+        ["the quick brown fox", "^THE", false],
+        ["the quick brown fox", "foxx", false],
+        ["the quick brown fox", "foxx$", false],
+        ["the quick brown fox", "the quick brown fox$", true],
+        ["the quick brown fox", "brown fox$", true],
+        ["the quick brown fox", "quick brown fox$", true],
+        ["the quick brown fox", "he quick brown fox$", true],
+        ["the quick brown fox", "e quick brown fox$", true],
+        ["the quick brown fox", "quick brown fox$", true],
+        ["the quick brown fox", "x$", true],
+        ["the quick brown fox", "^", true],
+        ["the quick brown fox", "$", true],
+        ["the quick brown fox", "^.*$", true],
+        ["the quick brown fox", ".*", true],
+        ["the quick brown fox", "^.*", true],
+        ["the quick brown fox", "^.*$", true],
+
+        // partials
+        ["the quick brown fox", " quick", true],
+        ["the quick brown fox", " Quick", false],
+        ["the quick brown fox", "the quick", true],
+        ["the quick brown fox", "the slow", false],
+        ["the quick brown fox", "the quick brown", true],
+        ["the quick brown fox", "the quick browne", false],
+        ["the quick brown fox", "the quick brownfox", false],
+        ["the quick brown fox", "the quick brown fox", true],
+        ["the quick brown fox", "the quick brown foxx", false],
+        ["the quick brown fox", "quick brown fox", true],
+        ["the quick brown fox", "a quick brown fox", false],
+        ["the quick brown fox", "brown fox", true],
+        ["the quick brown fox", "rown fox", true],
+        ["the quick brown fox", "rown f", true],
+        ["the quick brown fox", "e q", true],
+        ["the quick brown fox", "f z", false],
+        ["the quick brown fox", "red fo", false],
+        ["the quick brown fox", "köter", false],
+        ["the quick brown fox", "ö", false],
+        ["the quick brown fox", "z", false],
+        ["the quick brown fox", "z", false],
+        ["the quick brown fox", " ", true],
+        ["the quick brown fox", "  ", false],
+        ["the quick brown fox", "", true],
+
+        // wildcards
+        ["the quick brown fox", "the.*fox", true],
+        ["the quick brown fox", "^the.*fox$", true],
+        ["the quick brown fox", "^the.*dog$", false],
+        ["the quick brown fox", "the (quick|slow) (red|green|brown) (dog|cat|fox)", true],
+        ["the quick brown fox", "the .*(red|green|brown) (dog|cat|fox)", true],
+        ["the quick brown fox", "^the .*(red|green|brown) (dog|cat|fox)", true],
+        ["the quick brown fox", "the (quick|slow) (red|green|brown) (dog|cat)", false],
+        ["the quick brown fox", "^the (quick|slow) (red|green|brown) (dog|cat)", false],
+        ["the quick brown fox", "^the .*(red|green|brown) (dog|cat)", false],
+        ["the quick brown fox", "the .*(red|green|brown) (dog|cat)", false],
+        ["the quick brown fox", "the (slow|lazy) brown (fox|wolf)", false],
+        ["the quick brown fox", "the.*brown (fox|wolf)", true],
+        ["the quick brown fox", "^t.*(fox|wolf)", true],
+        ["the quick brown fox", "^t.*(fox|wolf)$", true],
+        ["the quick brown fox", "^t.*(fo|wolf)x$", true],
+        ["the quick brown fox", "^t.*(fo|wolf)xx", false],
+      ];
+
+      values.forEach(function(v) {
+        var query = "RETURN REGEX(@what, @re)";
+        assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        
+        query = "RETURN NOOPT(REGEX(@what, @re))";
+        assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        
+        query = "RETURN NOOPT(V8(REGEX(@what, @re)))";
+        assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+      });
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -995,9 +1125,19 @@ function ahuacatlStringFunctionsTestSuite () {
 /// @brief test concat function
 ////////////////////////////////////////////////////////////////////////////////
     
-    testConcatList : function () {
+    testConcatList1 : function () {
       var expected = [ "theQuickBrownアボカドJumps名称について" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について' )");
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT([ 'the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について' ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatList2 : function () {
+      var expected = [ "[\"the\",\"Quick\",\"\",null,\"Brown\",null,\"アボカド\",\"Jumps\",\"名称について\"]" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT([ 'the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について' ], null)");
       assertEqual(expected, actual);
     },
 
@@ -1015,6 +1155,8 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "4yes" ], getQueryResults("RETURN CONCAT(4, \"yes\")")); 
       assertEqual([ "[]yes" ], getQueryResults("RETURN CONCAT([ ], \"yes\")")); 
       assertEqual([ "{}yes" ], getQueryResults("RETURN CONCAT({ }, \"yes\")")); 
+      assertEqual([ "{\"a\":\"foo\",\"b\":2}yes" ], getQueryResults("RETURN CONCAT({ a: \"foo\", b: 2 }, \"yes\")")); 
+      assertEqual([ "[1,\"Quick\"][\"Brown\"]falseFox" ], getQueryResults("RETURN CONCAT([ 1, 'Quick' ], '', null, [ 'Brown' ], false, 'Fox')")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1041,9 +1183,19 @@ function ahuacatlStringFunctionsTestSuite () {
 /// @brief test concat function
 ////////////////////////////////////////////////////////////////////////////////
     
-    testConcatCxxList : function () {
+    testConcatCxxList1 : function () {
       var expected = [ "theQuickBrownアボカドJumps名称について" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(CONCAT('the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について'))");
+      var actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(CONCAT([ 'the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について' ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatCxxList2 : function () {
+      var expected = [ "[\"the\",\"Quick\",\"\",null,\"Brown\",null,\"アボカド\",\"Jumps\",\"名称について\"]false" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(CONCAT([ 'the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について' ], null, false))");
       assertEqual(expected, actual);
     },
 
@@ -1064,6 +1216,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "[1,2,3]yes" ], getQueryResults("RETURN NOOPT(CONCAT([ 1 , 2, 3 ], \"yes\"))")); 
       assertEqual([ "{}yes" ], getQueryResults("RETURN NOOPT(CONCAT({ }, \"yes\"))")); 
       assertEqual([ "{\"a\":\"foo\",\"b\":2}yes" ], getQueryResults("RETURN NOOPT(CONCAT({ a: \"foo\", b: 2 }, \"yes\"))")); 
+      assertEqual([ "[1,\"Quick\"][\"Brown\"]falseFox" ], getQueryResults("RETURN NOOPT(CONCAT([ 1, 'Quick' ], '', null, [ 'Brown' ], false, 'Fox'))")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1119,6 +1272,26 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test concat_separator function
 ////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorList4 : function () {
+      var expected = [ "the*/*/Quick*/*/Brown*/*/*/*/Fox*/*/Jumps" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT_SEPARATOR('*/*/', [ 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps' ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorList5 : function () {
+      var expected = [ "the*/*/Quick*/*/Brown*/*/*/*/Fox*/*/Jumps*/*/[]*/*/higher*/*/[\"than\",\"you\"]" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT_SEPARATOR('*/*/', [ 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps', [ ], 'higher', [ 'than', 'you' ] ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
 
     testConcatSeparatorInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT_SEPARATOR()"); 
@@ -1137,7 +1310,105 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "yesyes[]" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", [ ])"));
       assertEqual([ "yesyes[1,2,3]" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", [ 1,2,3 ])"));
       assertEqual([ "yesyes{}" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", { })"));
+      assertEqual([ "yesyes{}" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", [ \"yes\", { } ])"));
+      assertEqual([ "[\"yes\",{}]yestrue" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", [ \"yes\", { } ], null, true)"));
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorCxx1 : function () {
+      var expected = [ "the,Quick,Brown,Fox,Jumps" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] RETURN NOOPT(CONCAT_SEPARATOR(',', 'the', 'Quick', null, 'Brown', null, 'Fox', 'Jumps'))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorCxx2 : function () {
+      var expected = [ "the*/*/Quick*/*/Brown*/*/*/*/Fox*/*/Jumps" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] RETURN NOOPT(CONCAT_SEPARATOR('*/*/', 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps'))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorListCxx1 : function () {
+      var expected = [ "[\"the\",\"Quick\",null,\"Brown\",null,\"Fox\",\"Jumps\"],higher,[\"than\",\"you\"]" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] RETURN NOOPT(CONCAT_SEPARATOR(',', [ 'the', 'Quick', null, 'Brown', null, 'Fox', 'Jumps' ], 'higher', [ 'than', 'you' ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorListCxx2 : function () {
+      var expected = [ "[\"the\",\"Quick\",null,\"Brown\",\"\",\"Fox\",\"Jumps\"]*/*/[]*/*/higher*/*/[\"than\",\"you\"]" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] RETURN NOOPT(CONCAT_SEPARATOR('*/*/', [ 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps' ], [ ], 'higher', [ 'than', 'you' ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorListCxx3 : function () {
+      var expected = [ "the*/*/Quick*/*/Brown*/*/*/*/Fox*/*/Jumps*/*/[]*/*/higher*/*/[\"than\",\"you\"]" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] RETURN NOOPT(CONCAT_SEPARATOR('*/*/', 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps', [ ], 'higher', [ 'than', 'you' ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorListCxx4 : function () {
+      var expected = [ "the*/*/Quick*/*/Brown*/*/*/*/Fox*/*/Jumps" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] RETURN NOOPT(CONCAT_SEPARATOR('*/*/', [ 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps' ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorListCxx5 : function () {
+      var expected = [ "the*/*/Quick*/*/Brown*/*/*/*/Fox*/*/Jumps*/*/[]*/*/higher*/*/[\"than\",\"you\"]" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] RETURN NOOPT(CONCAT_SEPARATOR('*/*/', [ 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps', [ ], 'higher', [ 'than', 'you' ] ]))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
+
+    testConcatSeparatorCxxInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(CONCAT_SEPARATOR())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(CONCAT_SEPARATOR(\"yes\"))"); 
+      assertEqual([ "yesyes" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(null, \"yes\", \"yes\"))"));
+      assertEqual([ "yestrueyes" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(true, \"yes\", \"yes\"))"));
+      assertEqual([ "yes4yes" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(4, \"yes\", \"yes\"))"));
+      assertEqual([ "yes[]yes" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR([ ], \"yes\", \"yes\"))"));
+      assertEqual([ "yes{}yes" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR({ }, \"yes\", \"yes\"))"));
+      assertEqual([ "trueyesyes" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(\"yes\", true, \"yes\"))"));
+      assertEqual([ "4yesyes" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(\"yes\", 4, \"yes\"))"));
+      assertEqual([ "[]yesyes" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(\"yes\", [ ], \"yes\"))"));
+      assertEqual([ "{}yesyes" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(\"yes\", { }, \"yes\"))"));
+      assertEqual([ "yesyestrue" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(\"yes\", \"yes\", true))"));
+      assertEqual([ "yesyes4" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(\"yes\", \"yes\", 4))"));
+      assertEqual([ "yesyes[]" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(\"yes\", \"yes\", [ ]))"));
+      assertEqual([ "yesyes[1,2,3]" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(\"yes\", \"yes\", [ 1,2,3 ]))"));
+      assertEqual([ "yesyes{}" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(\"yes\", \"yes\", { }))"));
+      assertEqual([ "yesyes{}" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(\"yes\", [ \"yes\", { } ]))"));
+      assertEqual([ "[\"yes\",{}]yestrue" ], getQueryResults("RETURN NOOPT(CONCAT_SEPARATOR(\"yes\", [ \"yes\", { } ], null, true))"));
+    },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test charlength function

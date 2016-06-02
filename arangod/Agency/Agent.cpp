@@ -316,31 +316,33 @@ bool Agent::load() {
 
 // Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query) {
-  if (_constituent.leading()) {  // Only working as leader
-
+  
+  if (_constituent.leading()) {  // Only leader
+    
     std::vector<bool> applied;
     std::vector<index_t> indices;
     index_t maxind = 0;
-
+    
     {
       MUTEX_LOCKER(mutexLocker, _ioLock);
       applied = _spearhead.apply(query);                   // Apply to spearhead
       indices = _state.log(query, applied, term(), id());  // Log w/ indicies
     }
-
+    
     if (!indices.empty()) {
       maxind = *std::max_element(indices.begin(), indices.end());
     }
     // _appendCV.signal();                                  // Wake up run
-
+    
     reportIn(id(), maxind);
-
+    
     return write_ret_t(true, id(), applied,
                        indices);  // Indices to wait for to rest
-
+    
   } else {  // Else we redirect
     return write_ret_t(false, _constituent.leaderID());
   }
+  
 }
 
 // Read from store
@@ -379,13 +381,15 @@ void Agent::beginShutdown() {
   // Personal hygiene
   Thread::beginShutdown();
 
+  // Stop supervision
+  if (_config.supervision) {
+    _supervision.beginShutdown();
+  }
+
   // Stop constituent and key value stores
   _constituent.beginShutdown();
   _spearhead.beginShutdown();
   _readDB.beginShutdown();
-  if (_config.supervision) {
-    _supervision.beginShutdown();
-  }
 
   // Wake up all waiting REST handler (waitFor)
   CONDITION_LOCKER(guard, _appendCV);
@@ -424,7 +428,11 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   MUTEX_LOCKER(mutexLocker, _ioLock);
   _spearhead = compaction.get("readDB");
   _readDB = compaction.get("readDB");
-  _lastCommitIndex = std::stoul(compaction.get("_key").copyString());
+  try {
+    _lastCommitIndex = std::stoul(compaction.get("_key").copyString());
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+  }
   _nextCompationAfter = _lastCommitIndex + _config.compactionStepSize;
   return *this;
 }

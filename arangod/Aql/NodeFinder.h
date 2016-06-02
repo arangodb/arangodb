@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/SmallVector.h"
 
 namespace arangodb {
 namespace aql {
@@ -35,12 +36,12 @@ template <typename T>
 class NodeFinder final : public WalkerWorker<ExecutionNode> {
   T _lookingFor;
 
-  std::vector<ExecutionNode*>& _out;
+  SmallVector<ExecutionNode*>& _out;
 
   bool _enterSubqueries;
 
  public:
-  NodeFinder(T, std::vector<ExecutionNode*>&, bool);
+  NodeFinder(T, SmallVector<ExecutionNode*>&, bool);
 
   bool before(ExecutionNode*) override final;
 
@@ -50,14 +51,14 @@ class NodeFinder final : public WalkerWorker<ExecutionNode> {
 };
 
 class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
-  std::vector<ExecutionNode*>& _out;
+  SmallVector<ExecutionNode*>& _out;
 
   std::vector<bool> _found;
 
   bool _enterSubqueries;
 
  public:
-  EndNodeFinder(std::vector<ExecutionNode*>&, bool);
+  EndNodeFinder(SmallVector<ExecutionNode*>&, bool);
 
   bool before(ExecutionNode*) override final;
 

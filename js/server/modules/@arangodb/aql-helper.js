@@ -256,6 +256,21 @@ function assertQueryWarningAndNull (errorCode, query, bindVars) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief assert a specific warning running a query
+////////////////////////////////////////////////////////////////////////////////
+
+function assertQueryWarningAndFalse (errorCode, query, bindVars) {
+  var result = AQL_EXECUTE(query, bindVars), i, found = { };
+
+  for (i = 0; i < result.warnings.length; ++i) {
+    found[result.warnings[i].code] = true;
+  }
+
+  assertTrue(found[errorCode]);
+  assertEqual([ false ], result.json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a linearized version of an execution plan
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -477,6 +492,7 @@ exports.getRawQueryResults                 = getRawQueryResults;
 exports.getQueryResults                    = getQueryResults;
 exports.assertQueryError                   = assertQueryError;
 exports.assertQueryWarningAndNull          = assertQueryWarningAndNull;
+exports.assertQueryWarningAndFalse         = assertQueryWarningAndFalse;
 exports.getLinearizedPlan                  = getLinearizedPlan;
 exports.getCompactPlan                     = getCompactPlan;
 exports.findExecutionNodes                 = findExecutionNodes;

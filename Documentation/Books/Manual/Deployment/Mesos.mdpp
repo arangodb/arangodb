@@ -1,0 +1,52 @@
+!SECTION Distributed deployment using Apache Mesos
+
+Philosophie: Es muss extrem einfach aussehen, trotzdem sollte die Section
+hinreichend viel Detailinformation liefern. Ich weiß, dass das ein 
+Widerspruch ist.
+
+!SUBSECTION DC/OS
+
+Explain that ArangoDB is in "the universe" and can be launched under 
+"Services" in the UI. 
+
+Show how one reaches the coordinator UI via the DC/OS UI after deployment.
+
+Explain about scaling up and down via the UI.
+
+Explain configuration options or link to some place where they are
+explained.
+
+Explain about the `dcos` CLI and the ArangoDB `dcos`-subcommand.
+
+Explain how to shut down an ArangoDB cluster cleanly.
+
+Say that ArangoDB uses persistent volumes, explain advantage.
+
+Say that this makes it impossible to deploy ArangoDB to "public Mesos Agents".
+Explain how to setup a marathon-lb load balancer to reach the coordinators
+either from within the DC/OS cluster or from the outside (via public slaves).
+
+Explain authentication setup (once we have it).
+
+Staubsauger?
+
+!SUBSECTION Apache Mesos and Marathon
+
+Explain how to launch an ArangoDB cluster via Marathon in an Apache
+Mesos cluster.
+
+Explain configuration options or link to some place where they are
+explained.
+
+Show how one reaches the coordinator UI, HOW DOES THIS ACTUALLY WORK?
+DO WE NEED EXPLAIN ABOUT sshuttle?
+
+Mention scaling up and down as in DC/OS case.
+
+Explain how to shut down an ArangoDB cluster cleanly.
+
+Explain authentication setup (once we have it) or say it is exactly as
+in the DC/OS case.
+
+Staubsauger? Deployment via Marathon.
+

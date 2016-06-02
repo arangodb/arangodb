@@ -46,7 +46,7 @@ class ExplicitTransaction : public Transaction {
                       std::vector<std::string> const& writeCollections,
                       double lockTimeout, bool waitForSync,
                       bool allowImplicitCollections)
-      : Transaction(transactionContext, 0) {
+      : Transaction(transactionContext) {
     this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
 
     if (lockTimeout >= 0.0) {
@@ -76,7 +76,7 @@ class ExplicitTransaction : public Transaction {
                       std::vector<TRI_voc_cid_t> const& readCollections,
                       std::vector<TRI_voc_cid_t> const& writeCollections,
                       double lockTimeout, bool waitForSync, bool embed)
-      : Transaction(transactionContext, 0) {
+      : Transaction(transactionContext) {
     this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
 
     if (lockTimeout >= 0.0) {

@@ -95,57 +95,6 @@ var compareServices =  function(l, r) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief comparator for versions
-////////////////////////////////////////////////////////////////////////////////
-
-var compareVersions = function (a, b) {
-  var i;
-
-  if (a === b) {
-    return 0;
-  }
-
-  // error handling
-  if (typeof a !== "string") {
-    return -1;
-  }
-  if (typeof b !== "string") {
-    return 1;
-  }
-
-  var aComponents = a.split(".");
-  var bComponents = b.split(".");
-  var len = Math.min(aComponents.length, bComponents.length);
-
-  // loop while the components are equal
-  for (i = 0; i < len; i++) {
-
-    // A bigger than B
-    if (parseInt(aComponents[i], 10) > parseInt(bComponents[i], 10)) {
-      return 1;
-    }
-
-    // B bigger than A
-    if (parseInt(aComponents[i], 10) < parseInt(bComponents[i], 10)) {
-      return -1;
-    }
-  }
-
-  // If one's a prefix of the other, the longer one is bigger one.
-  if (aComponents.length > bComponents.length) {
-    return 1;
-  }
-
-  if (aComponents.length < bComponents.length) {
-    return -1;
-  }
-
-  // Otherwise they are the same.
-  return 0;
-};
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the fishbowl from a zip archive
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -322,27 +271,32 @@ var search = function (name) {
 function extractMaxVersion(matchEngine, versionDoc) {
   let serverVersion = plainServerVersion();
   let versions = Object.keys(versionDoc);
-  versions.sort(compareVersions).reverse();
+  versions.sort(semver.compare).reverse();
+  let fallback;
 
   for (let version of versions) {
-    if (matchEngine) {
-      let info = versionDoc[version];
-
-      if (info.engines && info.engines.arangodb) {
-        if (semver.satisfies(serverVersion, info.engines.arangodb)) {
-          return version;
-        }
-      }
-      else if (matchEngine !== "match-engines") {
+    let info = versionDoc[version];
+    if (!info.engines || Object.keys(info.engines).length === 0) {
+      // No known compatibility requirements indicated: use as last resort
+      if (!matchEngine) {
         return version;
       }
+      if (!fallback) {
+        fallback = version;
+      }
+      continue;
     }
-    else {
+    let versionRange = info.engines.arangodb;
+    if (!versionRange || semver.outside(serverVersion, versionRange, '<')) {
+      // Explicitly backwards-incompatible with the server version: ignore
+      continue;
+    }
+    if (!matchEngine || semver.satisfies(serverVersion, versionRange)) {
       return version;
     }
   }
 
-  return undefined;
+  return fallback;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,14 +310,22 @@ function availableJson(matchEngine) {
 
   while (cursor.hasNext()) {
     let doc = cursor.next();
-    let maxVersion = extractMaxVersion(matchEngine, doc.versions);
+    let latestVersion = extractMaxVersion(matchEngine, doc.versions);
 
-    if (maxVersion) {
+    if (latestVersion) {
+      let serverVersion = plainServerVersion();
+      let versionInfo = doc.versions[latestVersion];
+      let legacy = Boolean(
+        versionInfo.engines
+        && versionInfo.engines.arangodb
+        && !semver.satisfies(serverVersion, versionInfo.engines.arangodb)
+      );
       let res = {
         name: doc.name,
         description: doc.description || "",
         author: doc.author || "",
-        latestVersion: maxVersion
+        latestVersion,
+        legacy
       };
 
       result.push(res);
@@ -472,7 +434,7 @@ var infoJson = function (name) {
 /// @brief create a download URL for the given service information
 ////////////////////////////////////////////////////////////////////////////////
 
-var buildUrl = function(serviceInfo) {
+var installationInfo = function(serviceInfo) {
 
   // TODO Validate
   let infoSplit = serviceInfo.split(":");
@@ -481,7 +443,7 @@ var buildUrl = function(serviceInfo) {
   let storeInfo = infoJson(name);
 
   if (storeInfo === undefined) {
-    throw "Service not found";
+    throw new Error('Service not found');
   }
 
   let versions = storeInfo.versions;
@@ -495,20 +457,49 @@ var buildUrl = function(serviceInfo) {
     }
 
     if (! maxVersion) {
-      throw "No version known";
+      throw new Error('No available version');
     }
 
     versionInfo = versions[maxVersion];
   }
   else {
     if (!versions.hasOwnProperty(version)) {
-      throw "Unknown version";
+      throw new Error('Unknown version');
     }
 
     versionInfo = versions[version];
   }
 
-  return utils.buildGithubUrl(versionInfo.location, versionInfo.tag);
+  let url;
+  if (!versionInfo.type) {
+    url = versionInfo.location;
+  } else if (versionInfo.type === 'github') {
+    url = utils.buildGithubUrl(versionInfo.location, versionInfo.tag);
+  } else {
+    throw new Error(`Unknown location type ${versionInfo.type}`);
+  }
+  const manifest = {name};
+
+  if (serviceInfo.author) {
+    manifest.author = serviceInfo.author;
+  }
+  if (serviceInfo.description) {
+    manifest.description = serviceInfo.description;
+  }
+  if (serviceInfo.license) {
+    manifest.license = serviceInfo.license;
+  }
+  if (serviceInfo.keywords) {
+    manifest.keywords = serviceInfo.keywords;
+  }
+  if (versionInfo.engines) {
+    manifest.engines = versionInfo.engines;
+  }
+  if (versionInfo.provides) {
+    manifest.provides = versionInfo.provides;
+  }
+
+  return {url, manifest};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -532,7 +523,7 @@ var info = function (name) {
 
   var header = false;
   var versions = Object.keys(desc.versions);
-  versions.sort(compareVersions);
+  versions.sort(semver.compare);
 
   versions.forEach(function (v) {
     var version = desc.versions[v];
@@ -561,14 +552,9 @@ var info = function (name) {
 
 exports.available = available;
 exports.availableJson = availableJson;
-exports.buildUrl = buildUrl;
+exports.installationInfo = installationInfo;
 exports.getFishbowlStorage = getFishbowlStorage;
 exports.info = info;
 exports.search = search;
 exports.searchJson = searchJson;
 exports.update = update;
-
-// Temporary export to avoid breaking the client
-exports.compareVersions = compareVersions;
-
-

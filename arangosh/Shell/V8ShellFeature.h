@@ -28,7 +28,7 @@
 #include <v8.h>
 #include <libplatform/libplatform.h>
 
-#include "ApplicationFeatures/ConsoleFeature.h"
+#include "Shell/ConsoleFeature.h"
 #include "Shell/ShellFeature.h"
 
 namespace arangodb {

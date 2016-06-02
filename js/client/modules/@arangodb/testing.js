@@ -140,7 +140,7 @@ const optionsDefaults = {
   "concurrency": 3,
   "coreDirectory": "/var/tmp",
   "duration": 10,
-  "extraArgs": [],
+  "extraArgs": {},
   "extremeVerbosity": false,
   "force": true,
   "jsonReply": false,
@@ -1402,6 +1402,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
     instanceArgs["agency.id"] = String(i);
     instanceArgs["agency.size"] = String(N);
     instanceArgs["agency.wait-for-sync"] = String(wfs);
+    instanceArgs["agency.supervision"] = "true";
+    instanceArgs["agency.supervision-frequency"] = "5";
 
     if (i === N - 1) {
       let l = [];
@@ -4013,6 +4015,19 @@ function unitTest(cases, options) {
   LOGS_DIR = fs.join(TOP_DIR, "logs");
   PEM_FILE = fs.join(TOP_DIR, "UnitTests", "server.pem");
 
+  let checkFiles = [
+    ARANGOBENCH_BIN,
+    ARANGODUMP_BIN,
+    ARANGOD_BIN,
+    ARANGOIMP_BIN,
+    ARANGORESTORE_BIN,
+    ARANGOSH_BIN];
+  for (let b = 0; b < checkFiles.length; ++b) {
+    if (! fs.isFile(checkFiles[b]) && ! fs.isFile(checkFiles[b]+ ".exe" )) {
+      throw "unable to locate " + checkFiles[b];
+    }
+  }
+  
   const jsonReply = options.jsonReply;
   delete options.jsonReply;
 

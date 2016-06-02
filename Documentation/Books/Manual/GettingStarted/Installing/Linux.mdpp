@@ -23,7 +23,7 @@ page to use your favorite package manager for the major distributions. After
 setting up the ArangoDB repository you can easily install ArangoDB using yum,
 aptitude, urpmi or zypper.
 
-!SUBSECTION Linux-Mint
+!SUBSECTION Linux Mint
 
 Please use the corresponding Ubuntu or Debian packages.
 

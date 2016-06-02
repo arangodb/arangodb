@@ -26,7 +26,7 @@ Verify that your system contains
 * a modern C/C++ compiler C++11 capable including full regex support:
   * GNU "gcc" and "g++" version 4.9.0 or higher
   * "clang" and "clang++" version 3.6 or higher
-  * Visual C++ 2015 [(see the "compiling under windows" cookbook for more details)](/cookbook/CompilingUnderWindows30.html)
+  * Visual C++ 2015 [(see the "compiling under windows" cookbook for more details)](https://docs.arangodb.com/cookbook/Compiling/Windows30.html)
 * cmake
 * GNU make
 * Python, version 2 in order to use gyp for V8

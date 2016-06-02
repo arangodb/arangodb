@@ -180,6 +180,26 @@ class Agent : public arangodb::Thread {
   /// @brief Next compaction after
   arangodb::consensus::index_t _nextCompationAfter;
 };
+
+inline arangodb::consensus::write_ret_t transact (
+  Agent* _agent, Builder const& transaction) {
+  
+  query_t envelope = std::make_shared<Builder>();
+
+  try {
+    envelope->openArray();
+    envelope->add(transaction.slice());
+    envelope->close();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Supervision failed to build transaction.";
+    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << envelope->toJson();
+  return _agent->write(envelope);
+  
+}
+
 }
 }
 

@@ -29,10 +29,7 @@
 
 var internal = require("internal");
 var cluster = require("@arangodb/cluster");
-
 var db = internal.db;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialized
@@ -55,7 +52,7 @@ function createStatisticsCollection (name) {
 
     try {
       r = db._create(name, { isSystem: true, waitForSync: false,
-                             replicationFactor: 1, 
+                             replicationFactor: 1,
                              distributeShardsLike: "_graphs" });
     }
     catch (err) {
@@ -415,7 +412,6 @@ function compute15Minute (start, clusterId) {
   return result;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics interval
 ////////////////////////////////////////////////////////////////////////////////
@@ -580,13 +576,17 @@ exports.garbageCollector = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the module
+/// @brief initialize the module, we delay the actual scheduling of the
+/// periodic tasks until the cluster is fully initialized and we actually
+/// can run AQL queries
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.startup = function () {
+exports.installPeriodicTasks = function () {
   if (typeof internal.registerTask !== "function") {
     return;
   }
+
+  console.debug("Statistics: Installing regular tasks...");
 
   var interval = exports.STATISTICS_INTERVAL;
   var interval15 = exports.STATISTICS_HISTORY_INTERVAL;
@@ -616,4 +616,12 @@ exports.startup = function () {
   });
 };
 
+exports.startup = function () {
+  internal.registerTask({
+    id: "statistics-periodic-task-installer",
+    name: "statistics-periodic-task-installer",
+    offset: 60,
+    command: "require('@arangodb/statistics').installPeriodicTasks();"
+  });
+};
 

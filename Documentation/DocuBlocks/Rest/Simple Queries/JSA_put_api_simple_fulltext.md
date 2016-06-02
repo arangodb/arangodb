@@ -11,7 +11,7 @@ The name of the collection to query.
 The attribute that contains the texts.
 
 @RESTBODYPARAM{query,string,required,string}
-The fulltext query. Please refer to [Fulltext queries](../SimpleQueries/FulltextQueries.md)
+The fulltext query. Please refer to [Fulltext queries](../../Manual/Appendix/Deprecated/SimpleQueries/FulltextQueries.html)
   for details.
 
 @RESTBODYPARAM{skip,string,required,string}
