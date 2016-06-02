@@ -153,20 +153,10 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   void resetState(bool close);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief decides whether or not we should send back a www-authenticate
-  /// header
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool sendWwwAuthenticateHeader() const;
-
  protected:
   bool setup(Scheduler* scheduler, EventLoop loop) override;
-
   void cleanup() override;
-
   bool handleEvent(EventToken token, EventType events) override;
-
   void signalTask(TaskData*) override;
 
  protected:

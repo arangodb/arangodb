@@ -178,7 +178,7 @@ the [amount of documents](Miscellaneous.md#length) in a collection.
 Check whether the pattern *search* is contained in the string *text*,
 using wildcard matching. 
 
-- **text** (string): a string
+- **text** (string): the string to search in
 - **search** (string): a search pattern that can contain the wildcard characters
   *%* (meaning any sequence of characters, including none) and *_* (any single
   character). Literal *%* and *:* must be escaped with two backslashes.
@@ -248,6 +248,63 @@ The algorithm for token generation should be treated as opaque.
 ```js
 RANDOM_TOKEN(8) // "zGl09z42"
 RANDOM_TOKEN(8) // "m9w50Ft9"
+```
+
+!SUBSECTION REGEX()
+
+`REGEX(text, search, caseInsensitive) → bool`
+
+Check whether the pattern *search* is contained in the string *text*,
+using regular expression matching. 
+
+- **text** (string): the string to search in
+- **search** (string): a regular expression search pattern
+- returns **bool** (bool): *true* if the pattern is contained in *text*,
+  and *false* otherwise
+
+The regular expression may consist of literal characters and the following 
+characters and sequences:
+
+- *.*: the dot matches any single character except line terminators
+- *\d*: matches a single digit, equivalent to [0-9]
+- *\s*: matches a single whitespace character
+- *\t*: matches a tab character
+- *\r*: matches a carriage return
+- *\n*: matches a line-feed character
+- *[xyz]*: set of characters. matches any of the enclosed characters (i.e.
+  *x*, *y* or *z* in this case
+- *[^xyz]*: negated set of characters. matches any other character than the
+  enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
+- *[x-z]*: range of characters. matches any of the characters in the 
+  specified range
+- *[^x-z]*: negated range of characters. matches any other character than the
+  ones specified in the range
+- *(x|y)*: matches either *x* or *y*
+- *^*: matches the beginning of the string
+- *$*: matches the end of the string
+
+Note that the characters *.*, <i>\*</i>, *?*, *[*, *]*, *(*, *)*, *{*, *}*, *^*, 
+and *$* have a special meaning in regular expressions and may need to be 
+escaped using a backslash (*\\*). A literal backslash should also be escaped
+using another backslash, i.e. *\\\\*.
+
+Characters and sequences may optionally be repeated using the following
+quantifiers:
+
+- *x\**: matches zero or more occurrences of *x*
+- *x+*: matches one or more occurrences of *x*
+- *x?*: matches one or zero occurrences of *x*
+- *x{y}*: matches exactly *y* occurrences of *x*
+- *x{y,z}*: matches between *y* and *z* occurrences of *x*
+- *x{y,}*: matches at least *y* occurences of *x*
+ 
+If the regular expression in *search* is invalid, a warning will be raised
+and the function will return *false*.
+
+```js
+REGEX("the quick brown fox", "the.*fox") // true
+REGEX("the quick brown fox", "^(a|the)\s+(quick|slow).*f.x$") // true
+REGEX("the\nquick\nbrown\nfox", "^the(\n[a-w]+)+\nfox$") // true
 ```
 
 !SUBSECTION REVERSE()

@@ -42,9 +42,9 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/RestServerFeature.h"
 #include "Utils/CursorRepository.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/auth.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
@@ -134,7 +134,7 @@ static int ReadServerId(char const* filename) {
   if (!TRI_ExistsFile(filename)) {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
-  
+
   TRI_server_id_t foundId;
   try {
     std::string filenameString(filename);
@@ -231,28 +231,6 @@ static int DetermineServerId(TRI_server_t* server, bool checkVersion) {
   }
 
   return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a user can see a database
-/// note: "seeing" here does not necessarily mean the user can access the db.
-/// it only means there is a user account (with whatever password) present
-/// in the database
-////////////////////////////////////////////////////////////////////////////////
-
-static bool CanUseDatabase(TRI_vocbase_t* vocbase, char const* username) {
-  if (!vocbase->_settings.requireAuthentication) {
-    // authentication is turned off
-    return true;
-  }
-
-  if (strlen(username) == 0) {
-    // will happen if username is "" (when converting it from a null value)
-    // this will happen if authentication is turned off
-    return true;
-  }
-
-  return TRI_ExistsAuthenticationAuthInfo(vocbase, username);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -490,7 +468,8 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
       VPackSlice idSlice = parameters.get("id");
       if (idSlice.isString()) {
         // delete persistent indexes for this database
-        TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(idSlice.copyString()));
+        TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
+            StringUtils::uint64(idSlice.copyString()));
         RocksDBFeature::dropDatabase(id);
       }
 #endif
@@ -507,7 +486,8 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
       break;
     }
 
-    TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(idSlice.copyString()));
+    TRI_voc_tick_t id =
+        static_cast<TRI_voc_tick_t>(StringUtils::uint64(idSlice.copyString()));
 
     VPackSlice nameSlice = parameters.get("name");
 
@@ -529,7 +509,7 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
     // create app directories
     // .........................................................................
 
-    V8DealerFeature* dealer = 
+    V8DealerFeature* dealer =
         ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
     auto appPath = dealer->appPath();
 
@@ -914,7 +894,8 @@ static int WriteCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
     arangodb::wal::DatabaseMarker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE,
                                          id, slice);
     arangodb::wal::SlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
+                                                                    false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // throw an exception which is caught at the end of this function
@@ -951,7 +932,8 @@ static int WriteDropMarker(TRI_voc_tick_t id) {
                                          builder.slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
+                                                                    false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // throw an exception which is caught at the end of this function
@@ -1037,8 +1019,8 @@ static void DatabaseManager(void* data) {
       }
 
       if (database->_type != TRI_VOCBASE_TYPE_COORDINATOR) {
-        // regular database
-        // ---------------------------
+// regular database
+// ---------------------------
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
         // delete persistent indexes for this database
@@ -1052,12 +1034,14 @@ static void DatabaseManager(void* data) {
         std::string path;
 
         // remove apps directory for database
-        V8DealerFeature* dealer = 
+        V8DealerFeature* dealer =
             ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
         auto appPath = dealer->appPath();
 
         if (database->_isOwnAppsDirectory && !appPath.empty()) {
-          path = arangodb::basics::FileUtils::buildFilename(arangodb::basics::FileUtils::buildFilename(appPath, "_db"), database->_name);
+          path = arangodb::basics::FileUtils::buildFilename(
+              arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
+              database->_name);
 
           if (TRI_IsDirectory(path.c_str())) {
             LOG(TRACE) << "removing app directory '" << path
@@ -1323,7 +1307,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   // create shared application directories
   // ...........................................................................
 
-  V8DealerFeature* dealer = 
+  V8DealerFeature* dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
   auto appPath = dealer->appPath();
 
@@ -1331,7 +1315,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
     long systemError;
     std::string errorMessage;
     int res = TRI_CreateRecursiveDirectory(appPath.c_str(), systemError,
-                                            errorMessage);
+                                           errorMessage);
 
     if (res == TRI_ERROR_NO_ERROR) {
       LOG(INFO) << "created --javascript.app-path directory '" << appPath
@@ -1387,9 +1371,6 @@ int TRI_InitDatabasesServer(TRI_server_t* server) {
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-
-    // initialize the authentication data for the database
-    TRI_ReloadAuthInfo(vocbase);
 
     // start the compactor for the database
     TRI_StartCompactorVocBase(vocbase);
@@ -1636,14 +1617,13 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
     }
 
     // create application directories
-    V8DealerFeature* dealer = 
+    V8DealerFeature* dealer =
         ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
     auto appPath = dealer->appPath();
 
     CreateApplicationDirectory(vocbase->_name, appPath.c_str());
 
     if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
-      TRI_ReloadAuthInfo(vocbase);
       TRI_StartCompactorVocBase(vocbase);
 
       // start the replication applier
@@ -1731,7 +1711,8 @@ std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer(
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
 
-      if (includeSystem || !TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
+      if (includeSystem ||
+          !TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
         v.emplace_back(vocbase->_id);
       }
     }
@@ -2007,17 +1988,17 @@ int TRI_GetUserDatabasesServer(TRI_server_t* server, char const* username,
     auto theLists = server->_databasesLists.load();
 
     for (auto& p : theLists->_databases) {
-      TRI_vocbase_t* vocbase = p.second;
-      TRI_ASSERT(vocbase != nullptr);
-      TRI_ASSERT(vocbase->_name != nullptr);
+      char const* dbName = p.second->_name;
+      TRI_ASSERT(dbName != nullptr);
 
-      if (!CanUseDatabase(vocbase, username)) {
-        // user cannot see database
+      auto level = RestServerFeature::AUTH_INFO.canUseDatabase(username, dbName);
+
+      if (level == AuthLevel::NONE) {
         continue;
       }
 
       try {
-        names.emplace_back(vocbase->_name);
+        names.emplace_back(dbName);
       } catch (...) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }

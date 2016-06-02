@@ -52,7 +52,7 @@ RestAqlHandler::RestAqlHandler(arangodb::HttpRequest* request,
                                QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request),
       _context(static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context->getVocbase()),
+      _vocbase(_context->vocbase()),
       _queryRegistry(queryRegistry),
       _qId(0) {
   TRI_ASSERT(_vocbase != nullptr);

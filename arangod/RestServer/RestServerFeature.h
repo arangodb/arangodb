@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Actions/RestActionHandler.h"
+#include "VocBase/AuthInfo.h"
 
 namespace arangodb {
 namespace rest {
@@ -38,6 +39,9 @@ class RestServerThread;
 
 class RestServerFeature final
     : public application_features::ApplicationFeature {
+ public:
+  static AuthInfo AUTH_INFO;
+
  public:
   static bool authenticationEnabled() {
     return RESTSERVER != nullptr && RESTSERVER->authentication();
@@ -54,13 +58,17 @@ class RestServerFeature final
     return RESTSERVER->trustedProxies();
   }
 
+  static std::string getJwtSecret() {
+    TRI_ASSERT(RESTSERVER != nullptr);
+    return RESTSERVER->jwtSecret();
+  }
+
  private:
   static RestServerFeature* RESTSERVER;
+  static const size_t _maxSecretLength = 64;
 
- 
  public:
-  RestServerFeature(application_features::ApplicationServer*,
-                    std::string const&);
+  explicit RestServerFeature(application_features::ApplicationServer*);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -71,14 +79,16 @@ class RestServerFeature final
 
  private:
   double _keepAliveTimeout;
-  std::string const _authenticationRealm;
   bool _allowMethodOverride;
   bool _authentication;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
+
   bool _proxyCheck;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
+  
+  std::string _jwtSecret;
 
  public:
   bool authentication() const { return _authentication; }
@@ -86,6 +96,9 @@ class RestServerFeature final
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
   bool proxyCheck() const { return _proxyCheck; }
   std::vector<std::string> trustedProxies() const { return _trustedProxies; }
+  std::string jwtSecret() const { return _jwtSecret; }
+  void generateNewJwtSecret();
+  void setJwtSecret(std::string const& jwtSecret) { _jwtSecret = jwtSecret; }
 
  private:
   void buildServers();

@@ -140,7 +140,7 @@ class HeartbeatThread : public Thread {
   /// @brief fetch users for a database (run on coordinator only)
   //////////////////////////////////////////////////////////////////////////////
 
-  bool fetchUsers(TRI_vocbase_t*);
+  bool fetchUsers();
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bring the db server in sync with the desired state
@@ -180,11 +180,10 @@ class HeartbeatThread : public Thread {
   arangodb::basics::ConditionVariable _condition;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief users for these databases will be re-fetched the next time the
-  /// heartbeat thread runs
+  /// @brief users will be re-fetched the next time the heartbeat thread runs
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_set<TRI_vocbase_t*> _refetchUsers;
+  bool _refetchUsers;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief this server's id

@@ -62,12 +62,10 @@ class MaintenanceHandler : public HttpHandler {
 /// @brief constructs a new handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::HttpHandlerFactory(std::string const& authenticationRealm,
-                                       bool allowMethodOverride,
+HttpHandlerFactory::HttpHandlerFactory(bool allowMethodOverride,
                                        context_fptr setContext,
                                        void* setContextData)
-    : _authenticationRealm(authenticationRealm),
-      _allowMethodOverride(allowMethodOverride),
+    : _allowMethodOverride(allowMethodOverride),
       _setContext(setContext),
       _setContextData(setContextData),
       _notFound(nullptr) {}
@@ -96,8 +94,6 @@ bool HttpHandlerFactory::isMaintenance() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request
-///
-/// wrapper method that will consider disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralResponse::ResponseCode HttpHandlerFactory::authenticateRequest(
@@ -123,24 +119,6 @@ GeneralResponse::ResponseCode HttpHandlerFactory::authenticateRequest(
 
 bool HttpHandlerFactory::setRequestContext(HttpRequest* request) {
   return _setContext(request, _setContextData);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the authentication realm
-////////////////////////////////////////////////////////////////////////////////
-
-std::string HttpHandlerFactory::authenticationRealm(
-    HttpRequest* request) const {
-  auto context = request->requestContext();
-
-  if (context != nullptr) {
-    auto realm = context->realm();
-
-    if (! realm.empty()) {
-      return _authenticationRealm + "/" + std::string(realm);
-    }
-  }
-  return _authenticationRealm;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

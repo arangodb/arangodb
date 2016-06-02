@@ -45,6 +45,14 @@
   };
 
   window.arangoHelper = {
+    getCurrentJwt: function() {
+      return localStorage.getItem("jwt");
+    },
+
+    setCurrentJwt: function(jwt) {
+      localStorage.setItem("jwt", jwt);
+    },
+    
     lastNotificationMessage: null,
 
     CollectionTypes: {},

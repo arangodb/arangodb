@@ -18,31 +18,43 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_REQUEST_USER_H
-#define ARANGODB_REST_REQUEST_USER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_AUTH_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_AUTH_HANDLER_H 1
 
 #include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
+
+#include <chrono>
 
 namespace arangodb {
-namespace rest {
 
-class RequestUser {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief auth handler
+////////////////////////////////////////////////////////////////////////////////
+
+class RestAuthHandler : public RestVocbaseBaseHandler {
  public:
+  RestAuthHandler(HttpRequest*, std::string const* jwtSecret);
+
+  std::string generateJwt(std::string const&, std::string const&);
+
+ public:
+  bool isDirect() const override;
+
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create the request user
+  /// @brief returns the log files (inheritDoc)
   //////////////////////////////////////////////////////////////////////////////
 
-  RequestUser();
-  virtual ~RequestUser();
+  status_t execute() override;
 
  private:
-  RequestUser(const RequestUser&);
-  RequestUser& operator=(const RequestUser&);
+  std::string _jwtSecret;
+  std::chrono::seconds _validFor;
+  status_t badRequest();
 };
-}
 }
 
 #endif

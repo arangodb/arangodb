@@ -5,6 +5,13 @@
   "use strict";
   // We have to start the app only in production mode, not in test mode
   if (!window.hasOwnProperty("TEST_BUILD")) {
+    $(document).ajaxSend(function(event, jqxhr, settings) {
+      var currentJwt = window.arangoHelper.getCurrentJwt();
+      if (currentJwt) {
+        jqxhr.setRequestHeader("Authorization", "bearer " + currentJwt);
+      }
+    });
+
     $(document).ready(function() {
       window.App = new window.Router();
       Backbone.history.start();

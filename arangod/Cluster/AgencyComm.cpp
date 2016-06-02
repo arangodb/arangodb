@@ -39,12 +39,15 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "RestServer/RestServerFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
 
 using namespace arangodb;
+using namespace arangodb::application_features;
+using namespace basics::StringUtils;
 
 static void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) {
   builder.add(VPackValue(name));
@@ -518,7 +521,7 @@ bool AgencyComm::initialize() {
 /// @brief will try to initialize a new agency
 //////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::tryInitializeStructure() { 
+bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) { 
   VPackBuilder builder;
   try {
     VPackObjectBuilder b(&builder);
@@ -614,6 +617,10 @@ bool AgencyComm::tryInitializeStructure() {
       addEmptyVPackObject("DBServers", builder);
     }
     builder.add("InitDone", VPackValue(true));
+    builder.add("Secret", VPackValue(encodeHex(jwtSecret)));
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::STARTUP) << "Couldn't create initializing structure " << e.what();
+    return false;
   } catch (...) {
     LOG_TOPIC(ERR, Logger::STARTUP) << "Couldn't create initializing structure";
     return false;
@@ -668,13 +675,16 @@ bool AgencyComm::shouldInitializeStructure() {
 
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "Checking if agency is initialized";
+  
+  RestServerFeature* restServer = 
+      application_features::ApplicationServer::getFeature<RestServerFeature>("RestServer");
 
   while (true) {
     while (shouldInitializeStructure()) {
       LOG_TOPIC(TRACE, Logger::STARTUP) 
           << "Agency is fresh. Needs initial structure.";
       // mop: we initialized it .. great success
-      if (tryInitializeStructure()) {
+      if (tryInitializeStructure(restServer->jwtSecret())) {
         LOG_TOPIC(TRACE, Logger::STARTUP) << "Successfully initialized agency";
         break;
       } 
@@ -693,7 +703,7 @@ bool AgencyComm::ensureStructureInitialized() {
       if (value.isBoolean() && value.getBoolean()) {
         // expecting a value of "true"
         LOG_TOPIC(TRACE, Logger::STARTUP) << "Found an initialized agency";
-        return true;
+        break;
       }
     }
           
@@ -702,6 +712,18 @@ bool AgencyComm::ensureStructureInitialized() {
 
     sleep(1);
   } // next attempt
+  
+  AgencyCommResult secretResult = getValues("Secret");
+  VPackSlice secretValue = secretResult.slice()[0].get(std::vector<std::string>(
+        {prefix(), "Secret"}));
+  
+  if (!secretValue.isString()) {
+    LOG(ERR) << "Couldn't find secret in agency!";
+    return false;
+  }
+
+  restServer->setJwtSecret(decodeHex(secretValue.copyString()));
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

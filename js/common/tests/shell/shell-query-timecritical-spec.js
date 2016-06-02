@@ -1,5 +1,5 @@
 /*jshint expr: true */
-/*eslint no-unused-expressions: false */
+/*eslint no-unused-expressions: 0 */
 /*global describe, it, beforeEach, afterEach */
 'use strict';
 const internal = require('internal');
