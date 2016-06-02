@@ -40,11 +40,8 @@
       require('@arangodb/foxx/manager').initializeFoxx();
     },
     foxxes: function () {
-      const aql = require('@arangodb').aql;
       const console = require('console');
       const dbName = db._name();
-      const ttl = Number(internal.options()['server.session-timeout']) * 1000;
-      const now = Date.now();
 
       try {
         db._useDatabase('_system');

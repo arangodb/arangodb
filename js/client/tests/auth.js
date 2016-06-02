@@ -35,7 +35,6 @@ var users = require("@arangodb/users");
 var request = require('@arangodb/request');
 var crypto = require('@arangodb/crypto');
 var expect = require('expect.js');
-var print = require('internal').print;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -45,7 +44,7 @@ function AuthSuite () {
   'use strict';
   var baseUrl = function () {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  }
+  };
 
   const jwtSecret = 'haxxmann';
 
@@ -374,7 +373,7 @@ function AuthSuite () {
       });
 
       var jwt = JSON.parse(res.body).jwt;
-      var res = request.get({
+      res = request.get({
         url: baseUrl() + "/_api/version",
         auth: {
           bearer: jwt,
@@ -393,7 +392,7 @@ function AuthSuite () {
         auth: {
           bearer: jwt,
         }
-      })
+      });
       expect(res).to.be.a(request.Response);
       expect(res).to.have.property('statusCode', 200);
     },
@@ -406,7 +405,7 @@ function AuthSuite () {
         auth: {
           bearer: jwt,
         }
-      })
+      });
       expect(res).to.be.a(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
@@ -419,7 +418,7 @@ function AuthSuite () {
         auth: {
           bearer: jwt,
         }
-      })
+      });
       expect(res).to.be.a(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
@@ -432,7 +431,7 @@ function AuthSuite () {
         auth: {
           bearer: jwt,
         }
-      })
+      });
       expect(res).to.be.a(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
@@ -445,7 +444,7 @@ function AuthSuite () {
         auth: {
           bearer: jwt,
         }
-      })
+      });
       expect(res).to.be.a(request.Response);
       expect(res).to.have.property('statusCode', 200);
     },
@@ -458,7 +457,7 @@ function AuthSuite () {
         auth: {
           bearer: jwt,
         }
-      })
+      });
       expect(res).to.be.a(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
