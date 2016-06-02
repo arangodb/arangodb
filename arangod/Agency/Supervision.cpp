@@ -153,8 +153,8 @@ void Supervision::run() {
 
   // We do a try/catch around everything to prevent agency crashes until
   // debugging of the Supervision is finished:
-
-  try {
+  //  try {
+  
     CONDITION_LOCKER(guard, _cv);
     TRI_ASSERT(_agent != nullptr);
     bool timedout = false;
@@ -192,32 +192,46 @@ void Supervision::run() {
       
 
     }
-  }
+    /*} 
   catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY) 
         << "Supervision thread has caught an exception and is terminated: "
         << e.what();
-  }
+        }*/
 }
 
 void Supervision::workJobs() {
 
   for (auto const& todoEnt : _snapshot(toDoPrefix).children()) {
-    Node const& todo = *todoEnt.second;
-    if (todo("type").toJson() == "failedServer") {
-      FailedServer fs (
-        _snapshot, _agent, todo("jobId").toJson(), todo("creator").toJson(),
-        _agencyPrefix, todo("server").toJson());
+
+    Node const& job = *todoEnt.second;
+
+    std::string jobType = job("type").getString(),
+      jobId = job("jobId").getString(),
+      creator = job("creator").getString();
+      
+    if (jobType == "failedServer") {
+      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "cleanOutServer") {
+      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
+    
   }
 
-  for (auto const& todoEnt : _snapshot(pendingPrefix).children()) {
-    Node const& todo = *todoEnt.second;
-    if (todo("type").toJson() == "failedServer") {
-      FailedServer fs (
-        _snapshot, _agent, todo("jobId").toJson(), todo("creator").toJson(),
-        _agencyPrefix, todo("server").toJson());
+  for (auto const& pendEnt : _snapshot(pendingPrefix).children()) {
+
+    Node const& job = *pendEnt.second;
+
+    std::string jobType = job("type").getString(),
+      jobId = job("jobId").getString(),
+      creator = job("creator").getString();
+    
+    if (jobType == "failedServer") {
+      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "cleanOutServer") {
+      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
+
   }
 
 }

@@ -35,13 +35,21 @@ CleanOutServer::CleanOutServer (
   std::string const& server) : 
   Job(snapshot, agent, jobId, creator, prefix), _server(server) {
 
-  if (exists()) {
-    if (_server == "") {
+  if (_server == "") {
+    try {
       _server = _snapshot(pendingPrefix + _jobId + "/server").getString();
+    } catch (...) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << "CleanOutServer job with id " <<
+        jobId << " failed catastrophically.";
     }
-    if (status() == TODO) {  
-      start();        
-    } 
+  } 
+  
+  if (_server != "") {
+    if (exists()) {
+      if (status() == TODO) {  
+        start();        
+      } 
+    }
   }
   
 }
@@ -138,6 +146,25 @@ bool CleanOutServer::start() const {
 }
 
 bool CleanOutServer::scheduleMoveShards() const {
+
+  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
+  Node::Children const& databases = _snapshot("/Plan/Collections").children();
+  
+  for (auto const& database : databases) {
+    for (auto const& collptr : database.second->children()) {
+      Node const& collection = *(collptr.second);
+      for (auto const& shard : collection("shards").children()) {
+        VPackArrayIterator dbsit(shard.second->slice());
+        for (auto const& dbserver : dbsit) {
+          if (dbserver.copyString() == _server) {
+            MoveShard (_snapshot, _agent, _jobId, _creator, database.first,
+                       collptr.first, shard.first, _server, "DBServer1");
+          }
+        }
+      }
+    }
+  }  
+  
   return true;
 }
 
@@ -156,21 +183,30 @@ bool CleanOutServer::checkFeasibility () const {
 
   // Determine number of available servers
   Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
-  uint64_t nservers = dbservers.size() - cleanedServers.size() - 1;
+  uint64_t nservers = dbservers.size() - cleanedServers.size() - 1,
+    maxReplFact = 1;
 
-  // See if available servers after cleanout satisfy all replication factors
+  std::vector<std::string> tooLargeShards;
+  
+
+  // Find conflictings shards
   Node::Children const& databases = _snapshot("/Plan/Collections").children();
   for (auto const& database : databases) {
     for (auto const& collptr : database.second->children()) {
       try {
-        uint64_t replFactor = (*collptr.second)("replicationFactor").getUInt();
-        if (replFactor > nservers) {
-          LOG_TOPIC(ERR, Logger::AGENCY) <<
-            "Cannot house all shard replics after cleaning out " << _server;
-          return false;
+        uint64_t replFact = (*collptr.second)("replicationFactor").getUInt();
+        if (replFact > maxReplFact) {
+          maxReplFact = replFact;
         }
       } catch (...) {}
     }
+  }
+
+  // Report problem
+  if (maxReplFact > nservers) {
+    LOG_TOPIC(ERR, Logger::AGENCY) <<
+      "Cannot accomodate all shard replics after cleaning out " << _server;
+    return false;
   }
 
   return true;

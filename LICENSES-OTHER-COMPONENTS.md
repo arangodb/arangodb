@@ -42,6 +42,11 @@
 * License: PCRE [BSD 3-Clause license](https://github.com/v8/v8/blob/5.0.71.39/test/mjsunit/third_party/regexp-pcre.js)
 * License: object-keys [BSD-style 3-Clause license](https://github.com/v8/v8/blob/5.0.71.39/test/mjsunit/third_party/object-keys.js) 
 
+### RocksDB 4.8.0
+
+* Project Home: https://github.com/facebook/rocksdb
+* License: [BSD License](https://github.com/facebook/rocksdb/blob/master/LICENSE)
+
 ### ICU 54.1
 
 * Project Home: http://site.icu-project.org/
