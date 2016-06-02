@@ -40,11 +40,14 @@ FailedServer::FailedServer(Node const& snapshot,
   
   if (_server == "") {
     try {
+      _server = _snapshot(toDoPrefix + _jobId + "/server").getString();
+    } catch (...) {}
+  } 
+  
+  if (_server == "") {
+    try {
       _server = _snapshot(pendingPrefix + _jobId + "/server").getString();
-    } catch (...) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << "FailedServer job with id " <<
-        jobId << " failed catastrophically.";
-    }
+    } catch (...) {}
   } 
   
   if (_server != "") {
@@ -60,6 +63,9 @@ FailedServer::FailedServer(Node const& snapshot,
     } catch (...) {
       finish("DBServers/" + _server, false);
     }
+  } else {
+    LOG_TOPIC(ERR, Logger::AGENCY) << "CleanOutServer job with id " <<
+      jobId << " failed catastrophically. Cannot find server id.";
   }
   
 }
@@ -209,14 +215,16 @@ unsigned FailedServer::status () const {
     Node::Children const& subJobs = _snapshot(pendingPrefix).children();
 
     size_t found = 0;
-      
-    for (auto const& subJob : subJobs) {
-      if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
-        found++;
-        Node const& sj = *(subJob.second);
-        std::string subJobId = sj("jobId").slice().copyString();
-        std::string creator  = sj("creator").slice().copyString();
-        FailedLeader(_snapshot, _agent, subJobId, creator, _agencyPrefix);
+
+    if (!subJobs.empty()) {
+      for (auto const& subJob : subJobs) {
+        if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
+          found++;
+          Node const& sj = *(subJob.second);
+          std::string subJobId = sj("jobId").slice().copyString();
+          std::string creator  = sj("creator").slice().copyString();
+          FailedLeader(_snapshot, _agent, subJobId, creator, _agencyPrefix);
+        }
       }
     }
 

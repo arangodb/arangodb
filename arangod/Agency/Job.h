@@ -42,6 +42,7 @@ enum JOB_STATUS {TODO, PENDING, FINISHED, FAILED, NOTFOUND};
 static std::string const pendingPrefix = "/Target/Pending/";
 static std::string const finishedPrefix = "/Target/Finished/";
 static std::string const failedPrefix = "/Target/Failed/";
+static std::string const cleanedPrefix = "Target/CleanedServers";
 static std::string const planColPrefix = "/Plan/Collections/";
 static std::string const curColPrefix = "/Current/Collections/";
 static std::string const toDoPrefix = "/Target/ToDo/";

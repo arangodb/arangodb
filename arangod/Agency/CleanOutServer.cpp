@@ -37,11 +37,14 @@ CleanOutServer::CleanOutServer (
 
   if (_server == "") {
     try {
+      _server = _snapshot(toDoPrefix + _jobId + "/server").getString();
+    } catch (...) {}
+  } 
+  
+  if (_server == "") {
+    try {
       _server = _snapshot(pendingPrefix + _jobId + "/server").getString();
-    } catch (...) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << "CleanOutServer job with id " <<
-        jobId << " failed catastrophically.";
-    }
+    } catch (...) {}
   } 
   
   if (_server != "") {
@@ -50,8 +53,10 @@ CleanOutServer::CleanOutServer (
         start();        
       } 
     }
-  }
-  
+  } else {
+    LOG_TOPIC(ERR, Logger::AGENCY) << "CleanOutServer job with id " <<
+      jobId << " failed catastrophically. Cannot find server id.";
+  }  
 }
 
 CleanOutServer::~CleanOutServer () {}
@@ -148,7 +153,19 @@ bool CleanOutServer::start() const {
 bool CleanOutServer::scheduleMoveShards() const {
 
   Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
+
+  std::vector<std::string> availServers;
+  for (auto const server : dbservers) {
+    if (_snapshot.exists(
+          serverStatePrefix + server.first + "/cleaning").size() < 4 &&
+        _snapshot.exists(cleanedPrefix + server.first).size() < 3 &&
+        _server != server.first) {
+      availServers.push_back(server.first);
+    }
+  }
+  
   Node::Children const& databases = _snapshot("/Plan/Collections").children();
+  size_t count = 0;
   
   for (auto const& database : databases) {
     for (auto const& collptr : database.second->children()) {
@@ -158,7 +175,9 @@ bool CleanOutServer::scheduleMoveShards() const {
         for (auto const& dbserver : dbsit) {
           if (dbserver.copyString() == _server) {
             MoveShard (_snapshot, _agent, _jobId, _creator, database.first,
-                       collptr.first, shard.first, _server, "DBServer1");
+                       collptr.first, shard.first, _server,
+                       availServers.at(count%availServers.size()));
+            count++;
           }
         }
       }
@@ -170,31 +189,39 @@ bool CleanOutServer::scheduleMoveShards() const {
 
 bool CleanOutServer::checkFeasibility () const {
 
+  uint64_t numCleaned = 0;
   // Check if server is already in cleaned servers: fail!
-  Node::Children const& cleanedServers =
-    _snapshot("/Target/CleanedServers").children();
-  for (auto const cleaned : cleanedServers) {
-    if (cleaned.first == _server) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << _server <<
-        " has been cleaned out already!";
-      return false;
+  if (_snapshot.exists("/Target/CleanedServers").size()==2) {
+    Node::Children const& cleanedServers =
+      _snapshot("/Target/CleanedServers").children();
+    for (auto const cleaned : cleanedServers) {
+      if (cleaned.first == _server) {
+        LOG_TOPIC(ERR, Logger::AGENCY) << _server
+                                       << " has been cleaned out already!";
+        return false;
+      }
     }
+    numCleaned = cleanedServers.size();
   }
 
   // Determine number of available servers
   Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
-  uint64_t nservers = dbservers.size() - cleanedServers.size() - 1,
+  uint64_t nservers = dbservers.size() - numCleaned - 1,
     maxReplFact = 1;
 
-  std::vector<std::string> tooLargeShards;
-  
+  std::vector<std::string> tooLargeCollections;
+  std::vector<uint64_t> tooLargeFactors;
 
-  // Find conflictings shards
+  // Find conflictings collections
   Node::Children const& databases = _snapshot("/Plan/Collections").children();
   for (auto const& database : databases) {
     for (auto const& collptr : database.second->children()) {
       try {
         uint64_t replFact = (*collptr.second)("replicationFactor").getUInt();
+        if (replFact > nservers) {
+          tooLargeCollections.push_back(collptr.first);
+          tooLargeFactors.push_back(replFact);
+        }
         if (replFact > maxReplFact) {
           maxReplFact = replFact;
         }
@@ -204,8 +231,20 @@ bool CleanOutServer::checkFeasibility () const {
 
   // Report problem
   if (maxReplFact > nservers) {
-    LOG_TOPIC(ERR, Logger::AGENCY) <<
-      "Cannot accomodate all shard replics after cleaning out " << _server;
+    std::stringstream collections;
+    std::stringstream factors;
+
+    for (auto const collection : tooLargeCollections) {
+      collections << collection << " ";
+    }
+    for (auto const factor : tooLargeFactors) {
+      factors << std::to_string(factor) << " ";
+    }
+    
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Cannot accomodate all shards " << collections.str()
+      << " with replication factors " << factors.str()
+      << " after cleaning out server " << _server;
     return false;
   }
 

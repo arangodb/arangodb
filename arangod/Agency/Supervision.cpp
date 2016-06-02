@@ -202,38 +202,37 @@ void Supervision::run() {
 
 void Supervision::workJobs() {
 
-  for (auto const& todoEnt : _snapshot(toDoPrefix).children()) {
+  Node::Children const& todos = _snapshot(toDoPrefix).children();
+  Node::Children const& pends = _snapshot(pendingPrefix).children();
 
-    Node const& job = *todoEnt.second;
-
-    std::string jobType = job("type").getString(),
-      jobId = job("jobId").getString(),
-      creator = job("creator").getString();
-      
-    if (jobType == "failedServer") {
-      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
-    } else if (jobType == "cleanOutServer") {
-      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+  if (!todos.empty()) {
+    for (auto const& todoEnt : todos) {
+      Node const& job = *todoEnt.second;
+      std::string jobType = job("type").getString(),
+        jobId = job("jobId").getString(),
+        creator = job("creator").getString();
+      if (jobType == "failedServer") {
+        FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      } else if (jobType == "cleanOutServer") {
+        CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      }
     }
-    
   }
 
-  for (auto const& pendEnt : _snapshot(pendingPrefix).children()) {
-
-    Node const& job = *pendEnt.second;
-
-    std::string jobType = job("type").getString(),
-      jobId = job("jobId").getString(),
-      creator = job("creator").getString();
-    
-    if (jobType == "failedServer") {
-      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
-    } else if (jobType == "cleanOutServer") {
-      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+  if (!pends.empty()) {
+    for (auto const& pendEnt : pends) {
+      Node const& job = *pendEnt.second;
+      std::string jobType = job("type").getString(),
+        jobId = job("jobId").getString(),
+        creator = job("creator").getString();
+      if (jobType == "failedServer") {
+        FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      } else if (jobType == "cleanOutServer") {
+        CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      }
     }
-
   }
-
+  
 }
 
 // Start thread
