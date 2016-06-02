@@ -68,6 +68,21 @@ class RocksDBFeature final : public application_features::ApplicationFeature {
   RocksDBKeyComparator* _comparator;
   std::string _path;
   bool _active;
+  uint64_t _writeBufferSize;
+  uint64_t _maxWriteBufferNumber;
+  uint64_t _delayedWriteRate;
+  uint64_t _minWriteBufferNumberToMerge;
+  uint64_t _numLevels;
+  uint64_t _maxBytesForLevelBase;
+  uint64_t _maxBytesForLevelMultiplier;
+  bool _verifyChecksumsInCompaction;
+  bool _optimizeFiltersForHits;
+  uint64_t _baseBackgroundCompactions;
+  uint64_t _maxBackgroundCompactions;
+  uint64_t _maxLogFileSize;
+  uint64_t _keepLogFileNum;
+  uint64_t _logFileTimeToRoll;
+  uint64_t _compactionReadaheadSize;
 };
 
 }
