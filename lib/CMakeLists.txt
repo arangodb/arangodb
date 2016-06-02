@@ -53,6 +53,7 @@ if (MSVC)
     Basics/threads-win32.cpp
     Basics/win-utils.cpp
     Zip/iowin32.cpp
+    ApplicationFeatures/WindowsServiceFeature.cpp
   )
 else ()
   set(LIB_ARANGO_POSIX
@@ -109,6 +110,8 @@ else()
   add_definitions("-DENABLE_ASM_CRC32=0")
   message("-- Will not compile in hand-optimized assembler code for CRC32.")
 endif()
+
+
 
 add_library(${LIB_ARANGO} STATIC
   ${LIB_ARANGO_APPLE}

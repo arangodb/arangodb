@@ -48,9 +48,6 @@ endif ()
 ################################################################################
 
 if (MSVC)
-  set(ARANGO_MSVC
-    RestServer/WindowsServiceUtils.cpp
-  )
 
   generate_product_version(ProductVersionFiles
     NAME arangod
@@ -74,7 +71,6 @@ else ()
 endif ()
 
 add_executable(${BIN_ARANGOD}
-  ${ARANGO_MSVC}
   ${ProductVersionFiles}
   ${ROCKSDB_FILES}
   Actions/ActionFeature.cpp
