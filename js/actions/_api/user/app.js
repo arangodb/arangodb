@@ -1,13 +1,10 @@
 /*jshint strict: false */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief user management
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,26 +21,19 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("@arangodb");
-var actions = require("@arangodb/actions");
-var users = require("@arangodb/users");
+const arangodb = require("@arangodb");
+const actions = require("@arangodb/actions");
+const users = require("@arangodb/users");
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_api_user_fetch
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_api_user_fetch_list
-////////////////////////////////////////////////////////////////////////////////
-
-function get_api_user (req, res) {
+function get_api_user(req, res) {
+  require("internal").print("############ ", require("internal").inspect(req));
+  
   if (req.suffix.length === 0) {
-    actions.resultOk(req, res, actions.HTTP_OK, { result: users.all() });
+    actions.resultOk(req, res, actions.HTTP_OK, {
+      result: users.all()
+    });
     return;
   }
 
@@ -56,39 +46,32 @@ function get_api_user (req, res) {
 
   try {
     actions.resultOk(req, res, actions.HTTP_OK, users.document(user));
-  }
-  catch (err) {
+  } catch (err) {
     if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
       actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
-    }
-    else {
+    } else {
       throw err;
     }
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_api_user_create
-////////////////////////////////////////////////////////////////////////////////
-
-function post_api_user (req, res) {
+function post_api_user(req, res) {
   var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
 
   if (json === undefined) {
     return;
   }
 
-  var user;
-
   if (req.suffix.length === 1) {
     // validate if a combination or username / password is valid
-    user = decodeURIComponent(req.suffix[0]);
-    var result = users.isValid(user, json.passwd);
+    const user = decodeURIComponent(req.suffix[0]);
+    const result = users.isValid(user, json.passwd);
 
     if (result) {
-      actions.resultOk(req, res, actions.HTTP_OK, { result: true });
-    }
-    else {
+      actions.resultOk(req, res, actions.HTTP_OK, {
+        result: true
+      });
+    } else {
       actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
     }
     return;
@@ -100,28 +83,19 @@ function post_api_user (req, res) {
     return;
   }
 
-  user = json.user;
-
-  if (user === undefined && json.hasOwnProperty("username")) {
-    // deprecated usage
-    user = json.username;
-  }
-
-  var doc = users.save(user, json.passwd, json.active, json.extra, json.changePassword);
+  const user = json.user;
+  const doc = users.save(user, json.passwd, json.active, json.extra, json.changePassword);
 
   if (json.passwordToken) {
     users.setPasswordToken(user, json.passwordToken);
   }
+
   users.reload();
 
   actions.resultOk(req, res, actions.HTTP_CREATED, doc);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_api_user_replace
-////////////////////////////////////////////////////////////////////////////////
-
-function put_api_user (req, res) {
+function put_api_user(req, res) {
   if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
@@ -140,22 +114,16 @@ function put_api_user (req, res) {
     users.reload();
 
     actions.resultOk(req, res, actions.HTTP_OK, doc);
-  }
-  catch (err) {
+  } catch (err) {
     if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
       actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
-    }
-    else {
+    } else {
       throw err;
     }
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_api_user_update
-////////////////////////////////////////////////////////////////////////////////
-
-function patch_api_user (req, res) {
+function patch_api_user(req, res) {
   if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
@@ -173,22 +141,16 @@ function patch_api_user (req, res) {
     users.reload();
 
     actions.resultOk(req, res, actions.HTTP_OK, doc);
-  }
-  catch (err) {
+  } catch (err) {
     if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
       actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
-    }
-    else {
+    } else {
       throw err;
     }
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_api_user_delete
-////////////////////////////////////////////////////////////////////////////////
-
-function delete_api_user (req, res) {
+function delete_api_user(req, res) {
   if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
@@ -200,26 +162,19 @@ function delete_api_user (req, res) {
     users.reload();
 
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, {});
-  }
-  catch (err) {
+  } catch (err) {
     if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
       actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
-    }
-    else {
+    } else {
       throw err;
     }
   }
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief user actions gateway
-////////////////////////////////////////////////////////////////////////////////
-
 actions.defineHttp({
-  url : "_api/user",
+  url: "_api/user",
 
-  callback : function (req, res) {
+  callback: function(req, res) {
     try {
       switch (req.requestType) {
         case actions.GET:
@@ -245,11 +200,8 @@ actions.defineHttp({
         default:
           actions.resultUnsupported(req, res);
       }
-    }
-    catch (err) {
+    } catch (err) {
       actions.resultException(req, res, err, undefined, false);
     }
   }
 });
-
-

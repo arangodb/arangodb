@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
+
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"
