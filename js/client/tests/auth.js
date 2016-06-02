@@ -83,6 +83,7 @@ function AuthSuite () {
 
     testNewUser : function () {
       users.save("hackers@arangodb.com", "foobar");
+      users.grantDatabase('hackers@arangodb.com', db._name());
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
@@ -115,6 +116,7 @@ function AuthSuite () {
 
     testEmptyPassword : function () {
       users.save("hackers@arangodb.com", "");
+      users.grantDatabase('hackers@arangodb.com', db._name());
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
@@ -139,6 +141,7 @@ function AuthSuite () {
 
     testPasswordCase : function () {
       users.save("hackers@arangodb.com", "FooBar");
+      users.grantDatabase('hackers@arangodb.com', db._name());
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "FooBar");
@@ -191,6 +194,7 @@ function AuthSuite () {
 
     testColon : function () {
       users.save("hackers@arangodb.com", "fuxx::bar");
+      users.grantDatabase('hackers@arangodb.com', db._name());
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "fuxx::bar");
@@ -240,6 +244,7 @@ function AuthSuite () {
 
     testSpecialChars : function () {
       users.save("hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
+      users.grantDatabase('hackers@arangodb.com', db._name());
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
@@ -381,7 +386,7 @@ function AuthSuite () {
     },
     
     testViaJS: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600}, 'HS256');
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600}, 'HS256');
 
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -394,7 +399,7 @@ function AuthSuite () {
     },
     
     testNoneAlgDisabled: function() {
-      var jwt = (new Buffer(JSON.stringify({"typ": "JWT","alg": "none"})).toString('base64')) + "." + (new Buffer(JSON.stringify({"iss": "arangodb"})).toString('base64'));
+      var jwt = (new Buffer(JSON.stringify({"typ": "JWT","alg": "none"})).toString('base64')) + "." + (new Buffer(JSON.stringify({"preferred_username": "root", "iss": "arangodb"})).toString('base64'));
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -407,7 +412,7 @@ function AuthSuite () {
     },
     
     testIssRequired: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -420,7 +425,7 @@ function AuthSuite () {
     },
     
     testIssArangodb: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -433,7 +438,7 @@ function AuthSuite () {
     },
     
     testExpOptional: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"iss": "arangodb" }, 'HS256');
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodb" }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -446,7 +451,7 @@ function AuthSuite () {
     },
     
     testExp: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) - 1000 }, 'HS256');
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) - 1000 }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",

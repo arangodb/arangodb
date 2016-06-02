@@ -393,7 +393,6 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
 }
 
 AuthResult AuthInfo::checkAuthenticationJWT(std::string const& secret) {
-  LOG(DEBUG) << "JWT Auth " << secret;
   std::vector<std::string> const parts = StringUtils::split(secret, '.');
   
   if (parts.size() != 3) {
