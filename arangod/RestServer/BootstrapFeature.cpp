@@ -28,6 +28,8 @@
 #include "Cluster/ServerState.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/Parameters.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -40,7 +42,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 BootstrapFeature::BootstrapFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Bootstrap"), _isReady(false) {
+    : ApplicationFeature(server, "Bootstrap"), _isReady(false), _bark(false) {
   startsAfter("Dispatcher");
   startsAfter("Endpoint");
   startsAfter("Scheduler");
@@ -51,6 +53,11 @@ BootstrapFeature::BootstrapFeature(application_features::ApplicationServer* serv
   startsAfter("CheckVersion");
   startsAfter("FoxxQueues");
   startsAfter("RestServer");
+}
+
+void BootstrapFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  options->addHiddenOption("hund", "make ArangoDB bark on startup", new BooleanParameter(&_bark));
 }
 
 static void raceForClusterBootstrap() {
@@ -147,6 +154,10 @@ void BootstrapFeature::start() {
   arangodb::rest::HttpHandlerFactory::setMaintenance(false);
   LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
+
+  if (_bark) {
+    LOG(INFO) << "der Hund so: wau wau!";
+  }
 
   _isReady = true;
 }
