@@ -283,7 +283,7 @@ characters and sequences:
 - *^*: matches the beginning of the string
 - *$*: matches the end of the string
 
-Note that the characters *.*, *\**, *?*, *[*, *]*, *(*, *)*, *{*, *}*, *^*, 
+Note that the characters *.*, <i>\*</i>, *?*, *[*, *]*, *(*, *)*, *{*, *}*, *^*, 
 and *$* have a special meaning in regular expressions and may need to be 
 escaped using a backslash (*\\*). A literal backslash should also be escaped
 using another backslash, i.e. *\\\\*.
