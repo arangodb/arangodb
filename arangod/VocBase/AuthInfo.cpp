@@ -97,7 +97,7 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
       VelocyPackHelper::getBooleanValue(slice, "changePassword", false);
 
   // extract "databases" attribute
-  VPackSlice const databasesSlice = authDataSlice.get("databases");
+  VPackSlice const databasesSlice = slice.get("databases");
   std::unordered_map<std::string, AuthLevel> databases;
   AuthLevel allDatabases = AuthLevel::NONE;
   
@@ -181,11 +181,12 @@ void AuthInfo::insertInitial() {
 
     builder.add("active", VPackValue(true));
 
+    builder.close();  // authData
+
     builder.add("databases", VPackValue(VPackValueType::Object));
     builder.add("*", VPackValue("rw"));
     builder.close();
 
-    builder.close();  // authData
     builder.close();  // The user object
     builder.close();  // The Array
 

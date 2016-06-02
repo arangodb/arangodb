@@ -52,6 +52,9 @@
     // all databases
     const DATABASE_ALL = 1001;
 
+    // all databases expect system
+    const DATABASE_EXCEPT_SYSTEM = 1002;
+
     // for stand-alone, no cluster
     const CLUSTER_NONE = 2000;
 
@@ -181,6 +184,10 @@
 
         // check for system database
         if (task.system === DATABASE_SYSTEM && db._name() !== "_system") {
+          continue;
+        }
+
+        if (task.system === DATABASE_EXCEPT_SYSTEM && db._name() === "_system") {
           continue;
         }
 
@@ -476,14 +483,14 @@
       }
     });
 
-    // addDefaultUser
+    // addDefaultUser for system database
     addTask({
-      name: "addDefaultUser",
-      description: "add default root user",
+      name: "addDefaultUserSystem",
+      description: "add default root user for system database",
 
       system: DATABASE_SYSTEM,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT, DATABASE_UPGRADE],
+      database: [DATABASE_INIT],
 
       task: function() {
         const users = getCollection("_users");
@@ -492,29 +499,58 @@
           return false;
         }
 
-        let foundUser = false;
-
-        if (args && args.users) {
-          args.users.forEach(function(user) {
-            foundUser = true;
-
-            try {
-              userManager.save(user.username, user.passwd, user.active, user.extra || {});
-              userManager.grantDatabase(user.username, "*", "rw");
-            } catch (err) {
-              logger.warn("could not add database user '" + user.username + "': " +
-                String(err) + " " +
-                String(err.stack || ""));
-            }
-          });
-        }
-
-        if (!foundUser && users.count() === 0) {
-          // only add account if user has not created his/her own accounts already
-          userManager.save("root", defaultRootPW, true);
-        }
+        // only add account if user has not created his/her own accounts already
+        userManager.save("root", defaultRootPW, true);
+        userManager.grantDatabase("root", "*", "rw");
 
         return true;
+      }
+    });
+
+    // addDefaultUser for system database
+    addTask({
+      name: "addDefaultUserOther",
+      description: "add default users",
+
+      system: DATABASE_EXCEPT_SYSTEM,
+      cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
+      database: [DATABASE_INIT],
+
+      task: function() {
+        const oldDbname = db._name();
+
+        try {
+          db._useDatabase("_system");
+	  const users = getCollection("_users");
+
+	  if (!users) {
+	    return false;
+	  }
+
+	  if (args && args.users) {
+	    args.users.forEach(function(user) {
+	      try {
+		userManager.save(user.username, user.passwd, user.active, user.extra || {});
+	      } catch (err) {
+		logger.warn("could not add database user '" + user.username + "': " +
+		  String(err) + " " +
+		  String(err.stack || ""));
+	      }
+
+	      try {
+		userManager.grantDatabase(user.username, oldDbname, "rw");
+	      } catch (err) {
+		logger.warn("could not grant access to database user '" + user.username + "': " +
+		  String(err) + " " +
+		  String(err.stack || ""));
+	      }
+	    });
+	  }
+
+	  return true;
+	} finally {
+          db._useDatabase(oldDbname);
+	}
       }
     });
 
