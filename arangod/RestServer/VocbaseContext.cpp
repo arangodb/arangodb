@@ -91,8 +91,8 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   std::string const& path = _request->requestPath();
 
   // mop: inside authenticateRequest() _request->user will be populated
-  GeneralResponse::ResponseCode result = authenticateRequest();
   bool forceOpen = false;
+  GeneralResponse::ResponseCode result = authenticateRequest(&forceOpen);
 
   if (result == GeneralResponse::ResponseCode::UNAUTHORIZED || result == GeneralResponse::ResponseCode::FORBIDDEN) {
     if (StringUtils::isPrefix(path, "/_open/") ||
@@ -121,7 +121,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   return result;
 }
 
-GeneralResponse::ResponseCode VocbaseContext::authenticateRequest() {
+GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpen) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   // check if we need to run authentication for this type of
   // endpoint
@@ -138,14 +138,16 @@ GeneralResponse::ResponseCode VocbaseContext::authenticateRequest() {
 
   if (_vocbase->_settings.authenticateSystemOnly) {
     // authentication required, but only for /_api, /_admin etc.
-
+    
     if (!path.empty()) {
       // check if path starts with /_
       if (path[0] != '/') {
+        *forceOpen = true;
         return GeneralResponse::ResponseCode::OK;
       }
-
-      if (path[0] != '\0' && path[1] != '_') {
+      
+      if (path.length() > 0 && path[1] != '_') {
+        *forceOpen = true;
         return GeneralResponse::ResponseCode::OK;
       }
     }

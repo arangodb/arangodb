@@ -72,7 +72,7 @@ class VocbaseContext : public arangodb::RequestContext {
   /// @brief checks the authentication header and sets user if successful
   //////////////////////////////////////////////////////////////////////////////
 
-  GeneralResponse::ResponseCode authenticateRequest();
+  GeneralResponse::ResponseCode authenticateRequest(bool* forceOpen);
 
  private:
   TRI_vocbase_t* _vocbase;
