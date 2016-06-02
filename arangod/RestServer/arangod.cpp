@@ -25,6 +25,9 @@
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
+#ifdef _WIN32
+#include "ApplicationFeatures/WindowsServiceFeature.h"
+#endif
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -74,12 +77,6 @@
 using namespace arangodb;
 using namespace arangodb::wal;
 
-#if 0
-#ifdef _WIN32
-WindowsService WINDOWS_SERVICE;
-#endif
-#endif
-
 static int runServer(int argc, char** argv) {
   ArangoGlobalContext context(argc, argv);
   context.installSegv();
@@ -93,45 +90,6 @@ static int runServer(int argc, char** argv) {
 
   application_features::ApplicationServer server(options);
 
-#if 0
-#ifdef _WIN32
-  application_features::ProgressHandler reporter{
-      [](application_features::ServerState state) {
-        switch (_state) {
-          case ServerState::IN_WAIT:
-            WINDOWS_SERVICE.startupFinished();
-            break;
-          case ServerState::IN_STOP:
-            server.shutdownBegins();
-            break;
-          case ServerState::IN_COLLECT_OPTIONS:
-          case ServerState::IN_VALIDATE_OPTIONS:
-          case ServerState::IN_PREPARE:
-          case ServerState::IN_START:
-            WINDOWS_SERVICE.startupProgress();
-            break;
-          case ServerState::UNINITIALIZED:
-          case ServerState::STOPPED:
-            break;
-        }
-      },
-      [](application_features::ServerState state, std::string const& name) {
-        switch (_state) {
-          case ServerState::IN_COLLECT_OPTIONS:
-          case ServerState::IN_VALIDATE_OPTIONS:
-          case ServerState::IN_PREPARE:
-          case ServerState::IN_START:
-            WINDOWS_SERVICE.startupProgress();
-            break;
-          default:
-            break;
-        }
-      }};
-
-  server.addReporter(reporter);
-#endif
-#endif
-
   std::vector<std::string> nonServerFeatures = {
       "Action",     "Affinity",   "Agency",
       "Cluster",    "Daemon",     "Dispatcher",
@@ -140,7 +98,11 @@ static int runServer(int argc, char** argv) {
       "SslServer",  "Statistics", "Supervisor"};
 
   int ret = EXIT_FAILURE;
-
+  
+#ifdef _WIN32
+  server.addFeature(new WindowsServiceFeature(&server));
+#endif
+  
   server.addFeature(new ActionFeature(&server));
   server.addFeature(new AffinityFeature(&server));
   server.addFeature(new AgencyFeature(&server));
@@ -210,11 +172,6 @@ static int runServer(int argc, char** argv) {
 }
 
 int main(int argc, char* argv[]) {
-#if 0
-#ifdef _WIN32
-  WINDOWS_SERVICE.serviceStart(argc, argv, runServer);
-#endif
-#endif
 
   return runServer(argc, argv);
 }
