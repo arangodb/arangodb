@@ -230,6 +230,8 @@ struct FunctionDefiner {
                       &Functions::Radians});
     add({"DEGREES", "AQL_DEGREES", "n", true, true, false, true, true,
                       &Functions::Degrees});
+    add({"PI", "AQL_PI", "", true, true, false, true, true,
+                      &Functions::Pi});
   }
 
   void addListFunctions() { 

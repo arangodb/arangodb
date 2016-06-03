@@ -209,6 +209,8 @@ struct Functions {
                           VPackFunctionParameters const&);
   static AqlValue Degrees(arangodb::aql::Query*, arangodb::AqlTransaction*,
                           VPackFunctionParameters const&);
+  static AqlValue Pi(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                     VPackFunctionParameters const&);
   static AqlValue Rand(arangodb::aql::Query*, arangodb::AqlTransaction*,
                        VPackFunctionParameters const&);
   static AqlValue FirstDocument(arangodb::aql::Query*,

@@ -52,6 +52,23 @@ function ahuacatlNumericFunctionsTestSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test pi function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPi : function () {
+      var expected = 3.141592653589793;
+      
+      var query = "RETURN PI()";
+      assertAlmostEqual(expected, getQueryResults(query)[0]);
+      
+      query = "RETURN NOOPT(PI())";
+      assertAlmostEqual(expected, getQueryResults(query)[0]);
+        
+      query = "RETURN NOOPT(V8(PI()))";
+      assertAlmostEqual(expected, getQueryResults(query)[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test log function
 ////////////////////////////////////////////////////////////////////////////////
     
