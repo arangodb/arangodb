@@ -147,6 +147,7 @@ void  WindowsServiceFeature::StartArangoService (bool WaitForRunning) {
   CloseServiceHandle(schSCManager);
   exit(EXIT_SUCCESS);
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Stop the service and optionaly wait till its all dead
 ////////////////////////////////////////////////////////////////////////////////
@@ -556,6 +557,9 @@ void WindowsServiceFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 }
 
 void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (!TRI_InitWindowsEventLog()) {
+    exit(EXIT_FAILURE);
+  }
   
   if (_installService) {
     installService();
@@ -598,17 +602,7 @@ void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
             break;
           }
         } };
-
     _server->addReporter(reporter);
-    SERVICE_TABLE_ENTRY ste[] = {{TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
-                                 {nullptr, nullptr}};
-
-    if (!StartServiceCtrlDispatcher(ste)) {
-      std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
-                << GetLastError() << std::endl;
-      exit(EXIT_FAILURE);
-    }
-
   }
   
   else if (_startService) {

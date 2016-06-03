@@ -25,6 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+void SetServiceStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode,
+                      DWORD dwCheckPoint, DWORD dwWaitHint);
 
 namespace arangodb {
 class WindowsServiceFeature final : public application_features::ApplicationFeature {

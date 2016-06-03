@@ -171,7 +171,44 @@ static int runServer(int argc, char** argv) {
   return context.exit(ret);
 }
 
-int main(int argc, char* argv[]) {
+#if _WIN32
+static int ARGC;
+static char** ARGV;
 
-  return runServer(argc, argv);
+static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
+  if (!TRI_InitWindowsEventLog()) {
+    return;
+  }
+  // register the service ctrl handler,  lpszArgv[0] contains service name
+  ServiceStatus = RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION) ServiceCtrl);
+
+  // set start pending
+  SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000);
+
+  runServer(ARGC, ARGV);
+
+  // service has stopped
+  SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0);
+  TRI_CloseWindowsEventlog();
+}
+
+#endif
+
+int main(int argc, char* argv[]) {
+#if _WIN32
+  if (argc > 1 && TRI_EqualString("--start-service", argv[1])) {
+    ARGC = argc;
+    ARGV = argv;
+    
+    SERVICE_TABLE_ENTRY ste[] = {{TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+                                 {nullptr, nullptr}};
+    
+    if (!StartServiceCtrlDispatcher(ste)) {
+      std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
+                << GetLastError() << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    else
+#endif
+      return runServer(argc, argv);
 }
