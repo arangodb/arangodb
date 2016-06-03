@@ -88,7 +88,7 @@ RestServerFeature::RestServerFeature(
       _allowMethodOverride(false),
       _authentication(true),
       _authenticationUnixSockets(true),
-      _authenticationSystemOnly(false),
+      _authenticationSystemOnly(true),
       _proxyCheck(true),
       _jwtSecret(""),
       _handlerFactory(nullptr),
