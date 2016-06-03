@@ -124,6 +124,7 @@ class Supervision : public arangodb::Thread {
 
   /// @brief Check machines under path in agency
   std::vector<check_t> checkDBServers();
+  std::vector<check_t> checkCoordinators();
   std::vector<check_t> checkShards();
 
   void workJobs();

@@ -133,8 +133,10 @@ bool CleanOutServer::start() const {
     // Check if we can get things done in the first place
     if (!checkFeasibility()) {
       finish("DBServers/" + _server);
-      return false;
+          return false;
     }
+
+    
 
     // Schedule shard relocations
     scheduleMoveShards();

@@ -21,29 +21,36 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FUNCTION_DEFINITIONS_H
-#define ARANGOD_AQL_FUNCTION_DEFINITIONS_H 1
+#include "RestAqlFunctionsHandler.h"
+#include "Aql/FunctionDefinitions.h"
 
-#include "Basics/Common.h"
-#include "Aql/Function.h"
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
-namespace arangodb {
-namespace velocypack {
-class Builder;
-}
+using namespace arangodb;
+using namespace arangodb::rest;
 
-namespace aql {
+RestAqlFunctionsHandler::RestAqlFunctionsHandler(HttpRequest* request)
+    : RestVocbaseBaseHandler(request) {}
 
-struct FunctionDefinitions {
-  /// @brief AQL internal function names
-  static std::unordered_map<int, std::string const> const InternalFunctionNames;
+HttpHandler::status_t RestAqlFunctionsHandler::execute() {
+  // extract the sub-request type
+  auto const type = _request->requestType();
+
+  if (type == GeneralRequest::RequestType::GET) {
+    VPackBuilder builder;
   
-  /// @brief AQL user-callable function names
-  static std::unordered_map<std::string, Function const> FunctionNames;
+    builder.openObject();
+    builder.add(VPackValue("functions"));
+    aql::FunctionDefinitions::toVelocyPack(builder);
+    builder.close();
+    
+    generateResult(GeneralResponse::ResponseCode::OK, builder.slice());
+    return status_t(HANDLER_DONE);
+  }
 
-  static void toVelocyPack(arangodb::velocypack::Builder&);
-};
-}
+  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return status_t(HANDLER_DONE);
 }
 
-#endif

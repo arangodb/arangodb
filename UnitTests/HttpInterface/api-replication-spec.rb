@@ -969,6 +969,61 @@ describe ArangoDB do
 
         i.should eq(100)
       end
+      
+      it "checks the dump for an edge collection, 2.8 compat mode" do
+        cid = ArangoDB.create_collection("UnitTestsReplication", false)
+        cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 3)
+
+        (0...100).each{|i|
+          body = "{ \"_key\" : \"test" + i.to_s + "\", \"_from\" : \"UnitTestsReplication/foo\", \"_to\" : \"UnitTestsReplication/bar\", \"test1\" : " + i.to_s + ", \"test2\" : false, \"test3\" : [ ], \"test4\" : { } }"
+          doc = ArangoDB.post("/_api/document?collection=UnitTestsReplication2", :body => body)
+          doc.code.should eq(202)
+        }
+
+        doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
+        doc.code.should eq(200)
+
+        cmd = api + "/dump?collection=UnitTestsReplication2&chunkSize=65536&compat28=true"
+        doc = ArangoDB.log_get("#{prefix}-dump-edge", cmd, :body => "", :format => :plain)
+
+        doc.code.should eq(200)
+
+        doc.headers["x-arango-replication-checkmore"].should eq("false")
+        doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
+        doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
+        doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
+
+        body = doc.response.body
+        i = 0
+        while 1
+          position = body.index("\n")
+
+          break if position == nil
+
+          part = body.slice(0, position)
+
+          document = JSON.parse(part)
+          document['type'].should eq(2301)
+          document.should have_key("key")
+          document['key'].should eq("test" + i.to_s)
+          document.should have_key("rev")
+          document['rev'].should match(/^\d+$/)
+
+          document['data']['_key'].should eq("test" + i.to_s)
+          document['data']['_rev'].should match(/^\d+$/)
+          document['data']['_from'].should eq("UnitTestsReplication/foo")
+          document['data']['_to'].should eq("UnitTestsReplication/bar")
+          document['data']['test1'].should eq(i)
+          document['data']['test2'].should eq(false)
+          document['data']['test3'].should eq([ ])
+          document['data']['test4'].should eq({ })
+
+          body = body.slice(position + 1, body.length)
+          i = i + 1
+        end
+
+        i.should eq(100)
+      end
 
       it "checks the dump for an edge collection, small chunkSize" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
@@ -1115,6 +1170,85 @@ describe ArangoDB do
         end
 
         i.should eq(10)
+      end
+      
+      it "checks the dump for a non-empty collection, 3.0 mode" do
+        cid = ArangoDB.create_collection("UnitTestsReplication", false)
+
+        (0...100).each{|i|
+          body = "{ \"_key\" : \"test" + i.to_s + "\", \"test\" : " + i.to_s + " }"
+          doc = ArangoDB.post("/_api/document?collection=UnitTestsReplication", :body => body)
+          doc.code.should eq(202)
+        }
+
+        cmd = api + "/dump?collection=UnitTestsReplication&compat28=false"
+        doc = ArangoDB.log_get("#{prefix}-dump-non-empty", cmd, :body => "", :format => :plain)
+
+        doc.code.should eq(200)
+
+        body = doc.response.body
+        i = 0
+        while 1
+          position = body.index("\n")
+
+          break if position == nil
+
+          part = body.slice(0, position)
+
+          doc = JSON.parse(part)
+          doc['type'].should eq(2300)
+          doc.should_not have_key("key")
+          doc.should_not have_key("rev")
+          doc['data']['_key'].should eq("test" + i.to_s)
+          doc['data']['_rev'].should match(/^\d+$/)
+          doc['data']['test'].should eq(i)
+
+          body = body.slice(position + 1, body.length)
+          i = i + 1
+        end
+
+        i.should eq(100)
+      end
+      
+      it "checks the dump for a non-empty collection, 2.8 compat mode" do
+        cid = ArangoDB.create_collection("UnitTestsReplication", false)
+
+        (0...100).each{|i|
+          body = "{ \"_key\" : \"test" + i.to_s + "\", \"test\" : " + i.to_s + " }"
+          doc = ArangoDB.post("/_api/document?collection=UnitTestsReplication", :body => body)
+          doc.code.should eq(202)
+        }
+
+        cmd = api + "/dump?collection=UnitTestsReplication&compat28=true"
+        doc = ArangoDB.log_get("#{prefix}-dump-non-empty", cmd, :body => "", :format => :plain)
+
+        doc.code.should eq(200)
+
+        body = doc.response.body
+        i = 0
+        while 1
+          position = body.index("\n")
+
+          break if position == nil
+
+          part = body.slice(0, position)
+
+          doc = JSON.parse(part)
+          doc['type'].should eq(2300)
+          doc.should have_key("key")
+          doc['key'].should eq("test" + i.to_s)
+          doc.should have_key("rev")
+          doc['rev'].should match(/^\d+$/)
+
+          doc['data']['_key'].should eq("test" + i.to_s)
+          doc['data']['_rev'].should match(/^\d+$/)
+          doc['data']['test'].should eq(i)
+
+          body = body.slice(position + 1, body.length)
+          i = i + 1
+        end
+
+        i.should eq(100)
       end
       
       it "fetches incremental parts of a collection dump" do

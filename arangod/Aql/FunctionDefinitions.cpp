@@ -26,6 +26,10 @@
 #include "Aql/Function.h"
 #include "Cluster/ServerState.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 
 /// @brief determines if code is executed in cluster or not
@@ -71,6 +75,17 @@ std::unordered_map<int,
 
 /// @brief user-accessible functions
 std::unordered_map<std::string, Function const> FunctionDefinitions::FunctionNames;
+  
+void FunctionDefinitions::toVelocyPack(VPackBuilder& builder) {
+  builder.openArray();
+  for (auto const& it : FunctionDefinitions::FunctionNames) {
+    builder.openObject();
+    builder.add("name", VPackValue(it.second.externalName));
+    builder.add("arguments", VPackValue(it.second.arguments));
+    builder.close();
+  }
+  builder.close();
+}
 
 /// @brief this struct will add all AQL functions to the FunctionDefintions map
 struct FunctionDefiner {

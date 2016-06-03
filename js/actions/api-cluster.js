@@ -196,7 +196,7 @@ actions.defineHttp({
     var DBserver = req.parameters.DBserver;
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
-    var op = ArangoClusterComm.asyncRequest("GET","server:"+DBserver,"_system",
+    var op = ArangoClusterComm.asyncRequest("GET","server:"+local,"_system",
                                             "/_admin/statistics","",{},options);
     var r = ArangoClusterComm.wait(op);
     res.contentType = "application/json; charset=utf-8";
@@ -220,6 +220,58 @@ actions.defineHttp({
       res.body = JSON.stringify( {"error":true,
         "errorMessage": "error from DBserver, possibly DBserver unknown",
         "body": bodyobj} );
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JSF_cluster_statistics_GET
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/health",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (req.requestType !== actions.GET ||
+        !require("@arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only GET requests are allowed and only to coordinators");
+      return;
+    }
+
+    var timeout = 60.0;
+    
+    try {
+      if (req.parameters.hasOwnProperty("timeout")) {
+        timeout = Number(req.parameters.timeout);
+      }
+    }
+    catch (e) {}
+    
+    // Now get to work, first get the write lock on the Plan in the Agency:
+    var success = ArangoAgency.lockRead("Supervision", timeout);
+    if (! success) {
+      actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
+                          "could not get a read lock on Plan in Agency");
+      return;
+    }
+    
+    try {
+      var Health;
+      try {
+        Health = ArangoAgency.get("Supervision/Health", false, true).arango.Supervision.Health;
+        
+      } catch (e1) {
+        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+                            "Failed to retrieve supervision node from agency!");
+        return;
+      }
+      
+      actions.resultOk(req, res, actions.HTTP_OK, {Health} );
+    } finally {
+      ArangoAgency.unlockRead("Supervision", timeout);
     }
   }
 });

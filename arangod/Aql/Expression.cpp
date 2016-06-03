@@ -1420,12 +1420,18 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
     r = 0.0;
   }
 
-  if (r == 0.0 &&
-      (node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
-       node->type == NODE_TYPE_OPERATOR_BINARY_MOD)) {
-    TRI_ASSERT(!mustDestroy);
-    RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-    return AqlValue(VelocyPackHelper::ZeroValue());
+  if (r == 0.0) {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
+      // division by zero
+      RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+      TRI_ASSERT(!mustDestroy);
+      return AqlValue(VelocyPackHelper::NullValue());
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
+      // modulo zero
+      RegisterWarning(_ast, "%", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+      TRI_ASSERT(!mustDestroy);
+      return AqlValue(VelocyPackHelper::NullValue());
+    }
   }
 
   double result;
@@ -1452,9 +1458,9 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
   }
       
   if (std::isnan(result) || !std::isfinite(result) || result == HUGE_VAL || result == -HUGE_VAL) {
-    // convert NaN, +inf & -inf to 0
+    // convert NaN, +inf & -inf to null
     mustDestroy = false;
-    return AqlValue(VelocyPackHelper::ZeroValue());
+    return AqlValue(VelocyPackHelper::NullValue());
   }
 
   TransactionBuilderLeaser builder(trx);
