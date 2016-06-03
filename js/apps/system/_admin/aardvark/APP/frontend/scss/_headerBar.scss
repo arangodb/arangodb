@@ -141,6 +141,19 @@ div.headerBar {
 
 .headerButtonList {
   a {
+
+    span {
+      .fa-top {
+        color: $c-white;
+        font-size: 7pt;
+        position: absolute;
+
+        &:hover {
+          color: $c-positive;
+        }
+      }
+    }
+
     &.error {
       color: $c-negative;
 
