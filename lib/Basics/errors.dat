@@ -184,8 +184,8 @@ ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED,1475,"document no
 ERROR_CLUSTER_COULD_NOT_DETERMINE_ID,1476,"could not determine my ID from my local info","Will be raised if a cluster server at startup could not determine its own ID from the local info provided."
 ERROR_CLUSTER_ONLY_ON_DBSERVER,1477,"this operation is only valid on a DBserver in a cluster","Will be raised if there is an attempt to run a DBserver-only operation on a different type of node."
 ERROR_CLUSTER_BACKEND_UNAVAILABLE,1478,"A cluster backend which was required for the operation could not be reached","Will be raised if a required db server can't be reached."
-ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT,1479,"An endpoint couldn't be found", "An endpoint couldn't be found"
-ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID,1480,"Invalid agency structure", "The structure in the agency is invalid"
+ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT,1479,"An endpoint couldn't be found","An endpoint couldn't be found"
+ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID,1480,"Invalid agency structure","The structure in the agency is invalid"
 
 ################################################################################
 ## ArangoDB query errors
@@ -218,13 +218,13 @@ ERROR_QUERY_FAIL_CALLED,1569,"FAIL(%s) called","Will be raised when the function
 ERROR_QUERY_GEO_INDEX_MISSING,1570,"no suitable geo index found for geo restriction on '%s'","Will be raised when a geo restriction was specified but no suitable geo index is found to resolve it."
 ERROR_QUERY_FULLTEXT_INDEX_MISSING,1571,"no suitable fulltext index found for fulltext query on '%s'","Will be raised when a fulltext query is performed on a collection without a suitable fulltext index."
 ERROR_QUERY_INVALID_DATE_VALUE,1572,"invalid date value","Will be raised when a value cannot be converted to a date."
-ERROR_QUERY_MULTI_MODIFY,1573,"multi-modify query", "Will be raised when an AQL query contains more than one data-modifying operation."
-ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION,1574,"invalid aggregate expression", "Will be raised when an AQL query contains an invalid aggregate expression."
-ERROR_QUERY_COMPILE_TIME_OPTIONS,1575,"query options must be readable at query compile time", "Will be raised when an AQL data-modification query contains options that cannot be figured out at query compile time."
-ERROR_QUERY_EXCEPTION_OPTIONS,1576,"query options expected", "Will be raised when an AQL data-modification query contains an invalid options specification."
-ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,1577,"collection '%s' used as expression operand", "Will be raised when a collection is used as an operand in an AQL expression."
-ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,1578,"disallowed dynamic call to '%s'", "Will be raised when a dynamic function call is made to a function that cannot be called dynamically."
-ERROR_QUERY_ACCESS_AFTER_MODIFICATION,1579,"access after data-modification by %s", "Will be raised when collection data are accessed after a data-modification operation."
+ERROR_QUERY_MULTI_MODIFY,1573,"multi-modify query","Will be raised when an AQL query contains more than one data-modifying operation."
+ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION,1574,"invalid aggregate expression","Will be raised when an AQL query contains an invalid aggregate expression."
+ERROR_QUERY_COMPILE_TIME_OPTIONS,1575,"query options must be readable at query compile time","Will be raised when an AQL data-modification query contains options that cannot be figured out at query compile time."
+ERROR_QUERY_EXCEPTION_OPTIONS,1576,"query options expected","Will be raised when an AQL data-modification query contains an invalid options specification."
+ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,1577,"collection '%s' used as expression operand","Will be raised when a collection is used as an operand in an AQL expression."
+ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,1578,"disallowed dynamic call to '%s'","Will be raised when a dynamic function call is made to a function that cannot be called dynamically."
+ERROR_QUERY_ACCESS_AFTER_MODIFICATION,1579,"access after data-modification by %s","Will be raised when collection data are accessed after a data-modification operation."
 
 ################################################################################
 ## AQL user functions
@@ -239,9 +239,9 @@ ERROR_QUERY_FUNCTION_RUNTIME_ERROR,1583,"user function runtime error: %s","Will 
 ## AQL query registry
 ################################################################################
 
-ERROR_QUERY_BAD_JSON_PLAN,1590,"bad execution plan JSON", "Will be raised when an HTTP API for a query got an invalid JSON object."
-ERROR_QUERY_NOT_FOUND,1591,"query ID not found", "Will be raised when an Id of a query is not found by the HTTP API."
-ERROR_QUERY_IN_USE,1592,"query with this ID is in use", "Will be raised when an Id of a query is found by the HTTP API but the query is in use."
+ERROR_QUERY_BAD_JSON_PLAN,1590,"bad execution plan JSON","Will be raised when an HTTP API for a query got an invalid JSON object."
+ERROR_QUERY_NOT_FOUND,1591,"query ID not found","Will be raised when an Id of a query is not found by the HTTP API."
+ERROR_QUERY_IN_USE,1592,"query with this ID is in use","Will be raised when an Id of a query is found by the HTTP API but the query is in use."
 
 ################################################################################
 ## ArangoDB cursor errors
@@ -381,7 +381,7 @@ RESULT_ELEMENT_NOT_FOUND,10001,"element not found in structure","Will be returne
 ## dispatcher errors
 ################################################################################
 
-ERROR_QUEUE_ALREADY_EXISTS,21000,"named queue already exists", "Will be returned if a queue with this name already exists."
+ERROR_QUEUE_ALREADY_EXISTS,21000,"named queue already exists","Will be returned if a queue with this name already exists."
 ERROR_DISPATCHER_IS_STOPPING,21001,"dispatcher stopped","Will be returned if a shutdown is in progress."
 ERROR_QUEUE_UNKNOWN,21002,"named queue does not exist","Will be returned if a queue with this name does not exist."
 ERROR_QUEUE_FULL,21003,"named queue is full","Will be returned if a queue with this name is full."
