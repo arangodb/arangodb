@@ -67,6 +67,12 @@ static std::string FriendlyServiceName = "ArangoDB - the multi-model database";
 
 static SERVICE_STATUS_HANDLE ServiceStatus;
 
+void reportServiceAborted(void) {
+  if (ArangoInstance != nullptr && ArangoInstance->_server != nullptr) {
+    ArangoInstance->_server->beginShutdown();
+  }
+}
+
 // So we have a valid minidump area during startup:
 void  WindowsServiceFeature::StartArangoService (bool WaitForRunning) {
   TRI_ERRORBUF;
@@ -290,6 +296,71 @@ void WindowsServiceFeature::installService() {
   CloseServiceHandle(schService);
 }
 
+void WindowsServiceFeature::DeleteService (bool force) {
+  CHAR path[MAX_PATH] = "";
+
+  if (! GetModuleFileNameA(nullptr, path, MAX_PATH)) {
+    std::cerr << "FATAL: GetModuleFileNameA failed" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  std::cout << "INFO: removing service '" << ServiceName << "'" << std::endl;
+
+  SC_HANDLE schSCManager = OpenSCManager(nullptr, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
+
+  if (schSCManager == 0) {
+    std::cerr << "FATAL: OpenSCManager failed with " << GetLastError() << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  SC_HANDLE schService = OpenServiceA(
+                                      schSCManager,                      // SCManager database
+                                      ServiceName.c_str(),               // name of service
+                                      DELETE|SERVICE_QUERY_CONFIG);      // first validate whether its us, then delete.
+
+  char serviceConfigMemory[8192]; // msdn says: 8k is enough.
+  DWORD bytesNeeded = 0;
+  if (QueryServiceConfig(schService,
+                         (LPQUERY_SERVICE_CONFIGA)&serviceConfigMemory,
+                         sizeof(serviceConfigMemory),
+                         &bytesNeeded)) {
+    QUERY_SERVICE_CONFIG *cfg = (QUERY_SERVICE_CONFIG*) &serviceConfigMemory;
+
+    std::string command = std::string("\"") + std::string(path) + std::string("\" --start-service");
+      if (strcmp(cfg->lpBinaryPathName, command.c_str())) {
+      if (! force) {
+        std::cerr << "NOT removing service of other installation: " <<
+          cfg->lpBinaryPathName <<
+          " Our path is: " <<
+          path << std::endl;
+
+        CloseServiceHandle(schSCManager);
+        return;
+      }
+      else {
+        std::cerr << "Removing service of other installation because of FORCE: " <<
+          cfg->lpBinaryPathName <<
+          "Our path is: " <<
+          path << std::endl;
+      }
+    }
+  }
+
+  CloseServiceHandle(schSCManager);
+
+  if (schService == 0) {
+    std::cerr << "FATAL: OpenServiceA failed with " << GetLastError() << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  if (! DeleteService(schService)) {
+    std::cerr << "FATAL: DeleteService failed with " << GetLastError() << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  CloseServiceHandle(schService);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flips the status for a service
@@ -356,6 +427,24 @@ void WindowsServiceFeature::shutDownBegins () {
   SetServiceStatus(SERVICE_STOP_PENDING, NO_ERROR, 0, 0);
 }
 
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief wrap ArangoDB server so we can properly emmit a status on shutdown
+///        starting
+//////////////////////////////////////////////////////////////////////////////
+void WindowsServiceFeature::shutDownComplete () {
+  // startup finished - signalize we're running.
+  SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief wrap ArangoDB server so we can properly emmit a status on shutdown
+///        starting
+//////////////////////////////////////////////////////////////////////////////
+void WindowsServiceFeature::shutDownFailure () {
+  // startup finished - signalize we're running.
+  SetServiceStatus(SERVICE_STOP, ERROR_FAIL_RESTART, 0, 0);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief service control handler
@@ -467,15 +556,15 @@ void WindowsServiceFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 }
 
 void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_startAsService) {
-  }
-  else if (_installService) {
+  
+  if (_installService) {
     installService();
     exit(EXIT_SUCCESS);
   }
   else if (_unInstallService) {
   }
-  
+  else if (_forceUninstall) {
+  }
   else if (_startAsService) {
     ProgressHandler reporter{
       [this](ServerState state) {

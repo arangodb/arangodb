@@ -141,6 +141,9 @@ class Supervision : public arangodb::Thread {
   /// @brief Perform sanity checking
   bool doChecks(bool);
 
+  /// @brief update my local agency snapshot
+  bool updateSnapshot();
+
   Agent* _agent; /**< @brief My agent */
   Node _snapshot;
 
