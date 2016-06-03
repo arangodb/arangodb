@@ -2209,7 +2209,7 @@ void RestReplicationHandler::handleCommandRestoreData() {
   bool recycleIds = false;
   std::string const& value2 = _request->value("recycleIds");
 
-  if (value2.empty()) {
+  if (!value2.empty()) {
     recycleIds = StringUtils::boolean(value2);
   }
 
@@ -2896,6 +2896,13 @@ void RestReplicationHandler::handleCommandDump() {
     withTicks = StringUtils::boolean(value7);
   }
 
+  bool compat28 = false;
+  std::string const& value8 = _request->value("compat28", found);
+  
+  if (found) {
+    compat28 = StringUtils::boolean(value8);
+  }
+
   TRI_vocbase_col_t* c =
       TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
@@ -2931,6 +2938,10 @@ void RestReplicationHandler::handleCommandDump() {
     // initialize the dump container
     TRI_replication_dump_t dump(transactionContext, static_cast<size_t>(determineChunkSize()),
                                 includeSystem, 0);
+    
+    if (compat28) {
+      dump._compat28 = true;
+    }
 
     res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks);
 

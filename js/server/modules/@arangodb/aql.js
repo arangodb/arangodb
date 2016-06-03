@@ -2105,9 +2105,9 @@ function ARITHMETIC_DIVIDE (lhs, rhs) {
 
   lhs = AQL_TO_NUMBER(lhs);
   rhs = AQL_TO_NUMBER(rhs);
-  if (rhs === 0 || rhs === null) {
+  if (rhs === 0 || rhs === null || isNaN(rhs) || !isFinite(rhs)) {
     WARN(null, INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
-    return 0;
+    return null;
   }
 
   return AQL_TO_NUMBER(lhs / rhs);
@@ -2122,9 +2122,9 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
 
   lhs = AQL_TO_NUMBER(lhs);
   rhs = AQL_TO_NUMBER(rhs);
-  if (rhs === 0 || rhs === null) {
+  if (rhs === 0 || rhs === null || isNaN(rhs) || !isFinite(rhs)) {
     WARN(null, INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
-    return 0;
+    return null;
   }
 
   return AQL_TO_NUMBER(lhs % rhs);
@@ -8526,6 +8526,3 @@ exports.fixValue = FIX_VALUE;
 
 // initialize the query engine
 exports.clearCaches();
-//reloadUserFunctions();
-
-

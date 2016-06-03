@@ -392,7 +392,7 @@ void ConsoleFeature::print(std::string const& message) {
   if (_toPager == stdout) {
     printContinuous(message);
   } else {
-    std::string sanitized = StripBinary(message.c_str());
+    std::string sanitized = StripBinary(message);
     fprintf(_toPager, "%s", sanitized.c_str());
   }
 

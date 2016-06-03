@@ -1051,7 +1051,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOverflowExecutionInt: function () {
-      assertEqual([ 0 ], getQueryResults("FOR l IN [ 33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l")); 
+      assertEqual([ null ], getQueryResults("FOR l IN [ 33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1067,7 +1067,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnderflowExecutionInt: function () {
-      assertEqual([ 0 ], getQueryResults("FOR l IN [ -33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l")); 
+      assertEqual([ null ], getQueryResults("FOR l IN [ -33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

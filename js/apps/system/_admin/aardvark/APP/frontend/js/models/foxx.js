@@ -1,5 +1,5 @@
 /*jshint browser: true */
-/*global Backbone, $, _, arango, arangoHelper */
+/*global Backbone, $, _, arangoHelper, window */
 (function () {
   "use strict";
 
@@ -147,7 +147,7 @@
 
     download: function () {
       window.open(
-        arangoHelper.databaseUrl("/_db/" + arango.getDatabaseName() + "/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount())
+        arangoHelper.databaseUrl("/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount())
       );
     }
   });

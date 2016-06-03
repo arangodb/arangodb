@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,31 +17,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FUNCTION_DEFINITIONS_H
-#define ARANGOD_AQL_FUNCTION_DEFINITIONS_H 1
+#ifndef ARANGODB_PROGRAM_OPTIONS_TRANSLATOR_H
+#define ARANGODB_PROGRAM_OPTIONS_TRANSLATOR_H 1
 
 #include "Basics/Common.h"
-#include "Aql/Function.h"
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
-}
-
-namespace aql {
-
-struct FunctionDefinitions {
-  /// @brief AQL internal function names
-  static std::unordered_map<int, std::string const> const InternalFunctionNames;
-  
-  /// @brief AQL user-callable function names
-  static std::unordered_map<std::string, Function const> FunctionNames;
-
-  static void toVelocyPack(arangodb::velocypack::Builder&);
-};
+namespace options {
+std::string EnvironmentTranslator(std::string const& value);
 }
 }
 

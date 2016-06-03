@@ -32,6 +32,7 @@
 #include "Basics/terminal-utils.h"
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Section.h"
+#include "ProgramOptions/Translator.h"
 
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
@@ -45,7 +46,8 @@ class ProgramOptions {
   // struct containing the option processing result
   class ProcessingResult {
    public:
-    ProcessingResult() : _positionals(), _touched(), _frozen(), _failed(false) {}
+    ProcessingResult()
+        : _positionals(), _touched(), _frozen(), _failed(false) {}
     ~ProcessingResult() = default;
 
     // mark an option as being touched during options processing
@@ -118,6 +120,14 @@ class ProgramOptions {
       _usage = usage.substr(0, pos) + _progname +
                _usage.substr(pos + strlen(ARANGODB_PROGRAM_OPTIONS_PROGNAME));
     }
+
+    _translator = EnvironmentTranslator;
+  }
+
+  // sets a value translator
+  void setTranslator(
+      std::function<std::string(std::string const&)> translator) {
+    _translator = translator;
   }
 
   // return a const reference to the processing result
@@ -145,8 +155,8 @@ class ProgramOptions {
   void setOldOptions(std::unordered_map<std::string, std::string> const& old) {
     _oldOptions = old;
   }
- 
-  // sets a single old option and its replacement name 
+
+  // sets a single old option and its replacement name
   void addOldOption(std::string const& old, std::string const& replacement) {
     _oldOptions[old] = replacement;
   }
@@ -232,7 +242,8 @@ class ProgramOptions {
     std::cout << _more;
     for (auto const& it : _sections) {
       if (!it.second.name.empty() && it.second.hasOptions()) {
-        std::cout << "  " << colorStart << "--help-" << it.second.name << colorEnd;
+        std::cout << "  " << colorStart << "--help-" << it.second.name
+                  << colorEnd;
       }
     }
     std::cout << std::endl;
@@ -244,19 +255,21 @@ class ProgramOptions {
     VPackBuilder builder;
     builder.openObject();
 
-    walk([&builder, &exclude](Section const&, Option const& option) {
-      std::string full(option.fullName());
-      if (exclude.find(full) != exclude.end()) {
-        // excluded option
-        return;
-      }
+    walk(
+        [&builder, &exclude](Section const&, Option const& option) {
+          std::string full(option.fullName());
+          if (exclude.find(full) != exclude.end()) {
+            // excluded option
+            return;
+          }
 
-      // add key
-      builder.add(VPackValue(full));
+          // add key
+          builder.add(VPackValue(full));
 
-      // add value
-      option.toVPack(builder);
-    }, onlyTouched);
+          // add value
+          option.toVPack(builder);
+        },
+        onlyTouched);
 
     builder.close();
     return builder;
@@ -344,7 +357,7 @@ class ProgramOptions {
       return true;
     }
 
-    std::string result = option.parameter->set(value);
+    std::string result = option.parameter->set(_translator(value));
 
     if (!result.empty()) {
       // parameter validation failed
@@ -405,7 +418,7 @@ class ProgramOptions {
 
     return dynamic_cast<T>(option.parameter.get());
   }
-  
+
   // returns an option description
   std::string getDescription(std::string const& name) {
     auto parts = Option::splitName(name);
@@ -436,7 +449,8 @@ class ProgramOptions {
       colorStart = colorEnd = "";
     }
 
-    fail(std::string("unknown option '") + colorStart + "--" + name + colorEnd + "'");
+    fail(std::string("unknown option '") + colorStart + "--" + name + colorEnd +
+         "'");
 
     auto similarOptions = similar(name, 8, 4);
     if (!similarOptions.empty()) {
@@ -453,37 +467,38 @@ class ProgramOptions {
 
       for (auto const& it : similarOptions) {
         std::cerr << "  " << colorStart << Option::pad(it, maxWidth) << colorEnd
-                  << "    " << getDescription(it) 
-                  << std::endl;
+                  << "    " << getDescription(it) << std::endl;
       }
       std::cerr << std::endl;
     }
-    
+
     auto it = _oldOptions.find(name);
     if (it != _oldOptions.end()) {
       // a now removed or renamed option was specified...
       auto& now = (*it).second;
       if (now.empty()) {
-        std::cerr << "Please note that the specified option '"
-                  << colorStart << "--" << name << colorEnd 
-                  << "' has been removed in this ArangoDB version"; 
+        std::cerr << "Please note that the specified option '" << colorStart
+                  << "--" << name << colorEnd
+                  << "' has been removed in this ArangoDB version";
       } else {
-        std::cerr << "Please note that the specified option '" 
-                  << colorStart << "--" << name << colorEnd 
-                  << "' has been renamed to '--" << colorStart
-                  << now << colorEnd << "' in this ArangoDB version"; 
+        std::cerr << "Please note that the specified option '" << colorStart
+                  << "--" << name << colorEnd << "' has been renamed to '--"
+                  << colorStart << now << colorEnd
+                  << "' in this ArangoDB version";
       }
 
-      std::cerr << std::endl 
-                << "Please be sure to read the manual section about changed options" 
-                << std::endl << std::endl;
+      std::cerr
+          << std::endl
+          << "Please be sure to read the manual section about changed options"
+          << std::endl
+          << std::endl;
     }
 
-    std::cerr << "Use " << colorStart << "--help" << colorEnd 
-              << " or " << colorStart << "--help-all" << colorEnd
-              << " to get an overview of available options"
-              << std::endl << std::endl; 
-    
+    std::cerr << "Use " << colorStart << "--help" << colorEnd << " or "
+              << colorStart << "--help-all" << colorEnd
+              << " to get an overview of available options" << std::endl
+              << std::endl;
+
     return false;
   }
 
@@ -548,12 +563,14 @@ class ProgramOptions {
       // build a sorted map of similar values first
       std::multimap<int, std::string> distances;
       // walk over all options
-      walk([this, &value, &distances](Section const&, Option const& option) {
-        if (option.fullName() != value) {
-          distances.emplace(_similarity(value, option.fullName()),
-                            option.displayName());
-        }
-      }, false);
+      walk(
+          [this, &value, &distances](Section const&, Option const& option) {
+            if (option.fullName() != value) {
+              distances.emplace(_similarity(value, option.fullName()),
+                                option.displayName());
+            }
+          },
+          false);
 
       // now return the ones that have an edit distance not higher than the
       // cutOff value
@@ -603,6 +620,8 @@ class ProgramOptions {
   bool _sealed;
   // allow or disallow overriding already set options
   bool _overrideOptions;
+  // translate input values
+  std::function<std::string(std::string const&)> _translator;
 };
 }
 }

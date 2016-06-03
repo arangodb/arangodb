@@ -56,7 +56,8 @@ struct TRI_replication_dump_t {
         _bufferFull(false),
         _hasMore(false),
         _includeSystem(includeSystem),
-        _fromTickIncluded(false) {
+        _fromTickIncluded(false),
+        _compat28(false) {
     if (_chunkSize == 0) {
       // default chunk size
       _chunkSize = 128 * 1024;
@@ -89,6 +90,7 @@ struct TRI_replication_dump_t {
   bool _hasMore;
   bool _includeSystem;
   bool _fromTickIncluded;
+  bool _compat28;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

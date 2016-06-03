@@ -21,29 +21,26 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FUNCTION_DEFINITIONS_H
-#define ARANGOD_AQL_FUNCTION_DEFINITIONS_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_AQL_FUNCTIONS_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_AQL_FUNCTIONS_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Aql/Function.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
-}
 
-namespace aql {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief AQL functions inventory handler
+////////////////////////////////////////////////////////////////////////////////
 
-struct FunctionDefinitions {
-  /// @brief AQL internal function names
-  static std::unordered_map<int, std::string const> const InternalFunctionNames;
-  
-  /// @brief AQL user-callable function names
-  static std::unordered_map<std::string, Function const> FunctionNames;
+class RestAqlFunctionsHandler : public RestVocbaseBaseHandler {
+ public:
+  explicit RestAqlFunctionsHandler(HttpRequest*);
 
-  static void toVelocyPack(arangodb::velocypack::Builder&);
+ public:
+  status_t execute() override;
+
 };
-}
 }
 
 #endif
