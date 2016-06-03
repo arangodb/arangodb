@@ -62,6 +62,7 @@ void Supervision::wakeUp() {
 static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const planDBServersPrefix = "/Plan/DBServers";
+static std::string const planCoordinatorsPrefix = "/Plan/Coordinators";
 
 std::vector<check_t> Supervision::checkDBServers() {
   std::vector<check_t> ret;
@@ -106,13 +107,13 @@ std::vector<check_t> Supervision::checkDBServers() {
       report->add("LastHeartbeatAcked",
                   VPackValue(
                     timepointToString(std::chrono::system_clock::now())));
-      report->add("Status", VPackValue("UP"));
+      report->add("Status", VPackValue("GOOD"));
     } else {
       std::chrono::seconds t{0};
       t = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now()-stringToTimepoint(lastHeartbeatAcked));
       if (t.count() > _gracePeriod) {  // Failure
-        if (lastStatus == "DOWN") {
+        if (lastStatus == "BAD") {
           report->add("Status", VPackValue("FAILED"));
           FailedServer fsj(_snapshot, _agent, std::to_string(_jobId++),
                            "supervision", _agencyPrefix, serverID);
@@ -135,6 +136,77 @@ std::vector<check_t> Supervision::checkDBServers() {
   return ret;
 }
 
+std::vector<check_t> Supervision::checkCoordinators() {
+  std::vector<check_t> ret;
+  Node::Children const& machinesPlanned =
+      _snapshot(planCoordinatorsPrefix).children();
+
+  for (auto const& machine : machinesPlanned) {
+
+    bool good = false;
+    std::string lastHeartbeatTime, lastHeartbeatStatus, lastHeartbeatAcked,
+      lastStatus, heartbeatTime, heartbeatStatus, serverID;
+
+    serverID        = machine.first;
+    heartbeatTime   = _snapshot(syncPrefix + serverID + "/time").toJson();
+    heartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
+    
+    try {           // Existing
+      lastHeartbeatTime =
+        _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
+      lastHeartbeatStatus =
+        _snapshot(healthPrefix + serverID + "/LastHeartbeatStatus").toJson();
+      lastHeartbeatAcked =
+        _snapshot(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
+      lastStatus = _snapshot(healthPrefix + serverID + "/Status").toJson();
+      if (lastHeartbeatTime != heartbeatTime) { // Update
+        good = true;
+      }
+    } catch (...) { // New server
+      good = true;
+    }
+    
+    query_t report = std::make_shared<Builder>();
+    report->openArray();
+    report->openArray();
+    report->openObject();
+    report->add(_agencyPrefix + healthPrefix + serverID,
+                VPackValue(VPackValueType::Object));
+    report->add("LastHeartbeatSent", VPackValue(heartbeatTime));
+    report->add("LastHeartbeatStatus", VPackValue(heartbeatStatus));
+    
+    if (good) {
+      report->add("LastHeartbeatAcked",
+                  VPackValue(
+                    timepointToString(std::chrono::system_clock::now())));
+      report->add("Status", VPackValue("GOOD"));
+    } else {
+      std::chrono::seconds t{0};
+      t = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now()-stringToTimepoint(lastHeartbeatAcked));
+      if (t.count() > _gracePeriod) {  // Failure
+        if (lastStatus == "BAD") {
+          report->add("Status", VPackValue("FAILED"));
+        }
+      } else {
+        report->add("Status", VPackValue("DOWN"));
+      }
+    }
+
+    report->close();
+    report->close();
+    report->close();
+    report->close();
+    if (!this->isStopping()) {
+      _agent->write(report);
+    }
+      
+  }
+
+  return ret;
+}
+
+
 bool Supervision::doChecks(bool timedout) {
 
   if (_agent == nullptr || this->isStopping()) {
@@ -145,6 +217,7 @@ bool Supervision::doChecks(bool timedout) {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sanity checks";
   /*std::vector<check_t> ret = */checkDBServers();
+  checkCoordinators();
 
   return true;
 }
