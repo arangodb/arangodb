@@ -41,6 +41,7 @@
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
@@ -452,6 +453,10 @@ void RestServerFeature::defineHandlers() {
       "/_api/aql",
       RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
+  
+  _handlerFactory->addPrefixHandler(
+      "/_api/aql-builtin",
+      RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_api/query", RestHandlerCreator<RestQueryHandler>::createNoData);
