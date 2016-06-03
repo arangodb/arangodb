@@ -338,8 +338,11 @@
 
       if (opts.file === undefined) {
         $('#loadingScreen span').text('Statistics not ready yet. Waiting.');
-        $('#loadingScreen').show();
-        $('#content').hide();
+
+        if (window.location.hash === '#dashboard' || window.location.hash === '' || window.location.hash === '#') {
+          $('#loadingScreen').show();
+          $('#content').hide();
+        }
       }
       else {
         $('#content').show();
