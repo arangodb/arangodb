@@ -3242,6 +3242,16 @@ AqlValue Functions::Degrees(arangodb::aql::Query* query,
   return NumberValue(trx, radians * (180.0 / std::acos(-1.0)), true);
 }
 
+/// @brief function PI
+AqlValue Functions::Pi(arangodb::aql::Query* query,
+                       arangodb::AqlTransaction* trx,
+                       VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "PI", 0, 0);
+  
+  // acos(-1) == PI
+  return NumberValue(trx, std::acos(-1.0), true);
+}
+
 /// @brief function RAND
 AqlValue Functions::Rand(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,

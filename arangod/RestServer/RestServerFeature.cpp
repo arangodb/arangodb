@@ -298,7 +298,7 @@ void RestServerFeature::start() {
 
   // populate the authentication cache. otherwise no one can access the new
   // database
-  RestServerFeature::AUTH_INFO.reload();
+  RestServerFeature::AUTH_INFO.outdate();
 }
 
 void RestServerFeature::stop() {

@@ -309,6 +309,18 @@ PERCENTILE( [1, 2, 3, 4], 50, "rank" ) // 2
 PERCENTILE( [1, 2, 3, 4], 50, "interpolation" ) // 2.5
 ```
 
+!SUBSECTION PI()
+
+`PI() → pi`
+
+Return pi.
+
+- returns **pi** (number): the first few significant digits of pi (3.141592653589793)
+
+```js
+PI() // 3.141592653589793
+```
+
 !SUBSECTION POW()
 
 `POW(base, exp) → num`
