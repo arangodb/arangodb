@@ -39,6 +39,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
@@ -109,12 +110,17 @@ RestServerFeature::RestServerFeature(
 void RestServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
-  
-  options->addOldOption("server.disable-authentication", "server.authentication");
-  options->addOldOption("server.disable-authentication-unix-sockets", "server.authentication-unix-sockets");
-  options->addOldOption("server.authenticate-system-only", "server.authentication-system-only");
-  options->addOldOption("server.allow-method-override", "http.allow-method-override");
-  options->addOldOption("server.hide-product-header", "http.hide-product-header");
+
+  options->addOldOption("server.disable-authentication",
+                        "server.authentication");
+  options->addOldOption("server.disable-authentication-unix-sockets",
+                        "server.authentication-unix-sockets");
+  options->addOldOption("server.authenticate-system-only",
+                        "server.authentication-system-only");
+  options->addOldOption("server.allow-method-override",
+                        "http.allow-method-override");
+  options->addOldOption("server.hide-product-header",
+                        "http.hide-product-header");
   options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   options->addOldOption("server.default-api-compatibility", "");
 
@@ -126,13 +132,13 @@ void RestServerFeature::collectOptions(
       "--server.authentication-system-only",
       "use HTTP authentication only for requests to /_api and /_admin",
       new BooleanParameter(&_authenticationSystemOnly));
-  
+
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   options->addOption("--server.authentication-unix-sockets",
                      "authentication for requests via UNIX domain sockets",
                      new BooleanParameter(&_authenticationUnixSockets));
 #endif
-  
+
   options->addOption("--server.jwt-secret",
                      "secret to use when doing jwt authentication",
                      new StringParameter(&_jwtSecret));
@@ -197,10 +203,11 @@ void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                        }),
         _accessControlAllowOrigins.end());
   }
-  
+
   if (!_jwtSecret.empty()) {
     if (_jwtSecret.length() > RestServerFeature::_maxSecretLength) {
-      LOG(ERR) << "Given JWT secret too long. Max length is " << RestServerFeature::_maxSecretLength;
+      LOG(ERR) << "Given JWT secret too long. Max length is "
+               << RestServerFeature::_maxSecretLength;
       FATAL_ERROR_EXIT();
     }
   } else {
@@ -245,7 +252,8 @@ static bool SetRequestContext(HttpRequest* request, void* data) {
     return false;
   }
 
-  VocbaseContext* ctx = new arangodb::VocbaseContext(request, vocbase, RestServerFeature::getJwtSecret());
+  VocbaseContext* ctx = new arangodb::VocbaseContext(
+      request, vocbase, RestServerFeature::getJwtSecret());
   request->setRequestContext(ctx, true);
 
   // the "true" means the request is the owner of the context
@@ -254,18 +262,14 @@ static bool SetRequestContext(HttpRequest* request, void* data) {
 
 void RestServerFeature::generateNewJwtSecret() {
   _jwtSecret = "";
-  std::random_device rd;
-  std::mt19937 rng(rd());
-  std::uniform_int_distribution<int> distribution(0,255);
+  uint16_t m = 254;
 
-  for (size_t i=0;i<RestServerFeature::_maxSecretLength;i++) {
-    _jwtSecret += distribution(rng);
+  for (size_t i = 0; i < RestServerFeature::_maxSecretLength; i++) {
+    _jwtSecret += (1 + RandomGenerator::interval(m));
   }
 }
 
-void RestServerFeature::prepare() {
-  HttpHandlerFactory::setMaintenance(true);
-}
+void RestServerFeature::prepare() { HttpHandlerFactory::setMaintenance(true); }
 
 void RestServerFeature::start() {
   RESTSERVER = this;
@@ -529,10 +533,11 @@ void RestServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/shutdown",
       RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
-  
+
   _handlerFactory->addPrefixHandler(
-      "/_open/auth",
-      RestHandlerCreator<arangodb::RestAuthHandler>::createData<std::string const*>, &_jwtSecret);
+      "/_open/auth", RestHandlerCreator<arangodb::RestAuthHandler>::createData<
+                         std::string const*>,
+      &_jwtSecret);
 
   // ...........................................................................
   // /_admin
