@@ -312,7 +312,7 @@ exports.exists = function(username) {
     exports.document(username);
     return true;
   } catch (e) {
-    if (e.errNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
+    if (e.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
       return false;
     }
     throw e;

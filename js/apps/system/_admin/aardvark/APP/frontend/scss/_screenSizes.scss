@@ -14,6 +14,12 @@
   }
 
   // SINGLE NODE DASHBOARD
+  #repl-numbers,
+  #repl-progress,
+  #repl-ticks {
+    width: 100% !important;
+  }
+
   .dashboard-large-chart,
   .dashboard-medium-chart-outer:first-child {
     padding-right: 0 !important;

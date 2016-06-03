@@ -50,7 +50,11 @@ function get_api_database (req, res) {
     if (req.suffix[0] === 'user') {
       // fetch all databases for the current user
       // note: req.user may be null if authentication is turned off
-      result = arangodb.db._databases(req.user);
+      if (req.user === null) {
+        result = arangodb.db._databases();
+      } else {
+        result = arangodb.db._databases(req.user);
+      }
     }
     else if (req.suffix[0] === 'current') {
       if (cluster.isCoordinator()) {

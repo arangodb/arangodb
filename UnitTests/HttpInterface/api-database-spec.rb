@@ -210,13 +210,6 @@ describe ArangoDB do
       result["path"].should be_kind_of(String)
       result["isSystem"].should eq(false)
       
-      # retrieve user for new database
-      doc = ArangoDB.log_get("#{prefix}-create-current", "/_db/#{name}/_api/user/root")
-      doc.code.should eq(200)
-      result = doc.parsed_response
-      result["user"].should eq("root")
-      result["active"].should eq(true)
-      
       doc = ArangoDB.log_delete("#{prefix}-create-current", api + "/#{name}")
       doc.code.should eq(200)
       response = doc.parsed_response
@@ -251,7 +244,7 @@ describe ArangoDB do
       result["isSystem"].should eq(false)
       
       # retrieve information about user "admin"
-      doc = ArangoDB.log_get("#{prefix}-create-users", "/_db/#{name}/_api/user/admin")
+      doc = ArangoDB.log_get("#{prefix}-create-users", "/_db/_system/_api/user/admin")
       doc.code.should eq(200)
       result = doc.parsed_response
       result["user"].should eq("admin")
@@ -259,15 +252,11 @@ describe ArangoDB do
       result["extra"]["gender"].should eq("m")
       
       # retrieve information about user "foxx"
-      doc = ArangoDB.log_get("#{prefix}-create-users", "/_db/#{name}/_api/user/foxx")
+      doc = ArangoDB.log_get("#{prefix}-create-users", "/_db/_system/_api/user/foxx")
       doc.code.should eq(200)
       result = doc.parsed_response
       result["user"].should eq("foxx")
       result["active"].should eq(false)
-      
-      # retrieve information about user "root"
-      doc = ArangoDB.log_get("#{prefix}-create-users", "/_db/#{name}/_api/user/root")
-      doc.code.should eq(404)
       
       doc = ArangoDB.log_delete("#{prefix}-create-users", api + "/#{name}")
       doc.code.should eq(200)
@@ -311,10 +300,6 @@ describe ArangoDB do
       result["name"].should eq(name)
       result["path"].should be_kind_of(String)
       result["isSystem"].should eq(false)
-      
-      # retrieve information about user "root"
-      doc = ArangoDB.log_get("#{prefix}-create-users-invalid", "/_db/#{name}/_api/user/root")
-      doc.code.should eq(404)
       
       doc = ArangoDB.log_delete("#{prefix}-create-users-invalid", api + "/#{name}")
       doc.code.should eq(200)
