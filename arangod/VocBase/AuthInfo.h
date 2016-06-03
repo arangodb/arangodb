@@ -42,7 +42,7 @@ enum class AuthLevel {
   
 class AuthEntry {
  public:
- AuthEntry() : _active(false), _mustChange(false) {}
+  AuthEntry() : _active(false), _mustChange(false), _allDatabases(AuthLevel::NONE) {}
 
   AuthEntry(std::string const& username, std::string const& passwordMethod,
             std::string const& passwordSalt, std::string const& passwordHash,
