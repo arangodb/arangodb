@@ -205,6 +205,12 @@
         this.footerView.render();
 
         window.checkVersion();
+
+        this.documentsView = new window.DocumentsView({
+          collection: new window.arangoDocuments(),
+          documentStore: this.arangoDocumentStore,
+          collectionsStore: this.arangoCollectionsStore
+        });
       }.bind(this);
 
 

@@ -1,4 +1,4 @@
-/*jshint -W051:true */
+/*jshint -W051:true, -W069:true */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,6 +38,7 @@
   const userManager = require("@arangodb/users");
   const currentVersion = require("@arangodb/database-version").CURRENT_VERSION;
   const db = internal.db;
+  const shallowCopy = require("@arangodb/util").shallowCopy;
 
   const defaultRootPW = require("process").env.ARANGODB_DEFAULT_ROOT_PASSWORD || "";
 
@@ -240,7 +241,7 @@
             return a.name;
           }).join(", "));
       } else {
-        logger.log("Database is up-to-date (" + (lastVersion || "-") + "/" +
+        logger.log("Database is up-to-date (" + (lastVersion || "-") + 
           "/" + constant2name[cluster] + "/" + constant2name[database] + ")");
       }
 
@@ -521,38 +522,76 @@
 
         try {
           db._useDatabase("_system");
-	  const users = getCollection("_users");
+          const users = getCollection("_users");
 
-	  if (!users) {
-	    return false;
-	  }
+          if (!users) {
+            return false;
+          }
 
-	  if (args && args.users) {
-	    args.users.forEach(function(user) {
-	      try {
+          if (args && args.users) {
+            args.users.forEach(function(user) {
+              try {
                 if (!userManager.exists(user.username)) {
                   userManager.save(user.username, user.passwd, user.active, user.extra || {});
                 }
-	      } catch (err) {
-		logger.warn("could not add database user '" + user.username + "': " +
-		  String(err) + " " +
-		  String(err.stack || ""));
-	      }
+              } catch (err) {
+                logger.warn("could not add database user '" + user.username + "': " +
+                  String(err) + " " +
+                  String(err.stack || ""));
+              }
 
-	      try {
-		userManager.grantDatabase(user.username, oldDbname, "rw");
-	      } catch (err) {
-		logger.warn("could not grant access to database user '" + user.username + "': " +
-		  String(err) + " " +
-		  String(err.stack || ""));
-	      }
-	    });
-	  }
+              try {
+                userManager.grantDatabase(user.username, oldDbname, "rw");
+              } catch (err) {
+                logger.warn("could not grant access to database user '" + user.username + "': " +
+                  String(err) + " " +
+                  String(err.stack || ""));
+              }
+            });
+          }
 
-	  return true;
-	} finally {
+          return true;
+        } finally {
           db._useDatabase(oldDbname);
-	}
+        }
+      }
+    });
+
+    // updates the users model
+    addTask({
+      name: "updateUserModel",
+      description: "convert documents in _users collection to new format",
+
+      system: DATABASE_SYSTEM,
+      cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
+      database: [DATABASE_UPGRADE, DATABASE_EXISTING],
+
+      task: function() {
+        var users = getCollection("_users");
+
+        if (!users) {
+          return false;
+        }
+
+        var results = users.all().toArray().map(function(oldDoc) {
+          if (!oldDoc.hasOwnProperty('databases') || oldDoc.databases === null) {
+            var data = shallowCopy(oldDoc);
+            data.databases = {};
+
+            if (oldDoc.user === "root") {
+              data.databases["*"] = "rw";
+            } else {
+              data.databases["_system"] = "rw";
+            }
+
+            var result = users.replace(oldDoc, data);
+            return !result.errors;
+          }
+
+          return true;
+        });
+
+        return results.every(Boolean);
       }
     });
 

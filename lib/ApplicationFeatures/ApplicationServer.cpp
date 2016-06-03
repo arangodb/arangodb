@@ -228,6 +228,10 @@ void ApplicationServer::beginShutdown() {
   // to run method
 }
 
+void ApplicationServer::shutdownFatalError() {
+  reportServerProgress(ServerState::ABORT);
+}
+
 VPackBuilder ApplicationServer::options(
     std::unordered_set<std::string> const& excludes) const {
   return _options->toVPack(false, excludes);
