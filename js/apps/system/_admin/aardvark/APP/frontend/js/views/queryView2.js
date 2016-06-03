@@ -1369,8 +1369,14 @@
     },
 
     handleResult: function() {
+      var self = this;
       window.progressView.hide();
       $('#removeResults').show();
+
+      //refocus ace
+      window.setTimeout(function() {
+        self.aqlEditor.focus();
+      }, 300);
 
       $(".centralRow").animate({ scrollTop: $('#queryContent').height() }, "fast");
     },
