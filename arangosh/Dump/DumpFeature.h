@@ -56,6 +56,7 @@ class DumpFeature final : public application_features::ApplicationFeature,
   bool _progress;
   uint64_t _tickStart;
   uint64_t _tickEnd;
+  bool _compat28;
 
  private:
   int startBatch(std::string DBserver, std::string& errorMsg);
