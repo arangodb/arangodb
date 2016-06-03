@@ -90,7 +90,7 @@ class HeartbeatThread : public Thread {
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool hasRunOnce() { return (HasRunOnce == 1); }
+  static bool hasRunOnce() { return HasRunOnce.load(); }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -226,7 +226,7 @@ class HeartbeatThread : public Thread {
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static volatile sig_atomic_t HasRunOnce;
+  static std::atomic<bool> HasRunOnce;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief keeps track of the currently installed versions

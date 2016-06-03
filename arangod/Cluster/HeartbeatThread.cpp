@@ -48,7 +48,7 @@
 
 using namespace arangodb;
 
-volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
+std::atomic<bool> HeartbeatThread::HasRunOnce(false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a heartbeat thread
@@ -463,7 +463,6 @@ void HeartbeatThread::removeDispatchedJob(DBServerAgencySyncResult result) {
 
 static std::string const prefixPlanChangeCoordinator = "Plan/Databases";
 bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
-  bool fetchingUsersFailed = false;
   LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "found a plan update";
   AgencyCommResult result;
 
@@ -534,6 +533,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         // create a local database object...
         TRI_CreateCoordinatorDatabaseServer(_server, id, name.c_str(),
                                             &defaults, &vocbase);
+        HasRunOnce = true;
       } else {
         TRI_ReleaseVocBase(vocbase);
       }
@@ -553,10 +553,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     }
 
   } else {
-    return false;
-  }
-
-  if (fetchingUsersFailed) {
     return false;
   }
 
