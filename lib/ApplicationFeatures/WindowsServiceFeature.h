@@ -36,7 +36,6 @@ class WindowsServiceFeature final : public application_features::ApplicationFeat
 
  private:
   void installService();
-  void DeleteService (bool force);
   void StartArangoService (bool WaitForRunning);
   void StopArangoService (bool WaitForShutdown);
   void startupProgress ();

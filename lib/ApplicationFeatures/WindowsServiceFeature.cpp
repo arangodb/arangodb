@@ -296,7 +296,7 @@ void WindowsServiceFeature::installService() {
   CloseServiceHandle(schService);
 }
 
-void WindowsServiceFeature::DeleteService (bool force) {
+void DeleteService (bool force) {
   CHAR path[MAX_PATH] = "";
 
   if (! GetModuleFileNameA(nullptr, path, MAX_PATH)) {
@@ -308,7 +308,7 @@ void WindowsServiceFeature::DeleteService (bool force) {
 
   SC_HANDLE schSCManager = OpenSCManager(nullptr, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
 
-  if (schSCManager == 0) {
+  if (schSCManager == nullptr) {
     std::cerr << "FATAL: OpenSCManager failed with " << GetLastError() << std::endl;
     exit(EXIT_FAILURE);
   }
@@ -348,7 +348,7 @@ void WindowsServiceFeature::DeleteService (bool force) {
 
   CloseServiceHandle(schSCManager);
 
-  if (schService == 0) {
+  if (schService == nullptr) {
     std::cerr << "FATAL: OpenServiceA failed with " << GetLastError() << std::endl;
     exit(EXIT_FAILURE);
   }
