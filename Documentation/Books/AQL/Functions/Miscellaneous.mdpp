@@ -53,6 +53,10 @@ Return an array of collections.
 - returns **docArray** (array): each collection as a document with attributes
   *name* and *_id* in an array
 
+!SUBSECTION COUNT()
+
+This is an alias for [LENGTH()](#length).
+
 !SUBSECTION CURRENT_USER()
 
 `CURRENT_USER() → userName`
@@ -196,14 +200,87 @@ CALL( "SUBSTRING", "this is a test", 0, 4 )
 
 !SECTION Internal functions
 
+The following functions are used during development of ArangoDB as a database
+system, primarily for unit testing. They are not intended to be used by end
+users, especially not in production environments.
+
 !SUBSECTION FAIL()
 
 `FAIL(reason)`
 
-!SUBSECTION NOOP()
+Let a query fail on purpose. Can be used in a conditional branch, or to verify
+if lazy evaluation / short circuiting is used for instance.
 
-`NOOP(value) → retVal`
+- **reason** (string): an error message
+- returns nothing, because the query is aborted
+
+```js
+RETURN 1 == 1 ? "okay" : FAIL("error") // "okay"
+RETURN 1 == 1 || FAIL("error") ? true : false // true
+RETURN 1 == 2 && FAIL("error") ? true : false // false
+RETURN 1 == 1 && FAIL("error") ? true : false // aborted with error
+```
+
+!SUBSECTION NOOPT()
+
+`NOOPT(expression) → retVal`
+
+No-operation that prevents query compile-time optimizations. Constant expressions
+can be forced to be evaluated at runtime with this.
+
+If there is a C++ implementation as well as a JavaScript implementation of an
+AQL function, then it will enforce the use of the C++ version.
+
+- **expression** (any): arbitray expression
+- returns **retVal** (any): the return value of the *expression*
+
+```js
+// differences in execution plan (explain)
+FOR i IN 1..3 RETURN (1 + 1)      // const assignment
+FOR i IN 1..3 RETURN NOOPT(1 + 1) // simple expression
+
+NOOPT( RAND() ) // C++ implementation
+V8( RAND() )    // JavaScript implementation
+```
+
+!SUBSECTION PASSTHRU()
+
+`PASSTHRU(value) → retVal`
+
+This function is marked as non-deterministic so its argument withstands
+query optimization.
+
+- **value** (any): a value of arbitrary type
+- returns **retVal** (any): *value*, without optimizations
+
+!SUBSECTION SLEEP()
+
+`SLEEP(seconds) → null`
+
+Wait for a certain amount of time before continuing the query.
+
+- **seconds** (number): amount of time to wait
+- returns a *null* value
+
+```js
+SLEEP(1)    // wait 1 second
+SLEEP(0.02) // wait 20 milliseconds
+```
 
 !SUBSECTION V8()
 
-`V8(value) → retVal`
+`V8(expression) → retVal`
+
+No-operation that enforces the usage of the V8 JavaScript engine. If there is a
+JavaScript implementation of an AQL function, for which there is also a C++
+implementation, the JavaScript version will be used.
+
+- **expression** (any): arbitray expression
+- returns **retVal** (any): the return value of the *expression*
+
+```js
+// differences in execution plan (explain)
+FOR i IN 1..3 RETURN (1 + 1)          // const assignment
+FOR i IN 1..3 RETURN V8(1 + 1)        // const assignment
+FOR i IN 1..3 RETURN NOOPT(V8(1 + 1)) // v8 expression
+```

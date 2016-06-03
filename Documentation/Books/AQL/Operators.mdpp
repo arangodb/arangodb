@@ -59,7 +59,7 @@ or underscore.
 ```
 "abc" LIKE "a%"              // true
 "abc" LIKE "_bc"             // true
-"a_b_foo" LIKE "a\\_b\\_f%"  // true
+"a_b_foo" LIKE "a\\_b\\_foo" // true
 ```
 
 The pattern matching performed by the *LIKE* operator is case-sensitive.
@@ -182,7 +182,14 @@ AQL supports the following arithmetic operators:
 - */* division
 - *%* modulus
 
-The unary plus and unary minus are supported as well.
+Unary plus and unary minus are supported as well:
+
+```js
+LET x = -5
+LET y = 1
+RETURN [-x, +y]
+// [5, 1]
+```
 
 For exponentiation, there is a [numeric function](Functions/Numeric.md#pow) *POW()*.
 
@@ -202,7 +209,7 @@ Some example arithmetic operations:
 
 The arithmetic operators accept operands of any type. Passing non-numeric values to an 
 arithmetic operator will cast the operands to numbers using the type casting rules 
-applied by the `TO_NUMBER` function:
+applied by the [TO_NUMBER()](Functions/TypeCast.md#tonumber) function:
 
 - `null` will be converted to `0`
 - `false` will be converted to `0`, true will be converted to `1`
@@ -215,8 +222,8 @@ applied by the `TO_NUMBER` function:
   `0`.
 - objects / documents are converted to the number `0`.
 
-An arithmetic operation that produces an invalid value, such as `1 / 0` will also produce 
-a result value of `0`.
+An arithmetic operation that produces an invalid value, such as `1 / 0` (division by zero)
+will also produce a result value of `0`.
 
 Here are a few examples:
 

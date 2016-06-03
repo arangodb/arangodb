@@ -161,8 +161,8 @@ The following type check functions are available:
 - `IS_DOCUMENT(value) → bool`: This is an alias for *IS_OBJECT()*
 
 - `IS_DATESTRING(value) → bool`: Check whether *value* is a string that can be used
-  in a date function. This includes partial dates such as *2015* or *2015-10* and
-  strings containing invalid dates such as *2015-02-31*. The function will return 
+  in a date function. This includes partial dates such as *"2015"* or *"2015-10"* and
+  strings containing invalid dates such as *"2015-02-31"*. The function will return 
   false for all non-string values, even if some of them may be usable in date functions.
 
 - `TYPENAME(value) → typeName`: Return the data type name of *value*. The data type
