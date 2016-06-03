@@ -44,7 +44,8 @@ enum class ServerState {
   IN_START,
   IN_WAIT,
   IN_STOP,
-  STOPPED
+  STOPPED,
+  ABORT
 };
 
 class ProgressHandler {
@@ -190,6 +191,9 @@ class ApplicationServer {
 
   // signal the server to shut down
   void beginShutdown();
+
+  // report that we are going down by fatal error
+  void shutdownFatalError();
 
   // return VPack options
   VPackBuilder options(std::unordered_set<std::string> const& excludes) const;
