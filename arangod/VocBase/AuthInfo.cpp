@@ -103,7 +103,7 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
   VPackSlice const databasesSlice = slice.get("databases");
   std::unordered_map<std::string, AuthLevel> databases;
   AuthLevel allDatabases = AuthLevel::NONE;
-  
+
   if (databasesSlice.isObject()) {
     for (auto const& obj : VPackObjectIterator(databasesSlice)) {
       std::string const key = obj.key.copyString();
@@ -112,26 +112,25 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
       char const* value = obj.value.getString(length);
 
       if (TRI_CaseEqualString(value, "rw", 2)) {
-	if (key == "*") {
-	  allDatabases = AuthLevel::RW;
-	} else {
-	  databases.emplace(key, AuthLevel::RW);
-	}
-      }
-      else if (TRI_CaseEqualString(value, "ro", 2)) {
-	if (key == "*") {
-	  allDatabases = AuthLevel::RO;
-	} else {
-	  databases.emplace(key, AuthLevel::RO);
-	}
+        if (key == "*") {
+          allDatabases = AuthLevel::RW;
+        } else {
+          databases.emplace(key, AuthLevel::RW);
+        }
+      } else if (TRI_CaseEqualString(value, "ro", 2)) {
+        if (key == "*") {
+          allDatabases = AuthLevel::RO;
+        } else {
+          databases.emplace(key, AuthLevel::RO);
+        }
       }
     }
   }
 
   // build authentication entry
   return AuthEntry(userSlice.copyString(), methodSlice.copyString(),
-                   saltSlice.copyString(), hashSlice.copyString(),
-		   databases, allDatabases, active, mustChange);
+                   saltSlice.copyString(), hashSlice.copyString(), databases,
+                   allDatabases, active, mustChange);
 }
 
 AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
@@ -217,15 +216,15 @@ bool AuthInfo::populate(VPackSlice const& slice) {
   return true;
 }
 
-bool AuthInfo::reload() {
+void AuthInfo::reload() {
   insertInitial();
-  
+
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->vocbase();
 
   if (vocbase == nullptr) {
     LOG(DEBUG) << "system database is unknown, cannot load authentication "
-	       << "and authorization information";
-    return false;
+               << "and authorization information";
+    return;
   }
 
   LOG(DEBUG) << "starting to load authentication and authorization information";
@@ -236,24 +235,25 @@ bool AuthInfo::reload() {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return false;
+    LOG(ERR) << "cannot start transaction to load authentication";
+    return;
   }
 
   OperationResult users =
-    trx.all(TRI_COL_NAME_USERS, 0, UINT64_MAX, OperationOptions());
+      trx.all(TRI_COL_NAME_USERS, 0, UINT64_MAX, OperationOptions());
 
   trx.finish(users.code);
 
   if (users.failed()) {
     LOG(ERR) << "cannot read users from _users collection";
-    return false;
+    return;
   }
 
   auto usersSlice = users.slice();
 
   if (!usersSlice.isArray()) {
     LOG(ERR) << "cannot read users from _users collection";
-    return false;
+    return;
   }
 
   if (usersSlice.length() == 0) {
@@ -262,11 +262,15 @@ bool AuthInfo::reload() {
     populate(usersSlice);
   }
 
-  return true;
+  _outdated = false;
 }
 
 AuthResult AuthInfo::checkPassword(std::string const& username,
-				   std::string const& password) {
+                                   std::string const& password) {
+  if (_outdated) {
+    reload();
+  }
+
   AuthResult result;
 
   // look up username
@@ -299,22 +303,22 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   try {
     if (passwordMethod == "sha1") {
       arangodb::rest::SslInterface::sslSHA1(salted.c_str(), len, crypted,
-					    cryptedLength);
+                                            cryptedLength);
     } else if (passwordMethod == "sha512") {
       arangodb::rest::SslInterface::sslSHA512(salted.c_str(), len, crypted,
-					      cryptedLength);
+                                              cryptedLength);
     } else if (passwordMethod == "sha384") {
       arangodb::rest::SslInterface::sslSHA384(salted.c_str(), len, crypted,
-					      cryptedLength);
+                                              cryptedLength);
     } else if (passwordMethod == "sha256") {
       arangodb::rest::SslInterface::sslSHA256(salted.c_str(), len, crypted,
-					      cryptedLength);
+                                              cryptedLength);
     } else if (passwordMethod == "sha224") {
       arangodb::rest::SslInterface::sslSHA224(salted.c_str(), len, crypted,
-					      cryptedLength);
+                                              cryptedLength);
     } else if (passwordMethod == "md5") {
       arangodb::rest::SslInterface::sslMD5(salted.c_str(), len, crypted,
-					   cryptedLength);
+                                           cryptedLength);
     } else {
       // invalid algorithm...
     }
@@ -329,8 +333,8 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
       char* hex = TRI_EncodeHexString(crypted, cryptedLength, &hexLen);
 
       if (hex != nullptr) {
-	result._authorized = auth.checkPasswordHash(hex);
-	TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
+        result._authorized = auth.checkPasswordHash(hex);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
       }
     }
 
@@ -340,7 +344,12 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   return result;
 }
 
-AuthLevel AuthInfo::canUseDatabase(std::string const& username, std::string const& dbname) {
+AuthLevel AuthInfo::canUseDatabase(std::string const& username,
+                                   std::string const& dbname) {
+  if (_outdated) {
+    reload();
+  }
+
   auto const& it = _authInfo.find(username);
 
   if (it == _authInfo.end()) {
@@ -352,13 +361,18 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username, std::string cons
   return entry.canUseDatabase(dbname);
 }
 
-AuthResult AuthInfo::checkAuthentication(AuthType authType, std::string const& secret) {
-  switch (authType) {
-  case AuthType::BASIC:
-    return checkAuthenticationBasic(secret);
+AuthResult AuthInfo::checkAuthentication(AuthType authType,
+                                         std::string const& secret) {
+  if (_outdated) {
+    reload();
+  }
 
-  case AuthType::JWT:
-    return checkAuthenticationJWT(secret);
+  switch (authType) {
+    case AuthType::BASIC:
+      return checkAuthenticationBasic(secret);
+
+    case AuthType::JWT:
+      return checkAuthenticationJWT(secret);
   }
 
   return AuthResult();
@@ -376,7 +390,7 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
 
   if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
     LOG(TRACE) << "invalid authentication data found, cannot extract "
-      "username/password";
+                  "username/password";
     return AuthResult();
   }
 
@@ -394,7 +408,7 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
 
 AuthResult AuthInfo::checkAuthenticationJWT(std::string const& secret) {
   std::vector<std::string> const parts = StringUtils::split(secret, '.');
-  
+
   if (parts.size() != 3) {
     LOG(DEBUG) << "Secret contains " << parts.size() << " parts";
     return AuthResult();
@@ -403,33 +417,34 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& secret) {
   std::string const& header = parts[0];
   std::string const& body = parts[1];
   std::string const& signature = parts[2];
-  
+
   std::string const message = header + "." + body;
 
   if (!validateJwtHeader(header)) {
     LOG(DEBUG) << "Couldn't validate jwt header " << header;
     return AuthResult();
   }
-  
+
   std::string username;
   if (!validateJwtBody(body, &username)) {
     LOG(DEBUG) << "Couldn't validate jwt body " << body;
     return AuthResult();
   }
-  
+
   if (!validateJwtHMAC256Signature(message, signature)) {
     LOG(DEBUG) << "Couldn't validate jwt signature " << signature;
     return AuthResult();
   }
-  
+
   AuthResult result;
   result._username = username;
   result._authorized = true;
-  
+
   return result;
 }
 
-std::shared_ptr<VPackBuilder> AuthInfo::parseJson(std::string const& str, std::string const& hint) {
+std::shared_ptr<VPackBuilder> AuthInfo::parseJson(std::string const& str,
+                                                  std::string const& hint) {
   std::shared_ptr<VPackBuilder> result;
   VPackParser parser;
   try {
@@ -442,12 +457,13 @@ std::shared_ptr<VPackBuilder> AuthInfo::parseJson(std::string const& str, std::s
   } catch (...) {
     LOG(ERR) << "Got unknown exception trying to parse " << hint;
   }
-  
+
   return result;
 }
 
 bool AuthInfo::validateJwtHeader(std::string const& header) {
-  std::shared_ptr<VPackBuilder> headerBuilder = parseJson(StringUtils::decodeBase64(header), "jwt header");
+  std::shared_ptr<VPackBuilder> headerBuilder =
+      parseJson(StringUtils::decodeBase64(header), "jwt header");
   if (headerBuilder.get() == nullptr) {
     return false;
   }
@@ -463,15 +479,15 @@ bool AuthInfo::validateJwtHeader(std::string const& header) {
   if (!algSlice.isString()) {
     return false;
   }
-  
+
   if (!typSlice.isString()) {
     return false;
   }
-  
+
   if (algSlice.copyString() != "HS256") {
     return false;
   }
-  
+
   std::string typ = typSlice.copyString();
   if (typ != "JWT") {
     return false;
@@ -481,7 +497,8 @@ bool AuthInfo::validateJwtHeader(std::string const& header) {
 }
 
 bool AuthInfo::validateJwtBody(std::string const& body, std::string* username) {
-  std::shared_ptr<VPackBuilder> bodyBuilder = parseJson(StringUtils::decodeBase64(body), "jwt body");
+  std::shared_ptr<VPackBuilder> bodyBuilder =
+      parseJson(StringUtils::decodeBase64(body), "jwt body");
   if (bodyBuilder.get() == nullptr) {
     return false;
   }
@@ -495,28 +512,30 @@ bool AuthInfo::validateJwtBody(std::string const& body, std::string* username) {
   if (!issSlice.isString()) {
     return false;
   }
-  
+
   if (issSlice.copyString() != "arangodb") {
     return false;
   }
-  
+
   VPackSlice const usernameSlice = bodySlice.get("preferred_username");
   if (!usernameSlice.isString()) {
     return false;
   }
-  
+
   *username = usernameSlice.copyString();
-  
+
   // mop: optional exp (cluster currently uses non expiring jwts)
   if (bodySlice.hasKey("exp")) {
     VPackSlice const expSlice = bodySlice.get("exp");
-    
+
     if (!expSlice.isNumber()) {
       return false;
     }
-    
-    std::chrono::system_clock::time_point expires(std::chrono::seconds(expSlice.getNumber<uint64_t>()));
-    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+
+    std::chrono::system_clock::time_point expires(
+        std::chrono::seconds(expSlice.getNumber<uint64_t>()));
+    std::chrono::system_clock::time_point now =
+        std::chrono::system_clock::now();
 
     if (now >= expires) {
       return false;
@@ -525,9 +544,13 @@ bool AuthInfo::validateJwtBody(std::string const& body, std::string* username) {
   return true;
 }
 
-bool AuthInfo::validateJwtHMAC256Signature(std::string const& message, std::string const& signature) {
+bool AuthInfo::validateJwtHMAC256Signature(std::string const& message,
+                                           std::string const& signature) {
   std::string decodedSignature = StringUtils::decodeBase64U(signature);
-  
+
   std::string const& jwtSecret = RestServerFeature::getJwtSecret();
-  return verifyHMAC(jwtSecret.c_str(), jwtSecret.length(), message.c_str(), message.length(), decodedSignature.c_str(), decodedSignature.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
+  return verifyHMAC(jwtSecret.c_str(), jwtSecret.length(), message.c_str(),
+                    message.length(), decodedSignature.c_str(),
+                    decodedSignature.length(),
+                    SslInterface::Algorithm::ALGORITHM_SHA256);
 }

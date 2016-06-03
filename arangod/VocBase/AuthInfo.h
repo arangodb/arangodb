@@ -47,7 +47,7 @@ class AuthEntry {
   AuthEntry(std::string const& username, std::string const& passwordMethod,
             std::string const& passwordSalt, std::string const& passwordHash,
             std::unordered_map<std::string, AuthLevel> databases, AuthLevel allDatabases,
-	    bool active, bool mustChange)
+            bool active, bool mustChange)
       : _username(username),
         _passwordMethod(passwordMethod),
         _passwordSalt(passwordSalt),
@@ -96,18 +96,22 @@ class AuthInfo {
   };
 
  public:
-  bool reload();
+  AuthInfo() : _outdated(true) {}
+  
+ public:
+  void outdate() { _outdated = true; }
 
   AuthResult checkPassword(std::string const& username,
-			   std::string const& password);
+                           std::string const& password);
 
   AuthResult checkAuthentication(AuthType authType,
-				std::string const& secret);
+                                std::string const& secret);
 
   AuthLevel canUseDatabase(std::string const& username,
-			   std::string const& dbname);
+                           std::string const& dbname);
 
  private:
+  void reload();
   void clear();
   void insertInitial();
   bool populate(velocypack::Slice const& slice);
@@ -121,6 +125,7 @@ class AuthInfo {
 
  private:
   basics::ReadWriteLock _authInfoLock;
+  std::atomic<bool> _outdated;
 
   std::unordered_map<std::string, arangodb::AuthEntry> _authInfo;
   std::unordered_map<std::string, arangodb::AuthResult> _authBasicCache;
