@@ -1475,9 +1475,12 @@
         warningsFunc(data);
         window.progressView.hide();
 
-        var appendSpan = function(value, icon) {
+        var appendSpan = function(value, icon, css) {
+          if (!css) {
+            css = '';
+          }
           $('#outputEditorWrapper' + counter + ' .arangoToolbarTop .pull-left').append(
-            '<span><i class="fa ' + icon + '"></i><i class="iconText">' + value + '</i></span>'
+            '<span class="' + css + '"><i class="fa ' + icon + '"></i><i class="iconText">' + value + '</i></span>'
           );
         };
 
@@ -1494,30 +1497,29 @@
 
         if (data.extra) {
           if (data.extra.stats) {
-            console.log(data.result.length);
             if (data.extra.stats.writesExecuted > 0 || data.extra.stats.writesIgnored > 0) {
               appendSpan(
                 data.extra.stats.writesExecuted + ' writes', 'fa-check-circle positive'
               );
               if (data.extra.stats.writesIgnored === 0) {
                 appendSpan(
-                  data.extra.stats.writesIgnored + ' writes ignored', 'fa-check-circle positive'
+                  data.extra.stats.writesIgnored + ' writes ignored', 'fa-check-circle positive', 'additional'
                 );
               }
               else {
                 appendSpan(
-                  data.extra.stats.writesIgnored + ' writes ignored', 'fa-exclamation-circle warning'
+                  data.extra.stats.writesIgnored + ' writes ignored', 'fa-exclamation-circle warning', 'additional'
                 );
               }
             }
             if (data.extra.stats.scannedFull > 0) {
               appendSpan(
-                'full collection scan', 'fa-exclamation-circle warning'
+                'full collection scan', 'fa-exclamation-circle warning', 'additional'
               );
             }
             else {
               appendSpan(
-                'no full collection scan', 'fa-check-circle positive'
+                'no full collection scan', 'fa-check-circle positive', 'additional'
               );
             }
           }
