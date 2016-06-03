@@ -265,11 +265,13 @@ void Supervision::run() {
 
 void Supervision::workJobs() {
 
-  _snapshot = _agent->readDB().get("/");
   Node::Children const& todos = _snapshot(toDoPrefix).children();
+  Node::Children const& pends = _snapshot(pendingPrefix).children();
   if (!todos.empty()) {
     for (auto const& todoEnt : todos) {
       Node const& job = *todoEnt.second;
+      LOG(WARN) << __FILE__<<__LINE__ << job.toJson();
+      
       std::string jobType = job("type").getString(),
         jobId = job("jobId").getString(),
         creator = job("creator").getString();
@@ -280,11 +282,11 @@ void Supervision::workJobs() {
       }
     }
   }
-
-  Node::Children const& pends = _snapshot(pendingPrefix).children();
   if (!pends.empty()) {
     for (auto const& pendEnt : pends) {
       Node const& job = *pendEnt.second;
+      LOG(WARN) << __FILE__<<__LINE__ << job.toJson();
+
       std::string jobType = job("type").getString(),
         jobId = job("jobId").getString(),
         creator = job("creator").getString();
