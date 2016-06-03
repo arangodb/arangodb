@@ -44,7 +44,7 @@
     <section class="info" id="information">
       <div class="header">
         <div class="header-icon-container">
-          <img src="foxxes/thumbnail?mount=<%= app.encodedMount() %>" alt="Icon for Service" class="icon" />
+          <img src="<%= app.thumbnailUrl %>" alt="Icon for Service" class="icon" />
         </div>
         <div id="hidden_buttons" style="display: none">
           <button class="delete button-danger" <%=app.isSystem()?"disabled":""%> >Delete</button>

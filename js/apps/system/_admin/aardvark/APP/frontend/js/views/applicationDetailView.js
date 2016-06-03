@@ -216,44 +216,46 @@
     },
 
     render: function(mode) {
-
-      var callback = function(error, db) {
-        var self = this;
-        if (error) {
-          arangoHelper.arangoError("DB","Could not get current database");
-        }
-        else {
-          $(this.el).html(this.template.render({
-            app: this.model,
-            db: db,
-            mode: mode
-          }));
-
-          $.get(this.appUrl(db)).success(function () {
-            $(".open", this.el).prop('disabled', false);
-          }.bind(this));
-
-          this.updateConfig();
-          this.updateDeps();
-
-          if (mode === 'swagger') {
-            $.get( "./foxxes/docs/swagger.json?mount=" + encodeURIComponent(this.model.get('mount')), function(data) {
-              if (Object.keys(data.paths).length < 1) {
-                self.render('readme');
-                $('#app-show-swagger').attr('disabled', 'true');
-              }
-            });
+      this.model.fetchThumbnail(function() {
+        var callback = function(error, db) {
+          var self = this;
+          if (error) {
+            arangoHelper.arangoError("DB","Could not get current database");
           }
+          else {
+            console.log(this);
+            $(this.el).html(this.template.render({
+              app: this.model,
+              db: db,
+              mode: mode
+            }));
+
+            $.get(this.appUrl(db)).success(function () {
+              $(".open", this.el).prop('disabled', false);
+            }.bind(this));
+
+            this.updateConfig();
+            this.updateDeps();
+
+            if (mode === 'swagger') {
+              $.get( "./foxxes/docs/swagger.json?mount=" + encodeURIComponent(this.model.get('mount')), function(data) {
+                if (Object.keys(data.paths).length < 1) {
+                  self.render('readme');
+                  $('#app-show-swagger').attr('disabled', 'true');
+                }
+              });
+            }
+          }
+
+          this.breadcrumb();
+        }.bind(this);
+
+        arangoHelper.currentDatabase(callback);
+
+        if (_.isEmpty(this.model.get('config'))) {
+          $('#service-settings').attr('disabled', true);
         }
-
-        this.breadcrumb();
-      }.bind(this);
-
-      arangoHelper.currentDatabase(callback);
-
-      if (_.isEmpty(this.model.get('config'))) {
-        $('#service-settings').attr('disabled', true);
-      }
+      }.bind(this));
       return $(this.el);
     },
 
