@@ -119,7 +119,7 @@ std::vector<check_t> Supervision::checkDBServers() {
                            "supervision", _agencyPrefix, serverID);
         }
       } else {
-        report->add("Status", VPackValue("DOWN"));
+        report->add("Status", VPackValue("BAD"));
       }
     }
 
@@ -189,7 +189,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
           report->add("Status", VPackValue("FAILED"));
         }
       } else {
-        report->add("Status", VPackValue("DOWN"));
+        report->add("Status", VPackValue("BAD"));
       }
     }
 
@@ -283,9 +283,7 @@ void Supervision::workJobs() {
         } else if (jobType == "cleanOutServer") {
           CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
         }
-      } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-      }
+      } catch (std::exception const& e) {}
     }
   }
 
@@ -302,9 +300,7 @@ void Supervision::workJobs() {
         } else if (jobType == "cleanOutServer") {
           CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
         }
-      } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-      }
+      } catch (std::exception const& e) {}
     }
   }
   
