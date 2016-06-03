@@ -1698,7 +1698,7 @@ function ahuacatlStringFunctionsTestSuite () {
         assertEqual([ 675717317264138 ], getQueryResults(buildQuery(i, "null")));
         assertEqual([ 1217335385489389 ], getQueryResults(buildQuery(i, "false")));
         assertEqual([ 57801618404459 ], getQueryResults(buildQuery(i, "true")));
-        assertEqual([ 2964198978643 ], getQueryResults(buildQuery(i, "1 / 0")));
+        assertEqual([ 675717317264138 ], getQueryResults(buildQuery(i, "1 / 0")));
         assertEqual([ 2964198978643 ], getQueryResults(buildQuery(i, "0")));
         assertEqual([ 2964198978643 ], getQueryResults(buildQuery(i, "0.0")));
         assertEqual([ 464020872367562 ], getQueryResults(buildQuery(i, "0.00001")));
