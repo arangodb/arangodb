@@ -354,9 +354,9 @@
 /// - 1478: @LIT{A cluster backend which was required for the operation could not be reached}
 ///   Will be raised if a required db server can't be reached.
 /// - 1479: @LIT{An endpoint couldn't be found}
-///    "An endpoint couldn't be found"
+///   An endpoint couldn't be found
 /// - 1480: @LIT{Invalid agency structure}
-///    "The structure in the agency is invalid"
+///   The structure in the agency is invalid
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -426,26 +426,25 @@
 /// - 1572: @LIT{invalid date value}
 ///   Will be raised when a value cannot be converted to a date.
 /// - 1573: @LIT{multi-modify query}
-///    "Will be raised when an AQL query contains more than one data-modifying
-///   operation."
+///   Will be raised when an AQL query contains more than one data-modifying
+///   operation.
 /// - 1574: @LIT{invalid aggregate expression}
-///    "Will be raised when an AQL query contains an invalid aggregate
-///   expression."
+///   Will be raised when an AQL query contains an invalid aggregate expression.
 /// - 1575: @LIT{query options must be readable at query compile time}
-///    "Will be raised when an AQL data-modification query contains options
-///   that cannot be figured out at query compile time."
+///   Will be raised when an AQL data-modification query contains options that
+///   cannot be figured out at query compile time.
 /// - 1576: @LIT{query options expected}
-///    "Will be raised when an AQL data-modification query contains an invalid
-///   options specification."
+///   Will be raised when an AQL data-modification query contains an invalid
+///   options specification.
 /// - 1577: @LIT{collection '\%s' used as expression operand}
-///    "Will be raised when a collection is used as an operand in an AQL
-///   expression."
+///   Will be raised when a collection is used as an operand in an AQL
+///   expression.
 /// - 1578: @LIT{disallowed dynamic call to '\%s'}
-///    "Will be raised when a dynamic function call is made to a function that
-///   cannot be called dynamically."
+///   Will be raised when a dynamic function call is made to a function that
+///   cannot be called dynamically.
 /// - 1579: @LIT{access after data-modification by \%s}
-///    "Will be raised when collection data are accessed after a
-///   data-modification operation."
+///   Will be raised when collection data are accessed after a
+///   data-modification operation.
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -455,12 +454,12 @@
 /// - 1583: @LIT{user function runtime error: \%s}
 ///   Will be raised when a user function throws a runtime exception.
 /// - 1590: @LIT{bad execution plan JSON}
-///    "Will be raised when an HTTP API for a query got an invalid JSON object."
+///   Will be raised when an HTTP API for a query got an invalid JSON object.
 /// - 1591: @LIT{query ID not found}
-///    "Will be raised when an Id of a query is not found by the HTTP API."
+///   Will be raised when an Id of a query is not found by the HTTP API.
 /// - 1592: @LIT{query with this ID is in use}
-///    "Will be raised when an Id of a query is found by the HTTP API but the
-///   query is in use."
+///   Will be raised when an Id of a query is found by the HTTP API but the
+///   query is in use.
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -621,7 +620,7 @@
 /// - 10001: @LIT{element not found in structure}
 ///   Will be returned if the element was not found in the structure.
 /// - 21000: @LIT{named queue already exists}
-///    "Will be returned if a queue with this name already exists."
+///   Will be returned if a queue with this name already exists.
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
@@ -2091,7 +2090,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// An endpoint couldn't be found
 ///
-///  "An endpoint couldn't be found"
+/// An endpoint couldn't be found
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT                       (1479)
@@ -2101,7 +2100,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// Invalid agency structure
 ///
-///  "The structure in the agency is invalid"
+/// The structure in the agency is invalid
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID                        (1480)
@@ -2393,8 +2392,8 @@ void TRI_InitializeErrorMessages ();
 ///
 /// multi-modify query
 ///
-///  "Will be raised when an AQL query contains more than one data-modifying
-/// operation."
+/// Will be raised when an AQL query contains more than one data-modifying
+/// operation.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_MULTI_MODIFY                                      (1573)
@@ -2404,8 +2403,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// invalid aggregate expression
 ///
-///  "Will be raised when an AQL query contains an invalid aggregate
-/// expression."
+/// Will be raised when an AQL query contains an invalid aggregate expression.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION                      (1574)
@@ -2415,8 +2413,8 @@ void TRI_InitializeErrorMessages ();
 ///
 /// query options must be readable at query compile time
 ///
-///  "Will be raised when an AQL data-modification query contains options that
-/// cannot be figured out at query compile time."
+/// Will be raised when an AQL data-modification query contains options that
+/// cannot be figured out at query compile time.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              (1575)
@@ -2426,8 +2424,8 @@ void TRI_InitializeErrorMessages ();
 ///
 /// query options expected
 ///
-///  "Will be raised when an AQL data-modification query contains an invalid
-/// options specification."
+/// Will be raised when an AQL data-modification query contains an invalid
+/// options specification.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_EXCEPTION_OPTIONS                                 (1576)
@@ -2437,8 +2435,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// collection '%s' used as expression operand
 ///
-///  "Will be raised when a collection is used as an operand in an AQL
-/// expression."
+/// Will be raised when a collection is used as an operand in an AQL expression.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     (1577)
@@ -2448,8 +2445,8 @@ void TRI_InitializeErrorMessages ();
 ///
 /// disallowed dynamic call to '%s'
 ///
-///  "Will be raised when a dynamic function call is made to a function that
-/// cannot be called dynamically."
+/// Will be raised when a dynamic function call is made to a function that
+/// cannot be called dynamically.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_DISALLOWED_DYNAMIC_CALL                           (1578)
@@ -2459,8 +2456,8 @@ void TRI_InitializeErrorMessages ();
 ///
 /// access after data-modification by %s
 ///
-///  "Will be raised when collection data are accessed after a
-/// data-modification operation."
+/// Will be raised when collection data are accessed after a data-modification
+/// operation.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION                         (1579)
@@ -2510,7 +2507,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// bad execution plan JSON
 ///
-///  "Will be raised when an HTTP API for a query got an invalid JSON object."
+/// Will be raised when an HTTP API for a query got an invalid JSON object.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_BAD_JSON_PLAN                                     (1590)
@@ -2520,7 +2517,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// query ID not found
 ///
-///  "Will be raised when an Id of a query is not found by the HTTP API."
+/// Will be raised when an Id of a query is not found by the HTTP API.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_NOT_FOUND                                         (1591)
@@ -2530,8 +2527,8 @@ void TRI_InitializeErrorMessages ();
 ///
 /// query with this ID is in use
 ///
-///  "Will be raised when an Id of a query is found by the HTTP API but the
-/// query is in use."
+/// Will be raised when an Id of a query is found by the HTTP API but the query
+/// is in use.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_IN_USE                                            (1592)
@@ -3289,7 +3286,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// named queue already exists
 ///
-///  "Will be returned if a queue with this name already exists."
+/// Will be returned if a queue with this name already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUEUE_ALREADY_EXISTS                                    (21000)
