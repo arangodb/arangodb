@@ -307,6 +307,18 @@ exports.document = function(username) {
   return convertToLegacyFormat(user);
 };
 
+exports.exists = function(username) {
+  try {
+    exports.document(username);
+    return true;
+  } catch (e) {
+    if (e.errNum == arangodb.errors.ERROR_USER_NOT_FOUND.code) {
+      return false;
+    }
+    throw e;
+  }
+}
+
 // checks whether a combination of username / password is valid.
 exports.isValid = function(username, password) {
   const users = getStorage();
