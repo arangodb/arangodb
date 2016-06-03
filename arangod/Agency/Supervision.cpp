@@ -283,7 +283,7 @@ void Supervision::workJobs() {
         } else if (jobType == "cleanOutServer") {
           CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
         }
-      } catch (std::exception const& e) {}
+      } catch (std::exception const&) {}
     }
   }
 
@@ -300,7 +300,7 @@ void Supervision::workJobs() {
         } else if (jobType == "cleanOutServer") {
           CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
         }
-      } catch (std::exception const& e) {}
+      } catch (std::exception const&) {}
     }
   }
   
