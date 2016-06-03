@@ -47,7 +47,7 @@ build/bin/arangod \
   --agency.size 1 \
   --agency.wait-for-sync false \
   --agency.supervision true \
-  --agency.supervision-frequency 5 \
+  --agency.supervision-frequency 1 \
   --database.directory cluster/data4001 \
   --javascript.app-path ./js/apps \
   --javascript.startup-directory ./js \
