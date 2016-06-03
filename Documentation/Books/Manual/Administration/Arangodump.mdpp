@@ -81,3 +81,12 @@ file per sharded collection. Note that the data in the data file is
 sorted first by shards and within each shard by ascending timestamp. The
 structural information of the collection contains the number of shards
 and the shard keys.
+
+Note that the version of the arangodump client tool needs to match the version of the
+ArangoDB server it connects to. By default, arangodump will produce a dump that can be
+restored with the arangorestore tool of the same version. An exception is arangodump
+in 3.0, which supports dumping data in a format compatible with ArangoDB 2.8. In order
+to produce a 2.8-compatible dump with a 3.0 ArangoDB, please specify the option
+`--compat28 true` when invoking arangodump.
+    
+    unix> arangodump --compat28 true --collection myvalues --output-directory "dump"

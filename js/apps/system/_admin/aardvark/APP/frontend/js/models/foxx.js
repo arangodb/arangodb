@@ -149,6 +149,19 @@
       window.open(
         arangoHelper.databaseUrl("/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount())
       );
+    },
+
+    fetchThumbnail: function(cb) {
+      var xhr = new XMLHttpRequest();
+      xhr.responseType = 'blob';
+      xhr.onload = function() {
+        this.thumbnailUrl = URL.createObjectURL(xhr.response);
+        cb();
+      }.bind(this);
+      xhr.onerror = cb;
+      xhr.open("GET", "foxxes/thumbnail?mount=" + this.encodedMount());
+      xhr.setRequestHeader('Authorization', 'bearer ' + window.arangoHelper.getCurrentJwt());
+      xhr.send();
     }
   });
 }());

@@ -1,7 +1,7 @@
 <script id="foxxActiveView.ejs" type="text/template">
   <div class="paddingBox">
     <div class="borderBox"></div>
-    <img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for Service" class="icon">
+    <img src="<%= model.thumbnailUrl %>" height="50" width="50" alt="Icon for Service" class="icon">
     <% if(model.isDevelopment()) { %>
       <div class="tileBadge">
         <span>
