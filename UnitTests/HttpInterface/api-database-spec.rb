@@ -210,13 +210,6 @@ describe ArangoDB do
       result["path"].should be_kind_of(String)
       result["isSystem"].should eq(false)
       
-      # retrieve user for new database
-      doc = ArangoDB.log_get("#{prefix}-create-current", "/_db/#{name}/_api/user/root")
-      doc.code.should eq(200)
-      result = doc.parsed_response
-      result["user"].should eq("root")
-      result["active"].should eq(true)
-      
       doc = ArangoDB.log_delete("#{prefix}-create-current", api + "/#{name}")
       doc.code.should eq(200)
       response = doc.parsed_response
