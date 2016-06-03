@@ -36,17 +36,22 @@
       "insert|update|remove|replace|upsert|options|with|and|or|not|" + 
       "distinct|graph|outbound|inbound|any|all|none|aggregate|like|count|shortest_path",
 
+    hide: function() {
+      this.typeahead = $('#spotlight .typeahead').typeahead('destroy');
+      $(this.el).hide();
+    },
+
     listenKey: function(e) {
       if (e.keyCode === 27) {
+        this.hide();
         if (this.callbackSuccess) {
           this.callbackCancel();
         }
-        this.hide();
       }
       else if (e.keyCode === 13) {
         if (this.callbackSuccess) {
-          this.callbackSuccess($(this.typeahead).val());
           this.hide();
+          this.callbackSuccess($(this.typeahead).val());
         }
       }
     },
@@ -112,7 +117,8 @@
         url: arangoHelper.databaseUrl("/_api/aql-builtin"),
         contentType: "application/json",
         success: function (data) {
-            console.log(data);
+          self.stringToArray();
+          self.updateDatasets();
           _.each(data.functions, function(val) {
             self.aqlBuiltinFunctionsArray.push(val.name);
           });
@@ -136,8 +142,6 @@
       this.callbackCancel = callbackCancel;
 
       var continueRender = function() {
-        this.stringToArray();
-        this.updateDatasets();
 
         var genHeader = function(name, icon, type) {
           var string = '<div class="header-type"><h4>' + name + '</h4>';
@@ -247,13 +251,6 @@
       else {
         continueRender();
       }
-
-    },
-
-    hide: function() {
-      $(this.el).hide();
-      this.typeahead = $('#spotlight .typeahead').typeahead('destroy');
     }
-
   });
 }());
