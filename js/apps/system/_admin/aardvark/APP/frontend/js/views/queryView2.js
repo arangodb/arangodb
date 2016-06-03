@@ -1298,10 +1298,10 @@
     },
 
     readQueryData: function() {
-      var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange());
+      //var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange());
       var sizeBox = $('#querySize');
       var data = {
-        query: selectedText || this.aqlEditor.getValue(),
+        query: this.aqlEditor.getValue(),
         id: "currentFrontendQuery"
       };
 
