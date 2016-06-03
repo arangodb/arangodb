@@ -25,10 +25,12 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+extern SERVICE_STATUS_HANDLE ServiceStatus;
+
 void SetServiceStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode,
                       DWORD dwCheckPoint, DWORD dwWaitHint);
 
-extern SERVICE_STATUS_HANDLE ServiceStatus;
+void WINAPI ServiceCtrl(DWORD dwCtrlCode);
 
 namespace arangodb {
 class WindowsServiceFeature final : public application_features::ApplicationFeature {
