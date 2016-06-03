@@ -600,6 +600,15 @@ void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
         } };
 
     _server->addReporter(reporter);
+    SERVICE_TABLE_ENTRY ste[] = {{TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+                                 {nullptr, nullptr}};
+
+    if (!StartServiceCtrlDispatcher(ste)) {
+      std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
+                << GetLastError() << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
   }
   
   else if (_startService) {
