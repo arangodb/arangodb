@@ -11,6 +11,7 @@ input.search-input {
 .search-field {
   @extend %pull-right;
   margin-left: 10px;
+  margin-right: 3px;
 
   .fa-search {
     color: $c-c2grey;
@@ -18,7 +19,7 @@ input.search-input {
     margin-left: -20px;
     opacity: .5;
     position: absolute;
-    right: 7px;
+    right: 9px;
     top: 9px;
 
     &:hover {
