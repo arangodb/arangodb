@@ -3205,6 +3205,7 @@ testFuncs.replication_static = function(options) {
     "--javascript.execute-string",
     "var users = require('@arangodb/users'); " +
     "users.save('replicator-user', 'replicator-password', true); " +
+    "users.grantDatabase('replicator-user', '_system'); " +
     "users.reload();"
   ]);
 

@@ -280,7 +280,6 @@ function DatabaseSuite () {
 
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
 
-      internal.db._useDatabase("UnitTestsDatabase0");
       var userManager = require("@arangodb/users");
       var user = userManager.document("admin");
 
@@ -292,8 +291,6 @@ function DatabaseSuite () {
       assertEqual("foo", user.user);
       assertFalse(user.active);
       assertEqual("f", user.extra.gender);
-
-      internal.db._useDatabase("_system");
 
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
     },
@@ -317,14 +314,11 @@ function DatabaseSuite () {
       ];
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
 
-      internal.db._useDatabase("UnitTestsDatabase0");
       var userManager = require("@arangodb/users");
       var user = userManager.document("admin");
       assertEqual("admin", user.user);
       assertTrue(user.active);
       assertEqual("m", user.extra.gender);
-
-      internal.db._useDatabase("_system");
 
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
     },
