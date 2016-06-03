@@ -43,6 +43,8 @@ class WindowsServiceFeature final : public application_features::ApplicationFeat
   void startupFinished ();
 
   void shutDownBegins ();
+  void shutDownComplete ();
+  void shutDownFailure ();
 
  public:
   bool _installService = false;

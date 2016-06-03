@@ -196,7 +196,7 @@ actions.defineHttp({
     var DBserver = req.parameters.DBserver;
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
-    var op = ArangoClusterComm.asyncRequest("GET","server:"+local,"_system",
+    var op = ArangoClusterComm.asyncRequest("GET","server:"+DBserver,"_system",
                                             "/_admin/statistics","",{},options);
     var r = ArangoClusterComm.wait(op);
     res.contentType = "application/json; charset=utf-8";
