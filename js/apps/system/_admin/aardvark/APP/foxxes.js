@@ -36,9 +36,11 @@ const createRouter = require('@arangodb/foxx/router');
 
 const DEFAULT_THUMBNAIL = module.context.fileName('default-thumbnail.png');
 
+const anonymousRouter = createRouter();
 const router = createRouter();
-module.exports = router;
+anonymousRouter.use(router);
 
+module.exports = anonymousRouter;
 
 router.use((req, res, next) => {
   if (global.AUTHENTICATION_ENABLED()) {
@@ -328,14 +330,14 @@ router.get('/fishbowl', function (req, res) {
 `);
 
 
-router.get('/docs/standalone/*', module.context.apiDocumentation(
+anonymousRouter.get('/docs/standalone/*', module.context.apiDocumentation(
   (req) => ({
     appPath: decodeURIComponent(req.queryParams.mount)
   })
 ));
 
 
-router.get('/docs/*', module.context.apiDocumentation(
+anonymousRouter.get('/docs/*', module.context.apiDocumentation(
   (req) => ({
     appPath: decodeURIComponent(req.queryParams.mount),
     indexFile: 'index-alt.html'
