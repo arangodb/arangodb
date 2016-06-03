@@ -36,11 +36,6 @@ function get_api_user(req, res) {
     return;
   }
 
-  if (req.suffix.length !== 1) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
-    return;
-  }
-
   var user = decodeURIComponent(req.suffix[0]);
 
   try {
@@ -80,6 +75,8 @@ function get_api_config(req, res, key) {
 
 function get_api_user_or_config(req, res) {
   if (req.suffix.length === 0) {
+    get_api_user(req, res);
+  } else if (req.suffix.length === 1) {
     get_api_user(req, res);
   } else if (req.suffix.length === 2) {
     if (req.suffix[1] === "config") {
