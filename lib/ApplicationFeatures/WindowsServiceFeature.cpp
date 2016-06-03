@@ -65,7 +65,7 @@ static std::string FriendlyServiceName = "ArangoDB - the multi-model database";
 /// @brief service status handler
 ////////////////////////////////////////////////////////////////////////////////
 
-static SERVICE_STATUS_HANDLE ServiceStatus;
+SERVICE_STATUS_HANDLE ServiceStatus;
 
 void reportServiceAborted(void) {
   if (ArangoInstance != nullptr && ArangoInstance->_server != nullptr) {

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Basics/tri-strings.h"
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
@@ -208,7 +209,8 @@ int main(int argc, char* argv[]) {
                 << GetLastError() << std::endl;
       exit(EXIT_FAILURE);
     }
-    else
+  }
+  else
 #endif
-      return runServer(argc, argv);
+    return runServer(argc, argv);
 }

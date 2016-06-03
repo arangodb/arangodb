@@ -28,6 +28,8 @@
 void SetServiceStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode,
                       DWORD dwCheckPoint, DWORD dwWaitHint);
 
+SERVICE_STATUS_HANDLE ServiceStatus;
+
 namespace arangodb {
 class WindowsServiceFeature final : public application_features::ApplicationFeature {
  public:
