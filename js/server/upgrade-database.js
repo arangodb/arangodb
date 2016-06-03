@@ -557,9 +557,9 @@
       }
     });
 
-    // updates the users model
+    // updates the users models
     addTask({
-      name: "updateUserModel",
+      name: "updateUserModels",
       description: "convert documents in _users collection to new format",
 
       system: DATABASE_SYSTEM,
