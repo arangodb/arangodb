@@ -129,17 +129,21 @@ bool CleanOutServer::start() const {
   if (res.accepted && res.indices.size()==1 && res.indices[0]) {
     
     LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Clean out server " + _server;
+  LOG(WARN) << __FILE__<<__LINE__ ;
 
     // Check if we can get things done in the first place
     if (!checkFeasibility()) {
-      finish("DBServers/" + _server);
-          return false;
+      finish("DBServers/" + _server, false);
+      LOG(WARN) << __FILE__<<__LINE__ ;
+      return false;
     }
 
-    
+      LOG(WARN) << __FILE__<<__LINE__ ;
+
 
     // Schedule shard relocations
     scheduleMoveShards();
+  LOG(WARN) << __FILE__<<__LINE__ ;
     
     return true;
     
@@ -244,9 +248,9 @@ bool CleanOutServer::checkFeasibility () const {
     }
     
     LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Cannot accomodate all shards " << collections.str()
-      << " with replication factors " << factors.str()
-      << " after cleaning out server " << _server;
+      << "Cannot accomodate shards " << collections.str()
+      << "with replication factors " << factors.str()
+      << "after cleaning out server " << _server;
     return false;
   }
 

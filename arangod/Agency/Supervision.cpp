@@ -206,20 +206,21 @@ std::vector<check_t> Supervision::checkCoordinators() {
   return ret;
 }
 
-
-bool Supervision::doChecks(bool timedout) {
+bool Supervision::updateSnapshot() {
 
   if (_agent == nullptr || this->isStopping()) {
     return false;
   }
-
   _snapshot = _agent->readDB().get(_agencyPrefix);
-
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sanity checks";
-  /*std::vector<check_t> ret = */checkDBServers();
-  checkCoordinators();
-
   return true;
+}
+
+bool Supervision::doChecks(bool timedout) {
+
+  checkDBServers();
+  checkCoordinators();
+  return true;
+  
 }
 
 void Supervision::run() {
@@ -256,6 +257,7 @@ void Supervision::run() {
     }
     
     // Do supervision
+    updateSnapshot();
     doChecks(timedout);
     workJobs();
     
@@ -267,36 +269,45 @@ void Supervision::workJobs() {
 
   Node::Children const& todos = _snapshot(toDoPrefix).children();
   Node::Children const& pends = _snapshot(pendingPrefix).children();
+
   if (!todos.empty()) {
     for (auto const& todoEnt : todos) {
       Node const& job = *todoEnt.second;
-      LOG(WARN) << __FILE__<<__LINE__ << job.toJson();
       
-      std::string jobType = job("type").getString(),
-        jobId = job("jobId").getString(),
-        creator = job("creator").getString();
-      if (jobType == "failedServer") {
-        FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      } else if (jobType == "cleanOutServer") {
-        CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      try {
+        std::string jobType = job("type").getString(),
+          jobId = job("jobId").getString(),
+          creator = job("creator").getString();
+        if (jobType == "failedServer") {
+          FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+        } else if (jobType == "cleanOutServer") {
+          CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+        }
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
       }
     }
   }
+
   if (!pends.empty()) {
     for (auto const& pendEnt : pends) {
       Node const& job = *pendEnt.second;
-      LOG(WARN) << __FILE__<<__LINE__ << job.toJson();
 
-      std::string jobType = job("type").getString(),
-        jobId = job("jobId").getString(),
-        creator = job("creator").getString();
-      if (jobType == "failedServer") {
-        FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      } else if (jobType == "cleanOutServer") {
-        CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      try {
+        std::string jobType = job("type").getString(),
+          jobId = job("jobId").getString(),
+          creator = job("creator").getString();
+        if (jobType == "failedServer") {
+          FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+        } else if (jobType == "cleanOutServer") {
+          CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+        }
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
       }
     }
   }
+  
 }
 
 // Start thread
