@@ -21,7 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Translator.h"
-
+#include "Basics/tri-strings.h"
+#include "Basics/files.h"
 std::string arangodb::options::EnvironmentTranslator(std::string const& value) {
   if (value.empty()) {
     return value;
