@@ -1,5 +1,11 @@
 @media (max-width: 568px) {
 
+  //LOGIN
+  .login-window {
+    padding: 10px 10px 40px;
+    width: 300px;
+  }
+
   //DOCUMENT VIEW
   .document-info-div {
     .search {
@@ -22,7 +28,36 @@
     font-size: 13px;
   }
 
+  // NAVIGATION TOP
+  .subnavmenu {
+    a {
+      font-size: 8pt;
+    }
+  }
+
+  .subViewNavbar {
+    li {
+      font-size: 8pt !important;
+      padding: 0 6px !important;
+
+      &.active {
+        height: 35px;
+      }
+    }
+  }
+
+  // DASHBOARD FIX
+  .small-label-padding {
+    max-width: calc(100% - 2px);
+  }
+
   // NAVIGATION LEFT
+
+  //NAV SOCIAL ICONS
+
+  .social-icons {
+    display: none;
+  }
 
   .navlogo {
     .big {
@@ -84,8 +119,6 @@
     }
   }
 
-
-
   //actions sub menu
   .headerButtonBar {
     display: none;
@@ -127,7 +160,13 @@
         margin-top: -3px;
       }
     }
+  }
 
+  // AQL EDITOR
+  .outputEditors {
+    .additional {
+      display: none;
+    }
   }
 }
 
@@ -160,6 +199,11 @@
   #repl-progress,
   #repl-ticks {
     width: 100% !important;
+  }
+
+  // NAVIGATION TOP
+  .subnavmenu a {
+    font-size: 9pt;
   }
 
   //NAVIGATION

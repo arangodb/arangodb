@@ -134,7 +134,7 @@
     renderDBS: function() {
       var db = $('#loginDatabase').val();
       $('#goToDatabase').html("Select: "  + db);
-      window.setInterval(function() {
+      window.setTimeout(function() {
         $('#goToDatabase').focus();
       }, 300);
     },
