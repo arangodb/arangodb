@@ -1,6 +1,5 @@
-
 @startDocuBlock RestRemoveByKeys
-@brief Hihi removes multiple documents by their keys
+@brief removes multiple documents by their keys
 
 @RESTHEADER{PUT /_api/simple/remove-by-keys, Remove documents by their keys}
 
