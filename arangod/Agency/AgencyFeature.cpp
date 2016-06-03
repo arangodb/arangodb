@@ -44,7 +44,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _notify(false),
       _supervision(false),
       _waitForSync(true),
-      _supervisionFrequency(1.0),
+      _supervisionFrequency(5.0),
       _compactionStepSize(1000) {
   setOptional(true);
   requiresElevatedPrivileges(false);
