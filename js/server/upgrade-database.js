@@ -530,7 +530,9 @@
 	  if (args && args.users) {
 	    args.users.forEach(function(user) {
 	      try {
-		userManager.save(user.username, user.passwd, user.active, user.extra || {});
+                if (!userManager.exists(user.username)) {
+                  userManager.save(user.username, user.passwd, user.active, user.extra || {});
+                }
 	      } catch (err) {
 		logger.warn("could not add database user '" + user.username + "': " +
 		  String(err) + " " +
