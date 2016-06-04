@@ -245,7 +245,7 @@ std::vector<bool> Store::apply(std::vector<VPackSlice> const& queries,
       auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
 
-      ClusterCommResult res = arangodb::ClusterComm::instance()->asyncRequest(
+      arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
           std::make_shared<std::string>(body.toString()), headerFields,
           std::make_shared<StoreCallback>(), 0.0, true);

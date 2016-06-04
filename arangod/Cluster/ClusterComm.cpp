@@ -193,16 +193,17 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 /// DBServer back to us. Therefore ClusterComm also creates an entry in
 /// a list of expected answers. One either has to use a callback for
 /// the answer, or poll for it, or drop it to prevent memory leaks.
-/// The result of this call is just a record that the initial HTTP
-/// request has been queued (`status` is CL_COMM_SUBMITTED). Use @ref
-/// enquire below to get information about the progress. The actual
-/// answer is then delivered either in the callback or via poll. The
-/// ClusterCommResult is returned by value.
-/// If `singleRequest` is set to `true`, then the destination can be
-/// an arbitrary server, the functionality can also be used in single-Server
-/// mode, and the operation is complete when the single request is sent
-/// and the corresponding answer has been received. We use this functionality
-/// for the agency mode of ArangoDB.
+/// This call never returns a result directly, rather, it returns an
+/// operation ID under which one can query the outcome with a wait() or
+/// enquire() call (see below).
+///
+/// Use @ref enquire below to get information about the progress. The
+/// actual answer is then delivered either in the callback or via
+/// poll. If `singleRequest` is set to `true`, then the destination
+/// can be an arbitrary server, the functionality can also be used in
+/// single-Server mode, and the operation is complete when the single
+/// request is sent and the corresponding answer has been received. We
+/// use this functionality for the agency mode of ArangoDB.
 /// The library takes ownerships of the pointer `headerFields` by moving
 /// the unique_ptr to its own storage, this is necessary since this
 /// method sometimes has to add its own headers. The library retains shared
@@ -221,7 +222,7 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 /// "tcp://..." or "ssl://..." endpoints, if `singleRequest` is true.
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommResult const ClusterComm::asyncRequest(
+OperationID ClusterComm::asyncRequest(
     ClientTransactionID const clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
     arangodb::GeneralRequest::RequestType reqtype,
@@ -235,9 +236,11 @@ ClusterCommResult const ClusterComm::asyncRequest(
   auto op = std::make_unique<ClusterCommOperation>();
   op->result.clientTransactionID = clientTransactionID;
   op->result.coordTransactionID = coordTransactionID;
+  OperationID opId = 0;
   do {
-    op->result.operationID = getOperationID();
-  } while (op->result.operationID == 0);  // just to make sure
+    opId = getOperationID();
+  } while (opId == 0);  // just to make sure
+  op->result.operationID = opId;
   op->result.status = CL_COMM_SUBMITTED;
   op->result.single = singleRequest;
   op->reqtype = reqtype;
@@ -253,17 +256,15 @@ ClusterCommResult const ClusterComm::asyncRequest(
     // In the non-singleRequest mode we want to put it into the received
     // queue right away for backward compatibility:
     ClusterCommResult const resCopy(op->result);
-    if (!singleRequest) {
-      LOG(DEBUG) << "In asyncRequest, putting failed request "
-                 << resCopy.operationID << " directly into received queue.";
-      CONDITION_LOCKER(locker, somethingReceived);
-      received.push_back(op.get());
-      op.release();
-      auto q = received.end();
-      receivedByOpID[resCopy.operationID] = --q;
-      somethingReceived.broadcast();
-    }
-    return resCopy;
+    LOG(DEBUG) << "In asyncRequest, putting failed request "
+               << resCopy.operationID << " directly into received queue.";
+    CONDITION_LOCKER(locker, somethingReceived);
+    received.push_back(op.get());
+    op.release();
+    auto q = received.end();
+    receivedByOpID[resCopy.operationID] = --q;
+    somethingReceived.broadcast();
+    return opId;
   }
 
   if (destination.substr(0, 6) == "shard:") {
@@ -312,20 +313,18 @@ ClusterCommResult const ClusterComm::asyncRequest(
   // }
   // std::cout << std::endl;
 
-  ClusterCommResult const res(op->result);
-
   {
     CONDITION_LOCKER(locker, somethingToSend);
     toSend.push_back(op.get());
     TRI_ASSERT(nullptr != op.get());
     op.release();
     std::list<ClusterCommOperation*>::iterator i = toSend.end();
-    toSendByOpID[res.operationID] = --i;
+    toSendByOpID[opId] = --i;
   }
-  LOG(DEBUG) << "In asyncRequest, put into queue " << res.operationID;
+  LOG(DEBUG) << "In asyncRequest, put into queue " << opId;
   somethingToSend.signal();
 
-  return res;
+  return opId;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1077,21 +1076,17 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
             localTimeOut = endTime - now;
             dueTime[i] = endTime + 10;
           }
-          auto res = asyncRequest("", coordinatorTransactionID,
-                                  requests[i].destination,
-                                  requests[i].requestType,
-                                  requests[i].path,
-                                  requests[i].body,
-                                  requests[i].headerFields,
-                                  nullptr, localTimeOut,
-                                  false);
-          if (res.status == CL_COMM_ERROR) {
-            // We did not find the destination, this could change in the
-            // future, therefore we will retry at some stage:
-            drop("", 0, res.operationID, "");   // forget about it
-          } else {
-            opIDtoIndex.insert(std::make_pair(res.operationID, i));
-          }
+          OperationID opId = asyncRequest("", coordinatorTransactionID,
+                                          requests[i].destination,
+                                          requests[i].requestType,
+                                          requests[i].path,
+                                          requests[i].body,
+                                          requests[i].headerFields,
+                                          nullptr, localTimeOut,
+                                          false);
+          opIDtoIndex.insert(std::make_pair(opId, i));
+          // It is possible that an error occurs right away, we will notice
+          // below after wait(), though, and retry in due course.
         }
       }
 

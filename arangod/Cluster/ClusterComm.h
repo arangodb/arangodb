@@ -286,7 +286,7 @@ class ClusterComm {
   /// @brief submit an HTTP request to a shard asynchronously.
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterCommResult const asyncRequest(
+  OperationID asyncRequest(
       ClientTransactionID const clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination,
