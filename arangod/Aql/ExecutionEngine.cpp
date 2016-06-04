@@ -506,9 +506,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     (*headers)["X-Arango-Nolock"] = shardId;  // Prevent locking
-    auto res = cc->asyncRequest("", coordTransactionID, "shard:" + shardId,
-                                arangodb::GeneralRequest::RequestType::POST,
-                                url, body, headers, nullptr, 30.0);
+    cc->asyncRequest("", coordTransactionID, "shard:" + shardId,
+                     arangodb::GeneralRequest::RequestType::POST,
+                     url, body, headers, nullptr, 30.0);
   }
 
   /// @brief aggregateQueryIds, get answers for all shards in a Scatter/Gather
