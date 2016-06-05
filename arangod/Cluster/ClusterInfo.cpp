@@ -1536,7 +1536,7 @@ int ClusterInfo::ensureIndexCoordinator(
 
   AgencyCommResult previous = ac.getValues(key);
 
-  if (!res.successful()) {
+  if (!previous.successful()) {
     return TRI_ERROR_CLUSTER_READING_PLAN_AGENCY;
   }
 

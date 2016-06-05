@@ -52,6 +52,8 @@ static int handleGeneralCommErrors(ClusterCommResult const* res) {
     return TRI_ERROR_CLUSTER_TIMEOUT;
   } else if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
+    // This case cannot actually happen, but it is not very expensive
+    // to check, just to be on the safe side:
     if (res->result == nullptr || !res->result->isComplete()) {
       // there is not result
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;

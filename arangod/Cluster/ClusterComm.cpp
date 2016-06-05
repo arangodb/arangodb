@@ -65,7 +65,7 @@ void ClusterCommResult::setDestination(std::string const& dest,
         serverID = (*resp)[0];
       } else {
         serverID = "";
-        status = CL_COMM_ERROR;
+        status = CL_COMM_BACKEND_UNAVAILABLE;
         if (logConnectionErrors) {
           LOG(ERR) << "cannot find responsible server for shard '"
                    << shardID << "'";
@@ -89,7 +89,7 @@ void ClusterCommResult::setDestination(std::string const& dest,
     shardID = "";
     serverID = "";
     endpoint = "";
-    status = CL_COMM_ERROR;
+    status = CL_COMM_BACKEND_UNAVAILABLE;
     errorMessage = "did not understand destination'" + dest + "'";
     if (logConnectionErrors) {
       LOG(ERR) << "did not understand destination '" << dest << "'";
@@ -102,7 +102,7 @@ void ClusterCommResult::setDestination(std::string const& dest,
   auto ci = ClusterInfo::instance();
   endpoint = ci->getServerEndpoint(serverID);
   if (endpoint.empty()) {
-    status = CL_COMM_ERROR;
+    status = CL_COMM_BACKEND_UNAVAILABLE;
     errorMessage = "did not find endpoint of server '" + serverID + "'";
     if (logConnectionErrors) {
       LOG(ERR) << "did not find endpoint of server '" << serverID
@@ -253,8 +253,7 @@ OperationID ClusterComm::asyncRequest(
 
   op->result.setDestination(destination, logConnectionErrors());
   if (op->result.status == CL_COMM_ERROR) {
-    // In the non-singleRequest mode we want to put it into the received
-    // queue right away for backward compatibility:
+    // We put it into the received queue right away for error reporting:
     ClusterCommResult const resCopy(op->result);
     LOG(DEBUG) << "In asyncRequest, putting failed request "
                << resCopy.operationID << " directly into received queue.";
@@ -262,7 +261,17 @@ OperationID ClusterComm::asyncRequest(
     received.push_back(op.get());
     op.release();
     auto q = received.end();
-    receivedByOpID[resCopy.operationID] = --q;
+    receivedByOpID[opId] = --q;
+    if (nullptr != callback) {
+      op.reset(*q);
+      if ( (*callback.get())(&(op->result)) ) {
+        auto i = receivedByOpID.find(opId);
+        receivedByOpID.erase(i);
+        received.erase(q);
+      } else {
+        op.release();
+      }
+    }
     somethingReceived.broadcast();
     return opId;
   }
@@ -370,7 +379,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
 
   res->setDestination(destination, logConnectionErrors());
 
-  if (res->status == CL_COMM_ERROR) {
+  if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
     return res;
   }
 
@@ -886,9 +895,10 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
         if ((*op->callback.get())(&op->result)) {
           // This is fully processed, so let's remove it from the queue:
           QueueIterator q = i->second;
+          std::unique_ptr<ClusterCommOperation> o(op);
           receivedByOpID.erase(i);
           received.erase(q);
-          delete op;
+          return std::string("");
         }
       }
     } else {
@@ -909,9 +919,10 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
           if ((*op->callback)(&op->result)) {
             // This is fully processed, so let's remove it from the queue:
             QueueIterator q = i->second;
+            std::unique_ptr<ClusterCommOperation> o(op);
             toSendByOpID.erase(i);
             toSend.erase(q);
-            delete op;
+            return std::string("");
           }
         }
       } else {
@@ -1140,8 +1151,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           LOG_TOPIC(TRACE, logTopic) << "ClusterComm::performRequests: "
               << "got BACKEND_UNAVAILABLE or TIMEOUT from "
               << requests[index].destination << ":"
-              << requests[index].path << " with return code " 
-              << (int) res.answer_code;
+              << requests[index].path;
           // In this case we will retry at the dueTime
         } else {   // a "proper error"
           requests[index].result = res;
@@ -1329,12 +1339,28 @@ void ClusterCommThread::run() {
       CONDITION_LOCKER(locker, cc->somethingReceived);
 
       ClusterComm::QueueIterator q;
-      for (q = cc->received.begin(); q != cc->received.end(); ++q) {
+      for (q = cc->received.begin(); q != cc->received.end(); ) {
+        bool deleted = false;
         op = *q;
         if (op->result.status == CL_COMM_SENT) {
           if (op->endTime < currentTime) {
             op->result.status = CL_COMM_TIMEOUT;
+            if (nullptr != op->callback.get()) {
+              if ( (*op->callback.get())(&op->result) ) {
+                // This is fully processed, so let's remove it from the queue:
+                auto i = cc->receivedByOpID.find(op->result.operationID);
+                TRI_ASSERT(i != cc->receivedByOpID.end());
+                cc->receivedByOpID.erase(i);
+                std::unique_ptr<ClusterCommOperation> o(op);
+                auto qq = q++;
+                cc->received.erase(qq);
+                deleted = true;
+              }
+            }
           }
+        }
+        if (!deleted) {
+          ++q;
         }
       }
     }
