@@ -840,7 +840,7 @@ int TRI_SaveConfigurationReplicationApplier(
 
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = config->toVelocyPack(false);
+    builder = config->toVelocyPack(true);
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }

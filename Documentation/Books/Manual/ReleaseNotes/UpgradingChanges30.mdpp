@@ -813,6 +813,8 @@ in 3.0:
   is unchanged.
 - `--server.foxx-queues-poll-interval` was renamed to `--foxx.queues-poll-interval`.
   The meaning of the option is unchanged.
+- `--no-server` was renamed to `--server.rest-server`. Note that the meaning of the
+  option `--server.rest-server` is the opposite of the previous `--no-server`.
 - `--database.query-cache-mode` was renamed to `--query.cache-mode`. The meaning of
   the option is unchanged.
 - `--database.query-cache-max-results` was renamed to `--query.cache-entries`. The

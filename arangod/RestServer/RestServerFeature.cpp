@@ -123,6 +123,7 @@ void RestServerFeature::collectOptions(
                         "http.hide-product-header");
   options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   options->addOldOption("server.default-api-compatibility", "");
+  options->addOldOption("no-server", "server.rest-server");
 
   options->addOption("--server.authentication",
                      "enable or disable authentication for ALL client requests",

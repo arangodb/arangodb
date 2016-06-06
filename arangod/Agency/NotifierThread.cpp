@@ -31,17 +31,11 @@ void NotifierThread::scheduleNotification(const std::string& endpoint) {
   auto headerFields =
       std::make_unique<std::unordered_map<std::string, std::string>>();
 
-  while (true) {
-    auto res = arangodb::ClusterComm::instance()->asyncRequest(
-        "", TRI_NewTickServer(), endpoint, GeneralRequest::RequestType::POST,
-        _path, std::make_shared<std::string>(_body->toJson()), headerFields,
-        std::make_shared<NotifyCallback>(cb), 5.0, true);
-
-    if (res.status == CL_COMM_SUBMITTED) {
-      break;
-    }
-    usleep(500000);
-  }
+  // This is best effort: We do not guarantee at least once delivery!
+  arangodb::ClusterComm::instance()->asyncRequest(
+      "", TRI_NewTickServer(), endpoint, GeneralRequest::RequestType::POST,
+      _path, std::make_shared<std::string>(_body->toJson()), headerFields,
+      std::make_shared<NotifyCallback>(cb), 5.0, true);
 }
 
 bool NotifierThread::start() { return Thread::start(); }

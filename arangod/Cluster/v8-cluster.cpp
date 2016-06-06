@@ -1667,11 +1667,11 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                             *headerFields, clientTransactionID,
                             coordTransactionID, timeout, singleRequest);
 
-  ClusterCommResult const res = cc->asyncRequest(
+  OperationID opId = cc->asyncRequest(
       clientTransactionID, coordTransactionID, destination, reqType, path, body,
       headerFields, 0, timeout, singleRequest);
-
-  if (res.status == CL_COMM_ERROR) {
+  ClusterCommResult res = cc->enquire(opId);
+  if (res.status == CL_COMM_BACKEND_UNAVAILABLE) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "couldn't queue async request");
   }

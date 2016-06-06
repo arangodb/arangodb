@@ -451,7 +451,7 @@ void WindowsServiceFeature::shutDownFailure () {
 /// @brief service control handler
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
+void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
   DWORD dwState = SERVICE_RUNNING;
 
   switch (dwCtrlCode) {

@@ -70,7 +70,7 @@ enum ClusterCommOpStatus {
   CL_COMM_SENT = 3,       // initial request sent, response available
   CL_COMM_TIMEOUT = 4,    // no answer received until timeout
   CL_COMM_RECEIVED = 5,   // answer received
-  CL_COMM_ERROR = 6,      // original request could not be sent
+  CL_COMM_ERROR = 6,      // original request could not be sent or HTTP error
   CL_COMM_DROPPED = 7,    // operation was dropped, not known
                           // this is only used to report an error
                           // in the wait or enquire methods
@@ -82,7 +82,87 @@ enum ClusterCommOpStatus {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief used to report the status, progress and possibly result of
-/// an operation
+/// an operation, this is used for the asyncRequest (with singleRequest
+/// equal to true or to false), and for syncRequest.
+///
+/// Here is a complete overview of how the request can happen and how this
+/// is reflected in the ClusterCommResult. We first cover the asyncRequest
+/// case and then describe the differences for syncRequest:
+///
+/// First, the actual destination is determined. If the responsible server
+/// for a shard is not found or the endpoint for a named server is not found,
+/// or if the given endpoint is no known protocol (currently "tcp://" or 
+/// "ssl://", then `status` is set to CL_COMM_BACKEND_UNAVAILABLE, 
+/// `errorMessage` is set but `result` and `answer` are both set
+/// to nullptr. The flag `sendWasComplete` remains false and the
+/// `answer_code` remains GeneralResponse::ResponseCode::PROCESSING.
+/// A potentially given ClusterCommCallback is called.
+///
+/// If no error occurs so far, the status is set to CL_COMM_SUBMITTED.
+/// Still, `result`, `answer` and `answer_code` are not yet set.
+/// A call to ClusterComm::enquire can return a result with this status.
+/// A call to ClusterComm::wait cannot return a result wuth this status.
+/// The request is queued for sending.
+///
+/// As soon as the sending thread discovers the submitted request, it
+/// sets its status to CL_COMM_SENDING and tries to open a connection
+/// or reuse an existing connection. If opening a connection fails
+/// the status is set to CL_COMM_BACKEND_UNAVAILABLE. If the given timeout
+/// is already reached, the status is set to CL_COMM_TIMEOUT. In both
+/// error cases `result`, `answer` and `answer_code` are still unset.
+///
+/// If the connection was successfully created the request is sent.
+/// If the request ended with a timeout, `status` is set to 
+/// CL_COMM_TIMEOUT as above. If another communication error (broken
+/// connection) happens, `status` is set to CL_COMM_BACKEND_UNAVAILABLE.
+/// In both cases, `result` can be set or can still be a nullptr.
+/// `answer` and `answer_code` are still unset.
+///
+/// If the request is completed, but an HTTP status code >= 400 occurred,
+/// the status is set to CL_COMM_ERROR, but `result` is set correctly
+/// to indicate the error. If all is well, `status` is set to CL_COMM_SENT.
+///
+/// In the `singleRequest==true` mode, the operation is finished at this
+/// stage. The callback is called, and the result either left in the
+/// receiving queue or dropped. A call to ClusterComm::enquire or
+/// ClusterComm::wait can return a result in this state. Note that
+/// `answer` and `answer_code` are still not set. The flag 
+/// `sendWasComplete` is correctly set, though.
+///
+/// In the `singleRequest==false` mode, an asynchronous operation happens
+/// at the server side and eventually, an HTTP request in the opposite
+/// direction is issued. During that time, `status` remains CL_COMM_SENT.
+/// A call to ClusterComm::enquire can return a result in this state.
+/// A call to ClusterComm::wait does not.
+///
+/// If the answer does not arrive in the specified timeout, `status`
+/// is set to CL_COMM_TIMEOUT and a potential callback is called. If
+/// From then on, ClusterComm::wait will return it (unless deleted
+/// by the callback returning true).
+///
+/// If an answer comes in in time, then `answer` and `answer_code`
+/// are finally set, and `status` is set to CL_COMM_RECEIVED. The callback
+/// is called, and the result either left in the received queue for
+/// pickup by ClusterComm::wait or deleted. Note that if we get this
+/// far, `status` is set to CL_COMM_RECEIVED, even if the status code
+/// of the answer is >= 400.
+///
+/// Summing up, we have the following outcomes:
+/// `status`               `result` set         `answer` set    wait() returns
+/// CL_COMM_SUBMITTED      no                   no              no
+/// CL_COMM_SENDING        no                   no              no
+/// CL_COMM_SENT           yes                  no              yes if single
+/// CL_COMM_BACKEND_UN...  yes or no            no              yes
+/// CL_COMM_TIMEOUT        yes or no            no              yes
+/// CL_COMM_ERROR          yes                  no              yes
+/// CL_COMM_RECEIVED       yes                  yes             yes
+/// CL_COMM_DROPPED        no                   no              yes
+///
+/// The syncRequest behaves essentially in the same way, except that
+/// no callback is ever called, the outcome cannot be CL_COMM_RECEIVED
+/// or CL_COMM_DROPPED, and CL_COMM_SENT indicates a successful completion.
+/// CL_COMM_ERROR means that the request was complete, but an HTTP error
+/// occurred.
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ClusterCommResult {
@@ -286,7 +366,7 @@ class ClusterComm {
   /// @brief submit an HTTP request to a shard asynchronously.
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterCommResult const asyncRequest(
+  OperationID asyncRequest(
       ClientTransactionID const clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination,
