@@ -62,7 +62,51 @@ CleanOutServer::CleanOutServer (
 CleanOutServer::~CleanOutServer () {}
 
 unsigned CleanOutServer::status () const {
-  return 0;
+
+    Node const& target = _snapshot("/Target");
+    
+  if        (target.exists(std::string("/ToDo/")     + _jobId).size() == 2) {
+
+    return TODO;
+
+  } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
+
+    Node::Children const& subJobs = _snapshot(pendingPrefix).children();
+
+    size_t found = 0;
+
+    if (!subJobs.empty()) {
+      for (auto const& subJob : subJobs) {
+        if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
+          found++;
+          Node const& sj = *(subJob.second);
+          std::string subJobId = sj("jobId").slice().copyString();
+          std::string creator  = sj("creator").slice().copyString();
+          MoveShard(_snapshot, _agent, subJobId, creator, _agencyPrefix);
+        }
+      }
+    }
+
+    if (!found) {
+      if (finish("DBServers/" + _server)) {
+        return FINISHED;
+      }
+    }
+      
+    return PENDING;
+      
+  } else if (target.exists(std::string("/Finished/")  + _jobId).size() == 2) {
+      
+    return FINISHED;
+      
+  } else if (target.exists(std::string("/Failed/")  + _jobId).size() == 2) {
+      
+    return FAILED;
+      
+  }
+    
+  return NOTFOUND;
+
 }
 
 bool CleanOutServer::create () const {
@@ -129,7 +173,6 @@ bool CleanOutServer::start() const {
   if (res.accepted && res.indices.size()==1 && res.indices[0]) {
     
     LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Clean out server " + _server;
-  LOG(WARN) << __FILE__<<__LINE__ ;
 
     // Check if we can get things done in the first place
     if (!checkFeasibility()) {
@@ -138,12 +181,8 @@ bool CleanOutServer::start() const {
       return false;
     }
 
-      LOG(WARN) << __FILE__<<__LINE__ ;
-
-
     // Schedule shard relocations
     scheduleMoveShards();
-  LOG(WARN) << __FILE__<<__LINE__ ;
     
     return true;
     
@@ -171,24 +210,52 @@ bool CleanOutServer::scheduleMoveShards() const {
   }
   
   Node::Children const& databases = _snapshot("/Plan/Collections").children();
-  size_t count = 0;
+  size_t sub = 0;
   
   for (auto const& database : databases) {
     for (auto const& collptr : database.second->children()) {
       Node const& collection = *(collptr.second);
       for (auto const& shard : collection("shards").children()) {
+        bool found = false;
         VPackArrayIterator dbsit(shard.second->slice());
+
+        // Only shards, which are affected 
         for (auto const& dbserver : dbsit) {
           if (dbserver.copyString() == _server) {
-            MoveShard (_snapshot, _agent, _jobId, _creator, database.first,
-                       collptr.first, shard.first, _server,
-                       availServers.at(count%availServers.size()));
-            count++;
+            found = true;
+            break;
           }
         }
+        if (!found) {
+          continue;
+        }
+
+        // Only destinations, which are not already holding this shard
+        std::vector<std::string> myServers = availServers;
+        for (auto const& dbserver : dbsit) {
+          myServers.erase(
+            std::remove(myServers.begin(), myServers.end(),
+                        dbserver.copyString()), myServers.end());
+        }
+
+        // Among those a random destination
+        std::string toServer;
+        try {
+          toServer = myServers.at(rand() % myServers.size());
+        } catch (...) {
+          LOG_TOPIC(ERR, Logger::AGENCY) <<
+            "Range error picking destination for shard " + shard.first;
+        }
+
+        // Shedule move
+        MoveShard (
+          _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
+          _agencyPrefix, database.first, collptr.first, shard.first, _server,
+          toServer);
+        
       }
     }
-  }  
+  }
   
   return true;
 }

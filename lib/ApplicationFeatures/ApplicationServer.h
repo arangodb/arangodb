@@ -44,6 +44,7 @@ enum class ServerState {
   IN_START,
   IN_WAIT,
   IN_STOP,
+  IN_UNPREPARE,
   STOPPED,
   ABORT
 };
@@ -103,6 +104,11 @@ class ProgressHandler {
 // `stop`
 //
 // Stops the features. The `stop` methods are called in reversed `start` order.
+// This must stop all threads, but not destroy the features.
+//
+// `unprepare`
+//
+// This destroys the features.
 
 class ApplicationServer {
   ApplicationServer(ApplicationServer const&) = delete;
@@ -115,7 +121,8 @@ class ApplicationServer {
     VALIDATED,
     PREPARED,
     STARTED,
-    STOPPED
+    STOPPED,
+    UNPREPARED
   };
 
   static ApplicationServer* server;
@@ -251,6 +258,9 @@ class ApplicationServer {
 
   // stops features
   void stop();
+
+  // destroys features
+  void unprepare();
 
   // after start, the server will wait in this method until
   // beginShutdown is called

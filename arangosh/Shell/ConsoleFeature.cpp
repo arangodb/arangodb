@@ -136,7 +136,7 @@ void ConsoleFeature::start() {
 #endif
 }
 
-void ConsoleFeature::stop() {
+void ConsoleFeature::unprepare() {
   closeLog();
 }
 

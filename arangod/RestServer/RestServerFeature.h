@@ -59,7 +59,9 @@ class RestServerFeature final
   }
 
   static std::string getJwtSecret() {
-    TRI_ASSERT(RESTSERVER != nullptr);
+    if (RESTSERVER == nullptr) {
+      return std::string();
+    }
     return RESTSERVER->jwtSecret();
   }
 
@@ -76,6 +78,7 @@ class RestServerFeature final
   void prepare() override final;
   void start() override final;
   void stop() override final;
+  void unprepare() override final;
 
  private:
   double _keepAliveTimeout;

@@ -280,7 +280,6 @@ add_executable(${BIN_ARANGOD}
   V8Server/V8QueueJob.cpp
   V8Server/V8TimerTask.cpp
   V8Server/V8Traverser.cpp
-  V8Server/V8VPackWrapper.cpp
   V8Server/v8-actions.cpp
   V8Server/v8-collection-util.cpp
   V8Server/v8-collection.cpp

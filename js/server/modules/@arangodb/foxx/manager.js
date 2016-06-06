@@ -628,8 +628,9 @@ function uploadToPeerCoordinators(serviceInfo, coordinators) {
     ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
       '/_api/upload', req, httpOptions, coordOptions);
   }
+  delete coordOptions.clientTransactionID;
   return {
-    results: cluster.wait(coordOptions, coordinators),
+    results: cluster.wait(coordOptions, coordinators.length),
     mapping
   };
 }
@@ -1170,7 +1171,7 @@ function install(serviceInfo, mount, options) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].clientTransactionID], db._name(),
           '/_admin/foxx/install', JSON.stringify(intReq), httpOptions, coordOptions);
       }
-      cluster.wait(coordOptions, coordinators);
+      cluster.wait(coordOptions, res.length);
     } else {
       /*jshint -W075:true */
       let req = {appInfo: serviceInfo, mount, options};
@@ -1187,7 +1188,7 @@ function install(serviceInfo, mount, options) {
             '/_admin/foxx/install', req, httpOptions, coordOptions);
         }
       }
-      cluster.wait(coordOptions, coordinators);
+      cluster.wait(coordOptions, coordinators.length - 1);
     }
   }
   reloadRouting();
@@ -1295,7 +1296,7 @@ function uninstall(mount, options) {
           '/_admin/foxx/uninstall', req, httpOptions, coordOptions);
       }
     }
-    cluster.wait(coordOptions, coordinators);
+    cluster.wait(coordOptions, coordinators.length - 1);
   }
   reloadRouting();
   return service.simpleJSON();
@@ -1340,7 +1341,7 @@ function replace(serviceInfo, mount, options) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].coordinatorTransactionID], db._name(),
           '/_admin/foxx/replace', JSON.stringify(intReq), httpOptions, coordOptions);
       }
-      cluster.wait(coordOptions, coordinators);
+      cluster.wait(coordOptions, res.length);
     } else {
       let intOpts = JSON.parse(JSON.stringify(options));
       /*jshint -W075:true */
@@ -1357,7 +1358,7 @@ function replace(serviceInfo, mount, options) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
           '/_admin/foxx/replace', req, httpOptions, coordOptions);
       }
-      cluster.wait(coordOptions, coordinators);
+      cluster.wait(coordOptions, coordinators.length);
     }
   }
   _uninstall(mount, {teardown: true,
@@ -1408,7 +1409,7 @@ function upgrade(serviceInfo, mount, options) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].coordinatorTransactionID], db._name(),
           '/_admin/foxx/update', JSON.stringify(intReq), httpOptions, coordOptions);
       }
-      cluster.wait(coordOptions, coordinators);
+      cluster.wait(coordOptions, res.length);
     } else {
       let intOpts = JSON.parse(JSON.stringify(options));
       /*jshint -W075:true */
@@ -1425,7 +1426,7 @@ function upgrade(serviceInfo, mount, options) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
           '/_admin/foxx/update', req, httpOptions, coordOptions);
       }
-      cluster.wait(coordOptions, coordinators);
+      cluster.wait(coordOptions, coordinators.length);
     }
   }
   var oldService = lookupService(mount);

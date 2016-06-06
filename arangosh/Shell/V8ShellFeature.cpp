@@ -130,7 +130,7 @@ void V8ShellFeature::start() {
   initGlobals();
 }
 
-void V8ShellFeature::stop() {
+void V8ShellFeature::unprepare() {
   {
     v8::Locker locker{_isolate};
 

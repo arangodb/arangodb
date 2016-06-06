@@ -43,17 +43,17 @@ FailedServer::FailedServer(Node const& snapshot,
       _server = _snapshot(toDoPrefix + _jobId + "/server").getString();
     } catch (...) {}
   } 
-  
+
   if (_server == "") {
     try {
       _server = _snapshot(pendingPrefix + _jobId + "/server").getString();
     } catch (...) {}
-  } 
-  
+  }
+
   if (_server != "") {
     try {
       if (exists()) {
-        if (status() == TODO) {  
+        if (status() == TODO) {
           start();        
         } 
       } else {            
@@ -64,7 +64,7 @@ FailedServer::FailedServer(Node const& snapshot,
       finish("DBServers/" + _server, false);
     }
   } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "CleanOutServer job with id " <<
+    LOG_TOPIC(ERR, Logger::AGENCY) << "FailedServer job with id " <<
       jobId << " failed catastrophically. Cannot find server id.";
   }
   
@@ -74,6 +74,9 @@ FailedServer::~FailedServer () {}
 
 bool FailedServer::start() const {
   
+  LOG_TOPIC(INFO, Logger::AGENCY) <<
+    "Trying to start FailedLeader job" + _jobId + " for server " + _server;
+
   // Copy todo to pending
   Builder todo, pending;
 
@@ -212,19 +215,17 @@ unsigned FailedServer::status () const {
 
   } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
 
-    Node::Children const& subJobs = _snapshot(pendingPrefix).children();
+    Node::Children const subJobs = _snapshot(pendingPrefix).children();
 
     size_t found = 0;
 
-    if (!subJobs.empty()) {
-      for (auto const& subJob : subJobs) {
-        if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
-          found++;
-          Node const& sj = *(subJob.second);
-          std::string subJobId = sj("jobId").slice().copyString();
-          std::string creator  = sj("creator").slice().copyString();
-          FailedLeader(_snapshot, _agent, subJobId, creator, _agencyPrefix);
-        }
+    for (auto const& subJob : subJobs) {
+      if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
+        found++;
+        Node const& sj = *(subJob.second);
+        std::string subJobId = sj("jobId").slice().copyString();
+        std::string creator  = sj("creator").slice().copyString();
+        FailedLeader(_snapshot, _agent, subJobId, creator, _agencyPrefix);
       }
     }
 

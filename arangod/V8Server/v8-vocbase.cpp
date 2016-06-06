@@ -64,7 +64,6 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/V8Traverser.h"
-#include "V8Server/V8VPackWrapper.h"
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
@@ -3532,8 +3531,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("ArangoDatabase"),
                                ft->GetFunction());
-
-  arangodb::V8VPackWrapper::initialize(isolate, context, v8g);
 
   TRI_InitV8cursor(context, v8g);
 

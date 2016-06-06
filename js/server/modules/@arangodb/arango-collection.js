@@ -148,7 +148,7 @@ ArangoCollection.prototype.truncate = function () {
                                      options);
     });
 
-    cluster.wait(coord, shards);
+    cluster.wait(coord, shards.length);
     return;
   }
 
@@ -274,7 +274,7 @@ ArangoCollection.prototype.any = function () {
                                      options);
     });
 
-    var results = cluster.wait(coord, shards), i;
+    var results = cluster.wait(coord, shards.length), i;
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
       if (body.document !== null) {
@@ -383,7 +383,7 @@ ArangoCollection.prototype.removeByExample = function (example,
     });
 
     var deleted = 0;
-    var results = cluster.wait(coord, shards);
+    var results = cluster.wait(coord, shards.length);
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
       deleted += (body.deleted || 0);
@@ -471,7 +471,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
     });
 
     var replaced = 0;
-    var results = cluster.wait(coord, shards), i;
+    var results = cluster.wait(coord, shards.length), i;
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
       replaced += (body.replaced || 0);
@@ -572,7 +572,7 @@ ArangoCollection.prototype.updateByExample = function (example,
     });
 
     var updated = 0;
-    var results = cluster.wait(coord, shards), i;
+    var results = cluster.wait(coord, shards.length), i;
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
       updated += (body.updated || 0);

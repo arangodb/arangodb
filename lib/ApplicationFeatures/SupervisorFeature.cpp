@@ -223,5 +223,8 @@ void SupervisorFeature::daemonize() {
   std::for_each(supervisorFeatures.rbegin(), supervisorFeatures.rend(),
                 [](ApplicationFeature* feature) { feature->stop(); });
 
+  std::for_each(supervisorFeatures.rbegin(), supervisorFeatures.rend(),
+                [](ApplicationFeature* feature) { feature->unprepare(); });
+
   exit(result);
 }

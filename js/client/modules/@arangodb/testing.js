@@ -1391,6 +1391,8 @@ function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
 function startInstanceAgency(instanceInfo, protocol, options,
   addArgs, testname, rootDir) {
 
+  const dataDir = fs.join(rootDir, "data");
+
   const N = options.agencySize;
   if (options.agencyWaitForSync === undefined) {
     options.agencyWaitForSync = false;
@@ -1402,8 +1404,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
     instanceArgs["agency.id"] = String(i);
     instanceArgs["agency.size"] = String(N);
     instanceArgs["agency.wait-for-sync"] = String(wfs);
-    instanceArgs["agency.supervision"] = "true";
-    instanceArgs["agency.supervision-frequency"] = "5";
+    instanceArgs["agency.supervision"] = "false";
+    instanceArgs["database.directory"] = dataDir + String(i);
 
     if (i === N - 1) {
       let l = [];
