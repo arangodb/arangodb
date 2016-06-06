@@ -1187,7 +1187,8 @@ static bool clusterSendToAllServers(
       cc->drop("", coordTransactionID, 0, "");
       return TRI_ERROR_CLUSTER_TIMEOUT;
     }
-    if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED) {
+    if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED ||
+        res.status == CL_COMM_BACKEND_UNAVAILABLE) {
       cc->drop("", coordTransactionID, 0, "");
       return TRI_ERROR_INTERNAL;
     }

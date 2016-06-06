@@ -92,6 +92,10 @@ CONTAINS("foobarbaz", "ba", true) // 3
 CONTAINS("foobarbaz", "horse", true) // -1
 ```
 
+!SUBSECTION COUNT()
+
+This is an alias for [LENGTH()](#length).
+
 !SUBSECTION FIND_FIRST()
 
 `FIND_FIRST(text, search, start, end) → position`
@@ -180,7 +184,7 @@ using wildcard matching.
 
 - **text** (string): the string to search in
 - **search** (string): a search pattern that can contain the wildcard characters
-  *%* (meaning any sequence of characters, including none) and *_* (any single
+  `%` (meaning any sequence of characters, including none) and `_` (any single
   character). Literal *%* and *:* must be escaped with two backslashes.
   *search* cannot be a variable or a document attribute. The actual value must
   be present at query parse time already.
@@ -188,6 +192,19 @@ using wildcard matching.
   case-insensitive. The default is *false*.
 - returns **bool** (bool): *true* if the pattern is contained in *text*,
   and *false* otherwise
+
+```js
+LIKE("cart", "ca_t")   // true
+LIKE("carrot", "ca_t") // false
+LIKE("carrot", "ca%t") // true
+
+LIKE("foo bar baz", "bar")   // false
+LIKE("foo bar baz", "%bar%") // true
+LIKE("bar", "%bar%")         // true
+
+LIKE("FoO bAr BaZ", "fOo%bAz")       // false
+LIKE("FoO bAr BaZ", "fOo%bAz", true) // true
+```
 
 !SUBSECTION LOWER()
 
@@ -255,7 +272,7 @@ RANDOM_TOKEN(8) // "m9w50Ft9"
 `REGEX(text, search, caseInsensitive) → bool`
 
 Check whether the pattern *search* is contained in the string *text*,
-using regular expression matching. 
+using regular expression matching.
 
 - **text** (string): the string to search in
 - **search** (string): a regular expression search pattern
@@ -265,38 +282,46 @@ using regular expression matching.
 The regular expression may consist of literal characters and the following 
 characters and sequences:
 
-- *.*: the dot matches any single character except line terminators
-- *\d*: matches a single digit, equivalent to [0-9]
-- *\s*: matches a single whitespace character
-- *\t*: matches a tab character
-- *\r*: matches a carriage return
-- *\n*: matches a line-feed character
-- *[xyz]*: set of characters. matches any of the enclosed characters (i.e.
+- `.` – the dot matches any single character except line terminators.
+  To include line terminators, use `[\s\S]` instead to simulate `.` with *DOTALL* flag.
+- `\d` – matches a single digit, equivalent to `[0-9]`
+- `\s` – matches a single whitespace character
+- `\S` – matches a single non-whitespace character
+- `\t` – matches a tab character
+- `\r` – matches a carriage return
+- `\n` – matches a line-feed character
+- `[xyz]` – set of characters. matches any of the enclosed characters (i.e.
   *x*, *y* or *z* in this case
-- *[^xyz]*: negated set of characters. matches any other character than the
+- `[^xyz]` – negated set of characters. matches any other character than the
   enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
-- *[x-z]*: range of characters. matches any of the characters in the 
-  specified range
-- *[^x-z]*: negated range of characters. matches any other character than the
+- `[x-z]` – range of characters. Matches any of the characters in the 
+  specified range, e.g. `[0-9A-F]` to match any character in
+  *0123456789ABCDEF*
+- `[^x-z]` – negated range of characters. Matches any other character than the
   ones specified in the range
-- *(x|y)*: matches either *x* or *y*
-- *^*: matches the beginning of the string
-- *$*: matches the end of the string
+- `(xyz)` – defines and matches a pattern group
+- `(x|y)` – matches either *x* or *y*
+- `^` – matches the beginning of the string (e.g. `^xyz`)
+- `$` – matches the end of the string (e.g. `xyz$`)
 
-Note that the characters *.*, <i>\*</i>, *?*, *[*, *]*, *(*, *)*, *{*, *}*, *^*, 
-and *$* have a special meaning in regular expressions and may need to be 
-escaped using a backslash (*\\*). A literal backslash should also be escaped
-using another backslash, i.e. *\\\\*.
+Note that the characters `.`, `*`, `?`, `[`, `]`, `(`, `)`, `{`, `}`, `^`, 
+and `$` have a special meaning in regular expressions and may need to be 
+escaped using a backslash (`\\`). A literal backslash should also be escaped
+using another backslash, i.e. `\\\\`.
 
 Characters and sequences may optionally be repeated using the following
 quantifiers:
 
-- *x\**: matches zero or more occurrences of *x*
-- *x+*: matches one or more occurrences of *x*
-- *x?*: matches one or zero occurrences of *x*
-- *x{y}*: matches exactly *y* occurrences of *x*
-- *x{y,z}*: matches between *y* and *z* occurrences of *x*
-- *x{y,}*: matches at least *y* occurences of *x*
+- `x*` – matches zero or more occurrences of *x*
+- `x+` – matches one or more occurrences of *x*
+- `x?` – matches one or zero occurrences of *x*
+- `x{y}` – matches exactly *y* occurrences of *x*
+- `x{y,z}` – matches between *y* and *z* occurrences of *x*
+- `x{y,}` – matches at least *y* occurences of *x*
+
+Note that `xyz+` matches *xyzzz*, but if you want to match *xyzxyz* instead,
+you need to define a pattern group by wrapping the subexpression in parentheses
+and place the quantifier right behind it: `(xyz)+`.
  
 If the regular expression in *search* is invalid, a warning will be raised
 and the function will return *false*.

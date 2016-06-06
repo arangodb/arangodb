@@ -799,15 +799,16 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
                   "timeout within cluster");
     return;
   }
+  if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    // there is no result
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_CLUSTER_CONNECTION_LOST,
+                  "lost connection within cluster");
+    return;
+  }
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
-    if (res->result == nullptr || !res->result->isComplete()) {
-      // there is no result
-      generateError(GeneralResponse::ResponseCode::BAD,
-                    TRI_ERROR_CLUSTER_CONNECTION_LOST,
-                    "lost connection within cluster");
-      return;
-    }
+    TRI_ASSERT(nullptr != res->result && res->result->isComplete());
     // In this case a proper HTTP error was reported by the DBserver,
     // we simply forward the result.
     // We intentionally fall through here.

@@ -5,10 +5,9 @@ This file contains documentation about the build process, documentation generati
 
 CMake
 =====
- * *--enable-relative* - relative mode so you can run without make install
- * *--enable-maintainer-mode* - generate lex/yacc files
- * *--with-backtrace* - add backtraces to native code asserts & exceptions
- * *--enable-failure-tests* - adds javascript hook to crash the server for data integrity tests
+ * *-DUSE_MAINTAINER_MODE* - generate lex/yacc files
+ * *-DUSE_BACKTRACE=1* - add backtraces to native code asserts & exceptions
+ * *-DUSE_FAILURE_TESTS=1* - adds javascript hook to crash the server for data integrity tests
 
 CFLAGS
 ------
@@ -33,7 +32,7 @@ If the compile goes wrong for no particular reason, appending 'verbose=' adds mo
 Runtime
 -------
  * start arangod with `--console` to get a debug console
- * Cheapen startup for valgrind: `--no-server --javascript.gc-frequency 1000000 --javascript.gc-interval 65536 --scheduler.threads=1 --javascript.v8-contexts=1`
+ * Cheapen startup for valgrind: `--server.rest-server false --javascript.gc-frequency 1000000 --javascript.gc-interval 65536 --scheduler.threads=1 --javascript.v8-contexts=1`
  * to have backtraces output set this on the prompt: `ENABLE_NATIVE_BACKTRACES(true)`
 
 Startup
@@ -60,8 +59,8 @@ JSLint
 ======
 (we switched to jshint a while back - this is still named jslint for historical reasons)
 
-Make target
------------
+checker Script
+--------------
 use
 
     ./utils/gitjslint.sh
@@ -187,16 +186,11 @@ jsUnity via arangosh
 --------------------
 arangosh is similar, however, you can only run tests which are intended to be ran via arangosh:
 
-    require("jsunity").runTest("js/client/tests/shell-client.js");
+    require("jsunity").runTest("js/client/tests/shell/shell-client.js");
 
 mocha tests
 -----------
 All tests with -spec in their names are using the [mochajs.org](https://mochajs.org) framework.
-
-
-jasmine tests
--------------
-Jasmine tests cover testing the UI components of aardvark
 
 Javascript framework
 --------------------
@@ -232,7 +226,7 @@ A commandline for running a single test (-> with the facility 'single_server') u
 valgrind could look like this. Options are passed as regular long values in the
 syntax --option value --sub:option value. Using Valgrind could look like this:
 
-    ./scripts/unittest single_server --test js/server/tests/aql-escaping.js \
+    ./scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js \
       --extraargs:server.threads 1 \
       --extraargs:scheduler.threads 1 \
       --extraargs:javascript.gc-frequency 1000000 \
@@ -249,11 +243,11 @@ Running a single unittestsuite
 ------------------------------
 Testing a single test with the framework directly on a server:
 
-    scripts/unittest single_server --test js/server/tests/aql-escaping.js
+    scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js
 
 Testing a single test with the framework via arangosh:
 
-    scripts/unittest single_client --test js/server/tests/aql-escaping.js
+    scripts/unittest single_client --test js/server/tests/aql/aql-escaping.js
 
 Testing a single rspec test:
 
@@ -268,23 +262,23 @@ Since downloading fox apps from github can be cumbersome with shaky DSL
 and DOS'ed github, we can fake it like this:
 
     export FOXX_BASE_URL="http://germany/fakegit/"
-    ./scripts/unittest single_server --test 'js/server/tests/shell-foxx-manager-spec.js'
+    ./scripts/unittest single_server --test 'js/server/tests/shell/shell-foxx-manager-spec.js'
 
 arangod Emergency console
 -------------------------
 
-    require("jsunity").runTest("js/server/tests/aql-escaping.js");
+    require("jsunity").runTest("js/server/tests/aql/aql-escaping.js");
 
 arangosh client
 ---------------
 
-    require("jsunity").runTest("js/server/tests/aql-escaping.js");
+    require("jsunity").runTest("js/server/tests/aql/aql-escaping.js");
 
 
 arangod commandline arguments
 -----------------------------
 
-    bin/arangod /tmp/dataUT --javascript.unit-tests="js/server/tests/aql-escaping.js" --no-server
+    bin/arangod /tmp/dataUT --javascript.unit-tests="js/server/tests/aql/aql-escaping.js" --no-server
 
     js/common/modules/loadtestrunner.js
 
@@ -351,7 +345,7 @@ Dependencies to build documentation:
 
 - MarkdownPP
 
-    https://github.com/triAGENS/markdown-pp/
+    https://github.com/arangodb-helper/markdown-pp/
 
     Checkout the code with Git, use your system python to install:
 
@@ -366,6 +360,7 @@ Dependencies to build documentation:
     - `npm`
 
     If not, add the installation path to your environment variable PATH.
+    Gitbook requires more recent node versions.
 
 - [Gitbook](https://github.com/GitbookIO/gitbook)
 
@@ -381,7 +376,7 @@ Dependencies to build documentation:
 
 Generate users documentation
 ============================
-If you've edited examples, see below how to regenerate them.
+If you've edited examples, see below how to regenerate them with `./utils/generateExamples.sh`.
 If you've edited REST documentation, first invoke `./utils/generateSwagger.sh`.
 Run the `make` command in `arangodb/Documentation/Books` to generate it.
 The documentation will be generated in subfolders in `arangodb/Documentation/Books/books` -
@@ -431,6 +426,8 @@ Generate an ePub:
 
     gitbook epub ./ppbooks/Manual ./target/path/filename.epub
 
+Examples
+========
 Where to add new...
 -------------------
  - Documentation/DocuBlocks/* - markdown comments with execution section
@@ -609,6 +606,8 @@ Attributes:
                can be either a swaggertype, or a *RESTRUCT*
     - format: if type is a native swagger type, some support a format to specify them
 
+
+--------------------------------------------------------------------------------
 Local cluster startup
 =====================
 
@@ -630,6 +629,7 @@ up in the GNU debugger in separate windows (using `xterm`s). In that
 case one has to hit ENTER in the original terminal where the script runs
 to continue, once all processes have been start up in the debugger.
 
+--------------------------------------------------------------------------------
 Front-End (WebUI)
 =========
 

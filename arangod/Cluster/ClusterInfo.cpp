@@ -1536,6 +1536,10 @@ int ClusterInfo::ensureIndexCoordinator(
 
   AgencyCommResult previous = ac.getValues(key);
 
+  if (!previous.successful()) {
+    return TRI_ERROR_CLUSTER_READING_PLAN_AGENCY;
+  }
+
   velocypack::Slice collection =
     previous.slice()[0].get(std::vector<std::string>(
           { AgencyComm::prefix(), "Plan", "Collections",
@@ -1719,10 +1723,18 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   
   AgencyCommResult res = ac.getValues(key);
 
+  if (!res.successful()) {
+    return TRI_ERROR_CLUSTER_READING_PLAN_AGENCY;
+  }
+
   velocypack::Slice previous =
     res.slice()[0].get(std::vector<std::string>(
     { AgencyComm::prefix(), "Plan", "Collections", databaseName, collectionID }
   ));
+  if (previous.isObject()) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
   TRI_ASSERT(VPackObjectIterator(previous).size()>0);
   
   std::string where =

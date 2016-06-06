@@ -35,6 +35,10 @@ APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
 // [ 1, 2, 3, 4, 5, 9 ]
 ```
 
+!SUBSECTION COUNT()
+
+This is an alias for [LENGTH()](#length).
+
 !SUBSECTION FIRST()
 
 `FIRST(anyArray) → firstElement`

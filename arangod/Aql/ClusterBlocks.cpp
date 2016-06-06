@@ -1091,18 +1091,19 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT, errorMessage);
   }
 
+  if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    // there is no result
+    std::string errorMessage = 
+        std::string("Empty result in communication with shard '") +
+        std::string(res->shardID) + std::string("' on cluster node '") +
+        std::string(res->serverID) + std::string("'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
+                                   errorMessage);
+  }
+
   if (res->status == CL_COMM_ERROR) {
     std::string errorMessage;
-    // This could be a broken connection or an Http error:
-    if (res->result == nullptr || !res->result->isComplete()) {
-      // there is no result
-      errorMessage +=
-          std::string("Empty result in communication with shard '") +
-          std::string(res->shardID) + std::string("' on cluster node '") +
-          std::string(res->serverID) + std::string("'");
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
-                                     errorMessage);
-    }
+    TRI_ASSERT(nullptr != res->result);
 
     StringBuffer const& responseBodyBuf(res->result->getBody());
 
