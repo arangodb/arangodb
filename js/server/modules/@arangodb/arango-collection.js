@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global ArangoClusterComm, ArangoClusterInfo, require, exports, module */
+/*global ArangoClusterComm, require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection
@@ -135,7 +135,7 @@ ArangoCollection.prototype.truncate = function () {
     }
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     shards.forEach(function (shard) {
@@ -259,7 +259,7 @@ ArangoCollection.prototype.any = function () {
   if (cluster.isCoordinator()) {
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     shards.forEach(function (shard) {
@@ -356,7 +356,7 @@ ArangoCollection.prototype.removeByExample = function (example,
   if (cluster.isCoordinator()) {
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     if (limit > 0 && shards.length > 1) {
@@ -443,7 +443,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
   if (cluster.isCoordinator()) {
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     if (limit > 0 && shards.length > 1) {
@@ -542,7 +542,7 @@ ArangoCollection.prototype.updateByExample = function (example,
   if (cluster.isCoordinator()) {
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     if (limit > 0 && shards.length > 1) {

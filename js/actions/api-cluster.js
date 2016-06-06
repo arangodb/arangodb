@@ -194,8 +194,7 @@ actions.defineHttp({
       return;
     }
     var DBserver = req.parameters.DBserver;
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
+    var options = { timeout:10 };
     var op = ArangoClusterComm.asyncRequest("GET","server:"+DBserver,"_system",
                                             "/_admin/statistics","",{},options);
     var r = ArangoClusterComm.wait(op);
@@ -343,8 +342,7 @@ actions.defineHttp({
     }
     else {
         // query a remote statistics collection
-        var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
-        var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
+        var options = { timeout:10 };
         var op = ArangoClusterComm.asyncRequest("POST","server:"+DBserver,"_system",
             "/_api/cursor",JSON.stringify({query: myQueryVal, bindVars: bind}),{},options);
         var r = ArangoClusterComm.wait(op);

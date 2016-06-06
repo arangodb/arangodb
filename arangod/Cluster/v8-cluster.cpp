@@ -1852,21 +1852,13 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("wait(obj)");
+    TRI_V8_THROW_EXCEPTION_USAGE("drop(obj)");
   }
   // Possible options:
   //   - clientTransactionID  (string)
   //   - coordTransactionID   (number)
   //   - operationID          (number)
   //   - shardID              (string)
-
-  // Disabled to allow communication originating in a DBserver:
-  // 31.7.2014 Max
-
-  // if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
-  //   TRI_V8_THROW_EXCEPTION_INTERNAL(scope,"request works only in coordinator
-  //   role");
-  // }
 
   ClusterComm* cc = ClusterComm::instance();
 
@@ -1908,6 +1900,25 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
            myshardID);
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get an ID for use with coordTransactionId
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getId()");
+  }
+
+  auto id = TRI_NewTickServer();
+  std::string st = StringUtils::itoa(id);
+  v8::Handle<v8::String> s = TRI_V8_ASCII_STRING(st.c_str());
+
+  TRI_V8_RETURN(s);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2106,6 +2117,7 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("enquire"), JS_Enquire);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("wait"), JS_Wait);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("drop"), JS_Drop);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getId"), JS_GetId);
 
   v8g->ClusterCommTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate, context,

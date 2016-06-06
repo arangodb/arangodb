@@ -616,7 +616,7 @@ function createService(mount, options, activateDevelopment) {
 
 function uploadToPeerCoordinators(serviceInfo, coordinators) {
   let coordOptions = {
-    coordTransactionID: ArangoClusterInfo.uniqid()
+    coordTransactionID: ArangoClusterComm.getId()
   };
   let req = fs.readBuffer(joinPath(fs.getTempPath(), serviceInfo));
   let httpOptions = {};
@@ -1159,7 +1159,7 @@ function install(serviceInfo, mount, options) {
       let intOpts = JSON.parse(JSON.stringify(options));
       intOpts.__clusterDistribution = true;
       let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
+        coordTransactionID: ArangoClusterComm.getId()
       };
       let httpOptions = {};
       for (let i = 0; i < res.length; ++i) {
@@ -1177,7 +1177,7 @@ function install(serviceInfo, mount, options) {
       /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
+        coordTransactionID: ArangoClusterComm.getId()
       };
       req.options.__clusterDistribution = true;
       req = JSON.stringify(req);
@@ -1187,6 +1187,7 @@ function install(serviceInfo, mount, options) {
             '/_admin/foxx/install', req, httpOptions, coordOptions);
         }
       }
+      cluster.wait(coordOptions, coordinators);
     }
   }
   reloadRouting();
@@ -1283,7 +1284,7 @@ function uninstall(mount, options) {
     /*jshint -W075:false */
     let httpOptions = {};
     let coordOptions = {
-      coordTransactionID: ArangoClusterInfo.uniqid()
+      coordTransactionID: ArangoClusterComm.getId()
     };
     req.options.__clusterDistribution = true;
     req.options.force = true;
@@ -1294,6 +1295,7 @@ function uninstall(mount, options) {
           '/_admin/foxx/uninstall', req, httpOptions, coordOptions);
       }
     }
+    cluster.wait(coordOptions, coordinators);
   }
   reloadRouting();
   return service.simpleJSON();
@@ -1327,7 +1329,7 @@ function replace(serviceInfo, mount, options) {
       let intOpts = JSON.parse(JSON.stringify(options));
       intOpts.__clusterDistribution = true;
       let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
+        coordTransactionID: ArangoClusterComm.getId()
       };
       let httpOptions = {};
       for (let i = 0; i < res.length; ++i) {
@@ -1346,7 +1348,7 @@ function replace(serviceInfo, mount, options) {
       /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
+        coordTransactionID: ArangoClusterComm.getId()
       };
       req.options.__clusterDistribution = true;
       req.options.force = true;
@@ -1355,6 +1357,7 @@ function replace(serviceInfo, mount, options) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
           '/_admin/foxx/replace', req, httpOptions, coordOptions);
       }
+      cluster.wait(coordOptions, coordinators);
     }
   }
   _uninstall(mount, {teardown: true,
@@ -1394,7 +1397,7 @@ function upgrade(serviceInfo, mount, options) {
       let intOpts = JSON.parse(JSON.stringify(options));
       intOpts.__clusterDistribution = true;
       let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
+        coordTransactionID: ArangoClusterComm.getId()
       };
       let httpOptions = {};
       for (let i = 0; i < res.length; ++i) {
@@ -1413,7 +1416,7 @@ function upgrade(serviceInfo, mount, options) {
       /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
+        coordTransactionID: ArangoClusterComm.getId()
       };
       req.options.__clusterDistribution = true;
       req.options.force = true;
@@ -1422,6 +1425,7 @@ function upgrade(serviceInfo, mount, options) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
           '/_admin/foxx/update', req, httpOptions, coordOptions);
       }
+      cluster.wait(coordOptions, coordinators);
     }
   }
   var oldService = lookupService(mount);

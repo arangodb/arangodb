@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global ArangoClusterComm, ArangoClusterInfo */
+/*global ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
@@ -219,7 +219,7 @@ SimpleQueryNear.prototype.execute = function () {
 
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this._collection.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     var _limit = 0;
@@ -343,7 +343,7 @@ SimpleQueryWithin.prototype.execute = function () {
 
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this._collection.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     var _limit = 0;
@@ -460,7 +460,7 @@ SimpleQueryFulltext.prototype.execute = function () {
   if (cluster.isCoordinator()) {
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this._collection.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
     var _limit = 0;
     if (this._limit > 0) {
@@ -547,7 +547,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
   if (cluster.isCoordinator()) {
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this._collection.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
     var _limit = 0;
     if (this._limit > 0) {
