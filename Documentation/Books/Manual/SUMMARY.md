@@ -10,7 +10,6 @@
     * [Linux](GettingStarted/Installing/Linux.md)
     * [Mac OS X](GettingStarted/Installing/MacOSX.md)
     * [Windows](GettingStarted/Installing/Windows.md)
-    * [ARM](GettingStarted/Installing/ARM.md)
     * [Compiling](GettingStarted/Installing/Compiling.md)
     * [Cluster setup](GettingStarted/Installing/Cluster.md)
   * [Using the Web Interface](GettingStarted/WebInterface.md)
