@@ -89,6 +89,49 @@ var q = `FOR doc IN ´collection´ RETURN doc.´name´`;
 
 The following AQL functions have been added in 3.0:
 
+- *REGEX_TEST(value, regex)*: tests whether the string *value* matches the regular expression
+  specified in *regex*. Returns *true* if it matches, and *false* otherwise.
+
+  The regular expression may consist of literal characters and the following 
+  characters and sequences:
+
+  - `.` – the dot matches any single character except line terminators.
+    To include line terminators, use `[\s\S]` instead to simulate `.` with *DOTALL* flag.
+  - `\d` – matches a single digit, equivalent to `[0-9]`
+  - `\s` – matches a single whitespace character
+  - `\S` – matches a single non-whitespace character
+  - `\t` – matches a tab character
+  - `\r` – matches a carriage return
+  - `\n` – matches a line-feed character
+  - `[xyz]` – set of characters. matches any of the enclosed characters (i.e.
+    *x*, *y* or *z* in this case
+  - `[^xyz]` – negated set of characters. matches any other character than the
+    enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
+  - `[x-z]` – range of characters. Matches any of the characters in the 
+    specified range, e.g. `[0-9A-F]` to match any character in
+    *0123456789ABCDEF*
+  - `[^x-z]` – negated range of characters. Matches any other character than the
+    ones specified in the range
+  - `(xyz)` – defines and matches a pattern group
+  - `(x|y)` – matches either *x* or *y*
+  - `^` – matches the beginning of the string (e.g. `^xyz`)
+  - `$` – matches the end of the string (e.g. `xyz$`)
+
+  Note that the characters `.`, `*`, `?`, `[`, `]`, `(`, `)`, `{`, `}`, `^`, 
+  and `$` have a special meaning in regular expressions and may need to be 
+  escaped using a backslash (`\\`). A literal backslash should also be escaped
+  using another backslash, i.e. `\\\\`.
+
+  Characters and sequences may optionally be repeated using the following
+  quantifiers:
+
+  - `x*` – matches zero or more occurrences of *x*
+  - `x+` – matches one or more occurrences of *x*
+  - `x?` – matches one or zero occurrences of *x*
+  - `x{y}` – matches exactly *y* occurrences of *x*
+  - `x{y,z}` – matches between *y* and *z* occurrences of *x*
+  - `x{y,}` – matches at least *y* occurences of *x*
+
 - *HASH(value)*: Calculates a hash value for *value*. *value* is not required to be a 
   string, but can have any data type. The calculated hash value will take the data type
   of *value* into account, so for example the number *1* and the string *"1"* will have 

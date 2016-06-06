@@ -55,7 +55,7 @@ class EdgeIndexIterator final : public IndexIterator {
         _index(index),
         _searchValues(searchValues),
         _keys(_searchValues.slice()),
-        _iterator(_keys, true),
+        _iterator(_keys),
         _posInBuffer(0),
         _batchSize(1000) {}
 
@@ -66,7 +66,7 @@ class EdgeIndexIterator final : public IndexIterator {
         _index(index),
         _searchValues(arangodb::velocypack::Builder::clone(searchValues)),
         _keys(_searchValues.slice()),
-        _iterator(_keys, true),
+        _iterator(_keys),
         _posInBuffer(0),
         _batchSize(1000) {}
 

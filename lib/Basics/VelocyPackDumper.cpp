@@ -366,7 +366,7 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
     }
 
     case VPackValueType::Array: {
-      VPackArrayIterator it(*slice, true);
+      VPackArrayIterator it(*slice);
       TRI_AppendCharUnsafeStringBuffer(buffer, '[');
       while (it.valid()) {
         if (!it.isFirst()) {

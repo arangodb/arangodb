@@ -90,7 +90,7 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
   _documents = _scanner.scan(hint);
 
   TRI_ASSERT(_documents.isArray());
-  _iterator = VPackArrayIterator(_documents, true);
+  _iterator = VPackArrayIterator(_documents);
 
   VPackValueLength count = _iterator.size();
 

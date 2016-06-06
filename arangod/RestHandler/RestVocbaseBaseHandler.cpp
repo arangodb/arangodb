@@ -637,12 +637,14 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
 
 std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     VPackOptions const* options, bool& success) {
-  bool found;
-  std::string const& contentType =
-      _request->header(StaticStrings::ContentTypeHeader, found);
-
   try {
     success = true;
+
+#if 0
+    // currently deactivated...
+    bool found;
+    std::string const& contentType =
+        _request->header(StaticStrings::ContentTypeHeader, found);
 
     if (found && contentType.size() == StaticStrings::MimeTypeVPack.size() &&
         contentType == StaticStrings::MimeTypeVPack) {
@@ -653,6 +655,9 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     } else {
       return _request->toVelocyPack(options);
     }
+#else
+    return _request->toVelocyPack(options);
+#endif
   } catch (std::bad_alloc const&) {
     generateOOMError();
   } catch (VPackException const& e) {

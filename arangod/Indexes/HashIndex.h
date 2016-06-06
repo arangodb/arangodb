@@ -123,7 +123,7 @@ class HashIndexIteratorVPack final : public IndexIterator {
       : _trx(trx),
         _index(index),
         _searchValues(searchValues.get()),
-        _iterator(_searchValues->slice(), true),
+        _iterator(_searchValues->slice()),
         _buffer(),
         _posInBuffer(0) {
     searchValues.release(); // now we have ownership for searchValues
