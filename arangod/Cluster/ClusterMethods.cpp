@@ -47,7 +47,10 @@ static double const CL_DEFAULT_TIMEOUT = 60.0;
 namespace arangodb {
 
 static int handleGeneralCommErrors(ClusterCommResult const* res) {
-  // This function creates an error code from a ClusterCommResult.
+  // This function creates an error code from a ClusterCommResult, 
+  // but only if it is a communication error. If the communication
+  // was successful and there was an HTTP error code, this function
+  // returns TRI_ERROR_NO_ERROR.
   // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
   // and .answer can safely be inspected.
   if (res->status == CL_COMM_TIMEOUT) {
@@ -797,9 +800,10 @@ int createDocumentOnCoordinator(
     TRI_ASSERT(requests.size() == 1);
     auto const& req = requests[0];
     auto& res = req.result;
-    if (nrDone == 0 || res.status != CL_COMM_RECEIVED) {
-      // There has been Communcation error. Handle and return it.
-      return handleGeneralCommErrors(&res);
+
+    int commError = handleGeneralCommErrors(&res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      return commError;
     }
 
     responseCode = res.answer_code;
@@ -955,9 +959,12 @@ int deleteDocumentOnCoordinator(
       TRI_ASSERT(requests.size() == 1);
       auto const& req = requests[0];
       auto& res = req.result;
-      if (nrDone == 0 || res.status != CL_COMM_RECEIVED) {
-        return handleGeneralCommErrors(&res);
+      
+      int commError = handleGeneralCommErrors(&res);
+      if (commError != TRI_ERROR_NO_ERROR) {
+        return commError;
       }
+
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
       auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
@@ -1294,22 +1301,28 @@ int getDocumentOnCoordinator(
     // Only one can answer, we react a bit differently
     size_t count;
     int nrok = 0;
+    int commError = TRI_ERROR_NO_ERROR;
     for (count = requests.size(); count > 0; count--) {
       auto const& req = requests[count - 1];
       auto res = req.result;
       if (res.status == CL_COMM_RECEIVED) {
         if (res.answer_code !=
                 arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
-            (nrok == 0 && count == 1)) {
+            (nrok == 0 && count == 1 && commError == TRI_ERROR_NO_ERROR)) {
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
           auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
           resultBody.swap(parsedResult);
         }
+      } else {
+        commError = handleGeneralCommErrors(&res);
       }
     }
-    // Note that nrok is always at least 1!
+    if (nrok == 0) {
+      // This can only happen, if a commError was encountered!
+      return commError;
+    }
     if (nrok > 1) {
       return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
     }
@@ -1567,9 +1580,6 @@ int getFilteredEdgesOnCoordinator(
     int error = handleGeneralCommErrors(&res);
     if (error != TRI_ERROR_NO_ERROR) {
       cc->drop("", coordTransactionID, 0, "");
-      if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED) {
-        return TRI_ERROR_INTERNAL;
-      }
       return error;
     }
     std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
@@ -1823,22 +1833,28 @@ int modifyDocumentOnCoordinator(
   if (!useMultiple) {
     // Only one can answer, we react a bit differently
     int nrok = 0;
+    int commError = TRI_ERROR_NO_ERROR;
     for (size_t count = shardList->size(); count > 0; count--) {
       auto const& req = requests[count - 1];
       auto res = req.result;
       if (res.status == CL_COMM_RECEIVED) {
         if (res.answer_code !=
                 arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
-            (nrok == 0 && count == 1)) {
+            (nrok == 0 && count == 1 && commError == TRI_ERROR_NO_ERROR)) {
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
           auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
           resultBody.swap(parsedResult);
         }
+      } else {
+        commError = handleGeneralCommErrors(&res);
       }
     }
-    // Note that nrok is always at least 1!
+    if (nrok == 0) {
+      // This can only happen, if a commError was encountered!
+      return commError;
+    }
     if (nrok > 1) {
       return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
     }
