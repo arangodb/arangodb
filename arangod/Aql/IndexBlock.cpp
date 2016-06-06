@@ -410,7 +410,7 @@ bool IndexBlock::readIndex(size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     
-    for (auto const& doc : VPackArrayIterator(slice, true)) {
+    for (auto const& doc : VPackArrayIterator(slice)) {
       if (!hasMultipleIndexes) {
         _documents.emplace_back(doc);
       } else {

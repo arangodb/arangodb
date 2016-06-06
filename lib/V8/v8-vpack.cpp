@@ -138,7 +138,7 @@ static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
   }
 
   uint32_t j = 0;
-  VPackArrayIterator it(slice, true);
+  VPackArrayIterator it(slice);
 
   while (it.valid()) {
     v8::Handle<v8::Value> val =

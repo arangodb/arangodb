@@ -625,6 +625,12 @@ endif ()
 
 add_subdirectory(3rdParty)
 
+################################################################################
+## VELOCYPACK
+################################################################################
+
+add_definitions("-DVELOCYPACK_XXHASH=1")
+
 set(BOOST_VERSION 1.61.0b1)
 
 foreach (LINK_DIR ${LINK_DIRECTORIES})

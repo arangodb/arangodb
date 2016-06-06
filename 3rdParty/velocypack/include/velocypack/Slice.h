@@ -42,12 +42,18 @@
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
 
-#ifndef VELOCYPACK_HASH
+#ifdef VELOCYPACK_XXHASH
 // forward for XXH64 function declared elsewhere
 extern "C" unsigned long long XXH64(void const*, size_t, unsigned long long);
 
 #define VELOCYPACK_HASH(mem, size, seed) XXH64(mem, size, seed)
+#endif
 
+#ifdef VELOCYPACK_FASTHASH
+// forward for fasthash64 function declared elsewhere
+uint64_t fasthash64(void const*, size_t, uint64_t);
+
+#define VELOCYPACK_HASH(mem, size, seed) fasthash64(mem, size, seed)
 #endif
 
 namespace arangodb {
@@ -355,7 +361,7 @@ class Slice {
   }
   
   // extract the nth key from an Object
-  Slice getNthKey(ValueLength index, bool) const;
+  Slice getNthKey(ValueLength index, bool translate) const;
   
   // extract the nth value from an Object
   Slice getNthValue(ValueLength index) const {
@@ -758,6 +764,9 @@ class Slice {
     }
     return 9;
   }
+  
+  // get the offset for the nth member from an Array type
+  ValueLength getNthOffset(ValueLength index) const;
 
   Slice makeKey() const;
 
@@ -813,9 +822,6 @@ class Slice {
   Slice translateUnchecked() const;
 
   Slice getFromCompactObject(std::string const& attribute) const;
-
-  // get the offset for the nth member from an Array type
-  ValueLength getNthOffset(ValueLength index) const;
 
   // extract the nth member from an Array
   Slice getNth(ValueLength index) const;
