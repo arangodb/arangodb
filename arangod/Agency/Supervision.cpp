@@ -66,7 +66,7 @@ static std::string const planCoordinatorsPrefix = "/Plan/Coordinators";
 
 std::vector<check_t> Supervision::checkDBServers() {
   std::vector<check_t> ret;
-  Node::Children const& machinesPlanned =
+  Node::Children const machinesPlanned =
       _snapshot(planDBServersPrefix).children();
 
   for (auto const& machine : machinesPlanned) {
@@ -138,7 +138,7 @@ std::vector<check_t> Supervision::checkDBServers() {
 
 std::vector<check_t> Supervision::checkCoordinators() {
   std::vector<check_t> ret;
-  Node::Children const& machinesPlanned =
+  Node::Children const machinesPlanned =
       _snapshot(planCoordinatorsPrefix).children();
 
   for (auto const& machine : machinesPlanned) {
@@ -267,41 +267,37 @@ void Supervision::run() {
 
 void Supervision::workJobs() {
 
-  Node::Children const& todos = _snapshot(toDoPrefix).children();
-  Node::Children const& pends = _snapshot(pendingPrefix).children();
+  Node::Children const todos = _snapshot(toDoPrefix).children();
+  Node::Children const pends = _snapshot(pendingPrefix).children();
 
-  if (!todos.empty()) {
-    for (auto const& todoEnt : todos) {
-      Node const& job = *todoEnt.second;
-      
-      try {
-        std::string jobType = job("type").getString(),
-          jobId = job("jobId").getString(),
-          creator = job("creator").getString();
-        if (jobType == "failedServer") {
-          FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
-        } else if (jobType == "cleanOutServer") {
-          CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
-        }
-      } catch (std::exception const&) {}
-    }
+  for (auto const& todoEnt : todos) {
+    Node const& job = *todoEnt.second;
+    
+    try {
+      std::string jobType = job("type").getString(),
+        jobId = job("jobId").getString(),
+        creator = job("creator").getString();
+      if (jobType == "failedServer") {
+        FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      } else if (jobType == "cleanOutServer") {
+        CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      }
+    } catch (std::exception const&) {}
   }
 
-  if (!pends.empty()) {
-    for (auto const& pendEnt : pends) {
-      Node const& job = *pendEnt.second;
-
-      try {
-        std::string jobType = job("type").getString(),
-          jobId = job("jobId").getString(),
-          creator = job("creator").getString();
-        if (jobType == "failedServer") {
-          FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
-        } else if (jobType == "cleanOutServer") {
-          CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
-        }
-      } catch (std::exception const&) {}
-    }
+  for (auto const& pendEnt : pends) {
+    Node const& job = *pendEnt.second;
+    
+    try {
+      std::string jobType = job("type").getString(),
+        jobId = job("jobId").getString(),
+        creator = job("creator").getString();
+      if (jobType == "failedServer") {
+        FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      } else if (jobType == "cleanOutServer") {
+        CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      }
+    } catch (std::exception const&) {}
   }
   
 }
@@ -349,7 +345,7 @@ void Supervision::getUniqueIds() {
     try {
       latestId = std::stoul(
           _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
-    } catch (std::exception const&) {
+    } catch (...) {
       std::this_thread::sleep_for (std::chrono::seconds(1));
       continue;
     }
@@ -375,7 +371,7 @@ void Supervision::getUniqueIds() {
 }
 
 void Supervision::updateFromAgency() {
-  auto const& jobsPending =
+  auto const jobsPending =
       _snapshot("/Supervision/Jobs/Pending").children();
 
   for (auto const& jobent : jobsPending) {

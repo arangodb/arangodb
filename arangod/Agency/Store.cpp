@@ -138,6 +138,10 @@ Store::~Store() {}
 std::vector<bool> Store::apply(query_t const& query) {
   std::vector<bool> applied;
   MUTEX_LOCKER(storeLocker, _storeLock);
+  /*for (auto const& i : VPackArrayIterator(query->slice())) {
+    LOG(WARN) << i[0].typeName();
+    LOG(WARN) << i[0].keyAt(0).copyString();
+    } */ 
   for (auto const& i : VPackArrayIterator(query->slice())) {
     switch (i.length()) {
       case 1:
