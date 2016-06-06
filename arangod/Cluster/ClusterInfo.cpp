@@ -2134,7 +2134,6 @@ void ClusterInfo::loadCurrentDBServers() {
     if (currentDBServers.isObject()) {
       decltype(_DBServers) newDBServers;
 
-      //for (; it != result._values.end(); ++it) {
       for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
         newDBServers.emplace(
           std::make_pair(dbserver.key.copyString(), dbserver.value.copyString()));
