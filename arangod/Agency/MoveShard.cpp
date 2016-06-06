@@ -128,11 +128,9 @@ bool MoveShard::start() const {
   LOG_TOPIC(INFO, Logger::AGENCY)
     << "Pending: Move shard " + _shard + " from " + _from + " to " << _to;
 
-  Builder todo, pending;
-
   // Copy todo to pending
-/*  Builder todo, pending;
-    
+  Builder todo, pending;
+/*    
   // Get todo entry
   todo.openArray();
   _snapshot(toDoPrefix + _jobId).toBuilder(todo);
@@ -214,10 +212,10 @@ bool MoveShard::start() const {
     
     return true;
   }
-  
+*/  
   LOG_TOPIC(INFO, Logger::AGENCY) <<
     "Precondition failed for starting job " + _jobId;
-*/
+
   return false;    
 
 }

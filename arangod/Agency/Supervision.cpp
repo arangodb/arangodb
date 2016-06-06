@@ -267,8 +267,8 @@ void Supervision::run() {
 
 void Supervision::workJobs() {
 
-  Node::Children const& todos = _snapshot(toDoPrefix).children();
-  Node::Children const& pends = _snapshot(pendingPrefix).children();
+  Node::Children const todos = _snapshot(toDoPrefix).children();
+  Node::Children const pends = _snapshot(pendingPrefix).children();
 
   if (!todos.empty()) {
     for (auto const& todoEnt : todos) {

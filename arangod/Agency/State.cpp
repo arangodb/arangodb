@@ -296,7 +296,7 @@ bool State::loadCompacted() {
 
   VPackSlice result = queryResult.result->slice();
 
-  if (result.isArray()) {
+  if (result.isArray() && result.length()) {
     for (auto const& i : VPackArrayIterator(result)) {
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
       (*_agent) = i;
