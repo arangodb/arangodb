@@ -145,9 +145,9 @@ struct Job {
   
   Node _snapshot;
   Agent* _agent;
-  std::string const _jobId;
-  std::string const _creator;
-  std::string const _agencyPrefix;
+  std::string _jobId;
+  std::string _creator;
+  std::string _agencyPrefix;
   
 };
 

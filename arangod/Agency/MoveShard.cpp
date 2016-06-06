@@ -131,7 +131,7 @@ bool MoveShard::start() const {
   Builder todo, pending;
 
   // Copy todo to pending
-/*  Builder todo, pending;
+  Builder todo, pending;
     
   // Get todo entry
   todo.openArray();
@@ -217,7 +217,7 @@ bool MoveShard::start() const {
   
   LOG_TOPIC(INFO, Logger::AGENCY) <<
     "Precondition failed for starting job " + _jobId;
-*/
+
   return false;    
 
 }
