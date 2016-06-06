@@ -256,7 +256,7 @@ SimpleQueryNear.prototype.execute = function () {
                                      options);
     });
 
-    var result = cluster.wait(coord, shards);
+    var result = cluster.wait(coord, shards.length);
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);
@@ -381,7 +381,7 @@ SimpleQueryWithin.prototype.execute = function () {
                                      options);
     });
 
-    var result = cluster.wait(coord, shards);
+    var result = cluster.wait(coord, shards.length);
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);
@@ -486,7 +486,7 @@ SimpleQueryFulltext.prototype.execute = function () {
                                      options);
     });
 
-    var result = cluster.wait(coord, shards);
+    var result = cluster.wait(coord, shards.length);
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);
@@ -578,7 +578,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
     });
 
     var _documents = [ ], total = 0;
-    result = cluster.wait(coord, shards);
+    result = cluster.wait(coord, shards.length);
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);

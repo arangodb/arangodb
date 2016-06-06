@@ -1353,11 +1353,11 @@ var shardList = function (dbName, collectionName) {
 /// @brief wait for a distributed response
 ////////////////////////////////////////////////////////////////////////////////
 
-var waitForDistributedResponse = function (data, shards) {
+var waitForDistributedResponse = function (data, numberOfRequests) {
   var received = [ ];
   try {
 
-    while (received.length < shards.length) {
+    while (received.length < numberOfRequests) {
       var result = global.ArangoClusterComm.wait(data);
       var status = result.status;
 
