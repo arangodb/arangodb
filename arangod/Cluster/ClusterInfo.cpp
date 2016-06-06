@@ -1731,7 +1731,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     res.slice()[0].get(std::vector<std::string>(
     { AgencyComm::prefix(), "Plan", "Collections", databaseName, collectionID }
   ));
-  if (previous.isObject()) {
+  if (!previous.isObject()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
