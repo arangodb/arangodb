@@ -1942,7 +1942,7 @@ void ClusterInfo::loadServers() {
       result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "ServersRegistered"}));
 
-    if (!serversRegistered.isNone()) {
+    if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
 
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
