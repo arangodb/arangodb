@@ -1152,6 +1152,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
               << (int) res.answer_code;
         } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE ||
                    (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
+          requests[index].result = res;
           LOG_TOPIC(TRACE, logTopic) << "ClusterComm::performRequests: "
               << "got BACKEND_UNAVAILABLE or TIMEOUT from "
               << requests[index].destination << ":"
@@ -1161,7 +1162,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           requests[index].result = res;
           requests[index].done = true;
           nrDone++;
-          LOG_TOPIC(TRACE, logTopic) << "ClusterComm::peformRequests: "
+          LOG_TOPIC(TRACE, logTopic) << "ClusterComm::performRequests: "
               << "got no answer from " << requests[index].destination << ":"
               << requests[index].path << " with error " << res.status;
         }
