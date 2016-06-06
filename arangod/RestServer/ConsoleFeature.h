@@ -37,6 +37,7 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
  public:
   void start() override final;
   void stop() override final;
+  void unprepare() override final;
 
  private:
   OperationMode _operationMode;

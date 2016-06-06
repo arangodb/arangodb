@@ -157,7 +157,9 @@ void DispatcherFeature::stop() {
   }
 
   _dispatcher->shutdown();
+}
 
+void DispatcherFeature::unprepare() {
   DISPATCHER = nullptr;
 }
 

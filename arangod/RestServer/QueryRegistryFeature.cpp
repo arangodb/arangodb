@@ -85,7 +85,7 @@ void QueryRegistryFeature::start() {
   DatabaseServerFeature::SERVER->_queryRegistry = _queryRegistry.get();
 }
 
-void QueryRegistryFeature::stop() {
+void QueryRegistryFeature::unprepare() {
   // clear the query registery
   DatabaseServerFeature::SERVER->_queryRegistry = nullptr;
   // TODO: reset QUERY_REGISTRY as well?

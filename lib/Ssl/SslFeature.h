@@ -34,7 +34,7 @@ class SslFeature final : public application_features::ApplicationFeature {
 
  public:
   void prepare() override final;
-  void stop() override final;
+  void unprepare() override final;
 };
 }
 

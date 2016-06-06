@@ -46,6 +46,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void stop() override final;
+  void unprepare() override final;
 
  private:
   uint64_t _nrSchedulerThreads;

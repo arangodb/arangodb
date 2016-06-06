@@ -35,4 +35,4 @@ WorkMonitorFeature::WorkMonitorFeature(
 
 void WorkMonitorFeature::start() { InitializeWorkMonitor(); }
 
-void WorkMonitorFeature::stop() { ShutdownWorkMonitor(); }
+void WorkMonitorFeature::unprepare() { ShutdownWorkMonitor(); }

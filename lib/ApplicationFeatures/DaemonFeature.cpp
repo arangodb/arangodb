@@ -118,7 +118,7 @@ void DaemonFeature::daemonize() {
   }
 }
 
-void DaemonFeature::stop() {
+void DaemonFeature::unprepare() {
   if (!_daemon) {
     return;
   }
