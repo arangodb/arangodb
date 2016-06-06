@@ -2074,7 +2074,7 @@ void ClusterInfo::loadCurrentCoordinators() {
       result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "Coordinators"}));
 
-    if (!currentCoordinators.isNone()) {
+    if (currentCoordinators.isObject()) {
       decltype(_coordinators) newCoordinators;
       
       for (auto const& coordinator : VPackObjectIterator(currentCoordinators)) {
