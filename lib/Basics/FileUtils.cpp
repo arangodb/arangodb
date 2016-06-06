@@ -345,11 +345,11 @@ bool copyDirectoryRecursive(std::string const& source,
                             std::string const& target, std::string& error) {
 
   bool rc = true;
-#ifdef TRI_HAVE_WIN32_LIST_FILES
-  auto isSubDirectory = [](struct _finddata_t item) -> bool {
-    return ((item.attrib & _A_SUBDIR) != 0);
+  
+  auto isSubDirectory = [](std::string const& name) -> bool {
+	  return isDirectory(name);
   };
-
+#ifdef TRI_HAVE_WIN32_LIST_FILES
   struct _finddata_t oneItem;
   intptr_t handle;
 
@@ -363,10 +363,6 @@ bool copyDirectoryRecursive(std::string const& source,
 
   do {
 #else
-  auto isSubDirectory = [](std::string const& name) -> bool {
-    return isDirectory(name);
-  };
-
   struct dirent* d = (struct dirent*)TRI_Allocate(
       TRI_UNKNOWN_MEM_ZONE, (offsetof(struct dirent, d_name) + PATH_MAX + 1),
       false);
