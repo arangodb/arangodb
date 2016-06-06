@@ -46,6 +46,11 @@ function ahuacatlNumericFunctionsTestSuite () {
     if (typeof(b) === 'number') {
       b = b.toPrecision(8);
     }
+    if (((a === 0) && (b === 0.0))||
+        ((b === 0) && (a === 0.0))) {
+      return;
+    }
+      
     assertEqual(a, b);
   }
 
