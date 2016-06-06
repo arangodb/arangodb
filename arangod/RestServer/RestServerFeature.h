@@ -59,7 +59,9 @@ class RestServerFeature final
   }
 
   static std::string getJwtSecret() {
-    TRI_ASSERT(RESTSERVER != nullptr);
+    if (RESTSERVER == nullptr) {
+      return std::string();
+    }
     return RESTSERVER->jwtSecret();
   }
 
