@@ -17,8 +17,14 @@ Head to [arangodb.com/download](https://www.arangodb.com/download/),
 select your operating system and download ArangoDB. You may also follow
 the instructions on how to install with a package manager, if available.
 
-Start up the server by running `arangod`.
- !TODO explain how to do that on all major platforms in the most simple way
+If you installed a binary package under Linux, the server is
+automatically started.
+
+If you installed ArangoDB using homebrew under MacOS X, start the
+server by running `/usr/local/sbin/arangod`.
+
+If you installed ArangoDB under Windows as a service, the server is
+automatically started.
 
 For startup parameters, installation in a cluster and so on, see
 [Installing](Installing/README.md).
@@ -27,27 +33,35 @@ For startup parameters, installation in a cluster and so on, see
 
 The server itself speaks REST and VelocyStream, but you can use the
 graphical web interface to keep it simple. There's also
-[arangosh](../Administration/Arangosh/README.md), a synchronous shell for
-interaction with the server. If you're a developer, you might prefer the shell
-over the GUI. It does not provide features like syntax highlighting however.
+[arangosh](../Administration/Arangosh/README.md), a synchronous shell
+for interaction with the server. If you're a developer, you might
+prefer the shell over the GUI. It does not provide features like
+syntax highlighting however.
 
 The web interface will become available shortly after you started `arangod`.
 You can access it in your browser at http://localhost:8529 - if not, please
-see [Troubleshooting](../Troubleshooting/README.md). It should look like this:
+see [Troubleshooting](../Troubleshooting/README.md).
+
+By default, authentication is enabled. There default user is
+`root`. Depending on the installation method used, the installation
+processed either prompted for the root password or the default root
+password is empty.
+
+It should look like this:
+TODO MISSING
 
 !SUBSECTION Databases, collections and documents
 
-Databases are sets of collections. Collections store records, which are refered
-to as documents. Collections are the equivalent of tables in RDBMS, and documents
-can be thought of as rows in a table. The difference is that you don't define
-what columns (or rather attribures) there will be in advance. Every document
-in any collection can have arbitrary attribute keys and values. Documents in
-a single collection will likely have a similar structure in practice however,
-but the database system itself does not require it and will operate stable and
-fast no matter how your data looks like.
+Databases are sets of collections. Collections store records, which are referred
+to as documents. Collections are the equivalent of tables in RDBMS, and
+documents can be thought of as rows in a table. The difference is that you don't
+define what columns (or rather attribures) there will be in advance. Every
+document in any collection can have arbitrary attribute keys and
+values. Documents in a single collection will likely have a similar structure in
+practice however, but the database system itself does not require it and will
+operate stable and fast no matter how your data looks like.
 
 Every server instance comes with a `_system` database.
-
 
 !SECTION ArangoDB programs 
 
