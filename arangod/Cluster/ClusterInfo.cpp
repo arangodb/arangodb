@@ -1731,7 +1731,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     res.slice()[0].get(std::vector<std::string>(
     { AgencyComm::prefix(), "Plan", "Collections", databaseName, collectionID }
   ));
-  if (previous.isObject()) {
+  if (!previous.isObject()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -1942,7 +1942,7 @@ void ClusterInfo::loadServers() {
       result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "ServersRegistered"}));
 
-    if (!serversRegistered.isNone()) {
+    if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
 
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
@@ -2074,7 +2074,7 @@ void ClusterInfo::loadCurrentCoordinators() {
       result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "Coordinators"}));
 
-    if (!currentCoordinators.isNone()) {
+    if (currentCoordinators.isObject()) {
       decltype(_coordinators) newCoordinators;
       
       for (auto const& coordinator : VPackObjectIterator(currentCoordinators)) {
@@ -2131,10 +2131,9 @@ void ClusterInfo::loadCurrentDBServers() {
       result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "DBServers"}));
 
-    if (!currentDBServers.isNone()) {
+    if (currentDBServers.isObject()) {
       decltype(_DBServers) newDBServers;
 
-      //for (; it != result._values.end(); ++it) {
       for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
         newDBServers.emplace(
           std::make_pair(dbserver.key.copyString(), dbserver.value.copyString()));

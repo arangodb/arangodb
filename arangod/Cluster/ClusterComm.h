@@ -200,7 +200,7 @@ struct ClusterCommResult {
   bool sendWasComplete;
 
   ClusterCommResult()
-      : status(CL_COMM_ERROR),
+      : status(CL_COMM_BACKEND_UNAVAILABLE),
         dropped(false),
         single(false),
         answer_code(GeneralResponse::ResponseCode::PROCESSING),

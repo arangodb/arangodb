@@ -109,7 +109,7 @@ authRouter.use((req, res, next) => {
 });
 
 
-authRouter.get('/api/*', module.context.apiDocumentation({
+router.get('/api/*', module.context.apiDocumentation({
   swaggerJson(req, res) {
     res.json(API_DOCS);
   }

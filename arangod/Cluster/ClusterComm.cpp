@@ -252,7 +252,7 @@ OperationID ClusterComm::asyncRequest(
                                : TRI_microtime() + timeout;
 
   op->result.setDestination(destination, logConnectionErrors());
-  if (op->result.status == CL_COMM_ERROR) {
+  if (op->result.status == CL_COMM_BACKEND_UNAVAILABLE) {
     // We put it into the received queue right away for error reporting:
     ClusterCommResult const resCopy(op->result);
     LOG(DEBUG) << "In asyncRequest, putting failed request "
@@ -1131,7 +1131,11 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           continue;
         }
         auto it = opIDtoIndex.find(res.operationID);
-        TRI_ASSERT(it != opIDtoIndex.end());  // we should really know this!
+        if (it == opIDtoIndex.end()) {
+          // Ooops, we got a response to which we did not send the request
+          LOG(ERR) << "Received ClusterComm response for a request we did not send!";
+          continue;
+        }
         size_t index = it->second;
         if (res.status == CL_COMM_RECEIVED) {
           requests[index].result = res;
@@ -1148,6 +1152,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
               << (int) res.answer_code;
         } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE ||
                    (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
+          requests[index].result = res;
           LOG_TOPIC(TRACE, logTopic) << "ClusterComm::performRequests: "
               << "got BACKEND_UNAVAILABLE or TIMEOUT from "
               << requests[index].destination << ":"
@@ -1157,7 +1162,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           requests[index].result = res;
           requests[index].done = true;
           nrDone++;
-          LOG_TOPIC(TRACE, logTopic) << "ClusterComm::peformRequests: "
+          LOG_TOPIC(TRACE, logTopic) << "ClusterComm::performRequests: "
               << "got no answer from " << requests[index].destination << ":"
               << requests[index].path << " with error " << res.status;
         }
