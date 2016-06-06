@@ -2131,7 +2131,7 @@ void ClusterInfo::loadCurrentDBServers() {
       result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "DBServers"}));
 
-    if (!currentDBServers.isNone()) {
+    if (currentDBServers.isObject()) {
       decltype(_DBServers) newDBServers;
 
       //for (; it != result._values.end(); ++it) {
