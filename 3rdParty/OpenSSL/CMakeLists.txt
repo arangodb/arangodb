@@ -42,7 +42,7 @@ if (WIN32 AND NOT SSL_NUGET)
     set(OPENSSL_EXT "")
   endif ()
 
-  if (NOT ${OPENSSL_LIB_DIR)
+  if (NOT ${OPENSSL_LIB_DIR})
     set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib/VC")
   endif ()
 
