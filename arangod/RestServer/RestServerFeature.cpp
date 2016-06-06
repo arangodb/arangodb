@@ -315,13 +315,14 @@ void RestServerFeature::stop() {
   for (auto& server : _servers) {
     server->stop();
   }
+}
 
+void RestServerFeature::unprepare() {
   for (auto& server : _servers) {
     delete server;
   }
 
   _httpOptions._vocbase = nullptr;
-
   RESTSERVER = nullptr;
 }
 

@@ -44,8 +44,8 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
-  void start() override;
-  void stop() override;
+  void start() override final;
+  void unprepare() override final;
 
  private:
   std::string _startupDirectory;

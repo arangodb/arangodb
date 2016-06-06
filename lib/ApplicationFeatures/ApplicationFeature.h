@@ -126,8 +126,11 @@ class ApplicationFeature {
   // notify the feature about a shutdown request
   virtual void beginShutdown();
 
-  // stop and shut down the feature
+  // stop the feature
   virtual void stop();
+
+  // shut down the feature
+  virtual void unprepare();
 
  protected:
   // return the ApplicationServer instance

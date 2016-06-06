@@ -37,7 +37,7 @@ class V8PlatformFeature final
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
-  void stop() override final;
+  void unprepare() override final;
 
   v8::ArrayBuffer::Allocator* arrayBufferAllocator() const {
     return _allocator.get();

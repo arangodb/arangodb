@@ -82,7 +82,7 @@ void DatabaseServerFeature::start() {
   }
 }
 
-void DatabaseServerFeature::stop() {
+void DatabaseServerFeature::unprepare() {
   // turn off index threads
   INDEX_POOL = nullptr;
   _indexPool.reset();

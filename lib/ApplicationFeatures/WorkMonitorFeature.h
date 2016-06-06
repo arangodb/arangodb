@@ -33,7 +33,7 @@ class WorkMonitorFeature final
 
  public:
   void start() override final;
-  void stop() override final;
+  void unprepare() override final;
 };
 }
 
