@@ -1153,11 +1153,15 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE ||
                    (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
           requests[index].result = res;
+          // In this case we will retry at the dueTime, if it is before endTime:
+          if (dueTime[index] >= endTime) {
+            requests[index].done = true;
+            nrDone++;
+          }
           LOG_TOPIC(TRACE, logTopic) << "ClusterComm::performRequests: "
               << "got BACKEND_UNAVAILABLE or TIMEOUT from "
               << requests[index].destination << ":"
               << requests[index].path;
-          // In this case we will retry at the dueTime
         } else {   // a "proper error"
           requests[index].result = res;
           requests[index].done = true;
