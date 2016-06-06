@@ -84,6 +84,7 @@ class AuthEntry {
 
 class AuthResult {
  public:
+  AuthResult() : _authorized(false), _mustChange(false) {}
   std::string _username;
   bool _authorized;
   bool _mustChange;
