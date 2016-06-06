@@ -57,7 +57,9 @@ DispatcherFeature::DispatcherFeature(
 }
 
 DispatcherFeature::~DispatcherFeature() {
-  delete _dispatcher;
+  if (_dispatcher != nullptr) {
+    delete _dispatcher;
+  }
 }
 
 void DispatcherFeature::collectOptions(

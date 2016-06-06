@@ -545,7 +545,7 @@ void ApplicationServer::stop() {
     auto feature = *it;
 
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::stop";
-    // feature->stop();
+    feature->stop();
     feature->state(FeatureState::STOPPED);
     reportFeatureProgress(_state, feature->name());
   }

@@ -40,6 +40,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
 
  public:
   explicit SchedulerFeature(application_features::ApplicationServer* server);
+  ~SchedulerFeature();
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

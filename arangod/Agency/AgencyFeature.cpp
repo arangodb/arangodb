@@ -189,7 +189,7 @@ void AgencyFeature::start() {
   _agent->load();
 }
 
-void AgencyFeature::stop() {
+void AgencyFeature::unprepare() {
 
   if (!isEnabled()) {
     return;
