@@ -443,8 +443,7 @@ router.get("/cluster", function (req, res) {
 
   const DBserver = req.queryParams.DBserver;
   let type = req.queryParams.type;
-  const coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
-  const options = { coordTransactionID: coord.coordTransactionID, timeout: 10 };
+  const options = { timeout: 10 };
 
   if (type !== "short" && type !== "long") {
     type = "short";

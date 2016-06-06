@@ -1131,7 +1131,11 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           continue;
         }
         auto it = opIDtoIndex.find(res.operationID);
-        TRI_ASSERT(it != opIDtoIndex.end());  // we should really know this!
+        if (it == opIDtoIndex.end()) {
+          // Ooops, we got a response to which we did not send the request
+          LOG(ERR) << "Received ClusterComm response for a request we did not send!";
+          continue;
+        }
         size_t index = it->second;
         if (res.status == CL_COMM_RECEIVED) {
           requests[index].result = res;
