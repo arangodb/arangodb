@@ -141,8 +141,11 @@ void SchedulerFeature::stop() {
     }
 
     _scheduler->shutdown();
+  }
+}
 
-    // delete the scheduler
+void SchedulerFeature::unprepare() {
+  if (_scheduler != nullptr) {
     delete _scheduler;
     _scheduler = nullptr;
     SCHEDULER = nullptr;

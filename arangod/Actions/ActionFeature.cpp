@@ -65,7 +65,7 @@ void ActionFeature::start() {
       nullptr);
 }
 
-void ActionFeature::stop() {
+void ActionFeature::unprepare() {
   TRI_CleanupActions();
 
   ACTION = nullptr;

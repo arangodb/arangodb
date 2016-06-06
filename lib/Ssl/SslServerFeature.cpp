@@ -94,9 +94,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void SslServerFeature::prepare() {
   createSslContext();
-}
 
-void SslServerFeature::start() {
   LOG(INFO) << "using SSL options: " << stringifySslOptions(_options);
 
   if (!_cipherList.empty()) {
@@ -104,7 +102,7 @@ void SslServerFeature::start() {
   }
 }
 
-void SslServerFeature::stop() {
+void SslServerFeature::unprepare() {
   if (_sslContext != nullptr) {
     SSL_CTX_free(_sslContext);
     _sslContext = nullptr;

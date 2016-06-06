@@ -80,7 +80,7 @@ void V8PlatformFeature::start() {
   _allocator.reset(new ArrayBufferAllocator);
 }
 
-void V8PlatformFeature::stop() {
+void V8PlatformFeature::unprepare() {
   v8::V8::Dispose();
   v8::V8::ShutdownPlatform();
   _platform.reset();

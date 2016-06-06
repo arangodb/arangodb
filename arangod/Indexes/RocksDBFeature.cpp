@@ -257,7 +257,7 @@ void RocksDBFeature::start() {
   }
 }
 
-void RocksDBFeature::stop() {
+void RocksDBFeature::unprepare() {
   if (!isEnabled()) {
     return;
   }

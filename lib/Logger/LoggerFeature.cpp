@@ -177,7 +177,7 @@ void LoggerFeature::prepare() {
   }
 }
 
-void LoggerFeature::stop() {
+void LoggerFeature::unprepare() {
   Logger::flush();
   Logger::shutdown(true);
 }

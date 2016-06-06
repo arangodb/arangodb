@@ -145,7 +145,7 @@ void SslFeature::prepare() {
   opensslSetup();
 }
 
-void SslFeature::stop() {
+void SslFeature::unprepare() {
   opensslCleanup();
 
   ERR_free_strings();
