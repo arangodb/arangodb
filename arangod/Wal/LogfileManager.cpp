@@ -454,7 +454,7 @@ bool LogfileManager::open() {
   return true;
 }
 
-void LogfileManager::stop() {
+void LogfileManager::unprepare() {
   _shutdown = 1;
 
   LOG(TRACE) << "shutting down WAL";

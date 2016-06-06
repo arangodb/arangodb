@@ -162,7 +162,7 @@ void BootstrapFeature::start() {
   _isReady = true;
 }
 
-void BootstrapFeature::stop() {
+void BootstrapFeature::unprepare() {
   auto server = ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer");
 
   TRI_server_t* s = server->SERVER; 
