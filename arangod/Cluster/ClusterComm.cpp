@@ -252,7 +252,7 @@ OperationID ClusterComm::asyncRequest(
                                : TRI_microtime() + timeout;
 
   op->result.setDestination(destination, logConnectionErrors());
-  if (op->result.status == CL_COMM_ERROR) {
+  if (op->result.status == CL_COMM_BACKEND_UNAVAILABLE) {
     // We put it into the received queue right away for error reporting:
     ClusterCommResult const resCopy(op->result);
     LOG(DEBUG) << "In asyncRequest, putting failed request "
