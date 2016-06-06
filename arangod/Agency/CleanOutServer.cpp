@@ -129,7 +129,6 @@ bool CleanOutServer::start() const {
   if (res.accepted && res.indices.size()==1 && res.indices[0]) {
     
     LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Clean out server " + _server;
-  LOG(WARN) << __FILE__<<__LINE__ ;
 
     // Check if we can get things done in the first place
     if (!checkFeasibility()) {
@@ -138,12 +137,8 @@ bool CleanOutServer::start() const {
       return false;
     }
 
-      LOG(WARN) << __FILE__<<__LINE__ ;
-
-
     // Schedule shard relocations
     scheduleMoveShards();
-  LOG(WARN) << __FILE__<<__LINE__ ;
     
     return true;
     
@@ -171,24 +166,52 @@ bool CleanOutServer::scheduleMoveShards() const {
   }
   
   Node::Children const& databases = _snapshot("/Plan/Collections").children();
-  size_t count = 0;
+  size_t sub = 0;
   
   for (auto const& database : databases) {
     for (auto const& collptr : database.second->children()) {
       Node const& collection = *(collptr.second);
       for (auto const& shard : collection("shards").children()) {
+        bool found = false;
         VPackArrayIterator dbsit(shard.second->slice());
+
+        // Only shards, which are affected 
         for (auto const& dbserver : dbsit) {
           if (dbserver.copyString() == _server) {
-            MoveShard (_snapshot, _agent, _jobId, _creator, database.first,
-                       collptr.first, shard.first, _server,
-                       availServers.at(count%availServers.size()));
-            count++;
+            found = true;
+            break;
           }
         }
+        if (!found) {
+          continue;
+        }
+
+        // Only destinations, which are not already holding this shard
+        std::vector<std::string> myServers = availServers;
+        for (auto const& dbserver : dbsit) {
+          myServers.erase(
+            std::remove(myServers.begin(), myServers.end(),
+                        dbserver.copyString()), myServers.end());
+        }
+
+        // Among those a random destination
+        std::string toServer;
+        try {
+          toServer = myServers.at(rand() % myServers.size());
+        } catch (...) {
+          LOG_TOPIC(ERR, Logger::AGENCY) <<
+            "Range error picking destination for shard " + shard.first;
+        }
+
+        // Shedule move
+        MoveShard (
+          _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
+          _agencyPrefix, database.first, collptr.first, shard.first, _server,
+          toServer);
+        
       }
     }
-  }  
+  }
   
   return true;
 }

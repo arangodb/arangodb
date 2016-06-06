@@ -58,7 +58,7 @@ FailedLeader::~FailedLeader() {}
 
 bool FailedLeader::create () const {
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: Move shard " + _shard
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: change leadership for " + _shard
     + " from " + _from + " to " + _to;
   
   std::string path = _agencyPrefix + toDoPrefix + _jobId;
@@ -102,7 +102,8 @@ bool FailedLeader::start() const {
   Node const& current = _snapshot(curPath);
   
   if (current.slice().length() == 1) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to move shard from " + _from
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Failed to change leadership for shard " + _shard  + " from " + _from
       + " to " + _to + ". No in-sync followers:" + current.slice().toJson();
     return false;
   }
@@ -154,7 +155,6 @@ bool FailedLeader::start() const {
   pending.add(_agencyPrefix +  blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
   pending.add("jobId", VPackValue(_jobId));
-  pending.add("jobId", VPackValue(_jobId));
   pending.close();
   
   // --- Increment Plan/Version
@@ -185,7 +185,7 @@ bool FailedLeader::start() const {
   
   if (res.accepted && res.indices.size()==1 && res.indices[0]) {
     
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Move shard " + _shard
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Change leadership " + _shard
       + " from " + _from + " to " + _to;
     return true;
   }    

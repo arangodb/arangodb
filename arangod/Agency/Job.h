@@ -143,7 +143,7 @@ struct Job {
   
   virtual bool start() const = 0;
   
-  Node _snapshot;
+  Node const _snapshot;
   Agent* _agent;
   std::string _jobId;
   std::string _creator;

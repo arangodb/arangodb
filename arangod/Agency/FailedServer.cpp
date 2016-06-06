@@ -43,17 +43,17 @@ FailedServer::FailedServer(Node const& snapshot,
       _server = _snapshot(toDoPrefix + _jobId + "/server").getString();
     } catch (...) {}
   } 
-  
+
   if (_server == "") {
     try {
       _server = _snapshot(pendingPrefix + _jobId + "/server").getString();
     } catch (...) {}
-  } 
-  
+  }
+
   if (_server != "") {
     try {
       if (exists()) {
-        if (status() == TODO) {  
+        if (status() == TODO) {
           start();        
         } 
       } else {            
@@ -64,7 +64,7 @@ FailedServer::FailedServer(Node const& snapshot,
       finish("DBServers/" + _server, false);
     }
   } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "CleanOutServer job with id " <<
+    LOG_TOPIC(ERR, Logger::AGENCY) << "FailedServer job with id " <<
       jobId << " failed catastrophically. Cannot find server id.";
   }
   
@@ -74,6 +74,9 @@ FailedServer::~FailedServer () {}
 
 bool FailedServer::start() const {
   
+  LOG_TOPIC(INFO, Logger::AGENCY) <<
+    "Trying to start FailedLeader job" + _jobId + " for server " + _server;
+
   // Copy todo to pending
   Builder todo, pending;
 
