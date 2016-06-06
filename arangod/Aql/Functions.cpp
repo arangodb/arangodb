@@ -1419,11 +1419,11 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
   return AqlValue(result);
 }
 
-/// @brief function REGEX_MATCH
-AqlValue Functions::RegexMatch(arangodb::aql::Query* query,
-                               arangodb::AqlTransaction* trx,
-                               VPackFunctionParameters const& parameters) {
-  ValidateParameters(parameters, "REGEX_MATCH", 2, 3);
+/// @brief function REGEX_TEST
+AqlValue Functions::RegexTest(arangodb::aql::Query* query,
+                              arangodb::AqlTransaction* trx,
+                              VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "REGEX_TEST", 2, 3);
   bool const caseInsensitive = GetBooleanParameter(trx, parameters, 2, false);
   StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
@@ -1464,7 +1464,7 @@ AqlValue Functions::RegexMatch(arangodb::aql::Query* query,
 
   if (matcher == nullptr) {
     // compiling regular expression failed
-    RegisterWarning(query, "REGEX_MATCH", TRI_ERROR_QUERY_INVALID_REGEX);
+    RegisterWarning(query, "REGEX_TEST", TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
@@ -1479,7 +1479,7 @@ AqlValue Functions::RegexMatch(arangodb::aql::Query* query,
 
   if (error) {
     // compiling regular expression failed
-    RegisterWarning(query, "REGEX_MATCH", TRI_ERROR_QUERY_INVALID_REGEX);
+    RegisterWarning(query, "REGEX_TEST", TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   } 
   
@@ -3996,7 +3996,7 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
 
   AqlValue stepValue = ExtractFunctionParameterValue(trx, parameters, 2);
   if (stepValue.isNull(true)) {
-    // no step specified
+    // no step specified. return a real range object
     return AqlValue(left.toInt64(), right.toInt64());
   } 
   
