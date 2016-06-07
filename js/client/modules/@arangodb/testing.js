@@ -1404,18 +1404,19 @@ function startInstanceAgency(instanceInfo, protocol, options,
     instanceArgs["agency.id"] = String(i);
     instanceArgs["agency.size"] = String(N);
     instanceArgs["agency.wait-for-sync"] = String(wfs);
-    instanceArgs["agency.supervision"] = "false";
-    instanceArgs["database.directory"] = rootDir + "agency-" + i;
-
+    instanceArgs["agency.supervision"] = "true";
+    instanceArgs["database.directory"] = dataDir + String(i);
 
     if (i === N - 1) {
+      const port = findFreePort();
+      instanceArgs["server.endpoint"] = "tcp://127.0.0.1:" + port;
       let l = [];
-      for (let j = 0; j < N; j++) {
-        instanceInfo.arangods.forEach(arangod => {
-          l.push("--agency.endpoint");
-          l.push(arangod.endpoint);
-        });
-      }
+      instanceInfo.arangods.forEach(arangod => {
+        l.push("--agency.endpoint");
+        l.push(arangod.endpoint);
+      });
+      l.push("--agency.endpoint");
+      l.push("tcp://127.0.0.1:" + port);
       l.push("--agency.notify");
       l.push("true");
 

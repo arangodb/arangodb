@@ -212,7 +212,7 @@ bool Agent::recvAppendEntriesRPC(term_t term,
                                      << queries->slice().length()
                                      << " entries to state machine.";
     /* bool success = */
-    //_state.log(queries, term, leaderId, prevIndex, prevTerm);
+    _state.log(queries, term, leaderId, prevIndex, prevTerm);
   } else {
     // heart-beat
   }
