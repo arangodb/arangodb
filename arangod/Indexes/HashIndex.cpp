@@ -902,7 +902,7 @@ bool HashIndex::supportsFilterCondition(
 
 IndexIterator* HashIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext*,
-    arangodb::aql::Ast*, arangodb::aql::AstNode const* node,
+    arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool) const {
   TRI_IF_FAILURE("HashIndex::noIterator")  {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false, unused: false */
+/*jshint globalstrict:false, strict:false */
 /*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,190 +32,10 @@ var jsunity = require("jsunity");
 
 var arangodb = require("@arangodb");
 var traversal = require("@arangodb/graph/traversal");
-var graph = require("@arangodb/graph");
 var generalGraph = require("@arangodb/general-graph");
 
 var db = arangodb.db;
 var Traverser = traversal.Traverser;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: graph traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function GraphTraversalSuite () {
-  'use strict';
-  var gn = "UnitTestsGraphTraversal";
-  var vn = "UnitTestsGraphTraversalVertices";
-  var en = "UnitTestsGraphTraversalEdges";
-
-  var g;
-
-  return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-      try {
-        g = new graph.Graph(gn);
-        if (g !== null) {
-          g.drop();
-          g = null;
-        }
-      }
-      catch (e) {
-      }
-
-      g = new graph.Graph(gn, vn, en);
-
-      var v1 = g.addVertex("v1");
-      var v2 = g.addVertex("v2");
-      var v3 = g.addVertex("v3");
-      var v4 = g.addVertex("v4");
-      g.addEdge(v1, v2, "v1v2");
-      g.addEdge(v2, v3, "v2v3");
-      g.addEdge(v1, v4, "v1v4");
-      g.addEdge(v4, v3, "v4v3");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-      if (g !== null) {
-        g.drop();
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test outbound traversal using Graph object
-////////////////////////////////////////////////////////////////////////////////
-
-    testOutboundTraversal1 : function () {
-      var config = {
-        datasource: traversal.graphDatasourceFactory(gn),
-        strategy: Traverser.DEPTH_FIRST,
-        expander: traversal.outboundExpander,
-        visitor: function (config, result, vertex, path) {
-          result.visited.push(vertex.getId());
-        }
-      };
-
-      var result = { visited: [ ] };
-      var traverser = new Traverser(config);
-
-      traverser.traverse(result, g.getVertex("v1"));
-
-      var expected = ["v1", "v2", "v3", "v4", "v3" ];
-
-      assertEqual(expected, result.visited);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test outbound traversal using Graph object
-////////////////////////////////////////////////////////////////////////////////
-
-    testOutboundTraversal2 : function () {
-      var config = {
-        datasource: traversal.graphDatasourceFactory(gn),
-        strategy: Traverser.DEPTH_FIRST,
-        expander: traversal.outboundExpander,
-        visitor: function (config, result, vertex, path) {
-          result.visited.push(vertex.getId());
-        }
-      };
-
-      var result = { visited: [ ] };
-      var traverser = new Traverser(config);
-
-      traverser.traverse(result, g.getVertex("v4"));
-
-      var expected = [ "v4", "v3" ];
-
-      assertEqual(expected, result.visited);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test outbound traversal using Graph object
-////////////////////////////////////////////////////////////////////////////////
-
-    testOutboundTraversalBreadthFirst : function () {
-      var config = {
-        datasource: traversal.graphDatasourceFactory(gn),
-        strategy: Traverser.BREADTH_FIRST,
-        expander: traversal.outboundExpander,
-        visitor: function (config, result, vertex, path) {
-          result.visited.push(vertex.getId());
-        }
-      };
-
-      var result = { visited: [ ] };
-      var traverser = new Traverser(config);
-
-      traverser.traverse(result, g.getVertex("v1"));
-
-      var expected = [ "v1", "v2", "v4", "v3", "v3" ];
-
-      assertEqual(expected, result.visited);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test inbound traversal using Graph object
-////////////////////////////////////////////////////////////////////////////////
-
-    testInboundTraversal : function () {
-      var config = {
-        datasource: traversal.graphDatasourceFactory(gn),
-        strategy: Traverser.DEPTH_FIRST,
-        expander: traversal.inboundExpander,
-        visitor: function (config, result, vertex, path) {
-          result.visited.push(vertex.getId());
-        }
-      };
-
-      var result = { visited: [ ] };
-      var traverser = new Traverser(config);
-
-      traverser.traverse(result, g.getVertex("v3"));
-
-      var expected = [ "v3", "v2", "v1", "v4", "v1" ];
-
-      assertEqual(expected, result.visited);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test any traversal using Graph object
-////////////////////////////////////////////////////////////////////////////////
-
-    testAnyTraversal : function () {
-      var config = {
-        datasource: traversal.graphDatasourceFactory(gn),
-        strategy: Traverser.DEPTH_FIRST,
-        expander: traversal.anyExpander,
-        visitor: function (config, result, vertex, path) {
-          result.visited.push(vertex.getId());
-        },
-        uniqueness: {
-          vertices: Traverser.UNIQUE_GLOBAL
-        }
-      };
-
-      var result = { visited: [ ] };
-      var traverser = new Traverser(config);
-
-      traverser.traverse(result, g.getVertex("v3"));
-
-      var expected = [ "v3", "v2", "v1", "v4" ];
-
-      assertEqual(expected, result.visited);
-    }
-
-  };
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create in-memory data-source
@@ -388,7 +208,7 @@ function MemoryTraversalSuite () {
 
   var visitor = traversal.trackingVisitor;
 
-  var filter = function (config, vertex, path) {
+  var filter = function (config, vertex) {
     var r = [ ];
 
     if (config.noVisit && config.noVisit[vertex._id]) {
@@ -402,7 +222,7 @@ function MemoryTraversalSuite () {
     return r;
   };
 
-  var expander = function (config, vertex, path) {
+  var expander = function (config, vertex) {
     var r = [ ];
     var edgesList = config.datasource.getOutEdges(vertex);
     var i;
@@ -1254,7 +1074,7 @@ function MemoryTraversalSuite () {
 
     testIncludeMatchingAttributesFilter : function () {
       // Can be removed as soon as all expanders use datasource
-      var anyExp = function (config, vertex, path) {
+      var anyExp = function (config, vertex) {
         var result = [ ];
         var edgesList = config.datasource.getAllEdges(vertex);
 
@@ -1302,23 +1122,23 @@ function MemoryTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCombineFilters : function () {
-      var excluder1 = function(config, vertex, path) {
+      var excluder1 = function(config, vertex) {
         if (vertex.name && vertex.name === config.exclude1) { return "exclude"; }
       };
 
-      var excluder2 = function(config, vertex, path) {
+      var excluder2 = function(config, vertex) {
         if (vertex.name && vertex.name === config.exclude2) { return "exclude"; }
       };
 
-      var excluder3 = function(config, vertex, path) {
+      var excluder3 = function(config, vertex) {
         if (vertex.name && vertex.name === config.exclude3) { return "exclude"; }
       };
 
-      var pruner1 = function(config, vertex, path) {
+      var pruner1 = function(config, vertex) {
         if (vertex.name && vertex.name === config.prune1) { return "prune"; }
       };
 
-      var pruner2 = function(config, vertex, path) {
+      var pruner2 = function(config, vertex) {
         if (vertex.name && vertex.name === config.prune2) { return "prune"; }
       };
 
@@ -1375,7 +1195,7 @@ function MemoryTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOverrideExcludeAndPruneOfCombinedFilters : function () {
-      var excludeAndPrune = function(config, vertex, path) {
+      var excludeAndPrune = function(config, vertex) {
         if (vertex.name && vertex.name === config.excludeAndPrune) { return ["prune", "exclude"]; }
       };
 
@@ -2231,7 +2051,6 @@ function GeneralGraphTraversalSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(GraphTraversalSuite);
 jsunity.run(MemoryTraversalSuite);
 jsunity.run(CollectionTraversalSuite);
 jsunity.run(GeneralGraphTraversalSuite);

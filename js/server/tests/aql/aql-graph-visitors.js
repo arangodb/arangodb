@@ -33,7 +33,7 @@ var db = require("@arangodb").db;
 var graph = require("@arangodb/general-graph");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for EDGES() function
+/// @brief test suite for visitors
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlGraphVisitorsSuite () {
@@ -3003,40 +3003,6 @@ function ahuacatlGraphVisitorsSuite () {
         
       assertEqual(expected, result.json);
     }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests a built-in visitor
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-    testNeighborsBuiltinHasAnyAttributesVisitor : function () {
-      var graphModule = require("@arangodb/general-graph");
-
-      try {
-        graphModule._drop("UnitTestsAhuacatlGraph");
-      }
-      catch (err) {
-      }
-      var graph = graphModule._create("UnitTestsAhuacatlGraph");
-      graph._addVertexCollection(vertex.name());
-      var rel = graphModule._relation(edge.name(), [ vertex.name() ], [ vertex.name() ]);
-      graph._extendEdgeDefinitions(rel);
-
-      vertex.save({ _key: "newRoot", foo: "bar" }); 
-      vertex.save({ _key: "test", foo: "bar" }); 
-      vertex.save({ _key: "foo", bar: "baz", foo: "bar" });
-      edge.save("UnitTestsAhuacatlVertex/newRoot", "UnitTestsAhuacatlVertex/test", { });
-      edge.save("UnitTestsAhuacatlVertex/newRoot", "UnitTestsAhuacatlVertex/foo", { });
-      var result = AQL_EXECUTE('LET params = { direction: "any", visitor : "_AQL::HASATTRIBUTESVISITOR", data: { attributes: [ "foo", "bar" ], type: "any" } } FOR result IN GRAPH_NEIGHBORS("UnitTestsAhuacatlGraph", "UnitTestsAhuacatlVertex/newRoot", params) RETURN result.vertex._key');
-
-      assertEqual([ "foo", "test" ], result.json.sort());
-      try {
-        graphModule._drop("UnitTestsAhuacatlGraph");
-      }
-      catch (err) {
-      }
-    }
-*/
 
   };
 

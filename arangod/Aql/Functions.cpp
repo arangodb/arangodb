@@ -506,106 +506,6 @@ static bool SortNumberList(arangodb::AqlTransaction* trx,
   return true;
 }
 
-static void RequestEdges(VPackSlice vertexSlice,
-                         arangodb::AqlTransaction* trx,
-                         std::string const& collectionName,
-                         Transaction::IndexHandle const& indexId,
-                         TRI_edge_direction_e direction,
-                         arangodb::ExampleMatcher const* matcher,
-                         bool includeVertices, VPackBuilder& result) {
-
-  vertexSlice = vertexSlice.resolveExternals();
-
-  std::string vertexId;
-  if (vertexSlice.isString()) {
-    vertexId = vertexSlice.copyString();
-  } else if (vertexSlice.isObject()) {
-    vertexId = arangodb::basics::VelocyPackHelper::getStringValue(vertexSlice,
-                                                                  StaticStrings::IdString, "");
-  } else {
-    // Nothing to do.
-    // Return (error for illegal input is thrown outside
-    return;
-  }
-
-  TransactionBuilderLeaser searchValueBuilder(trx);
-  EdgeIndex::buildSearchValue(direction, vertexId, *(searchValueBuilder.get()));
-  VPackSlice search = searchValueBuilder->slice();
-  std::shared_ptr<OperationCursor> cursor = trx->indexScan(
-      collectionName, arangodb::Transaction::CursorType::INDEX, indexId,
-      search, 0, UINT64_MAX, 1000, false);
-  if (cursor->failed()) {
-    THROW_ARANGO_EXCEPTION(cursor->code);
-  }
-
-  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
-  while (cursor->hasMore()) {
-    cursor->getMore(opRes);
-    if (opRes->failed()) {
-      THROW_ARANGO_EXCEPTION(opRes->code);
-    }
-    VPackSlice edges = opRes->slice();
-    TRI_ASSERT(edges.isArray());
-    if (includeVertices) {
-      for (auto const& edge : VPackArrayIterator(edges)) {
-        VPackObjectBuilder guard(&result);
-        if (matcher == nullptr || matcher->matches(edge)) {
-          result.add("edge", edge);
-
-          std::string target;
-          VPackSlice e = edge.resolveExternals();
-          TRI_ASSERT(e.hasKey(StaticStrings::FromString));
-          TRI_ASSERT(e.hasKey(StaticStrings::ToString));
-          switch (direction) {
-            case TRI_EDGE_OUT:
-              target = Transaction::extractToFromDocument(e).copyString();
-              break;
-            case TRI_EDGE_IN:
-              target = Transaction::extractFromFromDocument(e).copyString();
-              break;
-            case TRI_EDGE_ANY:
-              target = Transaction::extractToFromDocument(e).copyString();
-              if (target == vertexId) {
-                target = Transaction::extractFromFromDocument(e).copyString();
-              }
-              break;
-          }
-
-          if (target.empty()) {
-            // somehow invalid
-            continue;
-          }
-          size_t pos = target.find("/");
-          TRI_ASSERT(pos != std::string::npos);
-          std::string collection = target.substr(0, pos);
-          std::string key = target.substr(pos + 1);
-
-          searchValueBuilder->clear();
-          searchValueBuilder->openObject();
-          searchValueBuilder->add(StaticStrings::KeyString, VPackValue(key));
-          searchValueBuilder->close();
-          result.add(VPackValue("vertex"));
-          int res = trx->documentFastPath(collection, searchValueBuilder->slice(), result);
-          if (res != TRI_ERROR_NO_ERROR) {
-            if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-              // Not found is ok. Is equal to NULL
-              result.add(arangodb::basics::VelocyPackHelper::NullValue());
-            } else {
-              THROW_ARANGO_EXCEPTION(res);
-            }
-          }
-        }
-      }
-    } else {
-      for (auto const& edge : VPackArrayIterator(edges)) {
-        if (matcher == nullptr || matcher->matches(edge)) {
-          result.add(edge);
-        }
-      }
-    }
-  }
-}
-
 /// @brief Helper function to unset or keep all given names in the value.
 ///        Recursively iterates over sub-object and unsets or keeps their values
 ///        as well
@@ -633,13 +533,6 @@ static void UnsetOrKeep(arangodb::AqlTransaction* trx,
       }
     }
   }
-}
-
-static void RegisterCollectionInTransaction(
-    arangodb::AqlTransaction* trx, std::string const& collectionName,
-    TRI_voc_cid_t& cid) {
-  cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  trx->addCollectionAtRuntime(cid, collectionName);
 }
 
 /// @brief Helper function to get a document by it's identifier
@@ -2350,8 +2243,8 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
   // Function to return constant distance
   auto wc = [](VPackSlice) -> double { return 1; };
 
-  auto eci = std::make_unique<EdgeCollectionInfo>(
-      trx, eColName, wc);
+  auto eci =
+      std::make_unique<EdgeCollectionInfo>(trx, eColName, opts.direction, wc);
   TRI_IF_FAILURE("EdgeCollectionInfoOOM1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -2842,117 +2735,6 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
 
   // Id has invalid format
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-}
-
-/// @brief function Edges
-AqlValue Functions::Edges(arangodb::aql::Query* query,
-                          arangodb::AqlTransaction* trx,
-                          VPackFunctionParameters const& parameters) {
-  ValidateParameters(parameters, "EDGES", 3, 5);
-
-  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
-  if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-  std::string const collectionName(collectionValue.slice().copyString());
-
-  TRI_voc_cid_t cid;
-  RegisterCollectionInTransaction(trx, collectionName, cid);
-  
-  if (!trx->isEdgeCollection(collectionName)) {
-    RegisterWarning(query, "EDGES", TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-  }
-  
-  AqlValue vertexValue = ExtractFunctionParameterValue(trx, parameters, 1);
-  if (!vertexValue.isArray() && !vertexValue.isString() && !vertexValue.isObject()) {
-    // Invalid Start vertex
-    // Early Abort before parsing other parameters
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-  }
-
-  AqlValue directionValue = ExtractFunctionParameterValue(trx, parameters, 2);
-  if (!directionValue.isString()) {
-    RegisterWarning(query, "EDGES",
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-  }
-
-  std::string dirString(directionValue.slice().copyString());
-  // transform String to lower case
-  std::transform(dirString.begin(), dirString.end(), dirString.begin(),
-                 ::tolower);
-
-  TRI_edge_direction_e direction;
-
-  if (dirString == "inbound") {
-    direction = TRI_EDGE_IN;
-  } else if (dirString == "outbound") {
-    direction = TRI_EDGE_OUT;
-  } else if (dirString == "any") {
-    direction = TRI_EDGE_ANY;
-  } else {
-    RegisterWarning(query, "EDGES",
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-  }
-
-  std::unique_ptr<arangodb::ExampleMatcher> matcher;
-
-  Transaction::IndexHandle indexId = trx->edgeIndexHandle(collectionName);
-
-  size_t const n = parameters.size();
-  if (n > 3) {
-    // We might have examples
-    AqlValue exampleValue = ExtractFunctionParameterValue(trx, parameters, 3);
-    if ((exampleValue.isArray() && exampleValue.length() != 0) || exampleValue.isObject()) {
-      // TODO CHECK SURVIVAL
-      AqlValueMaterializer materializer(trx);
-      VPackSlice exampleSlice = materializer.slice(exampleValue, false);
-
-      try {
-        matcher.reset(
-            new arangodb::ExampleMatcher(exampleSlice, false));
-      } catch (arangodb::basics::Exception const& e) {
-        if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
-          throw;
-        }
-        // We can never fulfill this filter!
-        // RETURN empty Array
-        return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
-      }
-    }
-  }
-
-  bool includeVertices = false;
-
-  if (n == 5) {
-    // We have options
-    AqlValue options = ExtractFunctionParameterValue(trx, parameters, 4);
-    if (options.isObject()) {
-      AqlValueMaterializer materializer(trx);
-      VPackSlice s = materializer.slice(options, false);
-      includeVertices = arangodb::basics::VelocyPackHelper::getBooleanValue(s, "includeVertices", false);
-    }
-  }
-
-  AqlValueMaterializer vertexMaterializer(trx);
-  VPackSlice vertexSlice = vertexMaterializer.slice(vertexValue, false);
-
-  TransactionBuilderLeaser builder(trx);
-  builder->openArray();
-    
-  if (vertexSlice.isArray()) {
-    for (auto const& v : VPackArrayIterator(vertexSlice)) {
-      RequestEdges(v, trx, collectionName, indexId, direction,
-                   matcher.get(), includeVertices, *builder.get());
-    }
-  } else {
-    RequestEdges(vertexSlice, trx, collectionName, indexId, direction,
-                 matcher.get(), includeVertices, *builder.get());
-  }
-  builder->close();
-  return AqlValue(builder.get());
 }
 
 /// @brief function ROUND

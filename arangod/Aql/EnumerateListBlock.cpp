@@ -50,9 +50,6 @@ EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
 
 EnumerateListBlock::~EnumerateListBlock() {}
 
-/// @brief initialize, here we get the inVariable
-int EnumerateListBlock::initialize() { return ExecutionBlock::initialize(); }
-
 int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();  
   int res = ExecutionBlock::initializeCursor(items, pos);

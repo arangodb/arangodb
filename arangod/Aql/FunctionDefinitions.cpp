@@ -376,16 +376,6 @@ struct FunctionDefiner {
 
   void addGraphFunctions() {
     // graph functions
-    add({"PATHS", "AQL_PATHS", "c,h|s,ba", true, false, true,
-                       false, false});
-    add({"GRAPH_PATHS", "AQL_GRAPH_PATHS", "s|a", false,
-                             false, true, false, false});
-    add({"SHORTEST_PATH", "AQL_SHORTEST_PATH",
-                               "h,h,s,s,s|a", true, false, true, false, false});
-    add({"GRAPH_SHORTEST_PATH", "AQL_GRAPH_SHORTEST_PATH", "s,als,als|a",
-              false, false, true, false, false});
-    add({"GRAPH_DISTANCE_TO", "AQL_GRAPH_DISTANCE_TO", "s,als,als|a",
-              false, false, true, false, false});
     add({"TRAVERSAL", "AQL_TRAVERSAL", "hs,hs,s,s|a", false,
                            false, true, false, false});
     add({"GRAPH_TRAVERSAL", "AQL_GRAPH_TRAVERSAL", "s,als,s|a", false,
@@ -394,36 +384,8 @@ struct FunctionDefiner {
               false, true, false, false});
     add({"GRAPH_TRAVERSAL_TREE", "AQL_GRAPH_TRAVERSAL_TREE", "s,als,s,s|a",
               false, false, true, false, false});
-    add({"EDGES", "AQL_EDGES", "hs,s,s|l,o", true, false, true,
-                       false, false, &Functions::Edges, NotInCluster});
-    add({"GRAPH_EDGES", "AQL_GRAPH_EDGES", "s,als|a", false,
-                             false, true, false, false});
     add({"GRAPH_VERTICES", "AQL_GRAPH_VERTICES",
                                 "s,als|a", false, false, true, false, false});
-    add({"NEIGHBORS", "AQL_NEIGHBORS", "hs,hs,s,s|l,a", true, false, true,
-              false, false, &Functions::Neighbors, NotInCluster});
-    add({"GRAPH_NEIGHBORS", "AQL_GRAPH_NEIGHBORS",
-                                 "s,als|a", false, false, true, false, false});
-    add({"GRAPH_COMMON_NEIGHBORS", "AQL_GRAPH_COMMON_NEIGHBORS",
-              "s,als,als|a,a", false, false, true, false, false});
-    add({"GRAPH_COMMON_PROPERTIES", "AQL_GRAPH_COMMON_PROPERTIES",
-              "s,als,als|a", false, false, true, false, false});
-    add({"GRAPH_ECCENTRICITY", "AQL_GRAPH_ECCENTRICITY", "s|a", false,
-              false, true, false, false});
-    add({"GRAPH_BETWEENNESS", "AQL_GRAPH_BETWEENNESS",
-                                   "s|a", false, false, true, false, false});
-    add({"GRAPH_CLOSENESS", "AQL_GRAPH_CLOSENESS",
-                                 "s|a", false, false, true, false, false});
-    add({"GRAPH_ABSOLUTE_ECCENTRICITY", "AQL_GRAPH_ABSOLUTE_ECCENTRICITY",
-              "s,als|a", false, false, true, false, false});
-    add({"GRAPH_ABSOLUTE_BETWEENNESS", "AQL_GRAPH_ABSOLUTE_BETWEENNESS",
-              "s,als|a", false, false, true, false, false});
-    add({"GRAPH_ABSOLUTE_CLOSENESS", "AQL_GRAPH_ABSOLUTE_CLOSENESS",
-              "s,als|a", false, false, true, false, false});
-    add({"GRAPH_DIAMETER", "AQL_GRAPH_DIAMETER", "s|a",
-                                false, false, true, false, false});
-    add({"GRAPH_RADIUS", "AQL_GRAPH_RADIUS", "s|a", false,
-                              false, true, false, false});
   }
 
   void addDateFunctions() {

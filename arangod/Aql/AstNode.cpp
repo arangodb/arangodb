@@ -172,8 +172,10 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT), "array compare >"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE), "array compare >="},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN), "array compare in"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array compare not in"},
-    {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"}};
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN),
+     "array compare not in"},
+    {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"},
+    {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"}};
 
 /// @brief names for AST node value types
 std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
@@ -596,6 +598,7 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     case NODE_TYPE_ARRAY_LIMIT:
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_SHORTEST_PATH:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_OPERATOR_NARY_AND:
@@ -719,6 +722,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_EXAMPLE:
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_SHORTEST_PATH:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_PASSTHRU:
@@ -2578,6 +2582,7 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_PASSTHRU:
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_SHORTEST_PATH:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_WITH:
@@ -2747,6 +2752,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_PASSTHRU:
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_SHORTEST_PATH:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_OPERATOR_NARY_AND:

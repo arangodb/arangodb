@@ -568,8 +568,8 @@ class Transaction {
 
   OperationCursor* indexScanForCondition(
       std::string const& collectionName, IndexHandle const& indexId,
-      arangodb::aql::Ast*, arangodb::aql::AstNode const*,
-      arangodb::aql::Variable const*, uint64_t, uint64_t, bool);
+      arangodb::aql::AstNode const*, arangodb::aql::Variable const*, uint64_t,
+      uint64_t, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief factory for OperationCursor objects

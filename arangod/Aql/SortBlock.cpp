@@ -41,8 +41,6 @@ SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
 
 SortBlock::~SortBlock() {}
 
-int SortBlock::initialize() { return ExecutionBlock::initialize(); }
-
 int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();  
   int res = ExecutionBlock::initializeCursor(items, pos);

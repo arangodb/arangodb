@@ -69,10 +69,10 @@ void ClusterTraversalPath::lastEdgeToVelocyPack(Transaction*, VPackBuilder& resu
   result.add(VPackSlice(cached->second->data()));
 }
 
-bool ClusterTraverser::VertexGetter::operator()(std::string const& edgeId,
-                                                std::string const& vertexId,
-                                                size_t depth,
-                                                std::string& result) {
+bool ClusterTraverser::VertexGetter::getVertex(std::string const& edgeId,
+                                               std::string const& vertexId,
+                                               size_t depth,
+                                               std::string& result) {
   auto it = _traverser->_edges.find(edgeId);
   if (it != _traverser->_edges.end()) {
     VPackSlice slice(it->second->data());
@@ -103,6 +103,53 @@ bool ClusterTraverser::VertexGetter::operator()(std::string const& edgeId,
   return false;
 }
 
+void ClusterTraverser::VertexGetter::reset() {
+  // Nothing to do here. Subclass has to clear list of already returned vertices.
+}
+
+bool ClusterTraverser::UniqueVertexGetter::getVertex(
+    std::string const& edgeId, std::string const& vertexId, size_t depth,
+    std::string& result) {
+  auto it = _traverser->_edges.find(edgeId);
+  if (it != _traverser->_edges.end()) {
+    VPackSlice slice(it->second->data());
+    std::string from = slice.get(StaticStrings::FromString).copyString();
+    if (from != vertexId) {
+      result = from;
+    } else {
+      std::string to = slice.get(StaticStrings::ToString).copyString();
+      result = to;
+    }
+    auto exp = _traverser->_expressions->find(depth);
+    if (exp != _traverser->_expressions->end()) {
+      auto v = _traverser->_vertices.find(result);
+      if (v == _traverser->_vertices.end()) {
+        // If the vertex ist not in list it means it has not passed any
+        // filtering up to now
+        ++_traverser->_filteredPaths;
+        return false;
+      }
+      if (!_traverser->vertexMatchesCondition(VPackSlice(v->second->data()), exp->second)) {
+        return false;
+      }
+    }
+    if (_returnedVertices.find(result) != _returnedVertices.end()) {
+      // This vertex is not unique.
+      ++_traverser->_filteredPaths;
+      return false;
+    }
+    _returnedVertices.emplace(result);
+    return true;
+  }
+  // This should never be reached
+  result = "";
+  return false;
+}
+
+void ClusterTraverser::UniqueVertexGetter::reset() {
+  _returnedVertices.clear();
+}
+
 void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
                                               std::vector<std::string>& result,
                                               size_t*& last, size_t& eColIdx,
@@ -118,7 +165,6 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
     TRI_ASSERT(_traverser->_iteratorCache.size() == result.size());
     // We have to request the next level
     arangodb::GeneralResponse::ResponseCode responseCode;
-    std::string contentType;
     std::vector<TraverserExpression*> expEdges;
     auto found = _traverser->_expressions->find(depth);
     if (found != _traverser->_expressions->end()) {
@@ -129,7 +175,7 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
     resultEdges.openObject();
     int res = getFilteredEdgesOnCoordinator(
         _traverser->_dbname, collName, startVertex, dir,
-        expEdges, responseCode, contentType, resultEdges);
+        expEdges, responseCode, resultEdges);
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -156,6 +202,12 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
     for (auto const& edge : VPackArrayIterator(edgesSlice)) {
       std::string edgeId = arangodb::basics::VelocyPackHelper::getStringValue(
           edge, StaticStrings::IdString.c_str(), "");
+      if (_traverser->_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
+        // DO not push this edge on the stack.
+        if (_traverser->_edges.find(edgeId) != _traverser->_edges.end()) {
+          continue;
+        }
+      }
       std::string fromId = arangodb::basics::VelocyPackHelper::getStringValue(
           edge, StaticStrings::FromString.c_str(), "");
       if (_traverser->_vertices.find(fromId) == _traverser->_vertices.end()) {
@@ -172,18 +224,28 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
       stack.push(std::move(edgeId));
     }
 
+    if (stack.empty()) {
+      // We did not find any valid edge here.
+      // Try next index
+      last = nullptr;
+      eColIdx++;
+      operator()(startVertex, result, last, eColIdx, unused);
+      return;
+    }
+
     _traverser->fetchVertices(verticesToFetch, depth + 1);
 
     std::string next = stack.top();
     stack.pop();
     last = &_continueConst;
     _traverser->_iteratorCache.emplace(stack);
-    auto search = std::find(result.begin(), result.end(), next);
-    if (search != result.end()) {
-      // result.push_back(next);
-      // The edge is now included twice. Go on with the next
-      operator()(startVertex, result, last, eColIdx, unused);
-      return;
+    if (_traverser->_opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
+      auto search = std::find(result.begin(), result.end(), next);
+      if (search != result.end()) {
+        // The edge is now included twice. Go on with the next
+        operator()(startVertex, result, last, eColIdx, unused);
+        return;
+      }
     }
     result.push_back(next);
   } else {
@@ -201,11 +263,13 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
     } else {
       std::string const next = tmp.top();
       tmp.pop();
-      auto search = std::find(result.begin(), result.end(), next);
-      if (search != result.end()) {
-        // The edge would be included twice. Go on with the next
-        operator()(startVertex, result, last, eColIdx, unused);
-        return;
+      if (_traverser->_opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
+        auto search = std::find(result.begin(), result.end(), next);
+        if (search != result.end()) {
+          // The edge would be included twice. Go on with the next
+          operator()(startVertex, result, last, eColIdx, unused);
+          return;
+        }
       }
       result.push_back(next);
     }
@@ -213,12 +277,21 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
 }
 
 void ClusterTraverser::setStartVertex(std::string const& id) {
+  _vertexGetter->reset();
   _enumerator.reset(
       new arangodb::basics::PathEnumerator<std::string, std::string, size_t>(
-          _edgeGetter, _vertexGetter, id));
+          _edgeGetter, _vertexGetter.get(), id));
   _done = false;
   auto it = _vertices.find(id);
   if (it == _vertices.end()) {
+    size_t firstSlash = id.find("/");
+    if (firstSlash == std::string::npos ||
+        id.find("/", firstSlash + 1) != std::string::npos) {
+      // We can stop here. The start vertex is not a valid _id
+      ++_filteredPaths;
+      _done = true;
+      return;
+    }
     std::unordered_set<std::string> vertexToFetch;
     vertexToFetch.emplace(id);
     fetchVertices(vertexToFetch, 0); // this inserts the vertex
@@ -250,7 +323,7 @@ void ClusterTraverser::fetchVertices(std::unordered_set<std::string>& verticesTo
 
   int res = getFilteredDocumentsOnCoordinator(_dbname, expVertices,
                                               verticesToFetch, _vertices);
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -292,6 +365,19 @@ arangodb::traverser::TraversalPath* ClusterTraverser::next() {
     // Done traversing
     return nullptr;
   }
+  if (_opts.uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
+    // it is sufficient to check if any of the vertices on the path is equal to the end.
+    // Then we prune and any intermediate equality cannot happen.
+    auto last = path.vertices.back();
+    auto found = std::find(path.vertices.begin(), path.vertices.end(), last);
+    TRI_ASSERT(found != path.vertices.end()); // We have to find it once, it is at least the last!
+    if ((++found) != path.vertices.end()) {
+      // Test if we found the last element. That is ok.
+      _pruneNext = true;
+      return next();
+    }
+  }
+
   size_t countEdges = path.edges.size();
 
   auto p = std::make_unique<ClusterTraversalPath>(this, path);

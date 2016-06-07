@@ -83,7 +83,8 @@ class ExecutionNode {
     DISTRIBUTE = 20,
     UPSERT = 21,
     TRAVERSAL = 22,
-    INDEX = 23
+    INDEX = 23,
+    SHORTEST_PATH = 24
   };
 
   ExecutionNode() = delete;

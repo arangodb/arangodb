@@ -41,14 +41,15 @@ class Slice;
 /// @brief typedef the template instantiation of the PathFinder
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef arangodb::basics::PathFinder<arangodb::velocypack::Slice,
-                                     arangodb::velocypack::Slice,
-                                     double> ArangoDBPathFinder;
+typedef arangodb::basics::DynamicDistanceFinder<
+    arangodb::velocypack::Slice, arangodb::velocypack::Slice, double,
+    arangodb::traverser::ShortestPath> ArangoDBPathFinder;
 
 typedef arangodb::basics::ConstDistanceFinder<arangodb::velocypack::Slice,
                                               arangodb::velocypack::Slice,
                                               arangodb::basics::VelocyPackHelper::VPackStringHash, 
-                                              arangodb::basics::VelocyPackHelper::VPackStringEqual>
+                                              arangodb::basics::VelocyPackHelper::VPackStringEqual,
+                                              arangodb::traverser::ShortestPath>
     ArangoDBConstDistancePathFinder;
 
 namespace arangodb {
@@ -198,6 +199,40 @@ class DepthFirstTraverser : public Traverser {
   friend class SingleServerTraversalPath;
 
  private:
+
+  class VertexGetter : public arangodb::basics::VertexGetter<std::string, std::string> {
+   public:
+    explicit VertexGetter(DepthFirstTraverser* traverser)
+        : _traverser(traverser) {}
+
+    virtual ~VertexGetter() = default;
+
+    virtual bool getVertex(std::string const&, std::string const&, size_t,
+                           std::string&) override;
+    virtual void reset();
+
+   protected:
+    DepthFirstTraverser* _traverser;
+  };
+
+  class UniqueVertexGetter : public VertexGetter {
+   public:
+    explicit UniqueVertexGetter(DepthFirstTraverser* traverser)
+        : VertexGetter(traverser) {}
+
+    ~UniqueVertexGetter() = default;
+
+    bool getVertex(std::string const&, std::string const&, size_t,
+                    std::string&) override;
+
+    void reset() override;
+
+   private:
+    std::unordered_set<std::string> _returnedVertices;
+  };
+
+
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief callable class to load edges based on opts.
   //////////////////////////////////////////////////////////////////////////////
@@ -281,6 +316,8 @@ class DepthFirstTraverser : public Traverser {
 
   };
 
+
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal cursor to enumerate the paths of a graph
   //////////////////////////////////////////////////////////////////////////////
@@ -295,11 +332,10 @@ class DepthFirstTraverser : public Traverser {
   EdgeGetter _edgeGetter;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief internal function to extract vertex information
+  /// @brief internal getter to extract an edge
   //////////////////////////////////////////////////////////////////////////////
 
-  std::function<bool(std::string const&, std::string const&,
-                     size_t, std::string&)> _getVertex;
+  std::unique_ptr<VertexGetter> _vertexGetter;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a vector containing all required edge collection structures
@@ -334,13 +370,6 @@ class DepthFirstTraverser : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::velocypack::Builder _builder;
-
-  //////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief internal function to define the _getVertex and _getEdge functions
-  //////////////////////////////////////////////////////////////////////////////
-
-  void _defInternalFunctions();
 
  public:
   DepthFirstTraverser(
@@ -384,6 +413,7 @@ typedef std::function<double(arangodb::velocypack::Slice const)>
 ////////////////////////////////////////////////////////////////////////////////
 
 class EdgeCollectionInfo {
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying transaction
@@ -412,20 +442,47 @@ class EdgeCollectionInfo {
 
   WeightCalculatorFunction _weighter;
 
+  TRI_edge_direction_e _forwardDir;
+
+  TRI_edge_direction_e _backwardDir;
+
+  std::vector<arangodb::traverser::TraverserExpression*> _unused;
+
  public:
   EdgeCollectionInfo(arangodb::Transaction* trx,
                      std::string const& collectionName,
+                     TRI_edge_direction_e const direction,
                      WeightCalculatorFunction weighter);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get edges for the given direction and start vertex.
 ////////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::OperationCursor> getEdges(
-      TRI_edge_direction_e direction, std::string const&);
+  std::shared_ptr<arangodb::OperationCursor> getEdges(std::string const&);
 
-  std::shared_ptr<arangodb::OperationCursor> getEdges(
-      TRI_edge_direction_e direction, VPackSlice const&);
+  std::shared_ptr<arangodb::OperationCursor> getEdges(arangodb::velocypack::Slice const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get edges for the given direction and start vertex. On Coordinator.
+////////////////////////////////////////////////////////////////////////////////
+
+  int getEdgesCoordinator(arangodb::velocypack::Slice const&,
+                          arangodb::velocypack::Builder&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get edges for the given direction and start vertex. Reverse version
+////////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<arangodb::OperationCursor> getReverseEdges(std::string const&);
+
+  std::shared_ptr<arangodb::OperationCursor> getReverseEdges(arangodb::velocypack::Slice const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get edges for the given direction and start vertex. Reverse version on Coordinator.
+////////////////////////////////////////////////////////////////////////////////
+
+  int getReverseEdgesCoordinator(arangodb::velocypack::Slice const&,
+                                 arangodb::velocypack::Builder&);
 
   double weightEdge(arangodb::velocypack::Slice const);
   
@@ -438,20 +495,6 @@ class EdgeCollectionInfo {
   std::string const& getName(); 
 
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Wrapper for the shortest path computation
-////////////////////////////////////////////////////////////////////////////////
-
-std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
-    std::vector<EdgeCollectionInfo*> const& collectionInfos,
-    arangodb::traverser::ShortestPathOptions& opts);
-
-std::unique_ptr<ArangoDBConstDistancePathFinder::Path>
-TRI_RunSimpleShortestPathSearch(
-    std::vector<EdgeCollectionInfo*> const& collectionInfos,
-    arangodb::Transaction*,
-    arangodb::traverser::ShortestPathOptions& opts);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Wrapper for the neighbors computation

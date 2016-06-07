@@ -579,17 +579,6 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
 
 HashedCollectBlock::~HashedCollectBlock() {}
 
-/// @brief initialize
-int HashedCollectBlock::initialize() {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
                                       bool skipping, AqlItemBlock*& result,
                                       size_t& skipped) {
