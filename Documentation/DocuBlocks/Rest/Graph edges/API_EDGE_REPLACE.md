@@ -5,7 +5,7 @@
 @RESTHEADER{PUT /_api/document/{document-handle}#replaceEdge, replaces an edge}
 
 @RESTALLBODYPARAM{edge,json,required}
-A JSON representation of the new edge data. Including *_from* and *_to*.
+A JSON representation of the new edge data. Including *_from* and *_to* is mandatory.
 
 @RESTURLPARAMETERS
 
