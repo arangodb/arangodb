@@ -2,13 +2,12 @@
 @startDocuBlock JSF_post_api_index_skiplist
 @brief creates a skip-list
 
-@RESTHEADER{POST /_api/index, Create skip list}
+@RESTHEADER{POST /_api/index#skiplist, Create skip list}
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{collection-name,string,required}
 The collection name.
-
 
 @RESTBODYPARAM{type,string,required,string}
 must be equal to *"skiplist"*.

@@ -2,13 +2,12 @@
 @startDocuBlock JSF_post_api_index_persistent
 @brief creates a persistent index
 
-@RESTHEADER{POST /_api/index, Create a persistent index)
+@RESTHEADER{POST /_api/index#persistent, Create a persistent index}
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{collection-name,string,required}
 The collection name.
-
 
 @RESTBODYPARAM{type,string,required,string}
 must be equal to *"persistent"*.
