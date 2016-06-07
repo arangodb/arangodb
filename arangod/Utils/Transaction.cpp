@@ -1284,8 +1284,8 @@ int Transaction::documentFastPath(std::string const& collectionName,
                                   VPackSlice const value,
                                   VPackBuilder& result) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
-  if (!value.isObject()) {
-    // must provide a document object
+  if (!value.isObject() && !value.isString()) {
+    // must provide a document object or string
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
@@ -1296,6 +1296,7 @@ int Transaction::documentFastPath(std::string const& collectionName,
       return opRes.code;
     }
     result.add(opRes.slice());
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
@@ -1633,7 +1634,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   TIMER_STOP(TRANSACTION_INSERT_WORK_FOR_ONE);
  
   // wait for operation(s) to be synced to disk here 
-  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0) {
+  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(maxTick);
   }
   
@@ -1989,7 +1990,7 @@ OperationResult Transaction::modifyLocal(
   }
   
   // wait for operation(s) to be synced to disk here 
-  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0) {
+  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(maxTick);
   }
 
@@ -2252,7 +2253,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   }
  
   // wait for operation(s) to be synced to disk here 
-  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0) {
+  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(maxTick);
   }
 
@@ -2788,10 +2789,8 @@ std::pair<bool, bool> Transaction::getIndexForSortCondition(
 
 OperationCursor* Transaction::indexScanForCondition(
     std::string const& collectionName, IndexHandle const& indexId,
-    arangodb::aql::Ast* ast, arangodb::aql::AstNode const* condition,
-    arangodb::aql::Variable const* var, uint64_t limit, uint64_t batchSize,
-    bool reverse) {
-
+    arangodb::aql::AstNode const* condition, arangodb::aql::Variable const* var,
+    uint64_t limit, uint64_t batchSize, bool reverse) {
   if (ServerState::isCoordinator(_serverRole)) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -2811,7 +2810,7 @@ OperationCursor* Transaction::indexScanForCondition(
                                    "The index id cannot be empty.");
   }
 
-  std::unique_ptr<IndexIterator> iterator(idx->iteratorForCondition(this, &ctxt, ast, condition, var, reverse));
+  std::unique_ptr<IndexIterator> iterator(idx->iteratorForCondition(this, &ctxt, condition, var, reverse));
 
   if (iterator == nullptr) {
     // We could not create an ITERATOR and it did not throw an error itself

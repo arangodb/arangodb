@@ -43,8 +43,6 @@ class SortBlock : public ExecutionBlock {
 
   ~SortBlock();
 
-  int initialize() override;
-
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
   /// @brief dosorting

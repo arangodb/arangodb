@@ -282,9 +282,9 @@ struct ClusterCommRequest {
   ClusterCommRequest() : done(false) {
   }
 
-  ClusterCommRequest(std::string dest,
+  ClusterCommRequest(std::string const& dest,
                      GeneralRequest::RequestType type,
-                     std::string path,
+                     std::string const& path,
                      std::shared_ptr<std::string const> body)
     : destination(dest), requestType(type), path(path), body(body), done(false)
   {

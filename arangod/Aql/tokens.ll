@@ -155,6 +155,10 @@ namespace arangodb {
   return T_GRAPH;
 }
 
+(?i:SHORTEST_PATH) {
+  return T_SHORTEST_PATH;
+}
+
 (?i:OUTBOUND) {
   return T_OUTBOUND;
 }

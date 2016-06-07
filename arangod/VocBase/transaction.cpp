@@ -680,7 +680,14 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
   try {
     arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, trx->_waitForSync).errorCode;
+    
+    TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") { 
+      TRI_SegfaultDebugging("crashing on commit");
+    }
 #ifdef ARANGODB_ENABLE_ROCKSDB
+
+    TRI_IF_FAILURE("TransactionWriteCommitMarkerNoRocksSync") { return TRI_ERROR_NO_ERROR; }
+
     if (trx->_waitForSync) {
       // also sync RocksDB WAL
       RocksDBFeature::syncWal();

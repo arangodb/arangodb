@@ -586,7 +586,7 @@ bool EdgeIndex::supportsFilterCondition(
 
 IndexIterator* EdgeIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext* context,
-    arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
+    arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 

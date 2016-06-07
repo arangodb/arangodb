@@ -2270,7 +2270,214 @@ function subQuerySuite () {
   };
 }
 
+function optionsSuite() {
+  const gn = "UnitTestGraph";
 
+  return {
+
+    setUp: function () {
+      cleanup();
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      try {
+        gm._drop(gn);
+      } catch (e) {
+        // It is expected that this graph does not exist.
+      }
+
+      gm._create(gn, [gm._relation(en, vn, vn)]);
+    },
+
+    tearDown: function () {
+      try {
+        gm._drop(gn);
+      } catch (e) {
+        // It is expected that this graph does not exist.
+      }
+      cleanup();
+    },
+
+    testEdgeUniquenessPath: function () {
+      var start = vc.save({_key: "s"})._id;
+      var a = vc.save({_key: "a"})._id;
+      var b = vc.save({_key: "b"})._id;
+      var c = vc.save({_key: "c"})._id;
+      var d = vc.save({_key: "d"})._id;
+      ec.save(start, a, {});
+      ec.save(a, b, {});
+      ec.save(b, c, {});
+      ec.save(c, a, {});
+      ec.save(a, d, {});
+      var cursor = db._query(
+        `FOR v IN 1..10 OUTBOUND "${start}" ${en} OPTIONS {uniqueEdges: "path"}
+        SORT v._key
+        RETURN v`
+      ).toArray();
+      // We expect to get s->a->b->c->a->d
+      // and s->a->d
+      // But not s->a->b->c->a->b->*
+      // And not to continue at a again
+      assertEqual(cursor.length, 6);
+      assertEqual(cursor[0]._id, a); // We start with a
+      assertEqual(cursor[1]._id, a); // We somehow return to a
+      assertEqual(cursor[2]._id, b); // We once find b
+      assertEqual(cursor[3]._id, c); // And once c
+      assertEqual(cursor[4]._id, d); // We once find d on short path
+      assertEqual(cursor[5]._id, d); // And find d on long path
+    },
+
+    testEdgeUniquenessGlobal: function () {
+      var start = vc.save({_key: "s"})._id;
+      var a = vc.save({_key: "a"})._id;
+      var b = vc.save({_key: "b"})._id;
+      var c = vc.save({_key: "c"})._id;
+      var d = vc.save({_key: "d"})._id;
+      ec.save(start, a, {});
+      ec.save(a, b, {});
+      ec.save(b, c, {});
+      ec.save(c, a, {});
+      ec.save(a, d, {});
+      var cursor = db._query(
+        `FOR v IN 1..10 OUTBOUND "${start}" ${en} OPTIONS {uniqueEdges: "global"}
+        SORT v._key
+        RETURN v`
+      ).toArray();
+      // We expect to get s->a->b->c->a
+      // and s->a->d
+      // But not s->a->b->c->a->b->*
+      // And not s->a->b->c->a->d
+      // And not to continue at a again
+      assertEqual(cursor.length, 5);
+      assertEqual(cursor[0]._id, a); // We start with a
+      assertEqual(cursor[1]._id, a); // We somehow return to a
+      assertEqual(cursor[2]._id, b); // We once find b
+      assertEqual(cursor[3]._id, c); // And once c
+      assertEqual(cursor[4]._id, d); // We once find d on long or short path
+    },
+
+    testEdgeUniquenessNone: function () {
+      var start = vc.save({_key: "s"})._id;
+      var a = vc.save({_key: "a"})._id;
+      var b = vc.save({_key: "b"})._id;
+      var c = vc.save({_key: "c"})._id;
+      var d = vc.save({_key: "d"})._id;
+      ec.save(start, a, {});
+      ec.save(a, b, {});
+      ec.save(b, c, {});
+      ec.save(c, a, {});
+      ec.save(a, d, {});
+      var cursor = db._query(
+        `FOR v IN 1..10 OUTBOUND "${start}" ${en} OPTIONS {uniqueEdges: "none"}
+        SORT v._key
+        RETURN v`
+      ).toArray();
+      // We expect to get s->a->d
+      // We expect to get s->a->b->c->a->d
+      // We expect to get s->a->b->c->a->b->c->a->d
+      // We expect to get s->a->b->c->a->b->c->a->b->c->a
+      assertEqual(cursor.length, 13);
+      assertEqual(cursor[0]._id, a); // We start with a
+      assertEqual(cursor[1]._id, a); // We somehow return to a
+      assertEqual(cursor[2]._id, a); // We somehow return to a again
+      assertEqual(cursor[3]._id, a); // We somehow return to a again
+      assertEqual(cursor[4]._id, b); // We once find b
+      assertEqual(cursor[5]._id, b); // We find b again
+      assertEqual(cursor[6]._id, b); // And b again
+      assertEqual(cursor[7]._id, c); // And once c
+      assertEqual(cursor[8]._id, c); // We find c again
+      assertEqual(cursor[9]._id, c); // And c again
+      assertEqual(cursor[10]._id, d); // Short Path d
+      assertEqual(cursor[11]._id, d); // One Loop d
+      assertEqual(cursor[12]._id, d); // Second Loop d
+    },
+
+    testVertexUniquenessNone: function () {
+      var start = vc.save({_key: "s"})._id;
+      var a = vc.save({_key: "a"})._id;
+      var b = vc.save({_key: "b"})._id;
+      var c = vc.save({_key: "c"})._id;
+      var d = vc.save({_key: "d"})._id;
+      ec.save(start, a, {});
+      ec.save(a, b, {});
+      ec.save(b, c, {});
+      ec.save(c, a, {});
+      ec.save(a, d, {});
+      var cursor = db._query(
+        `FOR v IN 1..10 OUTBOUND "${start}" ${en} OPTIONS {uniqueVertices: "none"}
+        SORT v._key
+        RETURN v`
+      ).toArray();
+      // We expect to get s->a->b->c->a->d
+      // and s->a->d
+      // But not s->a->b->c->a->b->*
+      // And not to continue at a again
+
+      // Default edge Uniqueness is path
+      assertEqual(cursor.length, 6);
+      assertEqual(cursor[0]._id, a); // We start with a
+      assertEqual(cursor[1]._id, a); // We somehow return to a
+      assertEqual(cursor[2]._id, b); // We once find b
+      assertEqual(cursor[3]._id, c); // And once c
+      assertEqual(cursor[4]._id, d); // We once find d on short path
+      assertEqual(cursor[5]._id, d); // And find d on long path
+    },
+
+    testVertexUniquenessGlobal: function () {
+      var start = vc.save({_key: "s"})._id;
+      var a = vc.save({_key: "a"})._id;
+      var b = vc.save({_key: "b"})._id;
+      var c = vc.save({_key: "c"})._id;
+      var d = vc.save({_key: "d"})._id;
+      ec.save(start, a, {});
+      ec.save(a, b, {});
+      ec.save(b, c, {});
+      ec.save(c, a, {});
+      ec.save(a, d, {});
+      var cursor = db._query(
+        `FOR v IN 1..10 OUTBOUND "${start}" ${en} OPTIONS {uniqueVertices: "global"}
+        SORT v._key
+        RETURN v`
+      ).toArray();
+      // We expect to get s->a->b->c
+      // and s->a->d
+      // But not s->a->b->c->a
+      // And not to return to a again
+      assertEqual(cursor.length, 4);
+      assertEqual(cursor[0]._id, a); // We start with a
+      assertEqual(cursor[1]._id, b); // We once find b
+      assertEqual(cursor[2]._id, c); // And once c
+      assertEqual(cursor[3]._id, d); // We once find d on long or short path
+    },
+
+    testVertexUniquenessPath: function () {
+      var start = vc.save({_key: "s"})._id;
+      var a = vc.save({_key: "a"})._id;
+      var b = vc.save({_key: "b"})._id;
+      var c = vc.save({_key: "c"})._id;
+      ec.save(start, a, {});
+      ec.save(a, b, {});
+      ec.save(a, a, {});
+      ec.save(b, c, {});
+      ec.save(b, a, {});
+      ec.save(c, a, {});
+      var cursor = db._query(
+        `FOR v IN 1..10 OUTBOUND "${start}" ${en} OPTIONS {uniqueVertices: "path"}
+        SORT v._key
+        RETURN v`
+      ).toArray();
+      // We expect to get s->a->b->c
+      // But not s->a->a*
+      // But not s->a->b->a*
+      // But not s->a->b->c->a*
+      assertEqual(cursor.length, 3);
+      assertEqual(cursor[0]._id, a); // We start with a
+      assertEqual(cursor[1]._id, b); // We find a->b
+      assertEqual(cursor[2]._id, c); // We find a->b->c
+    },
+
+
+  };
+}
 
 jsunity.run(namedGraphSuite);
 jsunity.run(multiCollectionGraphSuite);
@@ -2282,5 +2489,6 @@ jsunity.run(complexFilteringSuite);
 jsunity.run(brokenGraphSuite);
 jsunity.run(multiEdgeDirectionSuite);
 jsunity.run(subQuerySuite);
+jsunity.run(optionsSuite);
 
 return jsunity.done();
