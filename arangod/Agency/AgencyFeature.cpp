@@ -38,7 +38,7 @@ using namespace arangodb::rest;
 AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Agency"),
       _size(1),
-      _agentId((std::numeric_limits<uint32_t>::max)()),
+      _agentId(0),
       _minElectionTimeout(0.15),
       _maxElectionTimeout(2.0),
       _notify(false),
@@ -104,7 +104,8 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_agentId == (std::numeric_limits<uint32_t>::max)()) {
+  ProgramOptions::ProcessingResult const& result = options->processingResult();
+  if (!result.touched("agency.id")) {
     disable();
     return;
   }
