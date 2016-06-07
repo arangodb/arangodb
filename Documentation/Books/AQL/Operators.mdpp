@@ -19,6 +19,8 @@ The following comparison operators are supported:
 - *IN* test if a value is contained in an array
 - *NOT IN* test if a value is not contained in an array
 - *LIKE* tests if a string value matches a pattern
+- *=~* tests if a string value matches a regular expression
+- *!~* tests if a string value does not match a regular expression
 
 Each of the comparison operators returns a boolean value if the comparison can
 be evaluated and returns *true* if the comparison evaluates to true, and *false*
@@ -46,6 +48,8 @@ true != null              // true
 "abc" == "abc"            // true
 "abc" == "ABC"            // false
 "foo" LIKE "f%"           // true
+"foo" =~ "^f[o].$"        // true
+"foo" !~ "[a-z]+bar$"     // true
 ```
 
 The *LIKE* operator checks whether its left operand matches the pattern specified
@@ -64,6 +68,9 @@ or underscore.
 
 The pattern matching performed by the *LIKE* operator is case-sensitive.
 
+The regular expression operators *=~* and *!~* expect their left-hand operands to
+be strings, and their right-hand operands to be strings containing valid regular
+expressions as specified in the documentation for the AQL function REGEX_TEST.
 
 !SUBSUBSECTION Array comparison operators
 
@@ -135,14 +142,8 @@ Some examples for logical operations in AQL:
     ! u.isInvalid
     1 || ! 0
 
-Older versions of ArangoDB required the operands of all logical operators to
-be boolean values and failed when non-boolean values were passed into the 
-operators. Additionally, the result of any logical operation always was a
-boolean value.
-
-This behavior has changed in ArangoDB 2.3. Passing non-boolean values to a
-logical operator is now allowed. Any-non boolean operands will be casted
-to boolean implicitly by the operator, without making the query abort.
+Passing non-boolean values to a logical operator is allowed. Any-non boolean operands 
+will be casted to boolean implicitly by the operator, without making the query abort.
 
 The *conversion to a boolean value* works as follows:
 - `null` will be converted to `false`
@@ -223,7 +224,7 @@ applied by the [TO_NUMBER()](Functions/TypeCast.md#tonumber) function:
 - objects / documents are converted to the number `0`.
 
 An arithmetic operation that produces an invalid value, such as `1 / 0` (division by zero)
-will also produce a result value of `0`.
+will also produce a result value of `null`.
 
 Here are a few examples:
 
