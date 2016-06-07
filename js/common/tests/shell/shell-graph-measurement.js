@@ -503,7 +503,6 @@ function normalizedSuite() {
       addEdge(v4, v5);
 
       eccentricity = graph._eccentricity();
-
       assertEqual(eccentricity[v1._id].toPrecision(1), '0.7');
       assertEqual(eccentricity[v2._id].toPrecision(1), '1');
       assertEqual(eccentricity[v3._id].toPrecision(1), '1');

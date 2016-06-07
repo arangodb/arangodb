@@ -249,13 +249,12 @@ bool RestEdgesHandler::readEdges(
   if (ServerState::instance()->isCoordinator()) {
     std::string vertexString(startVertex);
     GeneralResponse::ResponseCode responseCode;
-    std::string contentType;
     VPackBuilder resultDocument;
     resultDocument.openObject();
 
     int res = getFilteredEdgesOnCoordinator(
         _vocbase->_name, collectionName, vertexString, direction, expressions,
-        responseCode, contentType, resultDocument);
+        responseCode, resultDocument);
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(responseCode, res);
       return false;
@@ -401,7 +400,6 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   std::vector<traverser::TraverserExpression*> const expressions;
   if (ServerState::instance()->isCoordinator()) {
     GeneralResponse::ResponseCode responseCode;
-    std::string contentType;
     VPackBuilder resultDocument;
     resultDocument.openObject();
 
@@ -411,7 +409,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
         int res = getFilteredEdgesOnCoordinator(
             _vocbase->_name, collectionName, vertexString, direction, expressions,
-            responseCode, contentType, resultDocument);
+            responseCode, resultDocument);
         if (res != TRI_ERROR_NO_ERROR) {
           generateError(responseCode, res);
           return false;

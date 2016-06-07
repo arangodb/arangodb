@@ -34,18 +34,17 @@
 
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
-using VertexId = arangodb::traverser::VertexId;
-
 TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     : ExecutionBlock(engine, ep),
       _posInPaths(0),
       _useRegister(false),
       _usedConstant(false),
+      _vertexVar(nullptr),
       _vertexReg(0),
+      _edgeVar(nullptr),
       _edgeReg(0),
+      _pathVar(nullptr),
       _pathReg(0),
-      _resolver(nullptr),
       _expressions(ep->expressions()),
       _hasV8Expression(false) {
   arangodb::traverser::TraverserOptions opts(_trx);
@@ -82,8 +81,6 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     }
   }
 
-  _resolver = new CollectionNameResolver(_trx->vocbase());
-
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _traverser.reset(new arangodb::traverser::ClusterTraverser(
         ep->edgeColls(), opts,
@@ -101,9 +98,6 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     _reg = it->second.registerId;
     _useRegister = true;
   }
-  _vertexVar = nullptr;
-  _edgeVar = nullptr;
-  _pathVar = nullptr;
   if (ep->usesVertexOutVariable()) {
     _vertexVar = ep->vertexOutVariable();
   }
@@ -118,7 +112,6 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 }
 
 TraversalBlock::~TraversalBlock() {
-  delete _resolver;
   freeCaches();
 }
 
@@ -335,10 +328,10 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
       _usedConstant = true;
       auto pos = _vertexId.find("/");
       if (pos == std::string::npos) {
-        _engine->getQuery()->registerWarning(TRI_ERROR_BAD_PARAMETER,
-                                             "Invalid input for traversal: "
-                                             "Only id strings or objects with "
-                                             "_id are allowed");
+        _engine->getQuery()->registerWarning(
+            TRI_ERROR_BAD_PARAMETER, "Invalid input for traversal: "
+                                         "Only id strings or objects with "
+                                         "_id are allowed");
       } else {
         _traverser->setStartVertex(_vertexId);
       }
@@ -357,10 +350,10 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
       _vertexId = in.slice().copyString();
       _traverser->setStartVertex(_vertexId);
     } else {
-      _engine->getQuery()->registerWarning(TRI_ERROR_BAD_PARAMETER,
-                                           "Invalid input for traversal: Only "
-                                           "id strings or objects with _id are "
-                                           "allowed");
+      _engine->getQuery()->registerWarning(
+          TRI_ERROR_BAD_PARAMETER, "Invalid input for traversal: Only "
+                                       "id strings or objects with _id are "
+                                       "allowed");
     }
   }
   DEBUG_END_BLOCK();

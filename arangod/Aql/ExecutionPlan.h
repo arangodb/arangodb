@@ -236,6 +236,9 @@ class ExecutionPlan {
   /// @brief create an execution plan element from an AST TRAVERAL node
   ExecutionNode* fromNodeTraversal(ExecutionNode*, AstNode const*);
 
+  /// @brief create an execution plan element from an AST SHORTEST PATH node
+  ExecutionNode* fromNodeShortestPath(ExecutionNode*, AstNode const*);
+
   /// @brief create an execution plan element from an AST FILTER node
   ExecutionNode* fromNodeFilter(ExecutionNode*, AstNode const*);
 
@@ -281,6 +284,9 @@ class ExecutionPlan {
 
   /// @brief create an execution plan from JSON
   ExecutionNode* fromJson(arangodb::basics::Json const& Json);
+
+  /// @brief create an vertex element for graph nodes
+  AstNode const* parseTraversalVertexNode(ExecutionNode*, AstNode const*);
 
  private:
   /// @brief map from node id to the actual node

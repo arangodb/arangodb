@@ -121,9 +121,6 @@ int IndexBlock::initialize() {
   DEBUG_BEGIN_BLOCK();
   int res = ExecutionBlock::initialize();
 
-  cleanupNonConstExpressions();
-
-  _alreadyReturned.clear();
   auto en = static_cast<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
 
@@ -328,10 +325,9 @@ void IndexBlock::createCursor() {
   
   TRI_ASSERT(_indexes.size() > _currentIndex);
 
-  _cursor.reset(ast->query()->trx()->indexScanForCondition(
-          _collection->getName(), _indexes[_currentIndex], ast,
-          conditionNode, outVariable, UINT64_MAX,
-          Transaction::defaultBatchSize(), node->_reverse));
+   _cursor.reset(ast->query()->trx()->indexScanForCondition(
+      _collection->getName(), _indexes[_currentIndex], conditionNode,
+      outVariable, UINT64_MAX, Transaction::defaultBatchSize(), node->_reverse));
   DEBUG_END_BLOCK();
 }
 
@@ -441,6 +437,8 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
+  
+  _alreadyReturned.clear();
   _pos = 0;
   _posInDocs = 0;
 

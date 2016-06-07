@@ -201,6 +201,10 @@ when the query is executed.
 `LIKE` is now a keyword in AQL. Using `LIKE` in either case as an attribute or collection 
 name in AQL queries now requires quoting.
 
+
+`SHORTEST_PATH` is now a keyword in AQL. Using `SHORTEST_PATH` in either case as an attribute or collection 
+name in AQL queries now requires quoting.
+
 !SUBSECTION Subqueries
 
 Queries that contain subqueries that contain data-modification operations such as `INSERT`, 

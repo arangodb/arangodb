@@ -41,7 +41,7 @@ class SubqueryBlock : public ExecutionBlock {
   ~SubqueryBlock() = default;
 
   /// @brief initialize, tell dependency and the subquery
-  int initialize() override;
+  int initialize() override final;
 
   /// @brief getSome
   AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;

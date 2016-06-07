@@ -1897,6 +1897,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
   bool before(ExecutionNode* en) override final {
     switch (en->getType()) {
       case EN::TRAVERSAL:
+      case EN::SHORTEST_PATH:
       case EN::ENUMERATE_LIST:
       case EN::SUBQUERY:
       case EN::FILTER:
@@ -2601,6 +2602,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
         case EN::TRAVERSAL:
+        case EN::SHORTEST_PATH:
           // do break
           stopSearching = true;
           break;
@@ -2700,6 +2702,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::LIMIT:
         case EN::INDEX:
         case EN::TRAVERSAL:
+        case EN::SHORTEST_PATH:
         case EN::ENUMERATE_COLLECTION:
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -2964,6 +2967,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       case EN::LIMIT:
       case EN::SORT:
       case EN::TRAVERSAL:
+      case EN::SHORTEST_PATH:
       case EN::INDEX: {
         // if we meet any of the above, then we abort . . .
       }

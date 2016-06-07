@@ -79,8 +79,6 @@ CalculationBlock::CalculationBlock(ExecutionEngine* engine,
 
 CalculationBlock::~CalculationBlock() {}
 
-int CalculationBlock::initialize() { return ExecutionBlock::initialize(); }
-
 /// @brief fill the target register in the item block with a reference to
 /// another variable
 void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {

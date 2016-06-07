@@ -247,7 +247,6 @@ class PrimaryIndex final : public Index {
 
   IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,
-                                      arangodb::aql::Ast*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       bool) const override;

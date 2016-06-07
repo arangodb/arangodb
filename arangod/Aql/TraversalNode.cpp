@@ -27,6 +27,7 @@
 #include "Aql/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
+#include "Aql/TraversalOptions.h"
 #include "Indexes/Index.h"
 
 #include <cmath>
@@ -126,7 +127,8 @@ static TRI_edge_direction_e parseDirection (AstNode const* node) {
 
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                              TRI_vocbase_t* vocbase, AstNode const* direction,
-                             AstNode const* start, AstNode const* graph)
+                             AstNode const* start, AstNode const* graph,
+                             TraversalOptions const& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -134,7 +136,9 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
       _graphObj(nullptr),
-      _condition(nullptr) {
+      _condition(nullptr),
+      _options(options) {
+
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(start != nullptr);
@@ -245,15 +249,15 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                                      "invalid start vertex. Must either be an "
                                      "_id string or an object with _id.");
   }
+
+  // Parse options node
 }
 
-TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
-                             TRI_vocbase_t* vocbase,
-                             std::vector<std::string> const& edgeColls,
-                             Variable const* inVariable,
-                             std::string const& vertexId,
-                             std::vector<TRI_edge_direction_e> directions, uint64_t minDepth,
-                             uint64_t maxDepth)
+TraversalNode::TraversalNode(
+    ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+    std::vector<std::string> const& edgeColls, Variable const* inVariable,
+    std::string const& vertexId, std::vector<TRI_edge_direction_e> directions,
+    uint64_t minDepth, uint64_t maxDepth, TraversalOptions const& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -265,8 +269,8 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _maxDepth(maxDepth),
       _directions(directions),
       _graphObj(nullptr),
-      _condition(nullptr) {
-
+      _condition(nullptr),
+      _options(options) {
   _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
 
   for (auto& it : edgeColls) {
@@ -446,6 +450,12 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
   if (base.has("pathOutVariable")) {
     _pathOutVariable = varFromJson(plan->getAst(), base, "pathOutVariable");
   }
+
+  // Flags
+  if (base.has("traversalFlags")) {
+    _options = TraversalOptions(base);
+  }
+
 }
 
 int TraversalNode::checkIsOutVariable(size_t variableId) const {
@@ -532,6 +542,9 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     }
   }
 
+  nodes.add(VPackValue("traversalFlags"));
+  _options.toVelocyPack(nodes);
+
   // And close it:
   nodes.close();
 }
@@ -539,8 +552,9 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
 /// @brief clone ExecutionNode recursively
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
-  auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable,
-                             _vertexId, _directions, _minDepth, _maxDepth);
+  auto c =
+      new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable, _vertexId,
+                        _directions, _minDepth, _maxDepth, _options);
 
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
@@ -623,6 +637,9 @@ void TraversalNode::fillTraversalOptions(
   opts.minDepth = _minDepth;
   opts.maxDepth = _maxDepth;
   opts.setCollections(_edgeColls, _directions);
+  opts.useBreathFirst = _options.useBreathFirst;
+  opts.uniqueVertices = _options.uniqueVertices;
+  opts.uniqueEdges = _options.uniqueEdges;
 }
 
 /// @brief remember the condition to execute for early traversal abortion.

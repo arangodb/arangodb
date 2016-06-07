@@ -40,8 +40,6 @@ class EnumerateListBlock : public ExecutionBlock {
   EnumerateListBlock(ExecutionEngine*, EnumerateListNode const*);
   ~EnumerateListBlock();
 
-  int initialize() override;
-
   /// @brief initializeCursor, here we release our docs from this collection
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 

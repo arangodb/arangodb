@@ -39,6 +39,8 @@
 #include "Aql/SortBlock.h"
 #include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalBlock.h"
+#include "Aql/ShortestPathBlock.h"
+#include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
@@ -71,6 +73,9 @@ static ExecutionBlock* CreateBlock(
     }
     case ExecutionNode::TRAVERSAL: {
       return new TraversalBlock(engine, static_cast<TraversalNode const*>(en));
+    }
+    case ExecutionNode::SHORTEST_PATH: {
+      return new ShortestPathBlock(engine, static_cast<ShortestPathNode const*>(en));
     }
     case ExecutionNode::CALCULATION: {
       return new CalculationBlock(engine,
@@ -438,7 +443,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         // initializeCursor and shutDown requests
         // for simplicity, we always use the first remote block if we have more
         // than one
-        static_cast<RemoteNode*>(clone)->isResponsibleForInitCursor(nr == 0);
+        static_cast<RemoteNode*>(clone)->isResponsibleForInitializeCursor(nr == 0);
       }
 
       if (previous != nullptr) {

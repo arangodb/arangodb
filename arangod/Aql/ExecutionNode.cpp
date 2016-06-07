@@ -33,6 +33,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
+#include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
 
 using namespace arangodb::basics;
@@ -68,7 +69,8 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(GATHER), "GatherNode"},
     {static_cast<int>(NORESULTS), "NoResultsNode"},
     {static_cast<int>(UPSERT), "UpsertNode"},
-    {static_cast<int>(TRAVERSAL), "TraversalNode"}};
+    {static_cast<int>(TRAVERSAL), "TraversalNode"},
+    {static_cast<int>(SHORTEST_PATH), "ShortestPathNode"}};
 
 /// @brief returns the type name of the node
 std::string const& ExecutionNode::getTypeString() const {
@@ -262,6 +264,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
       return new DistributeNode(plan, oneNode);
     case TRAVERSAL:
       return new TraversalNode(plan, oneNode);
+    case SHORTEST_PATH:
+      return new ShortestPathNode(plan, oneNode);
     case ILLEGAL: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type");
     }
@@ -1091,6 +1095,25 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     case ExecutionNode::TRAVERSAL: {
       depth++;
       auto ep = static_cast<TraversalNode const*>(en);
+      TRI_ASSERT(ep != nullptr);
+      auto vars = ep->getVariablesSetHere();
+      nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
+      RegisterId registerId =
+          static_cast<RegisterId>(vars.size() + nrRegs.back());
+      nrRegs.emplace_back(registerId);
+
+      for (auto& it : vars) {
+        varInfo.emplace(it->id, VarInfo(depth, totalNrRegs));
+        totalNrRegs++;
+      }
+      break;
+    }
+    case ExecutionNode::SHORTEST_PATH: {
+      depth++;
+      auto ep = static_cast<ShortestPathNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       auto vars = ep->getVariablesSetHere();
       nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));

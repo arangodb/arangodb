@@ -31,8 +31,6 @@
 #include "Aql/ExecutionStats.h"
 #include "Rest/GeneralRequest.h"
 
-struct TRI_json_t;
-
 namespace arangodb {
 class AqlTransaction;
 struct ClusterCommResult;
@@ -342,9 +340,9 @@ class RemoteBlock : public ExecutionBlock {
   /// @brief the ID of the query on the server as a string
   ExecutionStats _deltaStats;
 
-  /// @brief whether or not this block will forward initializeCursor or shutDown
-  /// requests
-  bool const _isResponsibleForInitCursor;
+  /// @brief whether or not this block will forward initialize, 
+  /// initializeCursor or shutDown requests
+  bool const _isResponsibleForInitializeCursor;
 };
 
 }  // namespace arangodb::aql

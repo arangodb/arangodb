@@ -55,20 +55,20 @@ class RemoteNode : public ExecutionNode {
         _server(server),
         _ownName(ownName),
         _queryId(queryId),
-        _isResponsibleForInitCursor(true) {
+        _isResponsibleForInitializeCursor(true) {
     // note: server, ownName and queryId may be empty and filled later
   }
 
   /// @brief whether or not this node will forward initializeCursor or shutDown
   /// requests
-  void isResponsibleForInitCursor(bool value) {
-    _isResponsibleForInitCursor = value;
+  void isResponsibleForInitializeCursor(bool value) {
+    _isResponsibleForInitializeCursor = value;
   }
 
   /// @brief whether or not this node will forward initializeCursor or shutDown
   /// requests
-  bool isResponsibleForInitCursor() const {
-    return _isResponsibleForInitCursor;
+  bool isResponsibleForInitializeCursor() const {
+    return _isResponsibleForInitializeCursor;
   }
 
   RemoteNode(ExecutionPlan*, arangodb::basics::Json const& base);
@@ -142,7 +142,7 @@ class RemoteNode : public ExecutionNode {
 
   /// @brief whether or not this node will forward initializeCursor and shutDown
   /// requests
-  bool _isResponsibleForInitCursor;
+  bool _isResponsibleForInitializeCursor;
 };
 
 /// @brief class ScatterNode

@@ -133,7 +133,7 @@ int getFilteredDocumentsOnCoordinator(
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a filtered set of edges on Coordinator.
-///        Also returns the result in VelcoyPack
+///        Also returns the result in VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
 int getFilteredEdgesOnCoordinator(
@@ -141,7 +141,7 @@ int getFilteredEdgesOnCoordinator(
     std::string const& vertex, TRI_edge_direction_e const& direction,
     std::vector<traverser::TraverserExpression*> const& expressions,
     arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::string& contentType, arangodb::velocypack::Builder& result);
+    arangodb::velocypack::Builder& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator
