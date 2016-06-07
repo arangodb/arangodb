@@ -50,7 +50,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
   var e2 = "UnitTestsAhuacatlEdge2";
   var or = "UnitTestsAhuacatlOrphan";
 
-  var AQL_VERTICES = "FOR v IN GRAPH_VERTICES(@name, @example, @options) SORT v RETURN v";
+  // var AQL_VERTICES = "FOR v IN GRAPH_VERTICES(@name, @example, @options) SORT v RETURN v";
   var exampleFilter = "FILTER x.hugo == true OR x.heinz == 1 RETURN x";
   var AQL_PICK_START_EXAMPLE = `FOR start IN UNION (
         (FOR x IN ${v1} ${exampleFilter}),
@@ -149,6 +149,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     /// @brief checks GRAPH_VERTICES()
     ////////////////////////////////////////////////////////////////////////////////
     
+    /*
     testVertices: function () {
       var bindVars = {
         name: gN,
@@ -276,6 +277,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       var actual = getRawQueryResults(AQL_VERTICES, bindVars);
       assertEqual(actual.length, 0);
     },
+    */
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief checks edges with a GRAPH
