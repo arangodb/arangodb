@@ -5,11 +5,5 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_SHORTEST_PATH("
 ........&gt; <span class="hljs-string">"'frenchCity/Lyon', "</span> +
 ........&gt; <span class="hljs-string">"{weight: 'distance'}) RETURN [e.startVertex, e.vertex, e.distance, LENGTH(e.paths)]"</span>
 ........&gt; ).toArray();
-[ 
-  [ 
-    <span class="hljs-literal">null</span>, 
-    <span class="hljs-literal">null</span>, 
-    <span class="hljs-number">1</span>, 
-    <span class="hljs-number">0</span> 
-  ] 
-]
+[ArangoError <span class="hljs-number">1540</span>: usage <span class="hljs-keyword">of</span> unknown <span class="hljs-function"><span class="hljs-keyword">function</span> '<span class="hljs-title">GRAPH_SHORTEST_PATH</span>(<span class="hljs-params"></span>)' (<span class="hljs-params">while parsing</span>)]
+</span>

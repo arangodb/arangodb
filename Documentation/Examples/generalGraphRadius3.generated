@@ -3,6 +3,5 @@ arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span 
 arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_RADIUS("</span>
 ........&gt; + <span class="hljs-string">"'routeplanner', {direction: 'outbound', weight: 'distance'})"</span>
 ........&gt; ).toArray();
-[ 
-  <span class="hljs-number">550</span> 
-]
+[ArangoError <span class="hljs-number">1540</span>: usage <span class="hljs-keyword">of</span> unknown <span class="hljs-function"><span class="hljs-keyword">function</span> '<span class="hljs-title">GRAPH_RADIUS</span>(<span class="hljs-params"></span>)' (<span class="hljs-params">while parsing</span>)]
+</span>

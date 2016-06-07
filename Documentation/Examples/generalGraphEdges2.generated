@@ -3,11 +3,5 @@ arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span 
 arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_EDGES("</span>
 ........&gt; +<span class="hljs-string">"'routeplanner', 'germanCity/Hamburg', {direction: 'outbound', maxDepth: 2}) RETURN e"</span>
 ........&gt; ).toArray();
-[ 
-  <span class="hljs-string">"germanHighway/18980"</span>, 
-  <span class="hljs-string">"internationalHighway/19000"</span>, 
-  <span class="hljs-string">"internationalHighway/19003"</span>, 
-  <span class="hljs-string">"internationalHighway/18994"</span>, 
-  <span class="hljs-string">"frenchHighway/18983"</span>, 
-  <span class="hljs-string">"internationalHighway/18997"</span> 
-]
+[ArangoError <span class="hljs-number">1540</span>: usage <span class="hljs-keyword">of</span> unknown <span class="hljs-function"><span class="hljs-keyword">function</span> '<span class="hljs-title">GRAPH_EDGES</span>(<span class="hljs-params"></span>)' (<span class="hljs-params">while parsing</span>)]
+</span>

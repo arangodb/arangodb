@@ -6,6 +6,12 @@ BOOK=1
 BUILD=1
 SWAGGER=1
 EXAMPLES=1
+LINT=1
+
+if [ "$1" == "--no-lint" ];  then
+  LINT=0
+  shift
+fi
 
 if [ "$1" == "--no-build" ];  then
   BUILD=0
@@ -80,8 +86,10 @@ if [ "$BUILD" == "1" ];  then
   )
 fi
 
-echo "LINTING"
-./utils/jslint.sh
+if [ "$LINT" == "1" ]; then
+  echo "LINTING"
+  ./utils/jslint.sh
+fi
 
 git add -f \
   README \
@@ -95,14 +103,14 @@ git add -f \
   js/common/bootstrap/errors.js \
   CMakeLists.txt
 
-if [ "$SWAGGER" == "1" ];  then
-  echo "SWAGGER"
-  ./utils/generateSwagger.sh
-fi
-
 if [ "$EXAMPLES" == "1" ];  then
   echo "EXAMPLES"
   ./utils/generateExamples.sh
+fi
+
+if [ "$SWAGGER" == "1" ];  then
+  echo "SWAGGER"
+  ./utils/generateSwagger.sh
 fi
 
 echo "GRUNT"
