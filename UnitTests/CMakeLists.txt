@@ -26,7 +26,6 @@ add_executable(${TEST_BASICS_SUITE}
   Basics/string-utf8-test.cpp
   Basics/string-test.cpp
   Basics/structure-size-test.cpp
-  Basics/vector-pointer-test.cpp
   Basics/vector-test.cpp
   Basics/EndpointTest.cpp
   Basics/StringBufferTest.cpp

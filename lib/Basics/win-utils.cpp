@@ -619,9 +619,9 @@ void ADB_WindowsEntryFunction() {
   TRI_Application_Exit_SetExit(ADB_WindowsExitFunction);
 }
 
-TRI_serviceAboert_t serviceAbort = nullptr;
+TRI_serviceAbort_t serviceAbort = nullptr;
 
-void TRI_SetWindowsServiceAbortFunction(TRI_serviceAboert_t f) {
+void TRI_SetWindowsServiceAbortFunction(TRI_serviceAbort_t f) {
   serviceAbort = f;
 }
 
