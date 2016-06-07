@@ -271,7 +271,7 @@ append_entries_t Agent::sendAppendEntriesRPC(
       "1", 1, _config.endpoints[follower_id],
       arangodb::GeneralRequest::RequestType::POST, path.str(),
       std::make_shared<std::string>(builder.toJson()), headerFields,
-      std::make_shared<AgentCallback>(this, follower_id, last), 0, true);
+      std::make_shared<AgentCallback>(this, follower_id, last), 1, true);
 
   return append_entries_t(t, true);
 }
@@ -374,6 +374,7 @@ void Agent::run() {
       }
     }
   }
+
 }
 
 // Orderly shutdown
@@ -391,9 +392,12 @@ void Agent::beginShutdown() {
   _spearhead.beginShutdown();
   _readDB.beginShutdown();
 
+  
+  CONDITION_LOCKER(guardW, _waitForCV);
+  guardW.broadcast();
   // Wake up all waiting REST handler (waitFor)
-  CONDITION_LOCKER(guard, _appendCV);
-  guard.broadcast();
+  CONDITION_LOCKER(guardA, _appendCV);
+  guardA.broadcast();
 }
 
 // Becoming leader

@@ -197,8 +197,10 @@ void AgencyFeature::unprepare() {
     return;
   }
 
-  _agent->beginShutdown();
+  LOG_TOPIC(WARN, Logger::AGENCY) << __func__ << __LINE__;
 
+  _agent->beginShutdown();
+  
   if (_agent != nullptr) {
     int counter = 0;
     while (_agent->isRunning()) {
@@ -209,5 +211,6 @@ void AgencyFeature::unprepare() {
       }
     }
   }
-
+  LOG_TOPIC(WARN, Logger::AGENCY) << __func__ << __LINE__;
+  
 }
