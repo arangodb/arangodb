@@ -1,0 +1,12 @@
+!CHAPTER Linux
+
+You can find binary packages for the most common Linux distributions
+[here](http://www.arangodb.com/install/).
+
+Follow the instructions to use your favorite package manager for the
+major distributions. After setting up the ArangoDB repository you can
+easily install ArangoDB using yum, aptitude, urpmi or zypper.
+
+!SUBSECTION Linux Mint
+
+Please use the corresponding Ubuntu or Debian packages.
