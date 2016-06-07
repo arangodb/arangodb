@@ -198,7 +198,7 @@ void AgencyFeature::unprepare() {
   }
 
   _agent->beginShutdown();
-
+  
   if (_agent != nullptr) {
     int counter = 0;
     while (_agent->isRunning()) {

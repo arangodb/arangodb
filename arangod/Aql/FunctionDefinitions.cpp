@@ -98,7 +98,6 @@ struct FunctionDefiner {
     addDocumentFunctions();
     addGeoFunctions();
     addFulltextFunctions();
-    addGraphFunctions();
     addDateFunctions();
     addMiscFunctions();
   }
@@ -372,20 +371,6 @@ struct FunctionDefiner {
     // fulltext functions
     add({"FULLTEXT", "AQL_FULLTEXT", "hs,s,s|n", true, false, true, false,
               true, &Functions::Fulltext, NotInCoordinator});
-  }
-
-  void addGraphFunctions() {
-    // graph functions
-    add({"TRAVERSAL", "AQL_TRAVERSAL", "hs,hs,s,s|a", false,
-                           false, true, false, false});
-    add({"GRAPH_TRAVERSAL", "AQL_GRAPH_TRAVERSAL", "s,als,s|a", false,
-              false, true, false, false});
-    add({"TRAVERSAL_TREE", "AQL_TRAVERSAL_TREE", "hs,hs,s,s,s|a", false,
-              false, true, false, false});
-    add({"GRAPH_TRAVERSAL_TREE", "AQL_GRAPH_TRAVERSAL_TREE", "s,als,s,s|a",
-              false, false, true, false, false});
-    add({"GRAPH_VERTICES", "AQL_GRAPH_VERTICES",
-                                "s,als|a", false, false, true, false, false});
   }
 
   void addDateFunctions() {

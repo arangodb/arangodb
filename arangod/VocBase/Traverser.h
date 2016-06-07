@@ -263,7 +263,7 @@ struct TraverserOptions {
 
   UniquenessLevel uniqueEdges;
 
-  explicit TraverserOptions(arangodb::Transaction* trx) : _trx(trx), minDepth(1), maxDepth(1) {}
+  explicit TraverserOptions(arangodb::Transaction* trx) : _trx(trx), minDepth(1), maxDepth(1), useBreathFirst(false), uniqueVertices(UniquenessLevel::NONE), uniqueEdges(UniquenessLevel::PATH) {}
 
   void setCollections(std::vector<std::string> const&, TRI_edge_direction_e);
   void setCollections(std::vector<std::string> const&, std::vector<TRI_edge_direction_e> const&);

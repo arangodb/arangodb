@@ -262,7 +262,7 @@ void Supervision::run() {
     workJobs();
     
   }
-  
+
 }
 
 void Supervision::workJobs() {
@@ -385,6 +385,10 @@ void Supervision::updateFromAgency() {
 void Supervision::beginShutdown() {
   // Personal hygiene
   Thread::beginShutdown();
+
+  CONDITION_LOCKER(guard, _cv);
+  guard.broadcast();
+
 }
 
 Store const& Supervision::store() const {

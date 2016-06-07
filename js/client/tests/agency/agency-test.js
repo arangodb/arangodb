@@ -42,8 +42,8 @@ function agencyTestSuite () {
 /// @brief the agency servers
 ////////////////////////////////////////////////////////////////////////////////
   
-  var agencyServers = ARGUMENTS;
-  var whoseTurn = 0;    // used to do round robin on agencyServers
+  var agencyServers = ARGUMENTS[0].split(" ");
+  var whoseTurn = 0;
 
   var request = require("@arangodb/request");
 
@@ -53,6 +53,7 @@ function agencyTestSuite () {
     var res = request({url: agencyServers[whoseTurn] + "/_api/agency/read", method: "POST",
                        followRedirects: true, body: JSON.stringify(list),
                        headers: {"Content-Type": "application/json"}});
+    
     res.bodyParsed = JSON.parse(res.body);
     return res;
   }
@@ -62,8 +63,10 @@ function agencyTestSuite () {
     // response:
     var res = request({url: agencyServers[whoseTurn] + "/_api/agency/write", method: "POST",
                        followRedirects: true, body: JSON.stringify(list),
-                       headers: {"Content-Type": "application/json"}});
+                       headers: {"Content-Type": "application/json",
+                                 "x-arangodb-agency-mode": "waitForCommitted"}});
     res.bodyParsed = JSON.parse(res.body);
+    wait(0.1);
     return res;
   }
 
@@ -100,7 +103,7 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingleTopLevel : function () {
-      wait(10);
+      wait(1);
       assertEqual(readAndCheck([["/x"]]), [{}]);
       writeAndCheck([[{x:12}]]);
       assertEqual(readAndCheck([["/x"]]), [{x:12}]);

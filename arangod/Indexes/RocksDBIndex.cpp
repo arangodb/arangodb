@@ -258,6 +258,7 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 
 int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
                          bool) {
+  auto comparator = RocksDBFeature::instance()->comparator();
   std::vector<TRI_index_element_t*> elements;
 
   int res;
@@ -281,9 +282,18 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
   }
   
   VPackSlice const key = Transaction::extractKeyFromDocument(VPackSlice(doc->vpack()));
+  std::string const prefix = buildPrefix(trx->vocbase()->_id, _collection->_info.id(), _iid);
 
   VPackBuilder builder;
   std::vector<std::string> values;
+  values.reserve(elements.size());
+
+  // lower and upper bounds, only required if the index is unique
+  std::vector<std::pair<std::string, std::string>> bounds;
+  if (_unique) {
+    bounds.reserve(elements.size());
+  }
+
   for (auto& it : elements) {
     builder.clear();
     builder.openArray();
@@ -296,9 +306,44 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
     VPackSlice const s = builder.slice();
     std::string value;
     value.reserve(keyPrefixSize() + s.byteSize());
-    value += buildPrefix(trx->vocbase()->_id, _collection->_info.id(), _iid);
+    value += prefix;
     value.append(s.startAs<char const>(), s.byteSize());
     values.emplace_back(std::move(value));
+
+    if (_unique) {
+      builder.clear();
+      builder.openArray();
+      for (size_t i = 0; i < _fields.size(); ++i) {
+        builder.add(it->subObjects()[i].slice(doc));
+      }
+      builder.add(VPackSlice::minKeySlice());
+      builder.close();
+    
+      VPackSlice s = builder.slice();
+      std::string value;
+      value.reserve(keyPrefixSize() + s.byteSize());
+      value += prefix;
+      value.append(s.startAs<char const>(), s.byteSize());
+      
+      std::pair<std::string, std::string> p;
+      p.first = value;
+      
+      builder.clear();
+      builder.openArray();
+      for (size_t i = 0; i < _fields.size(); ++i) {
+        builder.add(it->subObjects()[i].slice(doc));
+      }
+      builder.add(VPackSlice::maxKeySlice());
+      builder.close();
+    
+      s = builder.slice();
+      value.clear();
+      value += prefix;
+      value.append(s.startAs<char const>(), s.byteSize());
+      
+      p.second = value;
+      bounds.emplace_back(std::move(p));
+    }
   }
 
   auto rocksTransaction = trx->rocksTransaction();
@@ -309,10 +354,28 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
     if (_unique) {
-      std::string existing;
-      auto status = rocksTransaction->Get(readOptions, values[i], &existing); 
+      bool uniqueConstraintViolated = false;
+      auto iterator = rocksTransaction->GetIterator(readOptions);
 
-      if (status.ok()) {
+      if (iterator != nullptr) {
+        auto& bound = bounds[i];
+        iterator->Seek(rocksdb::Slice(bound.first.c_str(), bound.first.size()));
+
+        while (iterator->Valid()) {
+          int res = comparator->Compare(iterator->key(), rocksdb::Slice(bound.second.c_str(), bound.second.size()));
+
+          if (res > 0) {
+            break;
+          }
+
+          uniqueConstraintViolated = true;
+          break;
+        }
+
+        delete iterator;
+      }
+
+      if (uniqueConstraintViolated) {
         // duplicate key
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
         if (!_collection->useSecondaryIndexes()) {
@@ -324,6 +387,7 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
 
     if (res == TRI_ERROR_NO_ERROR) {
       auto status = rocksTransaction->Put(values[i], std::string());
+      
       if (! status.ok()) {
         res = TRI_ERROR_INTERNAL;
       }

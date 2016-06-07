@@ -127,42 +127,6 @@ function ahuacatlCrossCollection () {
 
       var actual = getQueryResults("FOR d IN DOCUMENT(" + vn1 + ", " + JSON.stringify(list) + ") RETURN d");
       assertEqual(1, actual.length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks traversal function, cross-collection
-////////////////////////////////////////////////////////////////////////////////
-
-    testTraversal1 : function () {
-      var d1 = vertex1.save({ _key: "test1", a: 1 });
-      var d2 = vertex1.save({ _key: "test2", a: 2 });
-      var d3 = vertex2.save({ _key: "test3", a: 3 });
-      edge.save(d1._id, d2._id, { });
-      edge.save(d2._id, d3._id, { });
-
-      var actual = getQueryResults("FOR t IN TRAVERSAL(" + vn1 + ", " + en + ", " + JSON.stringify(d1._id) + ", 'outbound', { }) RETURN t");
-      assertEqual(3, actual.length);
-
-      assertEqual(1, actual[0].vertex.a);
-      assertEqual(2, actual[1].vertex.a);
-      assertEqual(3, actual[2].vertex.a);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks traversal function, cross-collection
-////////////////////////////////////////////////////////////////////////////////
-
-    testTraversal2 : function () {
-      var d1 = vertex1.save({ _key: "test1", a: 1 });
-      var d2 = vertex2.save({ _key: "test2", a: 2 });
-      var d3 = vertex2.save({ _key: "test3", a: 3 });
-      edge.save(d1._id, d2._id, { });
-      edge.save(d2._id, d3._id, { });
-
-      var actual = getQueryResults("FOR t IN TRAVERSAL(" + vn1 + ", " + en + ", " + JSON.stringify(d2._id) + ", 'outbound', { }) RETURN t");
-      assertEqual(2, actual.length);
-      assertEqual(2, actual[0].vertex.a);
-      assertEqual(3, actual[1].vertex.a);
     }
 
   };

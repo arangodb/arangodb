@@ -1,4 +1,4 @@
-/*global $, d3, _, console, document*/
+/*global $, _, console*/
 /*global AbstractAdapter, arangoHelper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -122,11 +122,6 @@ function GharialAdapter(nodes, edges, viewer, config) {
     sendQuery = function(query, bindVars, onSuccess) {
       if (query !== queries.getAllGraphs) {
         bindVars.graph = graphName;
-        if (query !== queries.connectedEdges
-          && query !== queries.childrenCentrality
-          && query !== queries.randomVertices) {
-            bindVars.dir = direction;
-        }
       }
       var data = {
         query: query,
@@ -189,38 +184,29 @@ function GharialAdapter(nodes, edges, viewer, config) {
     },
 
     parseResultOfTraversal = function (result, callback) {
-      if (result.length === 0
-        || result[0].length === 0
-        || result[0][0].length === 0) {
+      if (result.length === 0 || result[0].vertex === null) {
         if (callback) {
-          callback({
-            errorCode: 404
-          });
+          callback({ errorCode: 404});
         }
-        return;
       }
-      result = result[0][0];
+
       var inserted = {},
+          // This is start vertex
         n = absAdapter.insertNode(result[0].vertex),
         oldLength = nodes.length;
+      result.shift();
 
       _.each(result, function(visited) {
-        var node = absAdapter.insertNode(visited.vertex),
-          path = visited.path;
-        if (oldLength < nodes.length) {
-          inserted[node._id] = node;
-          oldLength = nodes.length;
-        }
-        _.each(path.vertices, function(connectedNode) {
-          var ins = absAdapter.insertNode(connectedNode);
+        if (visited.vertex !== null) {
+          var node = absAdapter.insertNode(visited.vertex);
           if (oldLength < nodes.length) {
-            inserted[ins._id] = ins;
+            inserted[node._id] = node;
             oldLength = nodes.length;
           }
-        });
-        _.each(path.edges, function(edge) {
-          absAdapter.insertEdge(edge);
-        });
+          if (visited.edge !== null) {
+            absAdapter.insertEdge(visited.edge);
+          }
+        }
       });
       delete inserted[n._id];
       absAdapter.checkSizeOfInserted(inserted);
@@ -249,16 +235,31 @@ function GharialAdapter(nodes, edges, viewer, config) {
 
   queries.getAllGraphs = "FOR g IN _graphs"
     + " return g._key";
-  queries.traversal = "RETURN GRAPH_TRAVERSAL("
-      + "@graph, "
-      + "@example, "
-      + "@dir, {"
-      + "strategy: \"depthfirst\","
-      + "maxDepth: 1,"
-      + "paths: true"
-      + "})";
-  queries.childrenCentrality = "RETURN LENGTH(GRAPH_EDGES(@graph, @id, {direction: any}))";
-  queries.connectedEdges = "RETURN GRAPH_EDGES(@graph, @id)";
+  queries.traversal = function (dir) {
+    return "FOR vertex, edge IN 0..1 " + dir + " @example GRAPH @graph RETURN {vertex, edge}";
+  };
+  queries.oneNodeByAttributeValue = function (bindVars, collections, attribute, value) {
+    bindVars.attr = attribute;
+    bindVars.value = value;
+    if (collections.length === 1) {
+      bindVars["@collection"] = collections[0];
+      return "FOR node IN @@collection FILTER node[@attr] == @value LIMIT 1";
+    }
+    var query = "FOR node IN UNION(";
+    var i = 0;
+    for (i = 0; i < collections.length; ++i) {
+      query += "(FOR node IN @@collection" + i + " FILTER node[@attr] == @value LIMIT 1 RETURN node)";
+      bindVars["@collection" + i] = collections[i];
+    }
+    query += ") LIMIT 1";
+    return query;
+  };
+  queries.traversalAttributeValue = function (dir, bindVars, collections, attribute, value) {
+    return queries.oneNodeByAttributeValue(bindVars, collections, attribute, value) +
+           " FOR vertex, edge IN 0..1 " + dir + " node GRAPH @graph RETURN {vertex, edge}";
+  };
+  queries.childrenCentrality = "RETURN SUM(FOR v IN ANY @id GRAPH @graph RETURN 1)";
+  queries.connectedEdges = "FOR v, e IN ANY @id GRAPH @graph RETURN e";
   queries.randomVertices = "FOR x IN @@collection SORT RAND() LIMIT @limit RETURN x";
 
   self.explore = absAdapter.explore;
@@ -296,7 +297,6 @@ function GharialAdapter(nodes, edges, viewer, config) {
 
       var list = getNRandom(self.NODES_TO_DISPLAY, collections[i]);
       if (list.length > 0) {
-        var counter = 0;
         _.each(list, function(node) {
           self.randomNodes.push(node);
         });
@@ -330,7 +330,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
     }
 
     var counter = 0;
-    _.each(nodes, function(node) {
+    _.each(nodes, function(node) {
       if (counter < self.NODES_TO_DISPLAY) {
         nodeArray.push({
           vertex: node,
@@ -347,7 +347,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
   };
 
   self.loadNodeFromTreeById = function(nodeId, callback) {
-    sendQuery(queries.traversal, {
+    sendQuery(queries.traversal(direction), {
       example: nodeId
     }, function(res) {
 
@@ -356,18 +356,18 @@ function GharialAdapter(nodes, edges, viewer, config) {
 
       if (nodes.length > 0) {
         _.each(nodes, function(node) {
-          sendQuery(queries.traversal, {
+          sendQuery(queries.traversal(direction), {
             example: node.vertex._id
           }, function(res2) {
-            _.each(res2[0][0], function(obj) {
-              res[0][0].push(obj);
+            _.each(res2, function(obj) {
+              res.push(obj);
             });
             parseResultOfTraversal(res, callback);
           });
         });
       }
       else {
-        sendQuery(queries.traversal, {
+        sendQuery(queries.traversal(direction), {
           example: nodeId
         }, function(res) {
           parseResultOfTraversal(res, callback);
@@ -378,29 +378,24 @@ function GharialAdapter(nodes, edges, viewer, config) {
   };
 
   self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
-    var example = {};
-    example[attribute] = value;
-    sendQuery(queries.traversal, {
-      example: example
-    }, function(res) {
+    var bindVars = {};
+    var q = queries.traversalAttributeValue(direction, bindVars, nodeCollections, attribute, value);
+    sendQuery(q, bindVars, function(res) {
       parseResultOfTraversal(res, callback);
     });
   };
 
   self.getNodeExampleFromTreeByAttributeValue = function(attribute, value, callback) {
-    var example = {};
+    var bindVars;
 
-    example[attribute] = value;
-    sendQuery(queries.traversal, {
-      example: example
-    }, function(res) {
-
-      if (res[0][0] === undefined) {
+    var q = queries.travesalAttributeValue(direction, bindVars, nodeCollections, attribute, value);
+    sendQuery(q, bindVars, function(res) {
+      if (res.length === 0) {
         arangoHelper.arangoError("Graph error", "no nodes found");
         throw "No suitable nodes have been found.";
       }
       else {
-        _.each(res[0][0], function(node) {
+        _.each(res, function(node) {
           if (node.vertex[attribute] === value) {
             var nodeToAdd = {};
             nodeToAdd._key = node.vertex._key;
@@ -664,7 +659,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
         }
       }
           
-      var ret = _.sortBy(
+      ret = _.sortBy(
         _.uniq(ret), function(e) {
           return e.toLowerCase();
         }
