@@ -601,6 +601,10 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       }
       builder.add("NumberOfCoordinators", VPackSlice::nullSlice());
       builder.add("NumberOfDBServers", VPackSlice::nullSlice());
+      builder.add(VPackValue("CleanedServers"));
+      {
+        VPackArrayBuilder dd(&builder);
+      }
       builder.add("Lock", VPackValue("UNLOCKED"));
       addEmptyVPackObject("MapLocalToID", builder);
       addEmptyVPackObject("Failed", builder);

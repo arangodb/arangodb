@@ -257,6 +257,7 @@ struct ClusterCommOperation {
   std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
   std::shared_ptr<ClusterCommCallback> callback;
   ClusterCommTimeout endTime;
+  ClusterCommTimeout initEndTime;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -374,7 +375,7 @@ class ClusterComm {
       std::shared_ptr<std::string const> body,
       std::unique_ptr<std::unordered_map<std::string, std::string>>& headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-      bool singleRequest = false);
+      bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit a single HTTP request to a shard synchronously.

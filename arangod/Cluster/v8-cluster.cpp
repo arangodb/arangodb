@@ -1406,7 +1406,7 @@ static void PrepareClusterCommRequest(
     std::unordered_map<std::string, std::string>& headerFields,
     ClientTransactionID& clientTransactionID,
     CoordTransactionID& coordTransactionID, double& timeout,
-    bool& singleRequest) {
+    bool& singleRequest, double& initTimeout) {
   v8::Isolate* isolate = args.GetIsolate();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
@@ -1486,6 +1486,10 @@ static void PrepareClusterCommRequest(
     TRI_GET_GLOBAL_STRING(SingleRequestKey);
     if (opt->Has(SingleRequestKey)) {
       singleRequest = TRI_ObjectToBoolean(opt->Get(SingleRequestKey));
+    }
+    TRI_GET_GLOBAL_STRING(InitTimeoutKey);
+    if (opt->Has(InitTimeoutKey)) {
+      initTimeout = TRI_ObjectToDouble(opt->Get(InitTimeoutKey));
     }
   }
   if (clientTransactionID == "") {
@@ -1645,6 +1649,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   //   - coordTransactionID   (number)
   //   - timeout              (number)
   //   - singleRequest        (boolean) default is false
+  //   - initTimeout          (number)
 
   ClusterComm* cc = ClusterComm::instance();
 
@@ -1661,15 +1666,17 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
+  double initTimeout = -1.0;
   bool singleRequest = false;
 
   PrepareClusterCommRequest(args, reqType, destination, path, *body,
                             *headerFields, clientTransactionID,
-                            coordTransactionID, timeout, singleRequest);
+                            coordTransactionID, timeout, singleRequest,
+                            initTimeout);
 
   OperationID opId = cc->asyncRequest(
       clientTransactionID, coordTransactionID, destination, reqType, path, body,
-      headerFields, 0, timeout, singleRequest);
+      headerFields, 0, timeout, singleRequest, initTimeout);
   ClusterCommResult res = cc->enquire(opId);
   if (res.status == CL_COMM_BACKEND_UNAVAILABLE) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1723,11 +1730,13 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
+  double initTimeout = -1.0;
   bool singleRequest = false;  // of no relevance here
 
   PrepareClusterCommRequest(args, reqType, destination, path, body,
                             *headerFields, clientTransactionID,
-                            coordTransactionID, timeout, singleRequest);
+                            coordTransactionID, timeout, singleRequest,
+                            initTimeout);
 
   std::unique_ptr<ClusterCommResult> res =
       cc->syncRequest(clientTransactionID, coordTransactionID, destination,

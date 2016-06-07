@@ -1,8 +1,8 @@
 
-@startDocuBlock JSF_post_api_index_skiplist
-@brief creates a skip-list
+@startDocuBlock JSF_post_api_index_persistent
+@brief creates a persistent index
 
-@RESTHEADER{POST /_api/index#skiplist, Create skip list}
+@RESTHEADER{POST /_api/index#persistent, Create a persistent index}
 
 @RESTQUERYPARAMETERS
 
@@ -10,7 +10,7 @@
 The collection name.
 
 @RESTBODYPARAM{type,string,required,string}
-must be equal to *"skiplist"*.
+must be equal to *"persistent"*.
 
 @RESTBODYPARAM{fields,array,required,string}
 an array of attribute paths.
@@ -23,7 +23,7 @@ if *true*, then create a sparse index.
 
 @RESTDESCRIPTION
 
-Creates a skip-list index for the collection *collection-name*, if
+Creates a persistent index for the collection *collection-name*, if
 it does not already exist. The call expects an object containing the index
 details.
 
@@ -51,7 +51,7 @@ is returned.
 
 @RESTRETURNCODE{400}
 If the collection already contains documents and you try to create a unique
-skip-list index in such a way that there are documents violating the
+persistent index in such a way that there are documents violating the
 uniqueness, then a *HTTP 400* is returned.
 
 @RESTRETURNCODE{404}
@@ -59,16 +59,16 @@ If the *collection-name* is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 
-Creating a skiplist index
+Creating a persistent index
 
-@EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewSkiplist}
+@EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewPersistent}
     var cn = "products";
     db._drop(cn);
     db._create(cn);
 
     var url = "/_api/index?collection=" + cn;
     var body = { 
-      type: "skiplist", 
+      type: "persistent", 
       unique: false, 
       fields: [ "a", "b" ] 
     };
@@ -81,16 +81,16 @@ Creating a skiplist index
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Creating a sparse skiplist index
+Creating a sparse persistent index
 
-@EXAMPLE_ARANGOSH_RUN{RestIndexCreateSparseSkiplist}
+@EXAMPLE_ARANGOSH_RUN{RestIndexCreateSparsePersistent}
     var cn = "products";
     db._drop(cn);
     db._create(cn);
 
     var url = "/_api/index?collection=" + cn;
     var body = { 
-      type: "skiplist", 
+      type: "persistent",
       unique: false, 
       sparse: true, 
       fields: [ "a" ] 

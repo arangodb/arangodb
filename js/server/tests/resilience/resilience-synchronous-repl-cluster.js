@@ -66,7 +66,7 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function waitForSynchronousReplication(database) {
-    console.info("Waiting for synchronous replication to settle...");
+    console.warn("Waiting for synchronous replication to settle...");
     global.ArangoClusterInfo.flush();
     cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
@@ -317,14 +317,16 @@ function SynchronousReplicationSuite () {
 
     setUp : function () {
       var systemCollServers = findCollectionServers("_system", "_graphs");
+      console.warn("System collections use servers:", systemCollServers);
       while (true) {
         db._drop(cn);
         c = db._create(cn, {numberOfShards: 1, replicationFactor: 2});
         var servers = findCollectionServers("_system", cn);
+        console.warn("Test collections uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
           return;
         }
-        console.info("Need to recreate collection to avoid system collection servers.");
+        console.warn("Need to recreate collection to avoid system collection servers.");
       }
     },
 

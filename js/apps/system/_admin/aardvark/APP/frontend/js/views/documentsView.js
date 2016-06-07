@@ -999,7 +999,7 @@
         total = $('#totalDocuments');
       }
       if (this.type === 'document') {
-        total.html(numeral(this.collection.getTotal()).format('0,0') + " document(s)");
+        total.html(numeral(this.collection.getTotal()).format('0,0') + " doc(s)");
       }
       if (this.type === 'edge') {
         total.html(numeral(this.collection.getTotal()).format('0,0') + " edge(s)");

@@ -8,7 +8,7 @@ upgrading to ArangoDB 3.0, and adjust any client programs if necessary.
 Building ArangoDB 3.0 from source now requires CMake.
 
 The pre-3.0 build system used a configure-based approach. The steps to build
-ArangoDB from source code in 2.8 were:
+ArangoDB 2.8 from source code were:
 
 ```
 make setup

@@ -510,6 +510,9 @@ def restheader(cargo, r=Regexen()):
     (fp, last) = cargo
 
     temp = parameters(last).split(',')
+    if temp == "":
+        raise Exception("Invalid restheader value. got empty string. Maybe missing closing bracket? " + path)
+
     (ucmethod, path) = temp[0].split()
 
     #TODO: hier checken, ob der letzte alles hatte (responses)
@@ -528,7 +531,7 @@ def restheader(cargo, r=Regexen()):
         raise Exception("Duplicate route")
 
     if currentDocuBlock == None:
-        raise Exception("No docublock started for this restheader: " + ucmethod + " " + path )
+        raise Exception("No docublock started for this restheader: " + ucmethod + " " + path)
 
     if lastDocuBlock != None and currentDocuBlock == lastDocuBlock:
         raise Exception("No new docublock started for this restheader: " + ucmethod + " " + path  + ' : ' + currentDocuBlock)
