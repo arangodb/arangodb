@@ -1703,9 +1703,9 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
           bool replicationWorked 
               = requests[i].done &&
                 requests[i].result.status == CL_COMM_RECEIVED &&
-                (requests[i].result.answer_code != 
-                     GeneralResponse::ResponseCode::ACCEPTED &&
-                 requests[i].result.answer_code != 
+                (requests[i].result.answer_code == 
+                     GeneralResponse::ResponseCode::ACCEPTED ||
+                 requests[i].result.answer_code == 
                      GeneralResponse::ResponseCode::CREATED);
           if (replicationWorked) {
             bool found;
@@ -2058,9 +2058,9 @@ OperationResult Transaction::modifyLocal(
         bool replicationWorked 
             = requests[i].done &&
               requests[i].result.status == CL_COMM_RECEIVED &&
-              (requests[i].result.answer_code != 
-                   GeneralResponse::ResponseCode::ACCEPTED &&
-               requests[i].result.answer_code != 
+              (requests[i].result.answer_code == 
+                   GeneralResponse::ResponseCode::ACCEPTED ||
+               requests[i].result.answer_code == 
                    GeneralResponse::ResponseCode::OK);
         if (replicationWorked) {
           bool found;
@@ -2319,9 +2319,9 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
         bool replicationWorked 
             = requests[i].done &&
               requests[i].result.status == CL_COMM_RECEIVED &&
-              (requests[i].result.answer_code != 
-                   GeneralResponse::ResponseCode::ACCEPTED &&
-               requests[i].result.answer_code != 
+              (requests[i].result.answer_code == 
+                   GeneralResponse::ResponseCode::ACCEPTED ||
+               requests[i].result.answer_code == 
                    GeneralResponse::ResponseCode::OK);
         if (replicationWorked) {
           bool found;
@@ -2535,9 +2535,9 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
           bool replicationWorked 
               = requests[i].done &&
                 requests[i].result.status == CL_COMM_RECEIVED &&
-                (requests[i].result.answer_code != 
-                     GeneralResponse::ResponseCode::ACCEPTED &&
-                 requests[i].result.answer_code != 
+                (requests[i].result.answer_code == 
+                     GeneralResponse::ResponseCode::ACCEPTED ||
+                 requests[i].result.answer_code == 
                      GeneralResponse::ResponseCode::OK);
           if (!replicationWorked) {
             auto const& followerInfo = document->followers();
