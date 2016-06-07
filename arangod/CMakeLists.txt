@@ -143,6 +143,9 @@ add_executable(${BIN_ARANGOD}
   Aql/Range.cpp
   Aql/RestAqlHandler.cpp
   Aql/Scopes.cpp
+  Aql/ShortestPathBlock.cpp
+  Aql/ShortestPathNode.cpp
+  Aql/ShortestPathOptions.cpp
   Aql/ShortStringStorage.cpp
   Aql/SortBlock.cpp
   Aql/SortCondition.cpp
@@ -151,6 +154,7 @@ add_executable(${BIN_ARANGOD}
   Aql/TraversalBlock.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
+  Aql/TraversalOptions.cpp
   Aql/V8Expression.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp

@@ -1875,7 +1875,7 @@ function transactionGraphSuite () {
   var cn1 = "UnitTestsVertices";
   var cn2 = "UnitTestsEdges";
 
-  var G = require('@arangodb/graph').Graph; 
+  var G = require('@arangodb/general-graph');
 
   var c1 = null;
   var c2 = null;
@@ -1918,16 +1918,13 @@ function transactionGraphSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRollbackGraphUpdates : function () {
-      var graph;
-
       try {
-        graph = new G('UnitTestsGraph'); 
-        graph.drop();
+        G._drop('UnitTestsGraph'); 
       }
       catch (err) {
       }
 
-      graph = new G('UnitTestsGraph', cn1, cn2);
+      var graph = G._create('UnitTestsGraph', [G._relation(cn2, cn1, cn1)]); 
       var gotHere = 0;
       
       assertEqual(0, db[cn1].count());
@@ -1938,20 +1935,20 @@ function transactionGraphSuite () {
         }, 
         action : function () {
           var result = { };
-          result.enxirvp = graph.addVertex(null, { _rev : null })._properties;
-          result.biitqtk = graph.addVertex(null, { _rev : null })._properties;
-          result.oboyuhh = graph.addEdge(graph.getVertex(result.enxirvp._id), graph.getVertex(result.biitqtk._id), null, { name: "john smith" })._properties;
+          result.enxirvp = graph[cn1].save({});
+          result.biitqtk = graph[cn1].save({});
+          result.oboyuhh = graph[cn2].save({_from: result.enxirvp._id, _to: result.biitqtk._id, name: "john smith" });
           result.cvwmkym = db[cn1].replace(result.enxirvp._id, { _rev : null });
           result.gsalfxu = db[cn1].replace(result.biitqtk._id, { _rev : null });
           result.xsjzbst = (function (){
-            graph.removeEdge(graph.getEdge(result.oboyuhh._id)); 
+            graph[cn2].remove(result.oboyuhh._id); 
             return true;
           }());
 
-          result.thizhdd = graph.addEdge(graph.getVertex(result.cvwmkym._id), graph.getVertex(result.gsalfxu._id), result.oboyuhh._key, { name: "david smith" });
+          result.thizhdd = graph[cn2].save({_from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: "david smith" });
           gotHere = 1;
 
-          result.rldfnre = graph.addEdge(graph.getVertex(result.cvwmkym._id), graph.getVertex(result.gsalfxu._id), result.oboyuhh._key, { name : "david smith" })._properties;
+          result.rldfnre = graph[cn2].save({_from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: "david smith" });
           gotHere = 2;
 
           return result;
@@ -1975,17 +1972,14 @@ function transactionGraphSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseBarriersOutsideGraphTransaction : function () {
-      var graph;
-
       try {
-        graph = new G('UnitTestsGraph'); 
-        graph.drop();
+        G._drop('UnitTestsGraph'); 
       }
       catch (err) {
       }
 
-      graph = new G('UnitTestsGraph', cn1, cn2);
-
+      var graph = G._create('UnitTestsGraph', [G._relation(cn2, cn1, cn1)]); 
+ 
       var obj = {
         collections: { 
           write: [ cn1, cn2 ]
@@ -1993,17 +1987,19 @@ function transactionGraphSuite () {
         action : function () {
           var result = { };
 
-          result.enxirvp = graph.addVertex(null, { _rev : null })._properties;
-          result.biitqtk = graph.addVertex(null, { _rev : null })._properties;
-          result.oboyuhh = graph.addEdge(graph.getVertex(result.enxirvp._id), graph.getVertex(result.biitqtk._id), null, { name : "john smith" })._properties;
+          result.enxirvp = graph[cn1].save({});
+          result.biitqtk = graph[cn1].save({});
+          result.oboyuhh = graph[cn2].save({_from: result.enxirvp._id, _to: result.biitqtk._id, name: "john smith" });
+          result.oboyuhh = graph[cn2].document(result.oboyuhh);
           result.cvwmkym = db[cn1].replace(result.enxirvp._id, { _rev : null });
           result.gsalfxu = db[cn1].replace(result.biitqtk._id, { _rev : null });
           result.xsjzbst = (function (){
-            graph.removeEdge(graph.getEdge(result.oboyuhh._id)); 
+            graph[cn2].remove(result.oboyuhh._id); 
             return true;
           }());
 
-          result.rldfnre = graph.addEdge(graph.getVertex(result.cvwmkym._id), graph.getVertex(result.gsalfxu._id), result.oboyuhh._key, { name : "david smith" })._properties;
+          graph[cn2].save({_from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: "david smith" });
+          result.rldfnre = graph[cn2].document(result.oboyuhh._key);
 
           return result;
         } 
@@ -2018,7 +2014,7 @@ function transactionGraphSuite () {
       
       assertTrue(result.oboyuhh._key.length > 0);
       assertEqual("john smith", result.oboyuhh.name);
-      assertEqual(null, result.oboyuhh.$label);
+      assertEqual(undefined, result.oboyuhh.$label);
       assertTrue(result.oboyuhh._from.length > 0);
       assertTrue(result.oboyuhh._to.length > 0);
       
@@ -2035,7 +2031,7 @@ function transactionGraphSuite () {
       assertTrue(result.rldfnre._key.length > 0);
       assertEqual(result.oboyuhh._key, result.rldfnre._key);
       assertEqual("david smith", result.rldfnre.name);
-      assertEqual(null, result.rldfnre.$label);
+      assertEqual(undefined, result.rldfnre.$label);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

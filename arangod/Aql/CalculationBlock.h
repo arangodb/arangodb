@@ -41,8 +41,6 @@ class CalculationBlock : public ExecutionBlock {
 
   ~CalculationBlock();
 
-  int initialize() override;
-
  private:
   /// @brief fill the target register in the item block with a reference to
   /// another variable

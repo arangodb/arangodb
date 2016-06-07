@@ -214,6 +214,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %token T_AGGREGATE "AGGREGATE keyword"
 
 %token T_GRAPH "GRAPH keyword"
+%token T_SHORTEST_PATH "SHORTEST_PATH keyword"
 %token T_DISTINCT "DISTINCT modifier"
 
 %token T_REMOVE "REMOVE command"
@@ -237,6 +238,9 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %token T_AND "and operator"
 %token T_OR "or operator"
 %token T_NIN "not in operator"
+
+%token T_REGEX_MATCH "~= operator"
+%token T_REGEX_NON_MATCH "~! operator"
 
 %token T_EQ "== operator"
 %token T_NE "!= operator"
@@ -285,7 +289,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %left T_OR 
 %left T_AND
 %nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE
-%left T_EQ T_NE T_LIKE 
+%left T_EQ T_NE T_LIKE T_REGEX_MATCH T_REGEX_NON_MATCH 
 %left T_IN T_NIN 
 %left T_LT T_GT T_LE T_GE
 %left T_RANGE
@@ -471,22 +475,48 @@ for_statement:
       auto node = parser->ast()->createNodeFor($2.value, $2.length, $4, true);
       parser->ast()->addOperation(node);
     }
-    | T_FOR variable_name T_IN graph_direction_steps expression graph_subject {
+    | T_FOR traversal_statement {
+    }
+    | T_FOR shortest_path_statement {
+    }
+  ;
+
+traversal_statement:
+    variable_name T_IN graph_direction_steps expression graph_subject options {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
-      auto node = parser->ast()->createNodeTraversal($2.value, $2.length, $4, $5, $6);
+      auto node = parser->ast()->createNodeTraversal($1.value, $1.length, $3, $4, $5, $6);
       parser->ast()->addOperation(node);
     }
-    | T_FOR variable_name T_COMMA variable_name T_IN graph_direction_steps expression graph_subject {
+    | variable_name T_COMMA variable_name T_IN graph_direction_steps expression graph_subject options {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
-      auto node = parser->ast()->createNodeTraversal($2.value, $2.length, $4.value, $4.length, $6, $7, $8);
+      auto node = parser->ast()->createNodeTraversal($1.value, $1.length, $3.value, $3.length, $5, $6, $7, $8);
       parser->ast()->addOperation(node);
     }
-    | T_FOR variable_name T_COMMA variable_name T_COMMA variable_name T_IN graph_direction_steps expression graph_subject {
+    | variable_name T_COMMA variable_name T_COMMA variable_name T_IN graph_direction_steps expression graph_subject options {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
-      auto node = parser->ast()->createNodeTraversal($2.value, $2.length, $4.value, $4.length, $6.value, $6.length, $8, $9, $10);
+      auto node = parser->ast()->createNodeTraversal($1.value, $1.length, $3.value, $3.length, $5.value, $5.length, $7, $8, $9, $10);
       parser->ast()->addOperation(node);
     }
   ;
+
+shortest_path_statement:
+    variable_name T_IN graph_direction T_SHORTEST_PATH expression T_STRING expression graph_subject options {
+      if (!TRI_CaseEqualString($6.value, "TO")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'TO'", $6.value, yylloc.first_line, yylloc.first_column);
+      }
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+      auto node = parser->ast()->createNodeShortestPath($1.value, $1.length, $3, $5, $7, $8, $9);
+      parser->ast()->addOperation(node);
+    }
+    | variable_name T_COMMA variable_name T_IN graph_direction T_SHORTEST_PATH expression T_STRING expression graph_subject options {
+      if (!TRI_CaseEqualString($8.value, "TO")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'TO'", $8.value, yylloc.first_line, yylloc.first_column);
+      }
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+      auto node = parser->ast()->createNodeShortestPath($1.value, $1.length, $3.value, $3.length, $5, $7, $9, $10, $11);
+      parser->ast()->addOperation(node);
+    }
+  ; 
 
 filter_statement:
     T_FILTER expression {
@@ -1146,6 +1176,19 @@ operator_binary:
       arguments->addMember($1);
       arguments->addMember($3);
       $$ = parser->ast()->createNodeFunctionCall("LIKE", arguments);
+    }
+  | expression T_REGEX_MATCH expression {
+      AstNode* arguments = parser->ast()->createNodeArray(2);
+      arguments->addMember($1);
+      arguments->addMember($3);
+      $$ = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments);
+    }
+  | expression T_REGEX_NON_MATCH expression {
+      AstNode* arguments = parser->ast()->createNodeArray(2);
+      arguments->addMember($1);
+      arguments->addMember($3);
+      AstNode* node = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments);
+      $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, node);
     }
   | expression quantifier T_EQ expression {
       $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, $1, $4, $2);

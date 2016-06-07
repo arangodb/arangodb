@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.0.2.  */
+/* A Bison parser, made by GNU Bison 3.0.4.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2013 Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -60,65 +60,68 @@ extern int Aqldebug;
     T_INTO = 269,
     T_AGGREGATE = 270,
     T_GRAPH = 271,
-    T_DISTINCT = 272,
-    T_REMOVE = 273,
-    T_INSERT = 274,
-    T_UPDATE = 275,
-    T_REPLACE = 276,
-    T_UPSERT = 277,
-    T_NULL = 278,
-    T_TRUE = 279,
-    T_FALSE = 280,
-    T_STRING = 281,
-    T_QUOTED_STRING = 282,
-    T_INTEGER = 283,
-    T_DOUBLE = 284,
-    T_PARAMETER = 285,
-    T_ASSIGN = 286,
-    T_NOT = 287,
-    T_AND = 288,
-    T_OR = 289,
-    T_NIN = 290,
-    T_EQ = 291,
-    T_NE = 292,
-    T_LT = 293,
-    T_GT = 294,
-    T_LE = 295,
-    T_GE = 296,
-    T_LIKE = 297,
-    T_PLUS = 298,
-    T_MINUS = 299,
-    T_TIMES = 300,
-    T_DIV = 301,
-    T_MOD = 302,
-    T_QUESTION = 303,
-    T_COLON = 304,
-    T_SCOPE = 305,
-    T_RANGE = 306,
-    T_COMMA = 307,
-    T_OPEN = 308,
-    T_CLOSE = 309,
-    T_OBJECT_OPEN = 310,
-    T_OBJECT_CLOSE = 311,
-    T_ARRAY_OPEN = 312,
-    T_ARRAY_CLOSE = 313,
-    T_OUTBOUND = 314,
-    T_INBOUND = 315,
-    T_ANY = 316,
-    T_ALL = 317,
-    T_NONE = 318,
-    UMINUS = 319,
-    UPLUS = 320,
-    FUNCCALL = 321,
-    REFERENCE = 322,
-    INDEXED = 323,
-    EXPANSION = 324
+    T_SHORTEST_PATH = 272,
+    T_DISTINCT = 273,
+    T_REMOVE = 274,
+    T_INSERT = 275,
+    T_UPDATE = 276,
+    T_REPLACE = 277,
+    T_UPSERT = 278,
+    T_NULL = 279,
+    T_TRUE = 280,
+    T_FALSE = 281,
+    T_STRING = 282,
+    T_QUOTED_STRING = 283,
+    T_INTEGER = 284,
+    T_DOUBLE = 285,
+    T_PARAMETER = 286,
+    T_ASSIGN = 287,
+    T_NOT = 288,
+    T_AND = 289,
+    T_OR = 290,
+    T_NIN = 291,
+    T_REGEX_MATCH = 292,
+    T_REGEX_NON_MATCH = 293,
+    T_EQ = 294,
+    T_NE = 295,
+    T_LT = 296,
+    T_GT = 297,
+    T_LE = 298,
+    T_GE = 299,
+    T_LIKE = 300,
+    T_PLUS = 301,
+    T_MINUS = 302,
+    T_TIMES = 303,
+    T_DIV = 304,
+    T_MOD = 305,
+    T_QUESTION = 306,
+    T_COLON = 307,
+    T_SCOPE = 308,
+    T_RANGE = 309,
+    T_COMMA = 310,
+    T_OPEN = 311,
+    T_CLOSE = 312,
+    T_OBJECT_OPEN = 313,
+    T_OBJECT_CLOSE = 314,
+    T_ARRAY_OPEN = 315,
+    T_ARRAY_CLOSE = 316,
+    T_OUTBOUND = 317,
+    T_INBOUND = 318,
+    T_ANY = 319,
+    T_ALL = 320,
+    T_NONE = 321,
+    UMINUS = 322,
+    UPLUS = 323,
+    FUNCCALL = 324,
+    REFERENCE = 325,
+    INDEXED = 326,
+    EXPANSION = 327
   };
 #endif
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef union YYSTYPE YYSTYPE;
+
 union YYSTYPE
 {
 #line 19 "Aql/grammar.y" /* yacc.c:1909  */
@@ -131,8 +134,10 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 135 "Aql/grammar.hpp" /* yacc.c:1909  */
+#line 138 "Aql/grammar.hpp" /* yacc.c:1909  */
 };
+
+typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif

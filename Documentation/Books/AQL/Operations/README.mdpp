@@ -14,3 +14,4 @@ The following high-level operations are described here after:
 * [REPLACE](Replace.md): Completely replace documents in a collection.
 * [INSERT](Insert.md): Insert new documents into a collection.
 * [UPSERT](Upsert.md): Update an existing document, or create it in the case it does not exist.
+* [WITH](With.md): Specify collections used in a query (at query begin only).

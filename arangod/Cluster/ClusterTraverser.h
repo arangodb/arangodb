@@ -46,9 +46,14 @@ class ClusterTraverser : public Traverser {
       : Traverser(opts, expressions),
         _edgeCols(edgeCollections),
         _dbname(dbname),
-        _vertexGetter(this),
         _edgeGetter(this),
-        _trx(trx) {}
+        _trx(trx) {
+          if (opts.uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
+            _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
+          } else {
+            _vertexGetter = std::make_unique<VertexGetter>(this);
+          }
+        }
 
   ~ClusterTraverser() {
   }
@@ -64,16 +69,35 @@ class ClusterTraverser : public Traverser {
   bool vertexMatchesCondition(arangodb::velocypack::Slice const&,
                               std::vector<TraverserExpression*> const&);
 
-  class VertexGetter {
+  class VertexGetter : public arangodb::basics::VertexGetter<std::string, std::string> {
    public:
     explicit VertexGetter(ClusterTraverser* traverser)
         : _traverser(traverser) {}
 
-    bool operator()(std::string const&, std::string const&, size_t,
-                    std::string&);
+    virtual ~VertexGetter() = default;
+
+    virtual bool getVertex(std::string const&, std::string const&, size_t,
+                           std::string&) override;
+    virtual void reset();
+
+   protected:
+    ClusterTraverser* _traverser;
+  };
+
+  class UniqueVertexGetter : public VertexGetter {
+   public:
+    explicit UniqueVertexGetter(ClusterTraverser* traverser)
+        : VertexGetter(traverser) {}
+
+    ~UniqueVertexGetter() = default;
+
+    bool getVertex(std::string const&, std::string const&, size_t,
+                    std::string&) override;
+
+    void reset() override;
 
    private:
-    ClusterTraverser* _traverser;
+    std::unordered_set<std::string> _returnedVertices;
   };
 
   class EdgeGetter {
@@ -105,7 +129,7 @@ class ClusterTraverser : public Traverser {
 
   std::string _dbname;
 
-  VertexGetter _vertexGetter;
+  std::unique_ptr<VertexGetter> _vertexGetter;
 
   EdgeGetter _edgeGetter;
 

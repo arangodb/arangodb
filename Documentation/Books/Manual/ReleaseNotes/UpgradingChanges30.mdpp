@@ -8,7 +8,7 @@ upgrading to ArangoDB 3.0, and adjust any client programs if necessary.
 Building ArangoDB 3.0 from source now requires CMake.
 
 The pre-3.0 build system used a configure-based approach. The steps to build
-ArangoDB from source code in 2.8 were:
+ArangoDB 2.8 from source code were:
 
 ```
 make setup
@@ -199,6 +199,10 @@ when the query is executed.
 !SUBSECTION Keywords
 
 `LIKE` is now a keyword in AQL. Using `LIKE` in either case as an attribute or collection 
+name in AQL queries now requires quoting.
+
+
+`SHORTEST_PATH` is now a keyword in AQL. Using `SHORTEST_PATH` in either case as an attribute or collection 
 name in AQL queries now requires quoting.
 
 !SUBSECTION Subqueries

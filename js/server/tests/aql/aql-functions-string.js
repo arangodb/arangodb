@@ -225,8 +225,13 @@ function ahuacatlStringFunctionsTestSuite () {
         
         query = "RETURN NOOPT(V8(REGEX_TEST(@what, @re)))";
         assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        
+        query = "RETURN @what =~ @re";
+        assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        
+        query = "RETURN @what !~ @re";
+        assertEqual(!v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
       });
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////

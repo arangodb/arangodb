@@ -784,7 +784,6 @@ function GeneralGraphCreationSuite() {
   };
 }
 
-
 function GeneralGraphAQLQueriesSuite() {
   'use strict';
   // Definition of names
@@ -1989,6 +1988,16 @@ function EdgesAndVerticesSuite() {
     return ids;
   };
 
+  var pickStartByName = function (name) {
+    var exampleFilter = `FILTER x.first_name == "${name}" RETURN x`;
+    return `FOR start IN UNION(
+       (FOR x IN ${vc1} ${exampleFilter}),
+       (FOR x IN ${vc2} ${exampleFilter}),
+       (FOR x IN ${vc3} ${exampleFilter}),
+       (FOR x IN ${vc4} ${exampleFilter}))`;
+
+  };
+
   return {
 
     setUp : function() {
@@ -2013,37 +2022,36 @@ function EdgesAndVerticesSuite() {
 
     test_connectingEdges : function () {
       fillCollections();
-      var res = g._getConnectingEdges({first_name: "Tam"}, {first_name: "Tem"}, {});
+      var query = `${pickStartByName("Tam")} FOR v, e IN ANY start GRAPH "${unitTestGraphName}" FILTER v.first_name == "Tem" RETURN e`;
+      var res = db._query(query).toArray();
       assertEqual(res.length, 3);
     },
 
     test_connectingEdgesWithEdgeCollectionRestriction : function () {
       fillCollections();
-      var res = g._getConnectingEdges({first_name: "Tam"}, null, {});
+      var query = `${pickStartByName("Tam")} FOR v, e IN ANY start GRAPH "${unitTestGraphName}" RETURN DISTINCT e`;
+      var res = db._query(query).toArray();
       assertEqual(res.length, 13);
-      res = g._getConnectingEdges({first_name: "Tam"},
-                                  null,
-                                  {edgeCollectionRestriction : "unitTestEdgeCollection2"});
+
+      query = `${pickStartByName("Tam")} FOR v, e IN ANY start ${ec2} RETURN DISTINCT e`;
+      res = db._query(query).toArray();
       assertEqual(res.length, 5);
     },
 
     test_connectingEdgesWithVertexCollectionRestriction : function () {
       fillCollections();
-      var res = g._getConnectingEdges(null, null, {});
+      var query = `FOR start IN ${vc1} FOR v, e IN ANY start GRAPH "${unitTestGraphName}" RETURN DISTINCT e`;
+      var res = db._query(query).toArray();
       assertEqual(res.length, 13);
-      res = g._getConnectingEdges(null, null,
-                                      {vertex1CollectionRestriction : "unitTestVertexCollection1"});
-      assertEqual(res.length, 13);
-      res = g._getConnectingEdges(null, null, {
-        vertex1CollectionRestriction : "unitTestVertexCollection1",
-        vertex2CollectionRestriction : "unitTestVertexCollection3"
-      });
+      query = `FOR start IN ${vc1} FOR v, e IN ANY start GRAPH "${unitTestGraphName}" FILTER IS_SAME_COLLECTION("${vc3}", v) RETURN DISTINCT e`;
+      res = db._query(query).toArray();
       assertEqual(res.length, 5);
     },
 
     test_connectingEdgesWithIds : function () {
       var ids = fillCollections();
-      var res = g._getConnectingEdges(ids.vId11, ids.vId13, {});
+      var query = `FOR v, e IN ANY "${ids.vId11}" GRAPH "${unitTestGraphName}" FILTER v._id == "${ids.vId13}" RETURN e`;
+      var res = db._query(query).toArray();
       assertEqual(res.length, 2);
     },
 
@@ -2971,9 +2979,6 @@ function OrphanCollectionSuite() {
       }
     }
   };
-
-
-
 }
 
 function MeasurementsSuite() {
@@ -3052,31 +3057,6 @@ function MeasurementsSuite() {
       }
     },
 
-    test_absoluteEccentricity : function () {
-      var a = g._absoluteEccentricity({});
-      assertEqual(Object.keys(a).length , 10);
-    },
-
-    test_eccentricity : function () {
-      var a = g._eccentricity({});
-      assertEqual(Object.keys(a).length , 10);
-    },
-    test_absoluteCloseness : function () {
-      var a = g._absoluteCloseness({});
-      assertEqual(Object.keys(a).length , 10);
-    },
-    test_closeness : function () {
-      var a = g._closeness({});
-      assertEqual(Object.keys(a).length , 10);
-    },
-    test_absoluteBetweenness : function () {
-      var a = g._absoluteBetweenness({});
-      assertEqual(Object.keys(a).length , 10);
-    },
-    test_betweenness : function () {
-      var a = g._betweenness({});
-      assertEqual(Object.keys(a).length , 10);
-    },
     test_radius : function () {
       var a = g._radius({});
       assertEqual(a , 3);
@@ -3084,11 +3064,6 @@ function MeasurementsSuite() {
     test_diameter : function () {
       var a = g._diameter({});
       assertEqual(a , 5);
-    },
-
-    test_paths : function () {
-      var a = g._paths({maxLength : 2});
-      assertEqual(a[0].length , 28);
     },
 
     test_shortestPaths : function () {
@@ -3099,7 +3074,7 @@ function MeasurementsSuite() {
         {first_name: 'Tam'},
         {first_name: 'Tem', age : 20}
       ]);
-      assertEqual(a[0].length , 9);
+      assertEqual(a.length , 9);
     },
 
     test_distanceTo : function () {
@@ -3115,6 +3090,459 @@ function MeasurementsSuite() {
   };
 }
 
+function MeasurementsMovedFromAQLSuite() {
+  'use strict';
+
+  const v1 = "UnitTests_Berliner";
+  const v2 = "UnitTests_Hamburger";
+  const v3 = "UnitTests_Frankfurter";
+  const v4 = "UnitTests_Leipziger";
+  var vertexIds = {};
+  const graphName = "werKenntWen";
+  var g;
+
+  var validateNumericValues = function (actual, expected) {
+    assertEqual(Object.keys(actual).sort(), Object.keys(expected).sort());
+    for (let k of Object.keys(expected)) {
+      assertEqual(actual[k].toFixed(4), expected[k].toFixed(4));
+    }
+  };
+
+  return {
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      db._drop(v1);
+      db._drop(v2);
+      db._drop(v3);
+      db._drop(v4);
+      db._drop("UnitTests_KenntAnderenBerliner");
+      db._drop("UnitTests_KenntAnderen");
+
+      var KenntAnderenBerliner = "UnitTests_KenntAnderenBerliner";
+      var KenntAnderen = "UnitTests_KenntAnderen";
+
+      var Berlin = db._create(v1);
+      var Hamburg = db._create(v2);
+      var Frankfurt = db._create(v3);
+      var Leipzig = db._create(v4);
+      db._createEdgeCollection(KenntAnderenBerliner);
+      db._createEdgeCollection(KenntAnderen);
+
+      var Anton = Berlin.save({ _key: "Anton", gender: "male", age: 20});
+      var Berta = Berlin.save({ _key: "Berta", gender: "female", age: 25});
+      var Caesar = Hamburg.save({ _key: "Caesar", gender: "male", age: 30});
+      var Dieter = Hamburg.save({ _key: "Dieter", gender: "male", age: 20});
+      var Emil = Frankfurt.save({ _key: "Emil", gender: "male", age: 25});
+      var Fritz = Frankfurt.save({ _key: "Fritz", gender: "male", age: 30});
+      var Gerda = Leipzig.save({ _key: "Gerda", gender: "female", age: 40});
+
+      vertexIds.Anton = Anton._id;
+      vertexIds.Berta = Berta._id;
+      vertexIds.Caesar = Caesar._id;
+      vertexIds.Dieter = Dieter._id;
+      vertexIds.Emil = Emil._id;
+      vertexIds.Fritz = Fritz._id;
+      vertexIds.Gerda = Gerda._id;
+
+      try {
+        db._collection("_graphs").remove(graphName);
+      } catch (ignore) {
+      }
+      g = graph._create(
+        graphName,
+        graph._edgeDefinitions(
+          graph._relation(KenntAnderenBerliner, v1, v1),
+          graph._relation(KenntAnderen,
+            [v1, v2, v3, v4],
+            [v1, v2, v3, v4]
+          )
+        )
+      );
+
+      function makeEdge(from, to, collection, distance) {
+        collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1], entfernung: distance});
+      }
+
+      makeEdge(Berta._id, Anton._id, g[KenntAnderenBerliner], 0.1);
+      makeEdge(Caesar._id, Anton._id, g[KenntAnderen], 350);
+      makeEdge(Caesar._id, Berta._id, g[KenntAnderen], 250.1);
+      makeEdge(Berta._id, Gerda._id, g[KenntAnderen], 200);
+      makeEdge(Gerda._id, Dieter._id, g[KenntAnderen], "blub");
+      makeEdge(Dieter._id, Emil._id, g[KenntAnderen], 300);
+      makeEdge(Emil._id, Fritz._id, g[KenntAnderen], 0.2);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      graph._drop("werKenntWen", true);
+    },
+
+    // Test Radius
+    testRadiusDefault: function () {
+      var actual = g._radius();
+      assertEqual(actual, 3);
+    },
+
+    testRadiusWeight: function () {
+      var actual = g._radius({weightAttribute: "entfernung", defaultWeight: 80});
+      assertEqual(actual.toFixed(1), 450.1);
+    },
+
+    testRadiusInbound: function () {
+      var actual = g._radius({direction: "inbound"});
+      assertEqual(actual, 1);
+    },
+
+    testRadiusInboundWeight: function () {
+      var actual = g._radius({direction: "inbound", weightAttribute: "entfernung", defaultWeight: 80});
+      assertEqual(actual.toFixed(1), 250.1);
+    },
+
+    testRadiusOutbound: function () {
+      var actual = g._radius({direction: "outbound"});
+      assertEqual(actual, 1);
+    },
+
+    testRadiusOutboundWeight: function () {
+      var actual = g._radius({direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      assertEqual(actual.toFixed(1), 0.2);
+    },
+
+
+    // Test Diameter
+
+    testDiameterDefault: function () {
+      var actual = g._diameter();
+      assertEqual(actual, 5);
+    },
+
+    testDiameterWeight: function () {
+      var actual = g._diameter({weightAttribute: "entfernung", defaultWeight: 80});
+      assertEqual(actual.toFixed(1), 830.3);
+    },
+
+    testDiameterInbound: function () {
+      var actual = g._diameter({direction: "inbound"});
+      assertEqual(actual, 5);
+    },
+
+    testDiameterInboundWeight: function () {
+      var actual = g._diameter({direction: "inbound", weightAttribute: "entfernung", defaultWeight: 80});
+      assertEqual(actual.toFixed(1), 830.3);
+    },
+
+    testDiameterOutbound: function () {
+      var actual = g._diameter({direction: "outbound"});
+      assertEqual(actual, 5);
+    },
+
+    testDiameterOutboundWeight: function () {
+      var actual = g._diameter({direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      assertEqual(actual.toFixed(1), 830.3);
+    },
+
+    testAbsoluteEccentricityDefault: function () {
+      var actual = g._absoluteEccentricity(vertexIds.Anton);
+      var expected = {};
+      expected[vertexIds.Anton] = 5;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityWeight: function () {
+      var actual = g._absoluteEccentricity(vertexIds.Anton, {weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Anton] = 580.3;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityInbound: function () {
+      var actual = g._absoluteEccentricity(vertexIds.Anton, {direction: "inbound"});
+      var expected = {};
+      expected[vertexIds.Anton] = 1;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityInboundWeight: function () {
+      var actual = g._absoluteEccentricity(vertexIds.Anton, {direction: "inbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Anton] = 250.2;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityOutbound: function () {
+      var actual = g._absoluteEccentricity(vertexIds.Gerda, {direction: "outbound"});
+      var expected = {};
+      expected[vertexIds.Gerda] = 3;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityOutboundWeight: function () {
+      var actual = g._absoluteEccentricity(vertexIds.Gerda, {direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Gerda] = 380.2;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityExample: function () {
+      var actual = g._absoluteEccentricity({gender: "female"}, {direction: "outbound"});
+      var expected = {};
+      expected[vertexIds.Berta] = 4;
+      expected[vertexIds.Gerda] = 3;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityExampleWeight: function () {
+      var actual = g._absoluteEccentricity({gender: "female"}, {direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Berta] = 580.2;
+      expected[vertexIds.Gerda] = 380.2;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityAll: function () {
+      var actual = g._absoluteEccentricity({}, {direction: "outbound"});
+      var expected = {};
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 4;
+      expected[vertexIds.Caesar] = 5;
+      expected[vertexIds.Dieter] = 2;
+      expected[vertexIds.Emil] = 1;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 3;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityAllWeight: function () {
+      var actual = g._absoluteEccentricity({}, {direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 580.2;
+      expected[vertexIds.Caesar] = 830.3;
+      expected[vertexIds.Dieter] = 300.2;
+      expected[vertexIds.Emil] = 0.2;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 380.2;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testEccentricityOutbound: function () {
+      var actual = g._eccentricity({direction: "outbound"});
+      var expected = {};
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] =  1 / 4;
+      expected[vertexIds.Caesar] = 1 / 5;
+      expected[vertexIds.Dieter] = 1 / 2;
+      expected[vertexIds.Emil] = 1 / 1;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 1 / 3;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testEccentricityOutboundWeight: function () {
+      var actual = g._eccentricity({direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 0.2 / 580.2;
+      expected[vertexIds.Caesar] = 0.2 / 830.3;
+      expected[vertexIds.Dieter] = 0.2 / 300.2;
+      expected[vertexIds.Emil] = 0.2 / 0.2;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 0.2 / 380.2;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testFarness: function () {
+      var actual = g._farness(vertexIds.Anton);
+      var expected = { };
+      expected[vertexIds.Anton] = 16;
+      validateNumericValues(actual, expected);
+    },
+
+    testFarnessOutbound: function () {
+      var actual = g._farness(vertexIds.Anton, {direction: "outbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      validateNumericValues(actual, expected);
+    },
+
+    testFarnessExampleWeight: function () {
+      var actual = g._farness({gender: "male"}, {weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Anton] = 1890.9;
+      expected[vertexIds.Caesar] = 3140.9;
+      expected[vertexIds.Dieter] = 1770.4;
+      expected[vertexIds.Emil] = 2670.4;
+      expected[vertexIds.Fritz] = 2671.4;
+      validateNumericValues(actual, expected);
+
+      // Legacy
+      actual = g._absoluteCloseness({gender: "male"}, {weightAttribute: "entfernung", defaultWeight: 80});
+      validateNumericValues(actual, expected);
+    },
+
+    testFarnessAll: function () {
+      var actual = g._farness({});
+      var expected = { };
+      expected[vertexIds.Anton] = 16;
+      expected[vertexIds.Berta] = 12;
+      expected[vertexIds.Caesar] = 16;
+      expected[vertexIds.Dieter] = 12;
+      expected[vertexIds.Emil] = 15;
+      expected[vertexIds.Fritz] = 20;
+      expected[vertexIds.Gerda] = 11;
+      validateNumericValues(actual, expected);
+    },
+
+    testFarnessAllOutbound: function () {
+      var actual = g._farness({}, {direction: "outbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 11;
+      expected[vertexIds.Caesar] = 16;
+      expected[vertexIds.Dieter] = 3;
+      expected[vertexIds.Emil] = 1;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 6;
+      validateNumericValues(actual, expected);
+    },
+
+    testClosenessDefault: function () {
+      var actual = g._closeness();
+      var expected = { };
+      expected[vertexIds.Anton] = 11 / 16;
+      expected[vertexIds.Berta] = 11 / 12;
+      expected[vertexIds.Caesar] = 11 / 16;
+      expected[vertexIds.Dieter] = 11 / 12;
+      expected[vertexIds.Emil] = 11 / 15;
+      expected[vertexIds.Fritz] = 11 / 20;
+      expected[vertexIds.Gerda] = 11 / 11;
+      validateNumericValues(actual, expected);
+    },
+
+    testClosenessOutbound: function () {
+      var actual = g._closeness({direction: "outbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 1 / 11;
+      expected[vertexIds.Caesar] = 1 / 16;
+      expected[vertexIds.Dieter] = 1 / 3;
+      expected[vertexIds.Emil] = 1 / 1;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 1 / 6;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteBetweness: function () {
+      var actual = g._absoluteBetweenness(vertexIds.Anton);
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      validateNumericValues(actual, expected);
+    },
+    
+    testAbsoluteBetwenessAll: function () {
+      var actual = g._absoluteBetweenness({});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 8;
+      expected[vertexIds.Caesar] = 0;
+      expected[vertexIds.Dieter] = 8;
+      expected[vertexIds.Emil] = 5;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 9;
+      validateNumericValues(actual, expected);
+    },
+    
+    testAbsoluteBetwenessExample: function () {
+      var actual = g._absoluteBetweenness({gender: "female"});
+      var expected = { };
+      expected[vertexIds.Berta] = 8;
+      expected[vertexIds.Gerda] = 9;
+      validateNumericValues(actual, expected);
+    },
+ 
+    testAbsoluteBetwenessAllOutbound: function () {
+      var actual = g._absoluteBetweenness({}, {direction: "outbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 4;
+      expected[vertexIds.Caesar] = 0;
+      expected[vertexIds.Dieter] = 6;
+      expected[vertexIds.Emil] = 4;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 6;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteBetwenessAllInbound: function () {
+      var actual = g._absoluteBetweenness({}, {direction: "inbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 4;
+      expected[vertexIds.Caesar] = 0;
+      expected[vertexIds.Dieter] = 6;
+      expected[vertexIds.Emil] = 4;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 6;
+      validateNumericValues(actual, expected);
+    },
+
+    testBetwenessAny: function () {
+      var actual = g._betweenness();
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 8 / 9;
+      expected[vertexIds.Caesar] = 0;
+      expected[vertexIds.Dieter] = 8 / 9;
+      expected[vertexIds.Emil] = 5 / 9;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 9 / 9;
+      validateNumericValues(actual, expected);
+    },
+    
+    testBetwenessOutbound: function () {
+      var actual = g._betweenness({direction: "outbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 4 / 6;
+      expected[vertexIds.Caesar] = 0;
+      expected[vertexIds.Dieter] = 6 / 6;
+      expected[vertexIds.Emil] = 4 / 6;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 6 / 6;
+      validateNumericValues(actual, expected);
+    },
+
+    testBetwenessInbound: function () {
+      var actual = g._betweenness({direction: "inbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 4 / 6;
+      expected[vertexIds.Caesar] = 0;
+      expected[vertexIds.Dieter] = 6 / 6;
+      expected[vertexIds.Emil] = 4 / 6;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 6 / 6;
+      validateNumericValues(actual, expected);
+    }
+
+
+
+  };
+}
 
 
 
@@ -3123,13 +3551,16 @@ function MeasurementsSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
+// OBSOLETE!
+// jsunity.run(GeneralGraphAQLQueriesSuite);
+// jsunity.run(ChainedFluentAQLResultsSuite);
+// jsunity.run(GeneralGraphCommonNeighborsSuite);
+
 jsunity.run(EdgesAndVerticesSuite);
-jsunity.run(GeneralGraphCommonNeighborsSuite);
-jsunity.run(GeneralGraphAQLQueriesSuite);
 jsunity.run(GeneralGraphCreationSuite);
-jsunity.run(ChainedFluentAQLResultsSuite);
 jsunity.run(OrphanCollectionSuite);
 jsunity.run(MeasurementsSuite);
+jsunity.run(MeasurementsMovedFromAQLSuite);
 
 return jsunity.done();
 

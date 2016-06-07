@@ -26,6 +26,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -611,15 +612,29 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
     if (becauseOfCurrent) {
       ci->invalidateCurrent();
     }
+    
+    // only warn if the application server is still there and dispatching
+    // should succeed
+    bool warn = false;
+    application_features::ApplicationServer* server = application_features::ApplicationServer::server;
+    if (server != nullptr) {
+      auto state = server->state();
+      warn = (state != application_features::ServerState::IN_STOP && 
+              state != application_features::ServerState::IN_UNPREPARE &&
+              state != application_features::ServerState::STOPPED &&
+              state != application_features::ServerState::ABORT);
+    }
 
-    LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Dispatching Sync";
+    LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "dispatching sync";
     // schedule a job for the change
     std::unique_ptr<arangodb::rest::Job> job(new DBServerAgencySync(this));
 
     auto dispatcher = DispatcherFeature::DISPATCHER;
     if (dispatcher == nullptr) {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT)
-          << "could not schedule dbserver sync - dispatcher gone.";
+      if (warn) {
+        LOG_TOPIC(ERR, Logger::HEARTBEAT)
+            << "could not schedule dbserver sync - dispatcher gone.";
+      }
       return false;
     }
     if (dispatcher->addJob(job, false) == TRI_ERROR_NO_ERROR) {
@@ -628,7 +643,10 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
     }
     MUTEX_LOCKER(mutexLocker, _statusLock);
     _isDispatchingChange = false;
-    LOG_TOPIC(ERR, Logger::HEARTBEAT) << "could not schedule dbserver sync";
+
+    if (warn) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "could not schedule dbserver sync";
+    }
   }
   return false;
 }
