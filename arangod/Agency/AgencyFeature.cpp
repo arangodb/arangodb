@@ -159,26 +159,27 @@ void AgencyFeature::prepare() {
 }
 
 void AgencyFeature::start() {
+
   if (!isEnabled()) {
     return;
   }
-
+  
   // TODO: Port this to new options handling
   std::string endpoint;
   std::string port = "8529";
-
+  
   EndpointFeature* endpointFeature =
-      ApplicationServer::getFeature<EndpointFeature>("Endpoint");
+    ApplicationServer::getFeature<EndpointFeature>("Endpoint");
   auto endpoints = endpointFeature->httpEndpoints();
-
+  
   if (!endpoints.empty()) {
-    size_t pos = endpoint.find(':', 10);
-
+    size_t pos = endpoints[0].find(':',10);
+    
     if (pos != std::string::npos) {
-      port = endpoint.substr(pos + 1, endpoint.size() - pos);
+      port = endpoints[0].substr(pos + 1, endpoints[0].size() - pos);
     }
   }
-
+  
   endpoint = std::string("tcp://localhost:" + port);
 
   _agent.reset(new consensus::Agent(consensus::config_t(
