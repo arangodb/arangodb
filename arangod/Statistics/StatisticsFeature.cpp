@@ -54,7 +54,7 @@ void StatisticsFeature::start() {
   TRI_InitializeStatistics();
 }
 
-void StatisticsFeature::stop() {
+void StatisticsFeature::unprepare() {
   TRI_ShutdownStatistics();
   STATISTICS = nullptr;
 }

@@ -33,7 +33,8 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
-  void stop() override final;
+  void unprepare() override final;
+
   bool isReady() const {
     return _isReady;
   }

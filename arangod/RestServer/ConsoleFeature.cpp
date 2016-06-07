@@ -60,7 +60,7 @@ void ConsoleFeature::start() {
   _consoleThread->start();
 }
 
-void ConsoleFeature::stop() {
+void ConsoleFeature::unprepare() {
   if (_operationMode != OperationMode::MODE_CONSOLE) {
     return;
   }

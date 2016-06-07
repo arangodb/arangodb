@@ -625,7 +625,7 @@
       task: function() {
         // needs to be big enough for assets
         return createSystemCollection("_routing", {
-          journalSize: 8 * 1024 * 1024,
+          journalSize: 4 * 1024 * 1024,
           replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: "_graphs"
         });
@@ -692,7 +692,7 @@
 
       task: function() {
         return createSystemCollection("_aqlfunctions", {
-          journalSize: 2 * 1024 * 1024,
+          journalSize: 1 * 1024 * 1024,
           replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: "_graphs"
         });
@@ -763,7 +763,7 @@
 
       task: function() {
         return createSystemCollection("_jobs", {
-          journalSize: 4 * 1024 * 1024,
+          journalSize: 2 * 1024 * 1024,
           replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: "_graphs"
         });

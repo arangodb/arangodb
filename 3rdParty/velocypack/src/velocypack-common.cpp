@@ -59,8 +59,7 @@ static_assert(sizeof(std::size_t) == sizeof(uint64_t),
 
 int64_t arangodb::velocypack::currentUTCDateValue() {
   return static_cast<int64_t>(
-      std::chrono::system_clock::now().time_since_epoch().count() /
-      std::chrono::milliseconds(1).count());
+      std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 }
 
 static_assert(sizeof(arangodb::velocypack::ValueLength) >= sizeof(SIZE_MAX),

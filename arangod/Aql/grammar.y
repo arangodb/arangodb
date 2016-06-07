@@ -238,6 +238,9 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %token T_OR "or operator"
 %token T_NIN "not in operator"
 
+%token T_REGEX_MATCH "~= operator"
+%token T_REGEX_NON_MATCH "~! operator"
+
 %token T_EQ "== operator"
 %token T_NE "!= operator"
 %token T_LT "< operator"
@@ -285,7 +288,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %left T_OR 
 %left T_AND
 %nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE
-%left T_EQ T_NE T_LIKE 
+%left T_EQ T_NE T_LIKE T_REGEX_MATCH T_REGEX_NON_MATCH 
 %left T_IN T_NIN 
 %left T_LT T_GT T_LE T_GE
 %left T_RANGE
@@ -1146,6 +1149,19 @@ operator_binary:
       arguments->addMember($1);
       arguments->addMember($3);
       $$ = parser->ast()->createNodeFunctionCall("LIKE", arguments);
+    }
+  | expression T_REGEX_MATCH expression {
+      AstNode* arguments = parser->ast()->createNodeArray(2);
+      arguments->addMember($1);
+      arguments->addMember($3);
+      $$ = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments);
+    }
+  | expression T_REGEX_NON_MATCH expression {
+      AstNode* arguments = parser->ast()->createNodeArray(2);
+      arguments->addMember($1);
+      arguments->addMember($3);
+      AstNode* node = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments);
+      $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, node);
     }
   | expression quantifier T_EQ expression {
       $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, $1, $4, $2);

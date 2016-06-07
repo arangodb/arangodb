@@ -1146,7 +1146,7 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
     }
   
     VPackSlice docs = result->slice();
-    VPackArrayIterator it(docs, true);
+    VPackArrayIterator it(docs);
     while (it.valid()) {
       resultBuilder.add(it.value());
       it.next();

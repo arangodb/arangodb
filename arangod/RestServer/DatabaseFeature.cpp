@@ -171,7 +171,7 @@ void DatabaseFeature::start() {
   }
 }
 
-void DatabaseFeature::stop() {
+void DatabaseFeature::unprepare() {
   // close all databases
   closeDatabases();
 

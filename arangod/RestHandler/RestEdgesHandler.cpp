@@ -108,7 +108,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
     // generate result
     scannedIndex += static_cast<size_t>(edges.length());
 
-    for (auto const& edge : VPackArrayIterator(edges, true)) {
+    for (auto const& edge : VPackArrayIterator(edges)) {
       bool add = true;
       if (!expressions.empty()) {
         for (auto& exp : expressions) {
@@ -164,7 +164,7 @@ bool RestEdgesHandler::getEdgesForVertex(
     // generate result
     scannedIndex += static_cast<size_t>(edges.length());
 
-    for (auto const& edge : VPackArrayIterator(edges, true)) {
+    for (auto const& edge : VPackArrayIterator(edges)) {
       bool add = true;
       if (!expressions.empty()) {
         for (auto& exp : expressions) {

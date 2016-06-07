@@ -453,7 +453,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         dstRow -= n;
         VPackSlice resultList = opRes.slice();
         TRI_ASSERT(resultList.isArray());
-        for (auto const& elm: VPackArrayIterator(resultList, false)) {
+        for (auto const& elm: VPackArrayIterator(resultList)) {
           bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
               elm, "error", false);
           if (!wasError) {

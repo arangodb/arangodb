@@ -24,10 +24,10 @@
 
 #include "Dispatcher.h"
 
-#include "Logger/Logger.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/Job.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -59,21 +59,22 @@ void Dispatcher::addStandardQueue(size_t nrThreads, size_t nrExtraThreads,
                                   size_t maxSize) {
   TRI_ASSERT(_queues[STANDARD_QUEUE] == nullptr);
 
-  _queues[STANDARD_QUEUE] =
-      new DispatcherQueue(_scheduler, this, STANDARD_QUEUE,
-                          CreateDispatcherThread, nrThreads, nrExtraThreads, maxSize);
+  _queues[STANDARD_QUEUE] = new DispatcherQueue(
+      _scheduler, this, STANDARD_QUEUE, CreateDispatcherThread, nrThreads,
+      nrExtraThreads, maxSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the AQL queue (used for the cluster)
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addAQLQueue(size_t nrThreads, size_t nrExtraThreads, 
+void Dispatcher::addAQLQueue(size_t nrThreads, size_t nrExtraThreads,
                              size_t maxSize) {
   TRI_ASSERT(_queues[AQL_QUEUE] == nullptr);
 
-  _queues[AQL_QUEUE] = new DispatcherQueue(
-      _scheduler, this, AQL_QUEUE, CreateDispatcherThread, nrThreads, nrExtraThreads, maxSize);
+  _queues[AQL_QUEUE] =
+      new DispatcherQueue(_scheduler, this, AQL_QUEUE, CreateDispatcherThread,
+                          nrThreads, nrExtraThreads, maxSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,7 +101,8 @@ int Dispatcher::addJob(std::unique_ptr<Job>& job, bool startThread) {
   // log success, but do this BEFORE the real add, because the addJob might
   // execute
   // and delete the job before we have a chance to log something
-  LOG(TRACE) << "added job " << (void*)(job.get()) << " to queue '" << qnr << "'";
+  LOG(TRACE) << "added job " << (void*)(job.get()) << " to queue '" << qnr
+             << "'";
 
   // add the job to the list of ready jobs
   return queue->addJob(job, startThread);
@@ -152,8 +154,6 @@ void Dispatcher::shutdown() {
   LOG(DEBUG) << "shutting down the dispatcher";
 
   for (auto queue : _queues) {
-    
-
     if (queue != nullptr) {
       queue->shutdown();
     }
@@ -169,7 +169,11 @@ void Dispatcher::reportStatus() {
     DispatcherQueue* queue = _queues[i];
 
     if (queue != nullptr) {
-      LOG(INFO) << "dispatcher queue '" << i << "': initial = " << queue->_nrThreads << ", running = " << queue->_nrRunning.load() << ", waiting = " << queue->_nrWaiting.load() << ", blocked = " << queue->_nrBlocked.load();
+      LOG(INFO) << "dispatcher queue '" << i
+                << "': initial = " << queue->_nrThreads
+                << ", running = " << queue->_nrRunning.load()
+                << ", waiting = " << queue->_nrWaiting.load()
+                << ", blocked = " << queue->_nrBlocked.load();
     }
   }
 }

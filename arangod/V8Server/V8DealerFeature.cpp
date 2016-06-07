@@ -224,7 +224,7 @@ void V8DealerFeature::start() {
   startGarbageCollection();
 }
 
-void V8DealerFeature::stop() {
+void V8DealerFeature::unprepare() {
   shutdownContexts();
 
   // delete GC thread after all action threads have been stopped

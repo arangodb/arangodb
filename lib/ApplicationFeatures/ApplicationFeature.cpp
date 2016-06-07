@@ -72,8 +72,11 @@ void ApplicationFeature::start() {}
 // notify the feature about a shutdown request
 void ApplicationFeature::beginShutdown() {}
 
-// stop and shut down the feature
+// stop the feature
 void ApplicationFeature::stop() {}
+
+// shut down the feature
+void ApplicationFeature::unprepare() {}
 
 // determine all direct and indirect ancestors of a feature
 std::unordered_set<std::string> ApplicationFeature::ancestors() const {

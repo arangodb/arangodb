@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.0.2.  */
+/* A Bison parser, made by GNU Bison 3.0.4.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2013 Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -79,46 +79,48 @@ extern int Aqldebug;
     T_AND = 288,
     T_OR = 289,
     T_NIN = 290,
-    T_EQ = 291,
-    T_NE = 292,
-    T_LT = 293,
-    T_GT = 294,
-    T_LE = 295,
-    T_GE = 296,
-    T_LIKE = 297,
-    T_PLUS = 298,
-    T_MINUS = 299,
-    T_TIMES = 300,
-    T_DIV = 301,
-    T_MOD = 302,
-    T_QUESTION = 303,
-    T_COLON = 304,
-    T_SCOPE = 305,
-    T_RANGE = 306,
-    T_COMMA = 307,
-    T_OPEN = 308,
-    T_CLOSE = 309,
-    T_OBJECT_OPEN = 310,
-    T_OBJECT_CLOSE = 311,
-    T_ARRAY_OPEN = 312,
-    T_ARRAY_CLOSE = 313,
-    T_OUTBOUND = 314,
-    T_INBOUND = 315,
-    T_ANY = 316,
-    T_ALL = 317,
-    T_NONE = 318,
-    UMINUS = 319,
-    UPLUS = 320,
-    FUNCCALL = 321,
-    REFERENCE = 322,
-    INDEXED = 323,
-    EXPANSION = 324
+    T_REGEX_MATCH = 291,
+    T_REGEX_NON_MATCH = 292,
+    T_EQ = 293,
+    T_NE = 294,
+    T_LT = 295,
+    T_GT = 296,
+    T_LE = 297,
+    T_GE = 298,
+    T_LIKE = 299,
+    T_PLUS = 300,
+    T_MINUS = 301,
+    T_TIMES = 302,
+    T_DIV = 303,
+    T_MOD = 304,
+    T_QUESTION = 305,
+    T_COLON = 306,
+    T_SCOPE = 307,
+    T_RANGE = 308,
+    T_COMMA = 309,
+    T_OPEN = 310,
+    T_CLOSE = 311,
+    T_OBJECT_OPEN = 312,
+    T_OBJECT_CLOSE = 313,
+    T_ARRAY_OPEN = 314,
+    T_ARRAY_CLOSE = 315,
+    T_OUTBOUND = 316,
+    T_INBOUND = 317,
+    T_ANY = 318,
+    T_ALL = 319,
+    T_NONE = 320,
+    UMINUS = 321,
+    UPLUS = 322,
+    FUNCCALL = 323,
+    REFERENCE = 324,
+    INDEXED = 325,
+    EXPANSION = 326
   };
 #endif
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef union YYSTYPE YYSTYPE;
+
 union YYSTYPE
 {
 #line 19 "Aql/grammar.y" /* yacc.c:1909  */
@@ -131,8 +133,10 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 135 "Aql/grammar.hpp" /* yacc.c:1909  */
+#line 137 "Aql/grammar.hpp" /* yacc.c:1909  */
 };
+
+typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif

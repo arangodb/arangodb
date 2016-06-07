@@ -49,6 +49,7 @@ class DispatcherFeature final
   void start() override final;
   void beginShutdown() override final;
   void stop() override final;
+  void unprepare() override final;
 
  private:
   uint64_t _nrStandardThreads;

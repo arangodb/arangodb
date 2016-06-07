@@ -62,18 +62,18 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testRegexInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX(\"test\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX(\"test\", \"meow\", \"foo\", \"bar\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX_TEST()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX_TEST(\"test\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX_TEST(\"test\", \"meow\", \"foo\", \"bar\")"); 
       
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"[\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"[^\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"a.(\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"(a\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"(a]\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"**\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"?\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX(\"test\", \"*\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"[\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"[^\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"a.(\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"(a\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"(a]\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"**\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"?\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"*\")");
     },
 
     testRegex : function () {
@@ -217,16 +217,21 @@ function ahuacatlStringFunctionsTestSuite () {
       ];
 
       values.forEach(function(v) {
-        var query = "RETURN REGEX(@what, @re)";
+        var query = "RETURN REGEX_TEST(@what, @re)";
         assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
         
-        query = "RETURN NOOPT(REGEX(@what, @re))";
+        query = "RETURN NOOPT(REGEX_TEST(@what, @re))";
         assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
         
-        query = "RETURN NOOPT(V8(REGEX(@what, @re)))";
+        query = "RETURN NOOPT(V8(REGEX_TEST(@what, @re)))";
         assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        
+        query = "RETURN @what =~ @re";
+        assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        
+        query = "RETURN @what !~ @re";
+        assertEqual(!v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
       });
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////

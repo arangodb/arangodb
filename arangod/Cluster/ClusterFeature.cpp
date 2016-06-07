@@ -461,7 +461,7 @@ void ClusterFeature::start() {
   dispatcher->buildAqlQueue();
 }
 
-void ClusterFeature::stop() {
+void ClusterFeature::unprepare() {
   if (_enableCluster) {
     if (_heartbeatThread != nullptr) {
       _heartbeatThread->beginShutdown();

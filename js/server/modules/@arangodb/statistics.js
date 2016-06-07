@@ -49,10 +49,11 @@ function createStatisticsCollection (name) {
 
   if (collection === null) {
     var r = null;
-
+                             
     try {
       r = db._create(name, { isSystem: true, waitForSync: false,
                              replicationFactor: 1,
+                             journalSize: 8 * 1024 * 1024,
                              distributeShardsLike: "_graphs" });
     }
     catch (err) {
@@ -423,7 +424,6 @@ exports.STATISTICS_INTERVAL = 10;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.STATISTICS_HISTORY_INTERVAL = 15 * 60;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief createCollections

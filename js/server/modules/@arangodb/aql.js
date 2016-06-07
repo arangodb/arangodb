@@ -2301,7 +2301,7 @@ function AQL_LIKE (value, regex, caseInsensitive) {
 /// @brief searches a substring in a string, using a regex
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_REGEX (value, regex, caseInsensitive) {
+function AQL_REGEX_TEST (value, regex, caseInsensitive) {
   'use strict';
 
   var modifiers = '';
@@ -8358,7 +8358,7 @@ exports.AQL_UPPER = AQL_UPPER;
 exports.AQL_SUBSTRING = AQL_SUBSTRING;
 exports.AQL_CONTAINS = AQL_CONTAINS;
 exports.AQL_LIKE = AQL_LIKE;
-exports.AQL_REGEX = AQL_REGEX;
+exports.AQL_REGEX_TEST = AQL_REGEX_TEST;
 exports.AQL_LEFT = AQL_LEFT;
 exports.AQL_RIGHT = AQL_RIGHT;
 exports.AQL_TRIM = AQL_TRIM;

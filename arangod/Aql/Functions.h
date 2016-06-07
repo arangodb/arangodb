@@ -97,7 +97,7 @@ struct Functions {
                                   VPackFunctionParameters const&);
   static AqlValue Like(arangodb::aql::Query*, arangodb::AqlTransaction*,
                        VPackFunctionParameters const&);
-  static AqlValue Regex(arangodb::aql::Query*, arangodb::AqlTransaction*,
+  static AqlValue RegexTest(arangodb::aql::Query*, arangodb::AqlTransaction*,
                         VPackFunctionParameters const&);
   static AqlValue Passthru(arangodb::aql::Query*, arangodb::AqlTransaction*,
                            VPackFunctionParameters const&);

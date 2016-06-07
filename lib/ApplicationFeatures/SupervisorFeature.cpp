@@ -33,6 +33,15 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+static bool DONE = false;
+static int CLIENT_PID = false;
+
+static void StopHandler(int) {
+  LOG_TOPIC(INFO, Logger::STARTUP) << "received SIGINT for supervisor";
+  kill(CLIENT_PID, SIGTERM);
+  DONE = true;
+}
+
 SupervisorFeature::SupervisorFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Supervisor"), _supervisor(false) {
@@ -104,10 +113,7 @@ void SupervisorFeature::daemonize() {
 
     // parent (supervisor)
     if (0 < _clientPid) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: within parent";
       TRI_SetProcessTitle("arangodb [supervisor]");
-
-      ArangoGlobalContext::CONTEXT->unmaskStandardSignals();
 
       std::for_each(supervisorFeatures.begin(), supervisorFeatures.end(),
                     [](ApplicationFeature* feature) {
@@ -126,81 +132,98 @@ void SupervisorFeature::daemonize() {
       std::for_each(supervisorFeatures.begin(), supervisorFeatures.end(),
                     [](ApplicationFeature* feature) { feature->start(); });
 
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: within parent";
+
+      ArangoGlobalContext::CONTEXT->unmaskStandardSignals();
+      signal(SIGINT, StopHandler);
+      signal(SIGTERM, StopHandler);
+
+      CLIENT_PID = _clientPid;
+      DONE = false;
+
       int status;
-      waitpid(_clientPid, &status, 0);
+      int res = waitpid(_clientPid, &status, 0);
       bool horrible = true;
 
-      if (WIFEXITED(status)) {
-        // give information about cause of death
-        if (WEXITSTATUS(status) == 0) {
-          LOG_TOPIC(INFO, Logger::STARTUP) << "child " << _clientPid
-                                           << " died of natural causes";
-          done = true;
-          horrible = false;
-        } else {
-          t = time(0) - startTime;
+      if (!DONE) {
+	done = true;
+	horrible = false;
+      }
+      else {
+	LOG_TOPIC(DEBUG, Logger::STARTUP) << "waitpid woke up with return value "
+					  << res << " and status " << status;
 
-          LOG_TOPIC(ERR, Logger::STARTUP)
-              << "child " << _clientPid
-              << " died a horrible death, exit status " << WEXITSTATUS(status);
+	if (WIFEXITED(status)) {
+	  // give information about cause of death
+	  if (WEXITSTATUS(status) == 0) {
+	    LOG_TOPIC(INFO, Logger::STARTUP) << "child " << _clientPid
+					     << " died of natural causes";
+	    done = true;
+	    horrible = false;
+	  } else {
+	    t = time(0) - startTime;
 
-          if (t < MIN_TIME_ALIVE_IN_SEC) {
-            LOG_TOPIC(ERR, Logger::STARTUP)
-                << "child only survived for " << t
-                << " seconds, this will not work - please fix the error "
-                   "first";
-            done = true;
-          } else {
-            done = false;
-          }
-        }
-      } else if (WIFSIGNALED(status)) {
-        switch (WTERMSIG(status)) {
-          case 2:
-          case 9:
-          case 15:
-            LOG_TOPIC(INFO, Logger::STARTUP)
-                << "child " << _clientPid
-                << " died of natural causes, exit status " << WTERMSIG(status);
-            done = true;
-            horrible = false;
-            break;
+	    LOG_TOPIC(ERR, Logger::STARTUP)
+		<< "child " << _clientPid
+		<< " died a horrible death, exit status " << WEXITSTATUS(status);
 
-          default:
-            t = time(0) - startTime;
+	    if (t < MIN_TIME_ALIVE_IN_SEC) {
+	      LOG_TOPIC(ERR, Logger::STARTUP)
+		  << "child only survived for " << t
+		  << " seconds, this will not work - please fix the error "
+		     "first";
+	      done = true;
+	    } else {
+	      done = false;
+	    }
+	  }
+	} else if (WIFSIGNALED(status)) {
+	  switch (WTERMSIG(status)) {
+	    case 2:
+	    case 9:
+	    case 15:
+	      LOG_TOPIC(INFO, Logger::STARTUP)
+		  << "child " << _clientPid
+		  << " died of natural causes, exit status " << WTERMSIG(status);
+	      done = true;
+	      horrible = false;
+	      break;
 
-            LOG_TOPIC(ERR, Logger::STARTUP) << "child " << _clientPid
-                                            << " died a horrible death, signal "
-                                            << WTERMSIG(status);
+	    default:
+	      t = time(0) - startTime;
 
-            if (t < MIN_TIME_ALIVE_IN_SEC) {
-              LOG_TOPIC(ERR, Logger::STARTUP)
-                  << "child only survived for " << t
-                  << " seconds, this will not work - please fix the "
-                     "error first";
-              done = true;
+	      LOG_TOPIC(ERR, Logger::STARTUP) << "child " << _clientPid
+					      << " died a horrible death, signal "
+					      << WTERMSIG(status);
+
+	      if (t < MIN_TIME_ALIVE_IN_SEC) {
+		LOG_TOPIC(ERR, Logger::STARTUP)
+		    << "child only survived for " << t
+		    << " seconds, this will not work - please fix the "
+		       "error first";
+		done = true;
 
 #ifdef WCOREDUMP
-              if (WCOREDUMP(status)) {
-                LOG_TOPIC(WARN, Logger::STARTUP) << "child process "
-                                                 << _clientPid
-                                                 << " produced a core dump";
-              }
+		if (WCOREDUMP(status)) {
+		  LOG_TOPIC(WARN, Logger::STARTUP) << "child process "
+						   << _clientPid
+						   << " produced a core dump";
+		}
 #endif
-            } else {
-              done = false;
-            }
+	      } else {
+		done = false;
+	      }
 
-            break;
-        }
-      } else {
-        LOG_TOPIC(ERR, Logger::STARTUP)
-            << "child " << _clientPid
-            << " died a horrible death, unknown cause";
-        done = false;
+	      break;
+	  }
+	} else {
+	  LOG_TOPIC(ERR, Logger::STARTUP)
+	      << "child " << _clientPid
+	      << " died a horrible death, unknown cause";
+	  done = false;
+	}
       }
 
-      // remove pid file
       if (horrible) {
         result = EXIT_FAILURE;
       }
@@ -222,6 +245,9 @@ void SupervisorFeature::daemonize() {
 
   std::for_each(supervisorFeatures.rbegin(), supervisorFeatures.rend(),
                 [](ApplicationFeature* feature) { feature->stop(); });
+
+  std::for_each(supervisorFeatures.rbegin(), supervisorFeatures.rend(),
+                [](ApplicationFeature* feature) { feature->unprepare(); });
 
   exit(result);
 }

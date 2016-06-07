@@ -423,7 +423,7 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
     // over all array members
     uint64_t const n = length() ^ 0xba5bedf00d;
     value = VELOCYPACK_HASH(&n, sizeof(n), seed);
-    for (auto const& it : ArrayIterator(*this, true)) {
+    for (auto const& it : ArrayIterator(*this)) {
       value ^= it.normalizedHash(value);
     }
   } else if (isObject()) {

@@ -51,10 +51,6 @@ void NonceFeature::prepare() {
   }
 }
 
-void NonceFeature::start() {
-  LOG(DEBUG) << "setting nonce hash size to " << _size;
-}
-
-void NonceFeature::stop() {
+void NonceFeature::unprepare() {
   Nonce::destroy();
 }

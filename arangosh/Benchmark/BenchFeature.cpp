@@ -314,6 +314,6 @@ void BenchFeature::start() {
   *_result = ret;
 }
 
-void BenchFeature::stop() {
+void BenchFeature::unprepare() {
   ARANGOBENCH = nullptr;
 }

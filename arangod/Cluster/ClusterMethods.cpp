@@ -649,21 +649,19 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   }
 
   auto shards = collinfo->shardIds();
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::vector<ClusterCommRequest> requests;
+  auto body = std::make_shared<std::string>();
   for (auto const& p : *shards) {
-    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    cc->asyncRequest(
-        "", coordTransactionID, "shard:" + p.first,
-        arangodb::GeneralRequest::RequestType::GET,
-        "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
-            StringUtils::urlEncode(p.first) + "/count",
-        std::shared_ptr<std::string>(), headers, nullptr, 300.0);
+    requests.emplace_back("shard:" + p.first,
+                          arangodb::GeneralRequest::RequestType::GET,
+                          "/_db/" + StringUtils::urlEncode(dbname) + 
+                          "/_api/collection/" +
+                          StringUtils::urlEncode(p.first) + "/count", body);
   }
-  // Now listen to the results:
-  int count;
-  int nrok = 0;
-  for (count = (int)shards->size(); count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+  size_t nrDone = 0;
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES);
+  for (auto& req : requests) {
+    auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
@@ -674,18 +672,18 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
           result +=
               arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
                   answer, "count", 0);
-          nrok++;
+        } else {
+          return TRI_ERROR_INTERNAL;
         }
+      } else {
+        return static_cast<int>(res.answer_code);
       }
+    } else {
+      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
   }
-
-  if (nrok != (int)shards->size()) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
-                              // the DBserver could have reported an error.
+  
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

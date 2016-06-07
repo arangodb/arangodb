@@ -47,7 +47,7 @@ class PrimaryIndexIterator final : public IndexIterator {
       : _trx(trx), 
         _index(index), 
         _keys(keys.get()), 
-        _iterator(_keys->slice(), true) {
+        _iterator(_keys->slice()) {
 
         keys.release(); // now we have ownership for _keys
         TRI_ASSERT(_keys->slice().isArray());

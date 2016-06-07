@@ -267,9 +267,9 @@ RANDOM_TOKEN(8) // "zGl09z42"
 RANDOM_TOKEN(8) // "m9w50Ft9"
 ```
 
-!SUBSECTION REGEX()
+!SUBSECTION REGEX_TEST()
 
-`REGEX(text, search, caseInsensitive) → bool`
+`REGEX_TEST(text, search, caseInsensitive) → bool`
 
 Check whether the pattern *search* is contained in the string *text*,
 using regular expression matching.
@@ -327,9 +327,9 @@ If the regular expression in *search* is invalid, a warning will be raised
 and the function will return *false*.
 
 ```js
-REGEX("the quick brown fox", "the.*fox") // true
-REGEX("the quick brown fox", "^(a|the)\s+(quick|slow).*f.x$") // true
-REGEX("the\nquick\nbrown\nfox", "^the(\n[a-w]+)+\nfox$") // true
+REGEX_TEST("the quick brown fox", "the.*fox") // true
+REGEX_TEST("the quick brown fox", "^(a|the)\s+(quick|slow).*f.x$") // true
+REGEX_TEST("the\nquick\nbrown\nfox", "^the(\n[a-w]+)+\nfox$") // true
 ```
 
 !SUBSECTION REVERSE()
