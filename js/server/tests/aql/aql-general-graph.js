@@ -1116,7 +1116,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for GRAPH_TRAVERSAL() and GRAPH_SHORTEST_PATH function
+/// @brief test suite for SHORTEST PATH function
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryGeneralTraversalTestSuite() {
@@ -1217,76 +1217,6 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
     tearDown: function () {
       graph._drop("werKenntWen", true);
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief checks GRAPH_TRAVERSAL()
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testGRAPH_TRAVERSALs: function () {
-      var actual, result = [];
-
-      actual = getQueryResults("FOR v IN GRAPH_TRAVERSAL('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound') RETURN v");
-      actual = actual[0];
-      actual.forEach(function (s) {
-        result.push(s.vertex._key);
-      });
-      assertEqual(result, [
-        "Caesar",
-        "Anton",
-        "Berta",
-        "Anton",
-        "Gerda",
-        "Dieter",
-        "Emil",
-        "Fritz"
-      ]);
-    },
-
-    testGRAPH_TRAVERSALWithExamples: function () {
-      var actual;
-
-      actual = getQueryResults("FOR v IN GRAPH_TRAVERSAL('werKenntWen', {}, 'outbound') RETURN v");
-      assertEqual(actual.length , 7);
-    },
-
-    testGENERAL_GRAPH_TRAVERSAL_TREE: function () {
-      var actual, start, middle;
-
-      actual = getQueryResults("FOR v IN GRAPH_TRAVERSAL_TREE('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound', 'connected') RETURN v");
-      start = actual[0][0][0];
-
-      assertEqual(start._key, "Caesar");
-      assertTrue(start.hasOwnProperty("connected"));
-      assertTrue(start.connected.length === 2);
-      assertEqual(start.connected[0]._key, "Anton");
-      assertEqual(start.connected[1]._key, "Berta");
-
-      assertTrue(!start.connected[0].hasOwnProperty("connected"));
-      assertTrue(start.connected[1].hasOwnProperty("connected"));
-
-      middle = start.connected[1];
-
-      assertTrue(middle.connected.length === 2);
-      assertEqual(middle.connected[0]._key, "Anton");
-      assertEqual(middle.connected[1]._key, "Gerda");
-
-      assertTrue(!middle.connected[0].hasOwnProperty("connected"));
-      assertTrue(middle.connected[1].hasOwnProperty("connected"));
-
-      middle = middle.connected[1];
-      assertTrue(middle.connected.length === 1);
-      assertEqual(middle.connected[0]._key, "Dieter");
-
-      middle = middle.connected[0];
-
-      assertTrue(middle.connected.length === 1);
-      assertEqual(middle.connected[0]._key, "Emil");
-
-      middle = middle.connected[0];
-      assertTrue(middle.connected.length === 1);
-      assertEqual(middle.connected[0]._key, "Fritz");
-
     },
 
     testShortestPathWithGraphName: function () {
@@ -1528,7 +1458,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for GRAPH_TRAVERSAL() and GRAPH_SHORTEST_PATH function
+/// @brief test suite for and SHORTEST PATH function
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryGeneralCyclesSuite() {
