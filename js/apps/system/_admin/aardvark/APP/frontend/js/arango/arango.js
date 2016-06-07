@@ -286,6 +286,11 @@
     //nav for cluster/nodes view
     buildNodesSubNav: function(type) {
 
+      //if nothing is set, set default to coordinator
+      if (type === undefined) {
+        type = 'coordinator';
+      }
+
       if (this.scaleability === undefined) {
         var self = this;
 
@@ -298,7 +303,7 @@
           success: function(data) {
             if (data.numberOfCoordinators !== null && data.numberOfDBServers !== null) {
               self.scaleability = true;
-              self.buildNodesSubNav();
+              self.buildNodesSubNav(type);
             }
             else {
               self.scaleability = false;
