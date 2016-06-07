@@ -37,6 +37,96 @@ var arangodb = require("@arangodb"),
   _ = require("lodash");
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Compatibility functions for 2.8
+///        This function registeres user-defined functions that follow the
+///        same API as the former GRAPH_* functions did.
+///        Most of these AQL functions can be simply replaced by calls to these.
+////////////////////////////////////////////////////////////////////////////////
+
+var registerCompatibilityFunctions = function() {
+  var aqlfunctions = require("@arangodb/aql/functions");
+  aqlfunctions.register("arangodb::GRAPH_EDGES", function (graphName, vertexExample, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._edges(vertexExample, options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_VERTICES", function (graphName, vertexExample, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._vertices(vertexExample, options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_NEIGHBORS", function (graphName, vertexExample, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._neighbors(vertexExample, options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_COMMON_NEIGHBORS", function (graphName, vertex1Example, vertex2Example, options1, options2) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._commonNeighbors(vertex1Example, vertex2Example, options1, options2);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_COMMON_PROPERTIES", function (graphName, vertex1Example, vertex2Example, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._commonProperties(vertex1Example, vertex2Example, options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_PATHS", function (graphName, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._paths(options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_SHORTEST_PATH", function (graphName, startVertexExample, edgeVertexExample, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._shortestPath(options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_DISTANCE_TO", function (graphName, startVertexExample, edgeVertexExample, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._distanceTo(options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_ABSOLUTE_ECCENTRICITY", function (graphName, vertexExample, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._absoluteEccentricity(options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_ECCENTRICITY", function (graphName, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._eccentricity(options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_ABSOLUTE_CLOSENESS", function (graphName, vertexExample, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._farness(vertexExample, options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_CLOSENESS", function (graphName, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._closeness(options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_ABSOLUTE_BETWEENNESS", function (graphName, vertexExample, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._absoluteBetweenness(vertexExample, options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_BETWEENNESS", function (graphName, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._betweenness(options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_RADIUS", function (graphName, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._radius(options);
+  }, false);
+  aqlfunctions.register("arangodb::GRAPH_DIAMETER", function (graphName, options) {
+    var gm = require("@arangodb/general-graph");
+    var g = gm._graph(graphName);
+    return g._diameter(options);
+  }, false);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transform a string into an array.
@@ -1658,20 +1748,27 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 /// @brief was docuBlock JSF_general_graph_edges
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._edges = function(edgeExample) {
-  var AQLStmt = new AQLGenerator(this);
-  // If no direction is specified all edges are duplicated.
-  // => For initial requests a direction has to be set
-  return AQLStmt.outEdges(edgeExample);
+Graph.prototype._edges = function(vertexExample, options) {
+  var bindVars = {};
+  options = options || {};
+  var query = `
+    ${transformExampleToAQL(vertexExample, Object.keys(this.__vertexCollections), bindVars, "start")}
+    FOR v, e IN ${options.minDepth || 1}..${options.maxDepth || 1} ${options.direction || "ANY"} start GRAPH @graphName
+    RETURN ${options.includeData === true ? "v" : "v._id"}`;
+  bindVars.graphName = this.__name;
+  return db._query(query, bindVars).toArray();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_general_graph_vertices
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._vertices = function(example) {
-  var AQLStmt = new AQLGenerator(this);
-  return AQLStmt.vertices(example);
+Graph.prototype._vertices = function(vertexExample, options) {
+  options = options || {};
+  var bindVars = {};
+  var query = `${transformExampleToAQL(vertexExample, Object.keys(this.__vertexCollections), bindVars, "start")}
+    RETURN ${options.includeData === true ? "start" : "start._id"}`;
+  return db._query(query, bindVars).toArray();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1750,14 +1847,15 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._neighbors = function(vertexExample, options) {
-  var AQLStmt = new AQLGenerator(this);
-  // If no direction is specified all edges are duplicated.
-  // => For initial requests a direction has to be set
-  if (!options) {
-    options = {};
-  }
-  return AQLStmt.vertices(vertexExample).neighbors(options.neighborExamples, options)
-    .toArray();
+  options = options || {};
+  var bindVars = {};
+  var query = `
+    ${transformExampleToAQL(vertexExample, Object.keys(this.__vertexCollections), bindVars, "start")}
+    FOR v IN ${options.minDepth || 1}..${options.maxDepth || 1} ${options.direction || "ANY"} start
+      GRAPH @graphName OPTIONS {bfs: true, uniqueVertices: "global"}
+    RETURN ${options.includeData === true ? "v" : "v._id"}`;
+  bindVars.graphName = this.__name;
+  return db._query(query, bindVars).toArray();
 };
 
 
@@ -1766,26 +1864,27 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
-
-  var ex1 = transformExample(vertex1Example);
-  var ex2 = transformExample(vertex2Example);
-  var query = "FOR e"
-    + " IN GRAPH_COMMON_NEIGHBORS(@graphName"
-    + ',@ex1'
-    + ',@ex2'
-    + ',@options1'
-    + ',@options2'
-    + ') RETURN e';
+  var bindVars = {};
   optionsVertex1 = optionsVertex1 || {};
   optionsVertex2 = optionsVertex2 || {};
-  var bindVars = {
-    "graphName": this.__name,
-    "options1": optionsVertex1,
-    "options2": optionsVertex2,
-    "ex1": ex1,
-    "ex2": ex2
-  };
-  return db._query(query, bindVars, {count: true}).toArray();
+
+  var query = `
+    ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, "left")}
+      LET leftNeighbors = (FOR v IN ${optionsVertex1.minDepth || 1}..${optionsVertex1.maxDepth || 1} ${optionsVertex1.direction || "ANY"} left
+        GRAPH @graphName OPTIONS {bfs: true, uniqueVertices: "global"} RETURN v)
+      ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, "right")}
+        FILTER right != left
+        LET rightNeighbors = (FOR v IN ${optionsVertex2.minDepth || 1}..${optionsVertex2.maxDepth || 1} ${optionsVertex2.direction || "ANY"} right
+        GRAPH @graphName OPTIONS {bfs: true, uniqueVertices: "global"} RETURN v)
+        LET neighbors = INTERSECTION(leftNeighbors, rightNeighbors)
+        FILTER LENGTH(neighbors) > 0 `;
+  if (optionsVertex1.includeData === true || optionsVertex2.includeData === true) {
+    query += `RETURN {left : left, right: right, neighbors: neighbors}`;
+  } else {
+    query += `RETURN {left : left._id, right: right._id, neighbors: neighbors[*]._id}`;
+  }
+  bindVars.graphName = this.__name;
+  return db._query(query, bindVars).toArray();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1793,34 +1892,15 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
-  var ex1 = transformExample(vertex1Example);
-  var ex2 = transformExample(vertex2Example);
-  var query = "FOR e"
-    + " IN GRAPH_COMMON_NEIGHBORS(@graphName"
-    + ',@ex1'
-    + ',@ex2'
-    + ',@options1'
-    + ',@options2'
-    + ') RETURN [e.left, e.right, LENGTH(e.neighbors)]';
-  optionsVertex1 = optionsVertex1 || {};
-  optionsVertex2 = optionsVertex2 || {};
-  var bindVars = {
-    "graphName": this.__name,
-    "options1": optionsVertex1,
-    "options2": optionsVertex2,
-    "ex1": ex1,
-    "ex2": ex2
-  };
-
-  var result = db._query(query, bindVars, {count: true}).toArray(),
+  var result = this._commonNeighbors(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2),
     tmp = {}, tmp2={}, returnHash = [];
   result.forEach(function (r) {
-    if (!tmp[r[0]]) {
-      tmp[r[0]] = [];
+    if (!tmp[r.left]) {
+      tmp[r.left] = [];
     }
     tmp2 = {};
-    tmp2[r[1]] = r[2];
-    tmp[r[0]].push(tmp2);
+    tmp2[r.right] = r.neighbors.length;
+    tmp[r.left].push(tmp2);
   });
   Object.keys(tmp).forEach(function(w) {
     tmp2 = {};
@@ -1835,24 +1915,27 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, options) {
-
-  var ex1 = transformExample(vertex1Example);
-  var ex2 = transformExample(vertex2Example);
-  var query = "FOR e"
-    + " IN GRAPH_COMMON_PROPERTIES(@graphName"
-    + ',@ex1'
-    + ',@ex2'
-    + ',@options'
-    + ')  SORT  ATTRIBUTES(e)[0] RETURN e';
   options = options || {};
-  var bindVars = {
-    "graphName": this.__name,
-    "options": options,
-    "ex1": ex1,
-    "ex2": ex2
-  };
-  return db._query(query, bindVars, {count: true}).toArray();
-
+  if (options.hasOwnProperty("ignoreProperties")) {
+    if (!Array.isArray(options.ignoreProperties)) {
+      options.ignoreProperties = [options.ignoreProperties];
+    }
+  }
+  var bindVars = {};
+  var query = `
+    ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, "left")}
+      SORT left._id
+      LET toZip = (
+        ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, "right")}
+        FILTER right != left
+        LET shared = (FOR a IN ATTRIBUTES(left) FILTER
+          (${options.hasOwnProperty("ignoreProperties") ? `a NOT IN ${JSON.stringify(options.ignoreProperties)} AND` : ""} left[a] == right[a])
+          OR a == '_id' RETURN a)
+          FILTER LENGTH(shared) > 1
+          RETURN KEEP(right, shared) )
+      FILTER LENGTH(toZip) > 0
+      RETURN ZIP([left._id], [toZip])`;
+  return db._query(query, bindVars).toArray();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1860,46 +1943,47 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example, options) {
-  var ex1 = transformExample(vertex1Example);
-  var ex2 = transformExample(vertex2Example);
-  var query = "FOR e"
-    + " IN GRAPH_COMMON_PROPERTIES(@graphName"
-    + ',@ex1'
-    + ',@ex2'
-    + ',@options'
-    + ') FOR a in ATTRIBUTES(e)  SORT  ATTRIBUTES(e)[0] RETURN [ ATTRIBUTES(e)[0], LENGTH(e[a]) ]';
   options = options || {};
-  var bindVars = {
-    "graphName": this.__name,
-    "options": options,
-    "ex1": ex1,
-    "ex2": ex2
-  };
-  var result = db._query(query, bindVars, {count: true}).toArray(), returnHash = [];
-  result.forEach(function (r) {
-    var tmp = {};
-    tmp[r[0]] = r[1];
-    returnHash.push(tmp);
-  });
-  return returnHash;
+  if (options.hasOwnProperty("ignoreProperties")) {
+    if (!Array.isArray(options.ignoreProperties)) {
+      options.ignoreProperties = [options.ignoreProperties];
+    }
+  }
+  var bindVars = {};
+  var query = `
+    ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, "left")}
+      SORT left._id
+      LET s = SUM(
+        ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, "right")}
+        FILTER right != left
+        LET shared = (FOR a IN ATTRIBUTES(left) FILTER
+          (${options.hasOwnProperty("ignoreProperties") ? `a NOT IN ${JSON.stringify(options.ignoreProperties)} AND` : ""} left[a] == right[a])
+          OR a == '_id' RETURN a)
+          FILTER LENGTH(shared) > 1
+          RETURN 1 )
+      FILTER s > 0
+      RETURN ZIP([left._id], [s])`;
+  return db._query(query, bindVars).toArray();
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_general_graph_paths
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._paths = function(options) {
-  var query = "RETURN"
-    + " GRAPH_PATHS(@graphName"
-    + ',@options'
-    + ')';
   options = options || {};
+
+  var query = `
+    FOR source IN ${startInAllCollections(Object.keys(this.__vertexCollections))}
+    FOR v, e, p IN ${options.minDepth || 0}..${options.maxDepth || 10} ${options.direction} source GRAPH @graphName `;
+  if (options.followCycles) {
+    query += `OPTIONS {uniqueEdges: "none"} `;
+  }
+  query += `RETURN {source: source, destination: v, edges: p.edges, vertice: p.vertices}`;
+
   var bindVars = {
     "graphName": this.__name,
-    "options": options
   };
-  var result = db._query(query, bindVars).toArray();
-  return result;
+  return db._query(query, bindVars).toArray();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2686,6 +2770,7 @@ exports._exists = _exists;
 exports._renameCollection = _renameCollection;
 exports._list = _list;
 exports._listObjects = _listObjects;
+exports._registerCompatibilityFunctions = registerCompatibilityFunctions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// some more documentation
