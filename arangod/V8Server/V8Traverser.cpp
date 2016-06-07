@@ -675,6 +675,10 @@ void SingleServerTraversalPath::pathToVelocyPack(Transaction* trx,
 }
 
 void SingleServerTraversalPath::lastEdgeToVelocyPack(Transaction* trx, VPackBuilder& result) {
+  if (_path.edges.empty()) {
+    result.add(arangodb::basics::VelocyPackHelper::NullValue());
+    return;
+  }
   auto cached = _traverser->_edges.find(_path.edges.back());
   // All edges are cached!!
   TRI_ASSERT(cached != _traverser->_edges.end());
