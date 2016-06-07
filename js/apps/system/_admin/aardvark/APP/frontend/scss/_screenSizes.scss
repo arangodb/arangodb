@@ -1,5 +1,33 @@
 @media (max-width: 568px) {
 
+  //PAGINATION
+
+  .pagination-line {
+    .pre-pagi,
+    .las-pagi {
+      display: none;
+    }
+
+    .arango-pagination {
+      li:first-child,
+      li:last-child {
+        margin-left: 0;
+        margin-right: 0;
+      }
+    }
+
+    li a {
+      padding: 2px 4px;
+    }
+  }
+
+  //LOG
+  #arangoLogTable {
+    .table-cell0 {
+      display: none;
+    }
+  }
+
   //LOGIN
   .login-window {
     padding: 10px 10px 40px;
@@ -35,6 +63,11 @@
   }
 
   // NAVIGATION TOP
+
+  .breadcrumb {
+    display: none;
+  }
+
   .subnavmenu {
     a {
       font-size: 8pt;
@@ -142,6 +175,33 @@
 }
 
 @media (max-width: 768px) {
+  //PAGINATION
+
+  .pagination-line {
+    .pre-pagi,
+    .las-pagi {
+      display: none;
+    }
+
+    .arango-pagination {
+      li:first-child,
+      li:last-child {
+        margin-left: 0;
+        margin-right: 0;
+      }
+    }
+
+    li a {
+      padding: 2px 4px;
+    }
+  }
+
+  // NAVIGATION TOP
+
+  .breadcrumb {
+    display: none;
+  }
+
   .dashboard-large-chart,
   .dashboard-tendency-container {
     box-sizing: content-box;
@@ -193,7 +253,9 @@
 
   //actions sub menu
   .headerButtonBar {
-    display: none;
+    span {
+      display: none;
+    }
   }
 
   .dashboard-bar-chart-container {
