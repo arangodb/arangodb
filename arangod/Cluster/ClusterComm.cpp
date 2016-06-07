@@ -220,6 +220,16 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 /// here in the form of "server:" followed by a serverID. Furthermore,
 /// it is possible to specify the target endpoint directly using
 /// "tcp://..." or "ssl://..." endpoints, if `singleRequest` is true.
+/// 
+/// There are two timeout arguments. `timeout` is the globale timeout
+/// specifying after how many seconds the complete operation must be
+/// completed. `initTimeout` is a second timeout, which is used to
+/// limit the time to send the initial request away. If `initTimeout`
+/// is negative (as for example in the default value), then `initTimeout`
+/// is taken to be the same as `timeout`. The idea behind the two timeouts
+/// is to be able to specify correct behaviour for automatic failover.
+/// The idea is that if the initial request cannot be sent within 
+/// `initTimeout`, one can retry after a potential failover.
 ////////////////////////////////////////////////////////////////////////////////
 
 OperationID ClusterComm::asyncRequest(
@@ -229,7 +239,7 @@ OperationID ClusterComm::asyncRequest(
     std::string const& path, std::shared_ptr<std::string const> body,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-    bool singleRequest) {
+    bool singleRequest, ClusterCommTimeout initTimeout) {
 
   TRI_ASSERT(headerFields.get() != nullptr);
 
@@ -248,8 +258,13 @@ OperationID ClusterComm::asyncRequest(
   op->body = body;
   op->headerFields = std::move(headerFields);
   op->callback = callback;
-  op->endTime = timeout == 0.0 ? TRI_microtime() + 24 * 60 * 60.0
-                               : TRI_microtime() + timeout;
+  double now = TRI_microtime();
+  op->endTime = timeout == 0.0 ? now + 24 * 60 * 60.0 : now + timeout;
+  if (initTimeout <= 0.0) {
+    op->initEndTime = op->endTime;
+  } else {
+    op->initEndTime = now + initTimeout;
+  }
 
   op->result.setDestination(destination, logConnectionErrors());
   if (op->result.status == CL_COMM_BACKEND_UNAVAILABLE) {
@@ -1079,13 +1094,12 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
               << "ClusterComm::performRequests: sending request to "
               << requests[i].destination << ":" << requests[i].path
               << "body:" << requests[i].body;
-          double localTimeOut 
+          double localInitTimeout
               = (std::min)((std::max)(1.0, now - startTime), 10.0);
-          if (localTimeOut <= endTime - now) {
-            dueTime[i] = now + localTimeOut;
-          } else {
-            localTimeOut = endTime - now;
-            dueTime[i] = endTime + 10;
+          double localTimeout = endTime - now;
+          dueTime[i] = endTime + 10;  // no retry unless ordered elsewhere
+          if (localInitTimeout > localTimeout) {
+            localInitTimeout = localTimeout;
           }
           OperationID opId = asyncRequest("", coordinatorTransactionID,
                                           requests[i].destination,
@@ -1093,8 +1107,8 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                                           requests[i].path,
                                           requests[i].body,
                                           requests[i].headerFields,
-                                          nullptr, localTimeOut,
-                                          false);
+                                          nullptr, localTimeout,
+                                          false, localInitTimeout);
           opIDtoIndex.insert(std::make_pair(opId, i));
           // It is possible that an error occurs right away, we will notice
           // below after wait(), though, and retry in due course.
@@ -1153,10 +1167,16 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE ||
                    (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
           requests[index].result = res;
-          // In this case we will retry at the dueTime, if it is before endTime:
+          // In this case we will retry:
+          dueTime[index] = (std::min)(10.0,
+                                      (std::max)(0.2, 2 * (now - startTime))) +
+                           startTime;
           if (dueTime[index] >= endTime) {
             requests[index].done = true;
             nrDone++;
+          }
+          if (dueTime[index] < actionNeeded) {
+            actionNeeded = dueTime[index];
           }
           LOG_TOPIC(TRACE, logTopic) << "ClusterComm::performRequests: "
               << "got BACKEND_UNAVAILABLE or TIMEOUT from "
@@ -1231,7 +1251,7 @@ void ClusterCommThread::run() {
 
       // Have we already reached the timeout?
       double currentTime = TRI_microtime();
-      if (op->endTime <= currentTime) {
+      if (op->initEndTime <= currentTime) {
         op->result.status = CL_COMM_TIMEOUT;
       } else {
         // We know that op->result.endpoint is nonempty here, otherwise
@@ -1271,7 +1291,8 @@ void ClusterCommThread::run() {
 
           auto client =
               std::make_unique<arangodb::httpclient::SimpleHttpClient>(
-                  connection->_connection, op->endTime - currentTime, false);
+                  connection->_connection, op->initEndTime - currentTime,
+                  false);
           client->keepConnectionOnDestruction(true);
 
           // We add this result to the operation struct without acquiring

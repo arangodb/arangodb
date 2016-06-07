@@ -19,16 +19,18 @@
     },
 
     setCoordSize: function(number) {
-      //TODO AJAX API CALL
+      var self = this;
+      var data = {
+        numberOfCoordinators: number
+      };
+
       $.ajax({
-        type: "POST",
-        url: arangoHelper.databaseUrl("/_admin/cluster/setCoordSize"),
+        type: "PUT",
+        url: arangoHelper.databaseUrl("/_admin/cluster/numberOfServers"),
         contentType: "application/json",
-        data: JSON.stringify({
-          value: number
-        }),
+        data: JSON.stringify(data),
         success: function() {
-          $('#plannedCoords').html(number);
+          self.updateTable(data);
         },
         error: function() {
           arangoHelper.arangoError("Scale", "Could not set coordinator size.");
@@ -37,16 +39,18 @@
     },
 
     setDBsSize: function(number) {
-      //TODO AJAX API CALL
+      var self = this;
+      var data = {
+        numberOfDBServers: number
+      };
+
       $.ajax({
-        type: "POST",
-        url: arangoHelper.databaseUrl("/_admin/cluster/setDBsSize"),
+        type: "PUT",
+        url: arangoHelper.databaseUrl("/_admin/cluster/numberOfServers"),
         contentType: "application/json",
-        data: JSON.stringify({
-          value: number
-        }),
+        data: JSON.stringify(data),
         success: function() {
-          $('#plannedCoords').html(number);
+          self.updateTable(data);
         },
         error: function() {
           arangoHelper.arangoError("Scale", "Could not set coordinator size.");
@@ -158,25 +162,30 @@
     },
 
     updateTable: function(data) {
-      $('#plannedCoords').html(data.numberOfCoordinators);
-      $('#plannedDBs').html(data.numberOfDBServers);
-
       var scalingActive = '<span class="warning">scaling in progress</span>';
       var scalingDone = '<span class="positive">no scaling process active</span>';
 
-      if (this.coordinators.toJSON().length === data.numberOfCoordinators) {
-        $('#statusCoords').html(scalingDone);
+      if (data.numberOfCoordinators) {
+        $('#plannedCoords').html(data.numberOfCoordinators);
+
+        if (this.coordinators.toJSON().length === data.numberOfCoordinators) {
+          $('#statusCoords').html(scalingDone);
+        }
+        else {
+          $('#statusCoords').html(scalingActive);
+        }
       }
-      else {
-        $('#statusCoords').html(scalingActive);
+
+      if (data.numberOfDBServers) {
+        $('#plannedDBs').html(data.numberOfDBServers);
+        if (this.dbServers.toJSON().length === data.numberOfDBServers) {
+          $('#statusDBs').html(scalingDone);
+        }
+        else {
+          $('#statusDBs').html(scalingActive);
+        }
       }
-      
-      if (this.dbServers.toJSON().length === data.numberOfDBServers) {
-        $('#statusDBs').html(scalingDone);
-      }
-      else {
-        $('#statusDBs').html(scalingActive);
-      }
+
     },
 
     waitForDBServers: function(callback) {
