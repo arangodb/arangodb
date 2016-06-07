@@ -1404,7 +1404,7 @@ function startInstanceAgency(instanceInfo, protocol, options,
     instanceArgs["agency.id"] = String(i);
     instanceArgs["agency.size"] = String(N);
     instanceArgs["agency.wait-for-sync"] = String(wfs);
-    instanceArgs["agency.supervision"] = "false";
+    instanceArgs["agency.supervision"] = "true";
     instanceArgs["database.directory"] = dataDir + String(i);
 
     if (i === N - 1) {
