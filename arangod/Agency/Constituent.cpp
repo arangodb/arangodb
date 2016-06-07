@@ -364,6 +364,10 @@ void Constituent::callElection() {
 void Constituent::beginShutdown() {
   _notifier.reset();
   Thread::beginShutdown();
+
+  CONDITION_LOCKER(guard, _cv);
+  guard.broadcast();
+
 }
 
 bool Constituent::start(TRI_vocbase_t* vocbase,
@@ -430,4 +434,5 @@ void Constituent::run() {
       callElection();  // Run for office
     }
   }
+
 }
