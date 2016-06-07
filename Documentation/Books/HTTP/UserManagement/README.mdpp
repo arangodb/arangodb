@@ -13,31 +13,9 @@ You should not manipulate the *_users* collection directly. While the user manag
 
 Please note that user operations are not included in ArangoDB's replication.
 
-
-<!-- js/actions/api-user.js -->
-
-@startDocuBlock JSF_api_user_create
-
-
-<!-- js/actions/api-user.js -->
-
-@startDocuBlock JSF_api_user_replace
-
-
-<!-- js/actions/api-user.js -->
-
-@startDocuBlock JSF_api_user_update
-
-
-<!-- js/actions/api-user.js -->
-
-@startDocuBlock JSF_api_user_delete
-
-
-<!-- js/actions/api-user.js -->
-
-@startDocuBlock JSF_api_user_fetch
-
-<!-- js/actions/api-user.js -->
-
-@startDocuBlock JSF_api_user_fetch_list
+@startDocuBlock UserHandling_create
+@startDocuBlock UserHandling_replace
+@startDocuBlock UserHandling_modify
+@startDocuBlock UserHandling_delete
+@startDocuBlock UserHandling_fetch
+@startDocuBlock UserHandling_fetchProperties

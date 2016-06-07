@@ -34,7 +34,7 @@ module.exports = router;
 
 router.use((req, res, next) => {
   if (global.AUTHENTICATION_ENABLED()) {
-    if (!req.session.uid) {
+    if (!req.user) {
       res.throw('unauthorized');
     }
   }
@@ -53,42 +53,42 @@ if (cluster.isCluster()) {
   router.get('/DBServers', function(req, res) {
     const list = global.ArangoClusterInfo.getDBServers();
     res.json(list.map(n => { 
-        var r = { "name": n, "role": "primary" };
-        r.status = "ok";
-        const endpoint = global.ArangoClusterInfo.getServerEndpoint(n);
-        const proto = endpoint.substr(0, 6);
-        if (proto === "tcp://") {
-          r.protocol = "http";
-          r.address = endpoint.substr(6);
-        } else if (proto === "ssl://") {
-          r.protocol = "https";
-          r.address = endpoint.substr(6);
-        } else {
-          r.endpoint = endpoint;
-        }
-        return r;
-      }));
+      var r = { "name": n, "role": "primary" };
+      r.status = "ok";
+      const endpoint = global.ArangoClusterInfo.getServerEndpoint(n);
+      const proto = endpoint.substr(0, 6);
+      if (proto === "tcp://") {
+        r.protocol = "http";
+        r.address = endpoint.substr(6);
+      } else if (proto === "ssl://") {
+        r.protocol = "https";
+        r.address = endpoint.substr(6);
+      } else {
+        r.endpoint = endpoint;
+      }
+      return r;
+    }));
   })
   .summary('Get all DBServers')
-  .description('Get a list of all running and expected DBServers within the cluster');
-
+    .description('Get a list of all running and expected DBServers within the cluster');
+  
   router.get('/Coordinators', function(req, res) {
     const list = global.ArangoClusterInfo.getCoordinators();
     res.json(list.map(n => { 
-        var r = { "name": n, "role": "coordinator" };
-        r.status = "ok";
-        const endpoint = global.ArangoClusterInfo.getServerEndpoint(n);
-        const proto = endpoint.substr(0, 6);
-        if (proto === "tcp://") {
-          r.protocol = "http";
-          r.address = endpoint.substr(6);
-        } else if (proto === "ssl://") {
-          r.protocol = "https";
-          r.address = endpoint.substr(6);
-        } else {
-          r.endpoint = endpoint;
-        }
-        return r;
-      }));
+      var r = { "name": n, "role": "coordinator" };
+      r.status = "ok";
+      const endpoint = global.ArangoClusterInfo.getServerEndpoint(n);
+      const proto = endpoint.substr(0, 6);
+      if (proto === "tcp://") {
+        r.protocol = "http";
+        r.address = endpoint.substr(6);
+      } else if (proto === "ssl://") {
+        r.protocol = "https";
+        r.address = endpoint.substr(6);
+      } else {
+        r.endpoint = endpoint;
+      }
+      return r;
+    }));
   });
 }

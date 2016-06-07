@@ -378,7 +378,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
-      doCopy = false; 
+      doCopy = false;
     case VPACK_INLINE:
       // fall-through intentional
     case VPACK_MANAGED: {
@@ -871,6 +871,7 @@ void AqlValue::destroy() {
 VPackSlice AqlValue::slice() const {
   switch (type()) {
     case VPACK_SLICE_POINTER: {
+
       return VPackSlice(_data.pointer);
     }
     case VPACK_INLINE: {
@@ -989,6 +990,15 @@ int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
       size_t ritem = 0;
       size_t const lsize = left._data.docvec->size();
       size_t const rsize = right._data.docvec->size();
+
+      if (lsize == 0 || rsize == 0) {
+        if (lsize == rsize) {
+          // both empty
+          return 0;
+        }
+        return (lsize < rsize ? -1 : 1);
+      }
+
       size_t lrows = left._data.docvec->at(0)->size();
       size_t rrows = right._data.docvec->at(0)->size();
 
@@ -1018,6 +1028,7 @@ int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
       }
 
       if (lblock == lsize && rblock == rsize) {
+        // both blocks exhausted
         return 0;
       }
 

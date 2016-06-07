@@ -39,8 +39,11 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestAqlFunctionsHandler.h"
+#include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
@@ -75,19 +78,19 @@ using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
 
+AuthInfo RestServerFeature::AUTH_INFO;
 RestServerFeature* RestServerFeature::RESTSERVER = nullptr;
 
 RestServerFeature::RestServerFeature(
-    application_features::ApplicationServer* server,
-    std::string const& authenticationRealm)
+    application_features::ApplicationServer* server)
     : ApplicationFeature(server, "RestServer"),
       _keepAliveTimeout(300.0),
-      _authenticationRealm(authenticationRealm),
       _allowMethodOverride(false),
       _authentication(true),
       _authenticationUnixSockets(true),
-      _authenticationSystemOnly(false),
+      _authenticationSystemOnly(true),
       _proxyCheck(true),
+      _jwtSecret(""),
       _handlerFactory(nullptr),
       _jobManager(nullptr) {
   setOptional(true);
@@ -107,11 +110,24 @@ RestServerFeature::RestServerFeature(
 void RestServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
-  
+
+  options->addOldOption("server.disable-authentication",
+                        "server.authentication");
+  options->addOldOption("server.disable-authentication-unix-sockets",
+                        "server.authentication-unix-sockets");
+  options->addOldOption("server.authenticate-system-only",
+                        "server.authentication-system-only");
+  options->addOldOption("server.allow-method-override",
+                        "http.allow-method-override");
+  options->addOldOption("server.hide-product-header",
+                        "http.hide-product-header");
+  options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
+  options->addOldOption("server.default-api-compatibility", "");
+  options->addOldOption("no-server", "server.rest-server");
+
   options->addOption("--server.authentication",
                      "enable or disable authentication for ALL client requests",
                      new BooleanParameter(&_authentication));
-  
 
   options->addOption(
       "--server.authentication-system-only",
@@ -123,6 +139,10 @@ void RestServerFeature::collectOptions(
                      "authentication for requests via UNIX domain sockets",
                      new BooleanParameter(&_authenticationUnixSockets));
 #endif
+
+  options->addOption("--server.jwt-secret",
+                     "secret to use when doing jwt authentication",
+                     new StringParameter(&_jwtSecret));
 
   options->addSection("http", "HttpServer features");
 
@@ -139,10 +159,11 @@ void RestServerFeature::collectOptions(
       "do not expose \"Server: ArangoDB\" header in HTTP responses",
       new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
 
-  options->addOption("--http.trusted-origin",
-                     "trusted origin URLs for CORS requests with credentials",
-                     new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
-  
+  options->addOption(
+      "--http.trusted-origin",
+      "trusted origin URLs for CORS requests with credentials",
+      new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
+
   options->addSection("frontend", "Frontend options");
 
   options->addOption("--frontend.proxy-request-check",
@@ -150,7 +171,8 @@ void RestServerFeature::collectOptions(
                      new BooleanParameter(&_proxyCheck));
 
   options->addOption("--frontend.trusted-proxy",
-                     "list of proxies to trust (may be IP or network). Make sure --frontend.proxy-request-check is enabled",
+                     "list of proxies to trust (may be IP or network). Make "
+                     "sure --frontend.proxy-request-check is enabled",
                      new VectorParameter<StringParameter>(&_trustedProxies));
 }
 
@@ -172,13 +194,25 @@ void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
         it = it.substr(0, it.size() - 1);
       }
     }
- 
-    // remove empty members 
+
+    // remove empty members
     _accessControlAllowOrigins.erase(
-      std::remove_if(_accessControlAllowOrigins.begin(), _accessControlAllowOrigins.end(), 
-                     [](std::string const& value) { 
-                       return basics::StringUtils::trim(value).empty(); 
-                     }), _accessControlAllowOrigins.end());
+        std::remove_if(_accessControlAllowOrigins.begin(),
+                       _accessControlAllowOrigins.end(),
+                       [](std::string const& value) {
+                         return basics::StringUtils::trim(value).empty();
+                       }),
+        _accessControlAllowOrigins.end());
+  }
+
+  if (!_jwtSecret.empty()) {
+    if (_jwtSecret.length() > RestServerFeature::_maxSecretLength) {
+      LOG(ERR) << "Given JWT secret too long. Max length is "
+               << RestServerFeature::_maxSecretLength;
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    generateNewJwtSecret();
   }
 }
 
@@ -219,26 +253,34 @@ static bool SetRequestContext(HttpRequest* request, void* data) {
     return false;
   }
 
-  VocbaseContext* ctx = new arangodb::VocbaseContext(request, server, vocbase);
+  VocbaseContext* ctx = new arangodb::VocbaseContext(
+      request, vocbase, RestServerFeature::getJwtSecret());
   request->setRequestContext(ctx, true);
 
   // the "true" means the request is the owner of the context
   return true;
 }
 
-void RestServerFeature::prepare() {
-  HttpHandlerFactory::setMaintenance(true);
+void RestServerFeature::generateNewJwtSecret() {
+  _jwtSecret = "";
+  uint16_t m = 254;
+
+  for (size_t i = 0; i < RestServerFeature::_maxSecretLength; i++) {
+    _jwtSecret += (1 + RandomGenerator::interval(m));
+  }
 }
+
+void RestServerFeature::prepare() { HttpHandlerFactory::setMaintenance(true); }
 
 void RestServerFeature::start() {
   RESTSERVER = this;
+
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
   _httpOptions._vocbase = DatabaseFeature::DATABASE->vocbase();
 
   _handlerFactory.reset(new HttpHandlerFactory(
-      _authenticationRealm, _allowMethodOverride,
-      &SetRequestContext, DatabaseServerFeature::SERVER));
+      _allowMethodOverride, &SetRequestContext, DatabaseServerFeature::SERVER));
 
   defineHandlers();
   buildServers();
@@ -259,10 +301,13 @@ void RestServerFeature::start() {
               << (_authenticationUnixSockets ? "on" : "off");
 #endif
   }
+
+  // populate the authentication cache. otherwise no one can access the new
+  // database
+  RestServerFeature::AUTH_INFO.outdate();
 }
 
 void RestServerFeature::stop() {
-  RESTSERVER = nullptr;
   for (auto& server : _servers) {
     server->stopListening();
   }
@@ -270,12 +315,15 @@ void RestServerFeature::stop() {
   for (auto& server : _servers) {
     server->stop();
   }
+}
 
+void RestServerFeature::unprepare() {
   for (auto& server : _servers) {
     delete server;
   }
 
   _httpOptions._vocbase = nullptr;
+  RESTSERVER = nullptr;
 }
 
 void RestServerFeature::buildServers() {
@@ -286,10 +334,10 @@ void RestServerFeature::buildServers() {
           "Endpoint");
 
   // unencrypted HTTP endpoints
-  HttpServer* httpServer = new HttpServer(
-      SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
-      _handlerFactory.get(), _jobManager.get(), _keepAliveTimeout,
-      _accessControlAllowOrigins);
+  HttpServer* httpServer =
+      new HttpServer(SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
+                     _handlerFactory.get(), _jobManager.get(),
+                     _keepAliveTimeout, _accessControlAllowOrigins);
 
   // YYY #warning FRANK filter list
   auto const& endpointList = endpoint->endpointList();
@@ -299,7 +347,8 @@ void RestServerFeature::buildServers() {
   // ssl endpoints
   if (endpointList.hasSsl()) {
     SslServerFeature* ssl =
-        application_features::ApplicationServer::getFeature<SslServerFeature>("SslServer");
+        application_features::ApplicationServer::getFeature<SslServerFeature>(
+            "SslServer");
 
     // check the ssl context
     if (ssl->sslContext() == nullptr) {
@@ -311,11 +360,10 @@ void RestServerFeature::buildServers() {
     SSL_CTX* sslContext = ssl->sslContext();
 
     // https
-    httpServer =
-        new HttpsServer(SchedulerFeature::SCHEDULER,
-                        DispatcherFeature::DISPATCHER, _handlerFactory.get(),
-                        _jobManager.get(), _keepAliveTimeout, _accessControlAllowOrigins,
-                        sslContext);
+    httpServer = new HttpsServer(
+        SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
+        _handlerFactory.get(), _jobManager.get(), _keepAliveTimeout,
+        _accessControlAllowOrigins, sslContext);
 
     httpServer->setEndpointList(&endpointList);
     _servers.push_back(httpServer);
@@ -411,6 +459,10 @@ void RestServerFeature::defineHandlers() {
       "/_api/aql",
       RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
+  
+  _handlerFactory->addPrefixHandler(
+      "/_api/aql-builtin",
+      RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_api/query", RestHandlerCreator<RestQueryHandler>::createNoData);
@@ -472,8 +524,7 @@ void RestServerFeature::defineHandlers() {
       RestHandlerCreator<WorkMonitorHandler>::createNoData);
 
   _handlerFactory->addHandler(
-      "/_admin/json-echo",
-      RestHandlerCreator<RestEchoHandler>::createNoData);
+      "/_admin/json-echo", RestHandlerCreator<RestEchoHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
@@ -484,6 +535,11 @@ void RestServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/shutdown",
       RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_open/auth", RestHandlerCreator<arangodb::RestAuthHandler>::createData<
+                         std::string const*>,
+      &_jwtSecret);
 
   // ...........................................................................
   // /_admin

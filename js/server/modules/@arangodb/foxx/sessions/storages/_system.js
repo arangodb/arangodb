@@ -30,7 +30,6 @@ const UNIQUE_CONSTRAINT = arangodb.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATE
 const db = arangodb.db;
 const aql = arangodb.aql;
 
-
 module.exports = function systemStorage(cfg) {
   assert(!cfg, 'System session storage does not expect any options');
   const ttl = Number(internal.options()['server.session-timeout']) * 1000;

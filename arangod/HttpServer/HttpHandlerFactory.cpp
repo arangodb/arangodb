@@ -62,12 +62,10 @@ class MaintenanceHandler : public HttpHandler {
 /// @brief constructs a new handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::HttpHandlerFactory(std::string const& authenticationRealm,
-                                       bool allowMethodOverride,
+HttpHandlerFactory::HttpHandlerFactory(bool allowMethodOverride,
                                        context_fptr setContext,
                                        void* setContextData)
-    : _authenticationRealm(authenticationRealm),
-      _allowMethodOverride(allowMethodOverride),
+    : _allowMethodOverride(allowMethodOverride),
       _setContext(setContext),
       _setContextData(setContextData),
       _notFound(nullptr) {}
@@ -87,9 +85,15 @@ void HttpHandlerFactory::setMaintenance(bool value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets maintenance mode
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpHandlerFactory::isMaintenance() {
+  return MaintenanceMode ? true : false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request
-///
-/// wrapper method that will consider disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralResponse::ResponseCode HttpHandlerFactory::authenticateRequest(
@@ -118,24 +122,6 @@ bool HttpHandlerFactory::setRequestContext(HttpRequest* request) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the authentication realm
-////////////////////////////////////////////////////////////////////////////////
-
-std::string HttpHandlerFactory::authenticationRealm(
-    HttpRequest* request) const {
-  auto context = request->requestContext();
-
-  if (context != nullptr) {
-    auto realm = context->realm();
-
-    if (! realm.empty()) {
-      return _authenticationRealm + "/" + std::string(realm);
-    }
-  }
-  return _authenticationRealm;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new request
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -143,9 +129,7 @@ HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
                                                char const* ptr, size_t length) {
   HttpRequest* request = new HttpRequest(info, ptr, length, _allowMethodOverride);
 
-  if (request != nullptr) {
-    setRequestContext(request);
-  }
+  setRequestContext(request);
 
   return request;
 }

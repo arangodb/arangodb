@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global ArangoClusterComm, ArangoClusterInfo */
+/*global ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
@@ -205,7 +205,7 @@ SimpleQueryNear.prototype.execute = function () {
     "@collection": this._collection.name(), 
     latitude: this._latitude, 
     longitude: this._longitude, 
-    limit: parseInt(this._limit + this._skip, 10)
+    limit: parseInt((this._skip || 0) + (this._limit || 99999999999), 10)
   };
   
   var mustSort = false;
@@ -219,7 +219,7 @@ SimpleQueryNear.prototype.execute = function () {
 
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this._collection.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     var _limit = 0;
@@ -256,7 +256,7 @@ SimpleQueryNear.prototype.execute = function () {
                                      options);
     });
 
-    var result = cluster.wait(coord, shards);
+    var result = cluster.wait(coord, shards.length);
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);
@@ -343,7 +343,7 @@ SimpleQueryWithin.prototype.execute = function () {
 
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this._collection.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     var _limit = 0;
@@ -381,7 +381,7 @@ SimpleQueryWithin.prototype.execute = function () {
                                      options);
     });
 
-    var result = cluster.wait(coord, shards);
+    var result = cluster.wait(coord, shards.length);
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);
@@ -460,7 +460,7 @@ SimpleQueryFulltext.prototype.execute = function () {
   if (cluster.isCoordinator()) {
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this._collection.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
     var _limit = 0;
     if (this._limit > 0) {
@@ -486,7 +486,7 @@ SimpleQueryFulltext.prototype.execute = function () {
                                      options);
     });
 
-    var result = cluster.wait(coord, shards);
+    var result = cluster.wait(coord, shards.length);
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);
@@ -505,7 +505,7 @@ SimpleQueryFulltext.prototype.execute = function () {
       "@collection": this._collection.name(), 
       attribute: this._attribute, 
       query: this._query, 
-      limit: parseInt(this._limit + this._skip, 10)
+      limit: parseInt((this._skip || 0) + (this._limit || 99999999999), 10)
     };
 
     var query = "FOR doc IN FULLTEXT(@@collection, @attribute, @query, @limit) " + 
@@ -547,7 +547,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
   if (cluster.isCoordinator()) {
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this._collection.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
     var _limit = 0;
     if (this._limit > 0) {
@@ -578,7 +578,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
     });
 
     var _documents = [ ], total = 0;
-    result = cluster.wait(coord, shards);
+    result = cluster.wait(coord, shards.length);
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);

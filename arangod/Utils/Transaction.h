@@ -115,8 +115,7 @@ class Transaction {
   /// @brief create the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  Transaction(std::shared_ptr<TransactionContext> transactionContext, 
-              TRI_voc_tid_t externalId);
+  explicit Transaction(std::shared_ptr<TransactionContext> transactionContext);
 
  public:
 
@@ -287,6 +286,12 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::DocumentDitch* orderDitch(TRI_voc_cid_t);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not a ditch has been created for the collection
+  //////////////////////////////////////////////////////////////////////////////
+  
+  bool hasDitch(TRI_voc_cid_t cid) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the _key attribute from a slice
@@ -563,8 +568,8 @@ class Transaction {
 
   OperationCursor* indexScanForCondition(
       std::string const& collectionName, IndexHandle const& indexId,
-      arangodb::aql::Ast*, arangodb::aql::AstNode const*,
-      arangodb::aql::Variable const*, uint64_t, uint64_t, bool);
+      arangodb::aql::AstNode const*, arangodb::aql::Variable const*, uint64_t,
+      uint64_t, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief factory for OperationCursor objects
@@ -859,12 +864,6 @@ class Transaction {
   void freeTransaction();
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief external transaction id. used in replication only
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_voc_tid_t _externalId;
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief role of server in cluster
   //////////////////////////////////////////////////////////////////////////////

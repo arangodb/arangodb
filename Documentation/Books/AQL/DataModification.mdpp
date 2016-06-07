@@ -17,35 +17,64 @@ Let's start with the basics: `INSERT`, `UPDATE` and `REMOVE` operations on singl
 Here is an example that insert a document in an existing collection *users*:
 
 ```js
-INSERT { firstName: "Anna", name: "Pavlova", profession: "artist" } IN users
+INSERT {
+    firstName: "Anna",
+    name: "Pavlova",
+    profession: "artist"
+} IN users
 ```
 
 You may provide a key for the new document; if not provided, ArangoDB will create one for you.  
 
 ```js
-INSERT { _key: "GilbertoGil", firstName: "Gilberto", name: "Gil", city: "Fortalezza" } IN users
+INSERT {
+    _key: "GilbertoGil",
+    firstName: "Gilberto",
+    name: "Gil",
+    city: "Fortalezza"
+} IN users
 ```
 
-As Arango is schema-free, attributes of the documents may vary: 
+As ArangoDB is schema-free, attributes of the documents may vary: 
 
 ```js
-INSERT { _key: "PhilCarpenter", firstName: "Phil", name: "Carpenter", middleName: "G.", status: "inactive" } IN users
+INSERT {
+    _key: "PhilCarpenter",
+    firstName: "Phil",
+    name: "Carpenter",
+    middleName: "G.",
+    status: "inactive"
+} IN users
 ```
 
 ```js
-INSERT { _key: "NatachaDeclerck", firstName: "Natacha", name: "Declerck", location: "Antwerp" } IN users 
+INSERT {
+    _key: "NatachaDeclerck",
+    firstName: "Natacha",
+    name: "Declerck",
+    location: "Antwerp"
+} IN users 
 ```
 
 Update is quite simple. The following AQL statement will add or change the attributes status and location
 
 ```js
-UPDATE "PhilCarpenter" WITH { status: "active", location: "Beijing" } IN users
+UPDATE "PhilCarpenter" WITH {
+    status: "active",
+    location: "Beijing"
+} IN users
 ```
 
 Replace is an alternative to update where all attributes of the document are replaced.
 
 ```js
-REPLACE { _key: "NatachaDeclerck", firstName: "Natacha", name: "Leclerc", status: "active", level: "premium" } IN users
+REPLACE {
+    _key: "NatachaDeclerck",
+    firstName: "Natacha",
+    name: "Leclerc",
+    status: "active",
+    level: "premium"
+} IN users
 ```
 
 Removing a document if you know its key is simple as well : 

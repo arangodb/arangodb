@@ -44,7 +44,9 @@ enum class ServerState {
   IN_START,
   IN_WAIT,
   IN_STOP,
-  STOPPED
+  IN_UNPREPARE,
+  STOPPED,
+  ABORT
 };
 
 class ProgressHandler {
@@ -102,6 +104,11 @@ class ProgressHandler {
 // `stop`
 //
 // Stops the features. The `stop` methods are called in reversed `start` order.
+// This must stop all threads, but not destroy the features.
+//
+// `unprepare`
+//
+// This destroys the features.
 
 class ApplicationServer {
   ApplicationServer(ApplicationServer const&) = delete;
@@ -114,7 +121,8 @@ class ApplicationServer {
     VALIDATED,
     PREPARED,
     STARTED,
-    STOPPED
+    STOPPED,
+    UNPREPARED
   };
 
   static ApplicationServer* server;
@@ -191,6 +199,9 @@ class ApplicationServer {
   // signal the server to shut down
   void beginShutdown();
 
+  // report that we are going down by fatal error
+  void shutdownFatalError();
+
   // return VPack options
   VPackBuilder options(std::unordered_set<std::string> const& excludes) const;
 
@@ -247,6 +258,9 @@ class ApplicationServer {
 
   // stops features
   void stop();
+
+  // destroys features
+  void unprepare();
 
   // after start, the server will wait in this method until
   // beginShutdown is called

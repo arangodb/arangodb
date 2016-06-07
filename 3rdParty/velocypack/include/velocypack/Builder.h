@@ -309,11 +309,11 @@ class Builder {
     return _pos;
   }
 
-  bool isEmpty() const throw() { return _pos == 0; }
+  bool isEmpty() const noexcept { return _pos == 0; }
 
-  bool isClosed() const throw() { return _stack.empty(); }
+  bool isClosed() const noexcept { return _stack.empty(); }
 
-  bool isOpenArray() const throw() {
+  bool isOpenArray() const noexcept {
     if (_stack.empty()) {
       return false;
     }
@@ -321,7 +321,7 @@ class Builder {
     return _start[tos] == 0x06 || _start[tos] == 0x13;
   }
 
-  bool isOpenObject() const throw() {
+  bool isOpenObject() const noexcept {
     if (_stack.empty()) {
       return false;
     }

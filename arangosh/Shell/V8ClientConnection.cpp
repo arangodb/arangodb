@@ -27,14 +27,14 @@
 #include <iostream>
 #include <v8.h>
 
-#include "ApplicationFeatures/ClientFeature.h"
-#include "ApplicationFeatures/ConsoleFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Import/ImportHelper.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
+#include "Shell/ClientFeature.h"
+#include "Shell/ConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -52,23 +52,25 @@ V8ClientConnection::V8ClientConnection(
     std::unique_ptr<GeneralClientConnection>& connection,
     std::string const& database, std::string const& username,
     std::string const& password, double requestTimeout)
-    : _databaseName(database),
-      _username(username),
-      _password(password),
-      _requestTimeout(requestTimeout),
+    : _requestTimeout(requestTimeout),
       _client(nullptr),
       _lastHttpReturnCode(0),
       _lastErrorMessage(""),
       _httpResult(nullptr),
       _version("arango"),
       _mode("unknown mode") {
-  init(connection);
+  init(connection, username, password, database);
 }
 
 V8ClientConnection::~V8ClientConnection() {}
 
 void V8ClientConnection::init(
-    std::unique_ptr<GeneralClientConnection>& connection) {
+    std::unique_ptr<GeneralClientConnection>& connection, std::string const& username,
+    std::string const& password, std::string const& databaseName) {
+  _username = username;
+  _password = password;
+  _databaseName = databaseName;
+
   _client.reset(new SimpleHttpClient(connection, _requestTimeout, false));
   _client->setLocationRewriter(this, &rewriteLocation);
   _client->setUserNamePassword("/", _username, _password);
@@ -169,7 +171,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
   try {
     std::unique_ptr<GeneralClientConnection> connection =
         client->createConnection(client->endpoint());
-    init(connection);
+    init(connection, client->username(), client->password(), client->databaseName());
   } catch (...) {
     std::string errorMessage = "error in '" + client->endpoint() + "'";
     throw errorMessage;
@@ -398,7 +400,7 @@ static void ClientConnection_reconnect(
   } else {
     password = TRI_ObjectToString(args[3]);
   }
-
+  
   client->setEndpoint(endpoint);
   client->setDatabaseName(databaseName);
   client->setUsername(username);

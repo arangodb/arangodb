@@ -213,9 +213,9 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 endif ()
 
 if (WINDOWS)
-  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3" CACHE STRING "base flags")
-  set(BASE_C_FLAGS   ""                         CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "/GR /EHsc"                CACHE STRING "base C++flags")
+  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP" CACHE STRING "base flags")
+  set(BASE_C_FLAGS   ""                         	CACHE STRING "base C flags")
+  set(BASE_CXX_FLAGS "/GR /EHsc"                	CACHE STRING "base C++flags")
 else ()
   set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
   set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
@@ -264,7 +264,7 @@ find_package(Threads REQUIRED)
 if (MSVC)
   configure_file("Installation/Windows/vcproj.user/arangod.vcxproj.user" ${CMAKE_BINARY_DIR})
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
-  add_definitions("-DFD_SETSIZE=2048")
+  add_definitions("-DFD_SETSIZE=8192")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
   
   # https://blogs.msdn.microsoft.com/vcblog/2016/04/14/stl-fixes-in-vs-2015-update-2/
@@ -622,6 +622,12 @@ endif ()
 # ZLIB_INCLUDE_DIR
 
 add_subdirectory(3rdParty)
+
+################################################################################
+## VELOCYPACK
+################################################################################
+
+add_definitions("-DVELOCYPACK_XXHASH=1")
 
 set(BOOST_VERSION 1.61.0b1)
 

@@ -245,7 +245,7 @@ function lookupService(mount) {
       errorNum: errors.ERROR_APP_NOT_FOUND.code,
       errorMessage: dd`
         ${errors.ERROR_APP_NOT_FOUND.message}
-        Service not found at "${mount}".
+        Mount path: "${mount}".
       `
     });
   }
@@ -519,8 +519,7 @@ function computeRootServicePath(mount) {
 
 function transformMountToPath(mount) {
   var list = mount.split('/');
-  list.push('APP');
-  return joinPath(...list);
+  return joinPath(...list, 'APP');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -617,7 +616,7 @@ function createService(mount, options, activateDevelopment) {
 
 function uploadToPeerCoordinators(serviceInfo, coordinators) {
   let coordOptions = {
-    coordTransactionID: ArangoClusterInfo.uniqid()
+    coordTransactionID: ArangoClusterComm.getId()
   };
   let req = fs.readBuffer(joinPath(fs.getTempPath(), serviceInfo));
   let httpOptions = {};
@@ -629,8 +628,9 @@ function uploadToPeerCoordinators(serviceInfo, coordinators) {
     ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
       '/_api/upload', req, httpOptions, coordOptions);
   }
+  delete coordOptions.clientTransactionID;
   return {
-    results: cluster.wait(coordOptions, coordinators),
+    results: cluster.wait(coordOptions, coordinators.length),
     mapping
   };
 }
@@ -806,6 +806,31 @@ function installServiceFromRemote(url, targetPath) {
   extractServiceToPath(tempFile, targetPath);
 }
 
+function patchManifestFile(servicePath, patchData) {
+  if (!patchData || !Object.keys(patchData).length) {
+    return;
+  }
+  const filename = joinPath(servicePath, 'manifest.json');
+  let manifest;
+  try {
+    const rawManifest = fs.read(filename);
+    manifest = JSON.parse(rawManifest);
+  } catch (e) {
+    throw Object.assign(
+      new ArangoError({
+        errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
+        errorMessage: dd`
+          ${errors.ERROR_MALFORMED_MANIFEST_FILE.message}
+          File: ${filename}
+          Cause: ${e.stack}
+        `
+      }), {cause: e}
+    );
+  }
+  Object.assign(manifest, patchData);
+  fs.write(filename, JSON.stringify(manifest));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Copies a service from local, either zip file or folder, to mount path
 ////////////////////////////////////////////////////////////////////////////////
@@ -928,7 +953,13 @@ function _scanFoxx(mount, options, activateDevelopment) {
           }
           var old = utils.getStorage().firstExample({ mount: mount });
           if (old === null) {
-            throw new Error(`Could not find service for mountpoint "${mount}"`);
+            throw new ArangoError({
+              errorNum: errors.ERROR_APP_NOT_FOUND.code,
+              errorMessage: dd`
+                ${errors.ERROR_APP_NOT_FOUND.message}
+                Mount path: "${mount}".
+              `
+            });
           }
           var data = Object.assign({}, old);
           data.manifest = service.toJSON().manifest;
@@ -998,12 +1029,16 @@ function _buildServiceInPath(serviceInfo, path, options) {
       serviceInfo = joinPath(fs.getTempPath(), serviceInfo);
       installServiceFromLocal(serviceInfo, path);
     } else {
-      try {
-        store.update();
-      } catch (e) {
-        console.warnLines(`Failed to update Foxx store: ${e.stack}`);
+      if (!options || options.refresh !== false) {
+        try {
+          store.update();
+        } catch (e) {
+          console.warnLines(`Failed to update Foxx store: ${e.stack}`);
+        }
       }
-      installServiceFromRemote(store.buildUrl(serviceInfo), path);
+      const info = store.installationInfo(serviceInfo);
+      installServiceFromRemote(info.url, path);
+      patchManifestFile(path, info.manifest);
     }
   } catch (e) {
     try {
@@ -1045,7 +1080,13 @@ function _install(serviceInfo, mount, options, runSetup) {
   var collection = utils.getStorage();
   options = options || {};
   if (fs.exists(targetPath)) {
-    throw new Error('An service is already installed at this location.');
+    throw new ArangoError({
+      errorNum: errors.ERROR_APP_MOUNTPOINT_CONFLICT.code,
+      errorMessage: dd`
+        ${errors.ERROR_APP_MOUNTPOINT_CONFLICT.message}
+        Mount path: "${mount}".
+      `
+    });
   }
   fs.makeDirectoryRecursive(targetPath);
   // Remove the empty APP folder.
@@ -1119,7 +1160,7 @@ function install(serviceInfo, mount, options) {
       let intOpts = JSON.parse(JSON.stringify(options));
       intOpts.__clusterDistribution = true;
       let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
+        coordTransactionID: ArangoClusterComm.getId()
       };
       let httpOptions = {};
       for (let i = 0; i < res.length; ++i) {
@@ -1130,14 +1171,14 @@ function install(serviceInfo, mount, options) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].clientTransactionID], db._name(),
           '/_admin/foxx/install', JSON.stringify(intReq), httpOptions, coordOptions);
       }
-      cluster.wait(coordOptions, coordinators);
+      cluster.wait(coordOptions, res.length);
     } else {
       /*jshint -W075:true */
       let req = {appInfo: serviceInfo, mount, options};
       /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
+        coordTransactionID: ArangoClusterComm.getId()
       };
       req.options.__clusterDistribution = true;
       req = JSON.stringify(req);
@@ -1147,6 +1188,7 @@ function install(serviceInfo, mount, options) {
             '/_admin/foxx/install', req, httpOptions, coordOptions);
         }
       }
+      cluster.wait(coordOptions, coordinators.length - 1);
     }
   }
   reloadRouting();
@@ -1243,7 +1285,7 @@ function uninstall(mount, options) {
     /*jshint -W075:false */
     let httpOptions = {};
     let coordOptions = {
-      coordTransactionID: ArangoClusterInfo.uniqid()
+      coordTransactionID: ArangoClusterComm.getId()
     };
     req.options.__clusterDistribution = true;
     req.options.force = true;
@@ -1254,6 +1296,7 @@ function uninstall(mount, options) {
           '/_admin/foxx/uninstall', req, httpOptions, coordOptions);
       }
     }
+    cluster.wait(coordOptions, coordinators.length - 1);
   }
   reloadRouting();
   return service.simpleJSON();
@@ -1287,7 +1330,7 @@ function replace(serviceInfo, mount, options) {
       let intOpts = JSON.parse(JSON.stringify(options));
       intOpts.__clusterDistribution = true;
       let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
+        coordTransactionID: ArangoClusterComm.getId()
       };
       let httpOptions = {};
       for (let i = 0; i < res.length; ++i) {
@@ -1298,7 +1341,7 @@ function replace(serviceInfo, mount, options) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].coordinatorTransactionID], db._name(),
           '/_admin/foxx/replace', JSON.stringify(intReq), httpOptions, coordOptions);
       }
-      cluster.wait(coordOptions, coordinators);
+      cluster.wait(coordOptions, res.length);
     } else {
       let intOpts = JSON.parse(JSON.stringify(options));
       /*jshint -W075:true */
@@ -1306,7 +1349,7 @@ function replace(serviceInfo, mount, options) {
       /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
+        coordTransactionID: ArangoClusterComm.getId()
       };
       req.options.__clusterDistribution = true;
       req.options.force = true;
@@ -1315,6 +1358,7 @@ function replace(serviceInfo, mount, options) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
           '/_admin/foxx/replace', req, httpOptions, coordOptions);
       }
+      cluster.wait(coordOptions, coordinators.length);
     }
   }
   _uninstall(mount, {teardown: true,
@@ -1354,7 +1398,7 @@ function upgrade(serviceInfo, mount, options) {
       let intOpts = JSON.parse(JSON.stringify(options));
       intOpts.__clusterDistribution = true;
       let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
+        coordTransactionID: ArangoClusterComm.getId()
       };
       let httpOptions = {};
       for (let i = 0; i < res.length; ++i) {
@@ -1365,7 +1409,7 @@ function upgrade(serviceInfo, mount, options) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].coordinatorTransactionID], db._name(),
           '/_admin/foxx/update', JSON.stringify(intReq), httpOptions, coordOptions);
       }
-      cluster.wait(coordOptions, coordinators);
+      cluster.wait(coordOptions, res.length);
     } else {
       let intOpts = JSON.parse(JSON.stringify(options));
       /*jshint -W075:true */
@@ -1373,7 +1417,7 @@ function upgrade(serviceInfo, mount, options) {
       /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
+        coordTransactionID: ArangoClusterComm.getId()
       };
       req.options.__clusterDistribution = true;
       req.options.force = true;
@@ -1382,6 +1426,7 @@ function upgrade(serviceInfo, mount, options) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
           '/_admin/foxx/update', req, httpOptions, coordOptions);
       }
+      cluster.wait(coordOptions, coordinators.length);
     }
   }
   var oldService = lookupService(mount);

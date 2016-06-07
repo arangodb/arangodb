@@ -123,7 +123,7 @@ class HashIndexIteratorVPack final : public IndexIterator {
       : _trx(trx),
         _index(index),
         _searchValues(searchValues.get()),
-        _iterator(_searchValues->slice(), true),
+        _iterator(_searchValues->slice()),
         _buffer(),
         _posInBuffer(0) {
     searchValues.release(); // now we have ownership for searchValues
@@ -198,7 +198,6 @@ class HashIndex final : public PathBasedIndex {
 
   IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,
-                                      arangodb::aql::Ast*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       bool) const override;

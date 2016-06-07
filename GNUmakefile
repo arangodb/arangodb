@@ -249,9 +249,9 @@ win64-relative-debug:
 pack-winXX:
 	rm -rf ../b && mkdir ../b
 
-	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)"
+	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=RelWithDebInfo
 	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=RelWithDebInfo
-	${MAKE} packXX BITS="$(BITS)"
+	${MAKE} packXX BITS="$(BITS)" BUILD_TARGET=RelWithDebInfo
 
 pack-winXX-MOREOPTS:
 	rm -rf ../b && mkdir ../b

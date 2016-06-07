@@ -138,6 +138,10 @@ Store::~Store() {}
 std::vector<bool> Store::apply(query_t const& query) {
   std::vector<bool> applied;
   MUTEX_LOCKER(storeLocker, _storeLock);
+  /*for (auto const& i : VPackArrayIterator(query->slice())) {
+    LOG(WARN) << i[0].typeName();
+    LOG(WARN) << i[0].keyAt(0).copyString();
+    } */ 
   for (auto const& i : VPackArrayIterator(query->slice())) {
     switch (i.length()) {
       case 1:
@@ -245,7 +249,7 @@ std::vector<bool> Store::apply(std::vector<VPackSlice> const& queries,
       auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
 
-      ClusterCommResult res = arangodb::ClusterComm::instance()->asyncRequest(
+      arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
           std::make_shared<std::string>(body.toString()), headerFields,
           std::make_shared<StoreCallback>(), 0.0, true);

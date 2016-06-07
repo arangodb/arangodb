@@ -140,8 +140,8 @@
                 arangoHelper.arangoError("Collection error: " + error.responseText);
               }
               else {
-                this.collectionsView.render();
-                window.modalView.hide();
+                arangoHelper.arangoNotification("Collection: " + "Successfully changed.");
+                window.App.navigate("#cSettings/" + newname, {trigger: true});
               }
             }.bind(this);
 
@@ -162,11 +162,11 @@
 
               var callbackRename2 = function(error, data) {
                 if (error) {
-                  arangoHelper.arangoError("Collection error: " + data.responseText);
+                  arangoHelper.arangoError("Collection" + data.responseText);
                 }
                 else {
-                  this.collectionsView.render();
-                  window.modalView.hide();
+                  arangoHelper.arangoNotification("Collection" + "Successfully changed.");
+                  window.App.navigate("#cSettings/" + newname, {trigger: true});
                 }
               }.bind(this);
 

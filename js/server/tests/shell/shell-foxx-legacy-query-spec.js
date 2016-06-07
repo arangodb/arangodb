@@ -1,5 +1,5 @@
 /*jshint -W083 */
-/*eslint no-loop-func: false */
+/*eslint no-loop-func: 0 */
 /*global describe, it, beforeEach, afterEach */
 'use strict';
 

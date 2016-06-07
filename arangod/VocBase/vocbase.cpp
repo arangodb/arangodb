@@ -48,7 +48,6 @@
 #include "Utils/CursorRepository.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/auth.h"
 #include "VocBase/cleanup.h"
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
@@ -2156,7 +2155,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_server_t* server, TRI_vocbase_type_e type,
       _queries(nullptr),
       _cursorRepository(nullptr),
       _collectionKeys(nullptr),
-      _authInfoLoaded(false),
       _hasCompactor(false),
       _isOwnAppsDirectory(true),
       _replicationApplier(nullptr) {
@@ -2196,8 +2194,6 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 
   TRI_DestroyCondition(&_cleanupCondition);
   TRI_DestroyCondition(&_compactorCondition);
-
-  TRI_DestroyAuthInfo(this);
 
   delete _cursorRepository;
   delete _collectionKeys;

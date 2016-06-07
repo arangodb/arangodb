@@ -230,12 +230,11 @@ static int TypeWeight(VPackSlice const& slice) {
   }
 }
 
-int VelocyPackHelper::compareNumberValues(VPackSlice lhs, VPackSlice rhs) {
-  VPackValueType const lType = lhs.type();
-
-  if (lType == rhs.type()) {
+int VelocyPackHelper::compareNumberValues(VPackValueType lhsType, 
+                                          VPackSlice lhs, VPackSlice rhs) {
+  if (lhsType == rhs.type()) {
     // both types are equal
-    if (lType == VPackValueType::Int || lType == VPackValueType::SmallInt) {
+    if (lhsType == VPackValueType::Int || lhsType == VPackValueType::SmallInt) {
       // use exact comparisons. no need to cast to double
       int64_t l = lhs.getInt();
       int64_t r = rhs.getInt();
@@ -245,7 +244,7 @@ int VelocyPackHelper::compareNumberValues(VPackSlice lhs, VPackSlice rhs) {
       return (l < r ? -1 : 1);
     }
 
-    if (lType == VPackValueType::UInt) {
+    if (lhsType == VPackValueType::UInt) {
       // use exact comparisons. no need to cast to double
       uint64_t l = lhs.getUInt();
       uint64_t r = rhs.getUInt();
@@ -541,10 +540,8 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
 int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
                               bool useUTF8, VPackOptions const* options,
                               VPackSlice const* lhsBase, VPackSlice const* rhsBase) {
-  lhs = lhs.resolveExternal(); // follow externals
-  rhs = rhs.resolveExternal(); // follow externals
-
   {
+    // will resolve externals...
     int lWeight = TypeWeight(lhs);
     int rWeight = TypeWeight(rhs);
 
@@ -555,9 +552,12 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
     if (lWeight > rWeight) {
       return 1;
     }
-
+  
     TRI_ASSERT(lWeight == rWeight);
   }
+  
+  lhs = lhs.resolveExternal(); // follow externals
+  rhs = rhs.resolveExternal(); // follow externals
 
   // lhs and rhs have equal weights
   if (lhs.isNone() || rhs.isNone()) {
@@ -569,14 +569,15 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
     return 0;
   }
 
-  switch (lhs.type()) {
+  auto lhsType = lhs.type();
+
+  switch (lhsType) {
     case VPackValueType::Illegal:
     case VPackValueType::MinKey:
     case VPackValueType::MaxKey:
-      return 0;
     case VPackValueType::None:
     case VPackValueType::Null:
-      return 0;  // null == null;
+      return 0;  
     case VPackValueType::Bool: {
       bool left = lhs.getBoolean();
       bool right = rhs.getBoolean();
@@ -592,7 +593,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
     case VPackValueType::Int:
     case VPackValueType::UInt:
     case VPackValueType::SmallInt: {
-      return compareNumberValues(lhs, rhs);
+      return compareNumberValues(lhsType, lhs, rhs);
     }
     case VPackValueType::Custom:
     case VPackValueType::String: {

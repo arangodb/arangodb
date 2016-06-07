@@ -75,7 +75,7 @@ function RocksDBCorrSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCorrectnessNonUnique : function () {
-      coll.ensureIndex({ type: "rocksdb", fields: ["v"] });
+      coll.ensureIndex({ type: "persistent", fields: ["v"] });
 
       coll.save({a: 1, _key: "1", v: 1});
       coll.save({a: 17, _key: "2", v: 2});
@@ -145,7 +145,7 @@ function RocksDBCorrSuite() {
     },
 
     testCorrectnessUnique : function () {
-      coll.ensureIndex({ type: "rocksdb", fields: ["v"], unique: true });
+      coll.ensureIndex({ type: "persistent", fields: ["v"], unique: true });
 
       coll.save({a:1, _key:"1", v:1});
       coll.save({a:17, _key:"2", v:2});
@@ -215,7 +215,7 @@ function RocksDBCorrSuite() {
     },
 
     testCorrectnessSparse : function () {
-      coll.ensureIndex({ type: "rocksdb", fields: ["v"], unique: true, sparse: true });
+      coll.ensureIndex({ type: "persistent", fields: ["v"], unique: true, sparse: true });
 
       coll.save({a:1, _key:"1", v:1});
       coll.save({a:17, _key:"2", v:2});

@@ -53,6 +53,7 @@ if (MSVC)
     Basics/threads-win32.cpp
     Basics/win-utils.cpp
     Zip/iowin32.cpp
+    ApplicationFeatures/WindowsServiceFeature.cpp
   )
 else ()
   set(LIB_ARANGO_POSIX
@@ -86,11 +87,12 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Parser.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Slice.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/ValueType.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Validator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Version.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-functions.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fasthash.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
+  ${PROJECT_SOURCE_DIR}/lib/Basics/xxhash.cpp
 )
 
 if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
@@ -110,6 +112,8 @@ else()
   message("-- Will not compile in hand-optimized assembler code for CRC32.")
 endif()
 
+
+
 add_library(${LIB_ARANGO} STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}
@@ -119,9 +123,7 @@ add_library(${LIB_ARANGO} STATIC
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeature.cpp
   ApplicationFeatures/ApplicationServer.cpp
-  ApplicationFeatures/ClientFeature.cpp
   ApplicationFeatures/ConfigFeature.cpp
-  ApplicationFeatures/ConsoleFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
@@ -198,6 +200,7 @@ add_library(${LIB_ARANGO} STATIC
   Logger/LoggerBufferFeature.cpp
   Logger/LoggerFeature.cpp
   Logger/LoggerStream.cpp
+  ProgramOptions/Translator.cpp
   Random/RandomFeature.cpp
   Random/RandomGenerator.cpp
   Random/UniformCharacter.cpp

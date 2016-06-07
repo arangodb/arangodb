@@ -55,7 +55,7 @@ class EdgeIndexIterator final : public IndexIterator {
         _index(index),
         _searchValues(searchValues),
         _keys(_searchValues.slice()),
-        _iterator(_keys, true),
+        _iterator(_keys),
         _posInBuffer(0),
         _batchSize(1000) {}
 
@@ -66,7 +66,7 @@ class EdgeIndexIterator final : public IndexIterator {
         _index(index),
         _searchValues(arangodb::velocypack::Builder::clone(searchValues)),
         _keys(_searchValues.slice()),
-        _iterator(_keys, true),
+        _iterator(_keys),
         _posInBuffer(0),
         _batchSize(1000) {}
 
@@ -120,7 +120,8 @@ class EdgeIndex final : public Index {
   static void buildSearchValue(TRI_edge_direction_e, std::string const&,
                                arangodb::velocypack::Builder&);
 
-  static void buildSearchValue(TRI_edge_direction_e, VPackSlice const&,
+  static void buildSearchValue(TRI_edge_direction_e,
+                               arangodb::velocypack::Slice const&,
                                arangodb::velocypack::Builder&);
 
   static void buildSearchValueFromArray(TRI_edge_direction_e,
@@ -180,7 +181,6 @@ class EdgeIndex final : public Index {
 
   IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,
-                                      arangodb::aql::Ast*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       bool) const override;

@@ -116,7 +116,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  void stop() override final;
+  void unprepare() override final;
 
  public:
   // run the recovery procedure

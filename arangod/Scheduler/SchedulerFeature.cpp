@@ -58,6 +58,12 @@ SchedulerFeature::SchedulerFeature(
   startsAfter("WorkMonitor");
 }
 
+SchedulerFeature::~SchedulerFeature() {
+  if (_scheduler != nullptr) {
+    delete _scheduler;
+  }
+}
+
 void SchedulerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("scheduler", "Configure the I/O scheduler");
@@ -141,12 +147,11 @@ void SchedulerFeature::stop() {
     }
 
     _scheduler->shutdown();
-
-    // delete the scheduler
-    delete _scheduler;
-    _scheduler = nullptr;
-    SCHEDULER = nullptr;
   }
+}
+
+void SchedulerFeature::unprepare() {
+  SCHEDULER = nullptr;
 }
 
 #ifdef _WIN32

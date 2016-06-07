@@ -47,16 +47,25 @@ static double const CL_DEFAULT_TIMEOUT = 60.0;
 namespace arangodb {
 
 static int handleGeneralCommErrors(ClusterCommResult const* res) {
+  // This function creates an error code from a ClusterCommResult, 
+  // but only if it is a communication error. If the communication
+  // was successful and there was an HTTP error code, this function
+  // returns TRI_ERROR_NO_ERROR.
+  // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
+  // and .answer can safely be inspected.
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
     return TRI_ERROR_CLUSTER_TIMEOUT;
   } else if (res->status == CL_COMM_ERROR) {
-    // This could be a broken connection or an Http error:
-    if (res->result == nullptr || !res->result->isComplete()) {
-      // there is not result
+    return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+  } else if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    if (res->result == nullptr) {
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
     }
-  } else if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    if (!res->result->isComplete()) {
+      // there is no result
+      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+    }
     return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
 
@@ -337,27 +346,26 @@ static void collectResultsFromAllShards(
   responseCode = GeneralResponse::ResponseCode::SERVER_ERROR;
   for (auto const& req : requests) {
     auto res = req.result;
-    if (res.status == CL_COMM_RECEIVED) {
-      int commError = handleGeneralCommErrors(&res);
-      if (commError != TRI_ERROR_NO_ERROR) {
-        auto tmpBuilder = std::make_shared<VPackBuilder>();
-        auto weSend = shardMap.find(res.shardID);
-        TRI_ASSERT(weSend != shardMap.end());  // We send sth there earlier.
-        size_t count = weSend->second.size();
-        for (size_t i = 0; i < count; ++i) {
-          tmpBuilder->openObject();
-          tmpBuilder->add("error", VPackValue(true));
-          tmpBuilder->add("errorNum", VPackValue(commError));
-          tmpBuilder->close();
-        }
-        resultMap.emplace(res.shardID, tmpBuilder);
-      } else {
-        TRI_ASSERT(res.answer != nullptr);
-        resultMap.emplace(res.shardID,
-                          res.answer->toVelocyPack(&VPackOptions::Defaults));
-        extractErrorCodes(res, errorCounter, true);
-        responseCode = res.answer_code;
+
+    int commError = handleGeneralCommErrors(&res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      auto tmpBuilder = std::make_shared<VPackBuilder>();
+      auto weSend = shardMap.find(res.shardID);
+      TRI_ASSERT(weSend != shardMap.end());  // We send sth there earlier.
+      size_t count = weSend->second.size();
+      for (size_t i = 0; i < count; ++i) {
+        tmpBuilder->openObject();
+        tmpBuilder->add("error", VPackValue(true));
+        tmpBuilder->add("errorNum", VPackValue(commError));
+        tmpBuilder->close();
       }
+      resultMap.emplace(res.shardID, tmpBuilder);
+    } else {
+      TRI_ASSERT(res.answer != nullptr);
+      resultMap.emplace(res.shardID,
+                        res.answer->toVelocyPack(&VPackOptions::Defaults));
+      extractErrorCodes(res, errorCounter, true);
+      responseCode = res.answer_code;
     }
   }
 }
@@ -443,81 +451,6 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
   }
 
   return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns users
-////////////////////////////////////////////////////////////////////////////////
-
-int usersOnCoordinator(std::string const& dbname, VPackBuilder& result,
-                       double timeout) {
-  // Set a few variables needed for our work:
-  ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
-
-  // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
-      ci->getCollection(dbname, TRI_COL_NAME_USERS);
-
-  if (collinfo->empty()) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  // If we get here, the sharding attributes are not only _key, therefore
-  // we have to contact everybody:
-  auto shards = collinfo->shardIds();
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
-
-  for (auto const& p : *shards) {
-    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-
-    // set collection name (shard id)
-    auto body = std::make_shared<std::string>();
-    body->append("{\"collection\":\"");
-    body->append(p.first);
-    body->append("\"}");
-
-    cc->asyncRequest(
-        "", coordTransactionID, "shard:" + p.first,
-        arangodb::GeneralRequest::RequestType::PUT,
-        "/_db/" + StringUtils::urlEncode(dbname) + "/_api/simple/all", body,
-        headers, nullptr, 10.0);
-  }
-
-  try {
-    // Now listen to the results:
-    int count;
-    int nrok = 0;
-    for (count = (int)shards->size(); count > 0; count--) {
-      auto res = cc->wait("", coordTransactionID, 0, "", timeout);
-      if (res.status == CL_COMM_RECEIVED) {
-        if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK ||
-            res.answer_code == arangodb::GeneralResponse::ResponseCode::CREATED) {
-          std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
-          VPackSlice answer = answerBuilder->slice();
-
-          if (answer.isObject()) {
-            VPackSlice r = answer.get("result");
-            if (r.isArray()) {
-              for (auto const& p : VPackArrayIterator(r)) {
-                if (p.isObject()) {
-                  result.add(p);
-                }
-              }
-            }
-            nrok++;
-          }
-        }
-      }
-    }
-    if (nrok != (int)shards->size()) {
-      return TRI_ERROR_INTERNAL;
-    }
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
-                              // the DBserver could have reported an error.
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -716,21 +649,19 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   }
 
   auto shards = collinfo->shardIds();
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::vector<ClusterCommRequest> requests;
+  auto body = std::make_shared<std::string>();
   for (auto const& p : *shards) {
-    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    cc->asyncRequest(
-        "", coordTransactionID, "shard:" + p.first,
-        arangodb::GeneralRequest::RequestType::GET,
-        "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
-            StringUtils::urlEncode(p.first) + "/count",
-        std::shared_ptr<std::string>(), headers, nullptr, 300.0);
+    requests.emplace_back("shard:" + p.first,
+                          arangodb::GeneralRequest::RequestType::GET,
+                          "/_db/" + StringUtils::urlEncode(dbname) + 
+                          "/_api/collection/" +
+                          StringUtils::urlEncode(p.first) + "/count", body);
   }
-  // Now listen to the results:
-  int count;
-  int nrok = 0;
-  for (count = (int)shards->size(); count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+  size_t nrDone = 0;
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES);
+  for (auto& req : requests) {
+    auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
@@ -741,18 +672,18 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
           result +=
               arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
                   answer, "count", 0);
-          nrok++;
+        } else {
+          return TRI_ERROR_INTERNAL;
         }
+      } else {
+        return static_cast<int>(res.answer_code);
       }
+    } else {
+      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
   }
-
-  if (nrok != (int)shards->size()) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
-                              // the DBserver could have reported an error.
+  
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -866,10 +797,11 @@ int createDocumentOnCoordinator(
   if (!useMultiple) {
     TRI_ASSERT(requests.size() == 1);
     auto const& req = requests[0];
-    auto res = req.result;
-    if (nrDone == 0) {
-      // There has been Communcation error. Handle and return it.
-      return handleGeneralCommErrors(&res);
+    auto& res = req.result;
+
+    int commError = handleGeneralCommErrors(&res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      return commError;
     }
 
     responseCode = res.answer_code;
@@ -1024,10 +956,13 @@ int deleteDocumentOnCoordinator(
     if (!useMultiple) {
       TRI_ASSERT(requests.size() == 1);
       auto const& req = requests[0];
-      auto res = req.result;
-      if (nrDone == 0) {
-        return handleGeneralCommErrors(&res);
+      auto& res = req.result;
+      
+      int commError = handleGeneralCommErrors(&res);
+      if (commError != TRI_ERROR_NO_ERROR) {
+        return commError;
       }
+
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
       auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
@@ -1105,7 +1040,7 @@ int deleteDocumentOnCoordinator(
     auto res = req.result;
     int error = handleGeneralCommErrors(&res);
     if (error != TRI_ERROR_NO_ERROR) {
-      // Local data structores are automatically freed
+      // Local data structures are automatically freed
       return error;
     }
     if (res.answer_code == GeneralResponse::ResponseCode::OK ||
@@ -1249,7 +1184,6 @@ int getDocumentOnCoordinator(
     optsUrlPart += std::string("&onlyget=true");
   }
 
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
@@ -1265,7 +1199,6 @@ int getDocumentOnCoordinator(
         if (!options.ignoreRevs && slice.hasKey(StaticStrings::RevString)) {
           headers->emplace("if-match", slice.get(StaticStrings::RevString).copyString());
         }
-
         // We send to single endpoint
         requests.emplace_back(
             "shard:" + it.first, reqType,
@@ -1364,22 +1297,28 @@ int getDocumentOnCoordinator(
     // Only one can answer, we react a bit differently
     size_t count;
     int nrok = 0;
+    int commError = TRI_ERROR_NO_ERROR;
     for (count = requests.size(); count > 0; count--) {
       auto const& req = requests[count - 1];
       auto res = req.result;
       if (res.status == CL_COMM_RECEIVED) {
         if (res.answer_code !=
                 arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
-            (nrok == 0 && count == 1)) {
+            (nrok == 0 && count == 1 && commError == TRI_ERROR_NO_ERROR)) {
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
           auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
           resultBody.swap(parsedResult);
         }
+      } else {
+        commError = handleGeneralCommErrors(&res);
       }
     }
-    // Note that nrok is always at least 1!
+    if (nrok == 0) {
+      // This can only happen, if a commError was encountered!
+      return commError;
+    }
     if (nrok > 1) {
       return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
     }
@@ -1394,11 +1333,9 @@ int getDocumentOnCoordinator(
   // If no server responds we return 500
   responseCode = GeneralResponse::ResponseCode::SERVER_ERROR;
   for (auto const& req : requests) {
-    auto res = req.result;
+    auto& res = req.result;
     int error = handleGeneralCommErrors(&res);
     if (error != TRI_ERROR_NO_ERROR) {
-      // Cluster is in bad state. Just report. Drop other results.
-      cc->drop("", coordTransactionID, 0, "");
       // Local data structores are automatically freed
       return error;
     }
@@ -1487,7 +1424,10 @@ int getFilteredDocumentsOnCoordinator(
 
   std::unordered_map<ShardID, std::vector<std::string>> shardRequestMap;
   for (auto const& doc : documentIds) {
-    insertIntoShardMap(ci, dbname, doc, shardRequestMap);
+    try {
+      insertIntoShardMap(ci, dbname, doc, shardRequestMap);
+    } catch (...) {
+    }
   }
 
   // Now start the request.
@@ -1528,7 +1468,7 @@ int getFilteredDocumentsOnCoordinator(
 
   // All requests send, now collect results.
   for (auto const& req : requests) {
-    auto res = req.result;
+    auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
       std::shared_ptr<VPackBuilder> resultBody = res.answer->toVelocyPack(&VPackOptions::Defaults);
       VPackSlice resSlice = resultBody->slice();
@@ -1540,12 +1480,8 @@ int getFilteredDocumentsOnCoordinator(
       bool isError = arangodb::basics::VelocyPackHelper::getBooleanValue(
           resSlice, "error", false);
       if (isError) {
-        int errorNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+        return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             resSlice, "errorNum", TRI_ERROR_INTERNAL);
-        std::string message =
-            arangodb::basics::VelocyPackHelper::getStringValue(
-                resSlice, "errorMessage", "");
-        THROW_ARANGO_EXCEPTION_MESSAGE(errorNum, message);
       }
       VPackSlice documents = resSlice.get("documents");
       if (!documents.isArray()) {
@@ -1583,7 +1519,7 @@ int getFilteredEdgesOnCoordinator(
     std::string const& vertex, TRI_edge_direction_e const& direction,
     std::vector<traverser::TraverserExpression*> const& expressions,
     arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::string& contentType, VPackBuilder& result) {
+    VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
 
   // Set a few variables needed for our work:
@@ -1598,7 +1534,6 @@ int getFilteredEdgesOnCoordinator(
   }
 
   auto shards = collinfo->shardIds();
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::string queryParameters = "?vertex=" + StringUtils::urlEncode(vertex);
   if (direction == TRI_EDGE_IN) {
     queryParameters += "&direction=in";
@@ -1615,34 +1550,36 @@ int getFilteredEdgesOnCoordinator(
     bodyBuilder.close();
     reqBodyString->append(bodyBuilder.toJson());
   }
+
+  std::vector<ClusterCommRequest> requests;
+  std::string baseUrl = "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/";
+
   for (auto const& p : *shards) {
-    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                     arangodb::GeneralRequest::RequestType::PUT,
-                     "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" +
-                         p.first + queryParameters,
-                     reqBodyString, headers, nullptr, 3600.0);
+    requests.emplace_back(
+        "shard:" + p.first, arangodb::GeneralRequest::RequestType::PUT,
+        baseUrl + StringUtils::urlEncode(p.first) + queryParameters,
+        reqBodyString);
   }
-  // Now listen to the results:
-  int count;
-  responseCode = arangodb::GeneralResponse::ResponseCode::OK;
-  contentType = StaticStrings::MimeTypeJson;
+
+  // Perform the requests
+  size_t nrDone = 0;
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::REQUESTS);
+
   size_t filtered = 0;
   size_t scannedIndex = 0;
+  responseCode = arangodb::GeneralResponse::ResponseCode::OK;
 
   result.add("edges", VPackValue(VPackValueType::Array));
 
-  for (count = (int)shards->size(); count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+  // All requests send, now collect results.
+  for (auto const& req : requests) {
+    auto& res = req.result;
     int error = handleGeneralCommErrors(&res);
     if (error != TRI_ERROR_NO_ERROR) {
-      cc->drop("", coordTransactionID, 0, "");
+      // Cluster is in bad state. Report.
       return error;
     }
-    if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED) {
-      cc->drop("", coordTransactionID, 0, "");
-      return TRI_ERROR_INTERNAL;
-    }
+    TRI_ASSERT(res.answer != nullptr);
     std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
 
     if (shardResult == nullptr) {
@@ -1656,6 +1593,7 @@ int getFilteredEdgesOnCoordinator(
 
     bool const isError = arangodb::basics::VelocyPackHelper::getBooleanValue(
         shardSlice, "error", false);
+
     if (isError) {
       // shard returned an error
       return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
@@ -1894,22 +1832,28 @@ int modifyDocumentOnCoordinator(
   if (!useMultiple) {
     // Only one can answer, we react a bit differently
     int nrok = 0;
+    int commError = TRI_ERROR_NO_ERROR;
     for (size_t count = shardList->size(); count > 0; count--) {
       auto const& req = requests[count - 1];
       auto res = req.result;
       if (res.status == CL_COMM_RECEIVED) {
         if (res.answer_code !=
                 arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
-            (nrok == 0 && count == 1)) {
+            (nrok == 0 && count == 1 && commError == TRI_ERROR_NO_ERROR)) {
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
           auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
           resultBody.swap(parsedResult);
         }
+      } else {
+        commError = handleGeneralCommErrors(&res);
       }
     }
-    // Note that nrok is always at least 1!
+    if (nrok == 0) {
+      // This can only happen, if a commError was encountered!
+      return commError;
+    }
     if (nrok > 1) {
       return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
     }

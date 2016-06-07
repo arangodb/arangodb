@@ -47,7 +47,7 @@ build/bin/arangod \
   --agency.size 1 \
   --agency.wait-for-sync false \
   --agency.supervision true \
-  --agency.supervision-frequency 5 \
+  --agency.supervision-frequency 1 \
   --database.directory cluster/data4001 \
   --javascript.app-path ./js/apps \
   --javascript.startup-directory ./js \
@@ -56,7 +56,6 @@ build/bin/arangod \
   --server.authentication false \
   --server.endpoint tcp://127.0.0.1:4001 \
   --server.statistics false \
-  --server.threads 16 \
   --agency.compaction-step-size 100 \
   --log.force-direct true \
   > cluster/4001.stdout 2>&1 &
@@ -67,6 +66,7 @@ start() {
       ROLE="PRIMARY"
     elif [ "$1" == "coordinator" ]; then
       ROLE="COORDINATOR"
+      sleep 1
     fi
     TYPE=$1
     PORT=$2
@@ -81,7 +81,7 @@ start() {
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
                 --log.level info \
-                --server.statistics false \
+                --server.statistics true \
                 --server.threads 5 \
                 --javascript.startup-directory ./js \
                 --server.authentication false \
@@ -108,7 +108,7 @@ startTerminal() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
-                --server.statistics false \
+                --server.statistics true \
                 --server.threads 5 \
                 --javascript.startup-directory ./js \
                 --javascript.app-path ./js/apps \
@@ -161,7 +161,7 @@ startRR() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
-                --server.statistics false \
+                --server.statistics true \
                 --server.threads 5 \
                 --javascript.startup-directory ./js \
                 --javascript.app-path ./js/apps \

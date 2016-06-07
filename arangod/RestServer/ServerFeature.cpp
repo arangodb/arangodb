@@ -77,12 +77,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "timeout of web interface server sessions (in seconds)",
                      new DoubleParameter(&VocbaseContext::ServerSessionTtl));
 
-//YYY #warning TODO
-#if 0
-  // other options
-      "start-service", "used to start as windows service")
-#endif
-
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addHiddenOption("--javascript.unit-tests", "run unit-tests and exit",

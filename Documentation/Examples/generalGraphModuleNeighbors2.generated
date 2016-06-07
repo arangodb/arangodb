@@ -5,7 +5,7 @@ arangosh&gt; graph._neighbors(<span class="hljs-string">'germanCity/Hamburg'</sp
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Paris"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"24186"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"24260"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">48.856700000000004</span>, 
@@ -16,7 +16,7 @@ arangosh&gt; graph._neighbors(<span class="hljs-string">'germanCity/Hamburg'</sp
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"24182"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"24256"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">45.76</span>, 
@@ -27,7 +27,7 @@ arangosh&gt; graph._neighbors(<span class="hljs-string">'germanCity/Hamburg'</sp
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"24176"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"24250"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">50.9364</span>, 

@@ -402,8 +402,6 @@ void EdgeIndex::buildSearchValue(TRI_edge_direction_e dir,
   builder.close();
 }
 
-
-
 void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
                                           VPackSlice const ids,
                                           VPackBuilder& builder) {
@@ -456,8 +454,6 @@ void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
   }
   builder.close();
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a selectivity estimate for the index
@@ -590,7 +586,7 @@ bool EdgeIndex::supportsFilterCondition(
 
 IndexIterator* EdgeIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext* context,
-    arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
+    arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 

@@ -226,13 +226,13 @@ struct AqlValue final {
   ~AqlValue() = default;
   
   /// @brief whether or not the value must be destroyed
-  inline bool requiresDestruction() const {
+  inline bool requiresDestruction() const noexcept {
     AqlValueType t = type();
     return (t == VPACK_MANAGED || t == DOCVEC || t == RANGE);
   }
 
   /// @brief whether or not the value is empty / none
-  inline bool isEmpty() const { 
+  inline bool isEmpty() const noexcept { 
     if (type() != VPACK_INLINE) {
       return false;
     }
@@ -240,12 +240,12 @@ struct AqlValue final {
   }
   
   /// @brief whether or not the value is a range
-  inline bool isRange() const {
+  inline bool isRange() const noexcept {
     return type() == RANGE;
   }
   
   /// @brief whether or not the value is a docvec
-  inline bool isDocvec() const {
+  inline bool isDocvec() const noexcept {
     return type() == DOCVEC;
   }
 
@@ -352,7 +352,7 @@ struct AqlValue final {
   AqlValue clone() const;
   
   /// @brief invalidates/resets a value to None, not freeing any memory
-  void erase() {
+  void erase() noexcept {
     _data.internal[0] = '\x00';
     setType(AqlValueType::VPACK_INLINE);
   }
@@ -378,7 +378,7 @@ struct AqlValue final {
   
   /// @brief Returns the type of this value. If true it uses an external pointer
   /// if false it uses the internal data structure
-  inline AqlValueType type() const {
+  inline AqlValueType type() const noexcept {
     return static_cast<AqlValueType>(_data.internal[sizeof(_data.internal) - 1]);
   }
   

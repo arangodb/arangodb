@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint strict: false, unused: false */
-/*global window, Backbone, $,_, window, frontendConfig */
+/*global window, Backbone, $,_, window, frontendConfig, arangoHelper */
 
 window.ArangoUsers = Backbone.Collection.extend({
   model: window.Users,
@@ -34,7 +34,8 @@ window.ArangoUsers = Backbone.Collection.extend({
   login: function (username, password, callback) {
     var self = this;
 
-    $.ajax("login", {
+    $.ajax({
+      url: arangoHelper.databaseUrl("/_open/auth"),
       method: "POST",
       data: JSON.stringify({
         username: username,
@@ -43,11 +44,24 @@ window.ArangoUsers = Backbone.Collection.extend({
       dataType: "json"
     }).success(
       function (data) {
-        self.activeUser = data.user;
+        arangoHelper.setCurrentJwt(data.jwt);
+        
+        var jwtParts = data.jwt.split('.');
+        if (!jwtParts[1]) {
+          throw new Error("Invalid JWT");
+        }
+        
+        if (!window.atob) {
+          throw new Error("base64 support missing in browser");
+        }
+        var payload = JSON.parse(atob(jwtParts[1]));
+
+        self.activeUser = payload.preferred_username;
         callback(false, self.activeUser);
       }
     ).error(
       function () {
+        arangoHelper.setCurrentJwt(null);
         self.activeUser = null;
         callback(true, null);
       }
@@ -59,7 +73,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   logout: function () {
-    $.ajax("logout", {method:"POST"});
+    arangoHelper.setCurrentJwt(null);
     this.activeUser = null;
     this.reset();
     window.App.navigate("");

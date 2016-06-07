@@ -68,6 +68,11 @@ class ExecutionEngine {
   int initializeCursor(AqlItemBlock* items, size_t pos) {
     return _root->initializeCursor(items, pos);
   }
+  
+  /// @brief initialize
+  int initialize() {
+    return _root->initialize();
+  }
 
   /// @brief shutdown, will be called exactly once for the whole query
   int shutdown(int errorCode) {

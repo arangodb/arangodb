@@ -35,19 +35,6 @@ var cluster = require("@arangodb/cluster");
 
 var API = "_api/database";
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_database_list
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_database_user
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_database_current
-////////////////////////////////////////////////////////////////////////////////
-
 function get_api_database (req, res) {
   if (req.suffix.length > 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
@@ -63,7 +50,11 @@ function get_api_database (req, res) {
     if (req.suffix[0] === 'user') {
       // fetch all databases for the current user
       // note: req.user may be null if authentication is turned off
-      result = arangodb.db._databases(req.user);
+      if (req.user === null) {
+        result = arangodb.db._databases();
+      } else {
+        result = arangodb.db._databases(req.user);
+      }
     }
     else if (req.suffix[0] === 'current') {
       if (cluster.isCoordinator()) {
@@ -95,10 +86,6 @@ function get_api_database (req, res) {
 
   actions.resultOk(req, res, actions.HTTP_OK, { result : result });
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_database_new
-////////////////////////////////////////////////////////////////////////////////
 
 function post_api_database (req, res) {
   if (req.suffix.length !== 0) {
@@ -186,6 +173,7 @@ function delete_api_database (req, res) {
 
 actions.defineHttp({
   url : API,
+  allowUseDatabase: true,
 
   callback : function (req, res) {
     try {

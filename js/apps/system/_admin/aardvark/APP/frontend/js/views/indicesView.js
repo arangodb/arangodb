@@ -64,14 +64,10 @@
           //HANDLE ARRAY building
           fields = $('#newGeoFields').val();
         var geoJson = self.checkboxToValue('#newGeoJson');
-        var constraint = self.checkboxToValue('#newGeoConstraint');
-        var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
         postParameter = {
           type: 'geo',
           fields: self.stringToArray(fields),
-          geoJson: geoJson,
-          constraint: constraint,
-          ignoreNull: ignoreNull
+          geoJson: geoJson
         };
         break;
         case 'Persistent':
@@ -79,7 +75,7 @@
         unique = self.checkboxToValue('#newPersistentUnique');
         sparse = self.checkboxToValue('#newPersistentSparse');
         postParameter = {
-          type: 'rocksdb',
+          type: 'persistent',
           fields: self.stringToArray(fields),
           unique: unique,
           sparse: sparse

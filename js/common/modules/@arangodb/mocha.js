@@ -105,6 +105,7 @@ exports.run = function runMochaTests(run, files, reporterName) {
     });
 
     runner = new MochaRunner(suite, false);
+    runner.ignoreLeaks = true;
     reporter = new Reporter(runner, options);
     if (options.grep) {
       runner.grep(options.grep, options.invert);

@@ -1406,7 +1406,7 @@ static void PrepareClusterCommRequest(
     std::unordered_map<std::string, std::string>& headerFields,
     ClientTransactionID& clientTransactionID,
     CoordTransactionID& coordTransactionID, double& timeout,
-    bool& singleRequest) {
+    bool& singleRequest, double& initTimeout) {
   v8::Isolate* isolate = args.GetIsolate();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
@@ -1486,6 +1486,10 @@ static void PrepareClusterCommRequest(
     TRI_GET_GLOBAL_STRING(SingleRequestKey);
     if (opt->Has(SingleRequestKey)) {
       singleRequest = TRI_ObjectToBoolean(opt->Get(SingleRequestKey));
+    }
+    TRI_GET_GLOBAL_STRING(InitTimeoutKey);
+    if (opt->Has(InitTimeoutKey)) {
+      initTimeout = TRI_ObjectToDouble(opt->Get(InitTimeoutKey));
     }
   }
   if (clientTransactionID == "") {
@@ -1645,6 +1649,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   //   - coordTransactionID   (number)
   //   - timeout              (number)
   //   - singleRequest        (boolean) default is false
+  //   - initTimeout          (number)
 
   ClusterComm* cc = ClusterComm::instance();
 
@@ -1661,17 +1666,19 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
+  double initTimeout = -1.0;
   bool singleRequest = false;
 
   PrepareClusterCommRequest(args, reqType, destination, path, *body,
                             *headerFields, clientTransactionID,
-                            coordTransactionID, timeout, singleRequest);
+                            coordTransactionID, timeout, singleRequest,
+                            initTimeout);
 
-  ClusterCommResult const res = cc->asyncRequest(
+  OperationID opId = cc->asyncRequest(
       clientTransactionID, coordTransactionID, destination, reqType, path, body,
-      headerFields, 0, timeout, singleRequest);
-
-  if (res.status == CL_COMM_ERROR) {
+      headerFields, 0, timeout, singleRequest, initTimeout);
+  ClusterCommResult res = cc->enquire(opId);
+  if (res.status == CL_COMM_BACKEND_UNAVAILABLE) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "couldn't queue async request");
   }
@@ -1723,11 +1730,13 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
+  double initTimeout = -1.0;
   bool singleRequest = false;  // of no relevance here
 
   PrepareClusterCommRequest(args, reqType, destination, path, body,
                             *headerFields, clientTransactionID,
-                            coordTransactionID, timeout, singleRequest);
+                            coordTransactionID, timeout, singleRequest,
+                            initTimeout);
 
   std::unique_ptr<ClusterCommResult> res =
       cc->syncRequest(clientTransactionID, coordTransactionID, destination,
@@ -1852,21 +1861,13 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("wait(obj)");
+    TRI_V8_THROW_EXCEPTION_USAGE("drop(obj)");
   }
   // Possible options:
   //   - clientTransactionID  (string)
   //   - coordTransactionID   (number)
   //   - operationID          (number)
   //   - shardID              (string)
-
-  // Disabled to allow communication originating in a DBserver:
-  // 31.7.2014 Max
-
-  // if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
-  //   TRI_V8_THROW_EXCEPTION_INTERNAL(scope,"request works only in coordinator
-  //   role");
-  // }
 
   ClusterComm* cc = ClusterComm::instance();
 
@@ -1908,6 +1909,25 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
            myshardID);
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get an ID for use with coordTransactionId
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getId()");
+  }
+
+  auto id = TRI_NewTickServer();
+  std::string st = StringUtils::itoa(id);
+  v8::Handle<v8::String> s = TRI_V8_ASCII_STRING(st.c_str());
+
+  TRI_V8_RETURN(s);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2106,6 +2126,7 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("enquire"), JS_Enquire);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("wait"), JS_Wait);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("drop"), JS_Drop);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getId"), JS_GetId);
 
   v8g->ClusterCommTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate, context,

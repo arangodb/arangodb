@@ -68,6 +68,9 @@ struct Exception : std::exception {
     BuilderKeyAlreadyWritten = 38,
     BuilderKeyMustBeString = 39,
 
+    ValidatorInvalidLength = 50,
+    ValidatorInvalidType = 51,
+
     UnknownError = 999
   };
 
@@ -83,11 +86,11 @@ struct Exception : std::exception {
 
   explicit Exception(ExceptionType type) : Exception(type, message(type)) {}
 
-  char const* what() const throw() { return _msg.c_str(); }
+  char const* what() const noexcept { return _msg.c_str(); }
 
-  ExceptionType errorCode() const throw() { return _type; }
+  ExceptionType errorCode() const noexcept { return _type; }
 
-  static char const* message(ExceptionType type) throw() {
+  static char const* message(ExceptionType type) noexcept {
     switch (type) {
       case InternalError:
         return "Internal error";
@@ -139,6 +142,11 @@ struct Exception : std::exception {
         return "The key of the next key/value pair is already written";
       case BuilderKeyMustBeString:
         return "The key of the next key/value pair must be a string";
+    
+      case ValidatorInvalidType:
+        return "Invalid type found in binary data";
+      case ValidatorInvalidLength:
+        return "Invalid length found in binary data";
 
       case UnknownError:
       default:

@@ -23,7 +23,6 @@
 
 #include "Basics/Common.h"
 
-#include "ApplicationFeatures/ClientFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -33,6 +32,7 @@
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
+#include "Shell/ClientFeature.h"
 #include "Ssl/SslFeature.h"
 
 using namespace arangodb;

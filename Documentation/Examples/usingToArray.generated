@@ -1,36 +1,36 @@
 arangosh&gt; db._create(<span class="hljs-string">"five"</span>)
-[ArangoCollection <span class="hljs-number">37216</span>, <span class="hljs-string">"five"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">37318</span>, <span class="hljs-string">"five"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; <span class="hljs-keyword">for</span> (i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">5</span>; i++) db.five.save({value:i})
 arangosh&gt; db.five.toArray()
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37226"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/37226"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"37226"</span>, 
-    <span class="hljs-string">"value"</span> : <span class="hljs-number">2</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37232"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/37232"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"37232"</span>, 
-    <span class="hljs-string">"value"</span> : <span class="hljs-number">4</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37229"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/37229"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"37229"</span>, 
-    <span class="hljs-string">"value"</span> : <span class="hljs-number">3</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37223"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/37223"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"37223"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37325"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/37325"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"37325"</span>, 
     <span class="hljs-string">"value"</span> : <span class="hljs-number">1</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37219"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/37219"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"37219"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37331"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/37331"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"37331"</span>, 
+    <span class="hljs-string">"value"</span> : <span class="hljs-number">3</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37321"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/37321"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"37321"</span>, 
     <span class="hljs-string">"value"</span> : <span class="hljs-number">0</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37328"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/37328"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"37328"</span>, 
+    <span class="hljs-string">"value"</span> : <span class="hljs-number">2</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37334"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/37334"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"37334"</span>, 
+    <span class="hljs-string">"value"</span> : <span class="hljs-number">4</span> 
   } 
 ]

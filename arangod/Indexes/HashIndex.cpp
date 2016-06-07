@@ -315,9 +315,6 @@ void HashIndexIterator::reset() {
   _index->lookup(_trx, _lookups.lookup(), _buffer);
 }
 
-
-
-
 TRI_doc_mptr_t* HashIndexIteratorVPack::next() {
   while (true) {
     if (_posInBuffer >= _buffer.size()) {
@@ -602,7 +599,7 @@ void HashIndex::transformSearchValues(VPackSlice const values,
   }
 
   VPackArrayBuilder guard(&result);
-  for (auto const& v : VPackArrayIterator(values, true)) {
+  for (auto const& v : VPackArrayIterator(values)) {
     if (!v.isObject() || !v.hasKey(TRI_SLICE_KEY_EQUAL)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Hash index only allows == comparison.");
     }
@@ -905,7 +902,7 @@ bool HashIndex::supportsFilterCondition(
 
 IndexIterator* HashIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext*,
-    arangodb::aql::Ast*, arangodb::aql::AstNode const* node,
+    arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool) const {
   TRI_IF_FAILURE("HashIndex::noIterator")  {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

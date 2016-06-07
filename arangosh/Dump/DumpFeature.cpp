@@ -21,8 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DumpFeature.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -32,6 +32,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
+#include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -62,6 +63,7 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _progress(true),
       _tickStart(0),
       _tickEnd(0),
+      _compat28(false),
       _result(result),
       _batchId(0),
       _clusterMode(false),
@@ -115,6 +117,9 @@ void DumpFeature::collectOptions(
 
   options->addOption("--tick-end", "last tick to be included in data dump",
                      new UInt64Parameter(&_tickEnd));
+  
+  options->addOption("--compat28", "produce a dump compatible with ArangoDB 2.8",
+                     new BooleanParameter(&_compat28));
 }
 
 void DumpFeature::validateOptions(
@@ -302,10 +307,8 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
       url += "&to=" + StringUtils::itoa(maxTick);
     }
 
-    if (_force) {
-      url += "&failOnUnknown=false";
-    } else {
-      url += "&failOnUnknown=true";
+    if (_compat28) {
+      url += "&compat28=true";
     }
 
     _stats._totalBatches++;

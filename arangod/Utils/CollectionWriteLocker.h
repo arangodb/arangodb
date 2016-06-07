@@ -43,7 +43,7 @@ class CollectionWriteLocker {
   CollectionWriteLocker(TRI_document_collection_t* document, bool doLock)
       : _document(document), _doLock(false) {
     if (doLock) {
-      int res = _document->beginWriteTimed(0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
+      int res = _document->beginWriteTimed(0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);

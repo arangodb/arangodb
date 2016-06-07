@@ -254,8 +254,9 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_INVALID_APPLICATION_MANIFEST, "manifest file is invalid");
   REG_ERROR(ERROR_INVALID_FOXX_OPTIONS, "invalid foxx options");
   REG_ERROR(ERROR_INVALID_MOUNTPOINT, "mountpoint is invalid");
-  REG_ERROR(ERROR_APP_NOT_FOUND, "App not found");
-  REG_ERROR(ERROR_APP_NEEDS_CONFIGURATION, "App not configured");
+  REG_ERROR(ERROR_APP_NOT_FOUND, "Service not found");
+  REG_ERROR(ERROR_APP_NEEDS_CONFIGURATION, "Service not configured");
+  REG_ERROR(ERROR_APP_MOUNTPOINT_CONFLICT, "mountpoint already in use");
   REG_ERROR(ERROR_MODULE_NOT_FOUND, "cannot locate module");
   REG_ERROR(ERROR_MODULE_FAILURE, "failed to invoke module");
   REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");

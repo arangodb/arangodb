@@ -70,7 +70,7 @@ VelocyPackCursor::VelocyPackCursor(TRI_vocbase_t* vocbase, CursorId id,
     : Cursor(id, batchSize, extra, ttl, hasCount),
       _vocbase(vocbase),
       _result(std::move(result)),
-      _iterator(_result.result->slice(), true),
+      _iterator(_result.result->slice()),
       _cached(_result.cached) {
   TRI_ASSERT(_result.result->slice().isArray());
   TRI_UseVocBase(vocbase);

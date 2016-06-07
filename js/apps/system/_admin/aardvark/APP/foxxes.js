@@ -36,13 +36,15 @@ const createRouter = require('@arangodb/foxx/router');
 
 const DEFAULT_THUMBNAIL = module.context.fileName('default-thumbnail.png');
 
+const anonymousRouter = createRouter();
 const router = createRouter();
-module.exports = router;
+anonymousRouter.use(router);
 
+module.exports = anonymousRouter;
 
 router.use((req, res, next) => {
   if (global.AUTHENTICATION_ENABLED()) {
-    if (!req.session.uid) {
+    if (!req.user) {
       res.throw('unauthorized');
     }
   }
@@ -98,6 +100,18 @@ installer.use(function (req, res, next) {
       errors.ERROR_INVALID_APPLICATION_MANIFEST.code
     ].indexOf(e.errorNum) !== -1) {
       res.throw('bad request', e);
+    }
+    if (
+      e.isArangoError &&
+      e.errorNum === errors.ERROR_APP_NOT_FOUND.code
+    ) {
+      res.throw('not found', e);
+    }
+    if (
+      e.isArangoError &&
+      e.errorNum === errors.ERROR_APP_MOUNTPOINT_CONFLICT.code
+    ) {
+      res.throw('conflict', e);
     }
     throw e;
   }
@@ -316,14 +330,14 @@ router.get('/fishbowl', function (req, res) {
 `);
 
 
-router.get('/docs/standalone/*', module.context.apiDocumentation(
+anonymousRouter.get('/docs/standalone/*', module.context.apiDocumentation(
   (req) => ({
     appPath: decodeURIComponent(req.queryParams.mount)
   })
 ));
 
 
-router.get('/docs/*', module.context.apiDocumentation(
+anonymousRouter.get('/docs/*', module.context.apiDocumentation(
   (req) => ({
     appPath: decodeURIComponent(req.queryParams.mount),
     indexFile: 'index-alt.html'

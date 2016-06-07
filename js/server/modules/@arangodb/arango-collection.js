@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global ArangoClusterComm, ArangoClusterInfo, require, exports, module */
+/*global ArangoClusterComm, require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection
@@ -135,7 +135,7 @@ ArangoCollection.prototype.truncate = function () {
     }
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     shards.forEach(function (shard) {
@@ -148,7 +148,7 @@ ArangoCollection.prototype.truncate = function () {
                                      options);
     });
 
-    cluster.wait(coord, shards);
+    cluster.wait(coord, shards.length);
     return;
   }
 
@@ -259,7 +259,7 @@ ArangoCollection.prototype.any = function () {
   if (cluster.isCoordinator()) {
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     shards.forEach(function (shard) {
@@ -274,7 +274,7 @@ ArangoCollection.prototype.any = function () {
                                      options);
     });
 
-    var results = cluster.wait(coord, shards), i;
+    var results = cluster.wait(coord, shards.length), i;
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
       if (body.document !== null) {
@@ -356,7 +356,7 @@ ArangoCollection.prototype.removeByExample = function (example,
   if (cluster.isCoordinator()) {
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     if (limit > 0 && shards.length > 1) {
@@ -383,7 +383,7 @@ ArangoCollection.prototype.removeByExample = function (example,
     });
 
     var deleted = 0;
-    var results = cluster.wait(coord, shards);
+    var results = cluster.wait(coord, shards.length);
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
       deleted += (body.deleted || 0);
@@ -443,7 +443,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
   if (cluster.isCoordinator()) {
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     if (limit > 0 && shards.length > 1) {
@@ -471,7 +471,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
     });
 
     var replaced = 0;
-    var results = cluster.wait(coord, shards), i;
+    var results = cluster.wait(coord, shards.length), i;
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
       replaced += (body.replaced || 0);
@@ -542,7 +542,7 @@ ArangoCollection.prototype.updateByExample = function (example,
   if (cluster.isCoordinator()) {
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var coord = { coordTransactionID: ArangoClusterComm.getId() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
 
     if (limit > 0 && shards.length > 1) {
@@ -572,7 +572,7 @@ ArangoCollection.prototype.updateByExample = function (example,
     });
 
     var updated = 0;
-    var results = cluster.wait(coord, shards), i;
+    var results = cluster.wait(coord, shards.length), i;
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
       updated += (body.updated || 0);

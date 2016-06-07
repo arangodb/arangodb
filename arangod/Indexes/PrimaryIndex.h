@@ -47,7 +47,7 @@ class PrimaryIndexIterator final : public IndexIterator {
       : _trx(trx), 
         _index(index), 
         _keys(keys.get()), 
-        _iterator(_keys->slice(), true) {
+        _iterator(_keys->slice()) {
 
         keys.release(); // now we have ownership for _keys
         TRI_ASSERT(_keys->slice().isArray());
@@ -79,6 +79,8 @@ class AllIndexIterator final : public IndexIterator {
   ~AllIndexIterator() {}
 
   TRI_doc_mptr_t* next() override;
+  
+  void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override;
 
   void reset() override;
 
@@ -245,7 +247,6 @@ class PrimaryIndex final : public Index {
 
   IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,
-                                      arangodb::aql::Ast*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       bool) const override;

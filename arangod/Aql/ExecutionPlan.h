@@ -31,6 +31,7 @@
 #include "Aql/Query.h"
 #include "Aql/types.h"
 #include "Basics/json.h"
+#include "Basics/SmallVector.h"
 
 namespace arangodb {
 namespace aql {
@@ -142,15 +143,17 @@ class ExecutionPlan {
   }
 
   /// @brief find nodes of a certain type
-  std::vector<ExecutionNode*> findNodesOfType(ExecutionNode::NodeType,
-                                              bool enterSubqueries);
+  void findNodesOfType(SmallVector<ExecutionNode*>& result,
+                       ExecutionNode::NodeType,
+                       bool enterSubqueries);
 
   /// @brief find nodes of a certain types
-  std::vector<ExecutionNode*> findNodesOfType(
+  void findNodesOfType(SmallVector<ExecutionNode*>& result,
       std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
-  std::vector<ExecutionNode*> findEndNodes(bool enterSubqueries) const;
+  void findEndNodes(SmallVector<ExecutionNode*>& result,
+                    bool enterSubqueries) const;
 
 /// @brief check linkage
 #if 0
@@ -233,6 +236,9 @@ class ExecutionPlan {
   /// @brief create an execution plan element from an AST TRAVERAL node
   ExecutionNode* fromNodeTraversal(ExecutionNode*, AstNode const*);
 
+  /// @brief create an execution plan element from an AST SHORTEST PATH node
+  ExecutionNode* fromNodeShortestPath(ExecutionNode*, AstNode const*);
+
   /// @brief create an execution plan element from an AST FILTER node
   ExecutionNode* fromNodeFilter(ExecutionNode*, AstNode const*);
 
@@ -278,6 +284,9 @@ class ExecutionPlan {
 
   /// @brief create an execution plan from JSON
   ExecutionNode* fromJson(arangodb::basics::Json const& Json);
+
+  /// @brief create an vertex element for graph nodes
+  AstNode const* parseTraversalVertexNode(ExecutionNode*, AstNode const*);
 
  private:
   /// @brief map from node id to the actual node

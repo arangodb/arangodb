@@ -32,13 +32,18 @@
       "click #document-to" : "navigateToDocument",
       "keydown #documentEditor .ace_editor" : "keyPress",
       "keyup .jsoneditor .search input" : "checkSearchBox",
-      "click .jsoneditor .modes" : "storeMode"
+      "click .jsoneditor .modes" : "storeMode",
+      "click #addDocument": "addDocument"
     },
 
     checkSearchBox: function(e) {
       if ($(e.currentTarget).val() === '') {
         this.editor.expandAll();
       }
+    },
+
+    addDocument: function() {
+      window.App.documentsView.addDocumentModal();
     },
 
     storeMode: function() {

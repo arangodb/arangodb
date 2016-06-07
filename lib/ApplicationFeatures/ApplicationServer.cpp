@@ -205,6 +205,11 @@ void ApplicationServer::run(int argc, char* argv[]) {
   reportServerProgress(_state);
   stop();
 
+  // unprepare all features
+  _state = ServerState::IN_UNPREPARE;
+  reportServerProgress(_state);
+  unprepare();
+
   // stopped
   _state = ServerState::STOPPED;
   reportServerProgress(_state);
@@ -226,6 +231,10 @@ void ApplicationServer::beginShutdown() {
   _stopping = true;
   // TODO: use condition variable for signaling shutdown
   // to run method
+}
+
+void ApplicationServer::shutdownFatalError() {
+  reportServerProgress(ServerState::ABORT);
 }
 
 VPackBuilder ApplicationServer::options(
@@ -538,6 +547,19 @@ void ApplicationServer::stop() {
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::stop";
     feature->stop();
     feature->state(FeatureState::STOPPED);
+    reportFeatureProgress(_state, feature->name());
+  }
+}
+
+void ApplicationServer::unprepare() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::unprepare";
+
+  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+    auto feature = *it;
+
+    LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::unprepare";
+    feature->unprepare();
+    feature->state(FeatureState::UNPREPARED);
     reportFeatureProgress(_state, feature->name());
   }
 }

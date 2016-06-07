@@ -12,10 +12,11 @@
     knownServers: [],
 
     events: {
-      "click .pure-table-body .pure-table-row" : "navigateToNode"
+      "click #nodesContent .pure-table-body .pure-table-row" : "navigateToNode"
     },
 
     initialize: function (options) {
+      clearInterval(this.intervalFunction);
 
       if (window.App.isCluster) {
         this.dbServers = options.dbServers;
@@ -24,11 +25,10 @@
         this.toRender = options.toRender;
 
         //start polling with interval
-        window.setInterval(function() {
-          if (window.location.hash === '#cNodes' || window.location.hash === '#dNodes') {
+        this.intervalFunction = window.setInterval(function() {
+          if (window.location.hash === '#cNodes' || window.location.hash === '#dNodes' || window.location.hash === '#nodes') {
 
-            var callback = function(data) {
-            };
+              console.log("rerender health");
 
           }
         }, this.interval);

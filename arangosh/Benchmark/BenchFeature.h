@@ -32,8 +32,8 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void start() override;
-  void stop() override;
+  void start() override final;
+  void unprepare() override final;
 
  public:
   bool async() const { return _async; }

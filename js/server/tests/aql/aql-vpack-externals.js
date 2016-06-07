@@ -127,7 +127,7 @@ function aqlVPackExternalsTestSuite () {
     },
 
     testExternalInNeighbors: function () {
-      const query = `FOR n IN NEIGHBORS(${collName}, ${edgeColl}, "${collName}/test1000", "outbound", [], {includeData: true}) SORT n._key RETURN n`;
+      const query = `FOR n IN OUTBOUND "${collName}/test1000" ${edgeColl} OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._key RETURN n`;
       const cursor = db._query(query);
       for (let i = 1001; i < 3000; ++i) {
         assertTrue(cursor.hasNext());

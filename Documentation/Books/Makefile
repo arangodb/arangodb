@@ -101,10 +101,12 @@ book-check-dangling-anchors:
 	    cat $${htmlf} |grep '<h. ' |sed -e 's;.*id=";;' -e 's;".*;;' > /tmp/tags/$${dir}/$${fn}; \
 	done
 
+	@echo "fetching anchors from generated http files"
 	@grep -R "a href.*#" books/ | \
 		egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://|href=\"#\")" | \
 		sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' | grep -v " " > /tmp/anchorlist.txt
 
+	@echo "cross checking anchors"
 	@NO=0; \
 	for i in `cat /tmp/anchorlist.txt`; do \
 	    ANCHOR=`echo $$i | cut '-d,' -f 3`; \
@@ -188,7 +190,7 @@ build-book:
 	make ppbook-check-directory-link
 
 	cd ppbooks/$(NAME) && gitbook install
-	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME) --gitbook=2.6.7
+	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	rm -f ./books/$(NAME)/HEADER.html
 	python ../Scripts/deprecated.py
 
@@ -282,6 +284,7 @@ build-books-keep-md:
 	make build-book NAME=$(NAME)
 
 build-books:
+	rm -rf /tmp/tags
 	for book in $(ALLBOOKS); do \
 		make clean-intermediate NAME=$${book}; \
 	done

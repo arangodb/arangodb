@@ -38,8 +38,8 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
       _server(JsonHelper::checkAndGetStringValue(base.json(), "server")),
       _ownName(JsonHelper::checkAndGetStringValue(base.json(), "ownName")),
       _queryId(JsonHelper::checkAndGetStringValue(base.json(), "queryId")),
-      _isResponsibleForInitCursor(JsonHelper::checkAndGetBooleanValue(
-          base.json(), "isResponsibleForInitCursor")) {}
+      _isResponsibleForInitializeCursor(JsonHelper::checkAndGetBooleanValue(
+          base.json(), "isResponsibleForInitializeCursor")) {}
 
 /// @brief toVelocyPack, for RemoteNode
 void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -51,8 +51,8 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("server", VPackValue(_server));
   nodes.add("ownName", VPackValue(_ownName));
   nodes.add("queryId", VPackValue(_queryId));
-  nodes.add("isResponsibleForInitCursor",
-            VPackValue(_isResponsibleForInitCursor));
+  nodes.add("isResponsibleForInitializeCursor",
+            VPackValue(_isResponsibleForInitializeCursor));
 
   // And close it:
   nodes.close();

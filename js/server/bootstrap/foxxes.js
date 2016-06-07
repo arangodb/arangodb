@@ -40,11 +40,8 @@
       require('@arangodb/foxx/manager').initializeFoxx();
     },
     foxxes: function () {
-      const aql = require('@arangodb').aql;
       const console = require('console');
       const dbName = db._name();
-      const ttl = Number(internal.options()['server.session-timeout']) * 1000;
-      const now = Date.now();
 
       try {
         db._useDatabase('_system');
@@ -59,28 +56,6 @@
           }
           catch (e) {
             console.errorLines(e.stack);
-          }
-
-          // initialize sessions, too
-          try {
-            const cursor = db._query(aql`
-              FOR s IN _sessions
-              FOR u IN _users
-              FILTER s.uid == u._id
-              FILTER (s.lastAccess + ${ttl}) > ${now}
-              RETURN {sid: s._key, user: u.user}
-            `);
-            while (cursor.hasNext()) {
-              const doc = cursor.next();
-              internal.createSid(doc.sid, doc.user);
-            }
-          } catch (e) {
-            // we are intentionally ignoring errors here.
-            // they can be caused by the _sessions collection not
-            // being present in the current database etc.
-            // if this happens, no sessions will be entered into the
-            // session cache at startup, which is tolerable
-            console.debugLines(e.stack);
           }
         }
       } finally {

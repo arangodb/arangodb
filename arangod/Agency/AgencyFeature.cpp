@@ -38,7 +38,7 @@ using namespace arangodb::rest;
 AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Agency"),
       _size(1),
-      _agentId((std::numeric_limits<uint32_t>::max)()),
+      _agentId(0),
       _minElectionTimeout(0.15),
       _maxElectionTimeout(2.0),
       _notify(false),
@@ -104,7 +104,8 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_agentId == (std::numeric_limits<uint32_t>::max)()) {
+  ProgramOptions::ProcessingResult const& result = options->processingResult();
+  if (!result.touched("agency.id")) {
     disable();
     return;
   }
@@ -158,26 +159,27 @@ void AgencyFeature::prepare() {
 }
 
 void AgencyFeature::start() {
+
   if (!isEnabled()) {
     return;
   }
-
+  
   // TODO: Port this to new options handling
   std::string endpoint;
   std::string port = "8529";
-
+  
   EndpointFeature* endpointFeature =
-      ApplicationServer::getFeature<EndpointFeature>("Endpoint");
+    ApplicationServer::getFeature<EndpointFeature>("Endpoint");
   auto endpoints = endpointFeature->httpEndpoints();
-
+  
   if (!endpoints.empty()) {
-    size_t pos = endpoint.find(':', 10);
-
+    size_t pos = endpoints[0].find(':',10);
+    
     if (pos != std::string::npos) {
-      port = endpoint.substr(pos + 1, endpoint.size() - pos);
+      port = endpoints[0].substr(pos + 1, endpoints[0].size() - pos);
     }
   }
-
+  
   endpoint = std::string("tcp://localhost:" + port);
 
   _agent.reset(new consensus::Agent(consensus::config_t(
@@ -189,10 +191,23 @@ void AgencyFeature::start() {
   _agent->load();
 }
 
-void AgencyFeature::stop() {
+void AgencyFeature::unprepare() {
+
   if (!isEnabled()) {
     return;
   }
 
   _agent->beginShutdown();
+
+  if (_agent != nullptr) {
+    int counter = 0;
+    while (_agent->isRunning()) {
+      usleep(100000);
+      // emit warning after 5 seconds
+      if (++counter == 10 * 5) {
+        LOG(WARN) << "waiting for agent thread to finish";
+      }
+    }
+  }
+
 }

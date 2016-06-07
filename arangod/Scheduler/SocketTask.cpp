@@ -25,7 +25,6 @@
 #include "SocketTask.h"
 
 #include "Logger/Logger.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/socket-utils.h"
 #include "Scheduler/Scheduler.h"

@@ -32,7 +32,9 @@ var jsunity = require("jsunity");
 var arango = require("@arangodb").arango;
 var db = require("internal").db;
 var users = require("@arangodb/users");
-
+var request = require('@arangodb/request');
+var crypto = require('@arangodb/crypto');
+var expect = require('expect.js');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -40,6 +42,12 @@ var users = require("@arangodb/users");
 
 function AuthSuite () {
   'use strict';
+  var baseUrl = function () {
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+  };
+
+  const jwtSecret = 'haxxmann';
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,6 +82,7 @@ function AuthSuite () {
 
     testNewUser : function () {
       users.save("hackers@arangodb.com", "foobar");
+      users.grantDatabase('hackers@arangodb.com', db._name());
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
@@ -82,18 +91,21 @@ function AuthSuite () {
       assertTrue(db._collections().length > 0);
 
       // double check with wrong passwords
+      let isBroken;
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar2");
-        fail();
       }
       catch (err1) {
+        isBroken = false;
       }
 
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
-        fail();
       }
       catch (err2) {
+        isBroken = false;
       }
     },
 
@@ -103,6 +115,7 @@ function AuthSuite () {
 
     testEmptyPassword : function () {
       users.save("hackers@arangodb.com", "");
+      users.grantDatabase('hackers@arangodb.com', db._name());
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
@@ -111,11 +124,13 @@ function AuthSuite () {
       assertTrue(db._collections().length > 0);
 
       // double check with wrong password
+      let isBroken;
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
-        fail();
       }
       catch (err1) {
+        isBroken = false;
       }
     },
 
@@ -125,6 +140,7 @@ function AuthSuite () {
 
     testPasswordCase : function () {
       users.save("hackers@arangodb.com", "FooBar");
+      users.grantDatabase('hackers@arangodb.com', db._name());
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "FooBar");
@@ -133,25 +149,41 @@ function AuthSuite () {
       assertTrue(db._collections().length > 0);
 
       // double check with wrong passwords
+      let isBroken;
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "Foobar");
-        fail();
+        console.error("HASSMANN HIHI");
+        assertTrue(db._collections().length > 0);
       }
       catch (err1) {
+        console.error("HASSMANN");
+        isBroken = false;
+      }
+      if (isBroken) {
+        throw new Error("Wurst");
       }
 
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
-        fail();
       }
       catch (err2) {
+        isBroken = false;
       }
-
-      try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "FOOBAR");
+      if (isBroken) {
         fail();
       }
+
+      isBroken = true;
+      try {
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "FOOBAR");
+      }
       catch (err3) {
+        isBroken = false;
+      }
+      if (isBroken) {
+        fail();
       }
     },
 
@@ -161,6 +193,7 @@ function AuthSuite () {
 
     testColon : function () {
       users.save("hackers@arangodb.com", "fuxx::bar");
+      users.grantDatabase('hackers@arangodb.com', db._name());
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "fuxx::bar");
@@ -169,25 +202,38 @@ function AuthSuite () {
       assertTrue(db._collections().length > 0);
 
       // double check with wrong passwords
+      let isBroken;
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "fuxx");
-        fail();
       }
       catch (err1) {
+        isBroken = false;
+      }
+      if (isBroken) {
+        fail();
       }
 
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "bar");
-        fail();
       }
       catch (err2) {
+        isBroken = false;
       }
-
-      try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+      if (isBroken) {
         fail();
       }
+
+      isBroken = true;
+      try {
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+      }
       catch (err3) {
+        isBroken = false;
+      }
+      if (isBroken) {
+        fail();
       }
     },
 
@@ -197,6 +243,7 @@ function AuthSuite () {
 
     testSpecialChars : function () {
       users.save("hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
+      users.grantDatabase('hackers@arangodb.com', db._name());
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
@@ -205,28 +252,215 @@ function AuthSuite () {
       assertTrue(db._collections().length > 0);
 
       // double check with wrong passwords
+      let isBroken;
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
-        fail();
       }
       catch (err1) {
+        isBroken = false;
+      }
+      if (isBroken) {
+        fail();
       }
 
+      isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "\\abc'def: x-a");
-        fail();
       }
       catch (err2) {
+        isBroken = false;
       }
-
-      try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+      if (isBroken) {
         fail();
       }
-      catch (err3) {
-      }
-    }
 
+      isBroken = true;
+      try {
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+      }
+      catch (err3) {
+        isBroken = false;
+      }
+      if (isBroken) {
+        fail();
+      }
+    },
+    
+    testAuthOpen: function() {
+      var res = request(baseUrl() + "/_open/auth");
+      expect(res).to.be.a(request.Response);
+      // mop: GET is an unsupported method, but it is skipping auth
+      expect(res).to.have.property('statusCode', 405);
+    },
+    
+    testAuth: function() {
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({"username": "root", "password": ""})
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+
+      expect(res.body).to.be.an('string');
+      var obj = JSON.parse(res.body);
+      expect(obj).to.have.property('jwt');
+      expect(obj).to.have.property('must_change_password');
+      expect(obj.jwt).to.be.a('string');
+      expect(obj.jwt.split('.').length).to.be(3);
+      expect(obj.must_change_password).to.be.a('boolean');
+    },
+    
+    testAuthNewUser: function() {
+      users.save("hackers@arangodb.com", "foobar");
+      users.reload();
+
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({"username": "hackers@arangodb.com", "password": "foobar"})
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+      expect(res.body).to.be.an('string');
+      var obj = JSON.parse(res.body);
+      expect(obj).to.have.property('jwt');
+      expect(obj).to.have.property('must_change_password');
+      expect(obj.jwt).to.be.a('string');
+      expect(obj.jwt.split('.').length).to.be(3);
+      expect(obj.must_change_password).to.be.a('boolean');
+    },
+    
+    testAuthNewWrongPassword: function() {
+      users.save("hackers@arangodb.com", "foobarJAJA");
+      users.reload();
+
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({"username": "hackers@arangodb.com", "password": "foobar"})
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+    
+    testAuthNoPassword: function() {
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({"username": "hackers@arangodb.com", "passwordaa": "foobar"}),
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 400);
+    },
+    
+    testAuthNoUsername: function() {
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({"usern": "hackers@arangodb.com", "password": "foobar"}),
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 400);
+    },
+
+    testAuthRequired: function() {
+      var res = request.get(baseUrl() + "/_api/version");
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+    
+    testFullAuthWorkflow: function() {
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({"username": "root", "password": ""}),
+      });
+
+      var jwt = JSON.parse(res.body).jwt;
+      res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      });
+
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+    },
+    
+    testViaJS: function() {
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600}, 'HS256');
+
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+    },
+    
+    testNoneAlgDisabled: function() {
+      var jwt = (new Buffer(JSON.stringify({"typ": "JWT","alg": "none"})).toString('base64')) + "." + (new Buffer(JSON.stringify({"preferred_username": "root", "iss": "arangodb"})).toString('base64'));
+      // not supported
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+    
+    testIssRequired: function() {
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
+      // not supported
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+    
+    testIssArangodb: function() {
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
+      // not supported
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+    
+    testExpOptional: function() {
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodb" }, 'HS256');
+      // not supported
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+    },
+    
+    testExp: function() {
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) - 1000 }, 'HS256');
+      // not supported
+      var res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      });
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
   };
 }
 

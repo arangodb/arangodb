@@ -90,7 +90,7 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
   _documents = _scanner.scan(hint);
 
   TRI_ASSERT(_documents.isArray());
-  _iterator = VPackArrayIterator(_documents, true);
+  _iterator = VPackArrayIterator(_documents);
 
   VPackValueLength count = _iterator.size();
 
@@ -199,7 +199,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
 
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {
-      // re-use already copied aqlvalues
+      // re-use already copied AQLValues
       for (RegisterId i = 0; i < curRegs; i++) {
         res->setValue(j, i, res->getValueReference(0, i));
         // Note: if this throws, then all values will be deleted

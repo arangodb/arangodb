@@ -1,4 +1,4 @@
-/*jshint strict: false, unused: false */
+/*jshint strict: false, unused: true */
 /*global ArangoClusterComm, AQL_QUERY_IS_KILLED */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +29,6 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var graph = require("@arangodb/graph-blueprint");
 var generalGraph = require("@arangodb/general-graph");
 var arangodb = require("@arangodb");
 var BinaryHeap = require("@arangodb/heap").BinaryHeap;
@@ -278,64 +277,6 @@ function generalGraphDatasourceFactory (graph) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default Graph datasource
-///
-/// This is a datasource that operates on the specified graph. The vertices
-/// are from type Vertex, the edges from type Edge.
-////////////////////////////////////////////////////////////////////////////////
-
-function graphDatasourceFactory (name) {
-  return {
-    graph: new graph.Graph(name),
-
-    getVertexId: function (vertex) {
-      return vertex.getId();
-    },
-
-    getPeerVertex: function (edge, vertex) {
-      return edge.getPeerVertex(vertex);
-    },
-
-    getInVertex: function (edge) {
-      return edge.getInVertex();
-    },
-
-    getOutVertex: function (edge) {
-      return edge.getOutVertex();
-    },
-
-    getEdgeId: function (edge) {
-      return edge.getId();
-    },
-
-    getEdgeFrom: function (edge) {
-      return edge._properties._from;
-    },
-
-    getEdgeTo: function (edge) {
-      return edge._properties._to;
-    },
-
-    getLabel: function (edge) {
-      return edge.getLabel();
-    },
-
-    getAllEdges: function (vertex) {
-      return vertex.edges();
-    },
-
-    getInEdges: function (vertex) {
-      return vertex.inbound();
-    },
-
-    getOutEdges: function (vertex) {
-      return vertex.outbound();
-    }
-  };
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief default outbound expander function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -524,7 +465,7 @@ function anyExpander (config, vertex, path) {
 /// @brief expands all outbound edges labeled with at least one label in config.labels
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-function expandOutEdgesWithLabels (config, vertex, path) {
+function expandOutEdgesWithLabels (config, vertex) {
   var datasource = config.datasource;
   var result = [ ];
   var i;
@@ -553,7 +494,7 @@ function expandOutEdgesWithLabels (config, vertex, path) {
 /// @brief expands all inbound edges labeled with at least one label in config.labels
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-function expandInEdgesWithLabels (config, vertex, path) {
+function expandInEdgesWithLabels (config, vertex) {
   var datasource = config.datasource;
   var result = [ ];
   var i;
@@ -582,7 +523,7 @@ function expandInEdgesWithLabels (config, vertex, path) {
 /// @brief expands all edges labeled with at least one label in config.labels
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-function expandEdgesWithLabels (config, vertex, path) {
+function expandEdgesWithLabels (config, vertex) {
   var datasource = config.datasource;
   var result = [ ];
   var i;
@@ -630,7 +571,7 @@ function trackingVisitor (config, result, vertex, path) {
 /// @brief a visitor that counts the number of nodes visited
 ////////////////////////////////////////////////////////////////////////////////
 
-function countingVisitor (config, result, vertex, path) {
+function countingVisitor (config, result) {
   if (! result) {
     return;
   }
@@ -684,7 +625,7 @@ function minDepthFilter (config, vertex, path) {
 /// @brief include all vertices matching one of the given attribute sets
 ////////////////////////////////////////////////////////////////////////////////
 
-function includeMatchingAttributesFilter (config, vertex, path) {
+function includeMatchingAttributesFilter (config, vertex) {
   if (! Array.isArray(config.matchingAttributes)) {
     config.matchingAttributes = [config.matchingAttributes];
   }
@@ -1839,7 +1780,6 @@ ArangoTraverser.EXCLUDE              = 'exclude';
 
 exports.collectionDatasourceFactory     = collectionDatasourceFactory;
 exports.generalGraphDatasourceFactory   = generalGraphDatasourceFactory;
-exports.graphDatasourceFactory          = graphDatasourceFactory;
 
 exports.outboundExpander                = outboundExpander;
 exports.inboundExpander                 = inboundExpander;

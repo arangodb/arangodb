@@ -39,6 +39,8 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer* se
 }
 
 void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addOldOption("server.disable-statistics", "server.statistics");
+  
   options->addSection("server", "Server features");
 
   options->addHiddenOption(
@@ -52,7 +54,7 @@ void StatisticsFeature::start() {
   TRI_InitializeStatistics();
 }
 
-void StatisticsFeature::stop() {
+void StatisticsFeature::unprepare() {
   TRI_ShutdownStatistics();
   STATISTICS = nullptr;
 }

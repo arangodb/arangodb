@@ -140,7 +140,7 @@ const optionsDefaults = {
   "concurrency": 3,
   "coreDirectory": "/var/tmp",
   "duration": 10,
-  "extraArgs": [],
+  "extraArgs": {},
   "extremeVerbosity": false,
   "force": true,
   "jsonReply": false,
@@ -491,7 +491,7 @@ function analyzeServerCrash(arangod, options, checkStr)
     statusExternal(arangod.monitor, true);
     analyzeCoreDumpWindows(arangod);
   } else {
-    fs.copyFile("bin/arangod", storeArangodPath);
+    fs.copyFile(ARANGOD_BIN, storeArangodPath);
     analyzeCoreDump(arangod, options, storeArangodPath, arangod.pid);
   }
 
@@ -1391,6 +1391,8 @@ function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
 function startInstanceAgency(instanceInfo, protocol, options,
   addArgs, testname, rootDir) {
 
+  const dataDir = fs.join(rootDir, "data");
+
   const N = options.agencySize;
   if (options.agencyWaitForSync === undefined) {
     options.agencyWaitForSync = false;
@@ -1402,15 +1404,19 @@ function startInstanceAgency(instanceInfo, protocol, options,
     instanceArgs["agency.id"] = String(i);
     instanceArgs["agency.size"] = String(N);
     instanceArgs["agency.wait-for-sync"] = String(wfs);
+    instanceArgs["agency.supervision"] = "true";
+    instanceArgs["database.directory"] = dataDir + String(i);
 
     if (i === N - 1) {
+      const port = findFreePort();
+      instanceArgs["server.endpoint"] = "tcp://127.0.0.1:" + port;
       let l = [];
-      for (let j = 0; j < N; j++) {
-        instanceInfo.arangods.forEach(arangod => {
-          l.push("--agency.endpoint");
-          l.push(arangod.endpoint);
-        });
-      }
+      instanceInfo.arangods.forEach(arangod => {
+        l.push("--agency.endpoint");
+        l.push(arangod.endpoint);
+      });
+      l.push("--agency.endpoint");
+      l.push("tcp://127.0.0.1:" + port);
       l.push("--agency.notify");
       l.push("true");
 
@@ -1419,6 +1425,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
 
+    require("internal").print(instanceArgs);
+    
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, testname, rootDir, true));
   }
 
@@ -2245,7 +2253,8 @@ testFuncs.authentication = function(options) {
   print(CYAN + "Authentication tests..." + RESET);
 
   let instanceInfo = startInstance("tcp", options, {
-    "server.authentication": "true"
+    "server.authentication": "true",
+    "server.jwt-secret": "haxxmann",
   }, "authentication");
 
   if (instanceInfo === false) {
@@ -3031,6 +3040,7 @@ const recoveryTests = [
   "create-with-temp",
   "create-with-temp-old",
   "create-collection-fail",
+  "create-database-existing",
   "create-database-fail",
   "empty-datafiles",
   "flush-drop-database-and-fail",
@@ -3066,6 +3076,7 @@ const recoveryTests = [
   "collections-different-attributes",
   "indexes-hash",
   "indexes-rocksdb",
+  "indexes-rocksdb-nosync",
   "indexes-sparse-hash",
   "indexes-skiplist",
   "indexes-sparse-skiplist",
@@ -3081,6 +3092,7 @@ const recoveryTests = [
   "collector-oom",
   "transaction-no-abort",
   "transaction-no-commit",
+  "transaction-just-committed",
   "multi-database-durability",
   "disk-full-no-collection-journal",
   "no-shutdown-info-with-flush",
@@ -3201,6 +3213,7 @@ testFuncs.replication_static = function(options) {
     "--javascript.execute-string",
     "var users = require('@arangodb/users'); " +
     "users.save('replicator-user', 'replicator-password', true); " +
+    "users.grantDatabase('replicator-user', '_system'); " +
     "users.reload();"
   ]);
 
@@ -4012,6 +4025,19 @@ function unitTest(cases, options) {
   LOGS_DIR = fs.join(TOP_DIR, "logs");
   PEM_FILE = fs.join(TOP_DIR, "UnitTests", "server.pem");
 
+  let checkFiles = [
+    ARANGOBENCH_BIN,
+    ARANGODUMP_BIN,
+    ARANGOD_BIN,
+    ARANGOIMP_BIN,
+    ARANGORESTORE_BIN,
+    ARANGOSH_BIN];
+  for (let b = 0; b < checkFiles.length; ++b) {
+    if (! fs.isFile(checkFiles[b]) && ! fs.isFile(checkFiles[b]+ ".exe" )) {
+      throw "unable to locate " + checkFiles[b];
+    }
+  }
+  
   const jsonReply = options.jsonReply;
   delete options.jsonReply;
 

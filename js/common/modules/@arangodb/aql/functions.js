@@ -33,8 +33,6 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var ArangoError = arangodb.ArangoError;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the _aqlfunctions collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,10 +286,7 @@ var toArrayFunctions = function (group) {
   return result;
 };
 
-
 exports.unregister      = unregisterFunction;
 exports.unregisterGroup = unregisterFunctionsGroup;
 exports.register        = registerFunction;
 exports.toArray         = toArrayFunctions;
-
-

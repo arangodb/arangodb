@@ -289,7 +289,7 @@ void Constituent::callElection() {
   }
 
   std::string body;
-  std::vector<ClusterCommResult> results(config().endpoints.size());
+  std::vector<OperationID> operationIDs(config().endpoints.size());
   std::stringstream path;
 
   path << "/_api/agency_priv/requestVote?term=" << _term
@@ -301,7 +301,7 @@ void Constituent::callElection() {
     if (i != _id && endpoint(i) != "") {
       auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
-      results[i] = arangodb::ClusterComm::instance()->asyncRequest(
+      operationIDs[i] = arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, config().endpoints[i], GeneralRequest::RequestType::GET,
           path.str(), std::make_shared<std::string>(body), headerFields,
           nullptr, config().minPing, true);
@@ -313,14 +313,16 @@ void Constituent::callElection() {
       sleepFor(.5 * config().minPing, .8 * config().minPing));
 
   // Collect votes
+  // FIXME: This code can be improved: One can wait for an arbitrary
+  // result by creating a coordinatorID and waiting for a pattern.
   for (arangodb::consensus::id_t i = 0; i < config().endpoints.size(); ++i) {
     if (i != _id && endpoint(i) != "") {
       ClusterCommResult res =
-          arangodb::ClusterComm::instance()->enquire(results[i].operationID);
+          arangodb::ClusterComm::instance()->enquire(operationIDs[i]);
 
       if (res.status == CL_COMM_SENT) {  // Request successfully sent
         res = arangodb::ClusterComm::instance()->wait(
-            "1", 1, results[i].operationID, "1");
+            "1", 1, operationIDs[i], "1");
         std::shared_ptr<Builder> body = res.result->getBodyVelocyPack();
         if (body->isEmpty()) {  // body empty
           continue;

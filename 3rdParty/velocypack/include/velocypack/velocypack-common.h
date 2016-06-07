@@ -88,7 +88,7 @@ static constexpr std::size_t checkOverflow(ValueLength length) {
 #endif
 
 // calculate the length of a variable length integer in unsigned LEB128 format
-static inline ValueLength getVariableValueLength(ValueLength value) throw() {
+static inline ValueLength getVariableValueLength(ValueLength value) noexcept {
   ValueLength len = 1;
   while (value >= 0x80) {
     value >>= 7;
@@ -139,7 +139,7 @@ static inline void storeVariableValueLength(uint8_t* dst, ValueLength value) {
 // returns current value for UTCDate
 int64_t currentUTCDateValue();
 
-static inline uint64_t toUInt64(int64_t v) throw() {
+static inline uint64_t toUInt64(int64_t v) noexcept {
   // If v is negative, we need to add 2^63 to make it positive,
   // before we can cast it to an uint64_t:
   uint64_t shift2 = 1ULL << 63;
@@ -151,7 +151,7 @@ static inline uint64_t toUInt64(int64_t v) throw() {
   // uint64_t is not guaranteed to work for negative values!
 }
 
-static inline int64_t toInt64(uint64_t v) throw() {
+static inline int64_t toInt64(uint64_t v) noexcept {
   uint64_t shift2 = 1ULL << 63;
   int64_t shift = static_cast<int64_t>(shift2 - 1);
   return v >= shift2 ? (static_cast<int64_t>(v - shift2) - shift) - 1
@@ -161,7 +161,7 @@ static inline int64_t toInt64(uint64_t v) throw() {
 // read an unsigned little endian integer value of the
 // specified length, starting at the specified byte offset
 template <typename T>
-static inline T readInteger(uint8_t const* start, ValueLength length) throw() {
+static inline T readInteger(uint8_t const* start, ValueLength length) noexcept {
   uint64_t value = 0;
   uint64_t x = 0;
   uint8_t const* end = start + length;
@@ -172,11 +172,11 @@ static inline T readInteger(uint8_t const* start, ValueLength length) throw() {
   return value;
 }
 
-static inline uint64_t readUInt64(uint8_t const* start) throw() {
+static inline uint64_t readUInt64(uint8_t const* start) noexcept {
   return readInteger<uint64_t>(start, 8);
 }
 
-static inline void storeUInt64(uint8_t* start, uint64_t value) throw() {
+static inline void storeUInt64(uint8_t* start, uint64_t value) noexcept {
   uint8_t const* end = start + 8;
   do {
     *start++ = static_cast<uint8_t>(value & 0xff);

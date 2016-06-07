@@ -38,7 +38,7 @@ function runSetup () {
   
   db._drop("UnitTestsRecovery1");
   var c = db._create("UnitTestsRecovery1"), i;
-  c.ensureIndex({ type: "rocksdb", fields: ["value"] });
+  c.ensureIndex({ type: "persistent", fields: ["value"] });
 
   for (i = 0; i < 1000; ++i) {
     c.save({ value: i });
@@ -46,7 +46,7 @@ function runSetup () {
 
   db._drop("UnitTestsRecovery2");
   c = db._create("UnitTestsRecovery2");
-  c.ensureIndex({ type: "rocksdb", fields: ["a.value"], unique: true });
+  c.ensureIndex({ type: "persistent", fields: ["a.value"], unique: true });
 
   for (i = 0; i < 1000; ++i) {
     c.save({ a: { value: i } });
@@ -54,7 +54,7 @@ function runSetup () {
 
   db._drop("UnitTestsRecovery3");
   c = db._create("UnitTestsRecovery3");
-  c.ensureIndex({ type: "rocksdb", fields: ["a", "b"] });
+  c.ensureIndex({ type: "persistent", fields: ["a", "b"] });
 
   for (i = 0; i < 500; ++i) {
     c.save({ a: (i % 2) + 1, b: 1 });

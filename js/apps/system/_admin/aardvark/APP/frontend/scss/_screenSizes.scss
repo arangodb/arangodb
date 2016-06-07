@@ -1,5 +1,39 @@
 @media (max-width: 568px) {
 
+  //PAGINATION
+
+  .pagination-line {
+    .pre-pagi,
+    .las-pagi {
+      display: none;
+    }
+
+    .arango-pagination {
+      li:first-child,
+      li:last-child {
+        margin-left: 0;
+        margin-right: 0;
+      }
+    }
+
+    li a {
+      padding: 2px 4px;
+    }
+  }
+
+  //LOG
+  #arangoLogTable {
+    .table-cell0 {
+      display: none;
+    }
+  }
+
+  //LOGIN
+  .login-window {
+    padding: 10px 10px 40px;
+    width: 300px;
+  }
+
   //DOCUMENT VIEW
   .document-info-div {
     .search {
@@ -8,6 +42,12 @@
   }
 
   // SINGLE NODE DASHBOARD
+  #repl-numbers,
+  #repl-progress,
+  #repl-ticks {
+    width: 100% !important;
+  }
+
   .dashboard-large-chart,
   .dashboard-medium-chart-outer:first-child {
     padding-right: 0 !important;
@@ -22,7 +62,41 @@
     font-size: 13px;
   }
 
+  // NAVIGATION TOP
+
+  .breadcrumb {
+    display: none;
+  }
+
+  .subnavmenu {
+    a {
+      font-size: 8pt;
+    }
+  }
+
+  .subViewNavbar {
+    li {
+      font-size: 8pt !important;
+      padding: 0 6px !important;
+
+      &.active {
+        height: 35px;
+      }
+    }
+  }
+
+  // DASHBOARD FIX
+  .small-label-padding {
+    max-width: calc(100% - 2px);
+  }
+
   // NAVIGATION LEFT
+
+  //NAV SOCIAL ICONS
+
+  .social-icons {
+    display: none;
+  }
 
   .navlogo {
     .big {
@@ -84,8 +158,6 @@
     }
   }
 
-
-
   //actions sub menu
   .headerButtonBar {
     display: none;
@@ -103,6 +175,33 @@
 }
 
 @media (max-width: 768px) {
+  //PAGINATION
+
+  .pagination-line {
+    .pre-pagi,
+    .las-pagi {
+      display: none;
+    }
+
+    .arango-pagination {
+      li:first-child,
+      li:last-child {
+        margin-left: 0;
+        margin-right: 0;
+      }
+    }
+
+    li a {
+      padding: 2px 4px;
+    }
+  }
+
+  // NAVIGATION TOP
+
+  .breadcrumb {
+    display: none;
+  }
+
   .dashboard-large-chart,
   .dashboard-tendency-container {
     box-sizing: content-box;
@@ -127,7 +226,13 @@
         margin-top: -3px;
       }
     }
+  }
 
+  // AQL EDITOR
+  .outputEditors {
+    .additional {
+      display: none;
+    }
   }
 }
 
@@ -148,7 +253,9 @@
 
   //actions sub menu
   .headerButtonBar {
-    display: none;
+    span {
+      display: none;
+    }
   }
 
   .dashboard-bar-chart-container {
@@ -160,6 +267,11 @@
   #repl-progress,
   #repl-ticks {
     width: 100% !important;
+  }
+
+  // NAVIGATION TOP
+  .subnavmenu a {
+    font-size: 9pt;
   }
 
   //NAVIGATION

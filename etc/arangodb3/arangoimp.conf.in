@@ -2,4 +2,4 @@
 
 [server]
 endpoint = tcp://127.0.0.1:8529
-authentication = false
+authentication = true

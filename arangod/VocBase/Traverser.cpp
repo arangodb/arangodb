@@ -57,6 +57,45 @@ arangodb::traverser::VertexId arangodb::traverser::IdStringToVertexId(
   return VertexId(cid, const_cast<char*>(str + split + 1));
 }
 
+/// @brief Class Shortest Path
+
+
+/// @brief Clears the path
+void arangodb::traverser::ShortestPath::clear() {
+  _vertices.clear();
+  _edges.clear();
+}
+
+void arangodb::traverser::ShortestPath::edgeToVelocyPack(Transaction*, size_t position, VPackBuilder& builder) {
+  TRI_ASSERT(position < length());
+  if (position == 0) {
+    builder.add(basics::VelocyPackHelper::NullValue());
+  } else {
+    TRI_ASSERT(position - 1 < _edges.size());
+    builder.add(_edges[position - 1]);
+  }
+}
+
+void arangodb::traverser::ShortestPath::vertexToVelocyPack(Transaction* trx, size_t position, VPackBuilder& builder) {
+  TRI_ASSERT(position < length());
+  VPackSlice v = _vertices[position];
+  _searchBuilder.clear();
+  TRI_ASSERT(v.isString());
+  std::string collection =  v.copyString();
+  size_t p = collection.find("/");
+  TRI_ASSERT(p != std::string::npos);
+  _searchBuilder.openObject();
+  _searchBuilder.add(StaticStrings::KeyString, VPackValue(collection.substr(p + 1)));
+  _searchBuilder.close();
+  collection = collection.substr(0, p);
+
+  int res = trx->documentFastPath(collection, _searchBuilder.slice(), builder);
+  if (res != TRI_ERROR_NO_ERROR) {
+    builder.clear(); // Just in case...
+    builder.add(basics::VelocyPackHelper::NullValue());
+  }
+}
+
 void arangodb::traverser::TraverserOptions::setCollections(
     std::vector<std::string> const& colls, TRI_edge_direction_e dir) {
   // We do not allow to reset the collections.
@@ -102,7 +141,6 @@ bool arangodb::traverser::TraverserOptions::getCollection(
   }
   name = _collections.at(index);
 
-  // arangodb::EdgeIndex::buildSearchValue(direction, eColName, _builder);
   return true;
 }
 

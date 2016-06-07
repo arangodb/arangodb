@@ -193,6 +193,100 @@ BOOST_AUTO_TEST_CASE (test_convertUTF16ToUTF8) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test_uint64
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (test_uint64) {
+  BOOST_CHECK_EQUAL(0ULL, StringUtils::uint64("abc"));
+  BOOST_CHECK_EQUAL(0ULL, StringUtils::uint64("ABC"));
+  BOOST_CHECK_EQUAL(0ULL, StringUtils::uint64(" foo"));
+  BOOST_CHECK_EQUAL(0ULL, StringUtils::uint64(""));
+  BOOST_CHECK_EQUAL(0ULL, StringUtils::uint64(" "));
+  BOOST_CHECK_EQUAL(12ULL, StringUtils::uint64(" 012"));
+  BOOST_CHECK_EQUAL(1234ULL, StringUtils::uint64("1234a"));
+  BOOST_CHECK_EQUAL(18446744073709551615ULL, StringUtils::uint64("-1"));
+  BOOST_CHECK_EQUAL(18446744073709539271ULL, StringUtils::uint64("-12345"));
+  BOOST_CHECK_EQUAL(1234ULL, StringUtils::uint64("1234.56"));
+  BOOST_CHECK_EQUAL(0ULL, StringUtils::uint64("1234567890123456789012345678901234567890"));
+  BOOST_CHECK_EQUAL(0ULL, StringUtils::uint64("@"));
+
+  BOOST_CHECK_EQUAL(0ULL, StringUtils::uint64("0"));
+  BOOST_CHECK_EQUAL(1ULL, StringUtils::uint64("1"));
+  BOOST_CHECK_EQUAL(12ULL, StringUtils::uint64("12"));
+  BOOST_CHECK_EQUAL(123ULL, StringUtils::uint64("123"));
+  BOOST_CHECK_EQUAL(1234ULL, StringUtils::uint64("1234"));
+  BOOST_CHECK_EQUAL(1234ULL, StringUtils::uint64("01234"));
+  BOOST_CHECK_EQUAL(9ULL, StringUtils::uint64("9"));
+  BOOST_CHECK_EQUAL(9ULL, StringUtils::uint64(" 9"));
+  BOOST_CHECK_EQUAL(9ULL, StringUtils::uint64("0009"));
+  BOOST_CHECK_EQUAL(12345678ULL, StringUtils::uint64("12345678"));
+  BOOST_CHECK_EQUAL(1234567800ULL, StringUtils::uint64("1234567800"));
+  BOOST_CHECK_EQUAL(1234567890123456ULL, StringUtils::uint64("1234567890123456"));
+  BOOST_CHECK_EQUAL(UINT64_MAX, StringUtils::uint64(std::to_string(UINT64_MAX)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test_uint64_check
+////////////////////////////////////////////////////////////////////////////////
+
+static bool InvalidArgument(std::invalid_argument const& ex) {
+  return true;
+}
+
+static bool OutOfRange(std::out_of_range const& ex) {
+  return true;
+}
+
+BOOST_AUTO_TEST_CASE (test_uint64_check) {
+  BOOST_CHECK_EXCEPTION(StringUtils::uint64_check("abc"), std::invalid_argument, InvalidArgument);
+  BOOST_CHECK_EXCEPTION(StringUtils::uint64_check("ABC"), std::invalid_argument, InvalidArgument);
+  BOOST_CHECK_EXCEPTION(StringUtils::uint64_check(" foo"), std::invalid_argument, InvalidArgument);
+  BOOST_CHECK_EXCEPTION(StringUtils::uint64_check(""), std::invalid_argument, InvalidArgument);
+  BOOST_CHECK_EXCEPTION(StringUtils::uint64_check(" "), std::invalid_argument, InvalidArgument);
+  BOOST_CHECK_EQUAL(12ULL, StringUtils::uint64_check(" 012"));
+  BOOST_CHECK_EXCEPTION(StringUtils::uint64_check("1234a"), std::invalid_argument, InvalidArgument);
+  BOOST_CHECK_EQUAL(18446744073709551615ULL, StringUtils::uint64_check("-1"));
+  BOOST_CHECK_EQUAL(18446744073709539271ULL, StringUtils::uint64_check("-12345"));
+  BOOST_CHECK_EXCEPTION(StringUtils::uint64_check("1234."), std::invalid_argument, InvalidArgument);
+  BOOST_CHECK_EXCEPTION(StringUtils::uint64_check("1234.56"), std::invalid_argument, InvalidArgument);
+  BOOST_CHECK_EXCEPTION(StringUtils::uint64_check("1234567889123456789012345678901234567890"), std::out_of_range, OutOfRange);
+  BOOST_CHECK_EXCEPTION(StringUtils::uint64_check("@"), std::invalid_argument, InvalidArgument);
+
+  BOOST_CHECK_EQUAL(0ULL, StringUtils::uint64_check("0"));
+  BOOST_CHECK_EQUAL(1ULL, StringUtils::uint64_check("1"));
+  BOOST_CHECK_EQUAL(12ULL, StringUtils::uint64_check("12"));
+  BOOST_CHECK_EQUAL(123ULL, StringUtils::uint64_check("123"));
+  BOOST_CHECK_EQUAL(1234ULL, StringUtils::uint64_check("1234"));
+  BOOST_CHECK_EQUAL(1234ULL, StringUtils::uint64_check("01234"));
+  BOOST_CHECK_EQUAL(9ULL, StringUtils::uint64_check("9"));
+  BOOST_CHECK_EQUAL(9ULL, StringUtils::uint64_check(" 9"));
+  BOOST_CHECK_EQUAL(9ULL, StringUtils::uint64_check("0009"));
+  BOOST_CHECK_EQUAL(12345678ULL, StringUtils::uint64_check("12345678"));
+  BOOST_CHECK_EQUAL(1234567800ULL, StringUtils::uint64_check("1234567800"));
+  BOOST_CHECK_EQUAL(1234567890123456ULL, StringUtils::uint64_check("1234567890123456"));
+  BOOST_CHECK_EQUAL(UINT64_MAX, StringUtils::uint64_check(std::to_string(UINT64_MAX)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test_uint64_trusted
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (test_uint64_trusted) {
+  BOOST_CHECK_EQUAL(0ULL, StringUtils::uint64_trusted("0"));
+  BOOST_CHECK_EQUAL(1ULL, StringUtils::uint64_trusted("1"));
+  BOOST_CHECK_EQUAL(12ULL, StringUtils::uint64_trusted("12"));
+  BOOST_CHECK_EQUAL(123ULL, StringUtils::uint64_trusted("123"));
+  BOOST_CHECK_EQUAL(1234ULL, StringUtils::uint64_trusted("1234"));
+  BOOST_CHECK_EQUAL(1234ULL, StringUtils::uint64_trusted("01234"));
+  BOOST_CHECK_EQUAL(9ULL, StringUtils::uint64_trusted("9"));
+  BOOST_CHECK_EQUAL(9ULL, StringUtils::uint64_trusted("0009"));
+  BOOST_CHECK_EQUAL(12345678ULL, StringUtils::uint64_trusted("12345678"));
+  BOOST_CHECK_EQUAL(1234567800ULL, StringUtils::uint64_trusted("1234567800"));
+  BOOST_CHECK_EQUAL(1234567890123456ULL, StringUtils::uint64_trusted("1234567890123456"));
+  BOOST_CHECK_EQUAL(UINT64_MAX, StringUtils::uint64_trusted(std::to_string(UINT64_MAX)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 

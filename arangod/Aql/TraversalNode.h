@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Condition.h"
 #include "Aql/Graphs.h"
+#include "Aql/TraversalOptions.h"
 #include "VocBase/Traverser.h"
 
 namespace arangodb {
@@ -67,7 +68,7 @@ class TraversalNode : public ExecutionNode {
  public:
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
-                AstNode const* graph);
+                AstNode const* graph, TraversalOptions const& options);
 
   TraversalNode(ExecutionPlan* plan, arangodb::basics::Json const& base);
 
@@ -87,7 +88,7 @@ class TraversalNode : public ExecutionNode {
                 std::vector<std::string> const& edgeColls,
                 Variable const* inVariable, std::string const& vertexId,
                 std::vector<TRI_edge_direction_e> directions, uint64_t minDepth,
-                uint64_t maxDepth);
+                uint64_t maxDepth, TraversalOptions const& options);
 
  public:
   /// @brief return the type of the node
@@ -249,7 +250,7 @@ class TraversalNode : public ExecutionNode {
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
 
-  /// @brief the edge collection cid
+  /// @brief the edge collection names
   std::vector<std::string> _edgeColls;
 
   /// @brief our graph...
@@ -266,6 +267,9 @@ class TraversalNode : public ExecutionNode {
   std::unordered_map<size_t,
                      std::vector<arangodb::traverser::TraverserExpression*>>
       _expressions;
+
+  /// @brief Options for traversals
+  TraversalOptions _options;
 };
 
 }  // namespace arangodb::aql

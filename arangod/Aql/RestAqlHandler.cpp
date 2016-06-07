@@ -52,7 +52,7 @@ RestAqlHandler::RestAqlHandler(arangodb::HttpRequest* request,
                                QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request),
       _context(static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context->getVocbase()),
+      _vocbase(_context->vocbase()),
       _queryRegistry(queryRegistry),
       _qId(0) {
   TRI_ASSERT(_vocbase != nullptr);
@@ -799,6 +799,19 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                         "skip lead to an exception");
           return;
         }
+      } else if (operation == "initialize") {
+        int res;
+        try {
+          res = query->engine()->initialize();
+        } catch (...) {
+          LOG(ERR) << "initialize lead to an exception";
+          generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                        TRI_ERROR_HTTP_SERVER_ERROR,
+                        "initialize lead to an exception");
+          return;
+        }
+        answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
+        answerBuilder.add("code", VPackValue(static_cast<double>(res)));
       } else if (operation == "initializeCursor") {
         auto pos =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);

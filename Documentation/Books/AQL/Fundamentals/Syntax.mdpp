@@ -118,6 +118,7 @@ The complete list of keywords is currently:
   <li>REMOVE</li>
   <li>REPLACE</li>
   <li>RETURN</li>
+  <li>SHORTEST_PATH</li>
   <li>SORT</li>
   <li>TRUE</li>
   <li>UPDATE</li>

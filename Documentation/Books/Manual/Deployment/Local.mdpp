@@ -1,0 +1,9 @@
+!SECTION Launching a local ArangoDB cluster for testing
+
+TODO:
+
+Explain which command line options have to be used to connect up
+multiple ArangoDB processes.
+
+Explain about a setup with compilation from source and using the 
+script `scripts/startLocalCluster.sh`.

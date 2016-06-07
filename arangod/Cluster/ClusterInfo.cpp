@@ -1536,6 +1536,10 @@ int ClusterInfo::ensureIndexCoordinator(
 
   AgencyCommResult previous = ac.getValues(key);
 
+  if (!previous.successful()) {
+    return TRI_ERROR_CLUSTER_READING_PLAN_AGENCY;
+  }
+
   velocypack::Slice collection =
     previous.slice()[0].get(std::vector<std::string>(
           { AgencyComm::prefix(), "Plan", "Collections",
@@ -1719,10 +1723,18 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   
   AgencyCommResult res = ac.getValues(key);
 
+  if (!res.successful()) {
+    return TRI_ERROR_CLUSTER_READING_PLAN_AGENCY;
+  }
+
   velocypack::Slice previous =
     res.slice()[0].get(std::vector<std::string>(
     { AgencyComm::prefix(), "Plan", "Collections", databaseName, collectionID }
   ));
+  if (!previous.isObject()) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
   TRI_ASSERT(VPackObjectIterator(previous).size()>0);
   
   std::string where =
@@ -1930,7 +1942,7 @@ void ClusterInfo::loadServers() {
       result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "ServersRegistered"}));
 
-    if (!serversRegistered.isNone()) {
+    if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
 
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
@@ -2062,7 +2074,7 @@ void ClusterInfo::loadCurrentCoordinators() {
       result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "Coordinators"}));
 
-    if (!currentCoordinators.isNone()) {
+    if (currentCoordinators.isObject()) {
       decltype(_coordinators) newCoordinators;
       
       for (auto const& coordinator : VPackObjectIterator(currentCoordinators)) {
@@ -2119,10 +2131,9 @@ void ClusterInfo::loadCurrentDBServers() {
       result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "DBServers"}));
 
-    if (!currentDBServers.isNone()) {
+    if (currentDBServers.isObject()) {
       decltype(_DBServers) newDBServers;
 
-      //for (; it != result._values.end(); ++it) {
       for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
         newDBServers.emplace(
           std::make_pair(dbserver.key.copyString(), dbserver.value.copyString()));
@@ -2652,4 +2663,14 @@ void FollowerInfo::remove(ServerID const& sid) {
     LOG(ERR) << "FollowerInfo::remove, timeout in agency operation for key "
              << path;
   }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief clear follower list, no changes in agency necesary
+//////////////////////////////////////////////////////////////////////////////
+
+void FollowerInfo::clear() {
+  MUTEX_LOCKER(locker, _mutex);
+  auto v = std::make_shared<std::vector<ServerID>>();
+  _followers = v;  // will cast to std::vector<ServerID> const
 }

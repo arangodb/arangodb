@@ -139,7 +139,7 @@ std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
     : RestBaseHandler(request),
       _context(static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context->getVocbase()),
+      _vocbase(_context->vocbase()),
       _nolockHeaderSet(nullptr) {}
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
@@ -637,12 +637,14 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
 
 std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     VPackOptions const* options, bool& success) {
-  bool found;
-  std::string const& contentType =
-      _request->header(StaticStrings::ContentTypeHeader, found);
-
   try {
     success = true;
+
+#if 0
+    // currently deactivated...
+    bool found;
+    std::string const& contentType =
+        _request->header(StaticStrings::ContentTypeHeader, found);
 
     if (found && contentType.size() == StaticStrings::MimeTypeVPack.size() &&
         contentType == StaticStrings::MimeTypeVPack) {
@@ -653,6 +655,9 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     } else {
       return _request->toVelocyPack(options);
     }
+#else
+    return _request->toVelocyPack(options);
+#endif
   } catch (std::bad_alloc const&) {
     generateOOMError();
   } catch (VPackException const& e) {

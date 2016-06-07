@@ -194,8 +194,7 @@ actions.defineHttp({
       return;
     }
     var DBserver = req.parameters.DBserver;
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
+    var options = { timeout:10 };
     var op = ArangoClusterComm.asyncRequest("GET","server:"+DBserver,"_system",
                                             "/_admin/statistics","",{},options);
     var r = ArangoClusterComm.wait(op);
@@ -220,6 +219,58 @@ actions.defineHttp({
       res.body = JSON.stringify( {"error":true,
         "errorMessage": "error from DBserver, possibly DBserver unknown",
         "body": bodyobj} );
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JSF_cluster_statistics_GET
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/health",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (req.requestType !== actions.GET ||
+        !require("@arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only GET requests are allowed and only to coordinators");
+      return;
+    }
+
+    var timeout = 60.0;
+    
+    try {
+      if (req.parameters.hasOwnProperty("timeout")) {
+        timeout = Number(req.parameters.timeout);
+      }
+    }
+    catch (e) {}
+    
+    // Now get to work, first get the write lock on the Plan in the Agency:
+    var success = ArangoAgency.lockRead("Supervision", timeout);
+    if (! success) {
+      actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
+                          "could not get a read lock on Plan in Agency");
+      return;
+    }
+    
+    try {
+      var Health;
+      try {
+        Health = ArangoAgency.get("Supervision/Health", false, true).arango.Supervision.Health;
+        
+      } catch (e1) {
+        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+                            "Failed to retrieve supervision node from agency!");
+        return;
+      }
+      
+      actions.resultOk(req, res, actions.HTTP_OK, {Health} );
+    } finally {
+      ArangoAgency.unlockRead("Supervision", timeout);
     }
   }
 });
@@ -291,8 +342,7 @@ actions.defineHttp({
     }
     else {
         // query a remote statistics collection
-        var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
-        var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
+        var options = { timeout:10 };
         var op = ArangoClusterComm.asyncRequest("POST","server:"+DBserver,"_system",
             "/_api/cursor",JSON.stringify({query: myQueryVal, bindVars: bind}),{},options);
         var r = ArangoClusterComm.wait(op);
@@ -797,7 +847,6 @@ actions.defineHttp({
     if (body === undefined) {
       return;
     }
-    require("console").log("FUXX: " + JSON.stringify(body));
     if (! body.hasOwnProperty("primary") ||
         typeof(body.primary) !== "string" ||
         ! body.hasOwnProperty("secondary") ||
@@ -912,3 +961,341 @@ actions.defineHttp({
     }
   }
 });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_getNumberOfServers
+/// (intentionally not in manual)
+/// @brief gets the number of coordinators desired, which are stored in
+/// /Target/NumberOfDBServers in the agency.
+///
+/// @ RESTHEADER{GET /_admin/cluster/numberOfServers, Get desired number of coordinators and DBServers.}
+///
+/// @ RESTQUERYPARAMETERS
+///
+/// @ RESTDESCRIPTION gets the number of coordinators and DBServers desired, 
+/// which are stored in `/Target` in the agency. A body of the form
+///     { "numberOfCoordinators": 12, "numberOfDBServers": 12 }
+/// is returned. Note that both value can be `null` indicating that the
+/// cluster cannot be scaled.
+///
+/// @ RESTRETURNCODES
+///
+/// @ RESTRETURNCODE{200} is returned when everything went well.
+///
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not GET
+/// or PUT.
+///
+/// @ RESTRETURNCODE{503} the get operation did not work.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_putNumberOfServers
+/// (intentionally not in manual)
+/// @brief sets the number of coordinators and or DBServers desired, which 
+/// are stored in /Target in the agency.
+///
+/// @ RESTHEADER{PUT /_admin/cluster/numberOfServers, Set desired number of coordinators and or DBServers.}
+///
+/// @ RESTQUERYPARAMETERS
+///
+/// @ RESTDESCRIPTION sets the number of coordinators and DBServers desired, 
+/// which are stored in `/Target` in the agency. A body of the form
+///     { "numberOfCoordinators": 12, "numberOfDBServers": 12 }
+/// must be supplied. Either one of the values can be left out and will 
+/// then not be changed. Either value can be `null` to indicate that the
+/// cluster cannot be scaled.
+///
+/// @ RESTRETURNCODES
+///
+/// @ RESTRETURNCODE{200} is returned when everything went well.
+///
+/// @ RESTRETURNCODE{400} body is not valid JSON.
+///
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not GET
+/// or PUT.
+///
+/// @ RESTRETURNCODE{503} the agency operation did not work.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/numberOfServers",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require("@arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only coordinators can serve this request");
+      return;
+    }
+    if (req.requestType !== actions.GET &&
+        req.requestType !== actions.PUT) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only GET and PUT methods are allowed");
+      return;
+    }
+
+    var timeout = 60.0;
+
+    // Now get to work:
+    if (req.requestType === actions.GET) {
+      var nrCoordinators;
+      var nrDBServers;
+      var cleanedServers;
+      try {
+        nrCoordinators = ArangoAgency.get("Target/NumberOfCoordinators");
+        nrCoordinators = nrCoordinators.arango.Target.NumberOfCoordinators;
+        nrDBServers = ArangoAgency.get("Target/NumberOfDBServers");
+        nrDBServers = nrDBServers.arango.Target.NumberOfDBServers;
+        cleanedServers = ArangoAgency.get("Target/CleanedServers");
+        cleanedServers = cleanedServers.arango.Target.CleanedServers;
+      }
+      catch (e1) {
+        actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+                            "Cannot read from agency.");
+        return;
+      }
+      actions.resultOk(req, res, actions.HTTP_OK,
+                       {numberOfCoordinators: nrCoordinators,
+                        numberOfDBServers: nrDBServers,
+                        cleanedServers});
+    } else {
+      var body = actions.getJsonBody(req, res);
+      if (body === undefined) {
+        return;
+      }
+      if (typeof body !== "object") {
+        actions.resultError(req, res, actions.HTTP_BAD,
+                            "body must be an object"); 
+        return;
+      }
+      var ok = true;
+      try {
+        if (body.hasOwnProperty("numberOfCoordinators") &&
+            (typeof body.numberOfCoordinators === "number" ||
+             body.numberOfCoordinators === null)) {
+          ArangoAgency.set("Target/NumberOfCoordinators",
+                           body.numberOfCoordinators);
+        }
+      }
+      catch (e1) {
+        ok = false;
+      }
+      try {
+        if (body.hasOwnProperty("numberOfDBServers") &&
+            (typeof body.numberOfDBServers === "number" ||
+             body.numberOfDBServers === null)) {
+          ArangoAgency.set("Target/NumberOfDBServers",
+                           body.numberOfDBServers);
+        }
+      }
+      catch (e2) {
+        ok = false;
+      }
+      if (!ok) {
+        actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+                            "Cannot write to agency.");
+        return;
+      }
+      actions.resultOk(req, res, actions.HTTP_OK, true);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_postCleanOutServer
+/// (intentionally not in manual)
+/// @brief triggers activities to clean out a DBServer
+///
+/// @ RESTHEADER{POST /_admin/cluster/cleanOutServer, Trigger activities to clean out a DBServers.}
+///
+/// @ RESTQUERYPARAMETERS
+///
+/// @ RESTDESCRIPTION Triggers activities to clean out a DBServer.
+/// The body must be a JSON object with attribute "server" that is a string 
+/// with the ID of the server to be cleaned out.
+///
+/// @ RESTRETURNCODES
+///
+/// @ RESTRETURNCODE{202} is returned when everything went well and the
+/// job is scheduled.
+///
+/// @ RESTRETURNCODE{400} body is not valid JSON.
+///
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not POST.
+///
+/// @ RESTRETURNCODE{503} the agency operation did not work.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/cleanOutServer",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require("@arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only coordinators can serve this request");
+      return;
+    }
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only the POST method is allowed");
+      return;
+    }
+
+    var timeout = 60.0;
+
+    // Now get to work:
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
+    if (typeof body !== "object" || 
+        ! body.hasOwnProperty("server") ||
+        typeof body.server !== "string") {
+      actions.resultError(req, res, actions.HTTP_BAD,
+          "body must be an object with a string attribute 'server'"); 
+      return;
+    }
+    var ok = true;
+    try {
+      var id = ArangoClusterInfo.uniqid();
+      var todo = { "type": "cleanOutServer",
+                   "server": body.server,
+                   "jobId": id,
+                   "timeCreated": (new Date()).toISOString(),
+                   "creator": ArangoServerState.id() };
+      ArangoAgency.set("Target/ToDo/" + id, todo);
+    }
+    catch (e1) {
+      ok = false;
+    }
+    if (!ok) {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+                          "Cannot write to agency.");
+      return;
+    }
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, true);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_postMoveShard
+/// (intentionally not in manual)
+/// @brief triggers activities to move a shard
+///
+/// @ RESTHEADER{POST /_admin/cluster/moveShard, Trigger activities to move a shard.}
+///
+/// @ RESTQUERYPARAMETERS
+///
+/// @ RESTDESCRIPTION Triggers activities to move a shard.
+/// The body must be a JSON document with the following attributes:
+///   - `"database"`: a string with the name of the database
+///   - `"collection"`: a string with the name of the collection
+///   - `"shard"`: a string with the name of the shard to move
+///   - `"fromServer"`: a string with the ID of a server that is currently 
+///     the leader or a follower for this shard
+///   - `"toServer"`: a string with the ID of a server that is currently
+///     not the leader and not a follower for this shard
+///
+/// @ RESTRETURNCODES
+///
+/// @ RESTRETURNCODE{202} is returned when everything went well and the
+/// job is scheduled.
+///
+/// @ RESTRETURNCODE{400} body is not valid JSON.
+///
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not POST.
+///
+/// @ RESTRETURNCODE{503} the agency operation did not work.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/moveShard",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require("@arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only coordinators can serve this request");
+      return;
+    }
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only the POST method is allowed");
+      return;
+    }
+
+    var timeout = 60.0;
+
+    // Now get to work:
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
+    if (typeof body !== "object" || 
+        ! body.hasOwnProperty("database") ||
+        typeof body.database !== "string" ||
+        ! body.hasOwnProperty("collection") ||
+        typeof body.collection !== "string" ||
+        ! body.hasOwnProperty("shard") ||
+        typeof body.shard !== "string" ||
+        ! body.hasOwnProperty("fromServer") ||
+        typeof body.fromServer !== "string" ||
+        ! body.hasOwnProperty("toServer") ||
+        typeof body.toServer !== "string") {
+      actions.resultError(req, res, actions.HTTP_BAD,
+          "body must be an object with string attributes 'database', 'collection', 'shard', 'fromServer' and 'toServer'"); 
+      return;
+    }
+    var ok = true;
+    var isLeader;
+    try {
+      var coll = ArangoClusterInfo.getCollectionInfo(body.database,
+                                                     body.collection);
+      var shards = coll.shards;
+      var shard = shards[body.shard];
+      var pos = shard.indexOf(body.fromServer);
+      if (pos === -1) {
+        throw "Banana";
+      } else if (pos === 0) {
+        isLeader = true;
+      } else {
+        isLeader = false;
+      }
+    } catch (e2) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+                          "Combination of database, collection, shard and fromServer does not make sense.");
+      return;
+    }
+    try {
+      var id = ArangoClusterInfo.uniqid();
+      var todo = { "type": "moveShard",
+                   "database": body.database,
+                   "collection": body.collection,
+                   "shard": body.shard,
+                   "fromServer": body.fromServer,
+                   "toServer": body.toServer,
+                   "jobId": id,
+                   "timeCreated": (new Date()).toISOString(),
+                   "creator": ArangoServerState.id() };
+      ArangoAgency.set("Target/ToDo/" + id, todo);
+    } catch (e1) {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+                          "Cannot write to agency.");
+      return;
+    }
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, true);
+  }
+});
+

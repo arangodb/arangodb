@@ -100,6 +100,8 @@
       var error = 0;
 
       if (connection) {
+        $('#offlinePlaceholder').hide();
+
         this.collection.each(function(value) {
           if (value.toJSON().status !== 'ok') {
             error++;
@@ -129,6 +131,10 @@
         $('#healthStatus').addClass('negative');
         $('.health-state').html(window.location.host + ' OFFLINE');
         $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+
+        //show offline overlay
+        $('#offlinePlaceholder').show();
+        this.reconnectAnimation(0);
       }
     },
 

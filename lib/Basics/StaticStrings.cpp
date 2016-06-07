@@ -30,7 +30,6 @@ std::string const StaticStrings::Binary("binary");
 std::string const StaticStrings::Empty("");
 std::string const StaticStrings::N1800("1800");
 
-
 // system attribute names
 std::string const StaticStrings::IdString("_id");
 std::string const StaticStrings::KeyString("_key");
@@ -71,13 +70,11 @@ std::string const StaticStrings::ExposedCorsHeaders("etag, content-encoding, con
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::Location("location");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
-std::string const StaticStrings::OmitWwwAuthenticate("x-omit-www-authenticate");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::Queue("x-arango-queue");
 std::string const StaticStrings::Server("server");
 std::string const StaticStrings::StartThread("x-arango-start-thread");
-std::string const StaticStrings::WwwAuthenticate("www-authenticate");
-    
+std::string const StaticStrings::WwwAuthenticate("www-authenticate");    
 
 // mime types
 std::string const StaticStrings::MimeTypeJson("application/json; charset=utf-8");
