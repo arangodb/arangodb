@@ -97,6 +97,7 @@
 #
 * [Deployment](Deployment/README.md)
   * [Single instance](Deployment/Single.md)
+  * [Cluster: Architecture](Deployment/Architecture.md)
   * [Cluster: DC/OS](Deployment/Mesos.md)
   * [Cluster: Docker](Deployment/Docker.md)
   * [Cluster: Local test](Deployment/Local.md)

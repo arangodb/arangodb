@@ -33,18 +33,16 @@ Alternatively check the DC/OS webinterface. Hit installing ArangoDB on the "Serv
 
 After installing DC/OS will start deploying the ArangoDB cluster on the DC/OS cluster. You can watch ArangoDB starting on the "Services" tab in the webinterface. Once it is listed as healthy click the link next to it and you should see the ArangoDB webinterface.
 
-!SUBSUBSECTION While running
-
-!SUBSUBSUBSECTION ArangoDB Mesos framework
+!SUBSUBSECTION ArangoDB Mesos framework
 While ArangoDB is deployed Mesos will keep your cluster running. The web interface has many monitoring facilities so be sure to make yourself familiar with the DC/OS webinterface. As a fault tolerant system Mesos will take care of most failure scenarios automatically. Mesos does that by running ArangoDB as a so called "framework". This framework has been specifically built to keep ArangoDB running in a healthy condition on the Mesos cluster. From time to time a task might fail. The ArangoDB framework will then take care of rescheduling the failed task. As it knows about the very specifics of each cluster task and its role it will automatically take care of most failure scenarios.
 
 To inspect what the framework is doing go to `WEBINTERFACEURL`/mesos in your browser. Locate the task "arangodb" and inspect stderr in the "Sandbox". This can be of interest for example when a slave got lost and the framework is rescheduling the task.
 
-!SUBSUBSUBSECTION Using ArangoDB
+!SUBSUBSECTION Using ArangoDB
 
 To use ArangoDB as a datastore in your DC/OS cluster you can facilitate the service discovery of DC/OS. Assuming you deployed a standard ArangoDB cluster the [mesos dns](https://github.com/mesosphere/mesos-dns) will know about `arangodb.mesos`. By doing a SRV DNS request (check the documentation of mesos dns) you can find out the port where the internal HAProxy of ArangoDB is running. This will offer a round robin load balancer to access all ArangoDB coordinators.
 
-!SUBSUBSUBSECTION Scaling ArangoDB
+!SUBSUBSECTION Scaling ArangoDB
 
 To change the settings of your ArangoDB Cluster access the ArangoDB UI and hit "Nodes". On the scale tab you will have the ability to scale your cluster up and down.
 
@@ -60,7 +58,7 @@ Deinstalling ArangoDB is a bit more difficult as there is much state being kept 
 
 This will first cleanup the state in the cluster and then uninstall arangodb.
 
-!SUBSUBSUBSECTION arangodb-cleanup-framework
+!SUBSUBSECTION arangodb-cleanup-framework
 
 Should you forget to cleanup the state you can do so later by using the [arangodb-cleanup-framework](https://github.com/arangodb/arangodb-cleanup-framework/) container. Otherwise you might not be able to deploy a new arangodb installation.
 
