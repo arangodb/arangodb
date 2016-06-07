@@ -804,9 +804,14 @@ function dropLocalCollections (plannedCollections, writeLocked) {
 
               db._drop(collection);
 
-              writeLocked({ part: "Current" },
-                          dropCollectionAgency,
-                          [ database, collection, collections[collection].planId ]);
+              if (removeAll || ! shardMap.hasOwnProperty(collection)) {
+                console.info("cleaning out Current entry for shard %s in",
+                             "agency for %s/%s", collection, database,
+                             collections[collection].name);
+                writeLocked({ part: "Current" },
+                            dropCollectionAgency,
+                            [ database, collection, collections[collection].planId ]);
+              }
             }
           }
         }
