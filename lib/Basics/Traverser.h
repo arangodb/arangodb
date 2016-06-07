@@ -744,10 +744,8 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
    public:
     bool oneStep() {
       VertexId v;
-      Step* s;
+      Step* s = nullptr;
       bool b = _myInfo._pq.popMinimal(v, s, true);
-
-      std::vector<Step*> neighbors;
 
       if (_pathFinder->_bingo || !b) {
         // We can leave this functino only under 2 conditions:
@@ -759,6 +757,9 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
         return false;
       }
 
+      TRI_ASSERT(s != nullptr);
+
+      std::vector<Step*> neighbors;
       _expander(v, neighbors);
       for (Step* neighbor : neighbors) {
         insertNeighbor(neighbor, s->weight() + neighbor->weight());
