@@ -363,7 +363,7 @@ void Agent::run() {
   while (!this->isStopping() && size() > 1) {  // need only to run in multi-host
 
     if (leading())
-      _appendCV.wait(500000);  // Only if leading
+      _appendCV.wait(25000);  // Only if leading
     else
       _appendCV.wait();  // Just sit there doing nothing
 

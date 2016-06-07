@@ -789,7 +789,8 @@ function processQuery (query, explain) {
   };
 
 
-  var label = function (node) { 
+  var label = function (node) {
+    var rc, v, e, edgeCols; 
     switch (node.type) {
       case "SingletonNode":
         return keyword("ROOT");
@@ -832,7 +833,8 @@ function processQuery (query, explain) {
         node.minMaxDepth = node.minDepth + ".." + node.maxDepth;
         node.minMaxDepthLen = node.minMaxDepth.length;
 
-        var rc = keyword("FOR "), parts = [];
+        rc = keyword("FOR ");
+        var parts = [];
         if (node.hasOwnProperty('vertexOutVariable')) {
           parts.push(variableName(node.vertexOutVariable) + "  " + annotation("/* vertex */"));
         }
@@ -876,9 +878,9 @@ function processQuery (query, explain) {
           node.ConditionStr = buildSimpleExpression(node.simpleExpressions);
         }
 
-        var e = [];
+        e = [];
         if (node.hasOwnProperty('graphDefinition')) {
-          var v = [];
+          v = [];
           node.graphDefinition.vertexCollectionNames.forEach(function(vcn) {
             v.push(collection(vcn));
           });
@@ -892,7 +894,7 @@ function processQuery (query, explain) {
           node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;
         }
         else {
-          var edgeCols = node.graph || [ ];
+          edgeCols = node.graph || [ ];
           edgeCols.forEach(function(ecn) {
             e.push(collection(ecn));
           });
@@ -902,16 +904,15 @@ function processQuery (query, explain) {
         }
         return rc;
       case "ShortestPathNode":
-        var rc = keyword("FOR "), parts = [];
         if (node.hasOwnProperty('vertexOutVariable')) {
           parts.push(variableName(node.vertexOutVariable) + "  " + annotation("/* vertex */"));
         }
         if (node.hasOwnProperty('edgeOutVariable')) {
           parts.push(variableName(node.edgeOutVariable) + "  " + annotation("/* edge */"));
         }
-        var translate = ["ANY", "INBOUND", "OUTBOUND"];
-        var defaultDirection = node.directions[0];
-        var rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN") } ${keyword(translate[defaultDirection])} `;
+        translate = ["ANY", "INBOUND", "OUTBOUND"];
+        defaultDirection = node.directions[0];
+        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN") } ${keyword(translate[defaultDirection])} `;
         if (node.hasOwnProperty("startVertexId")) {
           rc += `'${value(node.startVertexId)}'`;
         } else {
@@ -941,9 +942,9 @@ function processQuery (query, explain) {
         }
 
         shortestPathDetails.push(node);
-        var e = [];
+        e = [];
         if (node.hasOwnProperty('graphDefinition')) {
-          var v = [];
+          v = [];
           node.graphDefinition.vertexCollectionNames.forEach(function(vcn) {
             v.push(collection(vcn));
           });
@@ -957,7 +958,7 @@ function processQuery (query, explain) {
           node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;
         }
         else {
-          var edgeCols = node.graph || [ ];
+          edgeCols = node.graph || [ ];
           edgeCols.forEach(function(ecn) {
             e.push(collection(ecn));
           });

@@ -38,6 +38,7 @@
   * [Working with Indexes](Indexes/WorkingWith.md)
   * [Hash](Indexes/Hash.md)
   * [Skiplist](Indexes/Skiplist.md)
+  * [Persistent](Indexes/Persistent.md)
   * [Geo](Indexes/Geo.md)
   * [Fulltext](Indexes/Fulltext.md)
 * [Transactions](Transaction/README.md)

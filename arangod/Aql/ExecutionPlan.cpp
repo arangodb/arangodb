@@ -767,7 +767,6 @@ AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode* previous,
     // operand is some misc expression
     auto calc = createTemporaryCalculation(vertex, previous);
     vertex = _ast->createNodeReference(getOutVariable(calc));
-    previous = calc;
   }
 
   return vertex;
