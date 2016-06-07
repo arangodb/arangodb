@@ -16,6 +16,7 @@
     },
 
     initialize: function (options) {
+      var self = this;
       clearInterval(this.intervalFunction);
 
       if (window.App.isCluster) {
@@ -27,17 +28,53 @@
         //start polling with interval
         this.intervalFunction = window.setInterval(function() {
           if (window.location.hash === '#cNodes' || window.location.hash === '#dNodes' || window.location.hash === '#nodes') {
-
-              console.log("rerender health");
-
+            self.checkNodesState();
           }
         }, this.interval);
       }
     },
 
+    checkNodesState: function() {
+      var callbackFunction = function(nodes) {
+
+        _.each(nodes, function(node, name) {
+          _.each($('.pure-table-row'), function(element) {
+            if ($(element).attr('node') === name) {
+              if (node.Status === "GOOD") {
+                $(element).removeClass("noHover");
+                $(element).find('.state').html('<i class="fa fa-check-circle"></i>');
+              }
+              else {
+                $(element).addClass("noHover");
+                $(element).find('.state').html('<i class="fa fa-exclamation-circle"></i>');
+              }
+            }
+          });
+        });
+
+      }.bind(this);
+
+      //check cluster state
+      $.ajax({
+        type: "GET",
+        cache: false,
+        url: arangoHelper.databaseUrl("/_admin/cluster/health"),
+        contentType: "application/json",
+        processData: false,
+        async: true,
+        success: function(data) {
+          callbackFunction(data.Health);
+        }
+      });
+    },
+
     navigateToNode: function(elem) {
 
       if (window.location.hash === '#dNodes') {
+        return;
+      }
+
+      if ($(elem.currentTarget).hasClass('noHover')) {
         return;
       }
 
@@ -76,6 +113,7 @@
       }));
 
       window.arangoHelper.buildNodesSubNav(this.toRender);
+      this.checkNodesState();
     },
 
     waitForCoordinators: function(callback) {

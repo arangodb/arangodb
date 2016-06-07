@@ -1,0 +1,13 @@
+.cluster-nodes {
+
+  .pure-table-row {
+    &.noHover {
+      cursor: not-allowed !important;
+    }
+
+    &.noHover:hover {
+      cursor: not-allowed !important;
+    }
+
+  }
+}

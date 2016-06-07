@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, document, templateEngine, $, arangoHelper, window*/
+/*global _, Backbone, document, templateEngine, $, arangoHelper, window*/
 
 (function() {
   "use strict";
@@ -61,14 +61,7 @@
         }
       }
       else {
-        self.collection.fetch({
-          success: function() {
-            self.renderClusterState(true);
-          },
-          error: function() {
-            self.renderClusterState(false);
-          }
-        });
+        this.renderClusterState(isOnline);
       }
     },
 
@@ -97,34 +90,54 @@
     },
 
     renderClusterState: function(connection) {
-      var error = 0;
 
       if (connection) {
         $('#offlinePlaceholder').hide();
 
-        this.collection.each(function(value) {
-          if (value.toJSON().status !== 'ok') {
-            error++;
+        var callbackFunction = function(data) {
+
+          var health = data.Health;
+
+          var error = 0;
+
+          _.each(health, function(node) {
+            if (node.Status !== 'GOOD') {
+              error++;
+            }
+          });
+
+          if (error > 0) {
+            $('#healthStatus').removeClass('positive');
+            $('#healthStatus').addClass('negative');
+            if (error === 1) {
+              $('.health-state').html(error + ' NODE ERROR');
+            }
+            else {
+              $('.health-state').html(error + ' NODES ERROR');
+            }
+            $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+          }
+          else {
+            $('#healthStatus').removeClass('negative');
+            $('#healthStatus').addClass('positive');
+            $('.health-state').html('NODES OK');
+            $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+          }
+        }.bind(this);
+
+        //check cluster state
+        $.ajax({
+          type: "GET",
+          cache: false,
+          url: arangoHelper.databaseUrl("/_admin/cluster/health"),
+          contentType: "application/json",
+          processData: false,
+          async: true,
+          success: function(data) {
+            callbackFunction(data);
           }
         });
 
-        if (error > 0) {
-          $('#healthStatus').removeClass('positive');
-          $('#healthStatus').addClass('negative');
-          if (error === 1) {
-            $('.health-state').html(error + ' NODE ERROR');
-          }
-          else {
-            $('.health-state').html(error + ' NODES ERROR');
-          }
-          $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
-        }
-        else {
-          $('#healthStatus').removeClass('negative');
-          $('#healthStatus').addClass('positive');
-          $('.health-state').html('NODES OK');
-          $('.health-icon').html('<i class="fa fa-check-circle"></i>');
-        }
       }
       else {
         $('#healthStatus').removeClass('positive');
