@@ -1106,3 +1106,82 @@ actions.defineHttp({
   }
 });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_postCleanOutServer
+/// (intentionally not in manual)
+/// @brief triggers activities to clean out a DBServer
+///
+/// @ RESTHEADER{POST /_admin/cluster/cleanOutServer, Trigger activities to clean out a DBServers.}
+///
+/// @ RESTQUERYPARAMETERS
+///
+/// @ RESTDESCRIPTION Triggers activities to clean out a DBServer.
+/// The body must be a JSON string with the ID of the server to be cleaned out.
+///
+/// @ RESTRETURNCODES
+///
+/// @ RESTRETURNCODE{202} is returned when everything went well and the
+/// job is scheduled.
+///
+/// @ RESTRETURNCODE{400} body is not valid JSON.
+///
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not GET
+/// or PUT.
+///
+/// @ RESTRETURNCODE{503} the agency operation did not work.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/cleanOutServer",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require("@arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only coordinators can serve this request");
+      return;
+    }
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only the POST method is allowed");
+      return;
+    }
+
+    var timeout = 60.0;
+
+    // Now get to work:
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
+    if (typeof body !== "object" || ! body.hasOwnProperty("server") ||
+        ! typeof body.server === "string") {
+      actions.resultError(req, res, actions.HTTP_BAD,
+          "body must be an object with a string attribute 'server'"); 
+      return;
+    }
+    var ok = true;
+    try {
+      var id = ArangoClusterInfo.uniqid();
+      var todo = { "type": "cleanOutServer",
+                   "server": body.server,
+                   "jobId": id,
+                   "timeCreated": (new Date()).toISOString(),
+                   "creator": ArangoServerState.id() };
+      ArangoAgency.set("Target/ToDo/" + id, todo);
+    }
+    catch (e1) {
+      ok = false;
+    }
+    if (!ok) {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+                          "Cannot write to agency.");
+      return;
+    }
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, true);
+  }
+});
+
