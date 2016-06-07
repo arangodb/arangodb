@@ -131,8 +131,10 @@ Store& Store::operator=(Store&& rhs) {
   return *this;
 }
 
-// Default ctor
-Store::~Store() {}
+// Default dtor
+Store::~Store() {
+  shutdown();
+}
 
 // Apply queries multiple queries to store
 std::vector<bool> Store::apply(query_t const& query) {
@@ -495,6 +497,7 @@ void Store::run() {
     toClear = clearExpired();
     _agent->write(toClear);
   }
+
 }
 
 bool Store::applies(arangodb::velocypack::Slice const& slice) {

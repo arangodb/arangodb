@@ -1,17 +1,51 @@
-!SECTION Launching an ArangoDB cluster using Docker containers
+!SECTION ArangoDB and Docker
 
-Essentially describe that the standard image can be used and explain
-needed command line options. Details can be found in 
-`scripts/startLocalDockerCluster.sh`.
+!SUBSECTION Authentication
 
-Explain which command line options play which role in connecting
-the cluster.
+To start the official docker container you will have to decide on an authentication method. Otherwise the container won't start.
 
-Link to script in github repo.
+Provide one of the arguments to docker as an environment variable.
 
-Explain that later more servers can be added by launching more docker 
-containers.
+There are three options:
 
-Reiterate that this allows for synchronous replication with automatic
-failover but that it cannot replace failed instances or automatically
-scale up or down.
+1. ARANGO_NO_AUTH=1
+
+        Disable authentication completely. Useful for local testing or for operating in a trusted network (without a public interface).
+        
+2. ARANGO_ROOT_PASSWORD=password
+
+        Start ArangoDB with the given password for root
+        
+3. ARANGO_RANDOM_ROOT_PASSWORD=1
+
+        Let ArangoDB generate a random root password
+        
+To get quickly going:
+
+`docker run -e ARANGO_RANDOM_ROOT_PASSWORD=1 arangodb`
+
+For an in depth guide about docker and arangodb please check the official documentation: https://hub.docker.com/r/_/arangodb/
+
+!SUBSECTION Networking
+
+A bit of extra care has to be invested in how docker isolates its network. By default it fully isolates the network and by doing so an endpoint like `--server.endpoint tcp://0.0.0.0:8529` will only bind to all interfaces of the docker container which does not make it available on the machine you are starting on. This may be sufficient if you just want to access it locally but in case you want to expose it to the outside you must facilitate dockers port forwarding using the `-p` command line option. Be sure to check the [official docker documentation](https://docs.docker.com/engine/reference/run/).
+
+To simply make arangodb available on all host ports:
+
+`docker run -p 8529:8529 -e ARANGO_RANDOM_ROOT_PASSWORD=1 arangodb`
+
+Another possibility is to start docker via network mode `host`. This is possible but generally not recommended. To do it anyway check the docker documentation for details.
+
+!SUBSUBSECTION Docker and Cluster tasks
+
+To start the cluster via docker is basically the same as starting [locally](Local.md). However just like with the single networking image we will face networking issues. You can simply use the `-p` flag to make the individual task available on the host machine or you could use dockers [links](https://docs.docker.com/engine/reference/run/) to enable task intercommunication.
+
+Please note that there are some flags that specify how ArangoDB can reach a task from the outside. These are very important and built for this exact usecase. For example starting the agency like this:
+
+```
+docker run -e ARANGO_RANDOM_ROOT_PASSWORD=1 -p 192.168.1.1:10000:8529 arangodb arangod --server.endpoint tcp://0.0.0.0:8529 --cluster.my-address tcp://192.168.1.1:10000 --cluster.my-local-info db1 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://192.168.1.1:5001
+```
+
+This will start a primary DB server within a docker container with an isolated network. Within the docker container it will bind on all interfaces (this will be 127.0.0.1:8529 and some internal docker ip on port 8529). By supplying `-p 192.168.1.1:10000:8529` we are establishing a port forwarding from our local IP (192.168.1.1 in this example) to port 8529 inside the container. Within the command we are telling arangod how it can be reached from the outside `tcp://192.168.1.1:10000`. The DBServer can now announce itself properly to the agency.
+
+The agency has a similar paramter, namely the `--agency.endpoint` parameter.

@@ -77,6 +77,7 @@ void NotifierThread::run() {
   } catch (...) {
     LOG(ERR) << "Couldn't notify agents!";
   }
+
 }
 
 void NotifierThread::beginShutdown() {
