@@ -317,94 +317,6 @@ var transformExampleToAQL = function(examples, collections, bindVars, varname) {
   return query;
 };
 
-var AQLStatement = function(query, type) {
-  this.query = query;
-  if (type) {
-    this.type = type;
-  }
-};
-
-AQLStatement.prototype.printQuery = function() {
-  return this.query;
-};
-
-AQLStatement.prototype.isPathQuery = function() {
-  return this.type === "path";
-};
-
-AQLStatement.prototype.isPathVerticesQuery = function() {
-  return this.type === "pathVertices";
-};
-
-AQLStatement.prototype.isPathEdgesQuery = function() {
-  return this.type === "pathEdges";
-};
-
-AQLStatement.prototype.isEdgeQuery = function() {
-  return this.type === "edge";
-};
-
-AQLStatement.prototype.isVertexQuery = function() {
-  return this.type === "vertex";
-};
-
-AQLStatement.prototype.isNeighborQuery = function() {
-  return this.type === "neighbor";
-};
-
-AQLStatement.prototype.allowsRestrict = function() {
-  return this.isEdgeQuery()
-    || this.isVertexQuery()
-    || this.isNeighborQuery();
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// Deprecated block
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_general_graph_undirectedRelation
-////////////////////////////////////////////////////////////////////////////////
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// Deprecated block
-////////////////////////////////////////////////////////////////////////////////
-var _undirectedRelation = function (relationName, vertexCollections) {
-  var err;
-  if (arguments.length < 2) {
-    err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS.message + "2";
-    throw err;
-  }
-
-  if (typeof relationName !== "string" || relationName === "") {
-    err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.message + " arg1 must not be empty";
-    throw err;
-  }
-
-  if (!isValidCollectionsParameter(vertexCollections)) {
-    err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.message + " arg2 must not be empty";
-    throw err;
-  }
-
-  return {
-    collection: relationName,
-    from: stringToArray(vertexCollections),
-    to: stringToArray(vertexCollections)
-  };
-};
-////////////////////////////////////////////////////////////////////////////////
-/// Deprecated block
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_general_graph_directedRelation
-////////////////////////////////////////////////////////////////////////////////
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_general_graph_relation
 ////////////////////////////////////////////////////////////////////////////////
@@ -463,13 +375,9 @@ var _listObjects = function() {
   return getGraphCollection().toArray();
 };
 
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_general_graph_edge_definitions
 ////////////////////////////////////////////////////////////////////////////////
-
 
 var _edgeDefinitions = function () {
 
@@ -481,7 +389,6 @@ var _edgeDefinitions = function () {
   return res;
 
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_general_graph_extend_edge_definitions
@@ -2229,12 +2136,6 @@ Graph.prototype._PRINT = function(context) {
 };
 
 
-/// Deprecated function (announced 2.3)
-exports._undirectedRelation = _undirectedRelation;
-/// Deprecated function (announced 2.3)
-exports._directedRelation = function () {
-  return _relation.apply(this, arguments);
-};
 exports._relation = _relation;
 exports._graph = _graph;
 exports._edgeDefinitions = _edgeDefinitions;
@@ -2258,5 +2159,3 @@ exports._registerCompatibilityFunctions = registerCompatibilityFunctions;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_general_graph_create_graph_example2
 ////////////////////////////////////////////////////////////////////////////////
-
-
