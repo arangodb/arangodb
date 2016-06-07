@@ -1405,7 +1405,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
     instanceArgs["agency.size"] = String(N);
     instanceArgs["agency.wait-for-sync"] = String(wfs);
     instanceArgs["agency.supervision"] = "false";
-    instanceArgs["database.directory"] = dataDir + String(i);
+    instanceArgs["database.directory"] = rootDir + "agency-" + i;
+
 
     if (i === N - 1) {
       let l = [];
@@ -1423,6 +1424,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
 
+    require("internal").print(instanceArgs);
+    
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, testname, rootDir, true));
   }
 
