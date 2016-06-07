@@ -1408,13 +1408,15 @@ function startInstanceAgency(instanceInfo, protocol, options,
     instanceArgs["database.directory"] = dataDir + String(i);
 
     if (i === N - 1) {
+      const port = findFreePort();
+      instanceArgs["server.endpoint"] = "tcp://127.0.0.1:" + port;
       let l = [];
-      for (let j = 0; j < N; j++) {
-        instanceInfo.arangods.forEach(arangod => {
-          l.push("--agency.endpoint");
-          l.push(arangod.endpoint);
-        });
-      }
+      instanceInfo.arangods.forEach(arangod => {
+        l.push("--agency.endpoint");
+        l.push(arangod.endpoint);
+      });
+      l.push("--agency.endpoint");
+      l.push("tcp://127.0.0.1:" + port);
       l.push("--agency.notify");
       l.push("true");
 
@@ -1423,6 +1425,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
 
+    require("internal").print(instanceArgs);
+    
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, testname, rootDir, true));
   }
 

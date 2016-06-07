@@ -36,7 +36,6 @@ var helper = require("@arangodb/aql-helper");
 var cluster = require("@arangodb/cluster");
 var getQueryResults = helper.getQueryResults;
 var getRawQueryResults = helper.getRawQueryResults;
-var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for graph features
@@ -463,7 +462,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       var v7 = "UnitTestsAhuacatlVertex/v7";
       var v8 = "UnitTestsAhuacatlVertex/v8";
       var theFox = "UnitTestsAhuacatlVertex/thefox";
-      var queryStart = `FOR n IN ANY "`
+      var queryStart = `FOR n IN ANY "`;
       var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._id RETURN n._id`;
       var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n RETURN n`;
       
@@ -518,7 +517,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       var v8 = "UnitTestsAhuacatlVertex/v8";
       var theFox = "UnitTestsAhuacatlVertex/thefox";
 
-      var queryStart = `FOR n IN INBOUND "`
+      var queryStart = `FOR n IN INBOUND "`;
       var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._id RETURN n._id`;
       var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n RETURN n`;
       
@@ -570,7 +569,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       var v7 = "UnitTestsAhuacatlVertex/v7";
       var v8 = "UnitTestsAhuacatlVertex/v8";
       var theFox = "UnitTestsAhuacatlVertex/thefox";
-      var queryStart = `FOR n IN OUTBOUND "`
+      var queryStart = `FOR n IN OUTBOUND "`;
       var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._id RETURN n._id`;
       var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n RETURN n`;
       
@@ -655,8 +654,6 @@ function ahuacatlQueryShortestPathTestSuite () {
   var en = "UnitTestsTraversalEdges";
   var vertexCollection;
   var edgeCollection;
-
-  var aqlfunctions = require("@arangodb/aql/functions");
 
   return {
 
