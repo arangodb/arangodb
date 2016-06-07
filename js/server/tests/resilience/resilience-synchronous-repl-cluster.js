@@ -4,7 +4,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test synchronous replication in the cluster
 ///
-/// @file js/server/tests/shell/shell-synchronous-replication-cluster.js
+/// @file js/server/tests/resilience/resilience-synchronous-replication-cluster.js
 ///
 /// DISCLAIMER
 ///
@@ -771,12 +771,10 @@ function SynchronousReplicationSuite () {
 
     testDummy : function () {
       assertEqual(12, 12);
-      wait(15);
     }
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
