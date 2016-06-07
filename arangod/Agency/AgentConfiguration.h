@@ -49,7 +49,7 @@ struct config_t {
         supervisionFrequency(5.0),
         compactionStepSize(1000) {}
 
-  config_t(uint32_t i, double minp, double maxp, std::string ep,
+  config_t(uint32_t i, double minp, double maxp, std::string const& ep,
            std::vector<std::string> const& eps, bool n, bool s, bool w,
            double f, uint64_t c)
       : id(i),

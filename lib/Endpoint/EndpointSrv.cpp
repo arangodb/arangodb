@@ -58,7 +58,7 @@ struct SrvRecord {
   std::string name;
 };
 
-std::vector<SrvRecord> srvRecords(std::string specification) {
+static std::vector<SrvRecord> srvRecords(std::string const& specification) {
   res_init();
 
   char const* dname = specification.c_str();
@@ -172,7 +172,7 @@ std::vector<SrvRecord> srvRecords(std::string specification) {
 
 #else
 
-std::vector<SrvRecord> srvRecords(std::string specification) { return {}; }
+static std::vector<SrvRecord> srvRecords(std::string const& specification) { return {}; }
 
 #endif
 
