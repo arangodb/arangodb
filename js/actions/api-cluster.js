@@ -1045,11 +1045,14 @@ actions.defineHttp({
     if (req.requestType === actions.GET) {
       var nrCoordinators;
       var nrDBServers;
+      var cleanedServers;
       try {
         nrCoordinators = ArangoAgency.get("Target/NumberOfCoordinators");
         nrCoordinators = nrCoordinators.arango.Target.NumberOfCoordinators;
         nrDBServers = ArangoAgency.get("Target/NumberOfDBServers");
         nrDBServers = nrDBServers.arango.Target.NumberOfDBServers;
+        cleanedServers = ArangoAgency.get("Target/CleanedServers");
+        cleanedServers = cleanedServers.arango.Target.CleanedServers;
       }
       catch (e1) {
         actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
@@ -1058,7 +1061,8 @@ actions.defineHttp({
       }
       actions.resultOk(req, res, actions.HTTP_OK,
                        {numberOfCoordinators: nrCoordinators,
-                        numberOfDBServers: nrDBServers});
+                        numberOfDBServers: nrDBServers,
+                        cleanedServers});
     } else {
       var body = actions.getJsonBody(req, res);
       if (body === undefined) {
