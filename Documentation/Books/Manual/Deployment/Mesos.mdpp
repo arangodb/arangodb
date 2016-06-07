@@ -1,6 +1,6 @@
 !SECTION Distributed deployment using Apache Mesos
 
-TODO: Intro (vom Rechner)
+ArangoDB has a sophisticated yet easy to use cluster mode. To leverage the full cluster feature set (monitoring, scaling and failover) you have to run ArangoDB on some kind of cluster management system. Currently ArangoDB relies on Apache Mesos in that matter. Mesos is a cluster operating system which is powers some of the worlds biggest datacenters running several thousands of nodes. Running Arango
 
 !SUBSECTION DC/OS
 
