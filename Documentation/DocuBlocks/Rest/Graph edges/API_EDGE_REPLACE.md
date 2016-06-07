@@ -5,7 +5,7 @@
 @RESTHEADER{PUT /_api/document/{document-handle}#replaceEdge, replaces an edge}
 
 @RESTALLBODYPARAM{edge,json,required}
-A JSON representation of the new edge data.
+A JSON representation of the new edge data. Including *_from* and *_to*.
 
 @RESTURLPARAMETERS
 
@@ -40,8 +40,6 @@ If the new edge document passed in the body of the request contains the
 *document-handle* in the attribute *_id* and the revision in *_rev*,
 these attributes will be ignored. Only the URI and the "ETag" header are
 relevant in order to avoid confusion when using proxies. 
-**Note**: The attributes
-*_from* and *_to* of an edge are immutable and cannot be updated either.
 
 Optionally, the query parameter *waitForSync* can be used to force
 synchronization of the edge document replacement operation to disk even in case
