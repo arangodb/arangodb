@@ -28,9 +28,14 @@ If the index is declared unique, then access to the indexed attributes should be
 
 An edges index is automatically created for edge collections. It contains connections between vertex documents and is invoked when the connecting edges of a vertex are queried. There is no way to explicitly create or delete edge indexes.
 
-!SUBSUBSECTION Skiplist Index:
+!SUBSUBSECTION Skiplist Index
 
-A skiplist is used to find ranges of documents.
+A skiplist is a sorted index that can be used to find individual documents or ranges of documents.
+
+!SUBSUBSECTION Persistent Index
+
+A persistent index is a sorted index that can be used for finding individual documents or ranges of documents.
+In constrast to the other indexes, the contents of a persistent index are stored on disk and thus do not need to be rebuilt in memory from the documents when the collection is loaded.
 
 !SUBSUBSECTION Fulltext Index:
 
