@@ -750,6 +750,29 @@ function createLocalCollections (plannedCollections, planVersion,
   }
 }
 
+function leaderResign(database, collId, shardName, ourselves) {
+  console.info("trying to withdraw as leader of shard '%s/%s' of '%s/%s'",
+               database, shardName, database, collId);
+  try {
+    var db = require("internal").db;
+    db._executeTransaction(
+      { "collections": { "write": [shardName] },
+        "action": function() {
+          var path = "Current/Collections/" + database + "/" + collId + "/" + 
+                     shardName + "/servers";
+          var servers = global.ArangoAgency.get(path).arango.Current
+                          .Collections[database][collId][shardName].servers;
+          if (servers[0] === ourselves) {
+            servers[0] = "_" + ourselves;
+            global.ArangoAgency.set(path, servers);
+            global.ArangoAgency.increaseVersion("Current/Version");
+          }
+        } });
+  } catch (x) {
+    console.error("exception thrown when resigning:", x);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop collections if they exist locally but not in the plan
 ////////////////////////////////////////////////////////////////////////////////
@@ -796,17 +819,29 @@ function dropLocalCollections (plannedCollections, writeLocked) {
                          (shardMap[collection].indexOf(ourselves) === -1);
 
             if (remove) {
-              console.info("dropping local shard '%s/%s' of '%s/%s",
-                           database,
-                           collection,
-                           database,
-                           collections[collection].planId);
+              // May be we have been the leader and are asked to withdraw:
+              if (shardMap.hasOwnProperty(collection) &&
+                  shardMap[collection][0] === "_" + ourselves) {
+                leaderResign(database, collections[collection].planId,
+                             collection, ourselves);
+              } else {
+                console.info("dropping local shard '%s/%s' of '%s/%s",
+                             database,
+                             collection,
+                             database,
+                             collections[collection].planId);
 
-              db._drop(collection);
+                db._drop(collection);
 
-              writeLocked({ part: "Current" },
-                          dropCollectionAgency,
-                          [ database, collection, collections[collection].planId ]);
+                if (removeAll || ! shardMap.hasOwnProperty(collection)) {
+                  console.info("cleaning out Current entry for shard %s in",
+                               "agency for %s/%s", collection, database,
+                               collections[collection].name);
+                  writeLocked({ part: "Current" },
+                              dropCollectionAgency,
+                              [ database, collection, collections[collection].planId ]);
+                }
+              }
             }
           }
         }
