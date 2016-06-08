@@ -38,15 +38,18 @@ is returned if the edge collection was not found.
 Any direction
 
 @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesAny}
-    var Graph = require("@arangodb/graph-blueprint").Graph;
-    var g = new Graph("graph", "vertices", "edges");
-    var v1 = g.addVertex(1);
-    var v2 = g.addVertex(2);
-    var v3 = g.addVertex(3);
-    var v4 = g.addVertex(4);
-    g.addEdge(v1, v3, 5, "v1 -> v3");
-    g.addEdge(v2, v1, 6, "v2 -> v1");
-    g.addEdge(v4, v1, 7, "v4 -> v1");
+    var db = require("internal").db;
+    db._create("vertices");
+    db._createEdgeCollection("edges");
+
+    db.vertices.save({_key: "1"});
+    db.vertices.save({_key: "2"});
+    db.vertices.save({_key: "3"});
+    db.vertices.save({_key: "4"});
+
+    db.edges.save({_from: "vertices/1", _to: "vertices/3", _key: "5", "$label": "v1 -> v3"});
+    db.edges.save({_from: "vertices/2", _to: "vertices/1", _key: "6", "$label": "v2 -> v1"});
+    db.edges.save({_from: "vertices/4", _to: "vertices/1", _key: "7", "$label": "v4 -> v1"});
 
     var url = "/_api/edges/edges?vertex=vertices/1";
     var response = logCurlRequest('GET', url);
@@ -62,15 +65,18 @@ Any direction
 In edges
 
 @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesIn}
-    var Graph = require("@arangodb/graph-blueprint").Graph;
-    var g = new Graph("graph", "vertices", "edges");
-    var v1 = g.addVertex(1);
-    var v2 = g.addVertex(2);
-    var v3 = g.addVertex(3);
-    var v4 = g.addVertex(4);
-    g.addEdge(v1, v3, 5, "v1 -> v3");
-    g.addEdge(v2, v1, 6, "v2 -> v1");
-    g.addEdge(v4, v1, 7, "v4 -> v1");
+    var db = require("internal").db;
+    db._create("vertices");
+    db._createEdgeCollection("edges");
+
+    db.vertices.save({_key: "1"});
+    db.vertices.save({_key: "2"});
+    db.vertices.save({_key: "3"});
+    db.vertices.save({_key: "4"});
+
+    db.edges.save({_from: "vertices/1", _to: "vertices/3", _key: "5", "$label": "v1 -> v3"});
+    db.edges.save({_from: "vertices/2", _to: "vertices/1", _key: "6", "$label": "v2 -> v1"});
+    db.edges.save({_from: "vertices/4", _to: "vertices/1", _key: "7", "$label": "v4 -> v1"});
 
     var url = "/_api/edges/edges?vertex=vertices/1&direction=in";
     var response = logCurlRequest('GET', url);
@@ -86,15 +92,18 @@ In edges
 Out edges
 
 @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesOut}
-    var Graph = require("@arangodb/graph-blueprint").Graph;
-    var g = new Graph("graph", "vertices", "edges");
-    var v1 = g.addVertex(1);
-    var v2 = g.addVertex(2);
-    var v3 = g.addVertex(3);
-    var v4 = g.addVertex(4);
-    g.addEdge(v1, v3, 5, "v1 -> v3");
-    g.addEdge(v2, v1, 6, "v2 -> v1");
-    g.addEdge(v4, v1, 7, "v4 -> v1");
+    var db = require("internal").db;
+    db._create("vertices");
+    db._createEdgeCollection("edges");
+
+    db.vertices.save({_key: "1"});
+    db.vertices.save({_key: "2"});
+    db.vertices.save({_key: "3"});
+    db.vertices.save({_key: "4"});
+
+    db.edges.save({_from: "vertices/1", _to: "vertices/3", _key: "5", "$label": "v1 -> v3"});
+    db.edges.save({_from: "vertices/2", _to: "vertices/1", _key: "6", "$label": "v2 -> v1"});
+    db.edges.save({_from: "vertices/4", _to: "vertices/1", _key: "7", "$label": "v4 -> v1"});
 
     var url = "/_api/edges/edges?vertex=vertices/1&direction=out";
     var response = logCurlRequest('GET', url);
