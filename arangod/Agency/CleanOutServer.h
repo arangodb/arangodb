@@ -38,13 +38,13 @@ struct CleanOutServer : public Job {
   
   virtual ~CleanOutServer();
   
-  virtual unsigned status() const override;
-  virtual bool create() const override;
-  virtual bool start() const override;
+  virtual JOB_STATUS status() override;
+  virtual bool create() override;
+  virtual bool start() override;
   
   // Check if all shards' replication factors can be satisfied after clean out.
-  bool checkFeasibility() const;
-  bool scheduleMoveShards() const;
+  bool checkFeasibility() ;
+  bool scheduleMoveShards() ;
 
   std::string _server;
   

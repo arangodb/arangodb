@@ -45,9 +45,9 @@ struct FailedLeader : public Job {
 
   virtual ~FailedLeader();
 
-  virtual bool create () const override;
-  virtual bool start() const override; 
-  virtual unsigned status () const override;
+  virtual bool create () override;
+  virtual bool start() override; 
+  virtual JOB_STATUS status () override;
     
   std::string _database;
   std::string _collection;

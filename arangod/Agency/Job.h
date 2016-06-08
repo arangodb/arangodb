@@ -38,6 +38,8 @@ namespace arangodb {
 namespace consensus {
 
 enum JOB_STATUS {TODO, PENDING, FINISHED, FAILED, NOTFOUND};
+const std::vector<std::string> pos({"/Target/ToDo/", "/Target/Pending/",
+      "/Target/Finished/", "/Target/Failed/"});
 
 static std::string const pendingPrefix  = "/Target/Pending/";
 static std::string const failedPrefix   = "/Target/Failed/";
@@ -66,30 +68,30 @@ struct Job {
   Job(Node const& snapshot, Agent* agent, std::string const& jobId,
       std::string const& creator, std::string const& agencyPrefix) :
     _snapshot(snapshot), _agent(agent), _jobId(jobId), _creator(creator),
-    _agencyPrefix(agencyPrefix) {}
+    _agencyPrefix(agencyPrefix), _jb(nullptr) {}
   
   virtual ~Job() {}
   
-  virtual bool exists() const {
+  virtual JOB_STATUS exists() const {
   
     Node const& target = _snapshot("/Target");
-    unsigned res = 4;
   
     if        (target.exists(std::string("/ToDo/")     + _jobId).size() == 2) {
-      res = 0;
+      return TODO;
     } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
-      res = 1;
+      return PENDING;
     } else if (target.exists(std::string("/Finished/") + _jobId).size() == 2) {
-      res = 2;
+      return FINISHED;
     }  else if (target.exists(std::string("/Failed/")  + _jobId).size() == 2) {
-      res = 3;
-    } 
-  
-    return (res < 4);
+      return FAILED;
+    }
+
+    return NOTFOUND;
   
   }
   
-  virtual bool finish(std::string const& type, bool success = true) const {
+  virtual bool finish(std::string const& type, bool success = true,
+                      std::string const& reason = std::string()) const {
 
     Builder pending, finished;
   
@@ -109,6 +111,9 @@ struct Job {
                  VPackValue(timepointToString(std::chrono::system_clock::now())));
     for (auto const& obj : VPackObjectIterator(pending.slice()[0])) {
       finished.add(obj.key.copyString(), obj.value);
+    }
+    if (!reason.empty()) {
+      finished.add("reason", VPackValue(reason));
     }
     finished.close();
   
@@ -137,18 +142,20 @@ struct Job {
   
   }
   
-  virtual unsigned status () const = 0;
+  virtual JOB_STATUS status () = 0;
   
-  virtual bool create () const = 0;
+  virtual bool create () = 0;
   
-  virtual bool start() const = 0;
+  virtual bool start() = 0;
   
   Node const _snapshot;
   Agent* _agent;
   std::string _jobId;
   std::string _creator;
   std::string _agencyPrefix;
-  
+
+  std::shared_ptr<Builder> _jb;
+
 };
 
 }}

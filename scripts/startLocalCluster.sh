@@ -11,43 +11,49 @@ if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
     exit 1
 fi
 
-NRDBSERVERS=$1
+NRAGENTS=$1
+if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
+    echo Number of agents must be odd.
+    exit 1
+fi
+echo Number of agents: $NRAGENTS
+NRDBSERVERS=$2
 if [ "$NRDBSERVERS" == "" ] ; then
     NRDBSERVERS=2
 fi
 echo Number of DBServers: $NRDBSERVERS
-NRCOORDINATORS=$2
+NRCOORDINATORS=$3
 if [ "$NRCOORDINATORS" == "" ] ; then
     NRCOORDINATORS=1
 fi
 echo Number of Coordinators: $NRCOORDINATORS
 
-if [ ! -z "$3" ] ; then
-    if [ "$3" == "C" ] ; then
+if [ ! -z "$4" ] ; then
+    if [ "$4" == "C" ] ; then
         COORDINATORCONSOLE=1
         echo Starting one coordinator in terminal with --console
-    elif [ "$3" == "D" ] ; then
+    elif [ "$4" == "D" ] ; then
         CLUSTERDEBUGGER=1
         echo Running cluster in debugger.
-    elif [ "$3" == "R" ] ; then
+    elif [ "$4" == "R" ] ; then
         RRDEBUGGER=1
         echo Running cluster in rr with --console.
     fi
 fi
 
-SECONDARIES="$4"
+SECONDARIES="$5"
 
 rm -rf cluster
 mkdir cluster
-echo Starting agency...
+echo Starting agency ...
+
 build/bin/arangod \
   -c none \
-  --agency.endpoint tcp://127.0.0.1:4001 \
   --agency.id 0 \
   --agency.size 1 \
-  --agency.wait-for-sync false \
   --agency.supervision true \
   --agency.supervision-frequency 1 \
+  --agency.wait-for-sync false \
   --database.directory cluster/data4001 \
   --javascript.app-path ./js/apps \
   --javascript.startup-directory ./js \
@@ -56,10 +62,50 @@ build/bin/arangod \
   --server.authentication false \
   --server.endpoint tcp://127.0.0.1:4001 \
   --server.statistics false \
-  --agency.compaction-step-size 100 \
+  --agency.compaction-step-size 1000 \
   --log.force-direct true \
   > cluster/4001.stdout 2>&1 &
-sleep 1
+# build/bin/arangod \
+#   -c none \
+#   --agency.id 1 \
+#   --agency.size 3 \
+#   --agency.supervision true \
+#   --agency.supervision-frequency 1 \
+#   --agency.wait-for-sync false \
+#   --database.directory cluster/data4002 \
+#   --javascript.app-path ./js/apps \
+#   --javascript.startup-directory ./js \
+#   --javascript.v8-contexts 1 \
+#   --log.file cluster/4002.log \
+#   --server.authentication false \
+#   --server.endpoint tcp://127.0.0.1:4002 \
+#   --server.statistics false \
+#   --agency.compaction-step-size 1000 \
+#   --log.force-direct true \
+#   > cluster/4002.stdout 2>&1 &
+# build/bin/arangod \
+#   -c none \
+#   --agency.endpoint tcp://localhost:4001 \
+#   --agency.endpoint tcp://localhost:4002 \
+#   --agency.endpoint tcp://localhost:4003 \
+#   --agency.id 2 \
+#   --agency.notify true \
+#   --agency.size 3 \
+#   --agency.supervision true \
+#   --agency.supervision-frequency 1 \
+#   --agency.wait-for-sync false \
+#   --database.directory cluster/data4003 \
+#   --javascript.app-path ./js/apps \
+#   --javascript.startup-directory ./js \
+#   --javascript.v8-contexts 1 \
+#   --log.file cluster/4003.log \
+#   --server.authentication false \
+#   --server.endpoint tcp://127.0.0.1:4003 \
+#   --server.statistics false \
+#   --agency.compaction-step-size 1000 \
+#   --log.force-direct true \
+#   > cluster/4003.stdout 2>&1 &
+sleep 3
 
 start() {
     if [ "$1" == "dbserver" ]; then

@@ -35,47 +35,57 @@ CleanOutServer::CleanOutServer (
   std::string const& server) : 
   Job(snapshot, agent, jobId, creator, prefix), _server(server) {
 
-  if (_server == "") {
-    try {
-      _server = _snapshot(toDoPrefix + _jobId + "/server").getString();
-    } catch (...) {}
-  } 
-  
-  if (_server == "") {
-    try {
-      _server = _snapshot(pendingPrefix + _jobId + "/server").getString();
-    } catch (...) {}
-  } 
-  
-  if (_server != "") {
-    if (exists()) {
-      if (status() == TODO) {  
-        start();        
-      } 
+  JOB_STATUS js = status();
+  try {
+    if (js == TODO) {
+      start();        
+    } else if (js == NOTFOUND) {            
+      create();
+      start();
     }
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "CleanOutServer job with id " <<
-      jobId << " failed catastrophically. Cannot find server id.";
-  }  
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+    finish("DBServers/" + _server, false, e.what());
+  }
+
 }
 
 CleanOutServer::~CleanOutServer () {}
 
-unsigned CleanOutServer::status () const {
+JOB_STATUS CleanOutServer::status () {
 
-  Node const& target = _snapshot("/Target");
+  auto status = exists();
+
+  if (status != NOTFOUND) { // Get job details from agency
+
+    try {
+      _server = _snapshot(pos[status] + _jobId + "/server").getString();
+    } catch (std::exception const& e) {
+      std::stringstream err;
+      err << "Failed to find job " << _jobId << " in agency: " << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
+      finish("DBServers/" + _server, false, err.str());
+      return FAILED;
+    }
+    
+  }
+
+  if (status == PENDING) {
   
-  if        (target.exists(std::string("/ToDo/")     + _jobId).size() == 2) {
-    
-    return TODO;
-    
-  } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
-    
-    Node::Children const subJobs = _snapshot(pendingPrefix).children();
-    
+    Node::Children const todos = _snapshot(toDoPrefix).children();
+    Node::Children const pends = _snapshot(pendingPrefix).children();
     size_t found = 0;
-    
-    for (auto const& subJob : subJobs) {
+
+    for (auto const& subJob : todos) {
+      if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
+        found++;
+        Node const& sj = *(subJob.second);
+        std::string subJobId = sj("jobId").slice().copyString();
+        std::string creator  = sj("creator").slice().copyString();
+        MoveShard(_snapshot, _agent, subJobId, creator, _agencyPrefix);
+      }
+    }
+    for (auto const& subJob : pends) {
       if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
         found++;
         Node const& sj = *(subJob.second);
@@ -90,28 +100,18 @@ unsigned CleanOutServer::status () const {
         return FINISHED;
       }
     }
-      
-    return PENDING;
-      
-  } else if (target.exists(std::string("/Finished/")  + _jobId).size() == 2) {
-      
-    return FINISHED;
-      
-  } else if (target.exists(std::string("/Failed/")  + _jobId).size() == 2) {
-      
-    return FAILED;
-      
+
   }
-    
-  return NOTFOUND;
+  
+  return status;
 
 }
 
-bool CleanOutServer::create () const {
+bool CleanOutServer::create () {
   return false;
 }
 
-bool CleanOutServer::start() const {
+bool CleanOutServer::start() {
 
   // Copy todo to pending
   Builder todo, pending;
@@ -193,7 +193,7 @@ bool CleanOutServer::start() const {
     
 }
 
-bool CleanOutServer::scheduleMoveShards() const {
+bool CleanOutServer::scheduleMoveShards() {
 
   Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
 
@@ -258,7 +258,7 @@ bool CleanOutServer::scheduleMoveShards() const {
   return true;
 }
 
-bool CleanOutServer::checkFeasibility () const {
+bool CleanOutServer::checkFeasibility () {
 
   uint64_t numCleaned = 0;
   // Check if server is already in cleaned servers: fail!
