@@ -3050,8 +3050,10 @@ bool TRI_UpgradeDatabase(TRI_vocbase_t* vocbase,
   v8g->_vocbase = vocbase;
 
   auto startupLoader = V8DealerFeature::DEALER->startupLoader();
+
   v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(
       isolate, isolate->GetCurrentContext(), "server/upgrade-database.js");
+
   bool ok = TRI_ObjectToBoolean(result);
 
   if (!ok) {

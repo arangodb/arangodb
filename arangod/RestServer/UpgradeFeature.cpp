@@ -27,6 +27,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
 #include "V8/v8-globals.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
@@ -58,7 +59,7 @@ UpgradeFeature::UpgradeFeature(
 
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
-  
+
   options->addOldOption("upgrade", "--database.auto-upgrade");
 
   options->addOption("--database.auto-upgrade",
@@ -86,12 +87,12 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
 
-  DatabaseFeature* database = 
+  DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
   database->disableReplicationApplier();
   database->enableUpgrade();
 
-  ClusterFeature* cluster = 
+  ClusterFeature* cluster =
       ApplicationServer::getFeature<ClusterFeature>("Cluster");
   cluster->forceDisable();
 }
@@ -103,7 +104,9 @@ void UpgradeFeature::start() {
   }
 
   // and force shutdown
-  if (_upgrade) {
+  auto init = ApplicationServer::getFeature<InitDatabaseFeature>("InitDatabase");
+
+  if (_upgrade || init->isInitDatabase()) {
     server()->beginShutdown();
   }
 }
@@ -147,8 +150,18 @@ void UpgradeFeature::upgradeDatabase() {
           v8::HandleScope scope(context->_isolate);
 
           v8::Handle<v8::Object> args = v8::Object::New(context->_isolate);
+
           args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "upgrade"),
                     v8::Boolean::New(context->_isolate, _upgrade));
+
+          auto init = ApplicationServer::getFeature<InitDatabaseFeature>(
+              "InitDatabase");
+
+          if (init != nullptr) {
+            args->Set(
+                TRI_V8_ASCII_STRING2(context->_isolate, "password"),
+                TRI_V8_STD_STRING2(context->_isolate, init->defaultPassword()));
+          }
 
           localContext->Global()->Set(
               TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_ARGS"), args);
@@ -156,18 +169,19 @@ void UpgradeFeature::upgradeDatabase() {
           bool ok = TRI_UpgradeDatabase(vocbase, localContext);
 
           if (!ok) {
-            if (localContext->Global()->Has(
-                    TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_STARTED"))) {
+            if (localContext->Global()->Has(TRI_V8_ASCII_STRING2(
+                    context->_isolate, "UPGRADE_STARTED"))) {
               localContext->Exit();
               if (_upgrade) {
                 LOG(FATAL) << "Database '" << vocbase->_name
-                          << "' upgrade failed. Please inspect the logs from "
+                           << "' upgrade failed. Please inspect the logs from "
                               "the upgrade procedure";
                 FATAL_ERROR_EXIT();
               } else {
-                LOG(FATAL) << "Database '" << vocbase->_name
-                          << "' needs upgrade. Please start the server with the "
-                              "--database.auto-upgrade option";
+                LOG(FATAL)
+                    << "Database '" << vocbase->_name
+                    << "' needs upgrade. Please start the server with the "
+                       "--database.auto-upgrade option";
                 FATAL_ERROR_EXIT();
               }
             } else {
@@ -175,12 +189,14 @@ void UpgradeFeature::upgradeDatabase() {
               FATAL_ERROR_EXIT();
             }
 
-            LOG(DEBUG) << "database '" << vocbase->_name << "' init/upgrade done";
+            LOG(DEBUG) << "database '" << vocbase->_name
+                       << "' init/upgrade done";
           }
         }
       }
 
-      // finally leave the context. otherwise v8 will crash with assertion failure
+      // finally leave the context. otherwise v8 will crash with assertion
+      // failure
       // when we delete
       // the context locker below
       localContext->Exit();
