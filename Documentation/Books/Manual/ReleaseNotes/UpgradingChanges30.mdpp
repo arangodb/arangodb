@@ -718,6 +718,10 @@ API:
 - `/_api/structure`: an older unfinished and unpromoted API for data format and type 
   checks, superseded by Foxx applications.
 
+!SUBSECTION Administration APIs
+
+- `/_admin/shutdown` now needs to be called with the DELETE method
+
 !SUBSECTION Handling of CORS requests
 
 It can now be controlled in detail for which origin hosts CORS (Cross-origin resource 

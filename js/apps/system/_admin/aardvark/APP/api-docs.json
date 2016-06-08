@@ -2333,7 +2333,7 @@
             }
         }, 
         "/_admin/shutdown": {
-            "get": {
+            "delete": {
                 "description": "\n\nThis call initiates a clean shutdown sequence.\n\n", 
                 "parameters": [], 
                 "responses": {
