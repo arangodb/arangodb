@@ -1036,7 +1036,10 @@ Graph.prototype._edgeCollections = function() {
 /// @brief return all vertex collections of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._vertexCollections = function() {
+Graph.prototype._vertexCollections = function(excludeOrphans) {
+  if (excludeOrphans) {
+    return this.__vertexCollections;
+  }
   var orphans = [];
   _.each(this.__orphanCollections, function(o) {
     orphans.push(db[o]);
