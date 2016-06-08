@@ -54,7 +54,6 @@
   * [General Graphs](Graphs/GeneralGraphs/README.md)
     * [Graph Management](Graphs/GeneralGraphs/Management.md)
     * [Graph Functions](Graphs/GeneralGraphs/Functions.md)
-    * [Fluent Query Interface](Graphs/GeneralGraphs/FluentAQLInterface.md)
   * [Traversals](Graphs/Traversals/README.md)
     * [Using Traversal Objects](Graphs/Traversals/UsingTraversalObjects.md)
     * [Example Data](Graphs/Traversals/ExampleData.md)
