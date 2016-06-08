@@ -30,8 +30,6 @@
 #include "Aql/TraversalOptions.h"
 #include "Indexes/Index.h"
 
-#include <cmath>
-
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
