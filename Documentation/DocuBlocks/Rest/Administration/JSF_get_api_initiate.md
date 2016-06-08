@@ -2,7 +2,7 @@
 @startDocuBlock JSF_get_api_initiate
 @brief initiates the shutdown sequence
 
-@RESTHEADER{GET /_admin/shutdown, Initiate shutdown sequence}
+@RESTHEADER{DELETE /_admin/shutdown, Initiate shutdown sequence}
 
 @RESTDESCRIPTION
 This call initiates a clean shutdown sequence.

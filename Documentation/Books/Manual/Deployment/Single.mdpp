@@ -4,6 +4,32 @@ TODO:
 
 !SUBSECTION Docker
 
+!SUBSUBSECTION Authentication
+
+To start the official docker container you will have to decide on an authentication method. Otherwise the container won't start.
+
+Provide one of the arguments to docker as an environment variable.
+
+There are three options:
+
+1. ARANGO_NO_AUTH=1
+
+        Disable authentication completely. Useful for local testing or for operating in a trusted network (without a public interface).
+        
+2. ARANGO_ROOT_PASSWORD=password
+
+        Start ArangoDB with the given password for root
+        
+3. ARANGO_RANDOM_ROOT_PASSWORD=1
+
+        Let ArangoDB generate a random root password
+        
+To get quickly going:
+
+`docker run -e ARANGO_RANDOM_ROOT_PASSWORD=1 arangodb`
+
+For an in depth guide about docker and arangodb please check the official documentation: https://hub.docker.com/r/_/arangodb/
+
 Basically show the startup of a Docker image and explain about
 authentication options.
 
