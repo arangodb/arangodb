@@ -1356,7 +1356,7 @@ Graph.prototype._paths = function(options) {
 
   var query = `
     FOR source IN ${startInAllCollections(Object.keys(this.__vertexCollections))}
-    FOR v, e, p IN ${options.minDepth || 0}..${options.maxDepth || 10} ${options.direction} source GRAPH @graphName `;
+    FOR v, e, p IN ${options.minDepth || 0}..${options.maxDepth || 10} ${options.direction || "OUTBOUND"} source GRAPH @graphName `;
   if (options.followCycles) {
     query += `OPTIONS {uniqueEdges: "none"} `;
   }
@@ -2080,7 +2080,10 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
 
 Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, options) {
   options = options || {};
+  // TODO
+  return [];
 
+  /*
   var opts = {
     includeData: true
   };
@@ -2117,6 +2120,7 @@ Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, o
   };
   var result = db._query(query, bindVars).toArray();
   return result[0];
+  */
 };
 
 ////////////////////////////////////////////////////////////////////////////////
