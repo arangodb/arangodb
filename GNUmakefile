@@ -275,7 +275,8 @@ winXX-build:
 	cd ../b && cmake --build . --config $(BUILD_TARGET)
 
 packXX:
-	./Installation/file-copy-js.sh . ../b
+	if test ! -d ../b/js; then ./Installation/file-copy-js.sh . ../b; fi
+	cd ../b; rm -f ArangoDB-*.exe ArangoDB*.nsi
 	cd ../b && find -name cmake_install.cmake -exec sed -i {} -e "s;(Configuration);{CMAKE_INSTALL_CONFIG_NAME};" \;
 	cd ../b && cpack -G NSIS -C $(BUILD_TARGET)
 	cd ../b && cpack -G ZIP  -C $(BUILD_TARGET)
