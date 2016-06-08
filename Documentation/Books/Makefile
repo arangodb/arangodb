@@ -285,15 +285,15 @@ build-books-keep-md:
 
 build-books:
 	rm -rf /tmp/tags
-	for book in $(ALLBOOKS); do \
+	set -e; for book in $(ALLBOOKS); do \
 		make clean-intermediate NAME=$${book}; \
 	done
 
-	for book in $(ALLBOOKS); do \
+	set -e; for book in $(ALLBOOKS); do \
 		make build-books-keep-md NAME=$${book}; \
 	done
 
-	for book in $(ALLBOOKS); do \
+	set -e; for book in $(ALLBOOKS); do \
 		make ppbook-check-html-link NAME=$${book}; \
 	done
 
