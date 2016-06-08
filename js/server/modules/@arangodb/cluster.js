@@ -1018,7 +1018,7 @@ function synchronizeOneShard(database, shard, planId, leader) {
       }
       if (--count <= 0) {
         console.error("synchronizeOneShard: syncCollection did not work",
-                      "after many tries, giving up on shard", shard, err);
+                      "after many tries, giving up on shard", shard);
         throw "syncCollection did not work";
       }
       wait(1.0);
