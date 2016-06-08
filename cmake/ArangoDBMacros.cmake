@@ -46,7 +46,7 @@ FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb3")
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb3-apps")
 
 # logs
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb3")
 
 # package
 set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb3")
@@ -303,6 +303,7 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://www.arangodb.com/")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_BINARY_DIR}/debian-work/debian/${CPACK_PACKAGE_NAME}/DEBIAN/postinst;${PROJECT_BINARY_DIR}/debian-work/debian/${CPACK_PACKAGE_NAME}/DEBIAN/preinst;${PROJECT_BINARY_DIR}/debian-work/debian/${CPACK_PACKAGE_NAME}/DEBIAN/postrm;${PROJECT_BINARY_DIR}/debian-work/debian/${CPACK_PACKAGE_NAME}/DEBIAN/prerm;")
+
 set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
 configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
 set(CPACK_BUNDLE_PLIST           "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
@@ -406,7 +407,7 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb3
   DESTINATION ${VARDIR_INSTALL}/log)
 
 ################################################################################

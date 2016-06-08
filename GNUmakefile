@@ -90,7 +90,7 @@ pack-dmg-cmake:
 		-D "USE_OPTIMIZE_FOR_ARCHITECTURE=Off" \
 		-D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
 		-D "CMAKE_OSX_DEPLOYMENT_TARGET=10.10" \
-		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "CMAKE_INSTALL_PREFIX=/opt/arangodb" \
 		-D "OPENSSL_ROOT_DIR=`brew --prefix`/opt/openssl" \
 		..
 
@@ -117,7 +117,7 @@ pack-macosxcode-cmake:
 		-D "USE_OPTIMIZE_FOR_ARCHITECTURE=Off" \
 		-D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
 		-D "CMAKE_OSX_DEPLOYMENT_TARGET=10.10" \
-		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "CMAKE_INSTALL_PREFIX=/opt/arangodb" \
 		-D "OPENSSL_ROOT_DIR=`brew --prefix`/opt/openssl" \
 		-G Xcode \
 		$(MOREOPTS) \
