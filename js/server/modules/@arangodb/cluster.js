@@ -849,10 +849,12 @@ function dropLocalCollections (plannedCollections, writeLocked) {
                 // is also no problem, since the leader will soon notice 
                 // that the shard here is gone and will drop us automatically:
                 var servers = shardMap[collection];
-                var endpoint = ArangoClusterInfo.getServerEndpoint(servers[0]);
-                try {
-                  removeShardFollower(endpoint, database, collection);
-                } catch (err) {
+                if (servers !== undefined) {
+                  var endpoint = ArangoClusterInfo.getServerEndpoint(servers[0]);
+                  try {
+                    removeShardFollower(endpoint, database, collection);
+                  } catch (err) {
+                  }
                 }
                 console.info("dropping local shard '%s/%s' of '%s/%s",
                              database,
@@ -995,11 +997,11 @@ function synchronizeOneShard(database, shard, planId, leader) {
       }
       catch (err) {
         console.info("synchronizeOneShard: syncCollection did not work,",
-                     "trying again later for shard", shard);
+                     "trying again later for shard", shard, err);
       }
       if (--count <= 0) {
         console.error("synchronizeOneShard: syncCollection did not work",
-                      "after many tries, giving up on shard", shard);
+                      "after many tries, giving up on shard", shard, err);
         throw "syncCollection did not work";
       }
       wait(1.0);
