@@ -35,52 +35,50 @@ FailedLeader::FailedLeader(
   std::string const& shard, std::string const& from, std::string const& to) :
   Job(snapshot, agent, jobId, creator, agencyPrefix), _database(database),
   _collection(collection), _shard(shard), _from(from), _to(to) {
-  
+
+  JOB_STATUS js = status();
+
   try {
-    if (exists()) {
-      if (!status()) {  
-        start();        
-      } 
-    } else {            
+    if (js == TODO) {
+      start();        
+    } else if (js == NOTFOUND) {            
       create();
       start();
     }
-  } catch (...) {
-    if (_shard == "") {
-      _shard = _snapshot(pendingPrefix + _jobId + "/shard").getString();
-    }
-    finish("Shards/" + _shard, false);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
+    finish("Shards/" + _shard, false, e.what());
   }
   
 }
 
 FailedLeader::~FailedLeader() {}
 
-bool FailedLeader::create () const {
+bool FailedLeader::create () {
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: change leadership for " + _shard
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: failed Leader for " + _shard
     + " from " + _from + " to " + _to;
   
   std::string path = _agencyPrefix + toDoPrefix + _jobId;
   
-  Builder todo;
-  todo.openArray();
-  todo.openObject();
-  todo.add(path, VPackValue(VPackValueType::Object));
-  todo.add("creator", VPackValue(_creator));
-  todo.add("type", VPackValue("failedLeader"));
-  todo.add("database", VPackValue(_database));
-  todo.add("collection", VPackValue(_collection));
-  todo.add("shard", VPackValue(_shard));
-  todo.add("fromServer", VPackValue(_from));
-  todo.add("toServer", VPackValue(_to));
-  todo.add("isLeader", VPackValue(true));    
-  todo.add("jobId", VPackValue(_jobId));
-  todo.add("timeCreated",
+  _jb = std::make_shared<Builder>();
+  _jb->openArray();
+  _jb->openObject();
+  _jb->add(path, VPackValue(VPackValueType::Object));
+  _jb->add("creator", VPackValue(_creator));
+  _jb->add("type", VPackValue("failedLeader"));
+  _jb->add("database", VPackValue(_database));
+  _jb->add("collection", VPackValue(_collection));
+  _jb->add("shard", VPackValue(_shard));
+  _jb->add("fromServer", VPackValue(_from));
+  _jb->add("toServer", VPackValue(_to));
+  _jb->add("isLeader", VPackValue(true));    
+  _jb->add("jobId", VPackValue(_jobId));
+  _jb->add("timeCreated",
            VPackValue(timepointToString(std::chrono::system_clock::now())));
-  todo.close(); todo.close(); todo.close();
+  _jb->close(); _jb->close(); _jb->close();
   
-  write_ret_t res = transact(_agent, todo);
+  write_ret_t res = transact(_agent, *_jb);
   
   if (res.accepted && res.indices.size()==1 && res.indices[0]) {
     return true;
@@ -91,7 +89,7 @@ bool FailedLeader::create () const {
   
 }
 
-bool FailedLeader::start() const {
+bool FailedLeader::start() {
   
   // DBservers
   std::string planPath =
@@ -113,12 +111,16 @@ bool FailedLeader::start() const {
   
   // Get todo entry
   todo.openArray();
-  try {
-    _snapshot(toDoPrefix + _jobId).toBuilder(todo);
-  } catch (std::exception const&) {
-    LOG_TOPIC(INFO, Logger::AGENCY) <<
-      "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
-    return false;
+  if (_jb == nullptr) {
+    try {
+      _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+    } catch (std::exception const&) {
+      LOG_TOPIC(INFO, Logger::AGENCY) <<
+        "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+      return false;
+    }
+  } else {
+    todo.add(_jb->slice()[0].valueAt(0));
   }
   todo.close();
   
@@ -197,15 +199,29 @@ bool FailedLeader::start() const {
 }
 
 
-unsigned FailedLeader::status () const {
+JOB_STATUS FailedLeader::status () {
   
-  Node const& target = _snapshot("/Target");
-  
-  if        (target.exists(std::string("/ToDo/")     + _jobId).size() == 2) {
+  auto status = exists();
+
+  if (status != NOTFOUND) { // Get job details from agency
+
+    try {
+      _database = _snapshot(pos[status] + _jobId + "/database").getString();
+      _collection = _snapshot(pos[status] + _jobId + "/collection").getString();
+      _from = _snapshot(pos[status] + _jobId + "/fromServer").getString();
+      _to = _snapshot(pos[status] + _jobId + "/toServer").getString();
+      _shard = _snapshot(pos[status] + _jobId + "/shard").getString();
+    } catch (std::exception const& e) {
+      std::stringstream err;
+      err << "Failed to find job " << _jobId << " in agency: " << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
+      finish("Shards/" + _shard, false, err.str());
+      return FAILED;
+    }
     
-    return TODO;
-    
-  } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
+  }
+
+  if (status == PENDING) {
 
     Node const& job = _snapshot(pendingPrefix + _jobId);
     std::string database = job("database").toJson(),
@@ -219,29 +235,16 @@ unsigned FailedLeader::status () const {
     
     Node const& planned = _snapshot(planPath);
     Node const& current = _snapshot(curPath);
-
+    
     if (planned.slice()[0] == current.slice()[0]) {
-
       if (finish("Shards/" + shard)) {
         return FINISHED;
       }
-        
     }
-    
-    return PENDING;
-      
-  } else if (target.exists(std::string("/Finished/")  + _jobId).size() == 2) {
-      
-    return FINISHED;
-      
-  } else if (target.exists(std::string("/Failed/")  + _jobId).size() == 2) {
-      
-    return FAILED;
+  }
 
-  } 
-    
-  return NOTFOUND;
-    
+  return status;
+
 }
 
 

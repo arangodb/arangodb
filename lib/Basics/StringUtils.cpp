@@ -941,7 +941,7 @@ std::string rFill(std::string const& sourceStr, size_t size, char fill) {
 }
 
 std::vector<std::string> wrap(std::string const& sourceStr, size_t size,
-                              std::string breaks) {
+                              std::string const& breaks) {
   std::vector<std::string> result;
   std::string next = sourceStr;
 

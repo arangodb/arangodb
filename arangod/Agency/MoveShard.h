@@ -45,9 +45,9 @@ struct MoveShard : public Job {
   
   virtual ~MoveShard ();
   
-  virtual unsigned status () const override;
-  virtual bool create () const override;
-  virtual bool start() const override;
+  virtual JOB_STATUS status () override;
+  virtual bool create () override;
+  virtual bool start() override;
 
   std::string _database;
   std::string _collection;

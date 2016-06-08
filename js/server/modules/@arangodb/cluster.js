@@ -158,6 +158,23 @@ function addShardFollower(endpoint, database, shard) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tell leader that we are stop following 
+////////////////////////////////////////////////////////////////////////////////
+
+function removeShardFollower(endpoint, database, shard) {
+  console.debug("removeShardFollower: tell the leader to take us off the follower list...");
+  var url = endpointToURL(endpoint) + "/_db/" + database + 
+            "/_api/replication/removeFollower";
+  var body = {followerId: ArangoServerState.id(), shard };
+  var r = request({url, body: JSON.stringify(body), method: "PUT"});
+  if (r.status !== 200) {
+    console.error("removeShardFollower: could not remove us from the leader's follower list.", r);
+    return false;
+  }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup for 4-dimensional nested dictionary data
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -750,11 +767,35 @@ function createLocalCollections (plannedCollections, planVersion,
   }
 }
 
+function leaderResign(database, collId, shardName, ourselves) {
+  console.info("trying to withdraw as leader of shard '%s/%s' of '%s/%s'",
+               database, shardName, database, collId);
+  try {
+    var db = require("internal").db;
+    db._executeTransaction(
+      { "collections": { "write": [shardName] },
+        "action": function() {
+          var path = "Current/Collections/" + database + "/" + collId + "/" + 
+                     shardName + "/servers";
+          var servers = global.ArangoAgency.get(path).arango.Current
+                          .Collections[database][collId][shardName].servers;
+          if (servers[0] === ourselves) {
+            servers[0] = "_" + ourselves;
+            global.ArangoAgency.set(path, servers);
+            global.ArangoAgency.increaseVersion("Current/Version");
+          }
+        } });
+  } catch (x) {
+    console.error("exception thrown when resigning:", x);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop collections if they exist locally but not in the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-function dropLocalCollections (plannedCollections, writeLocked) {
+function dropLocalCollections (plannedCollections, currentCollections,
+                               writeLocked) {
   var ourselves = global.ArangoServerState.id();
 
   var dropCollectionAgency = function (database, shardID, id) {
@@ -796,17 +837,59 @@ function dropLocalCollections (plannedCollections, writeLocked) {
                          (shardMap[collection].indexOf(ourselves) === -1);
 
             if (remove) {
-              console.info("dropping local shard '%s/%s' of '%s/%s",
-                           database,
-                           collection,
-                           database,
-                           collections[collection].planId);
+              var currentServers;
+              // May be we have been the leader and are asked to withdraw:
+              if (shardMap.hasOwnProperty(collection) &&
+                  shardMap[collection][0] === "_" + ourselves) {
+                try {
+                  currentServers = currentCollections[database]
+                      [collections[collection].planId][collection].servers;
+                } catch (err2) {
+                  currentServers = [];
+                }
+                if (currentServers[0] === ourselves) {
+                  leaderResign(database, collections[collection].planId,
+                               collection, ourselves);
+                }
+              } else {
+                // Remove us from the follower list, this is a best effort,
+                // we might actually have been the leader ourselves, in which
+                // case we try to unfollow the new leader, no problem, we 
+                // simply ignore any errors. If a proper error occurs, this
+                // is also no problem, since the leader will soon notice 
+                // that the shard here is gone and will drop us automatically:
+                var servers = shardMap[collection];
+                try {
+                  currentServers = currentCollections[database]
+                      [collections[collection].planId][collection].servers;
+                } catch (err2) {
+                  currentServers = [];
+                }
+                if (servers !== undefined &&
+                    currentServers.indexOf(ourselves) >= 0) {
+                  var endpoint = ArangoClusterInfo.getServerEndpoint(servers[0]);
+                  try {
+                    removeShardFollower(endpoint, database, collection);
+                  } catch (err) {
+                  }
+                }
+                console.info("dropping local shard '%s/%s' of '%s/%s",
+                             database,
+                             collection,
+                             database,
+                             collections[collection].planId);
 
-              db._drop(collection);
+                db._drop(collection);
 
-              writeLocked({ part: "Current" },
-                          dropCollectionAgency,
-                          [ database, collection, collections[collection].planId ]);
+                if (removeAll || ! shardMap.hasOwnProperty(collection)) {
+                  console.info("cleaning out Current entry for shard %s in",
+                               "agency for %s/%s", collection, database,
+                               collections[collection].name);
+                  writeLocked({ part: "Current" },
+                              dropCollectionAgency,
+                              [ database, collection, collections[collection].planId ]);
+                }
+              }
             }
           }
         }
@@ -931,7 +1014,7 @@ function synchronizeOneShard(database, shard, planId, leader) {
       }
       catch (err) {
         console.info("synchronizeOneShard: syncCollection did not work,",
-                     "trying again later for shard", shard);
+                     "trying again later for shard", shard, err);
       }
       if (--count <= 0) {
         console.error("synchronizeOneShard: syncCollection did not work",
@@ -1101,7 +1184,9 @@ function synchronizeLocalFollowerCollections (plannedCollections,
                       console.debug("Leader has not yet created shard, let's",
                                     "come back later to this shard...");
                     } else {
-                      if (inCurrent.servers.indexOf(ourselves) === -1) {
+                      if (inCurrent.servers.indexOf(ourselves) === -1 &&
+                          inCurrent.servers[0].substr(0, 1) !== "_" &&
+                          inCurrent.servers[0] === shards[shard][0]) {
                         if (!scheduleOneShardSynchronization(
                                 database, shard, collInfo.planId,
                                 inCurrent.servers[0])) {
@@ -1142,10 +1227,7 @@ function handleCollectionChanges (plan, current, takeOverResponsibility,
   try {
     createLocalCollections(plannedCollections, plan.Version, currentCollections,
                            takeOverResponsibility, writeLocked);
-    // Note that dropLocalCollections does not 
-    // need the currentCollections, since they compare the plan with
-    // the local situation.
-    dropLocalCollections(plannedCollections, writeLocked);
+    dropLocalCollections(plannedCollections, currentCollections, writeLocked);
     cleanupCurrentCollections(plannedCollections, currentCollections,
                               writeLocked);
     if (!synchronizeLocalFollowerCollections(plannedCollections,

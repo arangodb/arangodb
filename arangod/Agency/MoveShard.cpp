@@ -36,41 +36,25 @@ MoveShard::MoveShard (Node const& snapshot, Agent* agent,
   Job(snapshot, agent, jobId, creator, prefix), _database(database),
   _collection(collection), _shard(shard), _from(from), _to(to) {
 
+  JOB_STATUS js = status();
+
   try {
-
-    if (exists()) {
-
-      _database = _snapshot(pendingPrefix + _jobId + "/database").getString();
-      _collection =
-        _snapshot(pendingPrefix + _jobId + "/collection").getString();
-      _from = _snapshot(pendingPrefix + _jobId + "/fromServer").getString();
-      _to = _snapshot(pendingPrefix + _jobId + "/toServer").getString();
-      _shard = _snapshot(pendingPrefix + _jobId + "/shard").getString();
-
-      if (!status()) {  
-        start();        
-      }
-      
-    } else {
-      
+    if (js == TODO) {
+      start();        
+    } else if (js == NOTFOUND) {            
       create();
       start();
-      
     }
-    
   } catch (std::exception const& e) {
-
-    LOG(WARN) << "MoveShard: Catastrophic failure: " << e.what();
-    finish("Shards/" + _shard, false);
-
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
+    finish("Shards/" + _shard, false, e.what());
   }
-
   
 }
 
 MoveShard::~MoveShard () {}
 
-bool MoveShard::create () const {
+bool MoveShard::create () {
   
   LOG_TOPIC(INFO, Logger::AGENCY)
     << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;
@@ -87,34 +71,34 @@ bool MoveShard::create () const {
   TRI_ASSERT(current.isArray());
   TRI_ASSERT(current[0].isString());
   
-  Builder job;
-  job.openArray();
-  job.openObject();
+  _jb = std::make_shared<Builder>();
+  _jb->openArray();
+  _jb->openObject();
   
   if (_from == _to) {
     path = _agencyPrefix + failedPrefix + _jobId;
-    job.add("timeFinished", VPackValue(now));
-    job.add("result",
+    _jb->add("timeFinished", VPackValue(now));
+    _jb->add("result",
             VPackValue("Source and destination of moveShard must be different"));
   } else {
     path = _agencyPrefix + toDoPrefix + _jobId;
   }
   
-  job.add(path, VPackValue(VPackValueType::Object));
-  job.add("creator", VPackValue(_creator));
-  job.add("type", VPackValue("failedLeader"));
-  job.add("database", VPackValue(_database));
-  job.add("collection", VPackValue(_collection));
-  job.add("shard", VPackValue(_shard));
-  job.add("fromServer", VPackValue(_from));
-  job.add("toServer", VPackValue(_to));
-  job.add("isLeader", VPackValue(current[0].copyString() == _from));    
-  job.add("jobId", VPackValue(_jobId));
-  job.add("timeCreated", VPackValue(now));
+  _jb->add(path, VPackValue(VPackValueType::Object));
+  _jb->add("creator", VPackValue(_creator));
+  _jb->add("type", VPackValue("moveShard"));
+  _jb->add("database", VPackValue(_database));
+  _jb->add("collection", VPackValue(_collection));
+  _jb->add("shard", VPackValue(_shard));
+  _jb->add("fromServer", VPackValue(_from));
+  _jb->add("toServer", VPackValue(_to));
+  _jb->add("isLeader", VPackValue(current[0].copyString() == _from));    
+  _jb->add("jobId", VPackValue(_jobId));
+  _jb->add("timeCreated", VPackValue(now));
 
-  job.close(); job.close(); job.close();
+  _jb->close(); _jb->close(); _jb->close();
   
-  write_ret_t res = transact(_agent, job);
+  write_ret_t res = transact(_agent, *_jb);
 
   if (res.accepted && res.indices.size()==1 && res.indices[0]) {
     return true;
@@ -126,7 +110,7 @@ bool MoveShard::create () const {
 }
 
 
-bool MoveShard::start() const {
+bool MoveShard::start() {
 
   // DBservers
   std::string planPath =
@@ -141,7 +125,17 @@ bool MoveShard::start() const {
 
   // Get todo entry
   todo.openArray();
-  _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+  if (_jb == nullptr) {
+    try {
+      _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+    } catch (std::exception const&) {
+      LOG_TOPIC(INFO, Logger::AGENCY) <<
+        "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+      return false;
+    }
+  } else {
+    todo.add(_jb->slice()[0].valueAt(0));
+  }
   todo.close();
 
   // Enter peding, remove todo, block toserver
@@ -224,12 +218,29 @@ bool MoveShard::start() const {
 
 }
 
-unsigned MoveShard::status () const {
+JOB_STATUS MoveShard::status () {
   
-  Node const& target = _snapshot("/Target");
-  if        (target.exists(std::string("/ToDo/")     + _jobId).size() == 2) {
-    return TODO;
-  } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
+  auto status = exists();
+
+  if (status != NOTFOUND) { // Get job details from agency
+
+    try {
+      _database = _snapshot(pos[status] + _jobId + "/database").getString();
+      _collection = _snapshot(pos[status] + _jobId + "/collection").getString();
+      _from = _snapshot(pos[status] + _jobId + "/fromServer").getString();
+      _to = _snapshot(pos[status] + _jobId + "/toServer").getString();
+      _shard = _snapshot(pos[status] + _jobId + "/shard").getString();
+    } catch (std::exception const& e) {
+      std::stringstream err;
+      err << "Failed to find job " << _jobId << " in agency: " << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
+      finish("Shards/" + _shard, false, err.str());
+      return FAILED;
+    }
+    
+  }
+
+  if (status == PENDING) {
 
     std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
@@ -255,24 +266,13 @@ unsigned MoveShard::status () const {
         disabledLeader = disabledLeader.substr(1,disabledLeader.size()-1);
         cyclic.add(VPackValue(disabledLeader));
         cyclic.close();
+        // --- Plan version
+        cyclic.add(_agencyPrefix +  planVersion,
+                    VPackValue(VPackValueType::Object));
+        cyclic.add("op", VPackValue("increment"));
+        cyclic.close();
         cyclic.close(); cyclic.close();
         transact(_agent, cyclic);
-        
-        return PENDING;
-        
-      } else if (current[current.length()-1].copyString()[0] == '_') { // Leader
-
-        Builder remove;
-        remove.openArray();
-        remove.openObject();
-        // --- Plan changes
-        remove.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-        for (size_t i = 0; i < current.length()-1; ++i) {
-          remove.add(current[i]);
-        }
-        remove.close();
-        remove.close(); remove.close();
-        transact(_agent, remove);
         
         return PENDING;
         
@@ -299,6 +299,11 @@ unsigned MoveShard::status () const {
             }
           }
           remove.close();
+          // --- Plan version
+          remove.add(_agencyPrefix +  planVersion,
+                     VPackValue(VPackValueType::Object));
+          remove.add("op", VPackValue("increment"));
+          remove.close();
           remove.close(); remove.close();
           transact(_agent, remove);
           
@@ -307,21 +312,16 @@ unsigned MoveShard::status () const {
         }
         
       }
-
+      
       if (finish("Shards/" + _shard)) {
         return FINISHED;
       }
       
     }
     
-    return PENDING;
-  } else if (target.exists(std::string("/Finished/")  + _jobId).size() == 2) {
-    return FINISHED;
-  } else if (target.exists(std::string("/Failed/")  + _jobId).size() == 2) {
-    return FAILED;
   }
   
-  return NOTFOUND;
-    
+  return status;
+  
 }
 

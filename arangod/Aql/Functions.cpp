@@ -386,11 +386,6 @@ void Functions::Stringify(arangodb::AqlTransaction* trx,
     return;
   } 
   
-  if (slice.isCustom()) {
-    buffer.append(trx->extractIdString(slice));
-    return;
-  }
-
   VPackDumper dumper(&buffer);
   dumper.dump(slice);
 }
@@ -4004,18 +3999,19 @@ AqlValue Functions::IsSameCollection(
   std::string const collectionName(first.slice().copyString());
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 1);
+      
+  AqlValueMaterializer materializer(trx);
+  VPackSlice s = materializer.slice(value, true);
+  VPackSlice id = s;
   std::string identifier;
 
-  if (value.isObject() && value.hasKey(trx, StaticStrings::IdString)) {
-    bool localMustDestroy;
-    value = value.get(trx, StaticStrings::IdString, localMustDestroy, false);
-    AqlValueGuard guard(value, localMustDestroy);
-
-    if (value.isString()) {
-      identifier = value.slice().copyString();
-    }
-  } else if (value.isString()) {
-    identifier = value.slice().copyString();
+  if (s.isObject() && s.hasKey(StaticStrings::IdString)) {
+    id = s.get(StaticStrings::IdString);
+  } 
+  if (id.isString()) {
+    identifier = id.copyString();
+  } else if (id.isCustom()) {
+    identifier = trx->extractIdString(s);
   }
 
   if (!identifier.empty()) {

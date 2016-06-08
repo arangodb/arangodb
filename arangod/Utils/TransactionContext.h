@@ -25,6 +25,7 @@
 #define ARANGOD_UTILS_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
+#include "Basics/SmallVector.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Options.h>
@@ -187,8 +188,10 @@ class TransactionContext {
   
   std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
   
+  SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
+  SmallVector<arangodb::velocypack::Builder*, 32> _builders;
+  
   std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
-  std::unique_ptr<arangodb::velocypack::Builder> _builder;
 
   arangodb::velocypack::Options _options;
 

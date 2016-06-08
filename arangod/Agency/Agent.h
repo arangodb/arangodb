@@ -182,7 +182,7 @@ class Agent : public arangodb::Thread {
 };
 
 inline arangodb::consensus::write_ret_t transact (
-  Agent* _agent, Builder const& transaction) {
+  Agent* _agent, Builder const& transaction, bool waitForCommit = true) {
   
   query_t envelope = std::make_shared<Builder>();
 
@@ -196,7 +196,14 @@ inline arangodb::consensus::write_ret_t transact (
   }
   
   LOG_TOPIC(DEBUG, Logger::AGENCY) << envelope->toJson();
-  return _agent->write(envelope);
+  auto ret = _agent->write(envelope);
+  if (waitForCommit) {
+    auto maximum = *std::max_element(ret.indices.begin(), ret.indices.end());
+    if (maximum > 0) {  // some baby has worked
+      _agent->waitFor(maximum);
+    }
+  }
+  return ret;
   
 }
 

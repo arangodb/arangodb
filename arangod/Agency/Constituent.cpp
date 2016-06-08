@@ -73,13 +73,13 @@ Constituent::Constituent()
       _vocbase(nullptr),
       _queryRegistry(nullptr),
       _term(0),
-      _leaderID((std::numeric_limits<uint32_t>::max)()),
+      _leaderID((std::numeric_limits<arangodb::consensus::id_t>::max)()),
       _id(0),
       // XXX #warning KAVEH use RandomGenerator
       _gen(std::random_device()()),
       _role(FOLLOWER),
       _agent(nullptr),
-      _votedFor((std::numeric_limits<uint32_t>::max)()),
+      _votedFor((std::numeric_limits<arangodb::consensus::id_t>::max)()),
       _notifier(nullptr) {
   _gen.seed(RandomGenerator::interval(UINT32_MAX));
 }
@@ -271,7 +271,10 @@ bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
       follow(_term);
     }
     _agent->persist(term, id);
-    _cv.signal();
+    {
+      CONDITION_LOCKER(guard, _cv);
+      _cv.signal();
+    }
     return true;
   } else {  // Myself running or leading
     return false;

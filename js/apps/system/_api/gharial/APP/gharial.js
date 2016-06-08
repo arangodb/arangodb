@@ -297,6 +297,7 @@ router.delete('/:graph', function(req, res) {
 
 router.get('/:graph/vertex', function(req, res) {
   const name = req.pathParams.graph;
+  const excludeOrphans = req.queryParams.excludeOrphans;
   let g;
   try {
     g = Graph._graph(name);
@@ -314,7 +315,7 @@ router.get('/:graph/vertex', function(req, res) {
     ? (c) => collectionRepresentation(c, false, false, false)
     : (c) => c.name()
   );
-  setResponse(res, 'collections', _.map(g._vertexCollections(), mapFunc).sort(), OK);
+  setResponse(res, 'collections', _.map(g._vertexCollections(excludeOrphans), mapFunc).sort(), OK);
 })
 .pathParam('graph', graphName)
 .error('not found', 'The graph could not be found.')

@@ -68,7 +68,8 @@ TransactionContext::TransactionContext(TRI_vocbase_t* vocbase)
       _resolver(nullptr), 
       _customTypeHandler(),
       _ditches(),
-      _builder(),
+      _builders{_arena},
+      _stringBuffer(),
       _options(),
       _transaction{ 0, false }, 
       _ownsResolver(false) {}
@@ -181,14 +182,17 @@ void TransactionContext::returnStringBuffer(basics::StringBuffer* stringBuffer) 
 //////////////////////////////////////////////////////////////////////////////
 
 VPackBuilder* TransactionContext::leaseBuilder() {
-  if (_builder == nullptr) {
-    _builder.reset(new VPackBuilder());
-  }
-  else {
-    _builder->clear();
+  if (_builders.empty()) {
+    // create a new builder and return it
+    return new VPackBuilder();
   }
 
-  return _builder.release();
+  // re-use an existing builder
+  VPackBuilder* b = _builders.back();
+  b->clear();
+  _builders.pop_back();
+
+  return b;
 }
   
 //////////////////////////////////////////////////////////////////////////////
@@ -196,7 +200,13 @@ VPackBuilder* TransactionContext::leaseBuilder() {
 //////////////////////////////////////////////////////////////////////////////
 
 void TransactionContext::returnBuilder(VPackBuilder* builder) {
-  _builder.reset(builder);
+  try {
+    // put builder back into our vector of builders
+    _builders.push_back(builder);
+  } catch (...) {
+    // no harm done. just wipe the builder
+    delete builder;
+  }
 }
   
 //////////////////////////////////////////////////////////////////////////////

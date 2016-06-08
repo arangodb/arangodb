@@ -10,7 +10,7 @@ It is possible to define how many of these follow iterations should be executed 
 For all vertices that where visited during this process in the range between *min-depth* and *max-depth* iterations you will get a result in form of a set with three items:
 
 1. The visited vertex.
-2. The edge pointing to it
+2. The edge pointing to it.
 3. The complete path from start-vertex to the visited vertex as a JSON document with an attribute `edges` and an attribute `vertices`, each a list of the coresponding elements. These lists are sorted, s.t. the first element in `vertices` is the start-vertex and the last is the visited vertex. And that the n-th element in `edges` connects the n-th element with the (n+1)-th element in `vertices`.
 
 !SUBSUBSECTION Example execution
@@ -210,7 +210,7 @@ As you can see, we can express this in two ways, one is to omit the `MAX` parame
 !SUBSUBSECTION Filter examples
 
 Now lets start to add some filters. 
-We want to cut of the branch on the right side of th graph, we may filter in two ways:
+We want to cut of the branch on the right side of the graph, we may filter in two ways:
  - we know the vertex at depth 1 has `_key` == `G`
  - we know the `label` attribute of the edge connecting *A* to *G* is `right_foo`
 
@@ -275,6 +275,7 @@ We now see two queries, in one we add a variable `localScopeVar` which is outsid
 The second query on the other hand only operates on the path, and therefore this condition can be used during the execution of the traversal, paths that are filtered out by this condition won't be processed at all.
 
 And finally clean it up again:
+
     @startDocuBlockInline GRAPHTRAV_99_drop_graph
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_99_drop_graph}
     var examples = require("@arangodb/graph-examples/example-graph.js");

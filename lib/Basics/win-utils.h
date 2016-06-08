@@ -108,9 +108,9 @@ int TRI_MapSystemError(DWORD);
 bool TRI_InitWindowsEventLog(void);
 void TRI_CloseWindowsEventlog(void);
 
-typedef void (*TRI_serviceAboert_t)(void);
+typedef void (*TRI_serviceAbort_t)(void);
 
-void TRI_SetWindowsServiceAbortFunction(TRI_serviceAboert_t);
+void TRI_SetWindowsServiceAbortFunction(TRI_serviceAbort_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message to the windows event log.

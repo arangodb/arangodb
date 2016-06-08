@@ -24,13 +24,11 @@ Named graphs are completely managed by arangodb, and thus also [visible in the w
 They use the full spectrum of ArangoDBs graph features. You may access them via several interfaces.
 
  - [AQL Graph Operations](../../AQL/Graphs/index.html) with several flavors:
-   - [AQL Graph traversals](../../AQL/Graphs/Traversals.html) on both named and anonymous graphs
-   - [AQL operations on named Graphs](../../AQL/Graphs/Operations.html)
-   - [AQL operations on raw vertex & edge collections](../../AQL/Graphs/Functions.html)
+   - [AQL Traversals](../../AQL/Graphs/Traversals.html) on both named and anonymous graphs
+   - [AQL Shortest Path](../../AQL/Graphs/ShortestPath.html) on both named and anonymous graph
  - [The javascript General Graph implementation, as you may use it in Foxx Services](GeneralGraphs/README.md)
     * [Graph Management](GeneralGraphs/Management.md); creating & manipualating graph definitions; inserting, updating and deleting vertices and edges into graphs
     * [Graph Functions](GeneralGraphs/Functions.md) for working with edges and vertices, to analyze them and their relations
-    * [Fluent Query Interface](GeneralGraphs/FluentAQLInterface.md); if you like to work with graphs via a [fluent interface](https://en.wikipedia.org/wiki/Fluent_interface)
  - [the RESTful General Graph interface](../../HTTP/Gharial/index.html) used to implement graph management in client drivers
 
 !SUBSUBSECTION Manipulating collections of named graphs with regular document functions

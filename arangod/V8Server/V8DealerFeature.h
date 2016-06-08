@@ -76,11 +76,11 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   void shutdownContexts();
 
-  void defineBoolean(std::string name, bool value) {
+  void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
   }
 
-  void defineDouble(std::string name, double value) {
+  void defineDouble(std::string const& name, double value) {
     _definedDoubles[name] = value;
   }
 

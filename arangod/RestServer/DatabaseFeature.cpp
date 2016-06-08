@@ -30,8 +30,8 @@
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseServerFeature.h"
-#include "RestServer/RestServerFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/RestServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
@@ -65,12 +65,14 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("DatabaseServer");
   startsAfter("LogfileManager");
+  startsAfter("InitDatabase");
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
-  
-  options->addOldOption("server.disable-replication-applier", "database.replication-applier");
+
+  options->addOldOption("server.disable-replication-applier",
+                        "database.replication-applier");
 
   options->addOption("--database.directory", "path to the database directory",
                      new StringParameter(&_directory));
@@ -197,9 +199,9 @@ void DatabaseFeature::updateContexts() {
 
   auto vocbase = _vocbase;
 
-  V8DealerFeature* dealer = 
+  V8DealerFeature* dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  
+
   dealer->defineContextUpdate(
       [queryRegistry, server, vocbase](
           v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t i) {
@@ -243,16 +245,15 @@ void DatabaseFeature::openDatabases() {
   defaults.forceSyncProperties = _forceSyncProperties;
 
   // get authentication (if available)
-  RestServerFeature* rest = 
+  RestServerFeature* rest =
       ApplicationServer::getFeature<RestServerFeature>("RestServer");
 
   defaults.requireAuthentication = rest->authentication();
-  defaults.requireAuthenticationUnixSockets =
-      rest->authenticationUnixSockets();
+  defaults.requireAuthenticationUnixSockets = rest->authenticationUnixSockets();
   defaults.authenticateSystemOnly = rest->authenticationSystemOnly();
-  
+
   bool const iterateMarkersOnOpen =
-      !wal::LogfileManager::instance()->hasFoundLastTick(); 
+      !wal::LogfileManager::instance()->hasFoundLastTick();
 
   int res = TRI_InitServer(
       DatabaseServerFeature::SERVER, DatabaseServerFeature::INDEX_POOL,
@@ -267,15 +268,20 @@ void DatabaseFeature::openDatabases() {
   res = TRI_StartServer(DatabaseServerFeature::SERVER, _checkVersion, _upgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (_checkVersion && res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
+    if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
+      LOG_TOPIC(TRACE, Logger::STARTUP) << "database is empty";
       _isInitiallyEmpty = true;
-    } else {
+    }
+
+    if (! _checkVersion || ! _isInitiallyEmpty) {
       LOG(FATAL) << "cannot start server: " << TRI_errno_string(res);
       FATAL_ERROR_EXIT();
     }
   }
 
-  LOG_TOPIC(TRACE, Logger::STARTUP) << "found system database";
+  if (!_isInitiallyEmpty) {
+    LOG_TOPIC(TRACE, Logger::STARTUP) << "found system database";
+  }
 }
 
 void DatabaseFeature::closeDatabases() {

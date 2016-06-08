@@ -285,6 +285,7 @@ void Supervision::workJobs() {
     } catch (std::exception const&) {}
   }
 
+
   for (auto const& pendEnt : pends) {
     Node const& job = *pendEnt.second;
     

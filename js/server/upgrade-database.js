@@ -31,7 +31,10 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function(args) {
+(function() {
+  var args = global.UPGRADE_ARGS;
+  delete global.UPGRADE_ARGS;
+  
   const internal = require("internal");
   const fs = require("fs");
   const console = require("console");
@@ -40,7 +43,7 @@
   const db = internal.db;
   const shallowCopy = require("@arangodb/util").shallowCopy;
 
-  const defaultRootPW = require("process").env.ARANGODB_DEFAULT_ROOT_PASSWORD || "";
+  const defaultRootPW = args.password || "";
 
   function upgrade() {
 
@@ -776,8 +779,6 @@
   // set this global variable to inform the server we actually got until here...
   global.UPGRADE_STARTED = true;
 
-  delete global.UPGRADE_ARGS;
-
   // and run the upgrade
   return upgrade();
-}(global.UPGRADE_ARGS));
+}());

@@ -87,22 +87,14 @@ pack-dmg:
 
 pack-dmg-cmake:
 	cd Build && cmake \
-		-D "BUILD_PACKAGE=dmg-cli" \
+		-D "USE_OPTIMIZE_FOR_ARCHITECTURE=Off" \
 		-D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
 		-D "CMAKE_OSX_DEPLOYMENT_TARGET=10.10" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "USE_OPTIMIZE_FOR_ARCHITECTURE=Off" \
 		-D "OPENSSL_ROOT_DIR=`brew --prefix`/opt/openssl" \
 		..
 
-	${MAKE} ${BUILT_SOURCES}
-
-	test -d bin || mkdir bin
-
-	rm -f ./.file-list-js
 	cd Build && ${MAKE}
-
-	./Installation/file-copy-js.sh . Build
 
 	cd Build && cpack \
 		-G Bundle \
@@ -121,18 +113,15 @@ pack-macosxcode:
 	${MAKE} -f GNUMakefile pack-macosxcode-cmake MOREOPTS='$(MOREOPTS)'
 
 pack-macosxcode-cmake:
-	rm -f ./.file-list-js
 	cd Build && cmake \
-		-D "BUILD_PACKAGE=dmg-cli" \
+		-D "USE_OPTIMIZE_FOR_ARCHITECTURE=Off" \
+		-D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
+		-D "CMAKE_OSX_DEPLOYMENT_TARGET=10.10" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "OPENSSL_INCLUDE=`brew --prefix`/opt/openssl/include" \
-		-D "OPENSSL_LIB_PATH=`brew --prefix`/opt/openssl/lib" \
-		-D "OPENSSL_LIBS=`brew --prefix`/opt/openssl/lib/libssl.a;`brew --prefix`/opt/openssl/lib/libcrypto.a" \
+		-D "OPENSSL_ROOT_DIR=`brew --prefix`/opt/openssl" \
 		-G Xcode \
 		$(MOREOPTS) \
 		..
-
-	./Installation/file-copy-js.sh . Build
 
 
 ################################################################################
@@ -276,7 +265,8 @@ winXX-build:
 	cd ../b && cmake --build . --config $(BUILD_TARGET)
 
 packXX:
-	./Installation/file-copy-js.sh . ../b
+	if test ! -d ../b/js; then ./Installation/file-copy-js.sh . ../b; fi
+	cd ../b; rm -f ArangoDB-*.exe ArangoDB*.nsi
 	cd ../b && find -name cmake_install.cmake -exec sed -i {} -e "s;(Configuration);{CMAKE_INSTALL_CONFIG_NAME};" \;
 	cd ../b && cpack -G NSIS -C $(BUILD_TARGET)
 	cd ../b && cpack -G ZIP  -C $(BUILD_TARGET)

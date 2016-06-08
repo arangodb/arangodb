@@ -65,7 +65,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         (FOR x IN ${v4} RETURN x)
       )`;
 
-  var startExample = [{hugo : true}, {heinz : 1}];
+  // var startExample = [{hugo : true}, {heinz : 1}];
 
   return {
 
