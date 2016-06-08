@@ -102,7 +102,7 @@ bool MoveShard::create () const {
   
   job.add(path, VPackValue(VPackValueType::Object));
   job.add("creator", VPackValue(_creator));
-  job.add("type", VPackValue("failedLeader"));
+  job.add("type", VPackValue("moveShard"));
   job.add("database", VPackValue(_database));
   job.add("collection", VPackValue(_collection));
   job.add("shard", VPackValue(_shard));

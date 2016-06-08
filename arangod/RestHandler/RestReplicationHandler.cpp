@@ -269,6 +269,16 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       } else {
         handleCommandAddFollower();
       }
+    } else if (command == "removeFollower") {
+      if (type != GeneralRequest::RequestType::PUT) {
+        goto BAD_CALL;
+      }
+      if (!ServerState::instance()->isDBServer()) {
+        generateError(GeneralResponse::ResponseCode::FORBIDDEN,
+                      TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+      } else {
+        handleCommandRemoveFollower();
+      }
     } else if (command == "holdReadLockCollection") {
       if (!ServerState::instance()->isDBServer()) {
         generateError(GeneralResponse::ResponseCode::FORBIDDEN,
@@ -3587,20 +3597,78 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   auto col = TRI_LookupCollectionByNameVocBase(_vocbase, shard.copyString());
   if (col == nullptr) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                   "did not find collection");
     return;
   }
 
   TRI_document_collection_t* docColl = col->_collection;
   if (docColl == nullptr) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
                   "collection not loaded");
     return;
   }
 
   TRI_ASSERT(docColl != nullptr);
   docColl->followers()->add(followerId.copyString());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+  }
+
+  generateResult(GeneralResponse::ResponseCode::OK, b.slice());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a follower of a shard from the list of followers
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandRemoveFollower() {
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&VPackOptions::Defaults, success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "body needs to be an object with attributes 'followerId' and 'shard'");
+    return;
+  }
+  VPackSlice const followerId = body.get("followerId");
+  VPackSlice const shard = body.get("shard");
+  if (!followerId.isString() || !shard.isString()) {
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'followerId' and 'shard' attributes must be strings");
+    return;
+  }
+
+  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, shard.copyString());
+  if (col == nullptr) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  "did not find collection");
+    return;
+  }
+
+  TRI_document_collection_t* docColl = col->_collection;
+  if (docColl == nullptr) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
+                  "collection not loaded");
+    return;
+  }
+
+  TRI_ASSERT(docColl != nullptr);
+  docColl->followers()->remove(followerId.copyString());
 
   VPackBuilder b;
   {

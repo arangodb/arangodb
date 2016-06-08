@@ -791,6 +791,7 @@ function processQuery (query, explain) {
 
   var label = function (node) {
     var rc, v, e, edgeCols; 
+    var parts = [];
     switch (node.type) {
       case "SingletonNode":
         return keyword("ROOT");
@@ -834,7 +835,6 @@ function processQuery (query, explain) {
         node.minMaxDepthLen = node.minMaxDepth.length;
 
         rc = keyword("FOR ");
-        var parts = [];
         if (node.hasOwnProperty('vertexOutVariable')) {
           parts.push(variableName(node.vertexOutVariable) + "  " + annotation("/* vertex */"));
         }
