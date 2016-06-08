@@ -391,20 +391,26 @@ void Agent::beginShutdown() {
   _constituent.beginShutdown();
   _spearhead.beginShutdown();
   _readDB.beginShutdown();
-
   
-  CONDITION_LOCKER(guardW, _waitForCV);
-  guardW.broadcast();
   // Wake up all waiting REST handler (waitFor)
-  CONDITION_LOCKER(guardA, _appendCV);
-  guardA.broadcast();
+  {
+    CONDITION_LOCKER(guardW, _waitForCV);
+    guardW.broadcast();
+  }
+  // Wake up run method
+  {
+    CONDITION_LOCKER(guardA, _appendCV);
+    guardA.broadcast();
+  } 
+
 }
 
 // Becoming leader
 bool Agent::lead() {
+
   // Key value stores
   rebuildDBs();
-
+  
   // Wake up run
   _appendCV.signal();
 

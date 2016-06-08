@@ -271,7 +271,10 @@ bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
       follow(_term);
     }
     _agent->persist(term, id);
-    _cv.signal();
+    {
+      CONDITION_LOCKER(guard, _cv);
+      _cv.signal();
+    }
     return true;
   } else {  // Myself running or leading
     return false;
