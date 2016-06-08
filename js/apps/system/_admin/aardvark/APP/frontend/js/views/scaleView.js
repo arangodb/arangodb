@@ -109,19 +109,30 @@
         //start polling with interval
         this.intervalFunction = window.setInterval(function() {
           if (window.location.hash === '#sNodes') {
-            self.render(true);
+
+            self.coordinators.fetch({
+              success: function() {
+                self.dbServers.fetch({
+                  success: function() {
+                    console.log("fechted both");
+                  }
+                }); 
+              }
+            }); 
+
+            self.continueRender(true);
           }
         }, this.interval);
       }
     },
 
-    render: function (rerender) {
+    render: function () {
       var self = this;
 
       var callback = function() {
 
         var cb2 = function() {
-          self.continueRender(rerender);
+          self.continueRender();
         }.bind(this);
 
         this.waitForDBServers(cb2);
@@ -134,9 +145,7 @@
         callback();
       }
 
-      if (!rerender) {
-        window.arangoHelper.buildNodesSubNav('scale');
-      }
+      window.arangoHelper.buildNodesSubNav('scale');
     },
 
     continueRender: function(rerender) {
@@ -212,7 +221,7 @@
           self.waitForCoordinators(callback);
         }
         else {
-          this.initDoneCoords = true;
+          self.initDoneCoords = true;
           callback();
         }
       }, 200);
