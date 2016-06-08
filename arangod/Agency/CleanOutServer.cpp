@@ -63,27 +63,25 @@ CleanOutServer::~CleanOutServer () {}
 
 unsigned CleanOutServer::status () const {
 
-    Node const& target = _snapshot("/Target");
-    
+  Node const& target = _snapshot("/Target");
+  
   if        (target.exists(std::string("/ToDo/")     + _jobId).size() == 2) {
-
+    
     return TODO;
-
+    
   } else if (target.exists(std::string("/Pending/")  + _jobId).size() == 2) {
-
-    Node::Children const& subJobs = _snapshot(pendingPrefix).children();
-
+    
+    Node::Children const subJobs = _snapshot(pendingPrefix).children();
+    
     size_t found = 0;
-
-    if (!subJobs.empty()) {
-      for (auto const& subJob : subJobs) {
-        if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
-          found++;
-          Node const& sj = *(subJob.second);
-          std::string subJobId = sj("jobId").slice().copyString();
-          std::string creator  = sj("creator").slice().copyString();
-          MoveShard(_snapshot, _agent, subJobId, creator, _agencyPrefix);
-        }
+    
+    for (auto const& subJob : subJobs) {
+      if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
+        found++;
+        Node const& sj = *(subJob.second);
+        std::string subJobId = sj("jobId").slice().copyString();
+        std::string creator  = sj("creator").slice().copyString();
+        MoveShard(_snapshot, _agent, subJobId, creator, _agencyPrefix);
       }
     }
 

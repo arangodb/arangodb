@@ -255,6 +255,11 @@ unsigned MoveShard::status () const {
         disabledLeader = disabledLeader.substr(1,disabledLeader.size()-1);
         cyclic.add(VPackValue(disabledLeader));
         cyclic.close();
+        // --- Plan version
+        cyclic.add(_agencyPrefix +  planVersion,
+                    VPackValue(VPackValueType::Object));
+        cyclic.add("op", VPackValue("increment"));
+        cyclic.close();
         cyclic.close(); cyclic.close();
         transact(_agent, cyclic);
         
@@ -270,6 +275,11 @@ unsigned MoveShard::status () const {
         for (size_t i = 0; i < current.length()-1; ++i) {
           remove.add(current[i]);
         }
+        remove.close();
+        // --- Plan version
+        remove.add(_agencyPrefix +  planVersion,
+                    VPackValue(VPackValueType::Object));
+        remove.add("op", VPackValue("increment"));
         remove.close();
         remove.close(); remove.close();
         transact(_agent, remove);
@@ -298,6 +308,11 @@ unsigned MoveShard::status () const {
               remove.add(srv);
             }
           }
+          remove.close();
+        // --- Plan version
+          remove.add(_agencyPrefix +  planVersion,
+                     VPackValue(VPackValueType::Object));
+          remove.add("op", VPackValue("increment"));
           remove.close();
           remove.close(); remove.close();
           transact(_agent, remove);
