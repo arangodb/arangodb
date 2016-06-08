@@ -59,7 +59,6 @@ Any direction
     logJsonResponse(response);
     db._drop("edges");
     db._drop("vertices");
-    db._graphs.remove("graph");
 @END_EXAMPLE_ARANGOSH_RUN
 
 In edges
@@ -86,7 +85,6 @@ In edges
     logJsonResponse(response);
     db._drop("edges");
     db._drop("vertices");
-    db._graphs.remove("graph");
 @END_EXAMPLE_ARANGOSH_RUN
 
 Out edges
@@ -113,7 +111,6 @@ Out edges
     logJsonResponse(response);
     db._drop("edges");
     db._drop("vertices");
-    db._graphs.remove("graph");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
 

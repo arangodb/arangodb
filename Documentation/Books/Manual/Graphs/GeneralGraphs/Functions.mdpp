@@ -552,9 +552,7 @@ A route planner example, the absolute eccentricity of all locations.
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity1}
       var examples = require("@arangodb/graph-examples/example-graph.js");
       var graph = examples.loadGraph("routeplanner");
-    | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
-    |   + "'routeplanner', {})"
-      ).toArray();
+      graph._absoluteEccentricity({});
     ~ examples.dropGraph("routeplanner");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock generalGraphModuleAbsEccentricity1
