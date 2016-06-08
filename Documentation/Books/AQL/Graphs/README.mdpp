@@ -9,7 +9,4 @@ Since the management functions are layered on top of simple sets of document and
 
 In AQL you can reach several graphing functions:
 * [AQL Traversals](Traversals.md) is making full use of optimisations and therefore best performance is to be expected. It can work on named graphs and loosely coupled collection sets (aka anonymous graphs). You can use AQL filter conditions on traversals.
-* [Named graph Operations](Operations.md) work on named graphs; offer a versatile range of parameters.
-* [Other graph functions](Functions.md) work on single edge collection (which may also be part of named graphs).
-
-
+* [AQL Shortest Path](ShortestPath.md) is making full use of optimisations and therefore best performance is to be expected. It can work on named graphs and loosely coupled collection sets (aka anonymous graphs).
