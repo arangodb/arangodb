@@ -8,7 +8,7 @@
 
     el: '#content',
     template: templateEngine.createTemplate("scaleView.ejs"),
-    interval: 5000,
+    interval: 10000,
     knownServers: [],
 
     events: {
@@ -98,30 +98,30 @@
 
     initialize: function (options) {
 
+      var self = this;
+      clearInterval(this.intervalFunction);
+
       if (window.App.isCluster) {
         this.dbServers = options.dbServers;
         this.coordinators = options.coordinators;
         this.updateServerTime();
 
         //start polling with interval
-        window.setInterval(function() {
+        this.intervalFunction = window.setInterval(function() {
           if (window.location.hash === '#sNodes') {
-
-            var callback = function(data) {
-            };
-
+            self.render(true);
           }
         }, this.interval);
       }
     },
 
-    render: function () {
+    render: function (rerender) {
       var self = this;
 
       var callback = function() {
 
         var cb2 = function() {
-          self.continueRender();
+          self.continueRender(rerender);
         }.bind(this);
 
         this.waitForDBServers(cb2);
@@ -134,10 +134,12 @@
         callback();
       }
 
-      window.arangoHelper.buildNodesSubNav('scale');
+      if (!rerender) {
+        window.arangoHelper.buildNodesSubNav('scale');
+      }
     },
 
-    continueRender: function() {
+    continueRender: function(rerender) {
       var coords, dbs, self = this;
       coords = this.coordinators.toJSON();
       dbs = this.dbServers.toJSON();
@@ -146,7 +148,8 @@
         runningCoords: coords.length,
         runningDBs: dbs.length,
         plannedCoords: undefined,
-        plannedDBs: undefined
+        plannedDBs: undefined,
+        initialized: rerender
       }));
 
       $.ajax({
@@ -162,7 +165,7 @@
     },
 
     updateTable: function(data) {
-      var scalingActive = '<span class="warning">scaling in progress</span>';
+      var scalingActive = '<span class="warning">scaling in progress <i class="fa fa-circle-o-notch fa-spin"></i></span>';
       var scalingDone = '<span class="positive">no scaling process active</span>';
 
       if (data.numberOfCoordinators) {

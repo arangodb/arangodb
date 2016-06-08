@@ -268,7 +268,6 @@ void Supervision::run() {
 void Supervision::workJobs() {
 
   Node::Children const todos = _snapshot(toDoPrefix).children();
-  Node::Children const pends = _snapshot(pendingPrefix).children();
 
   for (auto const& todoEnt : todos) {
     Node const& job = *todoEnt.second;
@@ -284,6 +283,9 @@ void Supervision::workJobs() {
       }
     } catch (std::exception const&) {}
   }
+
+  _snapshot = _agent->readDB().get(_agencyPrefix);
+  Node::Children const pends = _snapshot(pendingPrefix).children();
 
   for (auto const& pendEnt : pends) {
     Node const& job = *pendEnt.second;
