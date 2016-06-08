@@ -2083,6 +2083,7 @@ Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, o
   // TODO
   return [];
 
+  /*
   var opts = {
     includeData: true
   };
@@ -2119,6 +2120,7 @@ Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, o
   };
   var result = db._query(query, bindVars).toArray();
   return result[0];
+  */
 };
 
 ////////////////////////////////////////////////////////////////////////////////
