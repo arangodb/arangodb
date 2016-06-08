@@ -794,7 +794,8 @@ function leaderResign(database, collId, shardName, ourselves) {
 /// @brief drop collections if they exist locally but not in the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-function dropLocalCollections (plannedCollections, writeLocked) {
+function dropLocalCollections (plannedCollections, currentCollections,
+                               writeLocked) {
   var ourselves = global.ArangoServerState.id();
 
   var dropCollectionAgency = function (database, shardID, id) {
@@ -836,11 +837,20 @@ function dropLocalCollections (plannedCollections, writeLocked) {
                          (shardMap[collection].indexOf(ourselves) === -1);
 
             if (remove) {
+              var currentServers;
               // May be we have been the leader and are asked to withdraw:
               if (shardMap.hasOwnProperty(collection) &&
                   shardMap[collection][0] === "_" + ourselves) {
-                leaderResign(database, collections[collection].planId,
-                             collection, ourselves);
+                try {
+                  currentServers = currentCollections[database]
+                      [collections[collection].planId][collection].servers;
+                } catch (err2) {
+                  currentServers = [];
+                }
+                if (currentServers[0] === ourselves) {
+                  leaderResign(database, collections[collection].planId,
+                               collection, ourselves);
+                }
               } else {
                 // Remove us from the follower list, this is a best effort,
                 // we might actually have been the leader ourselves, in which
@@ -849,7 +859,14 @@ function dropLocalCollections (plannedCollections, writeLocked) {
                 // is also no problem, since the leader will soon notice 
                 // that the shard here is gone and will drop us automatically:
                 var servers = shardMap[collection];
-                if (servers !== undefined) {
+                try {
+                  currentServers = currentCollections[database]
+                      [collections[collection].planId][collection].servers;
+                } catch (err2) {
+                  currentServers = [];
+                }
+                if (servers !== undefined &&
+                    currentServers.indexOf(ourselves) >= 0) {
                   var endpoint = ArangoClusterInfo.getServerEndpoint(servers[0]);
                   try {
                     removeShardFollower(endpoint, database, collection);
@@ -1167,7 +1184,9 @@ function synchronizeLocalFollowerCollections (plannedCollections,
                       console.debug("Leader has not yet created shard, let's",
                                     "come back later to this shard...");
                     } else {
-                      if (inCurrent.servers.indexOf(ourselves) === -1) {
+                      if (inCurrent.servers.indexOf(ourselves) === -1 &&
+                          inCurrent.servers[0].substr(0, 1) !== "_" &&
+                          inCurrent.servers[0] === shards[shard][0]) {
                         if (!scheduleOneShardSynchronization(
                                 database, shard, collInfo.planId,
                                 inCurrent.servers[0])) {
@@ -1208,10 +1227,7 @@ function handleCollectionChanges (plan, current, takeOverResponsibility,
   try {
     createLocalCollections(plannedCollections, plan.Version, currentCollections,
                            takeOverResponsibility, writeLocked);
-    // Note that dropLocalCollections does not 
-    // need the currentCollections, since they compare the plan with
-    // the local situation.
-    dropLocalCollections(plannedCollections, writeLocked);
+    dropLocalCollections(plannedCollections, currentCollections, writeLocked);
     cleanupCurrentCollections(plannedCollections, currentCollections,
                               writeLocked);
     if (!synchronizeLocalFollowerCollections(plannedCollections,
