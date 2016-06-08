@@ -1,4 +1,5 @@
 
+
 # Summary
 * [How to invoke AQL](Invocation/README.md)
   * [with Arangosh](Invocation/WithArangosh.md)
@@ -26,6 +27,7 @@
   * [REPLACE](Operations/Replace.md)
   * [INSERT](Operations/Insert.md)
   * [UPSERT](Operations/Upsert.md)
+  * [WITH](Operations/With.md)
 * [Functions](Functions/README.md)
   * [Type cast](Functions/TypeCast.md)
   * [String](Functions/String.md)
