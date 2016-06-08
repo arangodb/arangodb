@@ -943,8 +943,16 @@ that have few resources (processing time, maximum thread count, available memory
 The default value for `--server.authentication` is now `true` in the configuration
 files shipped with ArangoDB. This means the server will be started with authentication 
 enabled by default, requiring all client connections to provide authentication data 
-when connecting to ArangoDB. Previous ArangoDB versions used the setting
+when connecting to ArangoDB APIs. Previous ArangoDB versions used the setting
 `--server.disable-authentication true`, effectively disabling authentication by default.
+
+The default value for `--server.authentication-system-only` is now `true` in ArangoDB.
+That means that Foxx applications running in ArangoDB will be public accessible (at
+least they will not use ArangoDB's builtin authentication mechanism). Only requests to
+ArangoDB APIs at URL path prefixes `/_api/` and `/_admin` will require authentication.
+To change that, and use the builtin authentication mechanism for Foxx applications too,
+set `--server.authentication-system-only` to `false`, and make sure to have the option
+`--server.authentication` set to `true` as well.
 
 Though enabling the authentication is recommended for production setups, it may be
 overkill in a development environment. To turn off authentication, the option 
