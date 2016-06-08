@@ -245,7 +245,7 @@ bool CleanOutServer::scheduleMoveShards() const {
             "Range error picking destination for shard " + shard.first;
         }
 
-        // Shedule move
+        // Schedule move
         MoveShard (
           _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
           _agencyPrefix, database.first, collptr.first, shard.first, _server,
