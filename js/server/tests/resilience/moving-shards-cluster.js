@@ -43,10 +43,8 @@ const wait = require("internal").wait;
 function MovingShardsSuite () {
   'use strict';
   var cn = "UnitTestMovingShards";
-  var c;
-  var cinfo;
-  var ccinfo;
-  var shards;
+  var count = 0;
+  var c = [];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find out servers for the system collections
@@ -65,22 +63,30 @@ function MovingShardsSuite () {
   function waitForSynchronousReplication(database) {
     console.warn("Waiting for synchronous replication to settle...");
     global.ArangoClusterInfo.flush();
-    cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
-    shards = Object.keys(cinfo.shards);
-    var count = 0;
-    while (++count <= 120) {
-      ccinfo = shards.map(
-        s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
-      );
-      let replicas = ccinfo.map(s => s.servers.length);
-      if (_.all(replicas, x => x === 2)) {
-        console.warn("Replication up and running!");
-        return true;
+    for (var i = 0; i < c.length; ++i) {
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(database,
+                                                             c[i].name());
+      var shards = Object.keys(cinfo.shards);
+      var replFactor = cinfo.shards[shards[0]].length;
+      var count = 0;
+      while (++count <= 120) {
+        var ccinfo = shards.map(
+          s => global.ArangoClusterInfo.getCollectionInfoCurrent(database,
+                                                                 c[i].name(), s)
+        );
+        let replicas = ccinfo.map(s => s.servers.length);
+        if (_.all(replicas, x => x === replFactor)) {
+          console.warn("Replication up and running!");
+          break;
+        }
+        wait(0.5);
+        global.ArangoClusterInfo.flush();
       }
-      wait(0.5);
-      global.ArangoClusterInfo.flush();
+      if (count > 120) {
+        return false;
+      }
     }
-    return false;
+    return true;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,31 +94,38 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testServerEmpty(id) {
-    var count = 10;
-    while (--count > 0) {
-      wait(1.0);
-      var servers = findCollectionServers("_system", cn);
-      if (servers.indexOf(id) === -1) {
-        // Now check current as well:
-        var collInfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", cn);
-        var shards = collInfo.shards;
-        var collInfoCurr = Object.keys(shards).map(s =>
-          global.ArangoClusterInfo.getCollectionInfoCurrent(
-            "_system", cn, s).servers);
-        var idxs = collInfoCurr.map(l => l.indexOf(id));
-        var ok = true;
-        for (var i = 0; i < idxs.length; i++) {
-          if (idxs[i] !== -1) {
-            ok = false;
+    for (var i = 0; i < c.length; ++i) {
+      var count = 100;
+      var ok = false;
+      while (--count > 0) {
+        wait(1.0);
+        global.ArangoClusterInfo.flush();
+        var servers = findCollectionServers("_system", c[i].name());
+        if (servers.indexOf(id) === -1) {
+          // Now check current as well:
+          var collInfo = global.ArangoClusterInfo.getCollectionInfo(
+            "_system", c[i].name());
+          var shards = collInfo.shards;
+          var collInfoCurr = Object.keys(shards).map(s =>
+            global.ArangoClusterInfo.getCollectionInfoCurrent(
+              "_system", c[i].name(), s).servers);
+          var idxs = collInfoCurr.map(l => l.indexOf(id));
+          ok = true;
+          for (var j = 0; j < idxs.length; j++) {
+            if (idxs[j] !== -1) {
+              ok = false;
+            }
+          }
+          if (ok) {
+            break;
           }
         }
-        if (ok) {
-          return true;
-        }
+      }
+      if (!ok) {
+        return false;
       }
     }
-    return false;
+    return true;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,6 +144,31 @@ function MovingShardsSuite () {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create some collections
+////////////////////////////////////////////////////////////////////////////////
+
+  function createSomeCollections(n, nrShards, replFactor) {
+    var systemCollServers = findCollectionServers("_system", "_graphs");
+    console.warn("System collections use servers:", systemCollServers);
+    for (var i = 0; i < n; ++i) {
+      ++count;
+      while (true) {
+        var name = cn + count;
+        db._drop(name);
+        var coll = db._create(name, {numberOfShards: nrShards,
+                                     replicationFactor: replFactor});
+        var servers = findCollectionServers("_system", name);
+        console.warn("Test collections uses servers:", servers);
+        if (_.intersection(systemCollServers, servers).length === 0) {
+          c.push(coll);
+          break;
+        }
+        console.warn("Need to recreate collection to avoid system collection servers.");
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual tests
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -141,18 +179,7 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      var systemCollServers = findCollectionServers("_system", "_graphs");
-      console.warn("System collections use servers:", systemCollServers);
-      while (true) {
-        db._drop(cn);
-        c = db._create(cn, {numberOfShards: 1, replicationFactor: 2});
-        var servers = findCollectionServers("_system", cn);
-        console.warn("Test collections uses servers:", servers);
-        if (_.intersection(systemCollServers, servers).length === 0) {
-          return;
-        }
-        console.warn("Need to recreate collection to avoid system collection servers.");
-      }
+      createSomeCollections(1, 1, 2);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +187,10 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      db._drop(cn);
+      for (var i = 0; i < c.length; ++i) {
+        c[i].drop();
+      }
+      c = [];
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +207,7 @@ function MovingShardsSuite () {
 
     testMoveShardFollower : function() {
       assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", cn);
+      var servers = findCollectionServers("_system", c[0].name());
       var toClean = servers[1];
       cleanOutServer(toClean);
       assertTrue(testServerEmpty(toClean));
@@ -189,8 +219,47 @@ function MovingShardsSuite () {
 
     testMoveShardLeader : function() {
       assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", cn);
+      var servers = findCollectionServers("_system", c[0].name());
       var toClean = servers[0];
+      cleanOutServer(toClean);
+      assertTrue(testServerEmpty(toClean));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief moving away stuff with multiple collections
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoveShardMultipleCollections : function() {
+      createSomeCollections(10, 1, 2);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var toClean = servers[0];
+      cleanOutServer(toClean);
+      assertTrue(testServerEmpty(toClean));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief moving away a collection with 3 replicas
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoveShard3Replicas : function() {
+      createSomeCollections(1, 1, 3);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var toClean = servers[0];
+      cleanOutServer(toClean);
+      assertTrue(testServerEmpty(toClean));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief moving away a collection with multiple shards
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoveShardMultipleShards : function() {
+      createSomeCollections(1, 10, 2);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var toClean = servers[1];
       cleanOutServer(toClean);
       assertTrue(testServerEmpty(toClean));
     },
