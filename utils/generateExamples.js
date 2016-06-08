@@ -193,7 +193,7 @@ function main(argv) {
 
   if (startServer) {
     if (typeof(instanceInfo.exitStatus) === 'undefined') {
-      download(instanceInfo.url + "/_admin/shutdown", "");
+      download(instanceInfo.url + "/_admin/shutdown", "", {method: "DELETE"});
 
       print("Waiting for server shut down");
       count = 0;

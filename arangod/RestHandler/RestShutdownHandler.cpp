@@ -42,6 +42,11 @@ bool RestShutdownHandler::isDirect() const { return true; }
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestShutdownHandler::execute() {
+  if (_request->requestType() != GeneralRequest::RequestType::DELETE_REQ) {
+    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    return HttpHandler::status_t(HANDLER_DONE);
+  }
+
   ApplicationServer::server->beginShutdown();
 
   try {

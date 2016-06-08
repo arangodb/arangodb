@@ -8,7 +8,7 @@
 
     el: '#content',
     template: templateEngine.createTemplate("scaleView.ejs"),
-    interval: 5000,
+    interval: 10000,
     knownServers: [],
 
     events: {
@@ -98,18 +98,29 @@
 
     initialize: function (options) {
 
+      var self = this;
+      clearInterval(this.intervalFunction);
+
       if (window.App.isCluster) {
         this.dbServers = options.dbServers;
         this.coordinators = options.coordinators;
         this.updateServerTime();
 
         //start polling with interval
-        window.setInterval(function() {
+        this.intervalFunction = window.setInterval(function() {
           if (window.location.hash === '#sNodes') {
 
-            var callback = function(data) {
-            };
+            self.coordinators.fetch({
+              success: function() {
+                self.dbServers.fetch({
+                  success: function() {
+                    console.log("fechted both");
+                  }
+                }); 
+              }
+            }); 
 
+            self.continueRender(true);
           }
         }, this.interval);
       }
@@ -137,7 +148,7 @@
       window.arangoHelper.buildNodesSubNav('scale');
     },
 
-    continueRender: function() {
+    continueRender: function(rerender) {
       var coords, dbs, self = this;
       coords = this.coordinators.toJSON();
       dbs = this.dbServers.toJSON();
@@ -146,7 +157,8 @@
         runningCoords: coords.length,
         runningDBs: dbs.length,
         plannedCoords: undefined,
-        plannedDBs: undefined
+        plannedDBs: undefined,
+        initialized: rerender
       }));
 
       $.ajax({
@@ -162,7 +174,7 @@
     },
 
     updateTable: function(data) {
-      var scalingActive = '<span class="warning">scaling in progress</span>';
+      var scalingActive = '<span class="warning">scaling in progress <i class="fa fa-circle-o-notch fa-spin"></i></span>';
       var scalingDone = '<span class="positive">no scaling process active</span>';
 
       if (data.numberOfCoordinators) {
@@ -209,7 +221,7 @@
           self.waitForCoordinators(callback);
         }
         else {
-          this.initDoneCoords = true;
+          self.initDoneCoords = true;
           callback();
         }
       }, 200);

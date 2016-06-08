@@ -9,6 +9,7 @@
 ; Include LogicLib for more readable code
   !include "LogicLib.nsh"
   !include "UAC.nsh"
+  !include nsDialogs.nsh
   !include WinMessages.nsh
 
 
@@ -28,7 +29,7 @@
 
 ;--------------------------------
 ;Variables
-
+!define EMPTY ""
   var retryCount
   Var MUI_TEMP
   Var STARTMENU_FOLDER
@@ -39,10 +40,13 @@
   Var ADD_TO_PATH_CURRENT_USER
   Var INSTALL_DESKTOP
   Var IS_DEFAULT_INSTALLDIR
+  Var PASSWORD
+  Var PASSWORD_AGAIN
 ; Variables for definition of instdir
 ; posible values: SingleUser | AllUsers | Service
   VAR TRI_INSTALL_TYPE
-
+  !define TEMP1 $R0 ;Temp variable
+  
 ;--------------------------------
 ;Include Modern UI
 
@@ -120,7 +124,7 @@ Function disableBackButton
 FunctionEnd
 
 Function Tri_ChangePrivileges
-  ${IfNot} ${UAC_IsInnerInstance} 
+  ${IfNot} ${UAC_IsInnerInstance}
      Call disableBackButton
      GetDlgItem $0 $HWNDParent 2
      EnableWindow $0 0
@@ -381,41 +385,25 @@ Function AddToPath
   Pop $2
   StrCmp $2 "" "" AddToPath_done
 
-  Call IsNT
-  Pop $1
-  StrCmp $1 1 AddToPath_NT
-    ; Not on NT
-    StrCpy $1 $WINDIR 2
-    FileOpen $1 "$1\autoexec.bat" a
-    FileSeek $1 -1 END
-    FileReadByte $1 $2
-    IntCmp $2 26 0 +2 +2 # DOS EOF
-      FileSeek $1 -1 END # write over EOF
-    FileWrite $1 "$\r$\nSET PATH=%PATH%;$3$\r$\n"
-    FileClose $1
-    SetRebootFlag true
-    Goto AddToPath_done
-
-  AddToPath_NT:
-    StrCmp $ADD_TO_PATH_ALL_USERS "1" ReadAllKey
-      ReadRegStr $1 ${NT_current_env} "PATH"
-      Goto DoTrim
-    ReadAllKey:
-      ReadRegStr $1 ${NT_all_env} "PATH"
-    DoTrim:
-    StrCmp $1 "" AddToPath_NTdoIt
-      Push $1
-      Call Trim
-      Pop $1
-      StrCpy $0 "$1;$0"
-    AddToPath_NTdoIt:
-      StrCmp $ADD_TO_PATH_ALL_USERS "1" WriteAllKey
-        WriteRegExpandStr ${NT_current_env} "PATH" $0
-        Goto DoSend
-      WriteAllKey:
-        WriteRegExpandStr ${NT_all_env} "PATH" $0
-      DoSend:
-      SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
+  StrCmp $ADD_TO_PATH_ALL_USERS "1" ReadAllKey
+    ReadRegStr $1 ${NT_current_env} "PATH"
+    Goto DoTrim
+  ReadAllKey:
+    ReadRegStr $1 ${NT_all_env} "PATH"
+  DoTrim:
+  StrCmp $1 "" AddToPath_NTdoIt
+    Push $1
+    Call Trim
+    Pop $1
+    StrCpy $0 "$1;$0"
+  AddToPath_NTdoIt:
+    StrCmp $ADD_TO_PATH_ALL_USERS "1" WriteAllKey
+      WriteRegExpandStr ${NT_current_env} "PATH" $0
+      Goto DoSend
+    WriteAllKey:
+      WriteRegExpandStr ${NT_all_env} "PATH" $0
+    DoSend:
+    SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
 
   AddToPath_done:
     Pop $3
@@ -439,77 +427,40 @@ Function un.RemoveFromPath
 
   IntFmt $6 "%c" 26 # DOS EOF
 
-  Call un.IsNT
-  Pop $1
-  StrCmp $1 1 unRemoveFromPath_NT
-    ; Not on NT
-    StrCpy $1 $WINDIR 2
-    FileOpen $1 "$1\autoexec.bat" r
-    GetTempFileName $4
-    FileOpen $2 $4 w
-    GetFullPathName /SHORT $0 $0
-    StrCpy $0 "SET PATH=%PATH%;$0"
-    Goto unRemoveFromPath_dosLoop
+  StrCmp $ADD_TO_PATH_ALL_USERS "1" unReadAllKey
+    ReadRegStr $1 ${NT_current_env} "PATH"
+    Goto unDoTrim
+  unReadAllKey:
+    ReadRegStr $1 ${NT_all_env} "PATH"
+  unDoTrim:
+  StrCpy $5 $1 1 -1 # copy last char
+  StrCmp $5 ";" +2 # if last char != ;
+    StrCpy $1 "$1;" # append ;
+  Push $1
+  Push "$0;"
+  Call un.StrStr ; Find `$0;` in $1
+  Pop $2 ; pos of our dir
+  StrCmp $2 "" unRemoveFromPath_done
+    ; else, it is in path
+    # $0 - path to add
+    # $1 - path var
+    StrLen $3 "$0;"
+    StrLen $4 $2
+    StrCpy $5 $1 -$4 # $5 is now the part before the path to remove
+    StrCpy $6 $2 "" $3 # $6 is now the part after the path to remove
+    StrCpy $3 $5$6
 
-    unRemoveFromPath_dosLoop:
-      FileRead $1 $3
-      StrCpy $5 $3 1 -1 # read last char
-      StrCmp $5 $6 0 +2 # if DOS EOF
-        StrCpy $3 $3 -1 # remove DOS EOF so we can compare
-      StrCmp $3 "$0$\r$\n" unRemoveFromPath_dosLoopRemoveLine
-      StrCmp $3 "$0$\n" unRemoveFromPath_dosLoopRemoveLine
-      StrCmp $3 "$0" unRemoveFromPath_dosLoopRemoveLine
-      StrCmp $3 "" unRemoveFromPath_dosLoopEnd
-      FileWrite $2 $3
-      Goto unRemoveFromPath_dosLoop
-      unRemoveFromPath_dosLoopRemoveLine:
-        SetRebootFlag true
-        Goto unRemoveFromPath_dosLoop
+    StrCpy $5 $3 1 -1 # copy last char
+    StrCmp $5 ";" 0 +2 # if last char == ;
+      StrCpy $3 $3 -1 # remove last char
 
-    unRemoveFromPath_dosLoopEnd:
-      FileClose $2
-      FileClose $1
-      StrCpy $1 $WINDIR 2
-      Delete "$1\autoexec.bat"
-      CopyFiles /SILENT $4 "$1\autoexec.bat"
-      Delete $4
-      Goto unRemoveFromPath_done
-
-  unRemoveFromPath_NT:
-    StrCmp $ADD_TO_PATH_ALL_USERS "1" unReadAllKey
-      ReadRegStr $1 ${NT_current_env} "PATH"
-      Goto unDoTrim
-    unReadAllKey:
-      ReadRegStr $1 ${NT_all_env} "PATH"
-    unDoTrim:
-    StrCpy $5 $1 1 -1 # copy last char
-    StrCmp $5 ";" +2 # if last char != ;
-      StrCpy $1 "$1;" # append ;
-    Push $1
-    Push "$0;"
-    Call un.StrStr ; Find `$0;` in $1
-    Pop $2 ; pos of our dir
-    StrCmp $2 "" unRemoveFromPath_done
-      ; else, it is in path
-      # $0 - path to add
-      # $1 - path var
-      StrLen $3 "$0;"
-      StrLen $4 $2
-      StrCpy $5 $1 -$4 # $5 is now the part before the path to remove
-      StrCpy $6 $2 "" $3 # $6 is now the part after the path to remove
-      StrCpy $3 $5$6
-
-      StrCpy $5 $3 1 -1 # copy last char
-      StrCmp $5 ";" 0 +2 # if last char == ;
-        StrCpy $3 $3 -1 # remove last char
-
-      StrCmp $ADD_TO_PATH_ALL_USERS "1" unWriteAllKey
-        WriteRegExpandStr ${NT_current_env} "PATH" $3
-        Goto unDoSend
-      unWriteAllKey:
-        WriteRegExpandStr ${NT_all_env} "PATH" $3
-      unDoSend:
-      SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
+    StrCmp $ADD_TO_PATH_ALL_USERS "1" unWriteAllKey
+      WriteRegExpandStr ${NT_current_env} "PATH" $3
+      Goto unDoSend
+    unWriteAllKey:
+      WriteRegExpandStr ${NT_all_env} "PATH" $3
+    unDoSend:
+    SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
 
   unRemoveFromPath_done:
     Pop $6
@@ -528,39 +479,6 @@ FunctionEnd
 ###########################################
 #            Utility Functions            #
 ###########################################
-
-;====================================================
-; IsNT - Returns 1 if the current system is NT, 0
-;        otherwise.
-;     Output: head of the stack
-;====================================================
-; IsNT
-; no input
-; output, top of the stack = 1 if NT or 0 if not
-;
-; Usage:
-;   Call IsNT
-;   Pop $R0
-;  ($R0 at this point is 1 or 0)
-
-!macro IsNT un
-Function ${un}IsNT
-  Push $0
-  ReadRegStr $0 HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion" CurrentVersion
-  StrCmp $0 "" 0 IsNT_yes
-  ; we are not NT.
-  Pop $0
-  Push 0
-  Return
-
-  IsNT_yes:
-    ; NT!!!
-    Pop $0
-    Push 1
-FunctionEnd
-!macroend
-!insertmacro IsNT ""
-!insertmacro IsNT "un."
 
 ; StrStr
 ; input, top of stack = string to search for
@@ -855,7 +773,7 @@ Section "-Core installation"
   Push "Contact"
   Push "@CPACK_NSIS_CONTACT@"
   Call ConditionalAddToRegistry
-  !insertmacro MUI_INSTALLOPTIONS_READ $INSTALL_DESKTOP "NSIS.InstallOptions.ini" "Field 5" "State"
+
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
 
   ;Create shortcuts
@@ -865,10 +783,6 @@ Section "-Core installation"
   CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk"     "$INSTDIR\Uninstall.exe"
 
   ;Read a value from an InstallOptions INI file
-  !insertmacro MUI_INSTALLOPTIONS_READ $DO_NOT_ADD_TO_PATH "NSIS.InstallOptions.ini" "Field 2" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_ALL_USERS "NSIS.InstallOptions.ini" "Field 3" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_CURRENT_USER "NSIS.InstallOptions.ini" "Field 4" "State"
-
 
   StrCmp "0" "$INSTALL_DESKTOP" noDesktopIcon
   CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\bin\arangosh.exe"  '' '$INSTDIR\resources\Icons\arangodb.ico' '0' SW_SHOWMAXIMIZED
@@ -907,7 +821,7 @@ Section "-Core installation"
 SectionEnd
 
 Function .onInstSuccess
-  ${If} $TRI_INSTALL_TYPE == 'Service' 
+  ${If} $TRI_INSTALL_TYPE == 'Service'
     ${OpenURL} ${TRI_AARDVARK_URL}
   ${EndIf}
 FunctionEnd
@@ -923,12 +837,28 @@ SectionEnd
 ;--------------------------------
 ; Create custom pages
 Function InstallOptionsPage
-  !insertmacro MUI_HEADER_TEXT "Install Options" "Choose options for installing @CPACK_NSIS_PACKAGE_NAME@"
-  !insertmacro MUI_INSTALLOPTIONS_DISPLAY "NSIS.InstallOptions.ini"
+   Push ${TEMP1}
+displayAgain:
 
+  !insertmacro MUI_HEADER_TEXT "Install Options" "Choose options for installing @CPACK_NSIS_PACKAGE_NAME@"
+  !insertmacro MUI_INSTALLOPTIONS_READ $INSTALL_DESKTOP "NSIS.InstallOptions.ini" "Field 5" "State"
+  !insertmacro MUI_INSTALLOPTIONS_DISPLAY "NSIS.InstallOptions.ini"
+  !insertmacro MUI_INSTALLOPTIONS_READ $PASSWORD "NSIS.InstallOptions.ini" "Field 6" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $PASSWORD_AGAIN "NSIS.InstallOptions.ini" "Field 7" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $DO_NOT_ADD_TO_PATH "NSIS.InstallOptions.ini" "Field 2" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_ALL_USERS "NSIS.InstallOptions.ini" "Field 3" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_CURRENT_USER "NSIS.InstallOptions.ini" "Field 4" "State"
+
+  StrCmp $PASSWORD $PASSWORD_AGAIN +3 0
+    MessageBox MB_OK|MB_ICONSTOP "Passwords don't match, try again"
+    Goto displayAgain
+  done:
+    Pop ${TEMP1}
+
+    Return  
 FunctionEnd
 ;------------------------
-; Create 
+; Create
 Function ArangoPreInstallationOptionsPage
   !insertmacro MUI_HEADER_TEXT "@CPACK_NSIS_PACKAGE_NAME@ als Service?" "Install @CPACK_NSIS_PACKAGE_NAME@ as a service?"
   !insertmacro MUI_INSTALLOPTIONS_DISPLAY "NSIS.ArangoDB.ini"
@@ -936,21 +866,21 @@ FunctionEnd
 
 ;--------------------------------
 Function skip_page
-  ${If} ${UAC_IsInnerInstance} 
+  ${If} ${UAC_IsInnerInstance}
     Abort
   ${EndIf}
 FunctionEnd
 
 ; when I am a child proces
 ; I read the state (from shared memory) of the install options page
-; these informations has to be written by the father process 
+; these informations has to be written by the father process
 Function read_options
-  ${If} ${UAC_IsInnerInstance} 
-     sharedmem::ReadIntoSharedMem 
+  ${If} ${UAC_IsInnerInstance}
+     sharedmem::ReadIntoSharedMem
      pop $0
      pop $1
      ${If} $0 == 0
-        StrCpy  $TRI_INSTALL_TYPE $1 
+        StrCpy  $TRI_INSTALL_TYPE $1
       ${Else}
 ; when something is wrong arango is installed as Service
         StrCpy  $TRI_INSTALL_TYPE 'Service'
@@ -959,12 +889,12 @@ Function read_options
 FunctionEnd
 ;--------------------------------
 Function default_installation_directory
-; Read variables which defines if arango should be installed as Service 
+; Read variables which defines if arango should be installed as Service
 
-  ${If} ${UAC_IsInnerInstance} 
+  ${If} ${UAC_IsInnerInstance}
      Call disableBackButton
   ${EndIf}
-  ${IfNot} ${UAC_IsInnerInstance} 
+  ${IfNot} ${UAC_IsInnerInstance}
     !insertmacro MUI_INSTALLOPTIONS_READ $R2 "NSIS.InstallOptions.ini" "Field 2" "State"
     !insertmacro MUI_INSTALLOPTIONS_READ $R3 "NSIS.InstallOptions.ini" "Field 3" "State"
     !insertmacro MUI_INSTALLOPTIONS_READ $R4 "NSIS.InstallOptions.ini" "Field 4" "State"
@@ -990,17 +920,17 @@ Function default_installation_directory
 
 
   ${Switch} $TRI_INSTALL_TYPE
-    ${Case} 'Service' 
+    ${Case} 'Service'
       Call Tri_ChangePrivileges
       SetShellVarContext all
       ;MessageBox MB_OK "Service : $INSTDIR"
       ${Break}
-    ${Case} 'SingleUser' 
+    ${Case} 'SingleUser'
       SetShellVarContext current
       StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
       ;MessageBox MB_OK "SingleUser : $INSTDIR"
       ${Break}
-    ${Case} 'AllUsers' 
+    ${Case} 'AllUsers'
       Call Tri_ChangePrivileges
       SetShellVarContext all
       StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
@@ -1023,7 +953,7 @@ Function assign_proper_access_rigths
   ${EndIf}
 FunctionEnd
 
-Function is_writable 
+Function is_writable
 ; is does not matter if we do some errors here
    ${If} $TRI_INSTALL_ALL_USERS == '1'
      CreateDirectory $INSTDIR
@@ -1046,14 +976,14 @@ Function insert_registration_keys
   ClearErrors
   ; MessageBox MB_OK "XXXX insert_registration_keys in HKCC ${BITS}"
   ${Switch} $TRI_INSTALL_TYPE
-    ${Case} 'Service' 
+    ${Case} 'Service'
       WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
        ; MessageBox MB_OK "Sevice in HKCC"
       IfErrors there_are_erros
       ${Break}
 
-    ${Case} 'SingleUser' 
-      ${If}  ${UAC_IsAdmin}  
+    ${Case} 'SingleUser'
+      ${If}  ${UAC_IsAdmin}
         WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
          ; MessageBox MB_OK "SingleUser in HKCC"
       ${Else}
@@ -1064,7 +994,7 @@ Function insert_registration_keys
       ${EndIf}
       ${Break}
 
-    ${Case} 'AllUsers' 
+    ${Case} 'AllUsers'
       WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
       StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
        ; MessageBox MB_OK "AllUsers in HKCC"
@@ -1079,7 +1009,7 @@ MessageBox MB_OK "There was an error during adding the installation keys to the 
 FunctionEnd
 
 !macro triagens_init
-  ${If} ${UAC_IsInnerInstance} 
+  ${If} ${UAC_IsInnerInstance}
   ; memory segment is created by father process
   ; nothing to do
 SendMessage $HWNDPARENT ${WM_SETTEXT} 0 "STR:Hallo"
@@ -1088,7 +1018,7 @@ SendMessage $HWNDPARENT ${WM_SETTEXT} 0 "STR:Hallo"
   sharedmem::ExistsSharedMem
   pop $0
   ${If} $0 == '1'
-    MessageBox MB_OK "Installer is already running" 
+    MessageBox MB_OK "Installer is already running"
     Quit
   ${EndIf}
   sharedmem::CreateSharedMemory
@@ -1134,26 +1064,26 @@ Function un.onInit
   Pop $0
 ; temporary variable used as flag for decide the change to administration rights
   StrCpy $R0 "admin"
-  ${If}  ${UAC_IsAdmin}  
-    ReadRegStr $0 HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type"   
+  ${If}  ${UAC_IsAdmin}
+    ReadRegStr $0 HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type"
   ${Else}
 ; see function default_installation_directory
-    ReadRegStr $0 HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 
+    ReadRegStr $0 HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type"
     ${If}  $0 == "SingleUser"
       StrCpy $R0 "user"
     ${EndIf}
   ${EndIf}
 
-  ${If} $R0 == "admin" 
+  ${If} $R0 == "admin"
     Call un.Tri_ChangePrivileges
   ${EndIf}
- ; are we a child process? 
+ ; are we a child process?
  ; when yes, we have administrator privileges
-  ${If} ${UAC_IsInnerInstance} 
+  ${If} ${UAC_IsInnerInstance}
     SetShellVarContext all
   ${Else}
     SetShellVarContext current
-  ${EndIf} 
+  ${EndIf}
 
 FunctionEnd
 
@@ -1206,13 +1136,13 @@ Section "Uninstall"
   StrCpy $TRI_INSTALL_TYPE 'SingleUser'
   ReadRegStr $TRI_INSTALL_TYPE         HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 
   ;MessageBox MB_OK "Type: $TRI_INSTALL_TYPE"
-  ${If} $TRI_INSTALL_TYPE == 'Service' 
+  ${If} $TRI_INSTALL_TYPE == 'Service'
     Call un.Tri_ChangePrivileges
     SetShellVarContext all
     ;MessageBox MB_OK "Service : $INSTDIR"
   ${EndIf}
 
-  ${If} $TRI_INSTALL_TYPE == 'AllUsers' 
+  ${If} $TRI_INSTALL_TYPE == 'AllUsers'
     Call un.Tri_ChangePrivileges
     SetShellVarContext all
     StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
@@ -1235,7 +1165,7 @@ Section "Uninstall"
 
 
   ;MessageBox MB_OK "Deleting Directory: $SMPROGRAMS\$START_MENU\ $TRI_INSTALL_TYPE "
-  Delete "$SMPROGRAMS\$START_MENU\"
+  Delete "$SMPROGRAMS\$START_MENU"
 
   StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
   ;SimpleSC::GetServiceName '${TRI_SVC_NAME}'
@@ -1253,7 +1183,7 @@ Section "Uninstall"
   SimpleSC::StopService  '${TRI_SVC_NAME}' 0 30
   SimpleSC::RemoveService  '${TRI_SVC_NAME}'
   Pop $0 ; returns an errorcode (<>0) otherwise success (0)
-  IntCmp $0 0 Done +1 +1 
+  IntCmp $0 0 Done +1 +1
   Push $0
   SimpleSC::GetErrorMessage
   Pop $0
@@ -1291,7 +1221,7 @@ Section "Uninstall"
 
   Delete "$SMPROGRAMS\$MUI_TEMP\Uninstall.lnk"
   ; Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
-  ; they are deleted from '$SMPROGRAMS\$MUI_TEMP
+  ; they are deleted from '$SMPROGRAMS\$MUI_TEMP'
   Delete  '$SMPROGRAMS\$MUI_TEMP\Arango Server.lnk'
   Delete  '$SMPROGRAMS\$MUI_TEMP\Arango Shell.lnk'
 
@@ -1313,7 +1243,7 @@ Section "Uninstall"
   StrCpy $MUI_TEMP "$START_MENU"
   Delete "$SMPROGRAMS\$MUI_TEMP\Uninstall.lnk"
   ; Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
-  ; they are deleted from '$SMPROGRAMS\$MUI_TEMP
+  ; they are deleted from '$SMPROGRAMS\$MUI_TEMP'
   Delete  '$SMPROGRAMS\$MUI_TEMP\Arango Server.lnk'
   Delete  '$SMPROGRAMS\$MUI_TEMP\Arango Shell.lnk'
 
@@ -1332,11 +1262,11 @@ Section "Uninstall"
 
   DeleteRegKey /ifempty SHCTX "Software\@CPACK_PACKAGE_VENDOR@\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@"
   ; Delete flag which controls if arango is started as service or no
-  ${If} ${UAC_IsInnerInstance} 
-     DeleteRegKey HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" 
+  ${If} ${UAC_IsInnerInstance}
+     DeleteRegKey HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@"
   ${Else}
-     DeleteRegKey HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" 
-  ${EndIf} 
+     DeleteRegKey HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@"
+  ${EndIf}
   DeleteRegKey HKLM "${TRI_UNINSTALL_REG_PATH}"
 
   Push $INSTDIR\bin

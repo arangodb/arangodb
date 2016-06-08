@@ -1146,9 +1146,11 @@ function shutdownArangod(arangod, options) {
   }
   if (arangod.exitStatus === undefined ||
     arangod.exitStatus.status === "RUNNING") {
+    const requestOptions = makeAuthorizationHeaders(options);
+    requestOptions.method = "DELETE";
+
     print(arangod.url + "/_admin/shutdown");
-    download(arangod.url + "/_admin/shutdown", "",
-      makeAuthorizationHeaders(options));
+    download(arangod.url + "/_admin/shutdown", "", requestOptions);
   } else {
     print("Server already dead, doing nothing.");
   }
