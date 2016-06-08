@@ -114,8 +114,13 @@ Node::Node(Node const& other) :
   _node_name(other._node_name),
   _parent(nullptr),
   _store(nullptr),
-  _children(other._children),
-  _value(other._value) {}
+  _value(other._value) {
+
+  for (auto const& p : other._children) {
+    auto copy = std::make_shared<Node>(*p.second);
+    _children.insert(std::make_pair(p.first, copy));
+  }
+}
 
 // Assignment of rhs slice
 Node& Node::operator=(VPackSlice const& slice) {
@@ -152,7 +157,11 @@ Node& Node::operator=(Node const& rhs) {
   // Must not move rhs's _parent, _ttl, _observers
   removeTimeToLive();
   _node_name = rhs._node_name;
-  _children = rhs._children;
+  _children.clear();
+  for (auto const& p : rhs._children) {
+    auto copy = std::make_shared<Node>(*p.second);
+    _children.insert(std::make_pair(p.first, copy));
+  }
   _value = rhs._value;
   return *this;
 }
