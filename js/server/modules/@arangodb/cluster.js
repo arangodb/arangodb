@@ -158,6 +158,23 @@ function addShardFollower(endpoint, database, shard) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tell leader that we are stop following 
+////////////////////////////////////////////////////////////////////////////////
+
+function removeShardFollower(endpoint, database, shard) {
+  console.debug("removeShardFollower: tell the leader to take us off the follower list...");
+  var url = endpointToURL(endpoint) + "/_db/" + database + 
+            "/_api/replication/removeFollower";
+  var body = {followerId: ArangoServerState.id(), shard };
+  var r = request({url, body: JSON.stringify(body), method: "PUT"});
+  if (r.status !== 200) {
+    console.error("removeShardFollower: could not remove us from the leader's follower list.", r);
+    return false;
+  }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup for 4-dimensional nested dictionary data
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -825,6 +842,18 @@ function dropLocalCollections (plannedCollections, writeLocked) {
                 leaderResign(database, collections[collection].planId,
                              collection, ourselves);
               } else {
+                // Remove us from the follower list, this is a best effort,
+                // we might actually have been the leader ourselves, in which
+                // case we try to unfollow the new leader, no problem, we 
+                // simply ignore any errors. If a proper error occurs, this
+                // is also no problem, since the leader will soon notice 
+                // that the shard here is gone and will drop us automatically:
+                var servers = shardMap[collection];
+                var endpoint = ArangoClusterInfo.getServerEndpoint(servers[0]);
+                try {
+                  removeShardFollower(endpoint, database, collection);
+                } catch (err) {
+                }
                 console.info("dropping local shard '%s/%s' of '%s/%s",
                              database,
                              collection,
