@@ -84,7 +84,7 @@ void Logger::setLogLevel(std::string const& levelName) {
     level = LogLevel::FATAL;
   } else if (l == "error") {
     level = LogLevel::ERR;
-  } else if (l == "warning") {
+  } else if (l == "warning" || l == "warn") {
     level = LogLevel::WARN;
   } else if (l == "info") {
     level = LogLevel::INFO;
