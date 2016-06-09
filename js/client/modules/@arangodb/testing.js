@@ -132,6 +132,7 @@ const optionsDocumentation = [
 ];
 
 const optionsDefaults = {
+  "agencySize": 3,
   "build": "",
   "buildType": "",
   "cleanup": true,
@@ -3751,9 +3752,6 @@ testFuncs.agency = function(options) {
 
   options.agency = true;
   options.cluster = false;
-  if (options.agencySize === undefined) {
-    options.agencySize = 1;
-  }
 
   let instanceInfo = startInstance("tcp", options, {}, "agency");
 
