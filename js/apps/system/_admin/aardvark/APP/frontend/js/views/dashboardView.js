@@ -655,8 +655,7 @@
           }
           self.updateCharts();
       }).error(function(e) {
-        console.log("stat fetch req error");
-        console.log(e);
+        console.log("stat fetch req error:" + e);
       });
 
       this.getReplicationStatistics();

@@ -80,6 +80,7 @@ function SynchronousReplicationSuite () {
         console.warn("Replication up and running!");
         return true;
       }
+      console.warn("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       wait(0.5);
       global.ArangoClusterInfo.flush();
     }

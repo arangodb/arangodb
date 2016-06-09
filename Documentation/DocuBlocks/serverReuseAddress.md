@@ -1,7 +1,7 @@
 
 
 @brief try to reuse address
-`--server.reuse-address`
+`--tcp.reuse-address`
 
 If this boolean option is set to *true* then the socket option
 SO_REUSEADDR is set on all server endpoints, which is the default.

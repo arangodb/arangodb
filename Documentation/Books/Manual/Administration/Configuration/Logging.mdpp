@@ -80,7 +80,7 @@ To additionally log HTTP request to a file named "requests.log" add the options:
 --log.level requests=info --log.output requests=file:///path/to/requests.log
 ```
 
-!SUBSECTION
+!SUBSECTION Forcing direct output
 
 The option `--log.force-direct` can be used to disable logging in an extra
 logging thread. If set to `true`, any log messages are immediately printed in the

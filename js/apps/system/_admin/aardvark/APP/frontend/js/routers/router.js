@@ -34,10 +34,7 @@
       "users": "userManagement",
       "userProfile": "userProfile",
       "cluster": "cluster",
-      "nodes": "cNodes",
-      "cNodes": "cNodes",
-      "dNodes": "dNodes",
-      "sNodes": "sNodes",
+      "nodes": "nodes",
       "node/:name": "node",
       //"nLogs/:name": "nLogs",
       "logs": "logs",
@@ -285,6 +282,22 @@
         });
       }
       this.nodeView.render();
+    },
+
+    nodes: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.nodes.bind(this));
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+      this.nodesView = new window.NodesView2({
+      });
+      this.nodesView.render();
     },
 
     cNodes: function (initialized) {
@@ -638,20 +651,6 @@
       this.queryView2.render();
     },
    
-    /* 
-    test: function (initialized) {
-      this.checkUser();
-      if (!initialized) {
-        this.waitForInit(this.test.bind(this));
-        return;
-      }
-      if (!this.testView) {
-        this.testView = new window.testView({
-        });
-      }
-      this.testView.render();
-    },
-    */
     helpUs: function (initialized) {
       this.checkUser();
       if (!initialized) {

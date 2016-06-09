@@ -1,7 +1,7 @@
 
 
 @brief number of V8 contexts for executing JavaScript actions
-`--server.v8-contexts number`
+`--javascript.v8-contexts number`
 
 Specifies the *number* of V8 contexts that are created for executing
 JavaScript code. More contexts allow execute more JavaScript actions in

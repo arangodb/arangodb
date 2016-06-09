@@ -9,5 +9,6 @@ There are special sections for
 - [working with indexes](WorkingWithIndexes.md)
  - [hash indexes](Hash.md)
  - [skiplists](Skiplist.md)
+ - [persistent indexes](Persistent.md)
  - [fulltext indexes](Fulltext.md)
  - [geo-spatial indexes](Geo.md)

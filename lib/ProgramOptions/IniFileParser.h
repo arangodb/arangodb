@@ -47,6 +47,10 @@ class IniFileParser {
     _matchers.assignment = std::regex(
         "^[ \t]*(([-_A-Za-z0-9]*\\.)?[-_A-Za-z0-9]*)[ \t]*=[ \t]*(.*?)?[ \t]*$",
         std::regex::ECMAScript);
+    // an include line
+    _matchers.include = std::regex(
+        "^[ \t]*@include[ \t]*([-_A-Za-z0-9]*)[ \t]*$",
+        std::regex::ECMAScript);
   }
 
   // parse a config file. returns true if all is well, false otherwise
@@ -80,6 +84,12 @@ class IniFileParser {
       if (std::regex_match(line, match, _matchers.section)) {
         // found section
         currentSection = match[1].str();
+      } else if (std::regex_match(line, match, _matchers.include)) {
+        // found include
+        std::string option;
+        std::string value(match[1].str());
+        
+        _includes.emplace_back(value);
       } else if (std::regex_match(line, match, _matchers.assignment)) {
         // found assignment
         std::string option;
@@ -107,13 +117,20 @@ class IniFileParser {
     return true;
   }
 
+  // seen includes
+  std::vector<std::string> const& includes() const {
+    return _includes;
+  }
+
  private:
   ProgramOptions* _options;
+  std::vector<std::string> _includes;
 
   struct {
     std::regex comment;
     std::regex section;
     std::regex assignment;
+    std::regex include;
   } _matchers;
 };
 }

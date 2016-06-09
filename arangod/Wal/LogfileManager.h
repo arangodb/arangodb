@@ -462,7 +462,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   bool _ignoreRecoveryErrors = false;
   uint32_t _filesize = 32 * 1024 * 1024;
   uint32_t _maxOpenLogfiles = 0;
-  uint32_t _reserveLogfiles = 4;
+  uint32_t _reserveLogfiles = 3;
   uint32_t _numberOfSlots = 1048576;
   uint64_t _syncInterval = 100;
   uint64_t _throttleWhenPending = 0;

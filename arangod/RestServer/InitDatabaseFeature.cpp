@@ -49,6 +49,10 @@ void InitDatabaseFeature::collectOptions(
                            "initializes an empty database",
                            new BooleanParameter(&_initDatabase));
 
+  options->addHiddenOption("--database.restore-admin",
+                           "resets the admin users and sets a new password",
+                           new BooleanParameter(&_restoreAdmin));
+
   options->addHiddenOption("--database.password",
                            "initial password of root user",
                            new StringParameter(&_password));
@@ -73,11 +77,13 @@ void InitDatabaseFeature::prepare() {
     }
   }
 
-  if (!_initDatabase) {
+  if (!_initDatabase && !_restoreAdmin) {
     return;
   }
 
-  checkEmptyDatabase();
+  if (_initDatabase) {
+    checkEmptyDatabase();
+  }
 
   if (!_seenPassword) {
     while (true) {
@@ -98,12 +104,6 @@ void InitDatabaseFeature::prepare() {
         FATAL_ERROR_EXIT();
       }
     }
-  }
-}
-
-void InitDatabaseFeature::start() {
-  if (!_initDatabase) {
-    return;
   }
 }
 

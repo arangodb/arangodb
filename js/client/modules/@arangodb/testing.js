@@ -132,6 +132,7 @@ const optionsDocumentation = [
 ];
 
 const optionsDefaults = {
+  "agencySize": 3,
   "build": "",
   "buildType": "",
   "cleanup": true,
@@ -1888,6 +1889,7 @@ function splitBuckets(options, cases) {
 ////////////////////////////////////////////////////////////////////////////////
 
 let allTests = [
+  "agency",
   "arangosh",
   "authentication",
   "authentication_parameters",
@@ -2252,6 +2254,16 @@ testFuncs.authentication = function(options) {
     };
   }
 
+  if (options.cluster) {
+    print("skipping Authentication tests on cluster!");
+    return {
+      authentication: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+
   print(CYAN + "Authentication tests..." + RESET);
 
   let instanceInfo = startInstance("tcp", options, {
@@ -2330,6 +2342,16 @@ testFuncs.authentication_parameters = function(options) {
     print(CYAN + "skipping Authentication with parameters tests!" + RESET);
     return {
       authentication_parameters: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+  
+  if (options.cluster) {
+    print("skipping Authentication with parameters tests on cluster!");
+    return {
+      authentication: {
         status: true,
         skipped: true
       }
@@ -3729,11 +3751,11 @@ testFuncs.stress_locks = function(options) {
 testFuncs.agency = function(options) {
   findTests();
 
+  var saveAgency = options.agency;
+  var saveCluster = options.cluster;
+
   options.agency = true;
   options.cluster = false;
-  if (options.agencySize === undefined) {
-    options.agencySize = 1;
-  }
 
   let instanceInfo = startInstance("tcp", options, {}, "agency");
 
@@ -3798,6 +3820,9 @@ testFuncs.agency = function(options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
+
+  options.agency = saveAgency;
+  options.cluster = saveCluster;
 
   return results;
 };

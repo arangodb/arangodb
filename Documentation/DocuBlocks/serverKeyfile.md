@@ -1,10 +1,9 @@
 
 
 @brief keyfile containing server certificate
-`--server.keyfile filename`
+`--ssl.keyfile filename`
 
-If SSL encryption is used, this option must be used to specify the
-filename
+If SSL encryption is used, this option must be used to specify the filename 
 of the server private key. The file must be PEM formatted and contain both
 the certificate and the server's private key.
 
@@ -52,7 +51,6 @@ following commands should create a valid keyfile:
 For further information please check the manuals of the tools you use to
 create the certificate.
 
-**Note**: the \-\-server.keyfile option must be set if the server is
-started with
-at least one SSL endpoint.
+**Note**: the \-\-ssl.keyfile option must be set if the server is
+started with at least one SSL endpoint.
 
