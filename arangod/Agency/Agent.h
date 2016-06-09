@@ -195,7 +195,7 @@ inline arangodb::consensus::write_ret_t transact (
     LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
   }
   
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << envelope->toJson();
+  LOG_TOPIC(INFO, Logger::AGENCY) << envelope->toJson();
   auto ret = _agent->write(envelope);
   if (waitForCommit) {
     auto maximum = *std::max_element(ret.indices.begin(), ret.indices.end());
