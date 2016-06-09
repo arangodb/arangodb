@@ -382,8 +382,7 @@
                 data = JSON.parse(data.responseText);
                 arangoHelper.arangoError("Error", data.errorMessage);
               }
-              catch (e) {
-                console.log(e);
+              catch (ignore) {
               }
             }
             else {

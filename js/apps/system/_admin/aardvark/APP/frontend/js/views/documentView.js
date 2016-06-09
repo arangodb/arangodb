@@ -75,9 +75,8 @@
         type = 'edge';
       }
 
-      var callback = function(error, data, type) {
+      var callback = function(error, type) {
         if (error) {
-          console.log(data);
           arangoHelper.arangoError("Error", "Could not fetch data.");
         }
         else {

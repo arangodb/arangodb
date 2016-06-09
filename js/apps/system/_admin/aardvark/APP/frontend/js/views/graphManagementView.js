@@ -193,7 +193,6 @@
         },
         error: function (err) {
           window.modalView.hide();
-          console.log(err);
           if (err.responseText) {
             try {
               var msg = JSON.parse(err.responseText);

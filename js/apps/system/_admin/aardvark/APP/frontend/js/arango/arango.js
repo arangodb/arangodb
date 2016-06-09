@@ -269,11 +269,13 @@
       var menus = {
         Dashboard: {
           route: '#node/' + encodeURIComponent(node)
-        },
+        }
+        /*
         Logs: {
           route: '#nLogs/' + encodeURIComponent(node),
           disabled: true
         }
+       */
       };
 
       menus[activeKey].active = true;
@@ -552,7 +554,6 @@
             }
           },
           error: function(data) {
-            console.log("error");
             if (callback) {
               callback(true, data);
             }

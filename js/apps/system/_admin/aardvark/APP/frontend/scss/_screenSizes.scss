@@ -175,6 +175,11 @@
 }
 
 @media (max-width: 768px) {
+  //General
+  .hide-small {
+    visibility: hidden;
+  }
+
   //PAGINATION
 
   .pagination-line {
