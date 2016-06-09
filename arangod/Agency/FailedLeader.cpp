@@ -42,8 +42,9 @@ FailedLeader::FailedLeader(
     if (js == TODO) {
       start();        
     } else if (js == NOTFOUND) {            
-      create();
-      start();
+      if (create()) {
+        start();
+      }
     }
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
