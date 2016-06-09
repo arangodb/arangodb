@@ -12,7 +12,7 @@
     knownServers: [],
 
     events: {
-      "click #nodesContent .pure-table-body .pure-table-row" : "navigateToNode",
+      "click #nodesContent .coords-nodes .pure-table-row" : "navigateToNode",
       "click #addCoord"    : "addCoord",
       "click #removeCoord" : "removeCoord",
       "click #addDBs"      : "addDBs",
@@ -41,7 +41,7 @@
         return;
       }
 
-      var name = $(elem.currentTarget).attr('node');
+      var name = $(elem.currentTarget).attr('node').slice(0, -5);
       window.App.navigate("#node/" + encodeURIComponent(name), {trigger: true});
     },
 
