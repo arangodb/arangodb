@@ -35,8 +35,8 @@ CleanOutServer::CleanOutServer (
   std::string const& server) : 
   Job(snapshot, agent, jobId, creator, prefix), _server(server) {
 
-  JOB_STATUS js = status();
   try {
+    JOB_STATUS js = status();
     if (js == TODO) {
       start();        
     } else if (js == NOTFOUND) {            
