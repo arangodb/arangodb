@@ -45,6 +45,8 @@ enum role_t {  // Role
   LEADER
 };
 
+const std::vector<std::string> roleStr ({"Follower", "Candidate", "Leader"});
+
 struct constituent_t {  // Constituent type
   id_t id;
   std::string endpoint;

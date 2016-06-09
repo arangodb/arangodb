@@ -56,6 +56,7 @@
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FrontendFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestServerFeature.h"
 #include "RestServer/ScriptFeature.h"
@@ -119,6 +120,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new FoxxQueuesFeature(&server));
   server.addFeature(new FrontendFeature(&server));
+  server.addFeature(new InitDatabaseFeature(&server));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LogfileManager(&server));
   server.addFeature(new LoggerBufferFeature(&server));

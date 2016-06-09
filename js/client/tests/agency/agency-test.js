@@ -66,7 +66,7 @@ function agencyTestSuite () {
                        headers: {"Content-Type": "application/json",
                                  "x-arangodb-agency-mode": "waitForCommitted"}});
     res.bodyParsed = JSON.parse(res.body);
-    wait(0.1);
+    wait(0.05);
     return res;
   }
 

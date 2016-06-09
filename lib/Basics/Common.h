@@ -147,6 +147,7 @@ typedef long suseconds_t;
 #endif
 
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <map>
 #include <set>

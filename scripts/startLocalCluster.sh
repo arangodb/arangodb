@@ -16,7 +16,7 @@ if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
     echo Number of agents must be odd.
     exit 1
 fi
-echo Number of agents: $NRAGENTS
+echo Number of Agents: $NRAGENTS
 NRDBSERVERS=$2
 if [ "$NRDBSERVERS" == "" ] ; then
     NRDBSERVERS=2
@@ -45,67 +45,54 @@ SECONDARIES="$5"
 
 rm -rf cluster
 mkdir cluster
-echo Starting agency ...
-
+echo Starting agency ... 
+if [ $NRAGENTS -gt 1 ]; then
+   for aid in `seq 0 $(( $NRAGENTS - 2 ))`; do
+       port=$(( 4001 + $aid ))
+       build/bin/arangod \
+           -c none \
+           --agency.id $aid \
+           --agency.size $NRAGENTS \
+           --agency.supervision true \
+           --agency.supervision-frequency 1 \
+           --agency.wait-for-sync false \
+           --database.directory cluster/data$port \
+           --javascript.app-path ./js/apps \
+           --javascript.startup-directory ./js \
+           --javascript.v8-contexts 1 \
+           --log.file cluster/$port.log \
+           --server.authentication false \
+           --server.endpoint tcp://127.0.0.1:$port \
+           --server.statistics false \
+           --agency.compaction-step-size 1000 \
+           --log.force-direct true \
+           > cluster/$port.stdout 2>&1 &
+   done
+fi
+for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
+    endpoints="$endpoints --agency.endpoint tcp://localhost:$(( 4001 + $aid ))"          
+done
 build/bin/arangod \
-  -c none \
-  --agency.id 0 \
-  --agency.size 1 \
-  --agency.supervision true \
-  --agency.supervision-frequency 1 \
-  --agency.wait-for-sync false \
-  --database.directory cluster/data4001 \
-  --javascript.app-path ./js/apps \
-  --javascript.startup-directory ./js \
-  --javascript.v8-contexts 1 \
-  --log.file cluster/4001.log \
-  --server.authentication false \
-  --server.endpoint tcp://127.0.0.1:4001 \
-  --server.statistics false \
-  --agency.compaction-step-size 1000 \
-  --log.force-direct true \
-  > cluster/4001.stdout 2>&1 &
-# build/bin/arangod \
-#   -c none \
-#   --agency.id 1 \
-#   --agency.size 3 \
-#   --agency.supervision true \
-#   --agency.supervision-frequency 1 \
-#   --agency.wait-for-sync false \
-#   --database.directory cluster/data4002 \
-#   --javascript.app-path ./js/apps \
-#   --javascript.startup-directory ./js \
-#   --javascript.v8-contexts 1 \
-#   --log.file cluster/4002.log \
-#   --server.authentication false \
-#   --server.endpoint tcp://127.0.0.1:4002 \
-#   --server.statistics false \
-#   --agency.compaction-step-size 1000 \
-#   --log.force-direct true \
-#   > cluster/4002.stdout 2>&1 &
-# build/bin/arangod \
-#   -c none \
-#   --agency.endpoint tcp://localhost:4001 \
-#   --agency.endpoint tcp://localhost:4002 \
-#   --agency.endpoint tcp://localhost:4003 \
-#   --agency.id 2 \
-#   --agency.notify true \
-#   --agency.size 3 \
-#   --agency.supervision true \
-#   --agency.supervision-frequency 1 \
-#   --agency.wait-for-sync false \
-#   --database.directory cluster/data4003 \
-#   --javascript.app-path ./js/apps \
-#   --javascript.startup-directory ./js \
-#   --javascript.v8-contexts 1 \
-#   --log.file cluster/4003.log \
-#   --server.authentication false \
-#   --server.endpoint tcp://127.0.0.1:4003 \
-#   --server.statistics false \
-#   --agency.compaction-step-size 1000 \
-#   --log.force-direct true \
-#   > cluster/4003.stdout 2>&1 &
-sleep 3
+    -c none \
+    $endpoints \
+    --agency.id $(( $NRAGENTS - 1 )) \
+    --agency.notify true \
+    --agency.size $NRAGENTS \
+    --agency.supervision true \
+    --agency.supervision-frequency 1 \
+    --agency.wait-for-sync false \
+    --database.directory cluster/data$(( 4001 + $aid )) \
+    --javascript.app-path ./js/apps \
+    --javascript.startup-directory ./js \
+    --javascript.v8-contexts 1 \
+    --log.file cluster/$(( 4001 + $aid )).log \
+    --server.authentication false \
+    --server.endpoint tcp://127.0.0.1:$(( 4001 + $aid )) \
+    --server.statistics false \
+    --agency.compaction-step-size 1000 \
+    --log.force-direct true \
+    > cluster/$(( 4001 + $aid )).stdout 2>&1 &
+sleep 2
 
 start() {
     if [ "$1" == "dbserver" ]; then
