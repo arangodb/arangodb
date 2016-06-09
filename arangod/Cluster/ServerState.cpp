@@ -204,33 +204,7 @@ ServerState::RoleEnum ServerState::getRole() {
     return role;
   }
 
-  std::string id = _id;
-
-  if (id.empty()) {
-    // We need to announce ourselves in the agency to get a role configured:
-    LOG(DEBUG) << "Announcing our birth in Current/NewServers to the agency...";
-    AgencyComm comm;
-    AgencyCommResult result;
-    VPackBuilder builder;
-    try {
-      VPackObjectBuilder b(&builder);
-      builder.add("enpoint", VPackValue(getAddress()));
-      if (!_description.empty()) {
-        builder.add("Description", VPackValue(_description));
-      }
-    } catch (...) {
-      LOG(ERR) << "Could not create entpoint information!";
-      return ROLE_UNDEFINED;
-    }
-    result =
-        comm.setValue("Current/NewServers/" + _localInfo, builder.slice(), 0.0);
-    if (!result.successful()) {
-      LOG(ERR) << "Could not talk to agency!";
-      return ROLE_UNDEFINED;
-    }
-    LOG(DEBUG) << "Have stored " << builder.slice().toJson() << " under Current/NewServers/" << _localInfo << " in agency.";
-  }
-
+  TRI_ASSERT(!_id.empty());
   findAndSetRoleBlocking();
   return loadRole();
 }

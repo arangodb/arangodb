@@ -12,6 +12,8 @@ other index types allow indexing multiple attributes at the same time.
 
 The system attributes `_id`, `_key`, `_from` and `_to` are automatically indexed
 by ArangoDB, without the user being required to create extra indexes for them.
+`_id` and `_key` are covered by a collection's primary key, and `_from` and `_to`
+are covered by an edge collection's edge index automatically.
 
 Using the system attribute `_id` in user-defined indexes is not possible, but 
 indexing `_key`, `_rev`, `_from`, and `_to` is.
@@ -222,6 +224,30 @@ with the number of documents in the index.
 
 Skiplist indexes support indexing array values if the index attribute name is extended with
 a <i>[\*]</i>`. 
+
+
+!SUBSECTION Persistent Index
+
+The persistent index is a sorted index with persistence. The index entries are written to
+disk when documents are stored or updated. That means the index entries do not need to be
+rebuilt from the collection data when the server is restarted or the indexed collection
+is initially loaded. Thus using persistent indexes may reduce collection loading times.
+
+The persistent index type can be used for secondary indexes at the moment. That means the
+persistent index currently cannot be made the only index for a collection, because there
+will always be the in-memory primary index for the collection in addition, and potentially
+more indexes (such as the edges index for an edge collection).
+
+The index implementation is using the RocksDB engine, and it provides logarithmic complexity
+for insert, update, and remove operations. As the persistent index is not an in-memory
+index, it does not store pointers into the primary index as all the in-memory indexes do,
+but instead it stores a document's primary key. To retrieve a document via a persistent
+index via an index value lookup, there will therefore be an additional O(1) lookup into 
+the primary index to fetch the actual document.
+
+As the persistent index is sorted, it can be used for point lookups, range queries and sorting
+operations, but only if either all index attributes are provided in a query, or if a leftmost 
+prefix of the index attributes is specified.
 
 
 !SUBSECTION Geo Index
