@@ -284,7 +284,7 @@ function delete_api_user(req, res) {
 
 function delete_api_permission(req, res) {
   var user = decodeURIComponent(req.suffix[0]);
-  var dbname = decodeURIComponent(req.suffix[1]);
+  var dbname = decodeURIComponent(req.suffix[2]);
 
   try {
     users.revokeDatabase(user, dbname);
