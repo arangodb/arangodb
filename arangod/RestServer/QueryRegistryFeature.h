@@ -45,9 +45,10 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void unprepare() override final;
 
  private:
-  bool _queryTracking = true;
-  std::string _queryCacheMode = "off";
-  uint64_t _queryCacheEntries = 128;
+  bool _queryTracking;
+  double _slowThreshold;
+  std::string _queryCacheMode;
+  uint64_t _queryCacheEntries;
 
  public:
   aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
