@@ -1549,7 +1549,7 @@ var isCoordinatorRequest = function (req) {
 
 var handlePlanChange = function (plan, current) {
   if (! isCluster() || isCoordinator() || ! global.ArangoServerState.initialized()) {
-    return;
+    return true;
   }
   
   let versions = {
@@ -1594,13 +1594,14 @@ var handlePlanChange = function (plan, current) {
   }
 
   try {
-    handleChanges(plan, current, writeLocked);
+    versions.success = handleChanges(plan, current, writeLocked);
 
     console.info("plan change handling successful");
   } catch (err) {
     console.error("error details: %s", JSON.stringify(err));
     console.error("error stack: %s", err.stack);
     console.error("plan change handling failed");
+    versions.success = false;
   }
   return versions;
 };

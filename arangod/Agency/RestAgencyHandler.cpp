@@ -32,6 +32,8 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
+#include <thread>
+
 using namespace arangodb;
 
 using namespace arangodb::basics;
@@ -121,7 +123,12 @@ HttpHandler::status_t RestAgencyHandler::handleWrite() {
 
     if (ret.accepted) {  // We're leading and handling the request
 
-      std::string const& call_mode = _request->header("x-arangodb-agency-mode");
+      bool found;
+      std::string call_mode = _request->header("x-arangodb-agency-mode", found);
+      if (!found) {
+        call_mode = "waitForCommitted";
+      }
+
       size_t errors = 0;
       Builder body;
       body.openObject();
@@ -136,11 +143,17 @@ HttpHandler::status_t RestAgencyHandler::handleWrite() {
           }
         }
         body.close();
-
+        
         // Wait for commit of highest except if it is 0?
         if (!ret.indices.empty() && call_mode == "waitForCommitted") {
-          arangodb::consensus::index_t max_index =
+          arangodb::consensus::index_t max_index = 0;
+          try {
+            max_index =
               *std::max_element(ret.indices.begin(), ret.indices.end());
+          } catch (std::exception const& e) {
+            LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
+          }
+          std::this_thread::sleep_for(duration_t(2));
           if (max_index > 0) {
             _agent->waitFor(max_index);
           }

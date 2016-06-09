@@ -703,6 +703,13 @@ the following aspects:
 
 The same is true for the collection-specific changes API GET `/_api/replication/dump`.
 
+!SUBSECTION User management APIs
+
+The REST API endpoint POST `/_api/user` for adding new users now requires the request to
+contain a JSON object with an attribute named `user`, containing the name of the user to
+be created. Previous versions of ArangoDB also checked this attribute, but additionally 
+looked for an attribute `username` if the `user` attribute did not exist. 
+
 !SUBSECTION Undocumented APIs
 
 The following undocumented HTTP REST endpoints have been removed from ArangoDB's REST
@@ -720,7 +727,7 @@ API:
 
 !SUBSECTION Administration APIs
 
-- `/_admin/shutdown` now needs to be called with the DELETE method
+- `/_admin/shutdown` now needs to be called with the HTTP DELETE method
 
 !SUBSECTION Handling of CORS requests
 

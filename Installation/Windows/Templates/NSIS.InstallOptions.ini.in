@@ -46,7 +46,7 @@ Bottom=130
 State=1
 
 [Field 6]
-Type=Text
+Type=Password
 Text=
 Left=5
 Right=60

@@ -276,10 +276,18 @@ class Query {
 
   /// @brief fetch the global query tracking value
   static bool DisableQueryTracking() { return DoDisableQueryTracking; }
-
+  
   /// @brief turn off tracking globally
   static void DisableQueryTracking(bool value) {
     DoDisableQueryTracking = value;
+  }
+  
+  /// @brief fetch the global slow query threshold value
+  static double SlowQueryThreshold() { return SlowQueryThresholdValue; }
+  
+  /// @brief set global slow query threshold value
+  static void SlowQueryThreshold(double value) {
+    SlowQueryThresholdValue = value;
   }
 
   /// @brief get a description of the query's current state
@@ -413,6 +421,9 @@ class Query {
 
   /// @brief whether or not the query is a data modification query
   bool _isModificationQuery;
+
+  /// @brief global threshold value for slow queries
+  static double SlowQueryThresholdValue;
 
   /// @brief whether or not query tracking is disabled globally
   static bool DoDisableQueryTracking;

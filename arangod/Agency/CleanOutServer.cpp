@@ -35,13 +35,14 @@ CleanOutServer::CleanOutServer (
   std::string const& server) : 
   Job(snapshot, agent, jobId, creator, prefix), _server(server) {
 
-  JOB_STATUS js = status();
   try {
+    JOB_STATUS js = status();
     if (js == TODO) {
       start();        
     } else if (js == NOTFOUND) {            
-      create();
-      start();
+      if (create()) {
+        start();
+      }
     }
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
@@ -79,23 +80,27 @@ JOB_STATUS CleanOutServer::status () {
     for (auto const& subJob : todos) {
       if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
         found++;
+#if 0
         Node const& sj = *(subJob.second);
         std::string subJobId = sj("jobId").slice().copyString();
         std::string creator  = sj("creator").slice().copyString();
         MoveShard(_snapshot, _agent, subJobId, creator, _agencyPrefix);
+#endif
       }
     }
     for (auto const& subJob : pends) {
       if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
         found++;
+#if 0
         Node const& sj = *(subJob.second);
         std::string subJobId = sj("jobId").slice().copyString();
         std::string creator  = sj("creator").slice().copyString();
         MoveShard(_snapshot, _agent, subJobId, creator, _agencyPrefix);
+#endif
       }
     }
 
-    if (!found) {
+    if (found == 0) {
       if (finish("DBServers/" + _server)) {
         return FINISHED;
       }
@@ -121,7 +126,7 @@ bool CleanOutServer::start() {
   _snapshot(toDoPrefix + _jobId).toBuilder(todo);
   todo.close();
 
-  // Enter peding, remove todo, block toserver
+  // Enter pending, remove todo, block toserver
   pending.openArray();
     
   // --- Add pending

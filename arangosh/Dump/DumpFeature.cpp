@@ -167,7 +167,7 @@ void DumpFeature::prepare() {
     if (isDirectory) {
       std::vector<std::string> files(TRI_FullTreeDirectory(_outputDirectory.c_str()));
       // we don't care if the target directory is empty
-      isEmptyDirectory = (files.empty()); // TODO: TRI_FullTreeDirectory always returns at least one element (""), even if directory is empty?
+      isEmptyDirectory = (files.size() <= 1); // TODO: TRI_FullTreeDirectory always returns at least one element (""), even if directory is empty?
     }
   }
 
