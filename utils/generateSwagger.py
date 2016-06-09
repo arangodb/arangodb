@@ -1006,12 +1006,12 @@ def example_arangosh_run(cargo, r=Regexen()):
     except:
         print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
         raise
-    operation['x-examples'][currentExample]= '<details><summary>Example: ' + exampleHeader.strip('\n ') + '</summary><br><br><pre><code class="json">'
+    operation['x-examples'][currentExample]= '\n\n#Example:\n ' + exampleHeader.strip('\n ') + '\n\n<pre><code class="json">'
 
     for line in examplefile.readlines():
         operation['x-examples'][currentExample] += line
 
-    operation['x-examples'][currentExample] += '</code></pre><br></details>\n'
+    operation['x-examples'][currentExample] += '</code></pre>\n\n\n'
 
     line = ""
 

@@ -181,32 +181,6 @@ class Agent : public arangodb::Thread {
   arangodb::consensus::index_t _nextCompationAfter;
 };
 
-inline arangodb::consensus::write_ret_t transact (
-  Agent* _agent, Builder const& transaction, bool waitForCommit = true) {
-  
-  query_t envelope = std::make_shared<Builder>();
-
-  try {
-    envelope->openArray();
-    envelope->add(transaction.slice());
-    envelope->close();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Supervision failed to build transaction.";
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
-  }
-  
-  LOG_TOPIC(INFO, Logger::AGENCY) << envelope->toJson();
-  auto ret = _agent->write(envelope);
-  if (waitForCommit) {
-    auto maximum = *std::max_element(ret.indices.begin(), ret.indices.end());
-    if (maximum > 0) {  // some baby has worked
-      _agent->waitFor(maximum);
-    }
-  }
-  return ret;
-  
-}
-
 }
 }
 
