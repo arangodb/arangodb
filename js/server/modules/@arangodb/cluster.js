@@ -1669,6 +1669,81 @@ var bootstrapDbServers = function (isRelaunch) {
   return result;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shard distribution
+////////////////////////////////////////////////////////////////////////////////
+
+function shardDistribution() {
+  var db = require("internal").db;
+  var dbName = db._name();
+  var colls = db._collections();
+  var result = {};
+  for (var i = 0; i < colls.length; ++i) {
+    var collName = colls[i].name();
+    var collInfo = global.ArangoClusterInfo.getCollectionInfo(dbName,
+                                                              collName);
+    var shards = collInfo.shards;
+    var collInfoCurrent = {};
+    var shardNames = Object.keys(shards);
+    for (var j = 0; j < shardNames.length; ++j) {
+      collInfoCurrent[shardNames[j]] =
+        global.ArangoClusterInfo.getCollectionInfoCurrent(
+          dbName, collName, shardNames[j]).servers;
+    }
+    result[collName] = {Plan: collInfo.shards,
+                        Current: collInfoCurrent};
+  }
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rebalance shards
+////////////////////////////////////////////////////////////////////////////////
+
+function rebalanceShards() {
+  var dbServers = global.ArangoClusterInfo.getDBServers();
+  var dbTab = {};
+  var i, j, k, l;
+  for (i = 0; i < dbServers.length; ++i) {
+    dbTab[dbServers[i]] = [];
+  }
+  var shardMap = {};
+
+  // First count and collect:
+  var db = require("internal").db;
+  var databases = db._databases();
+  for (i = 0; i < databases.length; ++i) {
+    db._useDatabase(databases[i]);
+    try {
+      var colls = db._collections();
+      for (j = 0; j < colls.length; ++j) {
+        var collName = colls[j].name();
+        if (collName.substr(0, 1) === "_") {
+          continue;
+        }
+        var collInfo = global.ArangoClusterInfo.getCollectionInfo(
+            databases[i], collName);
+        var shardNames = Object.keys(collInfo.shards); 
+        for (k = 0; k < shardNames.length; k++) {
+          var shardName = shardNames[k];
+          dbTab[collInfo.shards[shardName][0]].push([shardName,true]);
+          for (l = 1; l < collInfo.shards[shardName]; ++l) {
+            dbTab[collInfo.shards[shardName][l]].push([shardName,false]);
+          }
+          shardMap[shardName] = [databases[i], collName,
+                                 collInfo.shards[shardName]];
+        }
+      }
+    } finally {
+      db._useDatabase("_system");
+    }
+  }
+
+  // to be continued
+
+  return true;
+}
+
 
 exports.bootstrapDbServers            = bootstrapDbServers;
 exports.coordinatorId                 = coordinatorId;
@@ -1682,3 +1757,5 @@ exports.status                        = status;
 exports.wait                          = waitForDistributedResponse;
 exports.endpointToURL                 = endpointToURL;
 exports.synchronizeOneShard           = synchronizeOneShard;
+exports.shardDistribution             = shardDistribution;
+exports.rebalanceShards               = rebalanceShards;

@@ -1023,7 +1023,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: "_admin/cluster/numberOfServers",
-  allowUseDatabase: true,
+  allowUseDatabase: false,
   prefix: false,
 
   callback: function (req, res) {
@@ -1135,7 +1135,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: "_admin/cluster/cleanOutServer",
-  allowUseDatabase: true,
+  allowUseDatabase: false,
   prefix: false,
 
   callback: function (req, res) {
@@ -1221,7 +1221,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: "_admin/cluster/moveShard",
-  allowUseDatabase: true,
+  allowUseDatabase: false,
   prefix: false,
 
   callback: function (req, res) {
@@ -1331,7 +1331,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: "_admin/cluster/shardDistribution",
-  allowUseDatabase: true,
+  allowUseDatabase: false,
   prefix: false,
 
   callback: function (req, res) {
@@ -1346,27 +1346,68 @@ actions.defineHttp({
       return;
     }
 
-    var db = require("internal").db;
-    var dbName = db._name();
-    var colls = db._collections();
-    var result = {};
-    for (var i = 0; i < colls.length; ++i) {
-      var collName = colls[i].name();
-      var collInfo = global.ArangoClusterInfo.getCollectionInfo(dbName,
-                                                                collName);
-      var shards = collInfo.shards;
-      var collInfoCurrent = {};
-      var shardNames = Object.keys(shards);
-      for (var j = 0; j < shardNames.length; ++j) {
-        collInfoCurrent[shardNames[j]] =
-          global.ArangoClusterInfo.getCollectionInfoCurrent(
-            dbName, collName, shardNames[j]).servers;
-      }
-      result[collName] = {Plan: collInfo.shards,
-                          Current: collInfoCurrent};
-    }
-    console.error("GUCK:", result);
+    var result = require("@arangodb/cluster").shardDistribution();
     actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_postRebalanceShards
+/// (intentionally not in manual)
+/// @brief triggers activities to rebalance shards
+///
+/// @ RESTHEADER{POST /_admin/cluster/rebalanceShards, Trigger activities to rebalance shards.}
+///
+/// @ RESTDESCRIPTION Triggers activities to rebalance shards.
+/// The body must be an empty JSON object.
+///
+/// @ RESTRETURNCODES
+///
+/// @ RESTRETURNCODE{202} is returned when everything went well.
+///
+/// @ RESTRETURNCODE{400} body is not valid JSON.
+///
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not POST.
+///
+/// @ RESTRETURNCODE{503} the agency operation did not work.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/rebalanceShards",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require("@arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only coordinators can serve this request");
+      return;
+    }
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only the POST method is allowed");
+      return;
+    }
+
+    // Now get to work:
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
+    if (typeof body !== "object") {
+      actions.resultError(req, res, actions.HTTP_BAD,
+          "body must be an object."); 
+      return;
+    }
+    var ok = require("@arangodb/cluster").rebalanceShards();
+    if (!ok) {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+                          "Cannot write to agency.");
+      return;
+    }
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, true);
   }
 });
 
