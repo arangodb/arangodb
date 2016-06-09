@@ -32,11 +32,12 @@
       "graphs": "graphManagement",
       "graphs/:name": "showGraph",
       "users": "userManagement",
+      "user/:name": "userView",
+      "user/:name/permission": "userPermissionView",
       "userProfile": "userProfile",
       "cluster": "cluster",
       "nodes": "nodes",
       "node/:name": "node",
-      //"nLogs/:name": "nLogs",
       "logs": "logs",
       "helpus": "helpUs"
     },
@@ -820,6 +821,36 @@
       }
       if (this.documentView) {
         this.documentView.resize();
+      }
+    },
+
+    userPermissionView: function (name, initialized) {
+      this.checkUser();
+      if (initialized || initialized === null) {
+        this.userPermissionView = new window.UserPermissionView({
+          collection: this.userCollection,
+          databases: this.arangoDatabase,
+          username: name
+        });
+        this.userPermissionView.render();
+      }
+      else if (initialized === false) {
+        this.waitForInit(this.userPermissionView.bind(this), name);
+        return;
+      }
+    },
+
+    userView: function (name, initialized) {
+      this.checkUser();
+      if (initialized || initialized === null) {
+        this.userView = new window.UserView({
+          collection: this.userCollection,
+          username: name
+        });
+        this.userView.render();
+      }
+      else if (initialized === false) {
+        this.waitForInit(this.userView.bind(this), name);
       }
     },
 

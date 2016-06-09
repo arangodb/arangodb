@@ -154,38 +154,65 @@
     },
 
     submitCreateDatabase: function() {
-      var self = this, userPassword,
-      name  = $('#newDatabaseName').val(),
+      var self = this, //userPassword,
+      dbname  = $('#newDatabaseName').val(),
       userName = $('#newUser').val();
 
+      /*
       if ($('#useDefaultPassword').val() === 'true') {
         userPassword = 'ARANGODB_DEFAULT_ROOT_PASSWORD'; 
       }
       else {
         userPassword = $('#newPassword').val();
       }
-
       if (!this.validateDatabaseInfo(name, userName, userPassword)) {
         return;
       }
+      */
 
       var options = {
-        name: name,
-        users: [
+        name: dbname
+        /*users: [
           {
             username: userName,
             passwd: userPassword,
             active: true
           }
-        ]
+        ]*/
       };
+
       this.collection.create(options, {
-        wait:true,
+        wait: false,
         error: function(data, err) {
-          self.handleError(err.status, err.statusText, name);
+          console.log("ERROR");
+          self.handleError(err.status, err.statusText, dbname);
         },
         success: function() {
+
+          //TODO
+          // add root user to newly created database
+
+          if (userName !== 'root') {
+            $.ajax({
+              type: "PUT",
+              url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(userName) + "/database/" + encodeURIComponent(dbname)),
+              contentType: "application/json",
+              data: JSON.stringify({
+                grant: 'rw'
+              })
+            });
+          }
+          $.ajax({
+            type: "PUT",
+            url: arangoHelper.databaseUrl("/_api/user/root/database/" + encodeURIComponent(dbname)),
+            contentType: "application/json",
+            data: JSON.stringify({
+              grant: 'rw'
+            })
+          });
+
           self.updateDatabases();
+          arangoHelper.arangoNotification("Database created.");
           window.modalView.hide();
           window.App.naviView.dbSelectionView.render($("#dbSelect"));
         }
@@ -347,6 +374,7 @@
           ]
         )
       );
+      /*
       tableContent.push(
         window.modalView.createSelectEntry(
           "useDefaultPassword",
@@ -365,6 +393,7 @@
           false
         )
       );
+      */
       buttons.push(
         window.modalView.createSuccessButton(
           "Create",

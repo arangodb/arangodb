@@ -8,7 +8,7 @@
 
     el: '#content',
     template: templateEngine.createTemplate("nodesView2.ejs"),
-    interval: 5000,
+    interval: 10000,
     knownServers: [],
 
     events: {
