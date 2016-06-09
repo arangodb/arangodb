@@ -433,6 +433,9 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
 }
 
 ShortestPathBlock::~ShortestPathBlock() {
+  for (auto& it : _collectionInfos) {
+    delete it;
+  }
 }
 
 int ShortestPathBlock::initialize() {
