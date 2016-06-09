@@ -1300,3 +1300,73 @@ actions.defineHttp({
   }
 });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_getShardDistribution
+/// (intentionally not in manual)
+/// @brief returns information about all collections and their shard 
+/// distribution
+///
+/// @ RESTHEADER{GET /_admin/cluster/shardDistribution, Get shard distribution for all collections.}
+///
+/// @ RESTDESCRIPTION Returns an object with an attribute for each collection.
+/// The attribute name is the collection name. Each value is an object
+/// of the following form:
+/// 
+///     { "collection1": { "Plan": { "s100001": ["DBServer1", "DBServer2"],
+///                                  "s100002": ["DBServer3", "DBServer4"] },
+///                        "Current": { "s100001": ["DBServer1", "DBServer2"],
+///                                     "s100002": ["DBServer3"] } },
+///       "collection2": ...
+///     }
+///
+/// @ RESTRETURNCODES
+///
+/// @ RESTRETURNCODE{200} is returned when everything went well and the
+/// job is scheduled.
+///
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not POST.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/shardDistribution",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require("@arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only coordinators can serve this request");
+      return;
+    }
+    if (req.requestType !== actions.GET) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only the GET method is allowed");
+      return;
+    }
+
+    var db = require("internal").db;
+    var dbName = db._name();
+    var colls = db._collections();
+    var result = {};
+    for (var i = 0; i < colls.length; ++i) {
+      var collName = colls[i].name();
+      var collInfo = global.ArangoClusterInfo.getCollectionInfo(dbName,
+                                                                collName);
+      var shards = collInfo.shards;
+      var collInfoCurrent = {};
+      var shardNames = Object.keys(shards);
+      for (var j = 0; j < shardNames.length; ++j) {
+        collInfoCurrent[shardNames[j]] =
+          global.ArangoClusterInfo.getCollectionInfoCurrent(
+            dbName, collName, shardNames[j]).servers;
+      }
+      result[collName] = {Plan: collInfo.shards,
+                          Current: collInfoCurrent};
+    }
+    console.error("GUCK:", result);
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+});
+
