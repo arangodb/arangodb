@@ -400,16 +400,31 @@ directory as argument.
 @startDocuBlock databaseForceSyncProperties
 
 
-!SUBSECTION Disable AQL query tracking
+!SUBSECTION Enable/disable AQL query tracking
 
 
 disable the query tracking feature
 `--query.tracking flag`
 
-If *true*, the server's AQL query tracking feature will be enabled by
-default. Tracking off queries can be disabled by setting the option to *false*.
+If *true*, the server's AQL slow query tracking feature will be enabled by
+default. Tracking of queries can be disabled by setting the option to *false*.
 
 The default is *true*.
+
+
+!SUBSECTION Threshold for slow AQL queries
+
+
+adjust the threshold for slow AQL queries
+`--query.slow-threshold value`
+
+By setting *value* it can be controlled after what execution time an AQL query
+is considered "slow". Any slow queries that exceed the execution time specified
+in *value* will be logged when they are finished. The threshold value is
+specified in seconds. Tracking of slow queries can be turned off entirely by
+setting the option `--query.tracking` to *false*.
+
+The default value is *10.0*.
 
 
 
