@@ -102,6 +102,7 @@ std::vector<check_t> Supervision::checkDBServers() {
                 VPackValue(VPackValueType::Object));
     report->add("LastHeartbeatSent", VPackValue(heartbeatTime));
     report->add("LastHeartbeatStatus", VPackValue(heartbeatStatus));
+    report->add("Role", VPackValue("DBServer"));
     
     if (good) {
       report->add("LastHeartbeatAcked",
@@ -174,6 +175,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
                 VPackValue(VPackValueType::Object));
     report->add("LastHeartbeatSent", VPackValue(heartbeatTime));
     report->add("LastHeartbeatStatus", VPackValue(heartbeatStatus));
+    report->add("Role", VPackValue("Coordinator"));
     
     if (good) {
       report->add("LastHeartbeatAcked",
