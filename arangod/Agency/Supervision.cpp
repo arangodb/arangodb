@@ -27,6 +27,7 @@
 #include "CleanOutServer.h"
 #include "FailedLeader.h"
 #include "FailedServer.h"
+#include "MoveShard.h"
 #include "Job.h"
 #include "Store.h"
 
@@ -313,6 +314,10 @@ void Supervision::workJobs() {
         FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
       } else if (jobType == "cleanOutServer") {
         CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      } else if (jobType == "moveShard") {
+        MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      } else if (jobType == "failedLeader") {
+        FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
       }
     } catch (std::exception const&) {}
   }
@@ -328,6 +333,10 @@ void Supervision::workJobs() {
         FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
       } else if (jobType == "cleanOutServer") {
         CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      } else if (jobType == "moveShard") {
+        MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      } else if (jobType == "failedLeader") {
+        FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
       }
     } catch (std::exception const&) {}
   }

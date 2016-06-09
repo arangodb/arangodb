@@ -42,8 +42,9 @@ MoveShard::MoveShard (Node const& snapshot, Agent* agent,
     if (js == TODO) {
       start();        
     } else if (js == NOTFOUND) {            
-      create();
-      start();
+      if (create()) {
+        start();
+      }
     }
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
@@ -138,7 +139,7 @@ bool MoveShard::start() {
   }
   todo.close();
 
-  // Enter peding, remove todo, block toserver
+  // Enter pending, remove todo, block toserver
   pending.openArray();
     
   // --- Add pending
