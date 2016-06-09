@@ -227,3 +227,24 @@ exports.configData = function(username, key) {
 
   return arangosh.checkRequestResult(requestResult).result;
 };
+
+// one db permission data (key != null) or all (key == null)    
+exports.permission = function(username, key) {
+  var db = internal.db;
+  var requestResult;
+  var uri;
+
+  if (key === undefined || key === null) {
+    uri = "_api/user/" + encodeURIComponent(username)
+        + "/permission";
+
+    requestResult = db._connection.GET(uri);
+  } else {
+    uri = "_api/user/" + encodeURIComponent(username)
+            + "/permission/" + encodeURIComponent(key);
+
+    requestResult = db._connection.GET(uri);
+  }
+
+  return arangosh.checkRequestResult(requestResult).result;
+};

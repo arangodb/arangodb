@@ -49,6 +49,29 @@ function get_api_user(req, res) {
   }
 }
 
+function get_api_permission(req, res, key) {
+  var user = decodeURIComponent(req.suffix[0]);
+
+  var oldDbname = db._name();
+
+  try {
+    var doc;
+    if (key !== null && key !== undefined) {
+      doc = users.permission(user, key);
+    }
+    doc = users.permission(user);
+    actions.resultOk(req, res, actions.HTTP_OK, { result: doc });
+  } catch (err) {
+    if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
+      actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
+    } else {
+      throw err;
+    }
+  } finally {
+    db._useDatabase(oldDbname);
+  }
+}
+
 function get_api_config(req, res, key) {
   var user = decodeURIComponent(req.suffix[0]);
 
@@ -81,7 +104,10 @@ function get_api_user_or_config(req, res) {
   } else if (req.suffix.length === 2) {
     if (req.suffix[1] === "config") {
       get_api_config(req, res, null);
-    } else {
+    } else if (req.suffix[1] === "permission") {
+      get_api_permission(req, res, null);   
+    }
+    else {
       actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     }
   } else if (req.suffix.length === 3) {

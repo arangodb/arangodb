@@ -563,3 +563,27 @@ exports.configData = function(username, key) {
     return user.configData[key];
   }
 };
+
+// one db permission data (key != null) or all (key == null)    
+exports.permission = function(username, key) {
+  const users = getStorage();
+
+  validateName(username);
+
+  const user = users.firstExample({
+    user: username
+  });
+
+  if (user === null) {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+    throw err;
+  }
+
+  if (key === undefined || key === null) {
+    return user.databases;
+  } else {
+    return user.databases[key];
+  }
+};
