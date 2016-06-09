@@ -307,50 +307,5 @@ describe ArangoDB do
       response["result"].should eq(true)
       response["error"].should eq(false)
     end
-    
-    it "checks _system database restrictions" do
-      body = "{\"name\" : \"#{name}\" }"
-      doc = ArangoDB.log_post("#{prefix}-check-system", api, :body => body)
-     
-      doc.code.should eq(201)
-      doc.headers['content-type'].should eq("application/json; charset=utf-8")
-      response = doc.parsed_response
-      response["result"].should eq(true)
-      response["error"].should eq(false)
-
-      # listing databases is disallowed in non-system
-      doc = ArangoDB.log_get("#{prefix}-check-system", "/_db/#{name}" + api)
-      doc.code.should eq(403)
-      response = doc.parsed_response
-      response["error"].should eq(true)
-      response["errorNum"].should eq(1230)
-
-      # retrieve information about _system database. this is still allowed
-      doc = ArangoDB.log_get("#{prefix}-check-system", "/_db/#{name}" + api + "/current")
-      doc.code.should eq(200)
-      result = doc.parsed_response["result"]
-      result["name"].should eq(name)
-      result["path"].should be_kind_of(String)
-      result["isSystem"].should eq(false)
-      
-      # creating a new database is disallowed in non-system
-      body = "{\"name\" : \"UnitTestsWontWork\" }"
-      doc = ArangoDB.log_post("#{prefix}-check-system", "/_db/#{name}" + api, :body => body)
-     
-      doc.code.should eq(403)
-      doc.headers['content-type'].should eq("application/json; charset=utf-8")
-      response = doc.parsed_response
-      response["error"].should eq(true)
-      response["errorNum"].should eq(1230)
-
-      # dropping the database is disallowed in non-system
-      doc = ArangoDB.log_delete("#{prefix}-check-system", "/_db/#{name}" + api + "/#{name}")
-      doc.code.should eq(403)
-      response = doc.parsed_response
-      response["error"].should eq(true)
-      response["errorNum"].should eq(1230)
-    end
-
   end
-
 end
