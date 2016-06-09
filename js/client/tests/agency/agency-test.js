@@ -355,7 +355,6 @@ function agencyTestSuite () {
             leaderEndpoint = config.configuration.endpoints[config.leaderId].replace("tcp", "http");
             break;
           }
-          wait(0.05);
         }
       } else {
         leaderEndpoint = agencyServers[0].replace("tcp", "http");

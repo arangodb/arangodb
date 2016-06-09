@@ -808,7 +808,13 @@ Section "-Core installation"
 
   !insertmacro MUI_STARTMENU_WRITE_END
 
-
+  System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
+  StrCmp $0 0 error
+    ExecWait "$INSTDIR\bin\arangod.exe --database.init-database"
+    Goto done
+  error:
+    MessageBox MB_OK "Failed to initialize database password."
+  done:
 @CPACK_NSIS_EXTRA_INSTALL_COMMANDS@
    StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
      SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30

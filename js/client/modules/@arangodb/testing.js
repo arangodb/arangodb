@@ -2252,6 +2252,16 @@ testFuncs.authentication = function(options) {
     };
   }
 
+  if (options.cluster) {
+    print("skipping Authentication tests on cluster!");
+    return {
+      authentication: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+
   print(CYAN + "Authentication tests..." + RESET);
 
   let instanceInfo = startInstance("tcp", options, {
@@ -2330,6 +2340,16 @@ testFuncs.authentication_parameters = function(options) {
     print(CYAN + "skipping Authentication with parameters tests!" + RESET);
     return {
       authentication_parameters: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+  
+  if (options.cluster) {
+    print("skipping Authentication with parameters tests on cluster!");
+    return {
+      authentication: {
         status: true,
         skipped: true
       }

@@ -251,18 +251,18 @@ JOB_STATUS MoveShard::status () {
     Slice current = _snapshot(curPath).slice(),
       plan = _snapshot(curPath).slice();
 
-    LOG(WARN) << plan.toJson();
-    LOG(WARN) << current.toJson();
-
     std::vector<std::string> planv, currv;
-    for (auto const& srv : planv) {
-      planv.push_back(srv);
+    for (auto const& srv : VPackArrayIterator(plan)) {
+      planv.push_back(srv.copyString());
     }
     std::sort(planv.begin(), planv.end());
-    for (auto const& srv : currv) {
-      currv.push_back(srv);
+    for (auto const& srv : VPackArrayIterator(current)) {
+      currv.push_back(srv.copyString());
     }
     std::sort(currv.begin(), currv.end());
+
+    LOG(WARN) << planv;
+    LOG(WARN) << currv;
     
     if (currv == planv) {
 
