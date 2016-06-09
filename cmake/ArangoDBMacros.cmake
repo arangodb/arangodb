@@ -278,7 +278,12 @@ if (DH_INSTALLINIT AND FAKEROOT)
 endif()
 
 # General
-set(CPACK_PACKAGE_NAME "arangodb3")
+if (DARWIN)
+  set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
+else ()
+  set(CPACK_PACKAGE_NAME "arangodb3")
+endif ()
+
 set(CPACK_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(CPACK_PACKAGE_CONTACT "info@arangodb.com")
 set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
@@ -356,7 +361,7 @@ configure_file("${CMAKE_SOURCE_DIR}/Installation/cmake/CMakeCPackOptions.cmake.i
     "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake" @ONLY)
 set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake")
 
-if (NOT(MSVC))
+if (NOT(MSVC OR DARWIN))
   # components
   install(
     FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
