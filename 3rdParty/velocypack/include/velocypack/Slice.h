@@ -674,8 +674,16 @@ class Slice {
           return readVariableValueLength<false>(_start + 1);
         }
 
+        if (h == 0x01 || h == 0x0a) {
+          // we cannot get here, because the FixedTypeLengths lookup
+          // above will have kicked in already. however, the compiler
+          // claims we'll be reading across the bounds of the input
+          // here...
+          return 1;
+        }
+
         VELOCYPACK_ASSERT(h <= 0x12);
-        if (h <= 0x14) {
+        if (h <= 0x12) {
           return readInteger<ValueLength>(_start + 1, WidthMap[h]);
         }
         // fallthrough to exception
@@ -683,7 +691,15 @@ class Slice {
       }
 
       case ValueType::String: {
-        VELOCYPACK_ASSERT(head() == 0xbf);
+        auto const h = head();
+        VELOCYPACK_ASSERT(h == 0xbf);
+        if (h < 0xbf) {
+          // we cannot get here, because the FixedTypeLengths lookup
+          // above will have kicked in already. however, the compiler
+          // claims we'll be reading across the bounds of the input
+          // here...
+          return h - 0x40;
+        }
         // long UTF-8 String
         return static_cast<ValueLength>(
             1 + 8 + readInteger<ValueLength>(_start + 1, 8));
