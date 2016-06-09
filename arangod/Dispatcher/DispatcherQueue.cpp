@@ -330,12 +330,15 @@ void DispatcherQueue::shutdown() {
   deleteOldThreads();
 
   // and butcher the remaining threads
+  std::set<DispatcherThread*> allStartedThreads;
   {
     MUTEX_LOCKER(mutexLocker, _threadsLock);
+    allStartedThreads = _startedThreads;
+  }
 
-    for (auto& it : _startedThreads) {
-      delete it;
-    }
+  // delete threads without holding the mutex
+  for (auto& it : allStartedThreads) {
+    delete it;
   }
 
   // and delete old jobs
