@@ -47,6 +47,7 @@
   * [Working with Indexes](Indexing/WorkingWithIndexes.md)
     * [Hash Indexes](Indexing/Hash.md)
     * [Skiplists](Indexing/Skiplist.md)
+    * [Persistent](Indexing/Persistent.md)
     * [Fulltext Indexes](Indexing/Fulltext.md)
     * [Geo Indexes](Indexing/Geo.md)
 #
