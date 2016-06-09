@@ -132,6 +132,7 @@ const optionsDocumentation = [
 ];
 
 const optionsDefaults = {
+  "agencySize": 3,
   "build": "",
   "buildType": "",
   "cleanup": true,
@@ -1888,6 +1889,7 @@ function splitBuckets(options, cases) {
 ////////////////////////////////////////////////////////////////////////////////
 
 let allTests = [
+  "agency",
   "arangosh",
   "authentication",
   "authentication_parameters",
@@ -3751,9 +3753,6 @@ testFuncs.agency = function(options) {
 
   options.agency = true;
   options.cluster = false;
-  if (options.agencySize === undefined) {
-    options.agencySize = 1;
-  }
 
   let instanceInfo = startInstance("tcp", options, {}, "agency");
 

@@ -12,6 +12,9 @@ if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
 fi
 
 NRAGENTS=$1
+if [ "$NRAGENTS" == "" ] ; then
+    NRAGENTS=1
+fi
 if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
     echo Number of agents must be odd.
     exit 1
