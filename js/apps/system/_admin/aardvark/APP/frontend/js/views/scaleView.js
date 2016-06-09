@@ -114,13 +114,11 @@
               success: function() {
                 self.dbServers.fetch({
                   success: function() {
-                    console.log("fechted both");
+                    self.continueRender(true);
                   }
                 }); 
               }
             }); 
-
-            self.continueRender(true);
           }
         }, this.interval);
       }

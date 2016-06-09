@@ -41,6 +41,13 @@ function get_api_database (req, res) {
     return;
   }
 
+  var dbname = arangodb.db._name();
+  var isSystem = arangodb.db._isSystem();
+  var path = arangodb.db._path();
+  var id = arangodb.db._id();
+
+  arangodb.db._useDatabase("_system");
+
   var result;
   if (req.suffix.length === 0) {
     // list of all databases
@@ -71,10 +78,10 @@ function get_api_database (req, res) {
       else {
         // information about the current database
         result = {
-          name: arangodb.db._name(),
-          id: arangodb.db._id(),
-          path: arangodb.db._path(),
-          isSystem: arangodb.db._isSystem()
+          name: dbname,
+          id: id,
+          path: path,
+          isSystem: isSystem
         };
       }
     }

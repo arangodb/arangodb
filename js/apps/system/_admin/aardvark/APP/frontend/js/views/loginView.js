@@ -147,9 +147,7 @@
       e.preventDefault();
       var username = $('#loginUsername').val();
       var database = $('#loginDatabase').val();
-      console.log(window.App.dbSet);
       window.App.dbSet = database;
-      console.log(window.App.dbSet);
 
       var callback2 = function(error) {
         if (error) {
