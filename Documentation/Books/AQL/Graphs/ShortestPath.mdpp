@@ -41,9 +41,10 @@ You have two options here, you can either use a named graph (see [the graphs cha
 !SUBSUBSECTION Working on named graphs:
 
 `FOR ` vertex[, edge]
- `IN` `OUTBOUND|INBOUND|ANY` `SHORTEST_PATH`
-  startVertex `TO` targetVertex
- `GRAPH` graphName
+  `IN` `OUTBOUND|INBOUND|ANY` `SHORTEST_PATH`
+   startVertex `TO` targetVertex
+  `GRAPH` graphName
+  [`OPTIONS` options] 
 
 - `FOR` - emits up to two variables:
   - **vertex**: the current vertex on the shortest path
@@ -54,12 +55,17 @@ You have two options here, you can either use a named graph (see [the graphs cha
   - the two vertices between which the shortest path will be computed, this can be specified in the form of an id string or in the form of a document with the attribute `_id`. All other values will lead to a warning and an empty result. If one the specified ids does not exist, the result is empty as well and there is no warning.
 - `GRAPH` **graphName**:
   - **graphName**: the name identifying the named graph. It's vertex and edge collections will be looked up.
+- `OPTIONS` options:
+  - **options** are used to modify the execution of the traversal. It has to be a JSON object. Only the following attributes have an effect, all others are ignored:
+    - **weightAttribute** A top-level edge attribute that should be used to read the edge weight. If the attribute is not existent or not numeric the **defaultWeight** will be used instead.
+    - **defaultWeight** If **weightAttribute** is used but an edge does not have the attribute or it is not numeric this value will be used instead (default: 1). This option has to be numeric.
 
 !SUBSUBSECTION Working on collection sets:
 
 `FOR ` vertex[, edge]
- `IN` `OUTBOUND|INBOUND|ANY` `SHORTEST_PATH`
+  `IN` `OUTBOUND|INBOUND|ANY` `SHORTEST_PATH`
   startVertex `TO` targetVertex
+  [`OPTIONS` options] 
 
 Instead of the `GRAPH graphName` you may specify a **list of edge collections**. Vertex collections are evaluated from the edges. The rest of the behavior is similar to the named version.
 
@@ -113,6 +119,8 @@ We can also compute shortest paths based on documents found in collections.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHSP_03_A_to_D
 
+
+!SUBSECTION Using OPTIONS
 
 And finally clean it up again:
 
