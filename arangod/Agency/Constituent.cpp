@@ -116,7 +116,7 @@ void Constituent::term(term_t t) {
   }
 
   if (tmp != t) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
+    LOG_TOPIC(INFO, Logger::AGENCY) << roleStr[_role] << " term " << t;
 
     Builder body;
     body.add(VPackValue(VPackValueType::Object));

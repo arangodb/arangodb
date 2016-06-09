@@ -63,11 +63,15 @@ static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const planDBServersPrefix = "/Plan/DBServers";
 static std::string const planCoordinatorsPrefix = "/Plan/Coordinators";
+static std::string const currentServersRegisteredPrefix 
+    = "/Current/ServersRegistered";
 
 std::vector<check_t> Supervision::checkDBServers() {
   std::vector<check_t> ret;
-  Node::Children const machinesPlanned =
+  Node::Children const& machinesPlanned =
       _snapshot(planDBServersPrefix).children();
+  Node::Children const serversRegistered =
+      _snapshot(currentServersRegisteredPrefix).children();
 
   for (auto const& machine : machinesPlanned) {
 
@@ -103,7 +107,19 @@ std::vector<check_t> Supervision::checkDBServers() {
     report->add("LastHeartbeatSent", VPackValue(heartbeatTime));
     report->add("LastHeartbeatStatus", VPackValue(heartbeatStatus));
     report->add("Role", VPackValue("DBServer"));
-    
+    auto endpoint = serversRegistered.find(serverID);
+    if (endpoint != serversRegistered.end()) {
+      endpoint = endpoint->second->children().find("endpoint");
+      if (endpoint != endpoint->second->children().end()) {
+        if (endpoint->second->children().size() == 0) {
+          VPackSlice epString = endpoint->second->slice();
+          if (epString.isString()) {
+            report->add("Endpoint", epString);
+          }
+        }
+      }
+    }
+      
     if (good) {
       report->add("LastHeartbeatAcked",
                   VPackValue(
@@ -139,8 +155,10 @@ std::vector<check_t> Supervision::checkDBServers() {
 
 std::vector<check_t> Supervision::checkCoordinators() {
   std::vector<check_t> ret;
-  Node::Children const machinesPlanned =
+  Node::Children const& machinesPlanned =
       _snapshot(planCoordinatorsPrefix).children();
+  Node::Children const serversRegistered =
+      _snapshot(currentServersRegisteredPrefix).children();
 
   for (auto const& machine : machinesPlanned) {
 
@@ -176,6 +194,18 @@ std::vector<check_t> Supervision::checkCoordinators() {
     report->add("LastHeartbeatSent", VPackValue(heartbeatTime));
     report->add("LastHeartbeatStatus", VPackValue(heartbeatStatus));
     report->add("Role", VPackValue("Coordinator"));
+    auto endpoint = serversRegistered.find(serverID);
+    if (endpoint != serversRegistered.end()) {
+      endpoint = endpoint->second->children().find("endpoint");
+      if (endpoint != endpoint->second->children().end()) {
+        if (endpoint->second->children().size() == 0) {
+          VPackSlice epString = endpoint->second->slice();
+          if (epString.isString()) {
+            report->add("Endpoint", epString);
+          }
+        }
+      }
+    }
     
     if (good) {
       report->add("LastHeartbeatAcked",
@@ -269,8 +299,8 @@ void Supervision::run() {
 
 void Supervision::workJobs() {
 
-  Node::Children const todos = _snapshot(toDoPrefix).children();
-  Node::Children const pends = _snapshot(pendingPrefix).children();
+  Node::Children const& todos = _snapshot(toDoPrefix).children();
+  Node::Children const& pends = _snapshot(pendingPrefix).children();
 
   for (auto const& todoEnt : todos) {
     Node const& job = *todoEnt.second;
@@ -286,7 +316,6 @@ void Supervision::workJobs() {
       }
     } catch (std::exception const&) {}
   }
-
 
   for (auto const& pendEnt : pends) {
     Node const& job = *pendEnt.second;
@@ -374,7 +403,7 @@ void Supervision::getUniqueIds() {
 }
 
 void Supervision::updateFromAgency() {
-  auto const jobsPending =
+  auto const& jobsPending =
       _snapshot("/Supervision/Jobs/Pending").children();
 
   for (auto const& jobent : jobsPending) {
