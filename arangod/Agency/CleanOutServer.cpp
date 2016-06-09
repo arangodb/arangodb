@@ -198,7 +198,10 @@ bool CleanOutServer::start() {
     }
 
     // Schedule shard relocations
-    scheduleMoveShards();
+    if (!scheduleMoveShards()) {
+      finish("DBServers/" + _server, false, "Could not schedule MoveShard.");
+      return false;
+    }
     
     return true;
     
@@ -256,6 +259,12 @@ bool CleanOutServer::scheduleMoveShards() {
 
         // Among those a random destination
         std::string toServer;
+        if (myServers.empty()) {
+          LOG_TOPIC(ERR, Logger::AGENCY) << "No servers remain as target for "
+              << "MoveShard";
+          return false;
+        }
+
         try {
           toServer = myServers.at(rand() % myServers.size());
         } catch (...) {
