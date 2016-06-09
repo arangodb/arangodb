@@ -50,7 +50,6 @@ LookupBuilder::LookupBuilder(
             std::vector<arangodb::basics::AttributeName>> paramPair;
   std::vector<size_t> storageOrder;
 
-
   for (size_t i = 0; i < _coveredFields; ++i) {
     auto comp = node->getMemberUnchecked(i);
     auto attrNode = comp->getMember(0);
@@ -629,6 +628,7 @@ int HashIndex::lookup(arangodb::Transaction* trx,
     return TRI_ERROR_NO_ERROR;
   }
 
+  // TODO: optimize this copying!
   std::vector<TRI_index_element_t*> results;
   try {
     _multiArray->_hashArray->lookupByKey(trx, &key, results);
@@ -777,6 +777,7 @@ int HashIndex::batchInsertMulti(
     arangodb::Transaction* trx,
     std::vector<TRI_doc_mptr_t const*> const* documents, size_t numThreads) {
   std::vector<TRI_index_element_t*> elements;
+  elements.reserve(documents->size());
 
   for (auto& doc : *documents) {
     int res = fillElement(elements, doc);

@@ -109,6 +109,8 @@ void SortBlock::doSorting() {
     count = 0;
     RegisterId const nrregs = _buffer.front()->getNrRegs();
 
+    std::unordered_map<AqlValue, AqlValue> cache;
+
     // install the rearranged values from _buffer into newbuffer
 
     while (count < sum) {
@@ -125,7 +127,7 @@ void SortBlock::doSorting() {
         throw;
       }
 
-      std::unordered_map<AqlValue, AqlValue> cache;
+      cache.clear();
       // only copy as much as needed!
       for (size_t i = 0; i < sizeNext; i++) {
         for (RegisterId j = 0; j < nrregs; j++) {
