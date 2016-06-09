@@ -79,7 +79,7 @@ class Store;
 /// @brief Simple tree implementation
 class Node {
  public:
-  // @brief Slash-segemented path
+  // @brief Slash-segmented path
   typedef std::vector<std::string> PathType;
 
   // @brief Child nodes
