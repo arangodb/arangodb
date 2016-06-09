@@ -66,7 +66,6 @@ function agencyTestSuite () {
                        headers: {"Content-Type": "application/json",
                                  "x-arangodb-agency-mode": "waitForCommitted"}});
     res.bodyParsed = JSON.parse(res.body);
-    wait(0.05);
     return res;
   }
 
@@ -356,7 +355,7 @@ function agencyTestSuite () {
             leaderEndpoint = config.configuration.endpoints[config.leaderId].replace("tcp", "http");
             break;
           }
-          wait(0.2);
+          wait(0.05);
         }
       } else {
         leaderEndpoint = agencyServers[0].replace("tcp", "http");

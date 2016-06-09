@@ -254,7 +254,17 @@ JOB_STATUS MoveShard::status () {
     LOG(WARN) << plan.toJson();
     LOG(WARN) << current.toJson();
 
-    if (current == plan) {
+    std::vector<std::string> planv, currv;
+    for (auto const& srv : planv) {
+      planv.push_back(srv);
+    }
+    std::sort(planv.begin(), planv.end());
+    for (auto const& srv : currv) {
+      currv.push_back(srv);
+    }
+    std::sort(currv.begin(), currv.end());
+    
+    if (currv == planv) {
 
       if (current[0].copyString() == std::string("_")+_from) { // Retired leader
 
