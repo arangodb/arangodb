@@ -48,12 +48,8 @@
         $(window).trigger('resize');
       }.bind(this);
 
-      var cb = function() {
-        console.log("");
-      };
-
       if (!this.initCoordDone) {
-        this.waitForCoordinators(cb);
+        this.waitForCoordinators();
       }
 
       if (!this.initDBDone) {
@@ -96,7 +92,9 @@
         else {
           self.coordinator = self.coordinators.findWhere({name: self.coordname});
           self.initCoordDone = true;
-          callback();
+          if (callback) {
+            callback();
+          }
         }
       }, 200);
     },

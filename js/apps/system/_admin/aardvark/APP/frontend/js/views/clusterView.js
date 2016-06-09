@@ -367,10 +367,7 @@
     initGraphs: function() {
       var self = this;
 
-      var noData = 'Fetching data...';
-      if (self.statsEnabled === false) {
-        noData = 'Statistics disabled.';
-      }
+      var noData = 'No data...';
 
       _.each(self.chartsOptions, function(c) {
         nv.addGraph(function() {

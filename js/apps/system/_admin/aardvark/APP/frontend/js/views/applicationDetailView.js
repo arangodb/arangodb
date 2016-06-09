@@ -223,7 +223,6 @@
             arangoHelper.arangoError("DB","Could not get current database");
           }
           else {
-            console.log(this);
             $(this.el).html(this.template.render({
               app: this.model,
               db: db,
