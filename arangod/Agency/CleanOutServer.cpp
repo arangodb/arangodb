@@ -80,27 +80,40 @@ JOB_STATUS CleanOutServer::status () {
     for (auto const& subJob : todos) {
       if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
         found++;
-#if 0
-        Node const& sj = *(subJob.second);
-        std::string subJobId = sj("jobId").slice().copyString();
-        std::string creator  = sj("creator").slice().copyString();
-        MoveShard(_snapshot, _agent, subJobId, creator, _agencyPrefix);
-#endif
       }
     }
     for (auto const& subJob : pends) {
       if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
         found++;
-#if 0
-        Node const& sj = *(subJob.second);
-        std::string subJobId = sj("jobId").slice().copyString();
-        std::string creator  = sj("creator").slice().copyString();
-        MoveShard(_snapshot, _agent, subJobId, creator, _agencyPrefix);
-#endif
       }
     }
 
     if (found == 0) {
+      // Put server in /Target/CleanedServers:
+      Builder reportTrx;
+      {
+        VPackArrayBuilder guard(&reportTrx);
+        {
+          VPackObjectBuilder guard3(&reportTrx);
+          reportTrx.add(VPackValue(_agencyPrefix + "/Target/CleanedServers"));
+          {
+            VPackObjectBuilder guard4(&reportTrx);
+            reportTrx.add("op", VPackValue("push"));
+            reportTrx.add("new", VPackValue(_server));
+          }
+        }
+      }
+      // Transact to agency
+      write_ret_t res = transact(_agent, reportTrx);
+      
+      if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
+        LOG_TOPIC(INFO, Logger::AGENCY) << "Have reported " << _server 
+          << " in /Target/CleanedServers";
+      } else {
+        LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to report " << _server
+          << " in /Target/CleanedServers";
+      }
+    
       if (finish("DBServers/" + _server)) {
         return FINISHED;
       }
