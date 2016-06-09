@@ -16,18 +16,18 @@
     currentDB: "",
 
     events: {
-      "click #createDatabase"       : "createDatabase",
-      "click #submitCreateDatabase" : "submitCreateDatabase",
-      "click .editDatabase"         : "editDatabase",
-      "click .icon"                 : "editDatabase",
-      "click #selectDatabase"       : "updateDatabase",
-      "click #submitDeleteDatabase" : "submitDeleteDatabase",
-      "click .contentRowInactive a" : "changeDatabase",
-      "keyup #databaseSearchInput"  : "search",
-      "click #databaseSearchSubmit" : "search",
-      "click #databaseToggle"       : "toggleSettingsDropdown",
-      "click .css-label"            : "checkBoxes",
-      "click #dbSortDesc"           : "sorting"
+      "click #createDatabase"           : "createDatabase",
+      "click #submitCreateDatabase"     : "submitCreateDatabase",
+      "click .editDatabase"             : "editDatabase",
+      "click #userManagementView .icon" : "editDatabase",
+      "click #selectDatabase"           : "updateDatabase",
+      "click #submitDeleteDatabase"     : "submitDeleteDatabase",
+      "click .contentRowInactive a"     : "changeDatabase",
+      "keyup #databaseSearchInput"      : "search",
+      "click #databaseSearchSubmit"     : "search",
+      "click #databaseToggle"           : "toggleSettingsDropdown",
+      "click .css-label"                : "checkBoxes",
+      "click #dbSortDesc"               : "sorting"
     },
 
     sorting: function() {

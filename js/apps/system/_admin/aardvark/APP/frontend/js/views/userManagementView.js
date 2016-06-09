@@ -85,41 +85,32 @@
         dropdownVisible = true;
       }
 
-      this.collection.sort();
-      $(this.el).html(this.template.render({
-        collection   : this.collection,
-        searchString : ''
-      }));
-//      this.setFilterValues();
+      var callbackFunction = function() {
+        this.collection.sort();
+        $(this.el).html(this.template.render({
+          collection   : this.collection,
+          searchString : ''
+        }));
 
-      if (dropdownVisible === true) {
-        $('#userManagementDropdown2').show();
-        $('#userSortDesc').attr('checked', this.collection.sortOptions.desc);
-        $('#userManagementToggle').toggleClass('activated');
-        $('#userManagementDropdown').show();
-      }
+        if (dropdownVisible === true) {
+          $('#userManagementDropdown2').show();
+          $('#userSortDesc').attr('checked', this.collection.sortOptions.desc);
+          $('#userManagementToggle').toggleClass('activated');
+          $('#userManagementDropdown').show();
+        }
 
-//      var searchOptions = this.collection.searchOptions;
+        if (!!isProfile) {
+          this.editCurrentUser();
+        }
 
-      //************
-/*      this.userCollection.getFiltered(searchOptions).forEach(function (arango_collection) {
-        $('#userManagementThumbnailsIn', this.el).append(new window.CollectionListItemView({
-          model: arango_collection
-        }).render().el);
-      }, this);
-*/
-/*      $('#searchInput').val(searchOptions.searchPhrase);
-      $('#searchInput').focus();
-      var val = $('#searchInput').val();
-      $('#searchInput').val('');
-      $('#searchInput').val(val);
-*/
-//      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
-      if (!!isProfile) {
-        this.editCurrentUser();
-      }
-
-      arangoHelper.setCheckboxStatus('#userManagementDropdown');
+        arangoHelper.setCheckboxStatus('#userManagementDropdown');
+      }.bind(this);
+      
+      this.collection.fetch({
+        success: function() {
+          callbackFunction();
+        }
+      });
 
       return this;
     },
