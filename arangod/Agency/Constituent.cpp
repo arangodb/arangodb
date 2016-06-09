@@ -24,10 +24,7 @@
 #include "Constituent.h"
 
 #include <chrono>
-#include <chrono>
 #include <iomanip>
-#include <iomanip>
-#include <thread>
 #include <thread>
 
 #include <velocypack/Iterator.h>
