@@ -271,7 +271,7 @@ void Supervision::run() {
       // make sense at all without other ArangoDB servers, we wait pretty
       // long here before giving up:
       if (!updateAgencyPrefix(1000, 1)) {
-        LOG_TOPIC(ERR, Logger::AGENCY)
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Cannot get prefix from Agency. Stopping supervision for good.";
         break;
       }
@@ -306,39 +306,35 @@ void Supervision::workJobs() {
   for (auto const& todoEnt : todos) {
     Node const& job = *todoEnt.second;
     
-    try {
-      std::string jobType = job("type").getString(),
-        jobId = job("jobId").getString(),
-        creator = job("creator").getString();
-      if (jobType == "failedServer") {
-        FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      } else if (jobType == "cleanOutServer") {
-        CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      } else if (jobType == "moveShard") {
-        MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      } else if (jobType == "failedLeader") {
-        FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      }
-    } catch (std::exception const&) {}
+    std::string jobType = job("type").getString(),
+      jobId = job("jobId").getString(),
+      creator = job("creator").getString();
+    if (jobType == "failedServer") {
+      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "cleanOutServer") {
+      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "moveShard") {
+      MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "failedLeader") {
+      FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    }
   }
 
   for (auto const& pendEnt : pends) {
     Node const& job = *pendEnt.second;
     
-    try {
-      std::string jobType = job("type").getString(),
-        jobId = job("jobId").getString(),
-        creator = job("creator").getString();
-      if (jobType == "failedServer") {
-        FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      } else if (jobType == "cleanOutServer") {
-        CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      } else if (jobType == "moveShard") {
-        MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      } else if (jobType == "failedLeader") {
-        FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      }
-    } catch (std::exception const&) {}
+    std::string jobType = job("type").getString(),
+      jobId = job("jobId").getString(),
+      creator = job("creator").getString();
+    if (jobType == "failedServer") {
+      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "cleanOutServer") {
+      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "moveShard") {
+      MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "failedLeader") {
+      FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    }
   }
   
 }

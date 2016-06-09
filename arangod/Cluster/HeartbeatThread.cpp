@@ -450,7 +450,10 @@ void HeartbeatThread::removeDispatchedJob(DBServerAgencySyncResult result) {
     _isDispatchingChange = false;
   }
   if (doSleep) {
-    usleep(10000);
+    // Sleep a little longer, since this might be due to some synchronisation
+    // of shards going on in the background
+    usleep(500000);
+    usleep(500000);
   }
   CONDITION_LOCKER(guard, _condition);
   _wasNotified = true;
