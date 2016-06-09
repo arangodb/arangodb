@@ -47,7 +47,7 @@ function MovingShardsSuite () {
   var c = [];
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find out servers for the system collections
+/// @brief find out servers for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionServers(database, collection) {
@@ -144,6 +144,22 @@ function MovingShardsSuite () {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief move a single shard
+////////////////////////////////////////////////////////////////////////////////
+
+  function moveShard(database, collection, shard, fromServer, toServer) {
+    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator1");
+    var request = require("@arangodb/request");
+    var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    var url = endpointToURL(coordEndpoint);
+    var body = {database, collection, shard, fromServer, toServer};
+    console.error("Harhar:", body);
+    return request({ method: "POST",
+                   url: url + "/_admin/cluster/moveShard",
+                   body: JSON.stringify(body) });
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create some collections
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -166,6 +182,20 @@ function MovingShardsSuite () {
         console.warn("Need to recreate collection to avoid system collection servers.");
       }
     }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find server not on a list
+////////////////////////////////////////////////////////////////////////////////
+
+  function findServerNotOnList(list) {
+    var count = 1;
+    var name = "DBServer" + count;
+    while (list.indexOf(name) >= 0) {
+      count += 1;
+      name = "DBServer" + count;
+    }
+    return name;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +235,56 @@ function MovingShardsSuite () {
 /// @brief moving away a shard from a follower
 ////////////////////////////////////////////////////////////////////////////////
 
-    testMoveShardFollower : function() {
+    testMoveShardFromFollower : function() {
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[0].name());
+      var fromServer = servers[1];
+      var toServer = findServerNotOnList(servers);
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[0].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      moveShard("_system", c[0]._id, shard, fromServer, toServer);
+      assertTrue(testServerEmpty(fromServer));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief moving away a shard from a leader
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoveShardFromLeader : function() {
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[0].name());
+      var fromServer = servers[0];
+      var toServer = findServerNotOnList(servers);
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[0].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      moveShard("_system", c[0]._id, shard, fromServer, toServer);
+      assertTrue(testServerEmpty(fromServer));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief moving away a shard from a leader without replication
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoveShardFromLeaderNoReplication : function() {
+      createSomeCollections(1, 1, 1);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var fromServer = servers[0];
+      var toServer = findServerNotOnList(servers);
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[1].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      moveShard("_system", c[1]._id, shard, fromServer, toServer);
+      assertTrue(testServerEmpty(fromServer));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleaning out a follower
+////////////////////////////////////////////////////////////////////////////////
+
+    testCleanOutFollower : function() {
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[0].name());
       var toClean = servers[1];
@@ -213,11 +292,12 @@ function MovingShardsSuite () {
       assertTrue(testServerEmpty(toClean));
     },
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief moving away a shard from a leader
+/// @brief cleaning out a leader
 ////////////////////////////////////////////////////////////////////////////////
 
-    testMoveShardLeader : function() {
+    testCleanOutLeader : function() {
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[0].name());
       var toClean = servers[0];
@@ -226,10 +306,10 @@ function MovingShardsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief moving away stuff with multiple collections
+/// @brief cleaning out with multiple collections
 ////////////////////////////////////////////////////////////////////////////////
 
-    testMoveShardMultipleCollections : function() {
+    testCleanOutMultipleCollections : function() {
       createSomeCollections(10, 1, 2);
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[1].name());
@@ -239,10 +319,10 @@ function MovingShardsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief moving away a collection with 3 replicas
+/// @brief cleaning out with a collection with 3 replicas
 ////////////////////////////////////////////////////////////////////////////////
 
-    testMoveShard3Replicas : function() {
+    testCleanOut3Replicas : function() {
       createSomeCollections(1, 1, 3);
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[1].name());
@@ -252,10 +332,10 @@ function MovingShardsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief moving away a collection with multiple shards
+/// @brief cleaning out collection with multiple shards
 ////////////////////////////////////////////////////////////////////////////////
 
-    testMoveShardMultipleShards : function() {
+    testCleanOutMultipleShards : function() {
       createSomeCollections(1, 10, 2);
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[1].name());
@@ -263,6 +343,20 @@ function MovingShardsSuite () {
       cleanOutServer(toClean);
       assertTrue(testServerEmpty(toClean));
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleaning out collection with one shard without replication
+////////////////////////////////////////////////////////////////////////////////
+
+    testCleanOutNoReplication : function() {
+      createSomeCollections(1, 1, 1);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var toClean = servers[0];
+      cleanOutServer(toClean);
+      assertTrue(testServerEmpty(toClean));
+    },
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief just to allow a trailing comma at the end of the last test
