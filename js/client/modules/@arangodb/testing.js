@@ -1889,6 +1889,7 @@ function splitBuckets(options, cases) {
 ////////////////////////////////////////////////////////////////////////////////
 
 let allTests = [
+  "agency",
   "arangosh",
   "authentication",
   "authentication_parameters",
@@ -3750,6 +3751,9 @@ testFuncs.stress_locks = function(options) {
 testFuncs.agency = function(options) {
   findTests();
 
+  var saveAgency = options.agency;
+  var saveCluster = options.cluster;
+
   options.agency = true;
   options.cluster = false;
 
@@ -3816,6 +3820,9 @@ testFuncs.agency = function(options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
+
+  options.agency = saveAgency;
+  options.cluster = saveCluster;
 
   return results;
 };
