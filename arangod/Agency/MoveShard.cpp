@@ -292,7 +292,6 @@ JOB_STATUS MoveShard::status () {
 
         if (foundFrom && foundTo) {
 
-          LOG(WARN) << current[0].copyString() << " " << _from;
           if (current[0].copyString() == _from) { // Leader
             
             Builder underscore;     // serverId -> _serverId 
@@ -340,6 +339,7 @@ JOB_STATUS MoveShard::status () {
           }
           
           return PENDING;
+
         } else if (foundTo && !foundFrom) {
 
           return FINISHED;
