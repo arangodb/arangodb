@@ -420,8 +420,12 @@ void Constituent::run() {
 
       dist_t dis(config().minPing, config().maxPing);
       long rand_wait = static_cast<long>(dis(_gen) * 1000000.0);
-      /*bool timedout =*/_cv.wait(rand_wait);
 
+      {
+        CONDITION_LOCKER(guardv, _cv);
+      /*bool timedout =*/_cv.wait(rand_wait);
+      }
+      
       {
         MUTEX_LOCKER(guard, _castLock);
         cast = _cast;
