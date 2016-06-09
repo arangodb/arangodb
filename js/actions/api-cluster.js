@@ -1260,10 +1260,11 @@ actions.defineHttp({
     }
     var ok = true;
     var isLeader;
+    var collInfo;
     try {
-      var coll = ArangoClusterInfo.getCollectionInfo(body.database,
+      collInfo = ArangoClusterInfo.getCollectionInfo(body.database,
                                                      body.collection);
-      var shards = coll.shards;
+      var shards = collInfo.shards;
       var shard = shards[body.shard];
       var pos = shard.indexOf(body.fromServer);
       if (pos === -1) {
@@ -1282,7 +1283,7 @@ actions.defineHttp({
       var id = ArangoClusterInfo.uniqid();
       var todo = { "type": "moveShard",
                    "database": body.database,
-                   "collection": body.collection,
+                   "collection": collInfo.id,
                    "shard": body.shard,
                    "fromServer": body.fromServer,
                    "toServer": body.toServer,

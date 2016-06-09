@@ -1236,7 +1236,6 @@ template <typename VertexId, typename EdgeId, typename HashFuncType, typename Eq
 class ConstDistanceFinder : public PathFinder<VertexId, Path> {
  public:
 
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief callback to find neighbors
   //////////////////////////////////////////////////////////////////////////////
@@ -1267,12 +1266,7 @@ class ConstDistanceFinder : public PathFinder<VertexId, Path> {
       : _leftNeighborExpander(left), _rightNeighborExpander(right) {}
 
   ~ConstDistanceFinder() {
-    for (auto& it : _leftFound) {
-      delete it.second;
-    }
-    for (auto& it : _rightFound) {
-      delete it.second;
-    }
+    clearVisited();
   }
 
   bool shortestPath(VertexId& start, VertexId& end, Path& result) override {
@@ -1283,9 +1277,8 @@ class ConstDistanceFinder : public PathFinder<VertexId, Path> {
       return true;
     }
     _leftClosure.clear();
-    _leftFound.clear();
     _rightClosure.clear();
-    _rightFound.clear();
+    clearVisited();
 
     _leftFound.emplace(start, nullptr);
     _rightFound.emplace(end, nullptr);
@@ -1380,6 +1373,20 @@ class ConstDistanceFinder : public PathFinder<VertexId, Path> {
     }
     return false;
   }
+
+ private:
+  void clearVisited() {  
+    for (auto& it : _leftFound) {
+      delete it.second;
+    }
+    _leftFound.clear();
+
+    for (auto& it : _rightFound) {
+      delete it.second;
+    }
+    _rightFound.clear();
+  }
+
 };
 }
 }

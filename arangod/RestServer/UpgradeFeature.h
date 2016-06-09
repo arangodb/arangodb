@@ -41,7 +41,8 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
   bool _upgradeCheck;
 
  private:
-  void upgradeDatabase();
+  void changeAdminPassword(std::string const& defaultPassword);
+  void upgradeDatabase(std::string const& defaultPassword);
 
  private:
   int* _result;

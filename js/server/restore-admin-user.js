@@ -1,3 +1,6 @@
+/*jshint -W051:true, -W069:true */
+'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -17,35 +20,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Frank Celler
+/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_CONFIG_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_CONFIG_FEATURE_H 1
+(function() {
+  var args = global.UPGRADE_ARGS;
+  delete global.UPGRADE_ARGS;
+  
+  const users = require("@arangodb/users");
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+  try {
+    users.remove("root");
+  } catch (e) {
+  }
 
-namespace arangodb {
-class ConfigFeature final : public application_features::ApplicationFeature {
- public:
-  ConfigFeature(application_features::ApplicationServer* server,
-                std::string const& progname);
-
- public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void loadOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
- private:
-  std::string _file;
-  bool _checkConfiguration;
-
- private:
-  void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
-                      std::string const& progname);
-
- private:
-  std::string _progname;
-};
-}
-
-#endif
+  users.save("root", args.password, true);
+  users.grantDatabase("root", "*", "rw");
+}());
