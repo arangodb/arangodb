@@ -204,9 +204,8 @@
           contentType: "application/json",
           processData: false,
           success: function(data) {
-
-            coordsPending = data.numberOfCoordinators - coords;
-            dbsPending = data.numberOfDBServers - dbs;
+            coordsPending = Math.abs((coords + coordsErrors) - data.numberOfCoordinators);
+            dbsPending = Math.abs((dbs + dbsErrors) - data.numberOfDBServers);
 
             renderFunc('#infoDBs', dbs, dbsPending, dbsErrors);
             renderFunc('#infoCoords', coords, coordsPending, coordsErrors);
