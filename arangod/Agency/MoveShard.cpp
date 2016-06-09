@@ -168,7 +168,7 @@ bool MoveShard::start() {
   // --- Plan changes
   pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
   if (current[0].copyString() == _from) { // Leader
-    pending.add(VPackValue(std::string("_") + current[0].copyString()));
+    pending.add(current[0]);
     pending.add(VPackValue(_to));
     for (size_t i = 1; i < current.length(); ++i) {
       pending.add(current[i]);
@@ -253,9 +253,9 @@ JOB_STATUS MoveShard::status () {
 
     if (current == plan) {
 
-      if ((current[0].copyString())[0] == '_') { // Leader
+      if ((current[0].copyString())[0] == '_') { // Retired leader
 
-        Builder cyclic;
+        Builder cyclic;    // Cyclic shift _serverId to end
         cyclic.openArray();
         cyclic.openObject();
         // --- Plan changes
@@ -279,36 +279,70 @@ JOB_STATUS MoveShard::status () {
         
       } else {
 
-        bool found = false;
+        bool foundFrom = false, foundTo = false;
         for (auto const& srv : VPackArrayIterator(current)) {
-          if (srv.copyString() == _from) {
-            found = true;
-            break;
+          std::string srv_str = srv.copyString();
+          if (srv_str == _from) {
+            foundFrom = true;
+          }
+          if (srv_str == _to) {
+            foundTo = true;
           }
         }
 
-        if (found) {
-          
-          Builder remove;
-          remove.openArray();
-          remove.openObject();
-          // --- Plan changes
-          remove.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-          for (auto const& srv : VPackArrayIterator(current)) {
-            if (srv.copyString() != _from) {
-              remove.add(srv);
+        if (foundFrom && foundTo) {
+
+          if (current[0].copyString() == _from) { // Leader
+            
+            Builder underscore;     // serverId -> _serverId 
+            underscore.openArray();
+            underscore.openObject();
+            // --- Plan changes
+            underscore.add(_agencyPrefix + planPath,
+                           VPackValue(VPackValueType::Array));
+            underscore.add(
+              VPackValue(std::string("_") + current[0].copyString()));
+            for (size_t i = 1; i < current.length(); ++i) {
+              underscore.add(current[i]);
             }
+            underscore.close();
+            
+            // --- Plan version
+            underscore.add(_agencyPrefix +  planVersion,
+                           VPackValue(VPackValueType::Object));
+            underscore.add("op", VPackValue("increment"));
+            underscore.close();
+            underscore.close(); underscore.close();
+            transact(_agent, underscore);
+            
+          } else {
+
+            Builder remove;
+            remove.openArray();
+            remove.openObject();
+            // --- Plan changes
+            remove.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
+            for (auto const& srv : VPackArrayIterator(current)) {
+              if (srv.copyString() != _from) {
+                remove.add(srv);
+              }
+            }
+            remove.close();
+            // --- Plan version
+            remove.add(_agencyPrefix +  planVersion,
+                       VPackValue(VPackValueType::Object));
+            remove.add("op", VPackValue("increment"));
+            remove.close();
+            remove.close(); remove.close();
+            transact(_agent, remove);
+            
           }
-          remove.close();
-          // --- Plan version
-          remove.add(_agencyPrefix +  planVersion,
-                     VPackValue(VPackValueType::Object));
-          remove.add("op", VPackValue("increment"));
-          remove.close();
-          remove.close(); remove.close();
-          transact(_agent, remove);
           
           return PENDING;
+
+        } else if (foundTo && !foundFrom) {
+
+          return FINISHED;
           
         }
         
