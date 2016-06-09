@@ -249,7 +249,7 @@ JOB_STATUS MoveShard::status () {
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
     
     Slice current = _snapshot(curPath).slice(),
-      plan = _snapshot(curPath).slice();
+      plan = _snapshot(planPath).slice();
 
     std::vector<std::string> planv, currv;
     for (auto const& srv : VPackArrayIterator(plan)) {
@@ -261,9 +261,6 @@ JOB_STATUS MoveShard::status () {
     }
     std::sort(currv.begin(), currv.end());
 
-    LOG(WARN) << planv;
-    LOG(WARN) << currv;
-    
     if (currv == planv) {
 
       if (current[0].copyString() == std::string("_")+_from) { // Retired leader
@@ -360,10 +357,6 @@ JOB_STATUS MoveShard::status () {
           
         }
         
-      }
-      
-      if (finish("Shards/" + _shard)) {
-        return FINISHED;
       }
       
     }
