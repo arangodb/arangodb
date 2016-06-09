@@ -238,7 +238,12 @@ function syncCollectionFinalize(database, collname, collid, from, config) {
       }
       catch (err) {
       }
-      coll.replace(entry.key, entry.data);
+      try {
+        coll.replace(entry.key, entry.data);
+      } catch (errx) {
+        console.error("syncCollectionFinalize: replace1", entry, errx);
+        throw errx;
+      }
     } else if (entry.type === mType.REPLICATION_MARKER_EDGE) {
       if (tryPostpone(entry)) {
         return;
@@ -249,12 +254,22 @@ function syncCollectionFinalize(database, collname, collid, from, config) {
       }
       catch (err) {
       }
-      coll.replace(entry.key, entry.data);
+      try {
+        coll.replace(entry.key, entry.data);
+      } catch (errx) {
+        console.error("syncCollectionFinalize: replace2", entry, errx);
+        throw errx;
+      }
     } else if (entry.type === mType.REPLICATION_MARKER_REMOVE) {
       if (tryPostpone(entry)) {
         return;
       }
-      coll.remove(entry.key);
+      try {
+        coll.remove(entry.key);
+      } catch (errx) {
+        console.error("syncCollectionFinalize: remove", entry, errx);
+        throw errx;
+      }
     } else if (entry.type === mType.REPLICATION_TRANSACTION_START) {
       transactions[entry.tid] = [];
     } else if (entry.type === mType.REPLICATION_TRANSACTION_COMMIT) {
@@ -268,11 +283,26 @@ function syncCollectionFinalize(database, collname, collid, from, config) {
     } else if (entry.type === mType.REPLICATION_TRANSACTION_ABORT) {
       delete transactions[entry.tid];
     } else if (entry.type === mType.REPLICATION_INDEX_CREATE) {
-      coll.ensureIndex(entry.index);
+      try {
+        coll.ensureIndex(entry.index);
+      } catch(errx) {
+        console.error("syncCollectionFinalize: ensureIndex", entry, errx);
+        throw errx;
+      }
     } else if (entry.type === mType.REPLICATION_INDEX_DROP) {
-      coll.dropIndex(entry.id);
+      try {
+        coll.dropIndex(entry.id);
+      } catch(errx) {
+        console.error("syncCollectionFinalize: dropIndex", entry, errx);
+        throw errx;
+      }
     } else if (entry.type === mType.REPLICATION_COLLECTION_CHANGE) {
-      coll.properties(entry.collection);
+      try {
+        coll.properties(entry.collection);
+      } catch(errx) {
+        console.error("syncCollectionFinalize: properties", entry, errx);
+        throw errx;
+      }
     } else {
       // all else, including dropping and creating the collection
       throw "Found collection drop, create or rename marker.";
