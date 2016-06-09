@@ -93,14 +93,21 @@ function MovingShardsSuite () {
 /// @brief test whether or not a server is clean
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testServerEmpty(id) {
-    for (var i = 0; i < c.length; ++i) {
+  function testServerEmpty(id, fromCollNr, toCollNr) {
+    if (fromCollNr === undefined) {
+      fromCollNr = 0;
+    }
+    if (toCollNr === undefined) {
+      toCollNr = c.length - 1;
+    }
+    for (var i = fromCollNr; i <= toCollNr; ++i) {
       var count = 100;
       var ok = false;
       while (--count > 0) {
         wait(1.0);
         global.ArangoClusterInfo.flush();
         var servers = findCollectionServers("_system", c[i].name());
+        console.warn("Seeing servers:", servers);
         if (servers.indexOf(id) === -1) {
           // Now check current as well:
           var collInfo = global.ArangoClusterInfo.getCollectionInfo(
@@ -277,7 +284,58 @@ function MovingShardsSuite () {
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       moveShard("_system", c[1]._id, shard, fromServer, toServer);
-      assertTrue(testServerEmpty(fromServer));
+      assertTrue(testServerEmpty(fromServer), 1, 1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief moving away a shard from a follower with 3 replicas #1
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoveShardFromFollowerRepl3_1 : function() {
+      createSomeCollections(1, 1, 3);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var fromServer = servers[1];
+      var toServer = findServerNotOnList(servers);
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[1].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      moveShard("_system", c[1]._id, shard, fromServer, toServer);
+      assertTrue(testServerEmpty(fromServer), 1, 1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief moving away a shard from a follower with 3 replicas #2
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoveShardFromRepl3_2 : function() {
+      createSomeCollections(1, 1, 3);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var fromServer = servers[2];
+      var toServer = findServerNotOnList(servers);
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[1].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      moveShard("_system", c[1]._id, shard, fromServer, toServer);
+      assertTrue(testServerEmpty(fromServer), 1, 1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief moving away a shard from a leader with 3 replicas
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoveShardFromLeaderRepl : function() {
+      createSomeCollections(1, 1, 3);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var fromServer = servers[0];
+      var toServer = findServerNotOnList(servers);
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[1].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      moveShard("_system", c[1]._id, shard, fromServer, toServer);
+      assertTrue(testServerEmpty(fromServer), 1, 1);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
