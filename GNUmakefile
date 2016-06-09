@@ -9,9 +9,9 @@ SRC=$(shell pwd |sed "s;.*/;;")
 .PHONY: warning help
 
 warning:
-	@echo "ArangoDB has switch to CMAKE. In order to compile, use:"
+	@echo "ArangoDB has switched to CMAKE. In order to compile, use:"
 	@echo ""
-	@echo "  mkdir build"
+	@echo "  mkdir -p build"
 	@echo "  cd build"
 	@echo "  cmake .. -DCMAKE_BUILD_TYPE=Release"
 	@echo "  make"
@@ -53,6 +53,10 @@ help:
 	@echo "OPENSSL supports:"
 	@echo "  -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
 	@echo "    sets the location of the openssl includes and libraries"
+	@echo ""
+	@echo "JEMALLOC supports:"
+	@echo "  -DUSE_JEMALLOC=on"
+	@echo "    if ON, link against JEMALLOC"
 	@echo ""
 	@echo "TCMALLOC supports:"
 	@echo "  -DUSE_TCMALLOC=on"
