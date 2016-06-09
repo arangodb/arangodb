@@ -68,7 +68,7 @@ static std::string const currentServersRegisteredPrefix
 
 std::vector<check_t> Supervision::checkDBServers() {
   std::vector<check_t> ret;
-  Node::Children const machinesPlanned =
+  Node::Children const& machinesPlanned =
       _snapshot(planDBServersPrefix).children();
   Node::Children const serversRegistered =
       _snapshot(currentServersRegisteredPrefix).children();
@@ -155,7 +155,7 @@ std::vector<check_t> Supervision::checkDBServers() {
 
 std::vector<check_t> Supervision::checkCoordinators() {
   std::vector<check_t> ret;
-  Node::Children const machinesPlanned =
+  Node::Children const& machinesPlanned =
       _snapshot(planCoordinatorsPrefix).children();
   Node::Children const serversRegistered =
       _snapshot(currentServersRegisteredPrefix).children();
@@ -299,8 +299,8 @@ void Supervision::run() {
 
 void Supervision::workJobs() {
 
-  Node::Children const todos = _snapshot(toDoPrefix).children();
-  Node::Children const pends = _snapshot(pendingPrefix).children();
+  Node::Children const& todos = _snapshot(toDoPrefix).children();
+  Node::Children const& pends = _snapshot(pendingPrefix).children();
 
   for (auto const& todoEnt : todos) {
     Node const& job = *todoEnt.second;
@@ -316,7 +316,6 @@ void Supervision::workJobs() {
       }
     } catch (std::exception const&) {}
   }
-
 
   for (auto const& pendEnt : pends) {
     Node const& job = *pendEnt.second;
@@ -404,7 +403,7 @@ void Supervision::getUniqueIds() {
 }
 
 void Supervision::updateFromAgency() {
-  auto const jobsPending =
+  auto const& jobsPending =
       _snapshot("/Supervision/Jobs/Pending").children();
 
   for (auto const& jobent : jobsPending) {
