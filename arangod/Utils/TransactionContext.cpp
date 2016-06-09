@@ -91,6 +91,11 @@ TransactionContext::~TransactionContext() {
     // If some external entity is still using the ditch, it is kept!
   }
 
+  // free all VPackBuilders we handed out
+  for (auto& it : _builders) {
+    delete it;
+  }
+
   if (_ownsResolver) {
     delete _resolver;
   }
