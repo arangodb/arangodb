@@ -107,7 +107,7 @@ function MovingShardsSuite () {
         wait(1.0);
         global.ArangoClusterInfo.flush();
         var servers = findCollectionServers("_system", c[i].name());
-        console.warn("Seeing servers:", servers);
+        console.warn("Seeing servers:", i, c[i].name(), servers);
         if (servers.indexOf(id) === -1) {
           // Now check current as well:
           var collInfo = global.ArangoClusterInfo.getCollectionInfo(
@@ -284,7 +284,7 @@ function MovingShardsSuite () {
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       moveShard("_system", c[1]._id, shard, fromServer, toServer);
-      assertTrue(testServerEmpty(fromServer), 1, 1);
+      assertTrue(testServerEmpty(fromServer, 1, 1));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +301,7 @@ function MovingShardsSuite () {
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       moveShard("_system", c[1]._id, shard, fromServer, toServer);
-      assertTrue(testServerEmpty(fromServer), 1, 1);
+      assertTrue(testServerEmpty(fromServer, 1, 1));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -318,7 +318,7 @@ function MovingShardsSuite () {
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       moveShard("_system", c[1]._id, shard, fromServer, toServer);
-      assertTrue(testServerEmpty(fromServer), 1, 1);
+      assertTrue(testServerEmpty(fromServer, 1, 1));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,7 +335,7 @@ function MovingShardsSuite () {
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       moveShard("_system", c[1]._id, shard, fromServer, toServer);
-      assertTrue(testServerEmpty(fromServer), 1, 1);
+      assertTrue(testServerEmpty(fromServer, 1, 1));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
