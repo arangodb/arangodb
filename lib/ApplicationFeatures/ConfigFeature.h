@@ -40,7 +40,8 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   bool _checkConfiguration;
 
  private:
-  void loadConfigFile(std::shared_ptr<options::ProgramOptions>);
+  void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
+                      std::string const& progname);
 
  private:
   std::string _progname;
