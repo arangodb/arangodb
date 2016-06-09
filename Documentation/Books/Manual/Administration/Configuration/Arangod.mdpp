@@ -8,7 +8,7 @@
 
 
 try to reuse address
-`--server.reuse-address`
+`--tcp.reuse-address`
 
 If this boolean option is set to *true* then the socket option
 SO_REUSEADDR is set on all server endpoints, which is the default.
@@ -25,15 +25,15 @@ SO_EXCLUSIVEADDRUSE as a measure to alleviate this problem.
 
 
 
-!SUBSECTION Disable authentication  
+!SUBSECTION Enable/disable authentication  
 @startDocuBlock server_authentication
 
 
-!SUBSECTION Disable authentication-unix-sockets
+!SUBSECTION Enable/disable authentication for UNIX domain sockets
 
 
 disable authentication for requests via UNIX domain sockets
-`--server.disable-authentication-unix-sockets value`
+`--server.authentication-unix-sockets value`
 
 Setting *value* to true will turn off authentication on the server side
 for requests coming in via UNIX domain sockets. With this flag enabled,
@@ -44,33 +44,31 @@ Requests coming in by other means (e.g. TCP/IP) are not affected by this option.
 The default value is *false*.
 
 **Note**: this option is only available on platforms that support UNIX
-domain
-sockets.
+domain sockets.
 
 
 
-!SUBSECTION Authenticate system only
+!SUBSECTION Enable/disable authentication for system API requests only
 @startDocuBlock serverAuthenticateSystemOnly
 
 
-!SUBSECTION Disable replication-applier
+!SUBSECTION Enable/disable replication applier
 
 
-disable the replication applier on server startup
-`--server.disable-replication-applier flag`
+Enable/disable the replication applier on server startup
+`--database.replication-applier flag`
 
-If *true* the server will start with the replication applier turned off,
-even if the replication applier is configured with the *autoStart* option.
+If *false* the server will start with replication appliers turned off,
+even if the replication appliers are configured with the *autoStart* option.
 Using the command-line option will not change the value of the *autoStart*
 option in the applier configuration, but will suppress auto-starting the
 replication applier just once.
 
 If the option is not used, ArangoDB will read the applier configuration
-from
-the file *REPLICATION-APPLIER-CONFIG* on startup, and use the value of the
+from the file *REPLICATION-APPLIER-CONFIG* on startup, and use the value of the
 *autoStart* attribute from this file.
 
-The default is *false*.
+The default is *true*.
 
 
 
@@ -82,7 +80,7 @@ The default is *false*.
 
 
 hide the "Server: ArangoDB" header in HTTP responses
-`--server.hide-product-header`
+`--http.hide-product-header`
 
 If *true*, the server will exclude the HTTP header "Server: ArangoDB" in
 HTTP responses. If set to *false*, the server will send the header in
@@ -96,7 +94,7 @@ The default is *false*.
 
 
 allow HTTP method override via custom headers?
-`--server.allow-method-override`
+`--http.allow-method-override`
 
 When this option is set to *true*, the HTTP request method will optionally
 be fetched from one of the following HTTP request headers if present in
@@ -193,7 +191,7 @@ started with at least one SSL endpoint.
 
 
 CA file
-`--server.cafile filename`
+`--ssl.cafile filename`
 
 This option can be used to specify a file with CA certificates that are
 sent
@@ -235,7 +233,7 @@ to POODLE attack variants.
 
 
 whether or not to use SSL session caching
-`--server.ssl-cache value`
+`--ssl.session-cache value`
 
 Set to true if SSL session caching should be used.
 
@@ -250,7 +248,7 @@ only if the client supports sending the session id.
 
 
 ssl options to use
-`--server.ssl-options value`
+`--ssl.options value`
 
 This option can be used to set various SSL-related options. Individual
 option values must be combined using bitwise OR.
@@ -284,7 +282,7 @@ used.
 
 
 ssl cipher list to use
-`--server.ssl-cipher-list cipher-list`
+`--ssl.cipher-list cipher-list`
 
 This option can be used to restrict the server to certain SSL ciphers
 only,
@@ -317,7 +315,7 @@ The default value for *cipher-list* is "ALL".
 
 
 listen backlog size
-`--server.backlog-size`
+`--tcp.backlog-size`
 
 Allows to specify the size of the backlog for the *listen* system call
 The default value is 10. The maximum value is platform-dependent.
@@ -406,12 +404,12 @@ directory as argument.
 
 
 disable the query tracking feature
-`--database.disable-query-tracking flag`
+`--query.tracking flag`
 
-If *true*, the server's query tracking feature will be disabled by
-default.
+If *true*, the server's AQL query tracking feature will be enabled by
+default. Tracking off queries can be disabled by setting the option to *false*.
 
-The default is *false*.
+The default is *true*.
 
 
 
@@ -447,8 +445,8 @@ The default value is *false*.
 !SUBSECTION AQL Query caching mode
 
 
-whether or not to enable the AQL query cache
-`--database.query-cache-mode`
+whether or not to enable the AQL query result cache
+`--query.cache-mode`
 
 Toggles the AQL query cache behavior. Possible values are:
 
@@ -465,7 +463,7 @@ Toggles the AQL query cache behavior. Possible values are:
 
 
 maximum number of elements in the query cache per database
-`--database.query-cache-max-results`
+`--query.cache-entries`
 
 Maximum number of query results that can be stored per database-specific
 query cache. If a query is eligible for caching and the number of items in
@@ -499,7 +497,7 @@ edge index in the collection to be split into multiple buckets).
 
 
 number of V8 contexts for executing JavaScript actions
-`--server.v8-contexts number`
+`--javascript.v8-contexts number`
 
 Specifies the *number* of V8 contexts that are created for executing
 JavaScript code. More contexts allow execute more JavaScript actions in
@@ -555,7 +553,7 @@ the value *"--help"* as follows:
 Another example of specific V8 options being set at startup:
 
 ```
---javascript.v8-options "--harmony --log"
+--javascript.v8-options "--log"
 ```
 
 Names and features or usable options depend on the version of V8 being used,
