@@ -36,9 +36,9 @@ MoveShard::MoveShard (Node const& snapshot, Agent* agent,
   Job(snapshot, agent, jobId, creator, prefix), _database(database),
   _collection(collection), _shard(shard), _from(from), _to(to) {
 
-  JOB_STATUS js = status();
-
   try {
+    JOB_STATUS js = status();
+
     if (js == TODO) {
       start();        
     } else if (js == NOTFOUND) {            
@@ -251,29 +251,29 @@ JOB_STATUS MoveShard::status () {
     Slice current = _snapshot(curPath).slice(),
       plan = _snapshot(curPath).slice();
 
+    LOG(WARN) << plan.toJson();
+    LOG(WARN) << current.toJson();
+
     if (current == plan) {
 
-      if ((current[0].copyString())[0] == '_') { // Retired leader
+      if (current[0].copyString() == std::string("_")+_from) { // Retired leader
 
-        Builder cyclic;    // Cyclic shift _serverId to end
-        cyclic.openArray();
-        cyclic.openObject();
+        Builder remove;    // remove
+        remove.openArray();
+        remove.openObject();
         // --- Plan changes
-        cyclic.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
+        remove.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
         for (size_t i = 1; i < current.length(); ++i) {
-          cyclic.add(current[i]);
+          remove.add(current[i]);
         }
-        std::string disabledLeader = current[0].copyString();
-        disabledLeader = disabledLeader.substr(1,disabledLeader.size()-1);
-        cyclic.add(VPackValue(disabledLeader));
-        cyclic.close();
+        remove.close();
         // --- Plan version
-        cyclic.add(_agencyPrefix +  planVersion,
+        remove.add(_agencyPrefix +  planVersion,
                     VPackValue(VPackValueType::Object));
-        cyclic.add("op", VPackValue("increment"));
-        cyclic.close();
-        cyclic.close(); cyclic.close();
-        transact(_agent, cyclic);
+        remove.add("op", VPackValue("increment"));
+        remove.close();
+        remove.close(); remove.close();
+        transact(_agent, remove);
         
         return PENDING;
         
@@ -291,6 +291,8 @@ JOB_STATUS MoveShard::status () {
         }
 
         if (foundFrom && foundTo) {
+
+          LOG(WARN) << _from << " " << current.toJson();
 
           if (current[0].copyString() == _from) { // Leader
             
@@ -342,7 +344,9 @@ JOB_STATUS MoveShard::status () {
 
         } else if (foundTo && !foundFrom) {
 
-          return FINISHED;
+          if (finish("Shards/" + _shard)) {
+            return FINISHED;
+          }
           
         }
         

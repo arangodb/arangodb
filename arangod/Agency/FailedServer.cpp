@@ -38,8 +38,8 @@ FailedServer::FailedServer(Node const& snapshot,
   Job(snapshot, agent, jobId, creator, agencyPrefix),
   _server(server) {
   
-  JOB_STATUS js = status();
   try {
+    JOB_STATUS js = status();
     if (js == TODO) {
       start();        
     } else if (js == NOTFOUND) {            
@@ -220,23 +220,12 @@ JOB_STATUS FailedServer::status () {
     for (auto const& subJob : todos) {
       if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
         found++;
-#if 0
-        Node const& sj = *(subJob.second);
-        std::string subJobId = sj("jobId").slice().copyString();
-        std::string creator  = sj("creator").slice().copyString();
-        FailedLeader(_snapshot, _agent, subJobId, creator, _agencyPrefix);
-#endif
       }
     }
+
     for (auto const& subJob : pends) {
       if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
         found++;
-#if 0
-        Node const& sj = *(subJob.second);
-        std::string subJobId = sj("jobId").slice().copyString();
-        std::string creator  = sj("creator").slice().copyString();
-        FailedLeader(_snapshot, _agent, subJobId, creator, _agencyPrefix);
-#endif
       }
     }
 
