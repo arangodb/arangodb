@@ -826,7 +826,7 @@
 
     userPermissionView: function (name, initialized) {
       this.checkUser();
-      if (initialized || initialized === null) {
+      if (initialized || initialized === null) {
         this.userPermissionView = new window.UserPermissionView({
           collection: this.userCollection,
           databases: this.arangoDatabase,
@@ -842,7 +842,7 @@
 
     userView: function (name, initialized) {
       this.checkUser();
-      if (initialized || initialized === null) {
+      if (initialized || initialized === null) {
         this.userView = new window.UserView({
           collection: this.userCollection,
           username: name
