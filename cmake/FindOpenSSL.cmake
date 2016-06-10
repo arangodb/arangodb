@@ -73,12 +73,18 @@ endif()
 if (WIN32)
   # 32-bit not officially supported anymore anyway
   set(SSL_BITS "x64")
+  set(SSL_NUGET_TARGET "Release/target") # there also is Debug if you want to...
   # v140 corresponds to VS 2015
-  set(SSL_NUGET_DIR "lib/native/v140/windesktop/msvcstl/dyn/rt-dyn")
-  set(SSL_NUGET_ROOT "$ENV{USERPROFILE}/.nuget/packages/openssl.v140.windesktop.msvcstl.dyn.rt-dyn.${SSL_BITS}")
+  # dynamic dll openssl looks like that...
+  #set(SSL_NUGET_DIR "lib/native/v140/windesktop/msvcstl/dyn/rt-dyn")
+  #set(SSL_NUGET_ROOT "$ENV{USERPROFILE}/.nuget/packages/openssl.v140.windesktop.msvcstl.dyn.rt-dyn.${SSL_BITS}")
+
+  set(SSL_NUGET_DIR "lib/v140/")
+  set(SSL_NUGET_ROOT "$ENV{USERPROFILE}/.nuget/packages/rmt_openssl/")
   if (NOT OPENSSL_ROOT_DIR AND IS_DIRECTORY ${SSL_NUGET_ROOT})
     # find latest version based on folder name and assign to OPENSSL_ROOT_DIR
     FILE(GLOB dirlist RELATIVE ${SSL_NUGET_ROOT} ${SSL_NUGET_ROOT}/*)
+
     list(SORT dirlist)
     list(LENGTH dirlist listlength)
     math(EXPR lastindex "${listlength}-1")
@@ -98,12 +104,12 @@ if (WIN32)
     set(OPENSSL_INCLUDE "${OPENSSL_ROOT_DIR}/build/native/include")
     set(_OPENSSL_ROOT_HINTS "${OPENSSL_ROOT_DIR}/build/native/include")
 
-    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/${SSL_NUGET_DIR}/${SSL_BITS}")
+    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/build/native/${SSL_NUGET_DIR}/${SSL_BITS}")
     set(_OPENSSL_ROOT_HINTS "${OPENSSL_ROOT_DIR}/build/native/include")
 
     set(_OPENSSL_ROOT_PATHS
       "${OPENSSL_ROOT_DIR}/build/native/include"
-      "${OPENSSL_ROOT_DIR}/${SSL_NUGET_DIR}/${SSL_BITS}/")
+      "${OPENSSL_ROOT_DIR}/build/native/${SSL_NUGET_DIR}/")
   else()
     # http://www.slproweb.com/products/Win32OpenSSL.html
     set(_OPENSSL_ROOT_HINTS
@@ -171,23 +177,24 @@ if(WIN32 AND NOT CYGWIN)
     #endif ()
 
     set(LIB_EAY_DEBUG LIB_EAY_DEBUG-NOTFOUND)
-    if (EXISTS "${OPENSSL_LIB_DIR}/debug/libeay32.lib")
-      set(LIB_EAY_DEBUG "${OPENSSL_LIB_DIR}/debug/libeay32.lib")
+
+    if (EXISTS "${OPENSSL_LIB_DIR}/Debug/static/libeay32.lib")
+      set(LIB_EAY_DEBUG "${OPENSSL_LIB_DIR}/Debug/static/libeay32.lib")
     endif()
 
     set(LIB_EAY_RELEASE LIB_EAY_RELEASE-NOTFOUND)
-    if (EXISTS "${OPENSSL_LIB_DIR}/release/libeay32.lib")
-      set(LIB_EAY_RELEASE "${OPENSSL_LIB_DIR}/release/libeay32.lib")
+    if (EXISTS "${OPENSSL_LIB_DIR}/Release/static/libeay32.lib")
+      set(LIB_EAY_RELEASE "${OPENSSL_LIB_DIR}/Release/static/libeay32.lib")
     endif()
 
     set(SSL_EAY_DEBUG SSL_EAY_DEBUG-NOTFOUND)
-    if (EXISTS "${OPENSSL_LIB_DIR}/debug/ssleay32.lib")
-      set(SSL_EAY_DEBUG "${OPENSSL_LIB_DIR}/debug/ssleay32.lib")
+    if (EXISTS "${OPENSSL_LIB_DIR}/Debug/static/ssleay32.lib")
+      set(SSL_EAY_DEBUG "${OPENSSL_LIB_DIR}/Debug/static/ssleay32.lib")
     endif()
 
     set(SSL_EAY_RELEASE SSL_EAY_RELEASE-NOTFOUND)
-    if (EXISTS "${OPENSSL_LIB_DIR}/release/ssleay32.lib")
-      set(SSL_EAY_RELEASE "${OPENSSL_LIB_DIR}/release/ssleay32.lib")
+    if (EXISTS "${OPENSSL_LIB_DIR}/Release/static/ssleay32.lib")
+      set(SSL_EAY_RELEASE "${OPENSSL_LIB_DIR}/Release/static/ssleay32.lib")
     endif()
 
     set(LIB_EAY_LIBRARY_DEBUG "${LIB_EAY_DEBUG}")
