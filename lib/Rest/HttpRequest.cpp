@@ -210,7 +210,7 @@ void HttpRequest::parseHeader(size_t length) {
             }
           }
 
-          pathEnd = f;
+          pathEnd = g;
 
           // look for database name in URL
           if (pathEnd - pathBegin >= 5) {
@@ -250,7 +250,7 @@ void HttpRequest::parseHeader(size_t length) {
           else if (*f == ' ' || *f == '\n') {
             *pathEnd = '\0';
 
-            paramEnd = paramBegin = pathEnd;
+            paramEnd = paramBegin = f;
 
             // set full url = complete path
             setFullUrl(pathBegin, pathEnd);
@@ -261,9 +261,11 @@ void HttpRequest::parseHeader(size_t length) {
             paramBegin = f + 1;
             paramEnd = paramBegin;
 
+            *g++ = '?';
+
             while (paramEnd < valueEnd && *paramEnd != ' ' &&
                    *paramEnd != '\n') {
-              ++paramEnd;
+              *g++ = *paramEnd++;
             }
 
             // set full url = complete path + query parameters
