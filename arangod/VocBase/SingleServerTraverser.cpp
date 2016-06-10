@@ -230,7 +230,8 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
   }
 
   _vertexGetter->reset();
-  _enumerator.reset(new basics::PathEnumerator<std::string, std::string, VPackValueLength>(
+  _enumerator.reset(new basics::DepthFirstEnumerator<std::string, std::string,
+                                                     VPackValueLength>(
       _edgeGetter, _vertexGetter.get(), v, _opts.maxDepth));
   _done = false;
 }

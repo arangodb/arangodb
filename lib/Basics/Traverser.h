@@ -53,32 +53,8 @@ struct VertexGetter {
 
 template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
 class PathEnumerator {
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief List of the last path is used to
-  //////////////////////////////////////////////////////////////////////////////
 
-  EnumeratedPath<edgeIdentifier, vertexIdentifier> _enumeratedPath;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief The pointers returned for edge indexes on this path. Used to
-  /// continue
-  ///        the search on respective levels.
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::stack<edgeItem*> _lastEdges;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief The boolean value indicating the direction for 'any' search
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::stack<bool> _lastEdgesDir;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief An internal index for the edge collection used at each depth level
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::stack<size_t> _lastEdgesIdx;
+ protected:
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to get the next edge from index.
@@ -107,6 +83,12 @@ class PathEnumerator {
 
   size_t _maxDepth;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief List of the last path is used to
+  //////////////////////////////////////////////////////////////////////////////
+
+  EnumeratedPath<edgeIdentifier, vertexIdentifier> _enumeratedPath;
+
  public:
   PathEnumerator(
       std::function<void(vertexIdentifier const&, std::vector<edgeIdentifier>&,
@@ -115,26 +97,74 @@ class PathEnumerator {
       vertexIdentifier const& startVertex, size_t maxDepth)
       : _getEdge(getEdge), _vertexGetter(vertexGetter), _isFirst(true), _maxDepth(maxDepth) {
     _enumeratedPath.vertices.push_back(startVertex);
-    _lastEdges.push(nullptr);
-    _lastEdgesDir.push(false);
-    _lastEdgesIdx.push(0);
     TRI_ASSERT(_enumeratedPath.vertices.size() == 1);
-    TRI_ASSERT(_lastEdges.size() == 1);
-    TRI_ASSERT(_lastEdgesDir.size() == 1);
   }
 
-  ~PathEnumerator() {}
+  virtual ~PathEnumerator() {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.
   //////////////////////////////////////////////////////////////////////////////
 
-  const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next() {
-    if (_isFirst) {
-      _isFirst = false;
-      return _enumeratedPath;
+  virtual const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next() = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Prunes the current path prefix, the next function should not return
+  ///        any path having this prefix anymore.
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void prune()  = 0;
+};
+
+template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
+class DepthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdentifier, edgeItem> {
+ private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief The pointers returned for edge indexes on this path. Used to
+  /// continue
+  ///        the search on respective levels.
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::stack<edgeItem*> _lastEdges;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief The boolean value indicating the direction for 'any' search
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::stack<bool> _lastEdgesDir;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief An internal index for the edge collection used at each depth level
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::stack<size_t> _lastEdgesIdx;
+
+ public:
+  DepthFirstEnumerator(
+      std::function<void(vertexIdentifier const&, std::vector<edgeIdentifier>&,
+                         edgeItem*&, size_t&, bool&)> getEdge,
+      VertexGetter<edgeIdentifier, vertexIdentifier>* vertexGetter,
+      vertexIdentifier const& startVertex, size_t maxDepth)
+    : PathEnumerator<edgeIdentifier, vertexIdentifier, edgeItem>(getEdge, vertexGetter, startVertex, maxDepth) {
+    _lastEdges.push(nullptr);
+    _lastEdgesDir.push(false);
+    _lastEdgesIdx.push(0);
+    TRI_ASSERT(_lastEdges.size() == 1);
+    TRI_ASSERT(_lastEdgesDir.size() == 1);
+  }
+
+  ~DepthFirstEnumerator() {}
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the next Path element from the traversal.
+  //////////////////////////////////////////////////////////////////////////////
+
+  const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next() override {
+    if (this->_isFirst) {
+      this->_isFirst = false;
+      return this->_enumeratedPath;
     }
-    if (_enumeratedPath.edges.size() == _maxDepth) {
+    if (this->_enumeratedPath.edges.size() == this->_maxDepth) {
       // we have reached the maximal search depth.
       // We can prune this path and go to the next.
       prune();
@@ -143,11 +173,11 @@ class PathEnumerator {
     // Avoid tail recusion. May crash on high search depth
     while (true) {
       if (_lastEdges.empty()) {
-        _enumeratedPath.edges.clear();
-        _enumeratedPath.vertices.clear();
-        return _enumeratedPath;
+        this->_enumeratedPath.edges.clear();
+        this->_enumeratedPath.vertices.clear();
+        return this->_enumeratedPath;
       }
-      _getEdge(_enumeratedPath.vertices.back(), _enumeratedPath.edges,
+      this->_getEdge(this->_enumeratedPath.vertices.back(), this->_enumeratedPath.edges,
                _lastEdges.top(), _lastEdgesIdx.top(), _lastEdgesDir.top());
       if (_lastEdges.top() != nullptr) {
         // Could continue the path in the next depth.
@@ -155,21 +185,21 @@ class PathEnumerator {
         _lastEdgesDir.push(false);
         _lastEdgesIdx.push(0);
         vertexIdentifier v;
-        bool isValid = _vertexGetter->getVertex(
-            _enumeratedPath.edges.back(), _enumeratedPath.vertices.back(),
-            _enumeratedPath.vertices.size(), v);
-        _enumeratedPath.vertices.push_back(v);
-        TRI_ASSERT(_enumeratedPath.vertices.size() ==
-                   _enumeratedPath.edges.size() + 1);
+        bool isValid = this->_vertexGetter->getVertex(
+            this->_enumeratedPath.edges.back(), this->_enumeratedPath.vertices.back(),
+            this->_enumeratedPath.vertices.size(), v);
+        this->_enumeratedPath.vertices.push_back(v);
+        TRI_ASSERT(this->_enumeratedPath.vertices.size() ==
+                   this->_enumeratedPath.edges.size() + 1);
         if (isValid) {
-          return _enumeratedPath;
+          return this->_enumeratedPath;
         }
       } else {
-        if (_enumeratedPath.edges.empty()) {
+        if (this->_enumeratedPath.edges.empty()) {
           // We are done with enumerating paths
-          _enumeratedPath.edges.clear();
-          _enumeratedPath.vertices.clear();
-          return _enumeratedPath;
+          this->_enumeratedPath.edges.clear();
+          this->_enumeratedPath.vertices.clear();
+          return this->_enumeratedPath;
         }
       }
       // This either modifies the stack or _lastEdges is empty.
@@ -183,14 +213,14 @@ class PathEnumerator {
   ///        any path having this prefix anymore.
   //////////////////////////////////////////////////////////////////////////////
 
-  void prune() {
+  void prune() override {
     if (!_lastEdges.empty()) {
       _lastEdges.pop();
       _lastEdgesDir.pop();
       _lastEdgesIdx.pop();
-      if (!_enumeratedPath.edges.empty()) {
-        _enumeratedPath.edges.pop_back();
-        _enumeratedPath.vertices.pop_back();
+      if (!this->_enumeratedPath.edges.empty()) {
+        this->_enumeratedPath.edges.pop_back();
+        this->_enumeratedPath.vertices.pop_back();
       }
     }
   }

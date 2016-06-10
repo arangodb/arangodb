@@ -283,7 +283,7 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
 void ClusterTraverser::setStartVertex(std::string const& id) {
   _vertexGetter->reset();
   _enumerator.reset(
-      new arangodb::basics::PathEnumerator<std::string, std::string, size_t>(
+      new arangodb::basics::DepthFirstEnumerator<std::string, std::string, size_t>(
           _edgeGetter, _vertexGetter.get(), id, _opts.maxDepth));
   _done = false;
   auto it = _vertices.find(id);
