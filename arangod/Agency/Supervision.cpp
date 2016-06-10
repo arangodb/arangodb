@@ -87,8 +87,6 @@ std::vector<check_t> Supervision::checkDBServers() {
     try {           // Existing
       lastHeartbeatTime =
         _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
-      lastHeartbeatStatus =
-        _snapshot(healthPrefix + serverID + "/LastHeartbeatStatus").toJson();
       lastHeartbeatAcked =
         _snapshot(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
       lastStatus = _snapshot(healthPrefix + serverID + "/Status").toJson();
@@ -176,8 +174,6 @@ std::vector<check_t> Supervision::checkCoordinators() {
         _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
       lastHeartbeatStatus =
         _snapshot(healthPrefix + serverID + "/LastHeartbeatStatus").toJson();
-      lastHeartbeatAcked =
-        _snapshot(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
       lastStatus = _snapshot(healthPrefix + serverID + "/Status").toJson();
       if (lastHeartbeatTime != heartbeatTime) { // Update
         good = true;
