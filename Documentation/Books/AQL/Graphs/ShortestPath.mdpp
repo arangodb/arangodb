@@ -103,24 +103,22 @@ We start with the shortest path from **A** to **D** as above:
 
     @startDocuBlockInline GRAPHSP_02_A_to_D
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHSP_02_A_to_D}
-    db._query("FOR v, e IN OUTBOUND SHORTEST_PATH 'circles/A' TO 'circles/D' GRAPH 'traversalGraph' RETURN [v, e]");
-    db._query("FOR v, e IN OUTBOUND SHORTEST_PATH 'circles/A' TO 'circles/D' edges RETURN [v, e]");
+    db._query("FOR v, e IN OUTBOUND SHORTEST_PATH 'circles/A' TO 'circles/D' GRAPH 'traversalGraph' RETURN [v._key, e._key]");
+    db._query("FOR v, e IN OUTBOUND SHORTEST_PATH 'circles/A' TO 'circles/D' edges RETURN [v._key, e._key]");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHSP_02_A_to_D
 
-We can see our expectations are fulfilled. We find the vertices in the correct ordering and the first edge is `null`.
+We can see our expectations are fulfilled. We find the vertices in the correct ordering and the first edge is `null`, because no edge is pointing to the start vertex on t his path.
 
 We can also compute shortest paths based on documents found in collections.
 
     @startDocuBlockInline GRAPHSP_03_A_to_D
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHSP_03_A_to_D}
-    db._query("FOR a IN circles FILTER a._key == 'A' FOR d IN circles FILTER d._key == 'D' FOR v, e IN OUTBOUND SHORTEST_PATH a TO d GRAPH 'traversalGraph' RETURN [v, e]");
-    db._query("FOR a IN circles FILTER a._key == 'A' FOR d IN circles FILTER d._key == 'D' FOR v, e IN OUTBOUND SHORTEST_PATH a TO d edges RETURN [v, e]");
+    db._query("FOR a IN circles FILTER a._key == 'A' FOR d IN circles FILTER d._key == 'D' FOR v, e IN OUTBOUND SHORTEST_PATH a TO d GRAPH 'traversalGraph' RETURN [v._key, e._key]");
+    db._query("FOR a IN circles FILTER a._key == 'A' FOR d IN circles FILTER d._key == 'D' FOR v, e IN OUTBOUND SHORTEST_PATH a TO d edges RETURN [v._key, e._key]");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHSP_03_A_to_D
 
-
-!SUBSECTION Using OPTIONS
 
 And finally clean it up again:
 
