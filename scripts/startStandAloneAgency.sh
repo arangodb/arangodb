@@ -31,7 +31,9 @@ if [ $NRAGENTS -gt 1 ]; then
            --agency.size $NRAGENTS \
            --agency.supervision true \
            --agency.supervision-frequency 1 \
-           --agency.wait-for-sync false \
+           --agency.wait-for-sync true \
+           --agency.election-timeout-min 5.0 \
+           --agency.election-timeout-max 10.0 \
            --database.directory agency/data$port \
            --javascript.app-path ./js/apps \
            --javascript.startup-directory ./js \
@@ -56,7 +58,9 @@ build/bin/arangod \
     --agency.size $NRAGENTS \
     --agency.supervision true \
     --agency.supervision-frequency 1 \
-    --agency.wait-for-sync false \
+    --agency.wait-for-sync true \
+    --agency.election-timeout-min 5.0 \
+    --agency.election-timeout-max 10.0 \
     --database.directory agency/data$(( 4001 + $aid )) \
     --javascript.app-path ./js/apps \
     --javascript.startup-directory ./js \

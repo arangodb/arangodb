@@ -134,10 +134,6 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
 }
 
 AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
-  if (_allDatabases == AuthLevel::RW) {
-    return _allDatabases;
-  }
-
   auto const& it = _databases.find(dbname);
 
   if (it == _databases.end()) {

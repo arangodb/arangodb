@@ -192,14 +192,25 @@ void HttpRequest::parseHeader(size_t length) {
           // find a question mark or space
           char* f = pathBegin;
 
+          // get ride of "//"
+          char* g = f;
+
           // do NOT url-decode the path, we need to distingush between
           // "/document/a/b" and "/document/a%2fb"
 
           while (f < valueEnd && *f != '?' && *f != ' ' && *f != '\n') {
-            ++f;
+            *g++ = *f;
+
+            if (*f == '/') {
+              while (f < valueEnd && *f == '/') {
+                ++f;
+              }
+            } else {
+              ++f;
+            }
           }
 
-          pathEnd = f;
+          pathEnd = g;
 
           // look for database name in URL
           if (pathEnd - pathBegin >= 5) {
@@ -239,7 +250,7 @@ void HttpRequest::parseHeader(size_t length) {
           else if (*f == ' ' || *f == '\n') {
             *pathEnd = '\0';
 
-            paramEnd = paramBegin = pathEnd;
+            paramEnd = paramBegin = f;
 
             // set full url = complete path
             setFullUrl(pathBegin, pathEnd);
@@ -250,9 +261,11 @@ void HttpRequest::parseHeader(size_t length) {
             paramBegin = f + 1;
             paramEnd = paramBegin;
 
+            *g++ = '?';
+
             while (paramEnd < valueEnd && *paramEnd != ' ' &&
                    *paramEnd != '\n') {
-              ++paramEnd;
+              *g++ = *paramEnd++;
             }
 
             // set full url = complete path + query parameters
