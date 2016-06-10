@@ -640,14 +640,15 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
       }
       return false;
     }
-    if (dispatcher->addJob(job, false) == TRI_ERROR_NO_ERROR) {
+    int res = dispatcher->addJob(job, false);
+    if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "scheduled dbserver sync";
       return true;
     }
     MUTEX_LOCKER(mutexLocker, _statusLock);
     _isDispatchingChange = false;
 
-    if (warn) {
+    if (warn && res != TRI_ERROR_SHUTTING_DOWN) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT) << "could not schedule dbserver sync";
     }
   }
