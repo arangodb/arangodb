@@ -47,7 +47,7 @@ class SingleServerTraverser : public Traverser {
 
     virtual bool getVertex(std::string const&, std::string const&, size_t,
                            std::string&) override;
-    virtual void reset();
+    virtual void reset(std::string const&);
 
    protected:
     SingleServerTraverser* _traverser;
@@ -63,7 +63,7 @@ class SingleServerTraverser : public Traverser {
     bool getVertex(std::string const&, std::string const&, size_t,
                     std::string&) override;
 
-    void reset() override;
+    void reset(std::string const&) override;
 
    private:
     std::unordered_set<std::string> _returnedVertices;
@@ -75,7 +75,9 @@ class SingleServerTraverser : public Traverser {
   /// @brief callable class to load edges based on opts.
   //////////////////////////////////////////////////////////////////////////////
 
-  class EdgeGetter {
+  class EdgeGetter
+      : public arangodb::basics::EdgeGetter<std::string, std::string,
+                                            arangodb::velocypack::ValueLength> {
    public:
     EdgeGetter(SingleServerTraverser* traverser,
                         TraverserOptions const& opts,
@@ -86,8 +88,11 @@ class SingleServerTraverser : public Traverser {
     /// @brief Function to fill the list of edges properly.
     //////////////////////////////////////////////////////////////////////////////
 
-    void operator()(std::string const&, std::vector<std::string>&,
-                    arangodb::velocypack::ValueLength*&, size_t&, bool&);
+    void getEdge(std::string const&, std::vector<std::string>&,
+                 arangodb::velocypack::ValueLength*&, size_t&) override;
+
+    void getAllEdges(std::string const&, std::vector<std::string>&) override;
+
 
    private:
 
@@ -165,7 +170,7 @@ class SingleServerTraverser : public Traverser {
   /// @brief internal getter to extract an edge
   //////////////////////////////////////////////////////////////////////////////
 
-  EdgeGetter _edgeGetter;
+  std::unique_ptr<EdgeGetter> _edgeGetter;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal getter to extract an edge

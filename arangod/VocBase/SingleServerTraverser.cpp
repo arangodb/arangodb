@@ -63,13 +63,12 @@ static int FetchDocumentById(arangodb::Transaction* trx,
   return res;
 }
 
-
-
 SingleServerTraverser::SingleServerTraverser(
     TraverserOptions& opts, Transaction* trx,
     std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
         expressions)
-    : Traverser(opts, expressions), _edgeGetter(this, opts, trx), _trx(trx) {
+    : Traverser(opts, expressions), _trx(trx) {
+  _edgeGetter = std::make_unique<EdgeGetter>(this, opts, trx);
   if (opts.uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
   } else {
@@ -161,7 +160,7 @@ bool SingleServerTraverser::VertexGetter::getVertex(std::string const& edge,
   return true;
 }
 
-void SingleServerTraverser::VertexGetter::reset() {
+void SingleServerTraverser::VertexGetter::reset(std::string const&) {
 }
 
 bool SingleServerTraverser::UniqueVertexGetter::getVertex(
@@ -187,8 +186,10 @@ bool SingleServerTraverser::UniqueVertexGetter::getVertex(
   return true;
 }
 
-void SingleServerTraverser::UniqueVertexGetter::reset() {
+void SingleServerTraverser::UniqueVertexGetter::reset(std::string const& startVertex) {
   _returnedVertices.clear();
+  // The startVertex always counts as visited!
+  _returnedVertices.emplace(startVertex);
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& v) {
@@ -229,10 +230,16 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
     }
   }
 
-  _vertexGetter->reset();
-  _enumerator.reset(new basics::DepthFirstEnumerator<std::string, std::string,
-                                                     VPackValueLength>(
-      _edgeGetter, _vertexGetter.get(), v, _opts.maxDepth));
+  _vertexGetter->reset(v);
+  if (_opts.useBreadthFirst) {
+    _enumerator.reset(new basics::BreadthFirstEnumerator<std::string, std::string,
+                                                       VPackValueLength>(
+        _edgeGetter.get(), _vertexGetter.get(), v, _opts.maxDepth));
+  } else {
+    _enumerator.reset(new basics::DepthFirstEnumerator<std::string, std::string,
+                                                       VPackValueLength>(
+        _edgeGetter.get(), _vertexGetter.get(), v, _opts.maxDepth));
+  }
   _done = false;
 }
 
@@ -382,10 +389,10 @@ void SingleServerTraverser::EdgeGetter::nextEdge(
   }
 }
 
-void SingleServerTraverser::EdgeGetter::operator()(
-    std::string const& startVertex,
-    std::vector<std::string>& edges, VPackValueLength*& last, size_t& eColIdx,
-    bool& dir) {
+void SingleServerTraverser::EdgeGetter::getEdge(std::string const& startVertex,
+                                                std::vector<std::string>& edges,
+                                                VPackValueLength*& last,
+                                                size_t& eColIdx) {
   if (last == nullptr) {
     eColIdx = 0;
     if (!nextCursor(startVertex, eColIdx, last)) {
@@ -394,4 +401,13 @@ void SingleServerTraverser::EdgeGetter::operator()(
     }
   }
   nextEdge(startVertex, eColIdx, last, edges);
+}
+
+void SingleServerTraverser::EdgeGetter::getAllEdges(std::string const& startVertex,
+                                                std::vector<std::string>& edges) {
+  VPackValueLength* last = nullptr;
+  size_t idx = 0;
+  do {
+    getEdge(startVertex, edges, last, idx);
+  } while (last != nullptr);
 }

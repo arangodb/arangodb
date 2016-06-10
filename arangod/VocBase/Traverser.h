@@ -252,7 +252,7 @@ struct TraverserOptions {
 
   uint64_t maxDepth;
 
-  bool useBreathFirst;
+  bool useBreadthFirst;
 
   UniquenessLevel uniqueVertices;
 
@@ -262,7 +262,7 @@ struct TraverserOptions {
       : _trx(trx),
         minDepth(1),
         maxDepth(1),
-        useBreathFirst(false),
+        useBreadthFirst(false),
         uniqueVertices(UniquenessLevel::NONE),
         uniqueEdges(UniquenessLevel::PATH) {}
 

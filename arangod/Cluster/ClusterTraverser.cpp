@@ -154,10 +154,9 @@ void ClusterTraverser::UniqueVertexGetter::reset() {
   _returnedVertices.clear();
 }
 
-void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
-                                              std::vector<std::string>& result,
-                                              size_t*& last, size_t& eColIdx,
-                                              bool& unused) {
+void ClusterTraverser::ClusterEdgeGetter::getEdge(
+    std::string const& startVertex, std::vector<std::string>& result,
+    size_t*& last, size_t& eColIdx) {
   std::string collName;
   TRI_edge_direction_e dir;
   if (!_traverser->_opts.getCollection(eColIdx, collName, dir)) {
@@ -198,7 +197,7 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
     if (edgesSlice.isNone() || edgesSlice.length() == 0) {
       last = nullptr;
       eColIdx++;
-      operator()(startVertex, result, last, eColIdx, unused);
+      getEdge(startVertex, result, last, eColIdx);
       return;
     }
     std::stack<std::string> stack;
@@ -233,7 +232,7 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
       // Try next index
       last = nullptr;
       eColIdx++;
-      operator()(startVertex, result, last, eColIdx, unused);
+      getEdge(startVertex, result, last, eColIdx);
       return;
     }
 
@@ -247,7 +246,7 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
       auto search = std::find(result.begin(), result.end(), next);
       if (search != result.end()) {
         // The edge is now included twice. Go on with the next
-        operator()(startVertex, result, last, eColIdx, unused);
+        getEdge(startVertex, result, last, eColIdx);
         return;
       }
     }
@@ -262,7 +261,7 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
       _traverser->_iteratorCache.pop();
       last = nullptr;
       eColIdx++;
-      operator()(startVertex, result, last, eColIdx, unused);
+      getEdge(startVertex, result, last, eColIdx);
       return;
     } else {
       std::string const next = tmp.top();
@@ -271,7 +270,7 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
         auto search = std::find(result.begin(), result.end(), next);
         if (search != result.end()) {
           // The edge would be included twice. Go on with the next
-          operator()(startVertex, result, last, eColIdx, unused);
+          getEdge(startVertex, result, last, eColIdx);
           return;
         }
       }
@@ -280,11 +279,26 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
   }
 }
 
+void ClusterTraverser::ClusterEdgeGetter::getAllEdges(
+    std::string const& startVertex, std::vector<std::string>& result) {
+  size_t* last = nullptr;
+  size_t idx = 0;
+  do {
+    getEdge(startVertex, result, last, idx);
+  } while (last != nullptr);
+}
+
 void ClusterTraverser::setStartVertex(std::string const& id) {
   _vertexGetter->reset();
-  _enumerator.reset(
-      new arangodb::basics::DepthFirstEnumerator<std::string, std::string, size_t>(
-          _edgeGetter, _vertexGetter.get(), id, _opts.maxDepth));
+  if (_opts.useBreadthFirst) {
+    _enumerator.reset(
+        new arangodb::basics::BreadthFirstEnumerator<std::string, std::string, size_t>(
+            _edgeGetter.get(), _vertexGetter.get(), id, _opts.maxDepth));
+  } else {
+    _enumerator.reset(
+        new arangodb::basics::DepthFirstEnumerator<std::string, std::string, size_t>(
+            _edgeGetter.get(), _vertexGetter.get(), id, _opts.maxDepth));
+  }
   _done = false;
   auto it = _vertices.find(id);
   if (it == _vertices.end()) {
