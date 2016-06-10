@@ -1,0 +1,4 @@
+@include arangod
+
+[database]
+init-database = true

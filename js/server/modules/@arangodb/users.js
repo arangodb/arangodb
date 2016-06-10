@@ -496,14 +496,13 @@ exports.revokeDatabase = function(username, database) {
   }
 
   let databases = user.databases || {};
-  databases[database] = null;
+  databases[database] = "none";
 
   users.update(user, { databases: databases }, false, false);
 
   // not exports.reload() as this is an abstract method...
   require("@arangodb/users").reload();
 
-  delete databases[database];
   return databases;  
 };
 
@@ -582,8 +581,39 @@ exports.permission = function(username, key) {
   }
 
   if (key === undefined || key === null) {
-    return user.databases;
+    let databases = user.databases;
+    let result = {};
+
+    if (databases.hasOwnProperty('*')) {
+      const p = databases['*'];
+      const l = db._databases();
+
+      for (let k = 0; k < l.length; ++k) {
+        var dbname = l[k];
+        result[dbname] = p;
+      }
+    }
+
+    for (let k in databases) {
+      if (k !== '*' && databases.hasOwnProperty(k)) {
+        result[k] = databases[k];
+      }
+    }
+
+    return result;
   } else {
-    return user.databases[key];
+    if (key === "*") {
+      return user.databases[key];
+    } else {
+      if (user.databases.hasOwnProperty(key)) {
+        return user.databases[key];
+      }
+
+      if (user.databases.hasOwnProperty('*')) {
+        return user.databases[key];
+      }
+
+      return "";
+    }
   }
 };

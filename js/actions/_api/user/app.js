@@ -37,8 +37,7 @@ function needSystemUser(req, res) {
     return true;
   }
 
-  const allowed = users.permission(user, "_system") === 'rw' ||
-    users.permission(user, "*") === 'rw';
+  const allowed = users.permission(user, "_system") === 'rw';
 
   if (!allowed) {
     actions.resultError(req, res, actions.HTTP_FORBIDDEN,
@@ -60,8 +59,7 @@ function needMyself(req, res, username) {
   let allowed = (user === username);
 
   if (!allowed) {
-    allowed = users.permission(username, "_system") === 'rw' ||
-      users.permission(username, "*") === 'rw';
+    allowed = users.permission(username, "_system") === 'rw';
   }
 
   if (!allowed) {

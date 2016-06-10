@@ -192,11 +192,22 @@ void HttpRequest::parseHeader(size_t length) {
           // find a question mark or space
           char* f = pathBegin;
 
+          // get ride of "//"
+          char* g = f;
+
           // do NOT url-decode the path, we need to distingush between
           // "/document/a/b" and "/document/a%2fb"
 
           while (f < valueEnd && *f != '?' && *f != ' ' && *f != '\n') {
-            ++f;
+            *g++ = *f;
+
+            if (*f == '/') {
+              while (f < valueEnd && *f == '/') {
+                ++f;
+              }
+            } else {
+              ++f;
+            }
           }
 
           pathEnd = f;
