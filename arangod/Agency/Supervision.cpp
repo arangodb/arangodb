@@ -138,7 +138,7 @@ std::vector<check_t> Supervision::checkDBServers() {
         report->add("Status", VPackValue("BAD"));
       }
     }
-
+    
     report->close();
     report->close();
     report->close();
@@ -146,7 +146,7 @@ std::vector<check_t> Supervision::checkDBServers() {
     if (!this->isStopping()) {
       _agent->write(report);
     }
-      
+    
   }
 
   return ret;
@@ -288,6 +288,7 @@ void Supervision::run() {
     // Do supervision
     updateSnapshot();
     doChecks(timedout);
+    shrinkCluster();
     workJobs();
     
   }
@@ -334,6 +335,115 @@ void Supervision::workJobs() {
   }
   
 }
+
+
+// Shrink cluster if applicable
+void Supervision::shrinkCluster () {
+
+  // Get servers from plan
+  std::vector<std::string> availServers; 
+  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
+  for (auto const& srv : dbservers) {
+    availServers.push_back(srv.first);
+  }
+
+  size_t targetNumDBServers;
+  try {
+    targetNumDBServers = _snapshot("/Target/NumberOfDBServers").getUInt();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Cannot retrieve targeted number of db servers from agency" << e.what();
+    return;
+  }
+  
+  // If there are any cleanOutServer jobs todo or pending do nothing
+  Node::Children const& todos = _snapshot(toDoPrefix).children();
+  Node::Children const& pends = _snapshot(pendingPrefix).children();
+  
+  for (auto const& job : todos) {
+    try {
+      if (job.second->slice().get("type").copyString() == "cleanOutServer") {
+        return;
+      }
+    } catch (std::exception const& e) {
+      LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Failed to get job type of job " << job.first << ": " << e.what();
+      return;
+    }
+  }
+  
+  for (auto const& job : pends) {
+    try {
+      if (job.second->slice().get("type").copyString() == "cleanOutServer") {
+        return;
+      }
+    } catch (std::exception const& e) {
+      LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Failed to get job type of job " << job.first << ": " << e.what();
+      return;
+    }
+  }
+  
+  // Remove cleaned from ist 
+  if (_snapshot.exists("/Target/CleanedServers").size()==2) {
+    for (auto const& srv :
+           VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
+      availServers.erase(
+        std::remove(availServers.begin(), availServers.end(), srv.copyString()),
+        availServers.end());
+    }
+  }
+
+  // Only if number of servers in target is smaller than the available
+  if (targetNumDBServers < availServers.size()) {
+
+    // Minimum 1 DB server must remain
+    if (availServers.size() == 1) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Only one db server left for operation";
+      return;
+    }
+
+    // Find greatest replication factor among all collections
+    uint64_t maxReplFact = 1;
+    Node::Children const& databases = _snapshot("/Plan/Collections").children();
+    for (auto const& database : databases) {
+      for (auto const& collptr : database.second->children()) {
+        try {
+          uint64_t replFact = (*collptr.second)("replicationFactor").getUInt();
+          if (replFact > maxReplFact) {
+            maxReplFact = replFact;
+          }
+        } catch (std::exception const& e) {
+          LOG_TOPIC(DEBUG, Logger::AGENCY) <<
+            "Cannot retrieve replication factor for collection " << collptr.first;
+          return;
+        }
+      }
+    }
+
+    // If max number of replications is small than that of available
+    if (maxReplFact < availServers.size()) {
+
+      // Sort servers by name
+      std::sort(availServers.begin(), availServers.end());
+      
+      // Clean out as long as number of available servers is bigger
+      // than maxReplFactor and bigger than targeted number of db servers
+      while (availServers.size() > maxReplFact &&
+             availServers.size() > targetNumDBServers) {
+        
+        // Schedule last server for cleanout
+        CleanOutServer(_snapshot, _agent, std::to_string(_jobId++),
+                       "supervision", _agencyPrefix, availServers.back());
+        availServers.pop_back();
+      }
+      
+    }
+    
+  }
+
+}
+
 
 // Start thread
 bool Supervision::start() {

@@ -65,7 +65,7 @@ inline std::vector<std::string> split(const std::string& value,
 }
 
 
-
+// Build endpoint from URL
 inline static bool endpointPathFromUrl(std::string const& url,
                                        std::string& endpoint,
                                        std::string& path) {
@@ -98,21 +98,27 @@ inline static bool endpointPathFromUrl(std::string const& url,
   return true;
 }
 
+
 // Create with name
 Store::Store(std::string const& name) : Thread(name), _node(name, this) {}
 
+
+// Copy constructor
 Store::Store(Store const& other) :
   Thread(other._node.name()), _agent(other._agent), _timeTable(other._timeTable),
   _observerTable(other._observerTable), _observedTable(other._observedTable),
   _node(other._node) {}
-  
-  Store::Store(Store&& other) :
+
+
+// Move constructor
+Store::Store(Store&& other) :
   Thread(other._node.name()), _agent(std::move(other._agent)),
   _timeTable(std::move(other._timeTable)),
   _observerTable(std::move(other._observerTable)),
   _observedTable(std::move(other._observedTable)),
   _node(std::move(other._node)) {}
 
+// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
   _agent = rhs._agent;
   _timeTable = rhs._timeTable;
@@ -122,6 +128,7 @@ Store& Store::operator=(Store const& rhs) {
   return *this;
 }
 
+// Move assignment operator
 Store& Store::operator=(Store&& rhs) {
   _agent = std::move(rhs._agent);
   _timeTable = std::move(rhs._timeTable);
@@ -170,6 +177,11 @@ std::vector<bool> Store::apply(query_t const& query) {
   return applied;
 }
 
+// Get name
+std::string const& Store::name() const {
+  return _node.name();
+}
+
 // template<class T, class U> std::multimap<std::string, std::string>
 std::ostream& operator<<(std::ostream& os,
                          std::multimap<std::string, std::string> const& m) {
@@ -188,16 +200,22 @@ struct notify_t {
       : key(k), modified(m), oper(o) {}
 };
 
-std::vector<bool> Store::apply(std::vector<VPackSlice> const& queries,
-                               bool inform) {
+
+// Apply (from logs)
+std::vector<bool> Store::apply(
+  std::vector<VPackSlice> const& queries, bool inform) {
+  
   std::vector<bool> applied;
+
+  // Apply log entries
   {
     MUTEX_LOCKER(storeLocker, _storeLock);
     for (auto const& i : queries) {
-      applied.push_back(applies(i));  // no precond
+      applied.push_back(applies(i));
     }
   }
 
+  // Find possibly affected callbacks
   std::multimap<std::string, std::shared_ptr<notify_t>> in;
   for (auto const& i : queries) {
     for (auto const& j : VPackObjectIterator(i)) {
@@ -223,12 +241,14 @@ std::vector<bool> Store::apply(std::vector<VPackSlice> const& queries,
     }
   }
 
+  // Sort by URLS to avoid multiple callbacks
   std::vector<std::string> urls;
   for (auto it = in.begin(), end = in.end(); it != end;
        it = in.upper_bound(it->first)) {
     urls.push_back(it->first);
   }
 
+  // Callback
   for (auto const& url : urls) {
     Builder body;  // host
     body.openObject();
@@ -254,7 +274,7 @@ std::vector<bool> Store::apply(std::vector<VPackSlice> const& queries,
       arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
           std::make_shared<std::string>(body.toString()), headerFields,
-          std::make_shared<StoreCallback>(), 0.0, true);
+          std::make_shared<StoreCallback>(), 1.0, true);
 
     } else {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;
@@ -264,8 +284,10 @@ std::vector<bool> Store::apply(std::vector<VPackSlice> const& queries,
   return applied;
 }
 
-// Check precondition
+
+// Check single precondition
 bool Store::check(VPackSlice const& slice) const {
+
   if (!slice.isObject()) {  // Must be object
     LOG_TOPIC(WARN, Logger::AGENCY)
         << "Cannot check precondition: " << slice.toJson();
@@ -319,6 +341,7 @@ bool Store::check(VPackSlice const& slice) const {
   return true;
 }
 
+
 // Read queries into result
 std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
   std::vector<bool> success;
@@ -335,7 +358,8 @@ std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
   return success;
 }
 
-// read single query into ret
+
+// Read single query into ret
 bool Store::read(VPackSlice const& query, Builder& ret) const {
   bool success = true;
 
@@ -443,14 +467,6 @@ void Store::dumpToBuilder(Builder& builder) const {
   }
 }
 
-size_t Store::matchPath(std::vector<std::string> const& pv) const {
-  //  Node* cur(this);
-  /*  for (size_t i = 0; i < pv.size(); ++i) {
-      if (cur.find(pv.at(i))) {
-      }
-      }*/
-  return 0;
-}
 
 // Start thread
 bool Store::start() {
@@ -458,11 +474,13 @@ bool Store::start() {
   return true;
 }
 
+
 // Start thread with agent
 bool Store::start(Agent* agent) {
   _agent = agent;
   return start();
 }
+
 
 // Work ttls and callbacks
 void Store::run() {
@@ -492,10 +510,14 @@ void Store::run() {
 
 }
 
+
+// Apply a request to my key value tree
 bool Store::applies(arangodb::velocypack::Slice const& slice) {
   return _node.applies(slice);
 }
 
+
+// Apply a request to my key value store
 Store& Store::operator=(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
 

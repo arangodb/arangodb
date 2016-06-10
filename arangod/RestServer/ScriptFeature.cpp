@@ -72,7 +72,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
   V8Context* context =
       V8DealerFeature::DEALER->enterContext(database->vocbase(), true);
 
-  if (context != nullptr) {
+  if (context == nullptr) {
     LOG(FATAL) << "cannot acquire V8 context";
     FATAL_ERROR_EXIT();
   }

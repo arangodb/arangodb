@@ -29,6 +29,9 @@
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 
+#include <iomanip>
+#include <sstream>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -370,7 +373,9 @@ std::string ServerState::createIdForRole(AgencyComm comm, ServerState::RoleEnum 
     size_t idCounter = 1;
     VPackSlice entry;
     do {
-      id = serverIdPrefix + std::to_string(idCounter++);
+      std::ostringstream idss;
+      idss << std::setw(3) << std::setfill('0') << idCounter++;
+      id = serverIdPrefix + idss.str();
       entry = servers.get(id);
 
       LOG_TOPIC(TRACE, Logger::STARTUP) << id << " found in existing keys: " 

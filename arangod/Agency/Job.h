@@ -158,12 +158,14 @@ struct Job {
     finished.add("op", VPackValue("delete"));
     finished.close();
 
-    // --- Remove block
-    finished.add(_agencyPrefix + "/Supervision/" + type,
-                 VPackValue(VPackValueType::Object));
-    finished.add("op", VPackValue("delete"));
-    finished.close();
-
+    // --- Remove block if specified
+    if (type != "") {
+      finished.add(_agencyPrefix + "/Supervision/" + type,
+                   VPackValue(VPackValueType::Object));
+      finished.add("op", VPackValue("delete"));
+      finished.close();
+    }
+    
     // --- Need precond? 
     finished.close(); finished.close();
   

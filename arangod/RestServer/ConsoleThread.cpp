@@ -63,7 +63,7 @@ void ConsoleThread::run() {
   // enter V8 context
   _context = V8DealerFeature::DEALER->enterContext(_vocbase, true);
 
-  if (_context != nullptr) {
+  if (_context == nullptr) {
     LOG(FATAL) << "cannot acquire V8 context";
     FATAL_ERROR_EXIT();
   }
