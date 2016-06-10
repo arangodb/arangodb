@@ -203,8 +203,9 @@ elseif (WIN32)
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS ${V8_DIR}/build/all.gyp)
 
-  set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
-
+  if ("${V8_TARGET_ARCHS}" STREQUAL "")
+    set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
+  endif()
   list(APPEND V8_GYP_ARGS
     -Dcomponent=static_library
     -Dlibrary=static_library
