@@ -108,7 +108,7 @@ class ClusterTraverser : public Traverser {
     void getEdge(std::string const&, std::vector<std::string>&, size_t*&,
                  size_t&) override;
 
-    void getAllEdges(std::string const&, std::vector<std::string>&) override;
+    void getAllEdges(std::string const&, std::vector<std::string>&, size_t depth) override;
 
    private:
     ClusterTraverser* _traverser;

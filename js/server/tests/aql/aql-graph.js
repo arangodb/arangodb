@@ -613,7 +613,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       var v6 = "UnitTestsAhuacatlVertex/v6";
       var v7 = "UnitTestsAhuacatlVertex/v7";
       var createQuery = function (start, filter) {
-        return `FOR n, e IN OUTBOUND "${start}" UnitTestsAhuacatlEdge ${filter} SORT n._id RETURN n._id`;
+        return `FOR n, e IN OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true} ${filter} SORT n._id RETURN n._id`;
       };
 
       // An empty filter should let all edges through
@@ -641,7 +641,83 @@ function ahuacatlQueryNeighborsTestSuite () {
       actual = getQueryResults(createQuery(v3, `FILTER e._to == "${v4}"`));
       assertEqual(actual, [ v4 ]);
     }
+  };
+}
 
+function ahuacatlQueryBreadthFirstTestSuite () {
+  let vertex = null;
+  let edge   = null;
+  const vn = "UnitTestsAhuacatlVertex";
+  const en = "UnitTestsAhuacatlEdge";
+  const center = vn + "/A";
+
+  let cleanUp = function () {
+    db._drop(vn);
+    db._drop(en);
+  };
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+///
+///
+/// Graph Under Test:
+///  +---------+---------+
+/// \|/        |        \|/
+///  D <- B <- A -> E -> F
+///       |         |
+///       +--> C <--+
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      cleanUp();
+
+      vertex = db._create(vn);
+      edge = db._createEdgeCollection(en);
+      
+      vertex.save({_key: "A"});
+      vertex.save({_key: "B"});
+      vertex.save({_key: "C"});
+      vertex.save({_key: "D"});
+      vertex.save({_key: "E"});
+      vertex.save({_key: "F"});
+
+      let makeEdge = function(from, to) {
+        edge.save({
+          _from: vn + "/" + from,
+          _to: vn + "/" + to, 
+          _key: from + "" + to
+        });
+      };
+
+      makeEdge("A", "B");
+      makeEdge("A", "D");
+      makeEdge("A", "E");
+      makeEdge("A", "F");
+
+      makeEdge("B", "C");
+      makeEdge("B", "D");
+
+      makeEdge("E", "C");
+      makeEdge("E", "F");
+    },
+
+    tearDown : cleanUp,
+
+    testUniqueVerticesMinDepth2 : function () {
+      var query = `
+        FOR n IN 2..2 OUTBOUND "${center}" ${en}
+        OPTIONS {bfs: true, uniqueVertices: 'global'}
+        SORT n._key RETURN n._key`;
+      var actual;
+
+      // A is directly connected to every other vertex accept "C"
+      // So we expect only C to be returned.
+      actual = getQueryResults(query);
+      assertEqual(actual.length, 1);
+      assertEqual(actual, [ "C" ]);
+    }
   };
 }
 
@@ -993,6 +1069,7 @@ function ahuacatlQueryShortestpathErrorsSuite () {
 
 jsunity.run(ahuacatlQueryEdgesTestSuite);
 jsunity.run(ahuacatlQueryNeighborsTestSuite);
+jsunity.run(ahuacatlQueryBreadthFirstTestSuite);
 jsunity.run(ahuacatlQueryShortestPathTestSuite);
 if (internal.debugCanUseFailAt() && ! cluster.isCluster()) {
   jsunity.run(ahuacatlQueryNeighborsErrorsSuite);

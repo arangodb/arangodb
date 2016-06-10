@@ -58,7 +58,8 @@ struct EdgeGetter {
   virtual void getEdge(vertexIdentifier const&, std::vector<edgeIdentifier>&,
                        edgeItem*&, size_t&) = 0;
 
-  virtual void getAllEdges(vertexIdentifier const&, std::vector<edgeIdentifier>&) = 0;
+  virtual void getAllEdges(vertexIdentifier const&,
+                           std::vector<edgeIdentifier>&, size_t) = 0;
 };
 
 
@@ -395,7 +396,7 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
 
       _tmpEdges.clear();
       auto& next = _toSearch[_toSearchPos++];
-      this->_edgeGetter->getAllEdges(next->vertex, _tmpEdges);
+      this->_edgeGetter->getAllEdges(next->vertex, _tmpEdges, _currentDepth);
       if (!_tmpEdges.empty()) {
         bool didInsert = false;
         for (auto const& e : _tmpEdges) {

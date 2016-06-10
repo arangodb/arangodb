@@ -91,7 +91,7 @@ class SingleServerTraverser : public Traverser {
     void getEdge(std::string const&, std::vector<std::string>&,
                  arangodb::velocypack::ValueLength*&, size_t&) override;
 
-    void getAllEdges(std::string const&, std::vector<std::string>&) override;
+    void getAllEdges(std::string const&, std::vector<std::string>&, size_t) override;
 
 
    private:

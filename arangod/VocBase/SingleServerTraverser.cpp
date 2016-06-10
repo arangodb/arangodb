@@ -23,6 +23,7 @@
 
 #include "SingleServerTraverser.h"
 #include "Utils/OperationCursor.h"
+#include "VocBase/MasterPointer.h"
 #include "VocBase/SingleServerTraversalPath.h"
 
 using namespace arangodb::traverser;
@@ -268,7 +269,28 @@ TraversalPath* SingleServerTraverser::next() {
       return next();
     }
   }
+
   size_t countEdges = path.edges.size();
+  if (_opts.useBreadthFirst &&
+      _opts.uniqueVertices == TraverserOptions::UniquenessLevel::NONE &&
+      _opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
+    // Only if we use breadth first
+    // and vertex uniqueness is not guaranteed
+    // We have to validate edges on path uniquness.
+    // Otherwise this situation cannot occur.
+    // If two edges are identical than at least their start or end vertex
+    // is on the path twice: A -> B <- A
+    for (size_t i = 0; i < countEdges; ++i) {
+      for (size_t j = i + 1; j < countEdges; ++j) {
+        if (path.edges[i] == path.edges[j]) {
+          // We found two idential edges. Prune.
+          // Next
+          _pruneNext = true;
+          return next();
+        }
+      }
+    }
+  }
 
   auto p = std::make_unique<SingleServerTraversalPath>(path, this);
   if (countEdges < _opts.minDepth) {
@@ -358,6 +380,12 @@ void SingleServerTraverser::EdgeGetter::nextEdge(
     }
     edge = edge.at(*last);
     if (!_traverser->edgeMatchesConditions(edge, edges.size())) {
+      if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
+        // Insert a dummy to please the uniqueness
+        _traverser->_edges.emplace(_trx->extractIdString(edge), nullptr);
+      }
+
+      ++_traverser->_filteredPaths; 
       TRI_ASSERT(last != nullptr);
       (*last)++;
       continue;
@@ -403,11 +431,47 @@ void SingleServerTraverser::EdgeGetter::getEdge(std::string const& startVertex,
   nextEdge(startVertex, eColIdx, last, edges);
 }
 
-void SingleServerTraverser::EdgeGetter::getAllEdges(std::string const& startVertex,
-                                                std::vector<std::string>& edges) {
-  VPackValueLength* last = nullptr;
-  size_t idx = 0;
-  do {
-    getEdge(startVertex, edges, last, idx);
-  } while (last != nullptr);
+void SingleServerTraverser::EdgeGetter::getAllEdges(
+    std::string const& startVertex, std::vector<std::string>& edges,
+    size_t depth) {
+  size_t idxId = 0;
+  std::string eColName;
+  arangodb::Transaction::IndexHandle indexHandle;
+  std::vector<TRI_doc_mptr_t*> mptrs;
+
+  // We iterate over all index ids. note idxId++
+  while (_opts.getCollectionAndSearchValue(idxId++, startVertex, eColName,
+                                           indexHandle, _builder)) {
+    std::shared_ptr<OperationCursor> cursor = _trx->indexScan(
+        eColName, arangodb::Transaction::CursorType::INDEX, indexHandle,
+        _builder.slice(), 0, UINT64_MAX, Transaction::defaultBatchSize(), false);
+    if (cursor->failed()) {
+      // Some error, ignore and go to next
+      continue;
+    }
+    while (cursor->hasMore()) {
+      mptrs.clear();
+      cursor->getMoreMptr(mptrs, UINT64_MAX);
+
+      _traverser->_readDocuments += static_cast<size_t>(mptrs.size());
+      for (auto const& mptr : mptrs) {
+        VPackSlice edge(mptr->vpack());
+        if (!_traverser->edgeMatchesConditions(edge, depth)) {
+          if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
+            // Insert a dummy to please the uniqueness
+            _traverser->_edges.emplace(_trx->extractIdString(edge), nullptr);
+          }
+          ++_traverser->_filteredPaths; 
+          continue;
+        }
+        std::string id = _trx->extractIdString(edge);
+
+        // TODO Optimize. May use VPack everywhere.
+        VPackBuilder tmpBuilder = VPackBuilder::clone(edge);
+        _traverser->_edges.emplace(id, tmpBuilder.steal());
+
+        edges.emplace_back(id);
+      }
+    }
+  }
 }
