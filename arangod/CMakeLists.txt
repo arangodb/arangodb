@@ -301,9 +301,12 @@ add_executable(${BIN_ARANGOD}
   VocBase/DatafileStatistics.cpp
   VocBase/Ditch.cpp
   VocBase/ExampleMatcher.cpp
+  VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/MasterPointers.cpp
+  VocBase/SingleServerTraversalPath.cpp
+  VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
   VocBase/cleanup.cpp
   VocBase/collection.cpp

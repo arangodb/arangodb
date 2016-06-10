@@ -25,6 +25,7 @@
 
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Vocbase/EdgeCollectionInfo.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
@@ -349,23 +350,10 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
   TRI_ASSERT(ep->_directions.size());
   _collectionInfos.reserve(count);
 
-  std::function<double(arangodb::velocypack::Slice const)> weighter;
-  if (_opts.useWeight) {
-    TRI_ASSERT(!_opts.weightAttribute.empty());
-    weighter = [this](VPackSlice const edge) {
-      VPackSlice attr = edge.get(_opts.weightAttribute);
-      if (!attr.isNumber()) {
-        return _opts.defaultWeight;
-      }
-      return attr.getNumericValue<double>();
-    };
-  } else {
-    weighter = [](VPackSlice const) { return 1; };
-  }
   for (size_t j = 0; j < count; ++j) {
-    auto info =
-        std::make_unique<EdgeCollectionInfo>(
-            _trx, ep->_edgeColls[j], ep->_directions[j], weighter);
+    auto info = std::make_unique<arangodb::traverser::EdgeCollectionInfo>(
+        _trx, ep->_edgeColls[j], ep->_directions[j], _opts.weightAttribute,
+        _opts.defaultWeight);
     _collectionInfos.emplace_back(info.get());
     info.release();
   }

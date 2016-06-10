@@ -69,6 +69,7 @@
 #include "V8Server/v8-statistics.h"
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
+#include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/KeyGenerator.h"
 #include "Wal/LogfileManager.h"
 
@@ -1964,7 +1965,8 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   for (auto const& it : edgeCollectionNames) {
     edgeCollectionInfos.emplace_back(
-        new EdgeCollectionInfo(trx.get(), it, opts.direction, HopWeightCalculator()));
+        new arangodb::traverser::EdgeCollectionInfo(
+            trx.get(), it, opts.direction, "", 1));
     TRI_IF_FAILURE("EdgeCollectionDitchOOM") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
