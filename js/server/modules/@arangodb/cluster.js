@@ -1690,6 +1690,16 @@ var bootstrapDbServers = function (isRelaunch) {
 /// @brief shard distribution
 ////////////////////////////////////////////////////////////////////////////////
 
+function format(x) {
+  var r = {};
+  var keys = Object.keys(x);
+  for (var i = 0; i < keys.length; ++i) {
+    var y = x[keys[i]];
+    r[keys[i]] = { leader: y[0], followers: y.slice(1) };
+  }
+  return r;
+}
+
 function shardDistribution() {
   var db = require("internal").db;
   var dbName = db._name();
@@ -1706,15 +1716,6 @@ function shardDistribution() {
       collInfoCurrent[shardNames[j]] =
         global.ArangoClusterInfo.getCollectionInfoCurrent(
           dbName, collName, shardNames[j]).servers;
-    }
-    function format(x) {
-      var r = {};
-      var keys = Object.keys(x);
-      for (var i = 0; i < keys.length; ++i) {
-        var y = x[keys[i]];
-        r[keys[i]] = { leader: y[0], followers: y.slice(1) };
-      }
-      return r;
     }
     result[collName] = {Plan: format(collInfo.shards),
                         Current: format(collInfoCurrent)};
