@@ -120,7 +120,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new FoxxQueuesFeature(&server));
   server.addFeature(new FrontendFeature(&server));
-  server.addFeature(new InitDatabaseFeature(&server));
+  server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LogfileManager(&server));
   server.addFeature(new LoggerBufferFeature(&server));

@@ -34,8 +34,10 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-InitDatabaseFeature::InitDatabaseFeature(ApplicationServer* server)
-    : ApplicationFeature(server, "InitDatabase") {
+InitDatabaseFeature::InitDatabaseFeature(ApplicationServer* server,
+    std::vector<std::string> const& nonServerFeatures)
+  : ApplicationFeature(server, "InitDatabase"),
+    _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -62,6 +64,10 @@ void InitDatabaseFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
   ProgramOptions::ProcessingResult const& result = options->processingResult();
   _seenPassword = result.touched("database.password");
+
+  if (_initDatabase || _restoreAdmin) {
+    ApplicationServer::forceDisableFeatures(_nonServerFeatures);
+  }
 }
 
 void InitDatabaseFeature::prepare() {
