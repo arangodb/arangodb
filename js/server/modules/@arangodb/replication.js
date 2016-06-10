@@ -233,13 +233,13 @@ function syncCollectionFinalize(database, collname, collid, from, config) {
         return;
       }
       try {
-        coll.insert(entry.data);
+        coll.insert(entry.data, {isRestore: true});
         return;
       }
       catch (err) {
       }
       try {
-        coll.replace(entry.key, entry.data);
+        coll.replace(entry.data._key, entry.data, {isRestore: true});
       } catch (errx) {
         console.error("syncCollectionFinalize: replace1", entry, errx);
         throw errx;
@@ -249,13 +249,13 @@ function syncCollectionFinalize(database, collname, collid, from, config) {
         return;
       }
       try {
-        coll.insert(entry.data._from, entry.data._to, entry.data);
+        coll.insert(entry.data, {isRestore: true});
         return;
       }
       catch (err) {
       }
       try {
-        coll.replace(entry.key, entry.data);
+        coll.replace(entry.key, entry.data, {isRestore: true});
       } catch (errx) {
         console.error("syncCollectionFinalize: replace2", entry, errx);
         throw errx;

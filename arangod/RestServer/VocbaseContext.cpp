@@ -46,8 +46,8 @@ using namespace arangodb::rest;
 double VocbaseContext::ServerSessionTtl =
     60.0 * 60.0 * 24 * 60;  // 2 month session timeout
 
-VocbaseContext::VocbaseContext(HttpRequest* request,
-                               TRI_vocbase_t* vocbase, std::string const& jwtSecret)
+VocbaseContext::VocbaseContext(HttpRequest* request, TRI_vocbase_t* vocbase,
+                               std::string const& jwtSecret)
     : RequestContext(request), _vocbase(vocbase), _jwtSecret(jwtSecret) {
   TRI_ASSERT(_vocbase != nullptr);
 }
@@ -87,17 +87,19 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
     // no authentication required at all
     return GeneralResponse::ResponseCode::OK;
   }
-  
+
   std::string const& path = _request->requestPath();
 
   // mop: inside authenticateRequest() _request->user will be populated
   bool forceOpen = false;
   GeneralResponse::ResponseCode result = authenticateRequest(&forceOpen);
 
-  if (result == GeneralResponse::ResponseCode::UNAUTHORIZED || result == GeneralResponse::ResponseCode::FORBIDDEN) {
+  if (result == GeneralResponse::ResponseCode::UNAUTHORIZED ||
+      result == GeneralResponse::ResponseCode::FORBIDDEN) {
     if (StringUtils::isPrefix(path, "/_open/") ||
-      StringUtils::isPrefix(path, "/_admin/aardvark/") || path == "/") {
-      // mop: these paths are always callable...they will be able to check req.user when it could be validated
+        StringUtils::isPrefix(path, "/_admin/aardvark/") || path == "/") {
+      // mop: these paths are always callable...they will be able to check
+      // req.user when it could be validated
       result = GeneralResponse::ResponseCode::OK;
       forceOpen = true;
     }
@@ -105,15 +107,17 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
 
   // check that we are allowed to see the database
   if (result == GeneralResponse::ResponseCode::OK && !forceOpen) {
-    std::string const& username = _request->user();
-    std::string const& dbname = _request->databaseName();
+    if (!StringUtils::isPrefix(path, "/_api/user/")) {
+      std::string const& username = _request->user();
+      std::string const& dbname = _request->databaseName();
 
-    if (!username.empty() || !dbname.empty()) {
-      AuthLevel level =
-	RestServerFeature::AUTH_INFO.canUseDatabase(username, dbname);
+      if (!username.empty() || !dbname.empty()) {
+        AuthLevel level =
+            RestServerFeature::AUTH_INFO.canUseDatabase(username, dbname);
 
-      if (level != AuthLevel::RW) {
-	result = GeneralResponse::ResponseCode::UNAUTHORIZED;
+        if (level != AuthLevel::RW) {
+          result = GeneralResponse::ResponseCode::UNAUTHORIZED;
+        }
       }
     }
   }
@@ -121,7 +125,8 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   return result;
 }
 
-GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpen) {
+GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(
+    bool* forceOpen) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   // check if we need to run authentication for this type of
   // endpoint
@@ -138,14 +143,14 @@ GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpe
 
   if (_vocbase->_settings.authenticateSystemOnly) {
     // authentication required, but only for /_api, /_admin etc.
-    
+
     if (!path.empty()) {
       // check if path starts with /_
       if (path[0] != '/') {
         *forceOpen = true;
         return GeneralResponse::ResponseCode::OK;
       }
-      
+
       if (path.length() > 0 && path[1] != '_') {
         *forceOpen = true;
         return GeneralResponse::ResponseCode::OK;
@@ -169,7 +174,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpe
   if (methodPos == std::string::npos) {
     return GeneralResponse::ResponseCode::UNAUTHORIZED;
   }
-  
+
   // skip over authentication method
   char const* auth = authStr.c_str() + methodPos;
   while (*auth == ' ') {
@@ -192,7 +197,8 @@ GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpe
 /// @brief checks the authentication via basic
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(const char* auth) {
+GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(
+    const char* auth) {
   if (useClusterAuthentication()) {
     std::string const expected = ServerState::instance()->getAuthentication();
 
@@ -205,7 +211,7 @@ GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(const char* au
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
       LOG(TRACE) << "invalid authentication data found, cannot extract "
-	"username/password";
+                    "username/password";
 
       return GeneralResponse::ResponseCode::BAD;
     }
@@ -214,9 +220,9 @@ GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(const char* au
 
     return GeneralResponse::ResponseCode::OK;
   }
-  
-  AuthResult result =
-    RestServerFeature::AUTH_INFO.checkAuthentication(AuthInfo::AuthType::BASIC, auth);
+
+  AuthResult result = RestServerFeature::AUTH_INFO.checkAuthentication(
+      AuthInfo::AuthType::BASIC, auth);
 
   if (!result._authorized) {
     return GeneralResponse::ResponseCode::UNAUTHORIZED;
@@ -227,8 +233,8 @@ GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(const char* au
 
   if (result._mustChange) {
     if ((_request->requestType() == GeneralRequest::RequestType::PUT ||
-	 _request->requestType() == GeneralRequest::RequestType::PATCH) &&
-	StringUtils::isPrefix(_request->requestPath(), "/_api/user/")) {
+         _request->requestType() == GeneralRequest::RequestType::PATCH) &&
+        StringUtils::isPrefix(_request->requestPath(), "/_api/user/")) {
       return GeneralResponse::ResponseCode::OK;
     }
 
@@ -242,9 +248,10 @@ GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(const char* au
 /// @brief checks the authentication via jwt
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralResponse::ResponseCode VocbaseContext::jwtAuthentication(std::string const& auth) {
-  AuthResult result =
-    RestServerFeature::AUTH_INFO.checkAuthentication(AuthInfo::AuthType::JWT, auth);
+GeneralResponse::ResponseCode VocbaseContext::jwtAuthentication(
+    std::string const& auth) {
+  AuthResult result = RestServerFeature::AUTH_INFO.checkAuthentication(
+      AuthInfo::AuthType::JWT, auth);
 
   if (!result._authorized) {
     return GeneralResponse::ResponseCode::UNAUTHORIZED;

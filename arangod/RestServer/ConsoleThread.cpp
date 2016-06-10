@@ -63,6 +63,13 @@ void ConsoleThread::run() {
   // enter V8 context
   _context = V8DealerFeature::DEALER->enterContext(_vocbase, true);
 
+  if (_context == nullptr) {
+    LOG(FATAL) << "cannot acquire V8 context";
+    FATAL_ERROR_EXIT();
+  }
+
+  TRI_DEFER(V8DealerFeature::DEALER->exitContext(_context));
+
   // work
   try {
     inner();
@@ -71,14 +78,11 @@ void ConsoleThread::run() {
       LOG(ERR) << error;
     }
   } catch (...) {
-    V8DealerFeature::DEALER->exitContext(_context);
     _applicationServer->beginShutdown();
-
     throw;
   }
 
   // exit context
-  V8DealerFeature::DEALER->exitContext(_context);
   _applicationServer->beginShutdown();
 }
 

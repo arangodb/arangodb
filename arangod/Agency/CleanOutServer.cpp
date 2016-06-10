@@ -125,8 +125,35 @@ JOB_STATUS CleanOutServer::status () {
 
 }
 
-bool CleanOutServer::create () {
+bool CleanOutServer::create () { // Only through shrink cluster
+
+    LOG_TOPIC(INFO, Logger::AGENCY)
+    << "Todo: Clean out server " + _server + " for shrinkage";
+
+  std::string path = _agencyPrefix + toDoPrefix + _jobId;
+
+  _jb = std::make_shared<Builder>();
+  _jb->openArray();
+  _jb->openObject();
+  _jb->add(path, VPackValue(VPackValueType::Object));
+  _jb->add("type", VPackValue("cleanOutServer"));
+  _jb->add("server", VPackValue(_server));
+  _jb->add("jobId", VPackValue(_jobId));
+  _jb->add("creator", VPackValue(_creator));
+  _jb->add("timeCreated",
+           VPackValue(timepointToString(std::chrono::system_clock::now())));
+  _jb->close(); _jb->close(); _jb->close();
+
+  write_ret_t res = transact(_agent, *_jb);
+
+  if (res.accepted && res.indices.size()==1 && res.indices[0]) {
+    return true;
+  }
+
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
   return false;
+
+  
 }
 
 bool CleanOutServer::start() {
@@ -136,7 +163,17 @@ bool CleanOutServer::start() {
     
   // Get todo entry
   todo.openArray();
-  _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+  if (_jb == nullptr) {
+    try {
+      _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+    } catch (std::exception const&) {
+      LOG_TOPIC(INFO, Logger::AGENCY) <<
+        "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+      return false;
+    }
+  } else {
+    todo.add(_jb->slice()[0].valueAt(0));
+  }
   todo.close();
 
   // Enter pending, remove todo, block toserver

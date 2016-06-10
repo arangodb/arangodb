@@ -68,7 +68,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return "/_api/agency/agency-callbacks";
   };
 
+  void setUnregisterOnShutdown(bool);
+
  private:
+  bool _unregisterOnShutdown;
   bool _enableCluster;
   HeartbeatThread* _heartbeatThread;
   uint64_t _heartbeatInterval;

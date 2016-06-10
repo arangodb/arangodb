@@ -144,6 +144,8 @@ class Supervision : public arangodb::Thread {
   /// @brief update my local agency snapshot
   bool updateSnapshot();
 
+  void shrinkCluster();
+
   Agent* _agent; /**< @brief My agent */
   Node _snapshot;
 

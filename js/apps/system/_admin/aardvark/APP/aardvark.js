@@ -219,10 +219,10 @@ authRouter.post('/query/upload/:user', function(req, res) {
 
 
 authRouter.get('/query/download/:user', function(req, res) {
-  let user;
+  let user = req.pathParams.user;
 
   try {
-    user = users.document(req.user);
+    user = users.document(user);
   } catch (e) {
     if (!e.isArangoError || e.errorNum !== ERROR_USER_NOT_FOUND) {
       throw e;

@@ -54,7 +54,7 @@ CheckVersionFeature::CheckVersionFeature(
 void CheckVersionFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
-  
+
   options->addOldOption("check-version", "database.check-version");
 
   options->addHiddenOption("--database.check-version",
@@ -70,15 +70,18 @@ void CheckVersionFeature::validateOptions(
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
 
-  LoggerFeature* logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
+  LoggerFeature* logger =
+      ApplicationServer::getFeature<LoggerFeature>("Logger");
   logger->disableThreaded();
 
-  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  DatabaseFeature* database =
+      ApplicationServer::getFeature<DatabaseFeature>("Database");
   database->disableReplicationApplier();
   database->disableCompactor();
   database->enableCheckVersion();
 
-  V8DealerFeature* v8dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  V8DealerFeature* v8dealer =
+      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
   v8dealer->setNumberContexts(1);
 }
 
@@ -116,6 +119,8 @@ void CheckVersionFeature::checkVersion() {
       FATAL_ERROR_EXIT();
     }
 
+    TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+
     {
       v8::HandleScope scope(context->_isolate);
       auto localContext =
@@ -136,7 +141,8 @@ void CheckVersionFeature::checkVersion() {
         for (auto& p : theLists->_databases) {
           TRI_vocbase_t* vocbase = p.second;
 
-          // special check script to be run just once in first thread (not in all)
+          // special check script to be run just once in first thread (not in
+          // all)
           // but for all databases
 
           int status = TRI_CheckDatabaseVersion(vocbase, localContext);
@@ -144,8 +150,9 @@ void CheckVersionFeature::checkVersion() {
           LOG(DEBUG) << "version check return status " << status;
 
           if (status < 0) {
-            LOG(FATAL) << "Database version check failed for '" << vocbase->_name
-                      << "'. Please inspect the logs for any errors";
+            LOG(FATAL) << "Database version check failed for '"
+                       << vocbase->_name
+                       << "'. Please inspect the logs for any errors";
             FATAL_ERROR_EXIT();
           } else if (status == 3) {
             *_result = 3;
@@ -155,11 +162,11 @@ void CheckVersionFeature::checkVersion() {
         }
       }
 
-      // issue #391: when invoked with --database.auto-upgrade, the server will not always shut
+      // issue #391: when invoked with --database.auto-upgrade, the server will
+      // not always shut
       // down
       localContext->Exit();
     }
-    V8DealerFeature::DEALER->exitContext(context);
   }
 
   if (*_result == 1) {

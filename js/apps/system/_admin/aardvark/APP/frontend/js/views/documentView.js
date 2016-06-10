@@ -158,7 +158,7 @@
       }
     },
 
-    fillInfo: function(type) {
+    fillInfo: function() {
       var mod = this.collection.first();
       var _id = mod.get("_id"),
         _key = mod.get("_key"),
@@ -166,7 +166,9 @@
         _from = mod.get("_from"),
         _to = mod.get("_to");
 
-      $('#document-type').text(type);
+      $('#document-type').css("margin-left", "10px");
+      $('#document-type').text("_id:");
+      $('#document-id').css("margin-left", "0");
       $('#document-id').text(_id);
       $('#document-key').text(_key);
       $('#document-rev').text(_rev);

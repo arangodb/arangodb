@@ -87,7 +87,7 @@
           //NOW FETCH USER PERMISSIONS
           $.ajax({
             type: "GET",
-            url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(self.currentUser.get("user")) + "/permission"),
+            url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(self.currentUser.get("user")) + "/database"),
             //url: arangoHelper.databaseUrl("/_api/database/user/" + encodeURIComponent(this.currentUser.get("user"))),
             contentType: "application/json",
             success: function(data) {
