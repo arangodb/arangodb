@@ -362,10 +362,11 @@ void Supervision::shrinkCluster () {
   
   for (auto const& job : todos) {
     try {
-      if (job.second->slice().get("type").copyString() == "cleanOutServer") {
+      if ((*job.second)("type").getString() == "cleanOutServer") {
         return;
       }
     } catch (std::exception const& e) {
+      LOG(WARN) << job.second->slice().toJson();
       LOG_TOPIC(WARN, Logger::AGENCY)
         << "Failed to get job type of job " << job.first << ": " << e.what();
       return;
@@ -374,7 +375,7 @@ void Supervision::shrinkCluster () {
   
   for (auto const& job : pends) {
     try {
-      if (job.second->slice().get("type").copyString() == "cleanOutServer") {
+      if ((*job.second)("type").getString() == "cleanOutServer") {
         return;
       }
     } catch (std::exception const& e) {
@@ -429,13 +430,12 @@ void Supervision::shrinkCluster () {
       
       // Clean out as long as number of available servers is bigger
       // than maxReplFactor and bigger than targeted number of db servers
-      while (availServers.size() > maxReplFact &&
-             availServers.size() > targetNumDBServers) {
+      if (availServers.size() > maxReplFact &&
+          availServers.size() > targetNumDBServers) {
         
         // Schedule last server for cleanout
         CleanOutServer(_snapshot, _agent, std::to_string(_jobId++),
                        "supervision", _agencyPrefix, availServers.back());
-        availServers.pop_back();
       }
       
     }

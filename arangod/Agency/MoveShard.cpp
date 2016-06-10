@@ -297,8 +297,6 @@ JOB_STATUS MoveShard::status () {
 
         if (foundFrom && foundTo) {
 
-          LOG(WARN) << _from << " " << current.toJson();
-
           if (current[0].copyString() == _from) { // Leader
             
             Builder underscore;     // serverId -> _serverId 
