@@ -68,6 +68,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       HttpOnlyKey(),
       IdKey(),
       InitTimeoutKey(),
+      IsRestoreKey(),
       IsSystemKey(),
       IsVolatileKey(),
       JournalSizeKey(),
@@ -158,6 +159,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   HttpOnlyKey.Reset(isolate, TRI_V8_ASCII_STRING("httpOnly"));
   IdKey.Reset(isolate, TRI_V8_ASCII_STRING("id"));
   InitTimeoutKey.Reset(isolate, TRI_V8_ASCII_STRING("initTimeout"));
+  IsRestoreKey.Reset(isolate, TRI_V8_ASCII_STRING("isRestore"));
   IsSystemKey.Reset(isolate, TRI_V8_ASCII_STRING("isSystem"));
   IsVolatileKey.Reset(isolate, TRI_V8_ASCII_STRING("isVolatile"));
   JournalSizeKey.Reset(isolate, TRI_V8_ASCII_STRING("journalSize"));
