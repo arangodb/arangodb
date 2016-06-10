@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
+#include "Basics/ShortestPathFinder.h"
 #include "Basics/Traverser.h"
 #include "Aql/AstNode.h"
 #include "Utils/CollectionNameResolver.h"

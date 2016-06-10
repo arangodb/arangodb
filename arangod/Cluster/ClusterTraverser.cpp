@@ -284,7 +284,7 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
   _vertexGetter->reset();
   _enumerator.reset(
       new arangodb::basics::PathEnumerator<std::string, std::string, size_t>(
-          _edgeGetter, _vertexGetter.get(), id));
+          _edgeGetter, _vertexGetter.get(), id, _opts.maxDepth));
   _done = false;
   auto it = _vertices.find(id);
   if (it == _vertices.end()) {
@@ -385,9 +385,6 @@ arangodb::traverser::TraversalPath* ClusterTraverser::next() {
   size_t countEdges = path.edges.size();
 
   auto p = std::make_unique<ClusterTraversalPath>(this, path);
-  if (countEdges >= _opts.maxDepth) {
-    _pruneNext = true;
-  }
   if (countEdges < _opts.minDepth) {
     return next();
   }

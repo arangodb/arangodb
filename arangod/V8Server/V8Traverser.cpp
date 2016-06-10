@@ -71,42 +71,6 @@ VPackSlice ShortestPathOptions::getEnd() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get a document by it's ID. Also lazy locks the collection.
-///        If DOCUMENT_NOT_FOUND this function will return normally
-///        with a OperationResult.failed() == true.
-///        On all other cases this function throws.
-////////////////////////////////////////////////////////////////////////////////
-
-static int FetchDocumentById(arangodb::Transaction* trx,
-                             std::string const& id,
-                             VPackBuilder& builder,
-                             VPackBuilder& result) {
-  size_t pos = id.find('/');
-  if (pos == std::string::npos) {
-    TRI_ASSERT(false);
-    return TRI_ERROR_INTERNAL;
-  }
-  if (id.find('/', pos + 1) != std::string::npos) {
-    TRI_ASSERT(false);
-    return TRI_ERROR_INTERNAL;
-  }
-
-  std::string col = id.substr(0, pos);
-  trx->addCollectionAtRuntime(col);
-  builder.clear();
-  builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(id.substr(pos + 1)));
-  builder.close();
-
-  int res = trx->documentFastPath(col, builder.slice(), result);
-
-  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Insert a new vertex matcher object
 ////////////////////////////////////////////////////////////////////////////////
 
