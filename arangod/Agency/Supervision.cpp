@@ -74,6 +74,13 @@ std::vector<check_t> Supervision::checkDBServers() {
   Node::Children const serversRegistered =
       _snapshot(currentServersRegisteredPrefix).children();
 
+  std::vector<std::string> todelete;
+  for (auto const& machine : _snapshot(healthPrefix).children()) {
+    if (machine.first.substr(0,2) == "DB") {
+      todelete.push_back(machine.first);
+    }
+  }
+
   for (auto const& machine : machinesPlanned) {
 
     bool good = false;
@@ -83,6 +90,9 @@ std::vector<check_t> Supervision::checkDBServers() {
     serverID        = machine.first;
     heartbeatTime   = _snapshot(syncPrefix + serverID + "/time").toJson();
     heartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
+
+    todelete.erase(
+      std::remove(todelete.begin(), todelete.end(), serverID), todelete.end());
     
     try {           // Existing
       lastHeartbeatTime =
@@ -149,6 +159,20 @@ std::vector<check_t> Supervision::checkDBServers() {
     
   }
 
+  if (!todelete.empty()) {
+    query_t del = std::make_shared<Builder>();
+    del->openArray();
+    del->openArray();
+    del->openObject();
+    for (auto const& srv : todelete) {
+      del->add(_agencyPrefix + healthPrefix + srv, VPackValue(VPackValueType::Object));
+      del->add("op", VPackValue("delete"));
+      del->close();
+    }
+    del->close(); del->close(); del->close();
+    _agent->write(del);
+  }
+  
   return ret;
 }
 
@@ -159,6 +183,14 @@ std::vector<check_t> Supervision::checkCoordinators() {
   Node::Children const serversRegistered =
       _snapshot(currentServersRegisteredPrefix).children();
 
+
+  std::vector<std::string> todelete;
+  for (auto const& machine : _snapshot(healthPrefix).children()) {
+    if (machine.first.substr(0,2) == "Co") {
+      todelete.push_back(machine.first);
+    }
+  }
+
   for (auto const& machine : machinesPlanned) {
 
     bool good = false;
@@ -168,6 +200,9 @@ std::vector<check_t> Supervision::checkCoordinators() {
     serverID        = machine.first;
     heartbeatTime   = _snapshot(syncPrefix + serverID + "/time").toJson();
     heartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
+    
+    todelete.erase(
+      std::remove(todelete.begin(), todelete.end(), serverID), todelete.end());
     
     try {           // Existing
       lastHeartbeatTime =
@@ -232,7 +267,22 @@ std::vector<check_t> Supervision::checkCoordinators() {
       
   }
 
+  if (!todelete.empty()) {
+    query_t del = std::make_shared<Builder>();
+    del->openArray();
+    del->openArray();
+    del->openObject();
+    for (auto const& srv : todelete) {
+      del->add(_agencyPrefix + healthPrefix + srv, VPackValue(VPackValueType::Object));
+      del->add("op", VPackValue("delete"));
+      del->close();
+    }
+    del->close(); del->close(); del->close();
+    _agent->write(del);
+  }
+  
   return ret;
+
 }
 
 bool Supervision::updateSnapshot() {
