@@ -39,7 +39,8 @@
       "nodes": "nodes",
       "node/:name": "node",
       "logs": "logs",
-      "helpus": "helpUs"
+      "helpus": "helpUs",
+      "support": "support"
     },
 
     execute: function(callback, args) {
@@ -663,6 +664,19 @@
         });
       }
       this.helpUsView.render();
+    },
+
+    support: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.support.bind(this));
+        return;
+      }
+      if (!this.testView) {
+        this.supportView = new window.SupportView({
+        });
+      }
+      this.supportView.render();
     },
 
     workMonitor: function (initialized) {
