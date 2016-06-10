@@ -32,6 +32,13 @@
         <% } %>
 
         <div class="information" id="infoCoords">
+          <span class="positive"><span> <%= scaleProperties.coordsOk %> </span><i class="fa fa-check-circle"></i></span>
+          <% if (scaleProperties.coordsError) { %>
+            <span class="negative"><span> <%= scaleProperties.coordsError %> </span><i class="fa fa-exclamation-circle"></i></span>
+          <% } %>
+          <% if (scaleProperties.coordsPending && scaling === true) { %>
+            <span class="warning"><span> <%= scaleProperties.coordsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
+          <% } %>
         </div>
       </div>
 
@@ -88,8 +95,8 @@
           </div>
         </div>
 
-
         <div class="pure-u-3-4">
+
           <% if (scaling === true) { %>
             <div class="scaleGroup" id="scaleCoords">
               <div style="text-align: -webkit-right;">
@@ -101,6 +108,13 @@
           <% } %>
 
           <div class="information" id="infoDBs">
+            <span class="positive"><span> <%= scaleProperties.dbsOk %> </span><i class="fa fa-check-circle"></i></span>
+            <% if (scaleProperties.dbsError) { %>
+              <span class="negative"><span> <%= scaleProperties.dbsError %> </span><i class="fa fa-exclamation-circle"></i></span>
+            <% } %>
+            <% if (scaleProperties.dbsPending && scaling === true) { %>
+              <span class="warning"><span> <%= scaleProperties.dbsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
+            <% } %>
           </div>
 
         </div>

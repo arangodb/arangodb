@@ -93,15 +93,18 @@
         scale = true; 
       }
 
-      this.$el.html(this.template.render({
-        coords: coords,
-        dbs: dbs,
-        scaling: scale,
-        plannedDBs: scaling.numberOfDBServers,
-        plannedCoords: scaling.numberOfCoordinators
-      }));
+      var callback = function(scaleProperties) {
+        this.$el.html(this.template.render({
+          coords: coords,
+          dbs: dbs,
+          scaling: scale,
+          scaleProperties: scaleProperties,
+          plannedDBs: scaling.numberOfDBServers,
+          plannedCoords: scaling.numberOfCoordinators
+        }));
+      }.bind(this);
       
-      this.renderCounts(scale); 
+      this.renderCounts(scale, callback); 
     },
 
     updatePlanned: function(data) {
@@ -155,7 +158,7 @@
       });
     },
 
-    renderCounts: function(scale) {
+    renderCounts: function(scale, callback) {
       var self = this;
 
       if (!scale) {
@@ -207,8 +210,20 @@
             coordsPending = Math.abs((coords + coordsErrors) - data.numberOfCoordinators);
             dbsPending = Math.abs((dbs + dbsErrors) - data.numberOfDBServers);
 
-            renderFunc('#infoDBs', dbs, dbsPending, dbsErrors);
-            renderFunc('#infoCoords', coords, coordsPending, coordsErrors);
+            if (callback) {
+              callback({
+                coordsPending: coordsPending,
+                coordsOk: coords,
+                coordsErrors: coordsErrors,
+                dbsPending: dbsPending,
+                dbsOk: dbs,
+                dbsErrors: dbsErrors
+              });
+            }
+            else {
+              renderFunc('#infoDBs', dbs, dbsPending, dbsErrors);
+              renderFunc('#infoCoords', coords, coordsPending, coordsErrors);
+            }
           }
         });
 
