@@ -130,9 +130,9 @@ std::string ServerState::stateToString(StateEnum state) {
     case STATE_STARTUP:
       return "STARTUP";
     case STATE_SERVINGASYNC:
-      return "SERVINGASYNC";
+      return "SERVING";
     case STATE_SERVINGSYNC:
-      return "SERVINGSYNC";
+      return "SERVING";
     case STATE_STOPPING:
       return "STOPPING";
     case STATE_STOPPED:
