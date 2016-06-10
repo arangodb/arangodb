@@ -54,6 +54,8 @@
           });
 
           self.renderDBS();
+        }).error(function(data) {
+          console.log("could not fetch user db data");                  
         });
       }
 
@@ -124,6 +126,9 @@
             });
 
             self.renderDBS();
+          }).error(function(data) {
+            $('.wrong-credentials').show();
+            console.log(data);
           });
         }
       }.bind(this);
