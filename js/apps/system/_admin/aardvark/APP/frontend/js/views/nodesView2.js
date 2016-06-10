@@ -102,6 +102,12 @@
           plannedDBs: scaling.numberOfDBServers,
           plannedCoords: scaling.numberOfCoordinators
         }));
+
+        if (!scale) {
+          $('.title').css('position', 'relative');
+          $('.title').css('top', '-4px');
+        }
+
       }.bind(this);
       
       this.renderCounts(scale, callback); 
@@ -161,11 +167,6 @@
     renderCounts: function(scale, callback) {
       var self = this;
 
-      if (!scale) {
-        $('.title').css('position', 'relative');
-        $('.title').css('top', '-4px');
-      }
-
       var renderFunc = function(id, ok, pending, error) {
         var string = '<span class="positive"><span>' + ok + '</span><i class="fa fa-check-circle"></i></span>';
         if (pending && scale === true) {
@@ -175,6 +176,12 @@
           string = string + '<span class="negative"><span>' + error + '</span><i class="fa fa-exclamation-circle"></i></span>';
         }
         $(id).html(string);
+
+        if (!scale) {
+          $('.title').css('position', 'relative');
+          $('.title').css('top', '-4px');
+        }
+
       }.bind(this);
 
       var callbackFunction = function(nodes) {
