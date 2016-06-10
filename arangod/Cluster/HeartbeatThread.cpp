@@ -250,8 +250,10 @@ void HeartbeatThread::runDBServer() {
         CONDITION_LOCKER(locker, _condition);
         wasNotified = _wasNotified;
         if (!wasNotified) {
-          locker.wait(static_cast<uint64_t>(remain * 1000000.0));
-          wasNotified = _wasNotified;
+          if (remain > 0.0) {
+            locker.wait(static_cast<uint64_t>(remain * 1000000.0));
+            wasNotified = _wasNotified;
+          }
         }
         _wasNotified = false;
       }
