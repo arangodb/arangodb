@@ -209,6 +209,33 @@ ServerState::RoleEnum ServerState::getRole() {
   return loadRole();
 }
 
+bool ServerState::unregister() {
+  TRI_ASSERT(!getId().empty());
+  
+  std::string const& id = getId();
+
+  std::string localInfoEncoded = StringUtils::urlEncode(_localInfo);
+  AgencyOperation deleteLocalIdMap("Target/MapLocalToID/" + localInfoEncoded, AgencySimpleOperationType::DELETE_OP);
+  
+  std::vector<AgencyOperation> operations = {deleteLocalIdMap};
+
+  auto role = loadRole();
+  const std::string agencyKey = roleToAgencyKey(role);
+  TRI_ASSERT(isClusterRole(role));
+  if (role == ROLE_COORDINATOR || role == ROLE_PRIMARY) {
+    operations.push_back(AgencyOperation("Plan/" + agencyKey + "/" + id, AgencySimpleOperationType::DELETE_OP));
+    operations.push_back(AgencyOperation("Current/" + agencyKey + "/" + id, AgencySimpleOperationType::DELETE_OP));
+  }
+  
+  AgencyWriteTransaction unregisterTransaction(operations);
+  
+  AgencyComm comm;
+  AgencyCommResult result;
+  
+  result = comm.sendTransactionWithFailover(unregisterTransaction);
+  return result.successful();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to register with a role
 ////////////////////////////////////////////////////////////////////////////////

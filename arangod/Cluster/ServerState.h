@@ -134,6 +134,8 @@ class ServerState {
   RoleEnum getRole();
   
   bool registerWithRole(RoleEnum);
+  
+  bool unregister();
 
   /// @brief set the server role
   void setRole(RoleEnum);
