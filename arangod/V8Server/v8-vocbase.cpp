@@ -63,20 +63,17 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
-#include "V8Server/V8Traverser.h"
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
-#include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/KeyGenerator.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::traverser;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_vocbase_t
@@ -1668,151 +1665,6 @@ static void JS_ThrowCollectionNotLoaded(
   }
 
   TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Transforms VertexId to v8 object
-///        NOTE: Collection has to be known to the transaction.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
-                                            Transaction* trx,
-                                            std::string const& vertexId) {
-  size_t pos = vertexId.find('/');
-  TRI_ASSERT(pos != std::string::npos); // All are internal _id attributes
-
-  TransactionBuilderLeaser builder(trx);
-  builder->openObject();
-  builder->add(StaticStrings::KeyString, VPackValue(vertexId.substr(pos + 1)));
-  builder->close();
-
-  OperationOptions options;
-  OperationResult opRes = trx->document(vertexId.substr(0, pos), builder->slice(), options);
-
-  if (opRes.failed()) {
-    v8::EscapableHandleScope scope(isolate);
-    return scope.Escape<v8::Value>(v8::Null(isolate));
-  }
-  VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = opRes.customTypeHandler.get();
-  return TRI_VPackToV8(isolate, opRes.slice(), &resultOptions);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Start a new transaction for the given collections and request
-///        all necessary ditches.
-///        The caller is responsible to finish and delete the transaction.
-///        If this function throws the transaction is non-existent.
-////////////////////////////////////////////////////////////////////////////////
-
-static ExplicitTransaction* BeginTransaction(
-    std::shared_ptr<V8TransactionContext> transactionContext,
-    std::vector<std::string> const& readCollections,
-    std::vector<std::string> const& writeCollections) {
-  // IHHF isCoordinator
-  double lockTimeout =
-      (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
-  bool waitForSync = false;
-
-  // Start Transaction to collect all parts of the path
-  auto trx = std::make_unique<ExplicitTransaction>(
-      transactionContext, readCollections, writeCollections, lockTimeout,
-      waitForSync, true);
-
-  int res = trx->begin();
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  return trx.release();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Extract collection names from v8 array.
-////////////////////////////////////////////////////////////////////////////////
-
-static void V8ArrayToStrings(const v8::Handle<v8::Value>& parameter,
-                             std::unordered_set<std::string>& result) {
-  v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
-  uint32_t const n = array->Length();
-  for (uint32_t i = 0; i < n; ++i) {
-    if (array->Get(i)->IsString()) {
-      result.emplace(TRI_ObjectToString(array->Get(i)));
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Define edge weight by the number of hops.
-///        Respectively 1 for any edge.
-////////////////////////////////////////////////////////////////////////////////
-
-class HopWeightCalculator {
- public:
-  HopWeightCalculator(){};
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Callable weight calculator for edge
-  //////////////////////////////////////////////////////////////////////////////
-
-  double operator()(VPackSlice const edge) { return 1; }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Define edge weight by ony special attribute.
-///        Respectively 1 for any edge.
-////////////////////////////////////////////////////////////////////////////////
-
-class AttributeWeightCalculator {
-  std::string const _attribute;
-  double const _defaultWeight;
-
- public:
-  AttributeWeightCalculator(std::string const& attribute, double defaultWeight)
-      : _attribute(attribute), _defaultWeight(defaultWeight) {}
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Callable weight calculator for edge
-  //////////////////////////////////////////////////////////////////////////////
-
-  double operator()(VPackSlice const edge) {
-    if (_attribute.empty()) {
-      return _defaultWeight;
-    }
-
-    VPackSlice attr = edge.get(_attribute);
-    if (!attr.isNumber()) {
-      return _defaultWeight;
-    }
-    return attr.getNumericValue<double>();
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Transforms an vector<VertexId> to v8 json values
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> VertexIdsToV8(v8::Isolate* isolate,
-                                           ExplicitTransaction* trx,
-                                           std::vector<VPackSlice> const& ids,
-                                           bool includeData = false) {
-  v8::EscapableHandleScope scope(isolate);
-  uint32_t const vn = static_cast<uint32_t>(ids.size());
-  v8::Handle<v8::Array> vertices =
-      v8::Array::New(isolate, static_cast<int>(vn));
-
-  uint32_t j = 0;
-  if (includeData) {
-    for (auto& it : ids) {
-      vertices->Set(j, VertexIdToData(isolate, trx, it.copyString()));
-      ++j;
-    }
-  } else {
-    for (auto& it : ids) {
-      vertices->Set(j, TRI_V8_STD_STRING(it.copyString()));
-      ++j;
-    }
-  }
-  return scope.Escape<v8::Value>(vertices);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

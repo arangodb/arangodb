@@ -30,6 +30,23 @@
 #include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef the template instantiation of the PathFinder
+////////////////////////////////////////////////////////////////////////////////
+
+typedef arangodb::basics::DynamicDistanceFinder<
+    arangodb::velocypack::Slice, arangodb::velocypack::Slice, double,
+    arangodb::traverser::ShortestPath> ArangoDBPathFinder;
+
+typedef arangodb::basics::ConstDistanceFinder<arangodb::velocypack::Slice,
+                                              arangodb::velocypack::Slice,
+                                              arangodb::basics::VelocyPackHelper::VPackStringHash, 
+                                              arangodb::basics::VelocyPackHelper::VPackStringEqual,
+                                              arangodb::traverser::ShortestPath>
+    ArangoDBConstDistancePathFinder;
+
+
+
 using namespace arangodb::aql;
 
 ////////////////////////////////////////////////////////////////////////////////

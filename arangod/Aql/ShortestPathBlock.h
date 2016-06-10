@@ -29,6 +29,11 @@
 #include "V8Server/V8Traverser.h"
 
 namespace arangodb {
+
+namespace traverser {
+class EdgeCollectionInfo;
+}
+
 namespace aql {
 
 class ShortestPathNode;
