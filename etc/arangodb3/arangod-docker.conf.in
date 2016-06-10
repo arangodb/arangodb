@@ -60,8 +60,9 @@ app-path = /apps
 #app-path = @LOCALSTATEDIR@/lib/arangodb-apps
 # app-path = @HOMEDRIVE@/@HOMEPATH@/arangodb/apps
 
-# number of worker threads for V8
-v8-contexts = 5
+# number of V8 contexts available for JavaScript execution. use 0 to 
+# make arangod determine the number of contexts automatically.
+# v8-contexts = 0
 
 [log]
 level = info
