@@ -73,7 +73,8 @@ endif()
 if (WIN32)
   # 32-bit not officially supported anymore anyway
   set(SSL_BITS "x64")
-  set(SSL_NUGET_TARGET "Release/target") # there also is Debug if you want to...
+  set(SSL_NUGET_RELEASE "Release") # there also is Debug if you want to...
+  set(SSL_NUGET_TARGET "${SSL_NUGET_RELEASE}/target")
   # v140 corresponds to VS 2015
   # dynamic dll openssl looks like that...
   #set(SSL_NUGET_DIR "lib/native/v140/windesktop/msvcstl/dyn/rt-dyn")
@@ -542,4 +543,8 @@ endif()
 # Restore the original find library ordering
 if(OPENSSL_USE_STATIC_LIBS)
   set(CMAKE_FIND_LIBRARY_SUFFIXES ${_openssl_ORIG_CMAKE_FIND_LIBRARY_SUFFIXES})
+endif()
+
+if (OPENSSL_ROOT_DIR AND SSL_NUGET)
+  set(OPENSSL_INCLUDE_DIR "${OPENSSL_INCLUDE_DIR};${OPENSSL_INCLUDE_DIR}/v140/${SSL_BITS}/${SSL_NUGET_RELEASE}/static/")
 endif()
