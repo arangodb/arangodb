@@ -28,108 +28,154 @@ const actions = require("@arangodb/actions");
 const users = require("@arangodb/users");
 const db = require("@arangodb").db;
 
-function get_api_user(req, res) {
-  if (req.suffix.length === 0) {
-    actions.resultOk(req, res, actions.HTTP_OK, {
-      result: users.all()
-    });
-    return;
+// check if user is an administrator (aka member of _system)
+function needSystemUser(req, res) {
+  const user = req.user;
+
+  // authentication disabled
+  if (user === null) {
+    return true;
   }
 
-  var user = decodeURIComponent(req.suffix[0]);
+  const allowed = users.permission(user, "_system") === 'rw' ||
+    users.permission(user, "*") === 'rw';
 
-  try {
-    actions.resultOk(req, res, actions.HTTP_OK, users.document(user));
-  } catch (err) {
-    if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
-      actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
-    } else {
-      throw err;
-    }
+  if (!allowed) {
+    actions.resultError(req, res, actions.HTTP_FORBIDDEN,
+      String("you need administrator privileges"));
+  }
+
+  return allowed;
+}
+
+// check if user is asking infos for itself (or is an administrator)
+function needMyself(req, res, username) {
+  const user = req.user;
+
+  // authentication disabled
+  if (user === null) {
+    return true;
+  }
+
+  let allowed = (user === username);
+
+  if (!allowed) {
+    allowed = users.permission(username, "_system") === 'rw' ||
+      users.permission(username, "*") === 'rw';
+  }
+
+  if (!allowed) {
+    actions.resultError(req, res, actions.HTTP_FORBIDDEN,
+      String("you cannot access other users"));
+  }
+
+  return allowed;
+}
+
+// handle exception
+function handleException(req, res, err) {
+  if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
+    actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
+  } else {
+    throw err;
   }
 }
 
-function get_api_permission(req, res, key) {
-  var user = decodeURIComponent(req.suffix[0]);
+// GET /_api/user | GET /_api/user/<username>
+function get_api_user(req, res) {
+  if (req.suffix.length === 0) {
+    if (needSystemUser(req, res)) {
+      actions.resultOk(req, res, actions.HTTP_OK, {
+        result: users.all()
+      });
+    }
 
-  var oldDbname = db._name();
+    return;
+  }
+
+  const user = decodeURIComponent(req.suffix[0]);
 
   try {
-    var doc;
-    if (key !== null && key !== undefined) {
-      doc = users.permission(user, key);
+    if (needMyself(req, res, user)) {
+      actions.resultOk(req, res, actions.HTTP_OK, users.document(user));
     }
-    doc = users.permission(user);
-    actions.resultOk(req, res, actions.HTTP_OK, { result: doc });
   } catch (err) {
-    if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
-      actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
+    handleException(req, res, err);
+  }
+}
+
+// GET /_api/user/<username>/database | GET /_api/user/<username>/database/<dbname>
+function get_api_database(req, res, key) {
+  const user = decodeURIComponent(req.suffix[0]);
+
+  try {
+    if (needMyself(req, res, user)) {
+      actions.resultOk(req, res, actions.HTTP_OK, {
+        result: users.permission(user, key)
+      });
+    }
+  } catch (err) {
+    handleException(req, res, err);
+  }
+}
+
+// GET /_api/user/<username>/config | GET /_api/user/<username>/config/<key>
+function get_api_config(req, res, key) {
+  const user = decodeURIComponent(req.suffix[0]);
+
+  try {
+    if (needMyself(req, res, user)) {
+      actions.resultOk(req, res, actions.HTTP_OK, {
+        result: users.configData(user, key)
+      });
+    }
+  } catch (err) {
+    handleException(req, res, err);
+  }
+}
+
+// GET /_api/user/...
+function get_api_user_request(req, res) {
+  const oldDbname = db._name();
+  db._useDatabase("_system");
+
+  try {
+    if (req.suffix.length === 0) {
+      get_api_user(req, res);
+    } else if (req.suffix.length === 1) {
+      get_api_user(req, res);
+    } else if (req.suffix.length === 2) {
+      if (req.suffix[1] === "config") {
+        get_api_config(req, res, null);
+      } else if (req.suffix[1] === "database") {
+        get_api_database(req, res, null);
+      } else {
+        actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+      }
+    } else if (req.suffix.length === 3) {
+      if (req.suffix[1] === "config") {
+        get_api_config(req, res, req.suffix[2]);
+      } else {
+        actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+      }
     } else {
-      throw err;
+      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     }
   } finally {
     db._useDatabase(oldDbname);
   }
 }
 
-function get_api_config(req, res, key) {
-  var user = decodeURIComponent(req.suffix[0]);
-
-  if (user !== req.user) {
-    actions.resultBad(req, res, arangodb.errors.ERROR_HTTP_UNAUTHORIZED.code);
-  } else {
-    var oldDbname = db._name();
-
-    try {
-      var doc = users.configData(user, key);
-
-	actions.resultOk(req, res, actions.HTTP_OK, { result: doc });
-    } catch (err) {
-      if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
-        actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
-      } else {
-        throw err;
-      }
-    } finally {
-      db._useDatabase(oldDbname);
-    }
-  }
-}
-
-function get_api_user_or_config(req, res) {
-  if (req.suffix.length === 0) {
-    get_api_user(req, res);
-  } else if (req.suffix.length === 1) {
-    get_api_user(req, res);
-  } else if (req.suffix.length === 2) {
-    if (req.suffix[1] === "config") {
-      get_api_config(req, res, null);
-    } else if (req.suffix[1] === "permission") {
-      get_api_permission(req, res, null);   
-    }
-    else {
-      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
-    }
-  } else if (req.suffix.length === 3) {
-    if (req.suffix[1] === "config") {
-      get_api_config(req, res, req.suffix[2]);
-    } else {
-      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
-    }
-  } else {    
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
-  }
-}
-
+// POST /_api/user | POST /_api/user/<username>
 function post_api_user(req, res) {
-  var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
+  const json = actions.getJsonBody(req, res, actions.HTTP_BAD);
 
   if (json === undefined) {
     return;
   }
 
+  // validate if a combination or username / password is valid
   if (req.suffix.length === 1) {
-    // validate if a combination or username / password is valid
     const user = decodeURIComponent(req.suffix[0]);
     const result = users.isValid(user, json.passwd);
 
@@ -143,57 +189,79 @@ function post_api_user(req, res) {
     return;
   }
 
-  if (req.suffix.length !== 0) {
-    // unexpected URL
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
-    return;
-  }
+  if (needSystemUser(req, res)) {
+    const user = json.user;
+    const doc = users.save(user, json.passwd, json.active, json.extra,
+      json.changePassword);
 
-  const user = json.user;
-  const doc = users.save(user, json.passwd, json.active, json.extra, json.changePassword);
+    if (json.passwordToken) {
+      users.setPasswordToken(user, json.passwordToken);
+    }
 
-  if (json.passwordToken) {
-    users.setPasswordToken(user, json.passwordToken);
-  }
-
-  users.reload();
-
-  actions.resultOk(req, res, actions.HTTP_CREATED, doc);
-}
-
-function put_api_user(req, res) {
-  var user = decodeURIComponent(req.suffix[0]);
-  var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
-
-  if (json === undefined) {
-    return;
-  }
-
-  try {
-    var doc = users.replace(user, json.passwd, json.active, json.extra, json.changePassword);
     users.reload();
 
-    actions.resultOk(req, res, actions.HTTP_OK, doc);
-  } catch (err) {
-    if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
-      actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
-    } else {
-      throw err;
-    }
+    actions.resultOk(req, res, actions.HTTP_CREATED, doc);
   }
 }
 
-function put_api_permission(req, res) {
-  var user = decodeURIComponent(req.suffix[0]);
-  var dbname = decodeURIComponent(req.suffix[2]);
-  var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
+// POST /_api/user/...
+function post_api_user_request(req, res) {
+  const oldDbname = db._name();
+  db._useDatabase("_system");
+
+  try {
+    if (req.suffix.length < 2) {
+      post_api_user(req, res);
+    } else {
+      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+    }
+  } finally {
+    db._useDatabase(oldDbname);
+  }
+}
+
+// PUT /_api/user/<username>
+function put_api_user(req, res) {
+  const user = decodeURIComponent(req.suffix[0]);
+  const json = actions.getJsonBody(req, res, actions.HTTP_BAD);
 
   if (json === undefined) {
     return;
   }
 
   try {
-    var doc;
+    const isActive = users.document(user).active;
+
+    if (isActive) {
+      if (needMyself(req, res, user)) {
+        actions.resultOk(req, res, actions.HTTP_OK,
+          users.replace(user, json.passwd, json.active, json.extra));
+      }
+    } else {
+      if (needSystemUser(req, res, user)) {
+        actions.resultOk(req, res, actions.HTTP_OK,
+          users.replace(user, json.passwd, json.active, json.extra));
+      }
+    }
+
+    users.reload();
+  } catch (err) {
+    handleException(req, res, err);
+  }
+}
+
+// PUT /_api/user/<username>/database/<dbname>
+function put_api_permission(req, res) {
+  const user = decodeURIComponent(req.suffix[0]);
+  const dbname = decodeURIComponent(req.suffix[2]);
+  const json = actions.getJsonBody(req, res, actions.HTTP_BAD);
+
+  if (json === undefined) {
+    return;
+  }
+
+  try {
+    let doc;
 
     if (json.grant === "rw" || json.grant === "ro") {
       doc = users.grantDatabase(user, dbname, json.grant);
@@ -205,112 +273,121 @@ function put_api_permission(req, res) {
 
     actions.resultOk(req, res, actions.HTTP_OK, doc);
   } catch (err) {
-    if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
-      actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
-    } else {
-      throw err;
-    }
+    handleException(req, res, err);
   }
 }
 
+// PUT /_api/user/<username>/config/<key>
 function put_api_config(req, res) {
-  var user = decodeURIComponent(req.suffix[0]);
-
-  if (user !== req.user) {
-    actions.resultBad(req, res, arangodb.errors.ERROR_HTTP_UNAUTHORIZED.code);
-  } else {
-    var oldDbname = db._name();
-
-    try {
-      db._useDatabase("_system");
-	  
-      var key = decodeURIComponent(req.suffix[2]);
-      var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
-
-      if (json === undefined) {
-        return;
-      }
-
-      try {
-	users.updateConfigData(user, key, json.value);
-
-        actions.resultOk(req, res, actions.HTTP_OK, {});
-      } catch (err) {
-	if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
-	  actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
-	} else {
-	  throw err;
-	}
-      }
-    } finally {
-      db._useDatabase(oldDbname);
-    }
-  }
-}
-
-function put_api_user_or_permission(req, res) {
-  if (req.suffix.length === 1) {
-    put_api_user(req, res);
-  } else if (req.suffix.length === 3) {
-    if (req.suffix[1] === "database") {
-      put_api_permission(req, res);
-    } else if (req.suffix[1] === "config") {
-      put_api_config(req, res);
-    } else {
-      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
-    }
-  } else {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
-  }
-}
-
-function patch_api_user(req, res) {
-  if (req.suffix.length !== 1) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
-    return;
-  }
-
-  var user = decodeURIComponent(req.suffix[0]);
-  var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
+  const user = decodeURIComponent(req.suffix[0]);
+  const key = decodeURIComponent(req.suffix[2]);
+  const json = actions.getJsonBody(req, res, actions.HTTP_BAD);
 
   if (json === undefined) {
     return;
   }
 
   try {
-    var doc = users.update(user, json.passwd, json.active, json.extra, json.changePassword);
-    users.reload();
+    if (needMyself(req, res, user)) {
+      users.updateConfigData(user, key, json.value);
 
-    actions.resultOk(req, res, actions.HTTP_OK, doc);
-  } catch (err) {
-    if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
-      actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
-    } else {
-      throw err;
+      actions.resultOk(req, res, actions.HTTP_OK, {});
     }
+  } catch (err) {
+    handleException(req, res, err);
   }
 }
 
-function delete_api_user(req, res) {
-  var user = decodeURIComponent(req.suffix[0]);
+// PUT /_api/user/...
+function put_api_user_request(req, res) {
+  const oldDbname = db._name();
+  db._useDatabase("_system");
 
   try {
-    users.remove(user);
-    users.reload();
-
-    actions.resultOk(req, res, actions.HTTP_ACCEPTED, {});
-  } catch (err) {
-    if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
-      actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
+    if (req.suffix.length === 1) {
+      put_api_user(req, res);
+    } else if (req.suffix.length === 3) {
+      if (req.suffix[1] === "database") {
+        put_api_permission(req, res);
+      } else if (req.suffix[1] === "config") {
+        put_api_config(req, res);
+      } else {
+        actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+      }
     } else {
-      throw err;
+      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     }
+  } finally {
+    db._useDatabase(oldDbname);
   }
 }
 
+// PATCH /_api/user/<username>
+function patch_api_user(req, res) {
+  const user = decodeURIComponent(req.suffix[0]);
+  const json = actions.getJsonBody(req, res, actions.HTTP_BAD);
+
+  if (json === undefined) {
+    return;
+  }
+
+  try {
+    const isActive = users.document(user).active;
+
+    if (isActive) {
+      if (needMyself(req, res, user)) {
+        actions.resultOk(req, res, actions.HTTP_OK,
+          users.update(user, json.passwd, json.active, json.extra));
+      }
+    } else {
+      if (needSystemUser(req, res, user)) {
+        actions.resultOk(req, res, actions.HTTP_OK,
+          users.update(user, json.passwd, json.active, json.extra));
+      }
+    }
+
+    users.reload();
+  } catch (err) {
+    handleException(req, res, err);
+  }
+}
+
+// PATCH /_api/user/...
+function patch_api_user_request(req, res) {
+  const oldDbname = db._name();
+  db._useDatabase("_system");
+
+  try {
+    if (req.suffix.length === 1) {
+      patch_api_user(req, res);
+    } else {
+      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+    }
+  } finally {
+    db._useDatabase(oldDbname);
+  }
+}
+
+// DELETE /_api/user/<username>
+function delete_api_user(req, res) {
+  const user = decodeURIComponent(req.suffix[0]);
+
+  try {
+    if (needSystemUser(req, res)) {
+      users.remove(user);
+      users.reload();
+
+      actions.resultOk(req, res, actions.HTTP_ACCEPTED, {});
+    }
+  } catch (err) {
+    handleException(req, res, err);
+  }
+}
+
+// DELETE /_api/user/<username>/database/<dbname>
 function delete_api_permission(req, res) {
-  var user = decodeURIComponent(req.suffix[0]);
-  var dbname = decodeURIComponent(req.suffix[2]);
+  const user = decodeURIComponent(req.suffix[0]);
+  const dbname = decodeURIComponent(req.suffix[2]);
 
   try {
     users.revokeDatabase(user, dbname);
@@ -318,60 +395,60 @@ function delete_api_permission(req, res) {
 
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, {});
   } catch (err) {
-    if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
-      actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
-    } else {
-      throw err;
-    }
+    handleException(req, res, err);
   }
 }
 
+// DELETE /_api/user/<username>/config/<key>
 function delete_api_config(req, res, key) {
-  var user = decodeURIComponent(req.suffix[0]);
+  const user = decodeURIComponent(req.suffix[0]);
 
-  if (user !== req.user) {
-    actions.resultBad(req, res, arangodb.errors.ERROR_HTTP_UNAUTHORIZED.code);
-  } else {
-    var oldDbname = db._name();
-
-    try {
+  try {
+    if (needMyself(req, res, user)) {
       users.updateConfigData(user, key);
 
       actions.resultOk(req, res, actions.HTTP_ACCEPTED, {});
-    } catch (err) {
-      if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
-        actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
+    }
+  } catch (err) {
+    handleException(req, res, err);
+  }
+}
+
+// DELETE /_api/user/...
+function delete_api_user_request(req, res) {
+  const oldDbname = db._name();
+  db._useDatabase("_system");
+
+  try {
+    if (req.suffix.length === 1) {
+      if (req.suffix.length === 1) {
+        delete_api_user(req, res);
+      } else if (req.suffix.length === 2) {
+        if (req.suffix[1] === "config") {
+          delete_api_config(req, res, null);
+        } else {
+          actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+        }
+      } else if (req.suffix.length === 3) {
+        if (req.suffix[1] === "database") {
+          delete_api_permission(req, res);
+        } else if (req.suffix[1] === "config") {
+          delete_api_config(req, res, req.suffix[2]);
+        } else {
+          actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+        }
       } else {
-        throw err;
+        actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
       }
-    } finally {
-      db._useDatabase(oldDbname);
-    }
-  }
-}
-
-function delete_api_user_or_permission(req, res) {
-  if (req.suffix.length === 1) {
-    delete_api_user(req, res);
-  } else if (req.suffix.length === 2) {
-    if (req.suffix[1] === "config") {
-      delete_api_config(req, res, null);
     } else {
       actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     }
-  } else if (req.suffix.length === 3) {
-    if (req.suffix[1] === "database") {
-      delete_api_permission(req, res);
-    } else if (req.suffix[1] === "config") {
-      delete_api_config(req, res, req.suffix[2]);
-    } else {
-      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
-    }
-  } else {    
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+  } finally {
+    db._useDatabase(oldDbname);
   }
 }
 
+// all api calls
 actions.defineHttp({
   url: "_api/user",
   allowUseDatabase: true,
@@ -380,23 +457,23 @@ actions.defineHttp({
     try {
       switch (req.requestType) {
         case actions.GET:
-          get_api_user_or_config(req, res);
+          get_api_user_request(req, res);
           break;
 
         case actions.POST:
-          post_api_user(req, res);
+          post_api_user_request(req, res);
           break;
 
         case actions.PUT:
-          put_api_user_or_permission(req, res);
+          put_api_user_request(req, res);
           break;
 
         case actions.PATCH:
-          patch_api_user(req, res);
+          patch_api_user_request(req, res);
           break;
 
         case actions.DELETE:
-          delete_api_user_or_permission(req, res);
+          delete_api_user_request(req, res);
           break;
 
         default:

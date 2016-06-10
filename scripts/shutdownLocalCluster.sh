@@ -37,7 +37,7 @@ SECONDARIES="$5"
 shutdown() {
     PORT=$1
     echo -n "$PORT "
-    curl -X DELETE http://localhost:$PORT/_admin/shutdown >/dev/null
+    curl -X DELETE http://localhost:$PORT/_admin/shutdown >/dev/null 2>/dev/null
     echo
 }
 

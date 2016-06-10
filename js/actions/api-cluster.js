@@ -1258,42 +1258,9 @@ actions.defineHttp({
           "body must be an object with string attributes 'database', 'collection', 'shard', 'fromServer' and 'toServer'"); 
       return;
     }
-    var ok = true;
-    var isLeader;
-    var collInfo;
-    try {
-      collInfo = ArangoClusterInfo.getCollectionInfo(body.database,
-                                                     body.collection);
-      var shards = collInfo.shards;
-      var shard = shards[body.shard];
-      var pos = shard.indexOf(body.fromServer);
-      if (pos === -1) {
-        throw "Banana";
-      } else if (pos === 0) {
-        isLeader = true;
-      } else {
-        isLeader = false;
-      }
-    } catch (e2) {
-      actions.resultError(req, res, actions.HTTP_BAD,
-                          "Combination of database, collection, shard and fromServer does not make sense.");
-      return;
-    }
-    try {
-      var id = ArangoClusterInfo.uniqid();
-      var todo = { "type": "moveShard",
-                   "database": body.database,
-                   "collection": collInfo.id,
-                   "shard": body.shard,
-                   "fromServer": body.fromServer,
-                   "toServer": body.toServer,
-                   "jobId": id,
-                   "timeCreated": (new Date()).toISOString(),
-                   "creator": ArangoServerState.id() };
-      ArangoAgency.set("Target/ToDo/" + id, todo);
-    } catch (e1) {
-      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
-                          "Cannot write to agency.");
+    var errorMsg = require("@arangodb/cluster").moveShard(body);
+    if (errorMsg !== "") {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE, errorMsg);
       return;
     }
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, true);

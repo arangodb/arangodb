@@ -11,7 +11,7 @@
 
       $.ajax("whoAmI?_=" + Date.now(), {async: true}).done(
         function(data) {
-          if (this.activeUser === false) {
+          if (this.activeUser === false || this.activeUser === null) {
             self.activeUser = "root";
           }
           else {
@@ -29,7 +29,7 @@
 
     parse: function(response) {
       var self = this, toReturn;
-      if (this.activeUser === false) {
+      if (this.activeUser === false || this.activeUser === null) {
         this.activeUser = "root";
       }
 
@@ -48,10 +48,10 @@
     },
 
     saveCollectionQueries: function(callback) {
-      if (this.activeUser === 0) {
+      if (this.activeUser === false || this.activeUser === null) {
         return false;
       }
-      if (this.activeUser === false) {
+      if (this.activeUser === false || this.activeUser === null) {
         this.activeUser = "root";
       }
 
