@@ -59,7 +59,7 @@ function needMyself(req, res, username) {
   let allowed = (user === username);
 
   if (!allowed) {
-    allowed = users.permission(username, "_system") === 'rw';
+    allowed = (users.permission(user, "_system") === 'rw');
   }
 
   if (!allowed) {
