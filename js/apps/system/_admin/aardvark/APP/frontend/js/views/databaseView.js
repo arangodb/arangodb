@@ -353,6 +353,31 @@
           ]
         )
       );
+
+      var users = [];
+      window.App.userCollection.each(function(user) {
+        users.push({
+          value: user.get("user"),
+          label: user.get("user")
+        });
+      });
+      console.log(users);
+
+      tableContent.push(
+        window.modalView.createSelectEntry(
+          "newUser",
+          "Username",
+          this.users !== null ? this.users.whoAmI() : 'root',
+          "Please define the owner of this database. This will be the only user having "
+            + "initial access to this database if authentication is turned on. Please note "
+            + "that if you specify a username different to your account you will not be "
+            + "able to access the database with your account after having creating it. "
+            + "Specifying a username is mandatory even with authentication turned off. "
+            + "If there is a failure you will be informed.",
+            users
+        )
+      );
+      /*
       tableContent.push(
         window.modalView.createTextEntry(
           "newUser",
@@ -374,7 +399,6 @@
           ]
         )
       );
-      /*
       tableContent.push(
         window.modalView.createSelectEntry(
           "useDefaultPassword",
