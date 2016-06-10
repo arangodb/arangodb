@@ -273,16 +273,14 @@ bool Store::check(VPackSlice const& slice) const {
   }
 
   for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
-    std::string path = precond.key.copyString();
-    bool found = false;
+
+    std::vector<std::string> pv = split(precond.key.copyString(), '/');
+    bool found = (_node.exists(pv).size() == pv.size());
     Node node("precond");
-
-    try {
-      node = (*this)(path);
-      found = true;
-    } catch (StoreException const&) {
+    if (found) {
+      node = _node(pv);
     }
-
+    
     if (precond.value.isObject()) {
       for (auto const& op : VPackObjectIterator(precond.value)) {
         std::string const& oper = op.key.copyString();
@@ -366,19 +364,13 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   // Create response tree
   Node copy("copy");
   for (auto const path : query_strs) {
-    try {
-      copy(path) = (*this)(path);
-    } catch (StoreException const&) {
-      std::vector<std::string> pv = split(path, '/');
-      while (!pv.empty()) {
-        std::string end = pv.back();
+    std::vector<std::string> pv = split(path, '/');
+    size_t e = _node.exists(pv).size();
+    if (e == pv.size()) { // existing
+      copy(pv) = _node(pv);
+    } else {              // non-existing
+      for (size_t i = 0; i < pv.size()-e+1; ++i) {
         pv.pop_back();
-        copy(pv).removeChild(end);
-        try {
-          (*this)(pv);
-          break;
-        } catch (...) {
-        }
       }
       if (copy(pv).type() == LEAF && copy(pv).slice().isNone()) {
         copy(pv) = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
