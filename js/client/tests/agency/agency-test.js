@@ -100,7 +100,7 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingleTopLevel : function () {
-      wait(1);
+      wait(2);
       assertEqual(readAndCheck([["/x"]]), [{}]);
       writeAndCheck([[{x:12}]]);
       assertEqual(readAndCheck([["/x"]]), [{x:12}]);
@@ -355,6 +355,7 @@ function agencyTestSuite () {
             leaderEndpoint = config.configuration.endpoints[config.leaderId].replace("tcp", "http");
             break;
           }
+          wait(0.05);
         }
       } else {
         leaderEndpoint = agencyServers[0].replace("tcp", "http");
