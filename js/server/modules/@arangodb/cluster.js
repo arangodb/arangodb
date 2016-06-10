@@ -1824,12 +1824,12 @@ function rebalanceShards() {
                        "weight": _.reduce(dbTab[dbServers[i]],
                                           (sum, x) => sum + x.weight, 0)} );
   }
-  _.sortBy(totalWeight, x => x.weight);
+  totalWeight = _.sortBy(totalWeight, x => x.weight);
 
   var shardList = Object.keys(shardMap);
   var countMoved = 0;
-  while (countMoved < 10) {
-    console.log("rebalanceShards: totalWeight=", totalWeight);
+
+  for (i = 0; i < shardList.length; i++) {
     var last = totalWeight.length-1;
     var fullest = totalWeight[last].server;
     var emptiest = totalWeight[0].server;
@@ -1838,41 +1838,38 @@ function rebalanceShards() {
       console.log("rebalanceShards: cluster is balanced");
       return true;
     }
-    var storeCountMoved = countMoved;
-    for (i = 0; i < shardList.length; i++) {
-      var shard = shardList[i];
-      if (shardMap[shard].servers.indexOf(fullest) >= 0 &&
-          shardMap[shard].servers.indexOf(emptiest) === -1 &&
-          shardMap[shard].weight < 0.9 * weightDiff) {
-        var shardInfo = shardMap[shard];
-        var todo = { database: shardInfo.database,
-                     collection: shardInfo.collection,
-                     shard: shard,
-                     fromServer: fullest,
-                     toServer: emptiest };
-        var msg = moveShard(todo);
-        if (msg === "") {
-          console.info("rebalanceShards: moveShard(", todo, ")");
-          totalWeight[last].weight -= shardInfo.weight;
-          totalWeight[0].weight += shardInfo.weight;
-          _.sortBy(totalWeight, x => x.weight);
-          countMoved += 1;
-          if (countMoved >= 10) {
-            break;
-          }
-        } else {
-          console.error("rebalanceShards: moveShard(", todo, ") produced:",
-                        msg);
+    var shard = shardList[i];
+    console.log("rebalanceShards: considering shard", shard,
+                "totalWeight=", totalWeight);
+    if (shardMap[shard].servers.indexOf(fullest) >= 0 &&
+        shardMap[shard].servers.indexOf(emptiest) === -1 &&
+        shardMap[shard].weight < 0.9 * weightDiff) {
+      var shardInfo = shardMap[shard];
+      var todo = { database: shardInfo.database,
+                   collection: shardInfo.collection,
+                   shard: shard,
+                   fromServer: fullest,
+                   toServer: emptiest };
+      var msg = moveShard(todo);
+      if (msg === "") {
+        console.info("rebalanceShards: moveShard(", todo, ")");
+        totalWeight[last].weight -= shardInfo.weight;
+        totalWeight[0].weight += shardInfo.weight;
+        totalWeight = _.sortBy(totalWeight, x => x.weight);
+        countMoved += 1;
+        if (countMoved >= 10) {
+          break;
         }
+      } else {
+        console.error("rebalanceShards: moveShard(", todo, ") produced:", msg);
       }
     }
-    if (storeCountMoved === countMoved) {
-      console.info("rebalanceShards: scheduled", countMoved, " shard moves",
-                   "no more sensible moves found");
-      return true;
-    }
   }
-  console.log("rebalanceShards: scheduled 10 shard moves, done");
+  if (countMoved === 0) {
+    console.log("rebalanceShards: no sensible moves found");
+    return true;
+  }
+  console.log("rebalanceShards: scheduled", countMoved, " shard moves.");
   return true;
 }
 
