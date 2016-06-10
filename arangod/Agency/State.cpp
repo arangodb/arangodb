@@ -197,9 +197,7 @@ std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
       slices.push_back(VPackSlice(_log.at(i).entry->data()));
     } catch (std::exception const& e) {
       break;
-      LOG_TOPIC(ERR, Logger::AGENCY) << start-_cur << " " << end-_cur << " " << i << " " << _log.size();
     } 
-
   }
 
   return slices;
