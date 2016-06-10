@@ -610,7 +610,7 @@ exports.permission = function(username, key) {
       }
 
       if (user.databases.hasOwnProperty('*')) {
-        return user.databases[key];
+        return user.databases['*'];
       }
 
       return "";
