@@ -1611,6 +1611,10 @@ static void parseReplaceAndUpdateOptions(
     if (optionsObject->Has(ReturnOldKey)) {
       options.returnOld = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey));
     }
+    TRI_GET_GLOBAL_STRING(IsRestoreKey);
+    if (optionsObject->Has(IsRestoreKey)) {
+      options.isRestore = TRI_ObjectToBoolean(optionsObject->Get(IsRestoreKey));
+    }
     if (operation == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
       // intentionally not called for TRI_VOC_DOCUMENT_OPERATION_REPLACE
       TRI_GET_GLOBAL_STRING(KeepNullKey);
@@ -2219,6 +2223,10 @@ static void JS_InsertVocbaseCol(
     TRI_GET_GLOBAL_STRING(ReturnNewKey);
     if (optionsObject->Has(ReturnNewKey)) {
       options.returnNew = TRI_ObjectToBoolean(optionsObject->Get(ReturnNewKey));
+    }
+    TRI_GET_GLOBAL_STRING(IsRestoreKey);
+    if (optionsObject->Has(IsRestoreKey)) {
+      options.isRestore = TRI_ObjectToBoolean(optionsObject->Get(IsRestoreKey));
     }
   } else {
     options.waitForSync = ExtractWaitForSync(args, optsIdx + 1);
