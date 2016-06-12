@@ -55,6 +55,8 @@
 
     checkUser: function () {
 
+      var self = this;
+
       if (window.location.hash === '#login') {
         return;
       }
@@ -69,6 +71,7 @@
 
       var callback = function(error, user) {
         if (frontendConfig.authenticationEnabled) {
+          self.currentUser = user;
           if (error || user === null) {
             if (window.location.hash !== '#login') {
               this.navigate("login", {trigger: true});

@@ -17,11 +17,13 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   fetch: function(options) {
+    if (window.App.currentUser) {
+      this.url = frontendConfig.basePath + "/_api/user/" + encodeURIComponent(window.App.currentUser);
+    }
     return Backbone.Collection.prototype.fetch.call(this, options);
   },
 
   url: frontendConfig.basePath + "/_api/user",
-  //url: arangoHelper.databaseUrl("/_api/user"),
 
   //comparator : function(obj) {
   //  return obj.get("user").toLowerCase();
@@ -129,9 +131,19 @@ window.ArangoUsers = Backbone.Collection.extend({
 
   parse: function(response)  {
     var result = [];
-    _.each(response.result, function(object) {
-      result.push(object);
-    });
+    if (response.result) {
+      _.each(response.result, function(object) {
+        result.push(object);
+      });
+    }
+    else {
+      result.push({
+        user: response.user,
+        active: response.active,
+        extra: response.extra,
+        changePassword: response.changePassword
+      });
+    }
     return result;
   },
 
