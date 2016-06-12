@@ -131,7 +131,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
   parse: function(response)  {
     var result = [];
-    if (response.result) {
+    if (response.result) {
       _.each(response.result, function(object) {
         result.push(object);
       });

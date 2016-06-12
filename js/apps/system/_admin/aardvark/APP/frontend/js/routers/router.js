@@ -37,6 +37,7 @@
       "userProfile": "userProfile",
       "cluster": "cluster",
       "nodes": "nodes",
+      "shards": "shards",
       "node/:name": "node",
       "logs": "logs",
       "helpus": "helpUs",
@@ -287,6 +288,22 @@
         });
       }
       this.nodeView.render();
+    },
+
+    shards: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.shards.bind(this));
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+      this.shardsView = new window.ShardsView({
+      });
+      this.shardsView.render();
     },
 
     nodes: function (initialized) {
