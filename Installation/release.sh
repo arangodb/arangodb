@@ -18,6 +18,11 @@ if [ "$1" == "--no-build" ];  then
   shift
 fi
 
+if [ "$1" == "--recycle-build" ];  then
+  BUILD=2
+  shift
+fi
+
 if [ "$1" == "--no-swagger" ];  then
   SWAGGER=0
   shift
@@ -75,9 +80,12 @@ if [ `uname` == "Darwin" ];  then
   CMAKE_CONFIGURE="${CMAKE_CONFIGURE} -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11"
 fi
 
-if [ "$BUILD" == "1" ];  then
+if [ "$BUILD" != "0" ];  then
   echo "COMPILING"
-  rm -rf build && mkdir build
+
+  if [ "$BUILD" == "1" ];  then
+    rm -rf build && mkdir build
+  fi
 
   (
     cd build

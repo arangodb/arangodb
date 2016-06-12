@@ -1,11 +1,11 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=10988
+shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=10990
 
 HTTP/1.1 200 OK
-x-arango-replication-lastincluded: 11004
+x-arango-replication-lastincluded: 11006
 content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-checkmore: false
-x-arango-replication-lasttick: 11004
+x-arango-replication-lasttick: 11006
 x-arango-replication-frompresent: true
 x-arango-replication-active: true
 
-"{\"tick\":\"10990\",\"type\":2000,\"database\":\"1\",\"cid\":\"10989\",\"cname\":\"products\",\"data\":{\"cid\":\"10989\",\"deleted\":false,\"doCompact\":true,\"indexBuckets\":8,\"isVolatile\":false,\"maximalSize\":33554432,\"name\":\"products\",\"type\":2,\"version\":5,\"waitForSync\":false}}\n{\"tick\":\"10994\",\"type\":2300,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"10989\",\"cname\":\"products\",\"data\":{\"_id\":\"_unknown/p1\",\"_key\":\"p1\",\"_rev\":\"10992\",\"name\":\"flux compensator\"}}\n{\"tick\":\"10997\",\"type\":2300,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"10989\",\"cname\":\"products\",\"data\":{\"_id\":\"_unknown/p2\",\"_key\":\"p2\",\"_rev\":\"10996\",\"hp\":5100,\"name\":\"hybrid hovercraft\"}}\n{\"tick\":\"11000\",\"type\":2302,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"10989\",\"cname\":\"products\",\"data\":{\"_key\":\"p1\",\"_rev\":\"10999\"}}\n{\"tick\":\"11003\",\"type\":2300,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"10989\",\"cname\":\"products\",\"data\":{\"_id\":\"_unknown/p2\",\"_key\":\"p2\",\"_rev\":\"11002\",\"hp\":5100,\"name\":\"broken hovercraft\"}}\n{\"tick\":\"11004\",\"type\":2001,\"database\":\"1\",\"cid\":\"10989\",\"cname\":\"products\",\"data\":{\"id\":\"10989\",\"name\":\"products\"}}\n"
+"{\"tick\":\"10992\",\"type\":2000,\"database\":\"1\",\"cid\":\"10991\",\"cname\":\"products\",\"data\":{\"cid\":\"10991\",\"deleted\":false,\"doCompact\":true,\"indexBuckets\":8,\"isVolatile\":false,\"maximalSize\":33554432,\"name\":\"products\",\"type\":2,\"version\":5,\"waitForSync\":false}}\n{\"tick\":\"10996\",\"type\":2300,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"10991\",\"cname\":\"products\",\"data\":{\"_id\":\"_unknown/p1\",\"_key\":\"p1\",\"_rev\":\"10994\",\"name\":\"flux compensator\"}}\n{\"tick\":\"10999\",\"type\":2300,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"10991\",\"cname\":\"products\",\"data\":{\"_id\":\"_unknown/p2\",\"_key\":\"p2\",\"_rev\":\"10998\",\"hp\":5100,\"name\":\"hybrid hovercraft\"}}\n{\"tick\":\"11002\",\"type\":2302,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"10991\",\"cname\":\"products\",\"data\":{\"_key\":\"p1\",\"_rev\":\"11001\"}}\n{\"tick\":\"11005\",\"type\":2300,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"10991\",\"cname\":\"products\",\"data\":{\"_id\":\"_unknown/p2\",\"_key\":\"p2\",\"_rev\":\"11004\",\"hp\":5100,\"name\":\"broken hovercraft\"}}\n{\"tick\":\"11006\",\"type\":2001,\"database\":\"1\",\"cid\":\"10991\",\"cname\":\"products\",\"data\":{\"id\":\"10991\",\"name\":\"products\"}}\n"

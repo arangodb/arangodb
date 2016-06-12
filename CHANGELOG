@@ -1,4 +1,4 @@
-v3.0.0-rc1 (2015-06-07)
+v3.0.0-rc2 (2015-06-12)
 -----------------------
 
 * forward ported V8 Comparator bugfix for inline heuristics from 
