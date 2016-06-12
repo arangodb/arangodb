@@ -1,4 +1,3 @@
-
 @startDocuBlock RestLookupByKeys
 @brief fetches multiple documents by their keys
 
@@ -11,18 +10,17 @@ The name of the collection to look in for the documents
 array with the _keys of documents to remove.
 
 @RESTDESCRIPTION
-Looks up the documents in the specified collection using the array of keys
-provided. All documents for which a matching key was specified in the *keys*
-array and that exist in the collection will be returned.
-Keys for which no document can be found in the underlying collection are
-ignored,
-and no exception will be thrown for them.
+Looks up the documents in the specified collection
+using the array of keys provided. All documents for which a matching
+key was specified in the *keys* array and that exist in the collection
+will be returned.  Keys for which no document can be found in the
+underlying collection are ignored, and no exception will be thrown for
+them.
 
 The body of the response contains a JSON object with a *documents*
-attribute. The
-*documents* attribute is an array containing the matching documents. The
-order in
-which matching documents are present in the result array is unspecified.
+attribute. The *documents* attribute is an array containing the
+matching documents. The order in which matching documents are present
+in the result array is unspecified.
 
 @RESTRETURNCODES
 
@@ -30,8 +28,8 @@ which matching documents are present in the result array is unspecified.
 is returned if the operation was carried out successfully.
 
 @RESTRETURNCODE{404}
-is returned if the collection was not found.
-The response body contains an error document in this case.
+is returned if the collection was not found.  The response body
+contains an error document in this case.
 
 @RESTRETURNCODE{405}
 is returned if the operation was called with a different HTTP METHOD than PUT.

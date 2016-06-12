@@ -58,6 +58,17 @@ id component at the end. The new pattern is `collection-<id>-<random>`, where `<
 is the collection id and `<random>` is a random number. Previous versions of ArangoDB 
 used a pattern `collection-<id>` without the random number.
 
+!SECTION User Management
+
+Unlike ArangoDB 2, ArangoDB 3.0 users are now separated from databases
+and you can grant one or more database permission to a user.
+
+If you one to mimic the behavior of ArangoDB, you should name your
+users like `username@dbname`.
+
+Users that can access to the *_system* database are allowed to manage users and
+permissions for all databases.
+
 !SECTION Edges and edges attributes
 
 In ArangoDB prior to 3.0 the attributes `_from` and `_to` of edges were treated
