@@ -51,7 +51,9 @@
     },
 
     continueRender: function(collections) {
-      console.log(collections);
+      delete collections.code;
+      delete collections.error;
+
       this.$el.html(this.template.render({
         collections: collections
       }));
