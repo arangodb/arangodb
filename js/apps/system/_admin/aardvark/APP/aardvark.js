@@ -177,10 +177,10 @@ authRouter.post('/query/explain', function(req, res) {
 
 
 authRouter.post('/query/upload/:user', function(req, res) {
-  let user;
+  let user = req.pathParams.user;
 
   try {
-    user = users.document(req.user);
+    user = users.document(user);
   } catch (e) {
     if (!e.isArangoError || e.errorNum !== ERROR_USER_NOT_FOUND) {
       throw e;
@@ -196,7 +196,7 @@ authRouter.post('/query/upload/:user', function(req, res) {
   .map(query => query.name);
 
   for (const query of req.body) {
-    if (existingQueries.indexOf(query.name) !== -1) {
+    if (existingQueries.indexOf(query.name) === -1) {
       existingQueries.push(query.name);
       user.extra.queries.push(query);
     }
