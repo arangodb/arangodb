@@ -25,7 +25,7 @@
 
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Vocbase/EdgeCollectionInfo.h"
+#include "VocBase/EdgeCollectionInfo.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
