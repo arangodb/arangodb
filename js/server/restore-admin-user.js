@@ -28,12 +28,9 @@
   var args = global.UPGRADE_ARGS;
   delete global.UPGRADE_ARGS;
   
-  const users = require("@arangodb/users");
+  require("internal").db._users.truncate();
 
-  try {
-    users.remove("root");
-  } catch (e) {
-  }
+  const users = require("@arangodb/users");
 
   users.save("root", args.password, true);
   users.grantDatabase("root", "*", "rw");
