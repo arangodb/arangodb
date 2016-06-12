@@ -29,8 +29,8 @@
 #include "Aql/Functions.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterTraverser.h"
+#include "VocBase/SingleServerTraverser.h"
 #include "V8/v8-globals.h"
-#include "V8Server/V8Traverser.h"
 
 using namespace arangodb::aql;
 
@@ -88,7 +88,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
         _trx, _expressions));
   } else {
     _traverser.reset(
-        new arangodb::traverser::DepthFirstTraverser(opts, _trx, _expressions));
+        new arangodb::traverser::SingleServerTraverser(opts, _trx, _expressions));
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();

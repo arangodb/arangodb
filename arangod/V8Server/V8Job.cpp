@@ -75,6 +75,8 @@ void V8Job::work() {
     return;
   }
 
+  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+
   // now execute the function within this context
   {
     auto isolate = context->_isolate;
@@ -131,8 +133,6 @@ void V8Job::work() {
       }
     }
   }
-
-  V8DealerFeature::DEALER->exitContext(context);
 }
 
 bool V8Job::cancel() {

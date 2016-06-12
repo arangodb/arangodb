@@ -46,8 +46,8 @@ class ClusterTraverser : public Traverser {
       : Traverser(opts, expressions),
         _edgeCols(edgeCollections),
         _dbname(dbname),
-        _edgeGetter(this),
         _trx(trx) {
+          _edgeGetter = std::make_unique<ClusterEdgeGetter>(this);
           if (opts.uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
             _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
           } else {
@@ -100,14 +100,15 @@ class ClusterTraverser : public Traverser {
     std::unordered_set<std::string> _returnedVertices;
   };
 
-  class EdgeGetter {
+  class ClusterEdgeGetter : public arangodb::basics::EdgeGetter<std::string, std::string, size_t> {
    public:
-    explicit EdgeGetter(ClusterTraverser* traverser)
+    explicit ClusterEdgeGetter(ClusterTraverser* traverser)
         : _traverser(traverser), _continueConst(1) {}
 
-    void operator()(std::string const&,
-                    std::vector<std::string>&, size_t*&,
-                    size_t&, bool&);
+    void getEdge(std::string const&, std::vector<std::string>&, size_t*&,
+                 size_t&) override;
+
+    void getAllEdges(std::string const&, std::vector<std::string>&, size_t depth) override;
 
    private:
     ClusterTraverser* _traverser;
@@ -131,7 +132,7 @@ class ClusterTraverser : public Traverser {
 
   std::unique_ptr<VertexGetter> _vertexGetter;
 
-  EdgeGetter _edgeGetter;
+  std::unique_ptr<ClusterEdgeGetter> _edgeGetter;
 
   arangodb::velocypack::Builder _builder;
 

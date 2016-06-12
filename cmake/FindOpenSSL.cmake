@@ -75,7 +75,9 @@ if (WIN32)
   set(SSL_BITS "x64")
   # v140 corresponds to VS 2015
   set(SSL_NUGET_DIR "lib/native/v140/windesktop/msvcstl/dyn/rt-dyn")
-  set(SSL_NUGET_ROOT "$ENV{USERPROFILE}/.nuget/packages/openssl.v140.windesktop.msvcstl.dyn.rt-dyn.${SSL_BITS}")
+
+  string(REPLACE "\\" "/" USER_PATH "$ENV{USERPROFILE}")
+  set(SSL_NUGET_ROOT "${USER_PATH}/.nuget/packages/openssl.v140.windesktop.msvcstl.dyn.rt-dyn.${SSL_BITS}")
   if (NOT OPENSSL_ROOT_DIR AND IS_DIRECTORY ${SSL_NUGET_ROOT})
     # find latest version based on folder name and assign to OPENSSL_ROOT_DIR
     FILE(GLOB dirlist RELATIVE ${SSL_NUGET_ROOT} ${SSL_NUGET_ROOT}/*)
@@ -173,21 +175,25 @@ if(WIN32 AND NOT CYGWIN)
     set(LIB_EAY_DEBUG LIB_EAY_DEBUG-NOTFOUND)
     if (EXISTS "${OPENSSL_LIB_DIR}/debug/libeay32.lib")
       set(LIB_EAY_DEBUG "${OPENSSL_LIB_DIR}/debug/libeay32.lib")
+      set(LIB_EAY_DEBUG_DLL "${OPENSSL_LIB_DIR}/debug/libeay32.dll")
     endif()
 
     set(LIB_EAY_RELEASE LIB_EAY_RELEASE-NOTFOUND)
     if (EXISTS "${OPENSSL_LIB_DIR}/release/libeay32.lib")
       set(LIB_EAY_RELEASE "${OPENSSL_LIB_DIR}/release/libeay32.lib")
+      set(LIB_EAY_RELEASE_DLL "${OPENSSL_LIB_DIR}/release/libeay32.dll")
     endif()
 
     set(SSL_EAY_DEBUG SSL_EAY_DEBUG-NOTFOUND)
     if (EXISTS "${OPENSSL_LIB_DIR}/debug/ssleay32.lib")
       set(SSL_EAY_DEBUG "${OPENSSL_LIB_DIR}/debug/ssleay32.lib")
+      set(SSL_EAY_DEBUG_DLL "${OPENSSL_LIB_DIR}/debug/ssleay32.dll")
     endif()
 
     set(SSL_EAY_RELEASE SSL_EAY_RELEASE-NOTFOUND)
     if (EXISTS "${OPENSSL_LIB_DIR}/release/ssleay32.lib")
       set(SSL_EAY_RELEASE "${OPENSSL_LIB_DIR}/release/ssleay32.lib")
+      set(SSL_EAY_RELEASE_DLL "${OPENSSL_LIB_DIR}/release/ssleay32.dll")
     endif()
 
     set(LIB_EAY_LIBRARY_DEBUG "${LIB_EAY_DEBUG}")
@@ -530,9 +536,4 @@ if(OPENSSL_FOUND)
         INTERFACE_LINK_LIBRARIES OpenSSL::Crypto)
     endif()
   endif()
-endif()
-
-# Restore the original find library ordering
-if(OPENSSL_USE_STATIC_LIBS)
-  set(CMAKE_FIND_LIBRARY_SUFFIXES ${_openssl_ORIG_CMAKE_FIND_LIBRARY_SUFFIXES})
 endif()

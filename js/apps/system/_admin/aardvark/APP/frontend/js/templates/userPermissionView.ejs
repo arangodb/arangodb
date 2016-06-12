@@ -1,0 +1,32 @@
+<script id="userPermissionView.ejs" type="text/template">
+    
+  <% var genClass = "pure-u-1-2"; %>
+
+  <div id="userPermissionView" class="innerContent">
+    <div class="pure-g pure-table pure-table-header pure-title" style="clear: both">
+      <div class="pure-table-row">
+        <div class="<%= genClass %> left">Database</div>
+        <div class="<%= genClass %> mid">Read & Write (rw)</div>
+      </div>
+    </div>
+
+    <div class="pure-g pure-table pure-table-body">
+      <% _.each(allDBs, function(db) { %>
+        <div class="pure-table-row noHover" id="<%= db %>-db">
+          <div class="<%= genClass %> left"><%= db %></div>
+
+          <% var checked = "" %>
+
+          <% if (permissions[db]) { %>
+            <% checked = ' checked '; %>
+          <% } %>
+
+          <div class="<%= genClass %> mid">
+            <input type="checkbox" name="<%= db %>" value="<%= db %>" <%= checked %> >
+          </div>
+        </div>
+      <% }); %>
+    </div>
+
+  </div>
+</script>

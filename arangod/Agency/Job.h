@@ -67,7 +67,7 @@ inline arangodb::consensus::write_ret_t transact (
     LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
   }
   
-  LOG_TOPIC(INFO, Logger::AGENCY) << envelope->toJson();
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << envelope->toJson();
   auto ret = _agent->write(envelope);
   if (waitForCommit) {
     auto maximum = *std::max_element(ret.indices.begin(), ret.indices.end());
@@ -158,12 +158,14 @@ struct Job {
     finished.add("op", VPackValue("delete"));
     finished.close();
 
-    // --- Remove block
-    finished.add(_agencyPrefix + "/Supervision/" + type,
-                 VPackValue(VPackValueType::Object));
-    finished.add("op", VPackValue("delete"));
-    finished.close();
-
+    // --- Remove block if specified
+    if (type != "") {
+      finished.add(_agencyPrefix + "/Supervision/" + type,
+                   VPackValue(VPackValueType::Object));
+      finished.add("op", VPackValue("delete"));
+      finished.close();
+    }
+    
     // --- Need precond? 
     finished.close(); finished.close();
   

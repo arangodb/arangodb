@@ -73,14 +73,14 @@ class Store : public arangodb::Thread {
   /// @brief Set name
   void name(std::string const& name);
 
+  /// @brief Get name
+  std::string const& name() const;
+
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
 
   /// @brief Notify observers
   void notifyObservers() const;
-
-  /// @brief See how far the path matches anything in store
-  size_t matchPath(std::vector<std::string> const& pv) const;
 
   /// @brief Get node specified by path vector
   Node operator()(std::vector<std::string> const& pv);

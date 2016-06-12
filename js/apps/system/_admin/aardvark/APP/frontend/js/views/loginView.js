@@ -54,6 +54,8 @@
           });
 
           self.renderDBS();
+        }).error(function(data) {
+          console.log("could not fetch user db data");                  
         });
       }
 
@@ -100,7 +102,9 @@
           ); 
         }
         else {
-          var url = arangoHelper.databaseUrl("/_api/database/user", '_system');
+          // TODO
+          //var url = arangoHelper.databaseUrl("/_api/database/user", '_system');
+          var url = arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(username) + "/database", '_system');
 
           if (frontendConfig.authenticationEnabled === false) {
             url = arangoHelper.databaseUrl("/_api/database/user");
@@ -117,13 +121,15 @@
             //enable db select and login button
             $('#loginDatabase').html('');
             //fill select with allowed dbs
-            _.each(data.result, function(db) {
+            _.each(data.result, function(db, key) {
               $('#loginDatabase').append(
-                '<option>' + db + '</option>'
+                '<option>' + key + '</option>'
               ); 
             });
 
             self.renderDBS();
+          }).error(function(data) {
+            $('.wrong-credentials').show();
           });
         }
       }.bind(this);

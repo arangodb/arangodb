@@ -48,6 +48,7 @@ using namespace arangodb::options;
 ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Cluster"),
       _username("root"),
+      _unregisterOnShutdown(false),
       _enableCluster(false),
       _heartbeatThread(nullptr),
       _heartbeatInterval(0),
@@ -466,7 +467,7 @@ void ClusterFeature::unprepare() {
     if (_heartbeatThread != nullptr) {
       _heartbeatThread->beginShutdown();
     }
-
+    
     // change into shutdown state
     ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
@@ -482,6 +483,9 @@ void ClusterFeature::unprepare() {
           LOG(WARN) << "waiting for heartbeat thread to finish";
         }
       }
+    }
+    if (_unregisterOnShutdown) {
+      ServerState::instance()->unregister();
     }
   }
 
@@ -523,4 +527,8 @@ void ClusterFeature::unprepare() {
 
   // ClusterComm::cleanup();
   AgencyComm::cleanup();
+}
+
+void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
+  _unregisterOnShutdown = unregisterOnShutdown;
 }

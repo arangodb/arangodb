@@ -265,6 +265,20 @@
       });
     },
 
+    buildUserSubNav: function(username, activeKey) {
+      var menus = {
+        General: {
+          route: '#user/' + encodeURIComponent(username)
+        },
+        Permissions: {
+          route: '#user/' + encodeURIComponent(username) + '/permission'
+        }
+      };
+
+      menus[activeKey].active = true;
+      this.buildSubNavBar(menus);
+    },
+
     buildNodeSubNav: function(node, activeKey, disabled) {
       var menus = {
         Dashboard: {

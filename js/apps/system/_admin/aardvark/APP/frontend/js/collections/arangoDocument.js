@@ -127,12 +127,24 @@ window.arangoDocument = Backbone.Collection.extend({
       }
     });
   },
-  saveEdge: function (colid, docid, model, callback) {
+
+  saveEdge: function (colid, docid, from, to, model, callback) {
+
+    var parsed;
+    try {
+      parsed = JSON.parse(model);
+      parsed._to = to;
+      parsed._from = from;
+    }
+    catch (e) {
+      arangoHelper.arangoError("Edge", "Could not parsed document.");
+    }
+
     $.ajax({
       cache: false,
       type: "PUT",
-      url: arangoHelper.databaseUrl("/_api/edge/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid)),
-      data: model,
+      url: arangoHelper.databaseUrl("/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid)) + "#replaceEdge",
+      data: JSON.stringify(parsed),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -143,6 +155,7 @@ window.arangoDocument = Backbone.Collection.extend({
       }
     });
   },
+
   saveDocument: function (colid, docid, model, callback) {
     $.ajax({
       cache: false,

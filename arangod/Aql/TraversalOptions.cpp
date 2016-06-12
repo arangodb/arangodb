@@ -30,7 +30,7 @@ using JsonHelper = arangodb::basics::JsonHelper;
 
 TraversalOptions::TraversalOptions(Json const& json) {
   Json obj = json.get("traversalFlags");
-  useBreathFirst = JsonHelper::getBooleanValue(obj.json(), "bfs", false);
+  useBreadthFirst = JsonHelper::getBooleanValue(obj.json(), "bfs", false);
   std::string tmp = JsonHelper::getStringValue(obj.json(), "uniqueVertices", "");
   if (tmp == "path") {
     uniqueVertices =
@@ -61,7 +61,7 @@ void TraversalOptions::toJson(arangodb::basics::Json& json,
   Json flags;
 
   flags = Json(Json::Object, 3);
-  flags("bfs", Json(useBreathFirst));
+  flags("bfs", Json(useBreadthFirst));
 
   switch (uniqueVertices) {
     case arangodb::traverser::TraverserOptions::UniquenessLevel::NONE:
@@ -93,7 +93,7 @@ void TraversalOptions::toJson(arangodb::basics::Json& json,
 void TraversalOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
 
-  builder.add("bfs", VPackValue(useBreathFirst));
+  builder.add("bfs", VPackValue(useBreadthFirst));
 
   switch (uniqueVertices) {
     case arangodb::traverser::TraverserOptions::UniquenessLevel::NONE:

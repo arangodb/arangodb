@@ -132,6 +132,8 @@ void UpgradeFeature::changeAdminPassword(std::string const& defaultPassword) {
       FATAL_ERROR_EXIT();
     }
 
+    TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+
     {
       v8::HandleScope scope(context->_isolate);
       auto localContext =
@@ -166,8 +168,6 @@ void UpgradeFeature::changeAdminPassword(std::string const& defaultPassword) {
       // failure when we delete the context locker below
       localContext->Exit();
     }
-
-    V8DealerFeature::DEALER->exitContext(context);
   }
 
   // and return from the context
@@ -189,6 +189,8 @@ void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
       LOG(FATAL) << "could not enter context #0";
       FATAL_ERROR_EXIT();
     }
+
+    TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
 
     {
       v8::HandleScope scope(context->_isolate);
@@ -253,13 +255,9 @@ void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
       }
 
       // finally leave the context. otherwise v8 will crash with assertion
-      // failure
-      // when we delete
-      // the context locker below
+      // failure when we delete the context locker below
       localContext->Exit();
     }
-
-    V8DealerFeature::DEALER->exitContext(context);
   }
 
   if (_upgrade) {

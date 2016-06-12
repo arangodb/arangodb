@@ -81,6 +81,11 @@ book-check-markdown-leftovers:
 		find books/$(NAME) -name '*.html' -exec grep '##' {} \; -print; \
 		exit 1; \
 	fi
+	@if test "`find books/$(NAME) -name '*.html' -exec grep -- '&amp;gt;' {} \; -print | wc -l`" -gt 0; then \
+		echo "found these double converted > signs: "; \
+		find books/$(NAME) -name '*.html' -exec grep '&amp;gt;' {} \; -print; \
+		exit 1; \
+	fi
 	@if test "`find books/$(NAME) -name '*.html' -exec grep '\.md\"' {} \; | grep -v data-filepath | wc -l`" -gt 0; then \
 		find books/$(NAME) -name '*.html' -exec grep '\.md"' {} \; -print | grep -v data-filepath; \
 		echo "found dangling markdown links; see the list above "; \
@@ -298,5 +303,5 @@ build-books:
 	done
 
 	make check-docublocks
-	make book-check-dangling-anchors
+	#make book-check-dangling-anchors
 	echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html

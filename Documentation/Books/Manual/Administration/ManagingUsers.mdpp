@@ -1,0 +1,37 @@
+!CHAPTER Managing Users
+
+The user management in ArangoDB 3 is similar to the one found in
+MYSQL, Postgres, or other database systems.
+
+An ArangoDB server contains a list of users. Each user can have access
+to one or more databases (or none for that matter).
+
+In order to manage users use the web interface. Log into the *_system*
+database and go to the "User" section.
+
+!SECTION Using the ArangoDB shell
+
+Alternatively, you can use the ArangoDB shell. Fire up *arangosh*
+and require the users module.
+
+```
+arangosh> var users = require("@arangodb/users");
+arangosh> users.save("admin@testapp", "mypassword");
+```
+
+Creates an user call *admin@testapp*. This user will have no access
+at all.
+
+```
+arangosh> users.grantDatabase("admin@testapp", "testdb");
+```
+
+This grants the user access to the database *testdb*. `revokeDatabase`
+will revoke the right.
+
+!SECTION Comparision to ArangoDB 2
+
+ArangoDB 2 contained separate users per database. It was not possible
+to give an user access to two or more databases. This proved
+impractical.  Therefore we switch to a more common user model in
+ArangoDB 3.

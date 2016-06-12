@@ -63,8 +63,6 @@ bool MoveShard::create () {
   std::string path, now(timepointToString(std::chrono::system_clock::now()));
 
   // DBservers
-  std::string planPath =
-    planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
   std::string curPath =
     curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
@@ -250,7 +248,7 @@ JOB_STATUS MoveShard::status () {
     
     Slice current = _snapshot(curPath).slice(),
       plan = _snapshot(planPath).slice();
-
+    
     std::vector<std::string> planv, currv;
     for (auto const& srv : VPackArrayIterator(plan)) {
       planv.push_back(srv.copyString());
@@ -298,8 +296,6 @@ JOB_STATUS MoveShard::status () {
         }
 
         if (foundFrom && foundTo) {
-
-          LOG(WARN) << _from << " " << current.toJson();
 
           if (current[0].copyString() == _from) { // Leader
             

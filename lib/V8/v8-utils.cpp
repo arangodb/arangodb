@@ -30,8 +30,8 @@
 #include <fstream>
 #include <iostream>
 
-#include "unicode/normalizer2.h"
 #include "3rdParty/valgrind/valgrind.h"
+#include "unicode/normalizer2.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -302,7 +302,8 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("options()");
   }
 
-  VPackBuilder builder = ApplicationServer::server->options({"server.password"});
+  VPackBuilder builder =
+      ApplicationServer::server->options({"server.password"});
   auto result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);
@@ -551,11 +552,11 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     // check if we are a server
     try {
-      HttpEndpointProvider* server = 
+      HttpEndpointProvider* server =
           ApplicationServer::getFeature<HttpEndpointProvider>("Endpoint");
       endpoints = server->httpEndpoints();
     } catch (...) {
-      HttpEndpointProvider* client = 
+      HttpEndpointProvider* client =
           ApplicationServer::getFeature<HttpEndpointProvider>("Client");
       endpoints = client->httpEndpoints();
     }
@@ -2051,7 +2052,7 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string systemErrorStr;
   long errorNo;
   int res = TRI_CreateRecursiveDirectory(destination.c_str(), errorNo,
-                                          systemErrorStr);
+                                         systemErrorStr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string errMsg = "cannot copy file [" + source + "] to [" +
@@ -3191,7 +3192,8 @@ static void JS_ExecuteExternal(
       v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
 
       n = arr->Length();
-      arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
+      arguments = static_cast<char**>(
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
@@ -3204,7 +3206,8 @@ static void JS_ExecuteExternal(
       }
     } else {
       n = 1;
-      arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
+      arguments = static_cast<char**>(
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
 
       TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 
@@ -3221,8 +3224,8 @@ static void JS_ExecuteExternal(
   }
 
   TRI_external_id_t external;
-  TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments), (size_t)n, usePipes,
-                            &external);
+  TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments),
+                            (size_t)n, usePipes, &external);
   if (arguments != nullptr) {
     for (uint32_t i = 0; i < n; ++i) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
@@ -3236,7 +3239,7 @@ static void JS_ExecuteExternal(
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("pid"),
               v8::Number::New(isolate, external._pid));
-  // Now report about possible stdin and stdout pipes:
+// Now report about possible stdin and stdout pipes:
 #ifndef _WIN32
   if (external._readPipe >= 0) {
     result->Set(TRI_V8_ASCII_STRING("readPipe"),
@@ -3285,8 +3288,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   memset(&pid, 0, sizeof(TRI_external_id_t));
 
 #ifndef _WIN32
-  pid._pid =
-      static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
 #else
   pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(args[0], true));
 #endif
@@ -3378,7 +3380,8 @@ static void JS_ExecuteAndWaitExternal(
       v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
 
       n = arr->Length();
-      arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
+      arguments = static_cast<char**>(
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
@@ -3391,7 +3394,8 @@ static void JS_ExecuteAndWaitExternal(
       }
     } else {
       n = 1;
-      arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
+      arguments = static_cast<char**>(
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
 
       TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 
@@ -3408,8 +3412,8 @@ static void JS_ExecuteAndWaitExternal(
   }
 
   TRI_external_id_t external;
-  TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments), static_cast<size_t>(n), usePipes,
-                            &external);
+  TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments),
+                            static_cast<size_t>(n), usePipes, &external);
   if (arguments != nullptr) {
     for (uint32_t i = 0; i < n; ++i) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
@@ -3541,7 +3545,8 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief suspends an external process, only Unix
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_SuspendExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_SuspendExternal(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3571,7 +3576,8 @@ static void JS_SuspendExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
 /// @brief continues an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ContinueExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ContinueExternal(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -3630,6 +3636,28 @@ static void JS_TestPort(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (available) {
     TRI_V8_RETURN_TRUE();
   }
+
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if the application server is stopping
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_IsStopping(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("isStopping()");
+  }
+
+  if (ApplicationServer::isStopping()) {
+    TRI_V8_RETURN_TRUE();
+  }
+
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
@@ -3724,14 +3752,15 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   if ((args.Length() < 2) || (args.Length() > 4)) {
-    TRI_V8_THROW_EXCEPTION_USAGE("SplitWordlist(<value>, minLength, [<maxLength>, [<lowerCase>]])");
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "SplitWordlist(<value>, minLength, [<maxLength>, [<lowerCase>]])");
   }
 
   std::string stringToTokenize = TRI_ObjectToString(args[0]);
 
   size_t minLength = static_cast<size_t>(TRI_ObjectToUInt64(args[1], true));
 
-  size_t maxLength = 40;// -> TRI_FULLTEXT_MAX_WORD_LENGTH;
+  size_t maxLength = 40;  // -> TRI_FULLTEXT_MAX_WORD_LENGTH;
   if (args.Length() > 2) {
     maxLength = static_cast<size_t>(TRI_ObjectToUInt64(args[2], true));
   }
@@ -3743,17 +3772,13 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::vector<std::string> wordList;
 
-  if (!Utf8Helper::DefaultUtf8Helper.getWords(wordList,
-                                              stringToTokenize,
-                                              minLength,
-                                              maxLength,
-                                              lowerCase)) {
+  if (!Utf8Helper::DefaultUtf8Helper.getWords(
+          wordList, stringToTokenize, minLength, maxLength, lowerCase)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "SplitWordlist failed!");
   }
 
   v8::Handle<v8::Array> v8WordList =
-    v8::Array::New(isolate, static_cast<int>(wordList.size()));
-
+      v8::Array::New(isolate, static_cast<int>(wordList.size()));
 
   size_t const n = static_cast<uint32_t>(wordList.size());
 
@@ -4327,7 +4352,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_IS_IP"), JS_IsIP);
   TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("SYS_SPLIT_WORDS_ICU"), JS_SplitWordlist);
+                               TRI_V8_ASCII_STRING("SYS_SPLIT_WORDS_ICU"),
+                               JS_SplitWordlist);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_KILL_EXTERNAL"),
                                JS_KillExternal);
@@ -4394,6 +4420,9 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_CAN_USE_FAILAT"),
                                JS_DebugCanUseFailAt);
+
+  TRI_AddGlobalFunctionVocbase(
+      isolate, context, TRI_V8_ASCII_STRING("SYS_IS_STOPPING"), JS_IsStopping);
 
   // .............................................................................
   // create the global variables

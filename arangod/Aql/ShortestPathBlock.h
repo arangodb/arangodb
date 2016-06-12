@@ -29,6 +29,11 @@
 #include "V8Server/V8Traverser.h"
 
 namespace arangodb {
+
+namespace traverser {
+class EdgeCollectionInfo;
+}
+
 namespace aql {
 
 class ShortestPathNode;
@@ -89,7 +94,7 @@ class ShortestPathBlock : public ExecutionBlock {
   traverser::ShortestPathOptions _opts;
 
   /// @brief list of edge collection infos used to compute the path
-  std::vector<EdgeCollectionInfo*> _collectionInfos;
+  std::vector<arangodb::traverser::EdgeCollectionInfo*> _collectionInfos;
 
   /// @brief position in the current path
   size_t _posInPath;

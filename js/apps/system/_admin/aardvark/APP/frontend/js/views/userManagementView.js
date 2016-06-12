@@ -195,20 +195,11 @@
       this.collection.fetch({
         success: function() {
           self.render();
-//          window.App.handleSelectDatabase();
         }
       });
     },
 
-    submitDeleteUser: function(username) {
-      var toDelete = this.collection.findWhere({user: username});
-      toDelete.destroy({wait: true});
-      window.modalView.hide();
-      this.updateUserManagement();
-    },
-
     editUser : function(e) {
-
       if ($(e.currentTarget).find('a').attr('id') === 'createUser') {
         return;
       }
@@ -222,84 +213,8 @@
       if (username === '') {
         username = $(e.currentTarget).attr('id');
       }
-      var user = this.collection.findWhere({user: username});
-      if (user.get("loggedIn")) {
-        this.editCurrentUser();
-      } else {
-        this.createEditUserModal(
-          user.get("user"),
-          user.get("extra").name,
-          user.get("active")
-        );
-      }
-    },
 
-    editCurrentUser: function() {
-      this.createEditCurrentUserModal(
-        this.currentUser.get("user"),
-        this.currentUser.get("extra").name,
-        this.currentUser.get("extra").img
-      );
-    },
-
-    submitEditUser : function(username) {
-      var name = $('#editName').val();
-      var status = $('#editStatus').is(':checked');
-
-      if (!this.validateStatus(status)) {
-        $('#editStatus').closest("th").css("backgroundColor", "red");
-        return;
-      }
-      if (!this.validateName(name)) {
-        $('#editName').closest("th").css("backgroundColor", "red");
-        return;
-      }
-      var user = this.collection.findWhere({"user": username});
-      //img may not be set, so keep the value
-//      var img = user.get("extra").img;
-//      user.set({"extra": {"name":name, "img":img}, "active":status});
-      user.save({"extra": {"name":name}, "active":status}, {type: "PATCH"});
-      window.modalView.hide();
-      this.updateUserManagement();
-    },
-
-    validateUsername: function (username) {
-      if (username === "") {
-        arangoHelper.arangoError("You have to define an username");
-        $('#newUsername').closest("th").css("backgroundColor", "red");
-        return false;
-      }
-      if (!username.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
-        arangoHelper.arangoError(
-          "Wrong Username", "Username may only contain numbers, letters, _ and -"
-        );
-        return false;
-      }
-      return true;
-    },
-
-    validatePassword: function (passwordw) {
-      return true;
-    },
-
-    validateName: function (name) {
-      if (name === "") {
-        return true;
-      }
-      if (!name.match(/^[a-zA-Z][a-zA-Z0-9_\-\ ]*$/)) {
-        arangoHelper.arangoError(
-          "Wrong Username", "Username may only contain numbers, letters, _ and -"
-        );
-        return false;
-      }
-      return true;
-    },
-
-    validateStatus: function (status) {
-      if (status === "") {
-        return false;
-      }
-      return true;
+      window.App.navigate("user/" + encodeURIComponent(username), {trigger: true});
     },
 
     toggleView: function() {
@@ -308,155 +223,6 @@
 
       $('#userManagementToggle').toggleClass("activated");
       $('#userManagementDropdown2').slideToggle(200);
-    },
-
-    setFilterValues: function () {
-      /*
-      var searchOptions = this.collection.searchOptions;
-      $('#checkLoaded').attr('checked', searchOptions.includeLoaded);
-      $('#checkUnloaded').attr('checked', searchOptions.includeUnloaded);
-      $('#checkSystem').attr('checked', searchOptions.includeSystem);
-      $('#checkEdge').attr('checked', searchOptions.includeEdge);
-      $('#checkDocument').attr('checked', searchOptions.includeDocument);
-      $('#sortName').attr('checked', searchOptions.sortBy !== 'type');
-      $('#sortType').attr('checked', searchOptions.sortBy === 'type');
-      $('#sortOrder').attr('checked', searchOptions.sortOrder !== 1);
-      */
-    },
-
-    evaluateUserName : function(str, substr) {
-      if (str) {
-        var index = str.lastIndexOf(substr);
-        return str.substring(0, index);
-      }
-    },
-
-    editUserPassword : function () {
-      window.modalView.hide();
-      this.createEditUserPasswordModal();
-    },
-
-    submitEditUserPassword : function () {
-      var oldPasswd   = $('#oldCurrentPassword').val(),
-        newPasswd     = $('#newCurrentPassword').val(),
-        confirmPasswd = $('#confirmCurrentPassword').val();
-      $('#oldCurrentPassword').val('');
-      $('#newCurrentPassword').val('');
-      $('#confirmCurrentPassword').val('');
-      //check input
-      //clear all "errors"
-      $('#oldCurrentPassword').closest("th").css("backgroundColor", "white");
-      $('#newCurrentPassword').closest("th").css("backgroundColor", "white");
-      $('#confirmCurrentPassword').closest("th").css("backgroundColor", "white");
-
-      //check
-      var hasError = false;
-
-      var callback = function(error, data) {
-        if (error) {
-          arangoHelper.arangoError("User", "Could not verify old password");
-        }
-        else {
-          if (data) {
-            //check confirmation
-            if (newPasswd !== confirmPasswd) {
-              arangoHelper.arangoError("User", "New passwords do not match");
-              hasError = true;
-            }
-            //check new password
-            /*if (!this.validatePassword(newPasswd)) {
-              $('#newCurrentPassword').closest("th").css("backgroundColor", "red");
-              hasError = true;
-            }*/
-
-            if (!hasError) {
-              this.currentUser.setPassword(newPasswd);
-              arangoHelper.arangoNotification("User", "Password changed");
-              window.modalView.hide();
-            }
-          }
-        }
-      }.bind(this);
-      this.currentUser.checkPassword(oldPasswd, callback);
-    },
-
-    submitEditCurrentUserProfile: function() {
-      var name    = $('#editCurrentName').val();
-      var img     = $('#editCurrentUserProfileImg').val();
-      img = this.parseImgString(img);
-
-
-      var callback = function(error) {
-        if (error) {
-          arangoHelper.arangoError("User", "Could not edit user settings");
-        }
-        else {
-          arangoHelper.arangoNotification("User", "Changes confirmed.");
-          this.updateUserProfile();
-        }
-      }.bind(this);
-
-      this.currentUser.setExtras(name, img, callback);
-      window.modalView.hide();
-    },
-
-    updateUserProfile: function() {
-      var self = this;
-      this.collection.fetch({
-        success: function() {
-          self.render();
-        }
-      });
-    },
-
-    parseImgString : function(img) {
-      //if already md5
-      if (img.indexOf("@") === -1) {
-        return img;
-      }
-      //else generate md5
-      return CryptoJS.MD5(img).toString();
-    },
-
-
-    //modal dialogs
-
-    createEditUserModal: function(username, name, active) {
-      var buttons, tableContent;
-      tableContent = [
-        {
-          type: window.modalView.tables.READONLY,
-          label: "Username",
-          value: _.escape(username)
-        },
-        {
-          type: window.modalView.tables.TEXT,
-          label: "Name",
-          value: name,
-          id: "editName",
-          placeholder: "Name"
-        },
-        {
-          type: window.modalView.tables.CHECKBOX,
-          label: "Active",
-          value: "active",
-          checked: active,
-          id: "editStatus"
-        }
-      ];
-      buttons = [
-        {
-          title: "Delete",
-          type: window.modalView.buttons.DELETE,
-          callback: this.submitDeleteUser.bind(this, username)
-        },
-        {
-          title: "Save",
-          type: window.modalView.buttons.SUCCESS,
-          callback: this.submitEditUser.bind(this, username)
-        }
-      ];
-      window.modalView.show("modalTable.ejs", "Edit User", buttons, tableContent);
     },
 
     createCreateUserModal: function() {
@@ -499,86 +265,20 @@
       window.modalView.show("modalTable.ejs", "Create New User", buttons, tableContent);
     },
 
-    createEditCurrentUserModal: function(username, name, img) {
-      var buttons = [],
-        tableContent = [];
-
-      tableContent.push(
-        window.modalView.createReadOnlyEntry("id_username", "Username", username)
-      );
-      tableContent.push(
-        window.modalView.createTextEntry("editCurrentName", "Name", name, false, "Name", false)
-      );
-      tableContent.push(
-        window.modalView.createTextEntry(
-          "editCurrentUserProfileImg",
-          "Gravatar account (Mail)",
-          img,
-          "Mailaddress or its md5 representation of your gravatar account."
-            + " The address will be converted into a md5 string. "
-            + "Only the md5 string will be stored, not the mailaddress.",
-          "myAccount(at)gravatar.com"
-        )
-      );
-
-      buttons.push(
-        window.modalView.createNotificationButton(
-          "Change Password",
-          this.editUserPassword.bind(this)
-        )
-      );
-      buttons.push(
-        window.modalView.createSuccessButton(
-          "Save",
-          this.submitEditCurrentUserProfile.bind(this)
-        )
-      );
-
-      window.modalView.show("modalTable.ejs", "Edit User Profile", buttons, tableContent);
+    evaluateUserName : function(str, substr) {
+      if (str) {
+        var index = str.lastIndexOf(substr);
+        return str.substring(0, index);
+      }
     },
 
-    createEditUserPasswordModal: function() {
-      var buttons = [],
-        tableContent = [];
-
-      tableContent.push(
-        window.modalView.createPasswordEntry(
-          "oldCurrentPassword",
-          "Old Password",
-          "",
-          false,
-          "old password",
-          false
-        )
-      );
-      tableContent.push(
-        window.modalView.createPasswordEntry(
-          "newCurrentPassword",
-          "New Password",
-          "",
-          false,
-          "new password",
-          false
-        )
-      );
-      tableContent.push(
-        window.modalView.createPasswordEntry(
-          "confirmCurrentPassword",
-          "Confirm New Password",
-          "",
-          false,
-          "confirm new password",
-          false)
-      );
-
-      buttons.push(
-        window.modalView.createSuccessButton(
-          "Save",
-          this.submitEditUserPassword.bind(this)
-        )
-      );
-
-      window.modalView.show("modalTable.ejs", "Edit User Password", buttons, tableContent);
+    updateUserProfile: function() {
+      var self = this;
+      this.collection.fetch({
+        success: function() {
+          self.render();
+        }
+      });
     }
 
   });

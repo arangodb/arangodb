@@ -154,38 +154,65 @@
     },
 
     submitCreateDatabase: function() {
-      var self = this, userPassword,
-      name  = $('#newDatabaseName').val(),
+      var self = this, //userPassword,
+      dbname  = $('#newDatabaseName').val(),
       userName = $('#newUser').val();
 
+      /*
       if ($('#useDefaultPassword').val() === 'true') {
         userPassword = 'ARANGODB_DEFAULT_ROOT_PASSWORD'; 
       }
       else {
         userPassword = $('#newPassword').val();
       }
-
       if (!this.validateDatabaseInfo(name, userName, userPassword)) {
         return;
       }
+      */
 
       var options = {
-        name: name,
-        users: [
+        name: dbname
+        /*users: [
           {
             username: userName,
             passwd: userPassword,
             active: true
           }
-        ]
+        ]*/
       };
+
       this.collection.create(options, {
-        wait:true,
+        wait: false,
         error: function(data, err) {
-          self.handleError(err.status, err.statusText, name);
+          console.log("ERROR");
+          self.handleError(err.status, err.statusText, dbname);
         },
         success: function() {
+
+          //TODO
+          // add root user to newly created database
+
+          if (userName !== 'root') {
+            $.ajax({
+              type: "PUT",
+              url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(userName) + "/database/" + encodeURIComponent(dbname)),
+              contentType: "application/json",
+              data: JSON.stringify({
+                grant: 'rw'
+              })
+            });
+          }
+          $.ajax({
+            type: "PUT",
+            url: arangoHelper.databaseUrl("/_api/user/root/database/" + encodeURIComponent(dbname)),
+            contentType: "application/json",
+            data: JSON.stringify({
+              grant: 'rw'
+            })
+          });
+
           self.updateDatabases();
+          arangoHelper.arangoNotification("Database created.");
           window.modalView.hide();
           window.App.naviView.dbSelectionView.render($("#dbSelect"));
         }
@@ -326,6 +353,31 @@
           ]
         )
       );
+
+      var users = [];
+      window.App.userCollection.each(function(user) {
+        users.push({
+          value: user.get("user"),
+          label: user.get("user")
+        });
+      });
+      console.log(users);
+
+      tableContent.push(
+        window.modalView.createSelectEntry(
+          "newUser",
+          "Username",
+          this.users !== null ? this.users.whoAmI() : 'root',
+          "Please define the owner of this database. This will be the only user having "
+            + "initial access to this database if authentication is turned on. Please note "
+            + "that if you specify a username different to your account you will not be "
+            + "able to access the database with your account after having creating it. "
+            + "Specifying a username is mandatory even with authentication turned off. "
+            + "If there is a failure you will be informed.",
+            users
+        )
+      );
+      /*
       tableContent.push(
         window.modalView.createTextEntry(
           "newUser",
@@ -365,6 +417,7 @@
           false
         )
       );
+      */
       buttons.push(
         window.modalView.createSuccessButton(
           "Create",

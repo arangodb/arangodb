@@ -28,7 +28,7 @@
 #define BOOST_TEST_INCLUDED
 #include <boost/test/unit_test.hpp>
 
-#include "Basics/Traverser.h"
+#include "Basics/ShortestPathFinder.h"
 #include "Basics/voc-errors.h"
 
 using namespace std;

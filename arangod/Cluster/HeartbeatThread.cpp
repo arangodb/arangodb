@@ -250,8 +250,10 @@ void HeartbeatThread::runDBServer() {
         CONDITION_LOCKER(locker, _condition);
         wasNotified = _wasNotified;
         if (!wasNotified) {
-          locker.wait(static_cast<uint64_t>(remain * 1000000.0));
-          wasNotified = _wasNotified;
+          if (remain > 0.0) {
+            locker.wait(static_cast<uint64_t>(remain * 1000000.0));
+            wasNotified = _wasNotified;
+          }
         }
         _wasNotified = false;
       }
@@ -640,14 +642,15 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
       }
       return false;
     }
-    if (dispatcher->addJob(job, false) == TRI_ERROR_NO_ERROR) {
+    int res = dispatcher->addJob(job, false);
+    if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "scheduled dbserver sync";
       return true;
     }
     MUTEX_LOCKER(mutexLocker, _statusLock);
     _isDispatchingChange = false;
 
-    if (warn) {
+    if (warn && res != TRI_ERROR_SHUTTING_DOWN) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT) << "could not schedule dbserver sync";
     }
   }

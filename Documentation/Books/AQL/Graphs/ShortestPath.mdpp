@@ -1,15 +1,15 @@
 !CHAPTER Shortest Path in AQL
 
-!SUBSECTION General query idea
+!SECTION General query idea
 
-This query is only useful if you use edge collections and/or graphs in your data model.
-It is supposed to find the shortest path between two given documents (*start-vertex*) and (*target-vertex*) in your graph.
-For all vertices on this shortest path you will get a result in form of a set with two items:
+This type of query is supposed to find the shortest path between two given documents
+(*startVertex* and *targetVertex*) in your graph. For all vertices on this shortest
+path you will get a result in form of a set with two items:
 
 1. The vertex on this path.
 2. The edge pointing to it.
 
-!SUBSUBSECTION Example execution
+!SUBSECTION Example execution
 
 Let's take a look at a simple example to explain how it works.
 This is the graph that we are going to find a shortest path on:
@@ -19,73 +19,103 @@ This is the graph that we are going to find a shortest path on:
 Now we use the following parameters for our query:
 
 1. We start at the vertex **A**.
-2. We finish in vertex **D**.
+2. We finish with the vertex **D**.
 
-So obviously we will have the vertices **A**, **B**, **C** and **D** on the shortest path in exactly this order.
-Than the shortest path statement will return the following pairs:
+So obviously we will have the vertices **A**, **B**, **C** and **D** on the
+shortest path in exactly this order. Than the shortest path statement will
+return the following pairs:
 
-<table>
-<tr><th>Vertex</th><th>Edge</th></tr>
-<tr><td>`A`</td><td>`null`</td></tr>
-<tr><td>`B`</td><td>`A -> B`</td></tr>
-<tr><td>`C`</td><td>`B -> C`</td></tr>
-<tr><td>`D`</td><td>`C -> D`</td></tr>
-</table>
+| Vertex | Edge  |
+|--------|-------|
+|    A   | null  |
+|    B   | A → B |
+|    C   | B → C |
+|    D   | C → D |
 
-Note here: The first edge will always be `null` because there is no edge pointing to the *start-vertex*.
+Note: The first edge will always be `null` because there is no edge pointing
+to the *startVertex*.
 
-!SUBSECTION Syntax
+!SECTION Syntax
+
 Now let's see how we can write a shortest path query.
-You have two options here, you can either use a named graph (see [the graphs chapter](index.html) on how to create it) or anonymous graphs.
+You have two options here, you can either use a named graph or a set of edge
+collections (anonymous graph).
 
-!SUBSUBSECTION Working on named graphs:
+!SUBSUBSECTION Working with named graphs
 
-`FOR ` vertex[, edge]
-  `IN` `OUTBOUND|INBOUND|ANY` `SHORTEST_PATH`
-   startVertex `TO` targetVertex
-  `GRAPH` graphName
-  [`OPTIONS` options] 
+```
+FOR vertex[, edge]
+  IN OUTBOUND|INBOUND|ANY SHORTEST_PATH
+  startVertex TO targetVertex
+  GRAPH graphName
+  [OPTIONS options]
+```
 
-- `FOR` - emits up to two variables:
-  - **vertex**: the current vertex on the shortest path
-  - **edge**: *(optional)* the edge pointing to vertex
-- `IN` `OUTBOUND|INBOUND|ANY`:
-  - Defines in which direction edges are followed.
-- **startVertex** `TO` **targetVertex**:
-  - the two vertices between which the shortest path will be computed, this can be specified in the form of an id string or in the form of a document with the attribute `_id`. All other values will lead to a warning and an empty result. If one the specified ids does not exist, the result is empty as well and there is no warning.
-- `GRAPH` **graphName**:
-  - **graphName**: the name identifying the named graph. It's vertex and edge collections will be looked up.
-- `OPTIONS` options:
-  - **options** are used to modify the execution of the traversal. It has to be a JSON object. Only the following attributes have an effect, all others are ignored:
-    - **weightAttribute** A top-level edge attribute that should be used to read the edge weight. If the attribute is not existent or not numeric the **defaultWeight** will be used instead.
-    - **defaultWeight** If **weightAttribute** is used but an edge does not have the attribute or it is not numeric this value will be used instead (default: 1). This option has to be numeric.
+- `FOR`: emits up to two variables:
+  - **vertex** (object): the current vertex on the shortest path
+  - **edge** (object, *optional*): the edge pointing to the vertex
+- `IN` `OUTBOUND|INBOUND|ANY`: defines in which direction edges are followed
+  (outgoing, incoming, or both)
+- **startVertex** `TO` **targetVertex** (both string|object): the two vertices between
+  which the shortest path will be computed. This can be specified in the form of
+  an ID string or in the form of a document with the attribute `_id`. All other
+  values will lead to a warning and an empty result. If one of the specified
+  documents does not exist, the result is empty as well and there is no warning.
+- `GRAPH` **graphName** (string): the name identifying the named graph. Its vertex and
+  edge collections will be looked up.
+- `OPTIONS` **options** (object, *optional*): used to modify the execution of the
+  traversal. Only the following attributes have an effect, all others are ignored:
+  - **weightAttribute** (string): a top-level edge attribute that should be used
+  to read the edge weight. If the attribute is not existent or not numeric, the
+  *defaultWeight* will be used instead.
+  - **defaultWeight** (number): this value will be used as fallback if there is
+  no *weightAttribute* in the edge document, or if it's not a number. The default
+  is 1.
 
-!SUBSUBSECTION Working on collection sets:
+!SUBSECTION Working with collection sets
 
-`FOR ` vertex[, edge]
-  `IN` `OUTBOUND|INBOUND|ANY` `SHORTEST_PATH`
-  startVertex `TO` targetVertex
-  [`OPTIONS` options] 
+```
+FOR vertex[, edge]
+  IN OUTBOUND|INBOUND|ANY SHORTEST_PATH
+  startVertex TO targetVertex
+  edgeCollection1, ..., edgeCollectionN
+  [OPTIONS options]
+```
 
-Instead of the `GRAPH graphName` you may specify a **list of edge collections**. Vertex collections are evaluated from the edges. The rest of the behavior is similar to the named version.
+Instead of `GRAPH graphName` you may specify a list of edge collections (anonymous
+graph). The involved vertex collections are determined by the edges of the given
+edge collections. The rest of the behavior is similar to the named version.
 
-!SUBSUBSECTION Working on collection sets with mixed directions:
+!SUBSECTION Traversing in mixed directions
 
-For shortest path with a **list of edge collections** you can optionally specify the direction for some of the edge collections.
-Say for example you have three edge collections `edges1`, `edges2` and `edges3`, where in `edges2` the direction has no relevance but in `edges1` and `edges3`
-the direction should be taken into account. In this case you can use `OUTBOUND` as general search direction and `ANY` specifically for `edges2` in the following statement:
+For shortest path with a list of edge collections you can optionally specify the
+direction for some of the edge collections. Say for example you have three edge
+collections *edges1*, *edges2* and *edges3*, where in *edges2* the direction
+has no relevance, but in *edges1* and *edges3* the direction should be taken into
+account. In this case you can use *OUTBOUND* as general search direction and *ANY*
+specifically for *edges2* as follows:
 
-`FOR vertex IN OUTBOUND SHORTEST_PATH startVertex TO targetVertex edges1, ANY edges2, edges3`
+```
+FOR vertex IN OUTBOUND SHORTEST_PATH
+  startVertex TO targetVertex
+  edges1, ANY edges2, edges3
+```
 
-All collections in the list that do not specify their own direction will use the direction defined after `IN`.
-This allows to use a different direction for each collection in your path search.
+All collections in the list that do not specify their own direction will use the
+direction defined after *IN* (here: *OUTBOUND*). This allows to use a different
+direction for each collection in your path search.
 
-!SUBSECTION Conditional shortest path
+!SECTION Conditional shortest path
 
-The SHORTEST_PATH computation will only find an unconditioned shortest path. With this construct it is not possible to define a condition like: "Find the shortest path where all edges are of type `x`". If you want to do this use the [Traversal]() instead with the option `{bfs: true}` in combination with `LIMIT 1`.
+The SHORTEST_PATH computation will only find an unconditioned shortest path.
+With this construct it is not possible to define a condition like: "Find the
+shortest path where all edges are of type *X*". If you want to do this, use a
+normal [Traversal](Traversals.md) instead with the option `{bfs: true}` in
+combination with `LIMIT 1`.
 
-!SUBSUBSECTION Examples
+!SECTION Examples
 We will create a simple symmetric traversal demonstration graph:
+
 ![traversal graph](../../Manual/Graphs/traversal_graph.png)
 
     @startDocuBlockInline GRAPHSP_01_create_graph
@@ -103,24 +133,23 @@ We start with the shortest path from **A** to **D** as above:
 
     @startDocuBlockInline GRAPHSP_02_A_to_D
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHSP_02_A_to_D}
-    db._query("FOR v, e IN OUTBOUND SHORTEST_PATH 'circles/A' TO 'circles/D' GRAPH 'traversalGraph' RETURN [v, e]");
-    db._query("FOR v, e IN OUTBOUND SHORTEST_PATH 'circles/A' TO 'circles/D' edges RETURN [v, e]");
+    db._query("FOR v, e IN OUTBOUND SHORTEST_PATH 'circles/A' TO 'circles/D' GRAPH 'traversalGraph' RETURN [v._key, e._key]");
+    db._query("FOR v, e IN OUTBOUND SHORTEST_PATH 'circles/A' TO 'circles/D' edges RETURN [v._key, e._key]");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHSP_02_A_to_D
 
-We can see our expectations are fulfilled. We find the vertices in the correct ordering and the first edge is `null`.
+We can see our expectations are fulfilled. We find the vertices in the correct ordering and
+the first edge is *null*, because no edge is pointing to the start vertex on t his path.
 
-We can also compute shortest paths based on documents found in collections.
+We can also compute shortest paths based on documents found in collections:
 
     @startDocuBlockInline GRAPHSP_03_A_to_D
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHSP_03_A_to_D}
-    db._query("FOR a IN circles FILTER a._key == 'A' FOR d IN circles FILTER d._key == 'D' FOR v, e IN OUTBOUND SHORTEST_PATH a TO d GRAPH 'traversalGraph' RETURN [v, e]");
-    db._query("FOR a IN circles FILTER a._key == 'A' FOR d IN circles FILTER d._key == 'D' FOR v, e IN OUTBOUND SHORTEST_PATH a TO d edges RETURN [v, e]");
+    db._query("FOR a IN circles FILTER a._key == 'A' FOR d IN circles FILTER d._key == 'D' FOR v, e IN OUTBOUND SHORTEST_PATH a TO d GRAPH 'traversalGraph' RETURN [v._key, e._key]");
+    db._query("FOR a IN circles FILTER a._key == 'A' FOR d IN circles FILTER d._key == 'D' FOR v, e IN OUTBOUND SHORTEST_PATH a TO d edges RETURN [v._key, e._key]");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHSP_03_A_to_D
 
-
-!SUBSECTION Using OPTIONS
 
 And finally clean it up again:
 
@@ -132,4 +161,3 @@ And finally clean it up again:
     ~removeIgnoreCollection("edges");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHSP_99_drop_graph
-

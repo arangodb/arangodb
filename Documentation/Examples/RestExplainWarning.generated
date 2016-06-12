@@ -55,7 +55,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"expression"</span> : { 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"value"</span>, 
-          <span class="hljs-string">"value"</span> : <span class="hljs-number">0</span> 
+          <span class="hljs-string">"value"</span> : <span class="hljs-literal">null</span> 
         }, 
         <span class="hljs-string">"outVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">4</span>, 

@@ -721,7 +721,7 @@
       name: "createFrontend",
       description: "setup _frontend collection",
 
-      system: DATABASE_SYSTEM,
+      system: DATABASE_ALL,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
       database: [DATABASE_INIT, DATABASE_UPGRADE],
 
