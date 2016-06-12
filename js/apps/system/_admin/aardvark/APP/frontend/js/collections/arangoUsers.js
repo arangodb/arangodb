@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint strict: false, unused: false */
-/*global window, Backbone, $,_, window, frontendConfig, arangoHelper */
+/*global window, atob, Backbone, $,_, window, frontendConfig, arangoHelper */
 
 window.ArangoUsers = Backbone.Collection.extend({
   model: window.Users,
@@ -16,7 +16,12 @@ window.ArangoUsers = Backbone.Collection.extend({
     desc: false
   },
 
+  fetch: function(options) {
+    return Backbone.Collection.prototype.fetch.call(this, options);
+  },
+
   url: frontendConfig.basePath + "/_api/user",
+  //url: arangoHelper.databaseUrl("/_api/user"),
 
   //comparator : function(obj) {
   //  return obj.get("user").toLowerCase();
@@ -86,10 +91,12 @@ window.ArangoUsers = Backbone.Collection.extend({
 
   loadUserSettings: function (callback) {
     var self = this;
+
     $.ajax({
       type: "GET",
       cache: false,
-      url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
+      //url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
+      url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(self.activeUser)),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -139,7 +146,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         callback(false, data.user);
       }
     ).error(
-      function(data) {
+      function() {
         callback(true, null);
       }
     );
