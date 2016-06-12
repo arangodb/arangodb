@@ -29,6 +29,21 @@ automatically started.
 For startup parameters, installation in a cluster and so on, see
 [Installing](Installing/README.md).
 
+!SUBSECTION Securing the installation
+
+The default installation contains one database *_system* and a user
+named *root*.
+
+Debian based packages and the Windows installer will ask for a
+password during the installation process. For all other installation
+packages you need to execute
+
+```
+shell> arango-secure-installation
+```
+
+This will asked for a root password and sets this password.
+
 !SUBSECTION Web interface
 
 The server itself speaks REST and VelocyStream, but you can use the
@@ -45,7 +60,7 @@ see [Troubleshooting](../Troubleshooting/README.md).
 By default, authentication is enabled. There default user is
 `root`. Depending on the installation method used, the installation
 processed either prompted for the root password or the default root
-password is empty.
+password is empty (see [above](#securing_the_installation).
 
 It should look like this:
 TODO MISSING

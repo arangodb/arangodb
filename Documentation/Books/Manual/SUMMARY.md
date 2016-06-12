@@ -12,6 +12,7 @@
     * [Windows](GettingStarted/Installing/Windows.md)
     * [Compiling](GettingStarted/Installing/Compiling.md)
     * [Cluster setup](GettingStarted/Installing/Cluster.md)
+  * [Authentication](GettingStarted/Authentication.md)
   * [Using the Web Interface](GettingStarted/WebInterface.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
   # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
@@ -102,6 +103,8 @@
   * [Cluster: Local test](Deployment/Local.md)
 #
 * [Administration](Administration/README.md)
+  * [Managing Users](Administration/ManagingUsers.md)
+  * [Durability](Administration/Durability.md)
   * [ArangoDB Shell](Administration/Arangosh/README.md)
     * [Shell Output](Administration/Arangosh/Output.md)
     * [Configuration](Administration/Arangosh/Configuration.md)
