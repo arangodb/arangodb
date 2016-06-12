@@ -11,7 +11,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     <span class="hljs-string">"asan"</span> : <span class="hljs-string">"false"</span>, 
     <span class="hljs-string">"asm-crc32"</span> : <span class="hljs-string">"true"</span>, 
     <span class="hljs-string">"boost-version"</span> : <span class="hljs-string">"1.61.0b1"</span>, 
-    <span class="hljs-string">"build-date"</span> : <span class="hljs-string">"2016-06-12 09:42:08"</span>, 
+    <span class="hljs-string">"build-date"</span> : <span class="hljs-string">"2016-06-12 12:19:50"</span>, 
     <span class="hljs-string">"compiler"</span> : <span class="hljs-string">"clang"</span>, 
     <span class="hljs-string">"cplusplus"</span> : <span class="hljs-string">"201103"</span>, 
     <span class="hljs-string">"endianness"</span> : <span class="hljs-string">"little"</span>, 
