@@ -1,5 +1,4 @@
 arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
 arangosh&gt; graph._getConnectingEdges({isCapital : <span class="hljs-literal">true</span>}, {isCapital : <span class="hljs-literal">true</span>});
-[ArangoError <span class="hljs-number">1540</span>: usage <span class="hljs-keyword">of</span> unknown <span class="hljs-function"><span class="hljs-keyword">function</span> '<span class="hljs-title">GRAPH_EDGES</span>(<span class="hljs-params"></span>)' (<span class="hljs-params">while parsing</span>)]
-</span>
+[ ]

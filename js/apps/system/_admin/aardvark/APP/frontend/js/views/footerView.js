@@ -34,6 +34,15 @@
       $('#offlinePlaceholder button').on('click', function() {
         self.getVersion();
       });
+
+      window.setTimeout(function() {
+        if (window.frontendConfig.isCluster === true) {
+          $('.health-state').css('cursor', 'pointer');
+          $('.health-state').on('click', function() {
+            window.App.navigate("#nodes", {trigger: true});
+          });
+        }
+      }, 1000);
     },
 
     template: templateEngine.createTemplate("footerView.ejs"),

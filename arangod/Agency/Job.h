@@ -53,6 +53,33 @@ static std::string const blockedShardsPrefix = "/Supervision/Shards/";
 static std::string const serverStatePrefix = "/Sync/ServerStates/";
 static std::string const planVersion    = "/Plan/Version";
 
+inline arangodb::consensus::write_ret_t transact (
+  Agent* _agent, Builder const& transaction, bool waitForCommit = true) {
+  
+  query_t envelope = std::make_shared<Builder>();
+
+  try {
+    envelope->openArray();
+    envelope->add(transaction.slice());
+    envelope->close();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Supervision failed to build transaction.";
+    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << envelope->toJson();
+  auto ret = _agent->write(envelope);
+  if (waitForCommit) {
+    auto maximum = *std::max_element(ret.indices.begin(), ret.indices.end());
+    if (maximum > 0) {  // some baby has worked
+      _agent->waitFor(maximum);
+    }
+  }
+  return ret;
+  
+}
+
+
 struct JobResult {
   JobResult() {}
 };
@@ -97,7 +124,15 @@ struct Job {
   
     // Get todo entry
     pending.openArray();
-    _snapshot(pendingPrefix + _jobId).toBuilder(pending);
+    if (_snapshot.exists(pendingPrefix + _jobId).size() == 3) {
+      _snapshot(pendingPrefix + _jobId).toBuilder(pending);
+    } else if (_snapshot.exists(toDoPrefix + _jobId).size() == 3) {
+      _snapshot(toDoPrefix + _jobId).toBuilder(pending);
+    } else {
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Nothing in pending to finish up for job " << _jobId;
+      return false;
+    }
     pending.close();
   
     // Prepare peding entry, block toserver
@@ -123,12 +158,14 @@ struct Job {
     finished.add("op", VPackValue("delete"));
     finished.close();
 
-    // --- Remove block
-    finished.add(_agencyPrefix + "/Supervision/" + type,
-                 VPackValue(VPackValueType::Object));
-    finished.add("op", VPackValue("delete"));
-    finished.close();
-
+    // --- Remove block if specified
+    if (type != "") {
+      finished.add(_agencyPrefix + "/Supervision/" + type,
+                   VPackValue(VPackValueType::Object));
+      finished.add("op", VPackValue("delete"));
+      finished.close();
+    }
+    
     // --- Need precond? 
     finished.close(); finished.close();
   

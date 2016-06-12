@@ -300,10 +300,12 @@ add_executable(${BIN_ARANGOD}
   VocBase/AuthInfo.cpp
   VocBase/DatafileStatistics.cpp
   VocBase/Ditch.cpp
-  VocBase/ExampleMatcher.cpp
+  VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/MasterPointers.cpp
+  VocBase/SingleServerTraversalPath.cpp
+  VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
   VocBase/cleanup.cpp
   VocBase/collection.cpp
@@ -362,3 +364,23 @@ install_command_alias(${BIN_ARANGOD}
   arango-dfdb)
 
 install_config(arango-dfdb)
+
+################################################################################
+## arango-secure-installation
+################################################################################
+
+install_command_alias(${BIN_ARANGOD}
+  ${ARANGODB_INSTALL_SBIN}
+  arango-secure-installation)
+
+install_config(arango-secure-installation)
+
+################################################################################
+## arango-init-database
+################################################################################
+
+install_command_alias(${BIN_ARANGOD}
+  ${ARANGODB_INSTALL_SBIN}
+  arango-init-database)
+
+install_config(arango-init-database)

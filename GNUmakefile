@@ -9,9 +9,9 @@ SRC=$(shell pwd |sed "s;.*/;;")
 .PHONY: warning help
 
 warning:
-	@echo "ArangoDB has switch to CMAKE. In order to compile, use:"
+	@echo "ArangoDB has switched to CMAKE. In order to compile, use:"
 	@echo ""
-	@echo "  mkdir build"
+	@echo "  mkdir -p build"
 	@echo "  cd build"
 	@echo "  cmake .. -DCMAKE_BUILD_TYPE=Release"
 	@echo "  make"
@@ -53,6 +53,10 @@ help:
 	@echo "OPENSSL supports:"
 	@echo "  -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
 	@echo "    sets the location of the openssl includes and libraries"
+	@echo ""
+	@echo "JEMALLOC supports:"
+	@echo "  -DUSE_JEMALLOC=on"
+	@echo "    if ON, link against JEMALLOC"
 	@echo ""
 	@echo "TCMALLOC supports:"
 	@echo "  -DUSE_TCMALLOC=on"
@@ -217,23 +221,23 @@ pack-deb-cmake:
 .PHONY: pack-win32 pack-winXX winXX-cmake win64-relative win64-relative-debug
 
 pack-win32: 
-	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 14"
+	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 14" MOREOPTS='-D "V8_TARGET_ARCHS=Release"'
 
 pack-win64:
-	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 14 Win64"
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "V8_TARGET_ARCHS=Release"'
 
 pack-win32-relative:
-	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 14" MOREOPTS='-D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 14" MOREOPTS='-D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON" -D "V8_TARGET_ARCHS=Debug"'
 
 pack-win64-relative:
-	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON" -D "V8_TARGET_ARCHS=Debug"' 
 
 win64-relative:
-	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS=''
+	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "V8_TARGET_ARCHS=Debug"'
 	$(MAKE) winXX-build BITS=64 BUILD_TARGET=RelWithDebInfo
 
 win64-relative-debug:
-	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS=' -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS=' -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON" -D "V8_TARGET_ARCHS=Debug"' 
 	$(MAKE) winXX-build BITS=64 BUILD_TARGET=Debug
 
 pack-winXX:

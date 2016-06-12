@@ -41,6 +41,24 @@ different usage scenarios:
   than hash indexes. Furthermore, they can be used for lookups based on a leftmost
   prefix of the index attributes.
 
+- persistent index: a persistent index behaves much like the sorted skiplist index,
+  except that all index values are persisted on disk and do not need to be rebuilt
+  in memory when the server is restarted or the indexed collection is reloaded.
+  The operations in a persistent index have logarithmic complexity, but operations
+  have may have a higher constant factor than the operations in a skiplist index, 
+  because the persistent index may need to make extra roundtrips to the primary
+  index to fetch the actual documents.
+
+  A persistent index can be used for equality lookups, range queries and for sorting. 
+  For high selectivity attributes, persistent indexes will have a higher overhead than 
+  skiplist or hash indexes. 
+
+  Persistent indexes allow more use cases (e.g. range queries, sorting) than hash 
+  indexes. Furthermore, they can be used for lookups based on a leftmost prefix of the 
+  index attributes. In contrast to the in-memory skiplist indexes, persistent indexes
+  do not need to be rebuilt in-memory so they don't influence the loading time of
+  collections as other in-memory indexes do.
+
 - geo index: the geo index provided by ArangoDB allows searching for documents
   within a radius around a two-dimensional earth coordinate (point), or to
   find documents with are closest to a point. Document coordinates can either 

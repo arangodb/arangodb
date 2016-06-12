@@ -29,6 +29,9 @@
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 
+#include <iomanip>
+#include <sstream>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -130,9 +133,9 @@ std::string ServerState::stateToString(StateEnum state) {
     case STATE_STARTUP:
       return "STARTUP";
     case STATE_SERVINGASYNC:
-      return "SERVINGASYNC";
+      return "SERVING";
     case STATE_SERVINGSYNC:
-      return "SERVINGSYNC";
+      return "SERVING";
     case STATE_STOPPING:
       return "STOPPING";
     case STATE_STOPPED:
@@ -204,35 +207,36 @@ ServerState::RoleEnum ServerState::getRole() {
     return role;
   }
 
-  std::string id = _id;
-
-  if (id.empty()) {
-    // We need to announce ourselves in the agency to get a role configured:
-    LOG(DEBUG) << "Announcing our birth in Current/NewServers to the agency...";
-    AgencyComm comm;
-    AgencyCommResult result;
-    VPackBuilder builder;
-    try {
-      VPackObjectBuilder b(&builder);
-      builder.add("enpoint", VPackValue(getAddress()));
-      if (!_description.empty()) {
-        builder.add("Description", VPackValue(_description));
-      }
-    } catch (...) {
-      LOG(ERR) << "Could not create entpoint information!";
-      return ROLE_UNDEFINED;
-    }
-    result =
-        comm.setValue("Current/NewServers/" + _localInfo, builder.slice(), 0.0);
-    if (!result.successful()) {
-      LOG(ERR) << "Could not talk to agency!";
-      return ROLE_UNDEFINED;
-    }
-    LOG(DEBUG) << "Have stored " << builder.slice().toJson() << " under Current/NewServers/" << _localInfo << " in agency.";
-  }
-
+  TRI_ASSERT(!_id.empty());
   findAndSetRoleBlocking();
   return loadRole();
+}
+
+bool ServerState::unregister() {
+  TRI_ASSERT(!getId().empty());
+  
+  std::string const& id = getId();
+
+  std::string localInfoEncoded = StringUtils::urlEncode(_localInfo);
+  AgencyOperation deleteLocalIdMap("Target/MapLocalToID/" + localInfoEncoded, AgencySimpleOperationType::DELETE_OP);
+  
+  std::vector<AgencyOperation> operations = {deleteLocalIdMap};
+
+  auto role = loadRole();
+  const std::string agencyKey = roleToAgencyKey(role);
+  TRI_ASSERT(isClusterRole(role));
+  if (role == ROLE_COORDINATOR || role == ROLE_PRIMARY) {
+    operations.push_back(AgencyOperation("Plan/" + agencyKey + "/" + id, AgencySimpleOperationType::DELETE_OP));
+    operations.push_back(AgencyOperation("Current/" + agencyKey + "/" + id, AgencySimpleOperationType::DELETE_OP));
+  }
+  
+  AgencyWriteTransaction unregisterTransaction(operations);
+  
+  AgencyComm comm;
+  AgencyCommResult result;
+  
+  result = comm.sendTransactionWithFailover(unregisterTransaction);
+  return result.successful();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -369,7 +373,9 @@ std::string ServerState::createIdForRole(AgencyComm comm, ServerState::RoleEnum 
     size_t idCounter = 1;
     VPackSlice entry;
     do {
-      id = serverIdPrefix + std::to_string(idCounter++);
+      std::ostringstream idss;
+      idss << std::setw(3) << std::setfill('0') << idCounter++;
+      id = serverIdPrefix + idss.str();
       entry = servers.get(id);
 
       LOG_TOPIC(TRACE, Logger::STARTUP) << id << " found in existing keys: " 

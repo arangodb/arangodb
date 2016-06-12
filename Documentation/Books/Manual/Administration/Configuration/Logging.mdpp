@@ -1,162 +1,95 @@
 !CHAPTER Command-Line Options for Logging 
 
-There are two different kinds of logs. Human-readable logs and machine-readable
-logs. The human-readable logs are used to provide an administration with
-information about the server. The machine-readable logs are used to provide
-statistics about executed requests and timings about computation steps.
+!SUBSECTION Log levels and topics
 
-!SECTION General Logging Options
-
-!SUBSECTION Logfile
-`--log.file filename`
-
-This option allows the user to specify the name of a file to which information
-is logged. By default, if no log file is specified, the standard output is
-used. Note that if the file named by *filename* does not exist, it will be
-created. If the file cannot be created (e.g. due to missing file privileges),
-the server will refuse to start. If the specified file already exists, output is
-appended to that file.
-
-Use *+* to log to standard error. Use *-* to log to standard output.
-Use *""* to disable logging to file.
-
-`--log.tty filename`
-
-Be default, if started on a tty, the log output will also go to the ttyp.
-Use *""* to disable.
-
-!SUBSECTION Request
-<!-- lib/ApplicationServer/ApplicationServer.h -->
-
-
-log file for requests
-`--log.requests-file filename`
-
-This option allows the user to specify the name of a file to which
-requests are logged. By default, no log file is used and requests are
-not logged. Note that if the file named by *filename* does not
-exist, it will be created. If the file cannot be created (e.g. due to
-missing file privileges), the server will refuse to start. If the
-specified
-file already exists, output is appended to that file.
-
-Use *+* to log to standard error. Use *-* to log to standard output.
-Use *""* to disable request logging altogether.
-
-The log format is
-- `"http-request"`: static string indicating that an HTTP request was
-logged
-- client address: IP address of client
-- HTTP method type, e.g. `GET`, `POST`
-- HTTP version, e.g. `HTTP/1.1`
-- HTTP response code, e.g. 200
-- request body length in bytes
-- response body length in bytes
-- server request processing time, containing the time span between
-fetching
-  the first byte of the HTTP request and the start of the HTTP response
-
-
-!SECTION Human Readable Logging
-
-!SUBSECTION Logfiles
-<!-- lib/ApplicationServer/ApplicationServer.h -->
-
-
-log file
-
-
-!SUBSECTION Level
-`--log.level level`
-`--log level`
-
-Allows the user to choose the level of information which is logged by
-the server. The argument *level* is specified as a string and can be
-one of the values listed below. Note that, fatal errors, that is,
-errors which cause the server to terminate, are always logged
-irrespective of the log level assigned by the user. The first variant
-log.level can be used in configuration files, the second variant log
-for command line options.
-
-**fatal**:
-Logs errors which cause the server to terminate.
-
-Fatal errors generally indicate some inconsistency with the manner in
-which the server has been coded. Fatal errors may also indicate a
-problem with the platform on which the server is running. Fatal errors
-always cause the server to terminate. For example,
+ArangoDB's log output is grouped into topics. The log verbosity and output files can
+be adjusted per log topic. For example
 
 ```
-2010-09-20T07:32:12Z [4742] FATAL a http server has already been created
+--log.level startup=trace --log.level queries=trace --log.level info
 ```
 
-**error**:
-Logs errors which the server has encountered.
+will log messages concerning startup at trace level, AQL queries at trace level and
+everything else at info level. `--log.level` can be specified multiple times at startup,
+for as many topics as needed.
 
-These errors may not necessarily result in the termination of the
-server. For example,
+The available log levels are:
+
+- *fatal*: only logs fatal errors
+- *error*: only logs errors
+- *warning*: only logs warnings and errors
+- *info*: logs information messages, warnings and errors
+- *debug*: logs debug and information messages, warnings and errors
+- *trace*: logs trace, debug and information messages, warnings and errors
+
+Note that levels *debug* and *trace* will be very verbose.
+
+Some relevant log topics available in 3.0 are:
+
+- *collector*: information about the WAL collector's state
+- *compactor*: information about the collection datafile compactor
+- *datafiles*: datafile-related operations
+- *mmap*: information about memory-mapping operations (including msync)
+- *performance*: performance-releated messages
+- *queries*: executed AQL queries, slow queries
+- *replication*: replication-related info
+- *requests*: HTTP requests
+- *startup*: information about server startup and shutdown
+- *threads*: information about threads
+
+The old option `--log.performance` is still available in 3.0. It is now a shortcut
+for the more general option `--log.level performance=trace`.
+
+!SUBSECTION Log outputs
+
+The log option `--log.output <definition>` allows directing the global
+or per-topic log output to different outputs. The output definition "<definition>" 
+can be one of
+
+- "-" for stdin
+- "+" for stderr
+- "syslog://<syslog-facility>"
+- "syslog://<syslog-facility>/<application-name>"
+- "file://<relative-path>"
+
+The option can be specified multiple times in order to configure the output
+for different log topics. To set up a per-topic output configuration, use
+`--log.output <topic>=<definition>`, e.g.
+
+  queries=file://queries.txt
+
+logs all queries to the file "queries.txt".
+
+The old option `--log.file` is still available in 3.0 for convenience reasons. In
+3.0 it is a shortcut for the more general option `--log.output file://filename`.
+
+The old option `--log.requests-file` is still available in 3.0. It is now a shortcut
+for the more general option `--log.output requests=file://...`.
+
+Using `--log.output` also allows directing log output to different files based on 
+topics. For example, to log all AQL queries to a file "queries.log" one can use the 
+options:
 
 ```
-2010-09-17T13:10:22Z [13967] ERROR strange log level 'errors'\, going to
-'warning'
+--log.level queries=trace --log.output queries=file:///path/to/queries.log
 ```
 
-**warning**:
-Provides information on errors encountered by the server, which are
-not necessarily detrimental to it's continued operation.
-
-For example,
+To additionally log HTTP request to a file named "requests.log" add the options:
 
 ```
-2010-09-20T08:15:26Z [5533] WARNING got corrupted HTTP request 'POS?'
+--log.level requests=info --log.output requests=file:///path/to/requests.log
 ```
 
-**Note**: The setting the log level to warning will also result in all
-errors to be logged as well.
+!SUBSECTION Forcing direct output
 
-**info**:
-Logs information about the status of the server.
+The option `--log.force-direct` can be used to disable logging in an extra
+logging thread. If set to `true`, any log messages are immediately printed in the
+thread that triggered the log message. This is non-optimal for performance but
+can aid debugging. If set to `false`, log messages are handed off to an extra
+logging thread, which asynchronously writes the log messages.
+       
 
-For example,
-
-```
-2010-09-20T07:40:38Z [4998] INFO SimpleVOC ready for business
-```
-
-**Note**: The setting the log level to info will also result in all
-errors and warnings to be logged as well.
-
-**debug**:
-Logs all errors, all warnings and debug information.
-
-Debug log information is generally useful to find out the state of the
-server in the case of an error. For example,
-
-```
-2010-09-17T13:02:53Z [13783] DEBUG opened port 7000 for any
-```
-
-**Note**: The setting the log level to debug will also result in all
-errors, warnings and server status information to be logged as well.
-
-**trace**:
-As the name suggests, logs information which may be useful to trace
-problems encountered with using the server.
-
-For example,
-
-```
-2010-09-20T08:23:12Z [5687] TRACE trying to open port 8000
-```
-
-**Note**: The setting the log level to trace will also result in all
-errors, warnings, status information, and debug information to be
-logged as well.
-
-
-!SUBSECTION Local Time
-<!-- lib/ApplicationServer/ApplicationServer.h -->
-
+!SUBSECTION Local time
 
 log dates and times in local time zone
 `--log.use-local-time`
@@ -169,7 +102,6 @@ is used, a `Z` will be appended to indicate Zulu time.
 
 
 !SUBSECTION Line number
-<!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
 log line number
@@ -177,14 +109,11 @@ log line number
 
 Normally, if an human readable fatal, error, warning or info message is
 logged, no information about the file and line number is provided. The
-file
-and line number is only logged for debug and trace message. This option
-can
-be use to always log these pieces of information.
+file and line number is only logged for debug and trace message. This option
+can be use to always log these pieces of information.
 
 
 !SUBSECTION Prefix
-<!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
 log prefix
@@ -194,7 +123,6 @@ This option is used specify an prefix to logged text.
 
 
 !SUBSECTION Thread
-<!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
 log thread identifier
@@ -215,73 +143,3 @@ when no thread is logged and
 ```
 
 when this command line option is set.
-
-
-!SUBSECTION Content Filter
-<!-- lib/ApplicationServer/ApplicationServer.h -->
-
-
-log content filter
-`--log.content-filter arg`
-
-Only log message containing the specified string *arg*.
-
-
-!SUBSECTION Performance
-<!-- lib/ApplicationServer/ApplicationServer.h -->
-
-
-performance logging
-`--log.performance`
-
-If this option is set, performance-related info messages will be logged
-via
-the regular logging mechanisms. These will consist of mostly timing and
-debugging information for performance-critical operations.
-
-Currently performance-related operations are logged as INFO messages.
-Messages starting with prefix `[action]` indicate that an instrumented
-operation was started (note that its end won't be logged). Messages with
-prefix `[timer]` will contain timing information for operations. Note that
-no timing information will be logged for operations taking less time than
-1 second. This is to ensure that sub-second operations do not pollute
-logs.
-
-The contents of performance-related log messages enabled by this option
-are subject to change in future versions of ArangoDB.
-
-
-!SECTION Machine Readable Logging
-
-!SUBSECTION Application
-<!-- lib/ApplicationServer/ApplicationServer.h -->
-
-
-log application name
-`--log.application name`
-
-Specifies the *name* of the application which should be logged if this
-item of
-information is to be logged.
-
-
-!SUBSECTION Facility
-<!-- lib/ApplicationServer/ApplicationServer.h -->
-
-
-log facility
-`--log.facility name`
-
-If this option is set, then in addition to output being directed to the
-standard output (or to a specified file, in the case that the command line
-log.file option was set), log output is also sent to the system logging
-facility. The *arg* is the system log facility to use. See syslog for
-further details.
-
-The value of *arg* depends on your syslog configuration. In general it
-will be *user*. Fatal messages are mapped to *crit*, so if *arg*
-is *user*, these messages will be logged as *user.crit*.  Error
-messages are mapped to *err*.  Warnings are mapped to *warn*.  Info
-messages are mapped to *notice*.  Debug messages are mapped to
-*info*.  Trace messages are mapped to *debug*.
-

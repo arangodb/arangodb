@@ -1023,7 +1023,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: "_admin/cluster/numberOfServers",
-  allowUseDatabase: true,
+  allowUseDatabase: false,
   prefix: false,
 
   callback: function (req, res) {
@@ -1135,7 +1135,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: "_admin/cluster/cleanOutServer",
-  allowUseDatabase: true,
+  allowUseDatabase: false,
   prefix: false,
 
   callback: function (req, res) {
@@ -1221,7 +1221,7 @@ actions.defineHttp({
 
 actions.defineHttp({
   url: "_admin/cluster/moveShard",
-  allowUseDatabase: true,
+  allowUseDatabase: false,
   prefix: false,
 
   callback: function (req, res) {
@@ -1258,39 +1258,118 @@ actions.defineHttp({
           "body must be an object with string attributes 'database', 'collection', 'shard', 'fromServer' and 'toServer'"); 
       return;
     }
-    var ok = true;
-    var isLeader;
-    try {
-      var coll = ArangoClusterInfo.getCollectionInfo(body.database,
-                                                     body.collection);
-      var shards = coll.shards;
-      var shard = shards[body.shard];
-      var pos = shard.indexOf(body.fromServer);
-      if (pos === -1) {
-        throw "Banana";
-      } else if (pos === 0) {
-        isLeader = true;
-      } else {
-        isLeader = false;
-      }
-    } catch (e2) {
-      actions.resultError(req, res, actions.HTTP_BAD,
-                          "Combination of database, collection, shard and fromServer does not make sense.");
+    var errorMsg = require("@arangodb/cluster").moveShard(body);
+    if (errorMsg !== "") {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE, errorMsg);
       return;
     }
-    try {
-      var id = ArangoClusterInfo.uniqid();
-      var todo = { "type": "moveShard",
-                   "database": body.database,
-                   "collection": body.collection,
-                   "shard": body.shard,
-                   "fromServer": body.fromServer,
-                   "toServer": body.toServer,
-                   "jobId": id,
-                   "timeCreated": (new Date()).toISOString(),
-                   "creator": ArangoServerState.id() };
-      ArangoAgency.set("Target/ToDo/" + id, todo);
-    } catch (e1) {
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, true);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_getShardDistribution
+/// (intentionally not in manual)
+/// @brief returns information about all collections and their shard 
+/// distribution
+///
+/// @ RESTHEADER{GET /_admin/cluster/shardDistribution, Get shard distribution for all collections.}
+///
+/// @ RESTDESCRIPTION Returns an object with an attribute for each collection.
+/// The attribute name is the collection name. Each value is an object
+/// of the following form:
+/// 
+///     { "collection1": { "Plan": { "s100001": ["DBServer1", "DBServer2"],
+///                                  "s100002": ["DBServer3", "DBServer4"] },
+///                        "Current": { "s100001": ["DBServer1", "DBServer2"],
+///                                     "s100002": ["DBServer3"] } },
+///       "collection2": ...
+///     }
+///
+/// @ RESTRETURNCODES
+///
+/// @ RESTRETURNCODE{200} is returned when everything went well and the
+/// job is scheduled.
+///
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not POST.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/shardDistribution",
+  allowUseDatabase: false,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require("@arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only coordinators can serve this request");
+      return;
+    }
+    if (req.requestType !== actions.GET) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only the GET method is allowed");
+      return;
+    }
+
+    var result = require("@arangodb/cluster").shardDistribution();
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_postRebalanceShards
+/// (intentionally not in manual)
+/// @brief triggers activities to rebalance shards
+///
+/// @ RESTHEADER{POST /_admin/cluster/rebalanceShards, Trigger activities to rebalance shards.}
+///
+/// @ RESTDESCRIPTION Triggers activities to rebalance shards.
+/// The body must be an empty JSON object.
+///
+/// @ RESTRETURNCODES
+///
+/// @ RESTRETURNCODE{202} is returned when everything went well.
+///
+/// @ RESTRETURNCODE{400} body is not valid JSON.
+///
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not POST.
+///
+/// @ RESTRETURNCODE{503} the agency operation did not work.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/rebalanceShards",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require("@arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only coordinators can serve this request");
+      return;
+    }
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only the POST method is allowed");
+      return;
+    }
+
+    // Now get to work:
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
+    if (typeof body !== "object") {
+      actions.resultError(req, res, actions.HTTP_BAD,
+          "body must be an object."); 
+      return;
+    }
+    var ok = require("@arangodb/cluster").rebalanceShards();
+    if (!ok) {
       actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
                           "Cannot write to agency.");
       return;

@@ -1,4 +1,3 @@
-
 @startDocuBlock API_EDGE_READINOUTBOUND
 @brief get edges
 

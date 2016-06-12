@@ -344,8 +344,6 @@
     },
 
     showSubDropdown: function(e) {
-      console.log($(e.currentTarget));
-      console.log($(e.currentTarget).find('.subBarDropdown'));
       $(e.currentTarget).find('.subBarDropdown').toggle();  
     },
 

@@ -12,6 +12,9 @@ if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
 fi
 
 NRAGENTS=$1
+if [ "$NRAGENTS" == "" ] ; then
+    NRAGENTS=1
+fi
 if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
     echo Number of agents must be odd.
     exit 1
@@ -56,6 +59,8 @@ if [ $NRAGENTS -gt 1 ]; then
            --agency.supervision true \
            --agency.supervision-frequency 1 \
            --agency.wait-for-sync false \
+           --agency.election-timeout-min 0.2 \
+           --agency.election-timeout-max 1.0 \
            --database.directory cluster/data$port \
            --javascript.app-path ./js/apps \
            --javascript.startup-directory ./js \
@@ -81,6 +86,8 @@ build/bin/arangod \
     --agency.supervision true \
     --agency.supervision-frequency 1 \
     --agency.wait-for-sync false \
+    --agency.election-timeout-min 0.2 \
+    --agency.election-timeout-max 1.0 \
     --database.directory cluster/data$(( 4001 + $aid )) \
     --javascript.app-path ./js/apps \
     --javascript.startup-directory ./js \
@@ -92,7 +99,7 @@ build/bin/arangod \
     --agency.compaction-step-size 1000 \
     --log.force-direct true \
     > cluster/$(( 4001 + $aid )).stdout 2>&1 &
-sleep 2
+sleep 5
 
 start() {
     if [ "$1" == "dbserver" ]; then

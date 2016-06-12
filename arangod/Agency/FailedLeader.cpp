@@ -36,14 +36,15 @@ FailedLeader::FailedLeader(
   Job(snapshot, agent, jobId, creator, agencyPrefix), _database(database),
   _collection(collection), _shard(shard), _from(from), _to(to) {
 
-  JOB_STATUS js = status();
-
   try {
+    JOB_STATUS js = status();
+
     if (js == TODO) {
       start();        
     } else if (js == NOTFOUND) {            
-      create();
-      start();
+      if (create()) {
+        start();
+      }
     }
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what();

@@ -98,20 +98,83 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void UpgradeFeature::start() {
+  auto init =
+      ApplicationServer::getFeature<InitDatabaseFeature>("InitDatabase");
+
   // upgrade the database
   if (_upgradeCheck) {
-    upgradeDatabase();
+    upgradeDatabase(init->defaultPassword());
+  }
+
+  // change admin user
+  if (init->restoreAdmin()) {
+    changeAdminPassword(init->defaultPassword());
   }
 
   // and force shutdown
-  auto init = ApplicationServer::getFeature<InitDatabaseFeature>("InitDatabase");
-
-  if (_upgrade || init->isInitDatabase()) {
+  if (_upgrade || init->isInitDatabase() || init->restoreAdmin()) {
     server()->beginShutdown();
   }
 }
 
-void UpgradeFeature::upgradeDatabase() {
+void UpgradeFeature::changeAdminPassword(std::string const& defaultPassword) {
+  LOG(TRACE) << "starting to restore admin user";
+
+  auto* systemVocbase = DatabaseFeature::DATABASE->vocbase();
+
+  // enter context and isolate
+  {
+    V8Context* context =
+        V8DealerFeature::DEALER->enterContext(systemVocbase, true, 0);
+
+    if (context == nullptr) {
+      LOG(FATAL) << "could not enter context #0";
+      FATAL_ERROR_EXIT();
+    }
+
+    TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+
+    {
+      v8::HandleScope scope(context->_isolate);
+      auto localContext =
+          v8::Local<v8::Context>::New(context->_isolate, context->_context);
+      localContext->Enter();
+
+      {
+        v8::Context::Scope contextScope(localContext);
+
+        // run upgrade script
+        LOG(DEBUG) << "running admin recreation script";
+
+        // special check script to be run just once in first thread (not in
+        // all) but for all databases
+        v8::HandleScope scope(context->_isolate);
+
+        v8::Handle<v8::Object> args = v8::Object::New(context->_isolate);
+
+        args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "password"),
+                  TRI_V8_STD_STRING2(context->_isolate, defaultPassword));
+
+        localContext->Global()->Set(
+            TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_ARGS"), args);
+
+        auto startupLoader = V8DealerFeature::DEALER->startupLoader();
+
+        startupLoader->executeGlobalScript(context->_isolate, localContext,
+                                           "server/restore-admin-user.js");
+      }
+
+      // finally leave the context. otherwise v8 will crash with assertion
+      // failure when we delete the context locker below
+      localContext->Exit();
+    }
+  }
+
+  // and return from the context
+  LOG(TRACE) << "finished to restore admin user";
+}
+
+void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
   LOG(TRACE) << "starting database init/upgrade";
 
   auto* server = DatabaseServerFeature::SERVER;
@@ -126,6 +189,8 @@ void UpgradeFeature::upgradeDatabase() {
       LOG(FATAL) << "could not enter context #0";
       FATAL_ERROR_EXIT();
     }
+
+    TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
 
     {
       v8::HandleScope scope(context->_isolate);
@@ -154,14 +219,8 @@ void UpgradeFeature::upgradeDatabase() {
           args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "upgrade"),
                     v8::Boolean::New(context->_isolate, _upgrade));
 
-          auto init = ApplicationServer::getFeature<InitDatabaseFeature>(
-              "InitDatabase");
-
-          if (init != nullptr) {
-            args->Set(
-                TRI_V8_ASCII_STRING2(context->_isolate, "password"),
-                TRI_V8_STD_STRING2(context->_isolate, init->defaultPassword()));
-          }
+          args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "password"),
+                    TRI_V8_STD_STRING2(context->_isolate, defaultPassword));
 
           localContext->Global()->Set(
               TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_ARGS"), args);
@@ -196,13 +255,9 @@ void UpgradeFeature::upgradeDatabase() {
       }
 
       // finally leave the context. otherwise v8 will crash with assertion
-      // failure
-      // when we delete
-      // the context locker below
+      // failure when we delete the context locker below
       localContext->Exit();
     }
-
-    V8DealerFeature::DEALER->exitContext(context);
   }
 
   if (_upgrade) {

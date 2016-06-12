@@ -34,8 +34,10 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-InitDatabaseFeature::InitDatabaseFeature(ApplicationServer* server)
-    : ApplicationFeature(server, "InitDatabase") {
+InitDatabaseFeature::InitDatabaseFeature(ApplicationServer* server,
+    std::vector<std::string> const& nonServerFeatures)
+  : ApplicationFeature(server, "InitDatabase"),
+    _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -49,6 +51,10 @@ void InitDatabaseFeature::collectOptions(
                            "initializes an empty database",
                            new BooleanParameter(&_initDatabase));
 
+  options->addHiddenOption("--database.restore-admin",
+                           "resets the admin users and sets a new password",
+                           new BooleanParameter(&_restoreAdmin));
+
   options->addHiddenOption("--database.password",
                            "initial password of root user",
                            new StringParameter(&_password));
@@ -58,6 +64,10 @@ void InitDatabaseFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
   ProgramOptions::ProcessingResult const& result = options->processingResult();
   _seenPassword = result.touched("database.password");
+
+  if (_initDatabase || _restoreAdmin) {
+    ApplicationServer::forceDisableFeatures(_nonServerFeatures);
+  }
 }
 
 void InitDatabaseFeature::prepare() {
@@ -73,11 +83,13 @@ void InitDatabaseFeature::prepare() {
     }
   }
 
-  if (!_initDatabase) {
+  if (!_initDatabase && !_restoreAdmin) {
     return;
   }
 
-  checkEmptyDatabase();
+  if (_initDatabase) {
+    checkEmptyDatabase();
+  }
 
   if (!_seenPassword) {
     while (true) {
@@ -98,12 +110,6 @@ void InitDatabaseFeature::prepare() {
         FATAL_ERROR_EXIT();
       }
     }
-  }
-}
-
-void InitDatabaseFeature::start() {
-  if (!_initDatabase) {
-    return;
   }
 }
 

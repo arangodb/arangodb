@@ -855,7 +855,6 @@
         target.addClass('selected-row');
       }
 
-      console.log(target);
       var selected = this.getSelectedDocs();
       $('.selectedCount').text(selected.length);
 

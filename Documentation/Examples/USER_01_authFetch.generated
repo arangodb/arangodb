@@ -1,13 +1,13 @@
 arangosh&gt; db._users.toArray()
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9993"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/9993"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"9999"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10670"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/10670"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10675"</span>, 
     <span class="hljs-string">"authData"</span> : { 
       <span class="hljs-string">"simple"</span> : { 
-        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"b3d8bd93c8712c119c591c53a26fca055adf3b3ba05ef319baf8474ceb90c043"</span>, 
-        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"WtzDkdfrcX5vhcre"</span>, 
+        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"aa2170f64539afa1098e21bb6c8eeab4d08a11a2812cd8178f9724e77d4349f6"</span>, 
+        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"BPjC6sNZC4U8iXd0"</span>, 
         <span class="hljs-string">"method"</span> : <span class="hljs-string">"sha256"</span> 
       }, 
       <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
@@ -16,20 +16,126 @@ arangosh&gt; db._users.toArray()
     <span class="hljs-string">"configData"</span> : { 
     }, 
     <span class="hljs-string">"databases"</span> : { 
-      <span class="hljs-string">"mydb"</span> : <span class="hljs-string">"rw"</span> 
+      <span class="hljs-string">"_system"</span> : <span class="hljs-string">"rw"</span> 
     }, 
-    <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin"</span>, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin@secapp"</span>, 
     <span class="hljs-string">"userData"</span> : { 
     } 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10004"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/10004"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10009"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10663"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/10663"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10663"</span>, 
     <span class="hljs-string">"authData"</span> : { 
       <span class="hljs-string">"simple"</span> : { 
-        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"4fcd8769b7bf18efdb7d5a9fc6dc6a58d2a36e4c6f36a020b902c62fd60a7069"</span>, 
-        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"X0F7fbLunkpt6uOq"</span>, 
+        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"64a52f6fc46c0c6d2cd542758964ef5838ce7d115b9850a78aedadd5c9c5878f"</span>, 
+        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"T014mN6Ln8JoN6Mu"</span>, 
+        <span class="hljs-string">"method"</span> : <span class="hljs-string">"sha256"</span> 
+      }, 
+      <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span> 
+    }, 
+    <span class="hljs-string">"configData"</span> : { 
+    }, 
+    <span class="hljs-string">"databases"</span> : { 
+    }, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin@theirapp"</span>, 
+    <span class="hljs-string">"userData"</span> : { 
+    } 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9927"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/9927"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"9927"</span>, 
+    <span class="hljs-string">"authData"</span> : { 
+      <span class="hljs-string">"simple"</span> : { 
+        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"b1c864cd3d24dbc71cc88460567ca7da0749058596ebc8f2e1a996cc1efd0c8f"</span>, 
+        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"qLJgBSyYg7IMZB76"</span>, 
+        <span class="hljs-string">"method"</span> : <span class="hljs-string">"sha256"</span> 
+      }, 
+      <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span> 
+    }, 
+    <span class="hljs-string">"configData"</span> : { 
+    }, 
+    <span class="hljs-string">"databases"</span> : { 
+    }, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin@example"</span>, 
+    <span class="hljs-string">"userData"</span> : { 
+    } 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/15"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"21"</span>, 
+    <span class="hljs-string">"authData"</span> : { 
+      <span class="hljs-string">"simple"</span> : { 
+        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"3a5fb01091b8041a91540140bab4c0aa3063623db1ba039644bde381f9fac2ea"</span>, 
+        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"kdD4wBeqgbiJ6qv7"</span>, 
+        <span class="hljs-string">"method"</span> : <span class="hljs-string">"sha256"</span> 
+      }, 
+      <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span> 
+    }, 
+    <span class="hljs-string">"configData"</span> : { 
+    }, 
+    <span class="hljs-string">"databases"</span> : { 
+      <span class="hljs-string">"*"</span> : <span class="hljs-string">"rw"</span> 
+    }, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span>, 
+    <span class="hljs-string">"userData"</span> : { 
+    } 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12876"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/12876"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"12883"</span>, 
+    <span class="hljs-string">"authData"</span> : { 
+      <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"simple"</span> : { 
+        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"603d704a889565ae68d5bd5f50b03200f141067a61620b5cdb7a157d0a0a37fd"</span>, 
+        <span class="hljs-string">"method"</span> : <span class="hljs-string">"sha256"</span>, 
+        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"gZYqJs5YILHJlq4a"</span> 
+      } 
+    }, 
+    <span class="hljs-string">"configData"</span> : { 
+    }, 
+    <span class="hljs-string">"databases"</span> : { 
+    }, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin@yourapp"</span>, 
+    <span class="hljs-string">"userData"</span> : { 
+    } 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10894"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/10894"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10901"</span>, 
+    <span class="hljs-string">"authData"</span> : { 
+      <span class="hljs-string">"simple"</span> : { 
+        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"5fecd6b70a14d0317c5ec2c580720d5679635c6f4b27aa04f35eb2ecb2710a53"</span>, 
+        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"BQMpSgkyZUEQH65k"</span>, 
+        <span class="hljs-string">"method"</span> : <span class="hljs-string">"sha256"</span> 
+      }, 
+      <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span> 
+    }, 
+    <span class="hljs-string">"configData"</span> : { 
+    }, 
+    <span class="hljs-string">"databases"</span> : { 
+    }, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin@myapp"</span>, 
+    <span class="hljs-string">"userData"</span> : { 
+    } 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10107"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/10107"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10112"</span>, 
+    <span class="hljs-string">"authData"</span> : { 
+      <span class="hljs-string">"simple"</span> : { 
+        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"cd2f1ddd8621532ae1aa804fbc04d026934d750b7809b54263e5d89889e7618b"</span>, 
+        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"CugqRKZvQEiCEn9S"</span>, 
         <span class="hljs-string">"method"</span> : <span class="hljs-string">"sha256"</span> 
       }, 
       <span class="hljs-string">"active"</span> : <span class="hljs-literal">false</span>, 
@@ -45,13 +151,13 @@ arangosh&gt; db._users.toArray()
     } 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/14"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10096"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/10096"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10102"</span>, 
     <span class="hljs-string">"authData"</span> : { 
       <span class="hljs-string">"simple"</span> : { 
-        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"000a9508df53191d132c2211600c96623cff233542c581aee015a4873b8d3bc2"</span>, 
-        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"jEeoI1RiuQ5sabVo"</span>, 
+        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"a04998f05a179637868434de74b143cfd83ac1dc433019f11a02eac24bfe4062"</span>, 
+        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"b9STNwYzCdul7QJT"</span>, 
         <span class="hljs-string">"method"</span> : <span class="hljs-string">"sha256"</span> 
       }, 
       <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
@@ -60,9 +166,9 @@ arangosh&gt; db._users.toArray()
     <span class="hljs-string">"configData"</span> : { 
     }, 
     <span class="hljs-string">"databases"</span> : { 
-      <span class="hljs-string">"*"</span> : <span class="hljs-string">"rw"</span> 
+      <span class="hljs-string">"mydb"</span> : <span class="hljs-string">"rw"</span> 
     }, 
-    <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span>, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin"</span>, 
     <span class="hljs-string">"userData"</span> : { 
     } 
   } 

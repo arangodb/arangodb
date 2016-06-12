@@ -72,7 +72,7 @@ static TraversalOptions CreateTraversalOptions(AstNode const* node) {
         TRI_ASSERT(value->isConstant());
 
         if (name == "bfs") {
-          options.useBreathFirst = value->isTrue();
+          options.useBreadthFirst = value->isTrue();
         } else if (name == "uniqueVertices" && value->isStringValue()) {
           if (value->stringEquals("path", true)) {
             options.uniqueVertices =

@@ -38,7 +38,7 @@ struct TraversalOptions {
 
   /// @brief constructor, using default values
   TraversalOptions()
-      : useBreathFirst(false),
+      : useBreadthFirst(false),
         uniqueVertices(traverser::TraverserOptions::UniquenessLevel::NONE),
         uniqueEdges(traverser::TraverserOptions::UniquenessLevel::PATH) {}
 
@@ -46,7 +46,7 @@ struct TraversalOptions {
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
-  bool useBreathFirst;
+  bool useBreadthFirst;
   traverser::TraverserOptions::UniquenessLevel uniqueVertices;
   traverser::TraverserOptions::UniquenessLevel uniqueEdges;
 };

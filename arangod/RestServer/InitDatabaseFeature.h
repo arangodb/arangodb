@@ -29,20 +29,22 @@ namespace arangodb {
 class InitDatabaseFeature final
     : public application_features::ApplicationFeature {
  public:
-  explicit InitDatabaseFeature(application_features::ApplicationServer* server);
+  InitDatabaseFeature(application_features::ApplicationServer* server,
+                 std::vector<std::string> const& nonServerFeatures);
 
  public:
   std::string const& defaultPassword() const { return _password; }
   bool isInitDatabase() const { return _initDatabase; }
+  bool restoreAdmin() const { return _restoreAdmin; }
 
  private:
   bool _initDatabase = false;
+  bool _restoreAdmin = false;
   std::string _password;
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
   void prepare() override final;
 
  private:
@@ -51,6 +53,7 @@ class InitDatabaseFeature final
 
  private:
   bool _seenPassword = false;
+  std::vector<std::string> _nonServerFeatures;
 };
 }
 

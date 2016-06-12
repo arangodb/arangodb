@@ -66,7 +66,6 @@ function agencyTestSuite () {
                        headers: {"Content-Type": "application/json",
                                  "x-arangodb-agency-mode": "waitForCommitted"}});
     res.bodyParsed = JSON.parse(res.body);
-    wait(0.05);
     return res;
   }
 
@@ -80,9 +79,7 @@ function agencyTestSuite () {
     var res = writeAgency(list);
     assertEqual(res.statusCode, 200);
   }
-
   return {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up
@@ -103,7 +100,7 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingleTopLevel : function () {
-      wait(1);
+      wait(2);
       assertEqual(readAndCheck([["/x"]]), [{}]);
       writeAndCheck([[{x:12}]]);
       assertEqual(readAndCheck([["/x"]]), [{x:12}]);
@@ -336,6 +333,45 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/op/a/b/d"]]), [{op:{a:{b:{d:{ttl:15}}}}}]);
       writeAndCheck([[{"/op/a/b/d/ttl":{"op":"decrement"}}]]);
       assertEqual(readAndCheck([["/op/a/b/d"]]), [{op:{a:{b:{d:{ttl:14}}}}}]);
+    },
+    
+    testInit: function() {
+      // mop: wait until leader has been determined
+      let leaderEndpoint;
+      let res;
+
+      if (agencyServers.length > 1) {
+        let leaderTests = 0;
+        while (true) {
+          res = request.get(agencyServers[whoseTurn] + "/_api/agency/config");
+          var config = JSON.parse(res.body);
+
+          // mop: leader election still in progress
+          if (config.leaderId > 127) {
+            if (leaderTests++ > 10) {
+              throw new Error("Agency doesn't report a valid leader after 10 checks. Bailing out!");
+            }
+          } else {
+            leaderEndpoint = config.configuration.endpoints[config.leaderId].replace("tcp", "http");
+            break;
+          }
+          wait(0.05);
+        }
+      } else {
+        leaderEndpoint = agencyServers[0].replace("tcp", "http");
+      }
+
+      var requests = [
+        ["/_api/agency/write", [[{"/arango/Plan/DBServers/DBServer1":{"new":"none","op":"set"}}]]],
+        ["/_api/agency/read", [["/arango/Plan/DBServers"]]],
+      ];
+      
+      requests.forEach(requestStruct => {
+        res = request.post(leaderEndpoint + requestStruct[0], {body: JSON.stringify(requestStruct[1]), headers: {"Content-Type": "application/json"}});
+        assertEqual(res.statusCode, 200);
+      });
+
+      assertEqual(res.body, JSON.stringify([{"arango":{"Plan":{"DBServers":{"DBServer1":"none"}}}}]));
     }
   };
 }

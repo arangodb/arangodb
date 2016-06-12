@@ -129,6 +129,9 @@ std::shared_ptr<VPackBuilder> Profile::toVelocyPack() {
   return result;
 }
 
+/// @brief global threshold value for slow queries
+double Query::SlowQueryThresholdValue = 10.0;
+
 /// @brief whether or not query tracking is disabled globally
 bool Query::DoDisableQueryTracking = false;
 

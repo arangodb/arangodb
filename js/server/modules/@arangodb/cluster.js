@@ -34,6 +34,7 @@ var ArangoCollection = arangodb.ArangoCollection;
 var ArangoError = arangodb.ArangoError;
 var request = require("@arangodb/request").request;
 var wait = require("internal").wait;
+var _ = require("lodash");
 
 var endpointToURL = function (endpoint) {
   if (endpoint.substr(0,6) === "ssl://") {
@@ -969,14 +970,21 @@ function launchJob() {
     var shards = Object.keys(jobs.scheduled);
     if (shards.length > 0) {
       var jobInfo = jobs.scheduled[shards[0]];
-      registerTask({
-        database: jobInfo.database,
-        params: {database: jobInfo.database, shard: jobInfo.shard, 
-                 planId: jobInfo.planId, leader: jobInfo.leader},
-        command: function(params) {
-          require("@arangodb/cluster").synchronizeOneShard(
-            params.database, params.shard, params.planId, params.leader);
-        }});
+      try {
+        registerTask({
+          database: jobInfo.database,
+          params: {database: jobInfo.database, shard: jobInfo.shard, 
+                   planId: jobInfo.planId, leader: jobInfo.leader},
+          command: function(params) {
+            require("@arangodb/cluster").synchronizeOneShard(
+              params.database, params.shard, params.planId, params.leader);
+          }});
+      } catch (err) {
+        if (! require("internal").isStopping()) {
+          console.error("Could not registerTask for shard synchronization.");
+        }
+        return;
+      }
       global.KEY_SET("shardSynchronization", "running", jobInfo);
       console.debug("scheduleOneShardSynchronization: have launched job", jobInfo);
       delete jobs.scheduled[shards[0]];
@@ -993,6 +1001,8 @@ function synchronizeOneShard(database, shard, planId, leader) {
   // synchronize this shard from the leader
   // this function will throw if anything goes wrong
 
+  var isStopping = require("internal").isStopping;
+
   var ok = false;
   const rep = require("@arangodb/replication");
 
@@ -1006,6 +1016,9 @@ function synchronizeOneShard(database, shard, planId, leader) {
                         // can only be one syncCollection in flight
                         // at a time
     while (true) {
+      if (isStopping()) {
+        throw "server is shutting down";
+      }
       try {
         sy = rep.syncCollection(shard, 
             { endpoint: ep, incremental: true,
@@ -1087,12 +1100,16 @@ function synchronizeOneShard(database, shard, planId, leader) {
     }
   }
   catch (err2) {
-    console.error("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s",
-                  database, shard, database, planId, JSON.stringify(err2));
+    if (!isStopping()) {
+      console.error("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s",
+                    database, shard, database, planId, JSON.stringify(err2));
+    }
   }
   // Tell others that we are done:
   global.KEY_SET("shardSynchronization", "running", null);
-  launchJob();  // start a new one if needed
+  if (!isStopping()) {
+    launchJob();  // start a new one if needed
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1549,7 +1566,7 @@ var isCoordinatorRequest = function (req) {
 
 var handlePlanChange = function (plan, current) {
   if (! isCluster() || isCoordinator() || ! global.ArangoServerState.initialized()) {
-    return;
+    return true;
   }
   
   let versions = {
@@ -1594,13 +1611,14 @@ var handlePlanChange = function (plan, current) {
   }
 
   try {
-    handleChanges(plan, current, writeLocked);
+    versions.success = handleChanges(plan, current, writeLocked);
 
     console.info("plan change handling successful");
   } catch (err) {
     console.error("error details: %s", JSON.stringify(err));
     console.error("error stack: %s", err.stack);
     console.error("plan change handling failed");
+    versions.success = false;
   }
   return versions;
 };
@@ -1668,6 +1686,193 @@ var bootstrapDbServers = function (isRelaunch) {
   return result;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shard distribution
+////////////////////////////////////////////////////////////////////////////////
+
+function format(x) {
+  var r = {};
+  var keys = Object.keys(x);
+  for (var i = 0; i < keys.length; ++i) {
+    var y = x[keys[i]];
+    r[keys[i]] = { leader: y[0], followers: y.slice(1) };
+  }
+  return r;
+}
+
+function shardDistribution() {
+  var db = require("internal").db;
+  var dbName = db._name();
+  var colls = db._collections();
+  var result = {};
+  for (var i = 0; i < colls.length; ++i) {
+    var collName = colls[i].name();
+    var collInfo = global.ArangoClusterInfo.getCollectionInfo(dbName,
+                                                              collName);
+    var shards = collInfo.shards;
+    var collInfoCurrent = {};
+    var shardNames = Object.keys(shards);
+    for (var j = 0; j < shardNames.length; ++j) {
+      collInfoCurrent[shardNames[j]] =
+        global.ArangoClusterInfo.getCollectionInfoCurrent(
+          dbName, collName, shardNames[j]).servers;
+    }
+    result[collName] = {Plan: format(collInfo.shards),
+                        Current: format(collInfoCurrent)};
+  }
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move shard
+////////////////////////////////////////////////////////////////////////////////
+
+function moveShard(info) {
+  var isLeader;
+  var collInfo;
+  try {
+    collInfo = global.ArangoClusterInfo.getCollectionInfo(info.database,
+                                                          info.collection);
+    var shards = collInfo.shards;
+    var shard = shards[info.shard];
+    var pos = shard.indexOf(info.fromServer);
+    if (pos === -1) {
+      throw "Banana";
+    } else if (pos === 0) {
+      isLeader = true;
+    } else {
+      isLeader = false;
+    }
+  } catch (e2) {
+    return "Combination of database, collection, shard and fromServer does not make sense.";
+  }
+
+  try {
+    var id = global.ArangoClusterInfo.uniqid();
+    var todo = { "type": "moveShard",
+                 "database": info.database,
+                 "collection": collInfo.id,
+                 "shard": info.shard,
+                 "fromServer": info.fromServer,
+                 "toServer": info.toServer,
+                 "jobId": id,
+                 "timeCreated": (new Date()).toISOString(),
+                 "creator": ArangoServerState.id() };
+    global.ArangoAgency.set("Target/ToDo/" + id, todo);
+  } catch (e1) {
+    return "Cannot write to agency.";
+  }
+
+  return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rebalance shards
+////////////////////////////////////////////////////////////////////////////////
+
+function rebalanceShards() {
+  var dbServers = global.ArangoClusterInfo.getDBServers();
+  var dbTab = {};
+  var i, j, k, l;
+  for (i = 0; i < dbServers.length; ++i) {
+    dbTab[dbServers[i]] = [];
+  }
+  var shardMap = {};
+
+  // First count and collect:
+  var db = require("internal").db;
+  var databases = db._databases();
+  for (i = 0; i < databases.length; ++i) {
+    db._useDatabase(databases[i]);
+    try {
+      var colls = db._collections();
+      for (j = 0; j < colls.length; ++j) {
+        var collName = colls[j].name();
+        if (collName.substr(0, 1) === "_") {
+          continue;
+        }
+        var collInfo = global.ArangoClusterInfo.getCollectionInfo(
+            databases[i], collName);
+        var shardNames = Object.keys(collInfo.shards); 
+        for (k = 0; k < shardNames.length; k++) {
+          var shardName = shardNames[k];
+          shardMap[shardName] = { database: databases[i], collection: collName,
+                                  servers: collInfo.shards[shardName],
+                                  weight: 1 };
+          dbTab[collInfo.shards[shardName][0]].push(
+            { shard: shardName, leader: true,
+              weight: shardMap[shardName].weight });
+          for (l = 1; l < collInfo.shards[shardName].length; ++l) {
+            dbTab[collInfo.shards[shardName][l]].push(
+            { shard: shardName, leader: false,
+              weight: shardMap[shardName].weight });
+          }
+        }
+      }
+    } finally {
+      db._useDatabase("_system");
+    }
+  }
+
+  console.info(shardMap);
+  console.info(dbTab);
+
+  // Compute total weight for each DBServer:
+  var totalWeight = [];
+  for (i = 0; i < dbServers.length; ++i) {
+    totalWeight.push( {"server": dbServers[i],
+                       "weight": _.reduce(dbTab[dbServers[i]],
+                                          (sum, x) => sum + x.weight, 0)} );
+  }
+  totalWeight = _.sortBy(totalWeight, x => x.weight);
+
+  var shardList = Object.keys(shardMap);
+  var countMoved = 0;
+
+  for (i = 0; i < shardList.length; i++) {
+    var last = totalWeight.length-1;
+    var fullest = totalWeight[last].server;
+    var emptiest = totalWeight[0].server;
+    var weightDiff = totalWeight[last].weight - totalWeight[0].weight;
+    if (weightDiff < 1.0) {
+      console.log("rebalanceShards: cluster is balanced");
+      return true;
+    }
+    var shard = shardList[i];
+    console.log("rebalanceShards: considering shard", shard,
+                "totalWeight=", totalWeight);
+    if (shardMap[shard].servers.indexOf(fullest) >= 0 &&
+        shardMap[shard].servers.indexOf(emptiest) === -1 &&
+        shardMap[shard].weight < 0.9 * weightDiff) {
+      var shardInfo = shardMap[shard];
+      var todo = { database: shardInfo.database,
+                   collection: shardInfo.collection,
+                   shard: shard,
+                   fromServer: fullest,
+                   toServer: emptiest };
+      var msg = moveShard(todo);
+      if (msg === "") {
+        console.info("rebalanceShards: moveShard(", todo, ")");
+        totalWeight[last].weight -= shardInfo.weight;
+        totalWeight[0].weight += shardInfo.weight;
+        totalWeight = _.sortBy(totalWeight, x => x.weight);
+        countMoved += 1;
+        if (countMoved >= 10) {
+          break;
+        }
+      } else {
+        console.error("rebalanceShards: moveShard(", todo, ") produced:", msg);
+      }
+    }
+  }
+  if (countMoved === 0) {
+    console.log("rebalanceShards: no sensible moves found");
+    return true;
+  }
+  console.log("rebalanceShards: scheduled", countMoved, " shard moves.");
+  return true;
+}
+
 
 exports.bootstrapDbServers            = bootstrapDbServers;
 exports.coordinatorId                 = coordinatorId;
@@ -1681,3 +1886,7 @@ exports.status                        = status;
 exports.wait                          = waitForDistributedResponse;
 exports.endpointToURL                 = endpointToURL;
 exports.synchronizeOneShard           = synchronizeOneShard;
+exports.shardDistribution             = shardDistribution;
+exports.rebalanceShards               = rebalanceShards;
+exports.moveShard                     = moveShard;
+

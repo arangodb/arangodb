@@ -27,6 +27,7 @@
 #include "CleanOutServer.h"
 #include "FailedLeader.h"
 #include "FailedServer.h"
+#include "MoveShard.h"
 #include "Job.h"
 #include "Store.h"
 
@@ -63,11 +64,22 @@ static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const planDBServersPrefix = "/Plan/DBServers";
 static std::string const planCoordinatorsPrefix = "/Plan/Coordinators";
+static std::string const currentServersRegisteredPrefix 
+    = "/Current/ServersRegistered";
 
 std::vector<check_t> Supervision::checkDBServers() {
   std::vector<check_t> ret;
-  Node::Children const machinesPlanned =
+  Node::Children const& machinesPlanned =
       _snapshot(planDBServersPrefix).children();
+  Node::Children const serversRegistered =
+      _snapshot(currentServersRegisteredPrefix).children();
+
+  std::vector<std::string> todelete;
+  for (auto const& machine : _snapshot(healthPrefix).children()) {
+    if (machine.first.substr(0,2) == "DB") {
+      todelete.push_back(machine.first);
+    }
+  }
 
   for (auto const& machine : machinesPlanned) {
 
@@ -78,12 +90,13 @@ std::vector<check_t> Supervision::checkDBServers() {
     serverID        = machine.first;
     heartbeatTime   = _snapshot(syncPrefix + serverID + "/time").toJson();
     heartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
+
+    todelete.erase(
+      std::remove(todelete.begin(), todelete.end(), serverID), todelete.end());
     
     try {           // Existing
       lastHeartbeatTime =
         _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
-      lastHeartbeatStatus =
-        _snapshot(healthPrefix + serverID + "/LastHeartbeatStatus").toJson();
       lastHeartbeatAcked =
         _snapshot(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
       lastStatus = _snapshot(healthPrefix + serverID + "/Status").toJson();
@@ -102,7 +115,20 @@ std::vector<check_t> Supervision::checkDBServers() {
                 VPackValue(VPackValueType::Object));
     report->add("LastHeartbeatSent", VPackValue(heartbeatTime));
     report->add("LastHeartbeatStatus", VPackValue(heartbeatStatus));
-    
+    report->add("Role", VPackValue("DBServer"));
+    auto endpoint = serversRegistered.find(serverID);
+    if (endpoint != serversRegistered.end()) {
+      endpoint = endpoint->second->children().find("endpoint");
+      if (endpoint != endpoint->second->children().end()) {
+        if (endpoint->second->children().size() == 0) {
+          VPackSlice epString = endpoint->second->slice();
+          if (epString.isString()) {
+            report->add("Endpoint", epString);
+          }
+        }
+      }
+    }
+      
     if (good) {
       report->add("LastHeartbeatAcked",
                   VPackValue(
@@ -122,7 +148,7 @@ std::vector<check_t> Supervision::checkDBServers() {
         report->add("Status", VPackValue("BAD"));
       }
     }
-
+    
     report->close();
     report->close();
     report->close();
@@ -130,16 +156,40 @@ std::vector<check_t> Supervision::checkDBServers() {
     if (!this->isStopping()) {
       _agent->write(report);
     }
-      
+    
   }
 
+  if (!todelete.empty()) {
+    query_t del = std::make_shared<Builder>();
+    del->openArray();
+    del->openArray();
+    del->openObject();
+    for (auto const& srv : todelete) {
+      del->add(_agencyPrefix + healthPrefix + srv, VPackValue(VPackValueType::Object));
+      del->add("op", VPackValue("delete"));
+      del->close();
+    }
+    del->close(); del->close(); del->close();
+    _agent->write(del);
+  }
+  
   return ret;
 }
 
 std::vector<check_t> Supervision::checkCoordinators() {
   std::vector<check_t> ret;
-  Node::Children const machinesPlanned =
+  Node::Children const& machinesPlanned =
       _snapshot(planCoordinatorsPrefix).children();
+  Node::Children const serversRegistered =
+      _snapshot(currentServersRegisteredPrefix).children();
+
+
+  std::vector<std::string> todelete;
+  for (auto const& machine : _snapshot(healthPrefix).children()) {
+    if (machine.first.substr(0,2) == "Co") {
+      todelete.push_back(machine.first);
+    }
+  }
 
   for (auto const& machine : machinesPlanned) {
 
@@ -151,13 +201,14 @@ std::vector<check_t> Supervision::checkCoordinators() {
     heartbeatTime   = _snapshot(syncPrefix + serverID + "/time").toJson();
     heartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
     
+    todelete.erase(
+      std::remove(todelete.begin(), todelete.end(), serverID), todelete.end());
+    
     try {           // Existing
       lastHeartbeatTime =
         _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
       lastHeartbeatStatus =
         _snapshot(healthPrefix + serverID + "/LastHeartbeatStatus").toJson();
-      lastHeartbeatAcked =
-        _snapshot(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
       lastStatus = _snapshot(healthPrefix + serverID + "/Status").toJson();
       if (lastHeartbeatTime != heartbeatTime) { // Update
         good = true;
@@ -174,6 +225,19 @@ std::vector<check_t> Supervision::checkCoordinators() {
                 VPackValue(VPackValueType::Object));
     report->add("LastHeartbeatSent", VPackValue(heartbeatTime));
     report->add("LastHeartbeatStatus", VPackValue(heartbeatStatus));
+    report->add("Role", VPackValue("Coordinator"));
+    auto endpoint = serversRegistered.find(serverID);
+    if (endpoint != serversRegistered.end()) {
+      endpoint = endpoint->second->children().find("endpoint");
+      if (endpoint != endpoint->second->children().end()) {
+        if (endpoint->second->children().size() == 0) {
+          VPackSlice epString = endpoint->second->slice();
+          if (epString.isString()) {
+            report->add("Endpoint", epString);
+          }
+        }
+      }
+    }
     
     if (good) {
       report->add("LastHeartbeatAcked",
@@ -203,7 +267,22 @@ std::vector<check_t> Supervision::checkCoordinators() {
       
   }
 
+  if (!todelete.empty()) {
+    query_t del = std::make_shared<Builder>();
+    del->openArray();
+    del->openArray();
+    del->openObject();
+    for (auto const& srv : todelete) {
+      del->add(_agencyPrefix + healthPrefix + srv, VPackValue(VPackValueType::Object));
+      del->add("op", VPackValue("delete"));
+      del->close();
+    }
+    del->close(); del->close(); del->close();
+    _agent->write(del);
+  }
+  
   return ret;
+
 }
 
 bool Supervision::updateSnapshot() {
@@ -238,7 +317,7 @@ void Supervision::run() {
       // make sense at all without other ArangoDB servers, we wait pretty
       // long here before giving up:
       if (!updateAgencyPrefix(1000, 1)) {
-        LOG_TOPIC(ERR, Logger::AGENCY)
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Cannot get prefix from Agency. Stopping supervision for good.";
         break;
       }
@@ -259,6 +338,7 @@ void Supervision::run() {
     // Do supervision
     updateSnapshot();
     doChecks(timedout);
+    shrinkCluster();
     workJobs();
     
   }
@@ -267,41 +347,153 @@ void Supervision::run() {
 
 void Supervision::workJobs() {
 
-  Node::Children const todos = _snapshot(toDoPrefix).children();
-  Node::Children const pends = _snapshot(pendingPrefix).children();
+  Node::Children const& todos = _snapshot(toDoPrefix).children();
+  Node::Children const& pends = _snapshot(pendingPrefix).children();
 
   for (auto const& todoEnt : todos) {
     Node const& job = *todoEnt.second;
     
-    try {
-      std::string jobType = job("type").getString(),
-        jobId = job("jobId").getString(),
-        creator = job("creator").getString();
-      if (jobType == "failedServer") {
-        FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      } else if (jobType == "cleanOutServer") {
-        CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      }
-    } catch (std::exception const&) {}
+    std::string jobType = job("type").getString(),
+      jobId = job("jobId").getString(),
+      creator = job("creator").getString();
+    if (jobType == "failedServer") {
+      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "cleanOutServer") {
+      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "moveShard") {
+      MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "failedLeader") {
+      FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    }
   }
-
 
   for (auto const& pendEnt : pends) {
     Node const& job = *pendEnt.second;
     
-    try {
-      std::string jobType = job("type").getString(),
-        jobId = job("jobId").getString(),
-        creator = job("creator").getString();
-      if (jobType == "failedServer") {
-        FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      } else if (jobType == "cleanOutServer") {
-        CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
-      }
-    } catch (std::exception const&) {}
+    std::string jobType = job("type").getString(),
+      jobId = job("jobId").getString(),
+      creator = job("creator").getString();
+    if (jobType == "failedServer") {
+      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "cleanOutServer") {
+      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "moveShard") {
+      MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "failedLeader") {
+      FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    }
   }
   
 }
+
+
+// Shrink cluster if applicable
+void Supervision::shrinkCluster () {
+
+  // Get servers from plan
+  std::vector<std::string> availServers; 
+  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
+  for (auto const& srv : dbservers) {
+    availServers.push_back(srv.first);
+  }
+
+  size_t targetNumDBServers;
+  try {
+    targetNumDBServers = _snapshot("/Target/NumberOfDBServers").getUInt();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Cannot retrieve targeted number of db servers from agency" << e.what();
+    return;
+  }
+  
+  // If there are any cleanOutServer jobs todo or pending do nothing
+  Node::Children const& todos = _snapshot(toDoPrefix).children();
+  Node::Children const& pends = _snapshot(pendingPrefix).children();
+  
+  for (auto const& job : todos) {
+    try {
+      if ((*job.second)("type").getString() == "cleanOutServer") {
+        return;
+      }
+    } catch (std::exception const& e) {
+      LOG(WARN) << job.second->slice().toJson();
+      LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Failed to get job type of job " << job.first << ": " << e.what();
+      return;
+    }
+  }
+  
+  for (auto const& job : pends) {
+    try {
+      if ((*job.second)("type").getString() == "cleanOutServer") {
+        return;
+      }
+    } catch (std::exception const& e) {
+      LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Failed to get job type of job " << job.first << ": " << e.what();
+      return;
+    }
+  }
+  
+  // Remove cleaned from ist 
+  if (_snapshot.exists("/Target/CleanedServers").size()==2) {
+    for (auto const& srv :
+           VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
+      availServers.erase(
+        std::remove(availServers.begin(), availServers.end(), srv.copyString()),
+        availServers.end());
+    }
+  }
+
+  // Only if number of servers in target is smaller than the available
+  if (targetNumDBServers < availServers.size()) {
+
+    // Minimum 1 DB server must remain
+    if (availServers.size() == 1) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Only one db server left for operation";
+      return;
+    }
+
+    // Find greatest replication factor among all collections
+    uint64_t maxReplFact = 1;
+    Node::Children const& databases = _snapshot("/Plan/Collections").children();
+    for (auto const& database : databases) {
+      for (auto const& collptr : database.second->children()) {
+        try {
+          uint64_t replFact = (*collptr.second)("replicationFactor").getUInt();
+          if (replFact > maxReplFact) {
+            maxReplFact = replFact;
+          }
+        } catch (std::exception const& e) {
+          LOG_TOPIC(DEBUG, Logger::AGENCY) <<
+            "Cannot retrieve replication factor for collection " << collptr.first;
+          return;
+        }
+      }
+    }
+
+    // If max number of replications is small than that of available
+    if (maxReplFact < availServers.size()) {
+
+      // Sort servers by name
+      std::sort(availServers.begin(), availServers.end());
+      
+      // Clean out as long as number of available servers is bigger
+      // than maxReplFactor and bigger than targeted number of db servers
+      if (availServers.size() > maxReplFact &&
+          availServers.size() > targetNumDBServers) {
+        
+        // Schedule last server for cleanout
+        CleanOutServer(_snapshot, _agent, std::to_string(_jobId++),
+                       "supervision", _agencyPrefix, availServers.back());
+      }
+      
+    }
+    
+  }
+
+}
+
 
 // Start thread
 bool Supervision::start() {
@@ -372,7 +564,7 @@ void Supervision::getUniqueIds() {
 }
 
 void Supervision::updateFromAgency() {
-  auto const jobsPending =
+  auto const& jobsPending =
       _snapshot("/Supervision/Jobs/Pending").children();
 
   for (auto const& jobent : jobsPending) {

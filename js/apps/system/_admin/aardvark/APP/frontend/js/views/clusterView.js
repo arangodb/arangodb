@@ -149,30 +149,14 @@
       self.getCoordStatHistory(callback);
 
       //special case nodes
-      self.coordinators.fetch({
-        success: function() {
-          self.renderNode(true);
-        },
-        error: function() {
-          self.renderNode(false);
-        }
-      });
+      self.renderNodes();
     },
     
     rerenderValues: function(data) {
       var self = this;
 
-      //TODO cache value state like graph data
-
-      //NODE
-      this.coordinators.fetch({
-        success: function() {
-          self.renderNode(true);
-        },
-        error: function() {
-          self.renderNode(false);
-        }
-      });
+      //NODES - DBS - COORDS
+      self.renderNodes();
 
       //Connections
       this.renderValue('#clusterConnections', Math.round(data.clientConnectionsCurrent));
@@ -209,9 +193,62 @@
 
     },
 
-    renderNode: function(connection) {
-      var ok = 0, error = 0;
+    renderNodes: function() {
 
+      var self = this;
+      var callbackFunction = function(data) {
+
+        var coords = 0, coordsErrors = 0;
+        var dbs = 0, dbsErrors = 0;
+
+        _.each(data, function(node) {
+          if (node.Role === 'Coordinator') {
+            coords++;
+            if (node.Status !== 'GOOD') {
+              coordsErrors++;
+            }
+          }
+          else if (node.Role === 'DBServer') {
+            dbs++;
+            if (node.Status !== 'GOOD') {
+              dbsErrors++;
+            }
+          }
+        });
+
+        if (coordsErrors > 0) {
+          this.renderValue('#clusterCoordinators', coords - coordsErrors + '/' + coords, true);
+        }
+        else {
+          this.renderValue('#clusterCoordinators', coords);
+        }
+
+        if (dbsErrors > 0) {
+          this.renderValue('#clusterDBServers', dbs - dbsErrors + '/' + dbs, true);
+        }
+        else {
+          this.renderValue('#clusterDBServers', dbs);
+        }
+
+      }.bind(this);
+
+      $.ajax({
+        type: "GET",
+        cache: false,
+        url: arangoHelper.databaseUrl("/_admin/cluster/health"),
+        contentType: "application/json",
+        processData: false,
+        async: true,
+        success: function(data) {
+          callbackFunction(data.Health);
+        },
+        error: function() {
+          self.renderValue('#clusterCoordinators', 'N/A', true);
+          self.renderValue('#clusterDBServers', 'N/A', true);
+        }
+      });
+
+      /*
       if (connection) {
         this.coordinators.each(function(value) {
           if (value.toJSON().status === 'ok') {
@@ -222,17 +259,9 @@
           }
         });
         
-        if (error > 0) {
-          var total = error + ok;
-          this.renderValue('#clusterNodes', ok + '/' + total, true);
-        }
-        else {
-          this.renderValue('#clusterNodes', ok);
-        }
-      }
-      else {
-        this.renderValue('#clusterNodes', 'OFFLINE', true);
-      }
+      }*/
+
+      //ERROR
 
     },
 
@@ -367,10 +396,7 @@
     initGraphs: function() {
       var self = this;
 
-      var noData = 'Fetching data...';
-      if (self.statsEnabled === false) {
-        noData = 'Statistics disabled.';
-      }
+      var noData = 'No data...';
 
       _.each(self.chartsOptions, function(c) {
         nv.addGraph(function() {

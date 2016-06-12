@@ -24,10 +24,7 @@
 #include "Constituent.h"
 
 #include <chrono>
-#include <chrono>
 #include <iomanip>
-#include <iomanip>
-#include <thread>
 #include <thread>
 
 #include <velocypack/Iterator.h>
@@ -116,7 +113,7 @@ void Constituent::term(term_t t) {
   }
 
   if (tmp != t) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
+    LOG_TOPIC(INFO, Logger::AGENCY) << roleStr[_role] << " term " << t;
 
     Builder body;
     body.add(VPackValue(VPackValueType::Object));
@@ -423,8 +420,12 @@ void Constituent::run() {
 
       dist_t dis(config().minPing, config().maxPing);
       long rand_wait = static_cast<long>(dis(_gen) * 1000000.0);
-      /*bool timedout =*/_cv.wait(rand_wait);
 
+      {
+        CONDITION_LOCKER(guardv, _cv);
+      /*bool timedout =*/_cv.wait(rand_wait);
+      }
+      
       {
         MUTEX_LOCKER(guard, _castLock);
         cast = _cast;

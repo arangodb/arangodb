@@ -265,15 +265,31 @@
       });
     },
 
+    buildUserSubNav: function(username, activeKey) {
+      var menus = {
+        General: {
+          route: '#user/' + encodeURIComponent(username)
+        },
+        Permissions: {
+          route: '#user/' + encodeURIComponent(username) + '/permission'
+        }
+      };
+
+      menus[activeKey].active = true;
+      this.buildSubNavBar(menus);
+    },
+
     buildNodeSubNav: function(node, activeKey, disabled) {
       var menus = {
         Dashboard: {
           route: '#node/' + encodeURIComponent(node)
-        },
+        }
+        /*
         Logs: {
           route: '#nLogs/' + encodeURIComponent(node),
           disabled: true
         }
+       */
       };
 
       menus[activeKey].active = true;
@@ -552,7 +568,6 @@
             }
           },
           error: function(data) {
-            console.log("error");
             if (callback) {
               callback(true, data);
             }

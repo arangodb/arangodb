@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
+#include "Basics/ShortestPathFinder.h"
 #include "Basics/Traverser.h"
 #include "Aql/AstNode.h"
 #include "Utils/CollectionNameResolver.h"
@@ -105,7 +106,8 @@ class TraverserExpression {
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
-  bool matchesCheck(arangodb::Transaction*, arangodb::velocypack::Slice const& element) const;
+  bool matchesCheck(arangodb::Transaction*,
+                    arangodb::velocypack::Slice const& element) const;
 
  protected:
   TraverserExpression()
@@ -115,7 +117,8 @@ class TraverserExpression {
         compareTo(nullptr) {}
 
  private:
-  bool recursiveCheck(arangodb::aql::AstNode const*, arangodb::velocypack::Slice&) const;
+  bool recursiveCheck(arangodb::aql::AstNode const*,
+                      arangodb::velocypack::Slice&) const;
 
   // Required when creating this expression without AST
   std::vector<std::unique_ptr<arangodb::aql::AstNode const>> _nodeRegister;
@@ -123,10 +126,12 @@ class TraverserExpression {
 };
 
 class ShortestPath {
-  friend class basics::DynamicDistanceFinder<arangodb::velocypack::Slice, arangodb::velocypack::Slice, size_t, ShortestPath>;
   friend class basics::DynamicDistanceFinder<arangodb::velocypack::Slice,
-                                  arangodb::velocypack::Slice, double,
-                                  ShortestPath>;
+                                             arangodb::velocypack::Slice,
+                                             size_t, ShortestPath>;
+  friend class basics::DynamicDistanceFinder<arangodb::velocypack::Slice,
+                                             arangodb::velocypack::Slice,
+                                             double, ShortestPath>;
   friend class arangodb::basics::ConstDistanceFinder<
       arangodb::velocypack::Slice, arangodb::velocypack::Slice,
       arangodb::basics::VelocyPackHelper::VPackStringHash,
@@ -139,8 +144,7 @@ class ShortestPath {
 
   ShortestPath() : _readDocuments(0) {}
 
-  ~ShortestPath() {
-  }
+  ~ShortestPath() {}
 
   /// @brief Clears the path
   void clear();
@@ -148,7 +152,7 @@ class ShortestPath {
   /// @brief Builds only the last edge pointing to the vertex at position as
   /// VelocyPack
 
-  void edgeToVelocyPack(Transaction*, size_t, arangodb::velocypack::Builder&); 
+  void edgeToVelocyPack(Transaction*, size_t, arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the vertex at position as VelocyPack
@@ -164,12 +168,9 @@ class ShortestPath {
 
   /// @brief Gets the length of the path. (Number of vertices)
 
-  size_t length() {
-    return _vertices.size();
-  };
+  size_t length() { return _vertices.size(); };
 
  private:
-
   /// @brief Local builder to create a search value
   arangodb::velocypack::Builder _searchBuilder;
 
@@ -215,7 +216,6 @@ class TraversalPath {
   virtual void lastEdgeToVelocyPack(Transaction*,
                                     arangodb::velocypack::Builder&) = 0;
 
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last vertex as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
@@ -238,12 +238,7 @@ class TraversalPath {
 };
 
 struct TraverserOptions {
-
-  enum UniquenessLevel {
-    NONE,
-    PATH,
-    GLOBAL
-  };
+  enum UniquenessLevel { NONE, PATH, GLOBAL };
 
  private:
   arangodb::Transaction* _trx;
@@ -257,16 +252,23 @@ struct TraverserOptions {
 
   uint64_t maxDepth;
 
-  bool useBreathFirst;
+  bool useBreadthFirst;
 
   UniquenessLevel uniqueVertices;
 
   UniquenessLevel uniqueEdges;
 
-  explicit TraverserOptions(arangodb::Transaction* trx) : _trx(trx), minDepth(1), maxDepth(1), useBreathFirst(false), uniqueVertices(UniquenessLevel::NONE), uniqueEdges(UniquenessLevel::PATH) {}
+  explicit TraverserOptions(arangodb::Transaction* trx)
+      : _trx(trx),
+        minDepth(1),
+        maxDepth(1),
+        useBreadthFirst(false),
+        uniqueVertices(UniquenessLevel::NONE),
+        uniqueEdges(UniquenessLevel::PATH) {}
 
   void setCollections(std::vector<std::string> const&, TRI_edge_direction_e);
-  void setCollections(std::vector<std::string> const&, std::vector<TRI_edge_direction_e> const&);
+  void setCollections(std::vector<std::string> const&,
+                      std::vector<TRI_edge_direction_e> const&);
 
   size_t collectionCount() const;
 
@@ -314,7 +316,7 @@ class Traverser {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reset the traverser to use another start vertex
   //////////////////////////////////////////////////////////////////////////////
-  
+
   virtual void setStartVertex(std::string const& value) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -412,7 +414,6 @@ class Traverser {
   std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
       _expressions;
 };
-
 }  // traverser
 }  // arangodb
 

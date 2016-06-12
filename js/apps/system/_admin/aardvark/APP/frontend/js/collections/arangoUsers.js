@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint strict: false, unused: false */
-/*global window, Backbone, $,_, window, frontendConfig, arangoHelper */
+/*global window, atob, Backbone, $,_, window, frontendConfig, arangoHelper */
 
 window.ArangoUsers = Backbone.Collection.extend({
   model: window.Users,
@@ -14,6 +14,13 @@ window.ArangoUsers = Backbone.Collection.extend({
 
   sortOptions: {
     desc: false
+  },
+
+  fetch: function(options) {
+    if (window.App.currentUser) {
+      this.url = frontendConfig.basePath + "/_api/user/" + encodeURIComponent(window.App.currentUser);
+    }
+    return Backbone.Collection.prototype.fetch.call(this, options);
   },
 
   url: frontendConfig.basePath + "/_api/user",
@@ -86,10 +93,12 @@ window.ArangoUsers = Backbone.Collection.extend({
 
   loadUserSettings: function (callback) {
     var self = this;
+
     $.ajax({
       type: "GET",
       cache: false,
-      url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
+      //url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
+      url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(self.activeUser)),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -122,9 +131,19 @@ window.ArangoUsers = Backbone.Collection.extend({
 
   parse: function(response)  {
     var result = [];
-    _.each(response.result, function(object) {
-      result.push(object);
-    });
+    if (response.result) {
+      _.each(response.result, function(object) {
+        result.push(object);
+      });
+    }
+    else {
+      result.push({
+        user: response.user,
+        active: response.active,
+        extra: response.extra,
+        changePassword: response.changePassword
+      });
+    }
     return result;
   },
 
@@ -139,7 +158,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         callback(false, data.user);
       }
     ).error(
-      function(data) {
+      function() {
         callback(true, null);
       }
     );

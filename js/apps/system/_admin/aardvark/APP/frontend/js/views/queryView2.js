@@ -206,7 +206,20 @@
         if (name === null || name === false) {
           name = "root";
         }
-        window.open("query/download/" + encodeURIComponent(name));
+        var url = "query/download/" + encodeURIComponent(name);
+        $.ajax(url)
+        .success(function(result, dummy, request) {
+          var blob = new Blob([JSON.stringify(result)], {type: "application/octet-stream"});
+          var blobUrl = window.URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          document.body.appendChild(a);
+          a.style = "display: none";
+          a.href = blobUrl;
+          a.download = request.getResponseHeader("Content-Disposition").replace(/.* filename="([^")]*)"/, "$1");
+          a.click();
+          window.URL.revokeObjectURL(blobUrl);
+          document.body.removeChild(a);
+        });
       });
     },
 
@@ -384,15 +397,29 @@
       query = editor.getValue();
 
       if (query !== '' || query !== undefined || query !== null) {
+        var url;
         if (Object.keys(this.bindParamTableObj).length === 0) {
-          window.open("query/result/download/" + encodeURIComponent(btoa(JSON.stringify({ query: query }))));
+          url = "query/result/download/" + encodeURIComponent(btoa(JSON.stringify({ query: query })));
         }
         else {
-          window.open("query/result/download/" + encodeURIComponent(btoa(JSON.stringify({
+          url = "query/result/download/" + encodeURIComponent(btoa(JSON.stringify({
             query: query,
             bindVars: this.bindParamTableObj
-          }))));
+          })));
         }
+        $.ajax(url)
+        .success(function(result, dummy, request) {
+          var blob = new Blob([JSON.stringify(result)], {type: "application/octet-stream"});
+          var blobUrl = window.URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          document.body.appendChild(a);
+          a.style = "display: none";
+          a.href = blobUrl;
+          a.download = request.getResponseHeader("Content-Disposition").replace(/.* filename="([^")]*)"/, "$1");
+          a.click();
+          window.URL.revokeObjectURL(blobUrl);
+          document.body.removeChild(a);
+        });
       }
       else {
         arangoHelper.arangoError("Query error", "could not query result.");

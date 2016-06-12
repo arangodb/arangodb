@@ -1,4 +1,4 @@
-!CHAPTER Skip-Lists
+!CHAPTER Skiplists
 
 
 !SECTION Introduction to Skiplist Indexes
@@ -6,8 +6,8 @@
 This is an introduction to ArangoDB's skiplists.
 
 It is possible to define a skiplist index on one or more attributes (or paths)
-of a documents. This skiplist is then used in queries to locate documents
-within a given range. If the skiplist is unique, then no two documents are
+of documents. This skiplist is then used in queries to locate documents
+within a given range. If the skiplist is declared unique, then no two documents are
 allowed to have the same set of attribute values.
 
 Creating a new document or updating a document will fail if the uniqueness is violated. 
@@ -59,8 +59,8 @@ details, including the index-identifier, is returned.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock ensureUniqueSkiplistSingle
     
-    @startDocuBlockInline ensureUniqueSkiplistMultiColmun
-    @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplistMultiColmun}
+    @startDocuBlockInline ensureUniqueSkiplistMultiColumn
+    @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplistMultiColumn}
     ~db._create("ids");
     db.ids.ensureIndex({ type: "skiplist", fields: [ "name.first", "name.last" ], unique: true });
     db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});
@@ -69,7 +69,7 @@ details, including the index-identifier, is returned.
     db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});  // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
     ~db._drop("ids");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock ensureUniqueSkiplistMultiColmun
+    @endDocuBlock ensureUniqueSkiplistMultiColumn
 
 
 
@@ -106,10 +106,10 @@ details, including the index-identifier, is returned.
 
 
 constructs a query-by-example using a skiplist index
-`collection.byExampleSkiplist(index, example)`
+`collection.byExample(example)`
 
-Selects all documents from the specified skiplist index that match the
-specified example and returns a cursor.
+Selects all documents from the collection that match the specified example 
+and returns a cursor. A skiplist index will be used if present.
 
 You can use *toArray*, *next*, or *hasNext* to access the
 result. The result can be limited using the *skip* and *limit*
@@ -144,7 +144,7 @@ However, if you use
 ```
 
 then you will find all documents, which contain a sub-document in *a*
-that has an attribute @LIT{c} of value *1*. Both the following documents
+that has an attribute *c* of value *1*. Both the following documents
 
 ```json
 { a : { c : 1 }, b : 1 }
@@ -155,7 +155,3 @@ and
 { a : { c : 1, b : 1 } }
 ```
 will match.
-
-`collection.byExampleSkiplist(index, path1, value1, ...)`
-
-

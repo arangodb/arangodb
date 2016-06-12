@@ -61,6 +61,9 @@
 ///   Will be raised when a resource or an operation is locked.
 /// - 29: @LIT{deadlock detected}
 ///   Will be raised when a deadlock is detected when accessing collections.
+/// - 30: @LIT{shutdown in progress}
+///   Will be raised when a call cannot succeed because a server shutdown is
+///   already in progress.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -910,6 +913,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_DEADLOCK                                                (29)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 30: ERROR_SHUTTING_DOWN
+///
+/// shutdown in progress
+///
+/// Will be raised when a call cannot succeed because a server shutdown is
+/// already in progress.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SHUTTING_DOWN                                           (30)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER

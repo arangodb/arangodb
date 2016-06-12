@@ -1840,5 +1840,10 @@ if (global.APP_PATH) {
   delete global.APP_PATH;
 }
 
+if (global.SYS_IS_STOPPING) {
+  exports.isStopping = global.SYS_IS_STOPPING;
+  delete global.SYS_IS_STOPPING;
+}
+
 return exports;
 }()));

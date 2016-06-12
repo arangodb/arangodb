@@ -35,13 +35,14 @@ CleanOutServer::CleanOutServer (
   std::string const& server) : 
   Job(snapshot, agent, jobId, creator, prefix), _server(server) {
 
-  JOB_STATUS js = status();
   try {
+    JOB_STATUS js = status();
     if (js == TODO) {
       start();        
     } else if (js == NOTFOUND) {            
-      create();
-      start();
+      if (create()) {
+        start();
+      }
     }
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
@@ -79,23 +80,40 @@ JOB_STATUS CleanOutServer::status () {
     for (auto const& subJob : todos) {
       if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
         found++;
-        Node const& sj = *(subJob.second);
-        std::string subJobId = sj("jobId").slice().copyString();
-        std::string creator  = sj("creator").slice().copyString();
-        MoveShard(_snapshot, _agent, subJobId, creator, _agencyPrefix);
       }
     }
     for (auto const& subJob : pends) {
       if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
         found++;
-        Node const& sj = *(subJob.second);
-        std::string subJobId = sj("jobId").slice().copyString();
-        std::string creator  = sj("creator").slice().copyString();
-        MoveShard(_snapshot, _agent, subJobId, creator, _agencyPrefix);
       }
     }
 
-    if (!found) {
+    if (found == 0) {
+      // Put server in /Target/CleanedServers:
+      Builder reportTrx;
+      {
+        VPackArrayBuilder guard(&reportTrx);
+        {
+          VPackObjectBuilder guard3(&reportTrx);
+          reportTrx.add(VPackValue(_agencyPrefix + "/Target/CleanedServers"));
+          {
+            VPackObjectBuilder guard4(&reportTrx);
+            reportTrx.add("op", VPackValue("push"));
+            reportTrx.add("new", VPackValue(_server));
+          }
+        }
+      }
+      // Transact to agency
+      write_ret_t res = transact(_agent, reportTrx);
+      
+      if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
+        LOG_TOPIC(INFO, Logger::AGENCY) << "Have reported " << _server 
+          << " in /Target/CleanedServers";
+      } else {
+        LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to report " << _server
+          << " in /Target/CleanedServers";
+      }
+    
       if (finish("DBServers/" + _server)) {
         return FINISHED;
       }
@@ -107,8 +125,35 @@ JOB_STATUS CleanOutServer::status () {
 
 }
 
-bool CleanOutServer::create () {
+bool CleanOutServer::create () { // Only through shrink cluster
+
+    LOG_TOPIC(INFO, Logger::AGENCY)
+    << "Todo: Clean out server " + _server + " for shrinkage";
+
+  std::string path = _agencyPrefix + toDoPrefix + _jobId;
+
+  _jb = std::make_shared<Builder>();
+  _jb->openArray();
+  _jb->openObject();
+  _jb->add(path, VPackValue(VPackValueType::Object));
+  _jb->add("type", VPackValue("cleanOutServer"));
+  _jb->add("server", VPackValue(_server));
+  _jb->add("jobId", VPackValue(_jobId));
+  _jb->add("creator", VPackValue(_creator));
+  _jb->add("timeCreated",
+           VPackValue(timepointToString(std::chrono::system_clock::now())));
+  _jb->close(); _jb->close(); _jb->close();
+
+  write_ret_t res = transact(_agent, *_jb);
+
+  if (res.accepted && res.indices.size()==1 && res.indices[0]) {
+    return true;
+  }
+
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
   return false;
+
+  
 }
 
 bool CleanOutServer::start() {
@@ -118,10 +163,20 @@ bool CleanOutServer::start() {
     
   // Get todo entry
   todo.openArray();
-  _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+  if (_jb == nullptr) {
+    try {
+      _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+    } catch (std::exception const&) {
+      LOG_TOPIC(INFO, Logger::AGENCY) <<
+        "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+      return false;
+    }
+  } else {
+    todo.add(_jb->slice()[0].valueAt(0));
+  }
   todo.close();
 
-  // Enter peding, remove todo, block toserver
+  // Enter pending, remove todo, block toserver
   pending.openArray();
     
   // --- Add pending
@@ -148,10 +203,10 @@ bool CleanOutServer::start() {
   pending.close();
 
   // --- Announce in Sync that server is cleaning out
-  pending.add(_agencyPrefix + serverStatePrefix + _server,
+/*  pending.add(_agencyPrefix + serverStatePrefix + _server,
               VPackValue(VPackValueType::Object));
   pending.add("cleaning", VPackValue(true));
-  pending.close();
+  pending.close();*/
       
   pending.close();
     
@@ -180,7 +235,10 @@ bool CleanOutServer::start() {
     }
 
     // Schedule shard relocations
-    scheduleMoveShards();
+    if (!scheduleMoveShards()) {
+      finish("DBServers/" + _server, false, "Could not schedule MoveShard.");
+      return false;
+    }
     
     return true;
     
@@ -195,18 +253,31 @@ bool CleanOutServer::start() {
 
 bool CleanOutServer::scheduleMoveShards() {
 
-  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
+  std::vector<std::string> availServers; 
 
-  std::vector<std::string> availServers;
-  for (auto const server : dbservers) {
-    if (_snapshot.exists(
-          serverStatePrefix + server.first + "/cleaning").size() < 4 &&
-        _snapshot.exists(cleanedPrefix + server.first).size() < 3 &&
-        _server != server.first) {
-      availServers.push_back(server.first);
+  // Get servers from plan
+  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
+  for (auto const& srv : dbservers) {
+    availServers.push_back(srv.first);
+  }
+  
+  // Remove cleaned from ist
+  if (_snapshot.exists("/Target/CleanedServers").size()==2) {
+    for (auto const& srv :
+           VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
+      availServers.erase(
+        std::remove(availServers.begin(), availServers.end(), srv.copyString()),
+        availServers.end());
     }
   }
   
+  // Minimum 1 DB server must remain
+  if (availServers.size() == 1) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "DB server " << _server << " is the last standing db server.";
+    return false;
+  }
+
   Node::Children const& databases = _snapshot("/Plan/Collections").children();
   size_t sub = 0;
   
@@ -238,6 +309,12 @@ bool CleanOutServer::scheduleMoveShards() {
 
         // Among those a random destination
         std::string toServer;
+        if (myServers.empty()) {
+          LOG_TOPIC(ERR, Logger::AGENCY) << "No servers remain as target for "
+              << "MoveShard";
+          return false;
+        }
+
         try {
           toServer = myServers.at(rand() % myServers.size());
         } catch (...) {
@@ -260,36 +337,69 @@ bool CleanOutServer::scheduleMoveShards() {
 
 bool CleanOutServer::checkFeasibility () {
 
-  uint64_t numCleaned = 0;
-  // Check if server is already in cleaned servers: fail!
-  if (_snapshot.exists("/Target/CleanedServers").size()==2) {
-    Node::Children const& cleanedServers =
-      _snapshot("/Target/CleanedServers").children();
-    for (auto const cleaned : cleanedServers) {
-      if (cleaned.first == _server) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << _server
-                                       << " has been cleaned out already!";
+  // Server exists
+  if (_snapshot.exists("/Plan/DBServers/" + _server).size() != 3) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "No db server with id " << _server <<" in plan.";
+    return false;
+  }
+
+  // Server has not been cleaned already
+  if (_snapshot.exists("/Target/CleanedServers").size() == 2) {
+    for (auto const& srv :
+           VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
+      if (srv.copyString() == _server) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << _server << " has been cleaned out already!";
         return false;
       }
     }
-    numCleaned = cleanedServers.size();
   }
 
-  // Determine number of available servers
-  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
-  uint64_t nservers = dbservers.size() - numCleaned - 1,
-    maxReplFact = 1;
+  if (_snapshot.exists(serverStatePrefix + _server + "/cleaning").size() == 4) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << _server << " has been cleaned out already!";
+    return false;
+  }
 
-  std::vector<std::string> tooLargeCollections;
-  std::vector<uint64_t> tooLargeFactors;
+  std::vector<std::string> availServers; 
+
+  // Get servers from plan
+  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
+  for (auto const& srv : dbservers) {
+    availServers.push_back(srv.first);
+  }
+  
+  // Remove cleaned from ist
+  if (_snapshot.exists("/Target/CleanedServers").size()==2) {
+    for (auto const& srv :
+           VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
+      availServers.erase(
+        std::remove(availServers.begin(), availServers.end(), srv.copyString()),
+        availServers.end());
+    }
+  }
+  
+  // Minimum 1 DB server must remain
+  if (availServers.size() == 1) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "DB server " << _server << " is the last standing db server.";
+    return false;
+  }
+
+  // Remaning after clean out
+  uint64_t numRemaining = availServers.size() - 1;
 
   // Find conflictings collections
+  uint64_t maxReplFact = 1;
+  std::vector<std::string> tooLargeCollections;
+  std::vector<uint64_t> tooLargeFactors;
   Node::Children const& databases = _snapshot("/Plan/Collections").children();
   for (auto const& database : databases) {
     for (auto const& collptr : database.second->children()) {
       try {
         uint64_t replFact = (*collptr.second)("replicationFactor").getUInt();
-        if (replFact > nservers) {
+        if (replFact > numRemaining) {
           tooLargeCollections.push_back(collptr.first);
           tooLargeFactors.push_back(replFact);
         }
@@ -300,8 +410,8 @@ bool CleanOutServer::checkFeasibility () {
     }
   }
 
-  // Report problem
-  if (maxReplFact > nservers) {
+  // Report if problems exist
+  if (maxReplFact > numRemaining) {
     std::stringstream collections;
     std::stringstream factors;
 

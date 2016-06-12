@@ -153,15 +153,13 @@ function AuthSuite () {
       isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "Foobar");
-        console.error("HASSMANN HIHI");
         assertTrue(db._collections().length > 0);
       }
       catch (err1) {
-        console.error("HASSMANN");
         isBroken = false;
       }
       if (isBroken) {
-        throw new Error("Wurst");
+        fail();
       }
 
       isBroken = true;

@@ -89,7 +89,8 @@ class v8_action_t : public TRI_action_t {
     TRI_action_result_t result;
 
     // allow use datase execution in rest calls
-    bool allowUseDatabaseInRestActions = ActionFeature::ACTION->allowUseDatabase();
+    bool allowUseDatabaseInRestActions =
+        ActionFeature::ACTION->allowUseDatabase();
 
     if (_allowUseDatabase) {
       allowUseDatabaseInRestActions = true;
@@ -114,6 +115,8 @@ class v8_action_t : public TRI_action_t {
       return result;
     }
 
+    TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+
     // locate the callback
     READ_LOCKER(readLocker, _callbacksLock);
 
@@ -123,8 +126,6 @@ class v8_action_t : public TRI_action_t {
       if (it == _callbacks.end()) {
         LOG(WARN) << "no callback function for JavaScript action '" << _url
                   << "'";
-
-        V8DealerFeature::DEALER->exitContext(context);
 
         result.isValid = true;
         result.response =
@@ -139,9 +140,6 @@ class v8_action_t : public TRI_action_t {
 
         if (*data != 0) {
           result.canceled = true;
-
-          V8DealerFeature::DEALER->exitContext(context);
-
           return result;
         }
 
@@ -163,7 +161,6 @@ class v8_action_t : public TRI_action_t {
         *data = 0;
       }
     }
-    V8DealerFeature::DEALER->exitContext(context);
 
     return result;
   }
@@ -547,12 +544,14 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
           // base64-encode the result
           out = StringUtils::encodeBase64(out);
           // set the correct content-encoding header
-          response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::Base64);
+          response->setHeaderNC(StaticStrings::ContentEncoding,
+                                StaticStrings::Base64);
         } else if (name == "base64decode") {
           // base64-decode the result
           out = StringUtils::decodeBase64(out);
           // set the correct content-encoding header
-          response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::Binary);
+          response->setHeaderNC(StaticStrings::ContentEncoding,
+                                StaticStrings::Binary);
         }
       }
 
@@ -726,7 +725,8 @@ static TRI_action_result_t ExecuteActionVocbase(
 
   else if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      HttpResponse* response = new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
+      HttpResponse* response =
+          new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
       response->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
 
       result.response = response;
@@ -738,8 +738,7 @@ static TRI_action_result_t ExecuteActionVocbase(
   }
 
   else {
-    result.response =
-        ResponseV8ToCpp(isolate, v8g, res);
+    result.response = ResponseV8ToCpp(isolate, v8g, res);
   }
 
   return result;
@@ -1173,7 +1172,8 @@ static bool clusterSendToAllServers(
 
   DBServers = ci->getCurrentDBServers();
   for (auto const& sid : DBServers) {
-    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+    auto headers =
+        std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest("", coordTransactionID, "server:" + sid, method, url,
                      reqBodyString, headers, nullptr, 3600.0);
   }

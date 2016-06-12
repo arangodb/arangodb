@@ -75,9 +75,8 @@
         type = 'edge';
       }
 
-      var callback = function(error, data, type) {
+      var callback = function(error, type) {
         if (error) {
-          console.log(data);
           arangoHelper.arangoError("Error", "Could not fetch data.");
         }
         else {
@@ -159,7 +158,7 @@
       }
     },
 
-    fillInfo: function(type) {
+    fillInfo: function() {
       var mod = this.collection.first();
       var _id = mod.get("_id"),
         _key = mod.get("_key"),
@@ -167,7 +166,9 @@
         _from = mod.get("_from"),
         _to = mod.get("_to");
 
-      $('#document-type').text(type);
+      $('#document-type').css("margin-left", "10px");
+      $('#document-type').text("_id:");
+      $('#document-id').css("margin-left", "0");
       $('#document-id').text(_id);
       $('#document-key').text(_key);
       $('#document-rev').text(_rev);
@@ -272,7 +273,20 @@
 
       model = JSON.stringify(model);
 
-      if (this.type === 'document') {
+      if (this.type._from && this.type._to) {
+        var callbackE = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Error', 'Could not save edge.');
+          }
+          else {
+            this.successConfirmation();
+            this.disableSaveButton();
+          }
+        }.bind(this);
+
+        this.collection.saveEdge(this.colid, this.docid, this.type._from, this.type._to, model, callbackE);
+      }
+      else {
         var callback = function(error) {
           if (error) {
             arangoHelper.arangoError('Error', 'Could not save document.');
@@ -284,19 +298,6 @@
         }.bind(this);
 
         this.collection.saveDocument(this.colid, this.docid, model, callback);
-      }
-      else if (this.type === 'edge') {
-        var callbackE = function(error) {
-          if (error) {
-            arangoHelper.arangoError('Error', 'Could not save edge.');
-          }
-          else {
-            this.successConfirmation();
-            this.disableSaveButton();
-          }
-        }.bind(this);
-
-        this.collection.saveEdge(this.colid, this.docid, model, callbackE);
       }
     },
 
