@@ -1043,7 +1043,7 @@ static void JS_WarningAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // note: we may not have a query if the AQL functions are called without
     // a query, e.g. during tests
     int code = static_cast<int>(TRI_ObjectToInt64(args[0]));
-    std::string const&& message = TRI_ObjectToString(args[1]);
+    std::string const message = TRI_ObjectToString(args[1]);
 
     auto query = static_cast<arangodb::aql::Query*>(v8g->_query);
     query->registerWarning(code, message.c_str());

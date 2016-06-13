@@ -45,8 +45,8 @@ class SslServerFeature final : public application_features::ApplicationFeature {
   std::string _keyfile;
   bool _sessionCache;
   std::string _cipherList;
-  uint64_t _protocol;
-  uint64_t _options;
+  uint64_t _sslProtocol;
+  uint64_t _sslOptions;
   std::string _ecdhCurve;
 
  private:
