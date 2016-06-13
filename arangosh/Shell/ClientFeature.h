@@ -62,6 +62,7 @@ class ClientFeature final : public application_features::ApplicationFeature,
   void setPassword(std::string const& value) { _password = value; }
   double connectionTimeout() const { return _connectionTimeout; }
   double requestTimeout() const { return _requestTimeout; }
+  uint64_t maxPacketSize() const { return _maxPacketSize; }
   uint64_t sslProtocol() const { return _sslProtocol; }
 
  public:
@@ -89,10 +90,10 @@ class ClientFeature final : public application_features::ApplicationFeature,
   std::string _password;
   double _connectionTimeout;
   double _requestTimeout;
+  uint64_t _maxPacketSize;
   uint64_t _sslProtocol;
 
  private:
-  std::string _section;
   size_t _retries;
   bool _warn;
 };

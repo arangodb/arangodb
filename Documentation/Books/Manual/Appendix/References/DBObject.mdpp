@@ -31,6 +31,12 @@ The following methods exists on the *_db* object:
 * [db._drop(name)](../../DataModeling/Collections/DatabaseMethods.md#drop)
 * [db._truncate(name)](../../DataModeling/Collections/DatabaseMethods.md#truncate)
 
+*AQL*
+
+* [db._createStatement(query)](../../../AQL/Invocation/WithArangosh.html#with-createstatement-arangostatement)
+* [db._query(query)](../../../AQL/Invocation/WithArangosh.html#with-dbquery)
+* [db._explain(query)](../../ReleaseNotes/NewFeatures28.md#miscellaneous-improvements)
+
 *Document*
 
 * [db._document(object)](../../DataModeling/Documents/DatabaseMethods.md#document)

@@ -1053,6 +1053,14 @@ and all client tools uses these APIs.
 In order to connect to earlier versions of ArangoDB with the client tools, an older
 version of the client tools needs to be kept installed.
 
+!SUBSECTION Command-line options added
+
+All client tools in 3.0 provide an option `--server.max-packet-size` for controlling
+the maximum size of HTTP packets to be handled by the client tools. The default value
+is 128 MB, as in previous versions of ArangoDB. In contrast to previous versions in
+which the value was hard-coded, the option is now configurable. It can be increased to
+make the client tools handle very large HTTP result messages sent by the server. 
+
 !SUBSECTION Command-line options changed
 
 For all client tools, the option `--server.disable-authentication` was renamed to
