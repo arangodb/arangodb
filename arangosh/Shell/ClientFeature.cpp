@@ -46,8 +46,8 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
       _password(""),
       _connectionTimeout(connectionTimeout),
       _requestTimeout(requestTimeout),
+      _maxPacketSize(128 * 1024 * 1024),
       _sslProtocol(4),
-      _section("server"),
       _retries(DEFAULT_RETRIES),
       _warn(false) {
   setOptional(true);
@@ -56,79 +56,88 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection(_section, "Configure a connection to the server");
+  options->addSection("server", "Configure a connection to the server");
 
-  options->addOption("--" + _section + ".database",
+  options->addOption("--server.database",
                      "database name to use when connecting",
                      new StringParameter(&_databaseName));
 
-  options->addOption("--" + _section + ".authentication",
+  options->addOption("--server.authentication",
                      "require authentication when connecting",
                      new BooleanParameter(&_authentication));
 
-  options->addOption("--" + _section + ".username",
+  options->addOption("--server.username",
                      "username to use when connecting",
                      new StringParameter(&_username));
 
   options->addOption(
-      "--" + _section + ".endpoint",
+      "--server.endpoint",
       "endpoint to connect to, use 'none' to start without a server",
       new StringParameter(&_endpoint));
 
-  options->addOption("--" + _section + ".password",
-                     "password to use when connection. If not specified and "
+  options->addOption("--server.password",
+                     "password to use when connecting. If not specified and "
                      "authentication is required, the user will be prompted "
-                     "for a password.",
+                     "for a password",
                      new StringParameter(&_password));
 
-  options->addOption("--" + _section + ".connection-timeout",
+  options->addOption("--server.connection-timeout",
                      "connection timeout in seconds",
                      new DoubleParameter(&_connectionTimeout));
 
-  options->addOption("--" + _section + ".request-timeout",
+  options->addOption("--server.request-timeout",
                      "request timeout in seconds",
                      new DoubleParameter(&_requestTimeout));
+  
+  options->addOption("--server.max-packet-size",
+                     "maximum packet size (in bytes) for client/server communication",
+                     new UInt64Parameter(&_maxPacketSize));
 
-  std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4};
+  std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4, 5};
 
-  options->addOption("--" + _section + ".ssl-protocol",
-                     "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1",
+  options->addSection("ssl", "Configure SSL communication");
+  options->addOption("--ssl.protocol",
+                     "ssl protocol (1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = "
+                     "TLSv1, 5 = TLSV1.2 (recommended)",
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
 }
 
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // if a username is specified explicitly, assume authentication is desired
-  if (options->processingResult().touched(_section + ".username")) {
+  if (options->processingResult().touched("server.username")) {
     _authentication = true;
   }
 
   // check timeouts
   if (_connectionTimeout < 0.0) {
-    LOG(FATAL) << "invalid value for --" << _section
-               << ".connect-timeout, must be >= 0";
+    LOG(FATAL) << "invalid value for --server.connect-timeout, must be >= 0";
     FATAL_ERROR_EXIT();
   } else if (_connectionTimeout == 0.0) {
     _connectionTimeout = LONG_TIMEOUT;
   }
 
   if (_requestTimeout < 0.0) {
-    LOG(FATAL) << "invalid value for --" << _section
-               << ".request-timeout, must be positive";
+    LOG(FATAL) << "invalid value for --server.request-timeout, must be positive";
     FATAL_ERROR_EXIT();
   } else if (_requestTimeout == 0.0) {
     _requestTimeout = LONG_TIMEOUT;
   }
 
+  if (_maxPacketSize < 1 * 1024 * 1024) {
+    LOG(FATAL) << "invalid value for --server.max-packet-size, must be at least 1 MB";
+    FATAL_ERROR_EXIT();
+  }
+
   // username must be non-empty
   if (_username.empty()) {
-    LOG(FATAL) << "no value specified for --" << _section << ".username";
+    LOG(FATAL) << "no value specified for --server.username";
     FATAL_ERROR_EXIT();
   }
 
   // ask for a password
   if (_authentication &&
-      !options->processingResult().touched(_section + ".password")) {
+      !options->processingResult().touched("server.password")) {
     usleep(10 * 1000);
 
     try {
@@ -145,6 +154,8 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     std::cout << "Please specify a password: " << std::flush;
     std::getline(std::cin, _password);
   }
+
+  SimpleHttpClient::setMaxPacketSize(_maxPacketSize);
 }
 
 std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection() {
