@@ -80,11 +80,11 @@ bool Validator::validate(uint8_t const* ptr, size_t length, bool isSubPart) cons
 
       if (head >= 0x02 && head <= 0x05) {
         // Array without index table, with 1-8 bytes bytelength, all values with same length
-        byteLength = 1 << (head - 0x02);
+        byteLength = 1ULL << (static_cast<ValueLength>(head) - 0x02);
         equalSize = true;
       } else if (head >= 0x06 && head <= 0x09) {
         // Array with index table, with 1-8 bytes bytelength
-        byteLength = 1 << (head - 0x06);
+        byteLength = 1ULL << (static_cast<ValueLength>(head) - 0x06);
         hasIndexTable = true;
       } 
       
@@ -188,10 +188,10 @@ bool Validator::validate(uint8_t const* ptr, size_t length, bool isSubPart) cons
       ValueLength byteLength = 0;
       if (head >= 0x0b && head <= 0x0e) {
         // Object with index table, with 1-8 bytes bytelength, sorted
-        byteLength = 1 << (head - 0x0b);
+        byteLength = 1ULL << (static_cast<ValueLength>(head) - 0x0b);
       } else if (head >= 0x0f && head <= 0x12) {
         // Object with index table, with 1-8 bytes bytelength, unsorted
-        byteLength = 1 << (head - 0x0f);
+        byteLength = 1ULL << (static_cast<ValueLength>(head) - 0x0f);
       } else if (head == 0x14) {
         // compact Object without index table
         // TODO
