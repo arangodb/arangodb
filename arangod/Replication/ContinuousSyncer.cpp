@@ -490,8 +490,10 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     isSystem = (!cnameString.empty() && cnameString[0] == '_');
 
     if (!cnameString.empty()) {
-      TRI_vocbase_col_t* col =
-          TRI_LookupCollectionByNameVocBase(_vocbase, cnameString.c_str());
+      TRI_vocbase_col_t* col = nullptr;
+      if (_useCollectionId) {
+        col = TRI_LookupCollectionByNameVocBase(_vocbase, cnameString.c_str());
+      }
 
       if (col != nullptr && col->_cid != cid) {
         // cid change? this may happen for system collections or if we restored
@@ -751,7 +753,10 @@ int ContinuousSyncer::renameCollection(VPackSlice const& slice) {
   }
 
   TRI_voc_cid_t const cid = getCid(slice);
-  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  TRI_vocbase_col_t* col = nullptr;
+  if (_useCollectionId) {
+    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  }
 
   if (col == nullptr && !cname.empty()) {
     col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
@@ -776,7 +781,11 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
 
   TRI_voc_cid_t cid = getCid(slice);
   std::string const cname = getCName(slice);
-  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  TRI_vocbase_col_t* col = nullptr;
+  
+  if (col == nullptr) {
+    TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  }
 
   if (col == nullptr && !cname.empty()) {
     col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
