@@ -69,6 +69,8 @@ db.collection.inEdges("<to-value>");
 Internally, the edges index is implemented as a hash index. It can be used for equality 
 lookups, but not for range queries or for sorting. As edges indexes are automatically 
 created for edge collections, it is not possible to create user-defined edges indexes.
+However, it is possible to freely use the `_from` and `_to` attributes in user-defined
+indexes.
 
 An edges index cannot be dropped or changed.
 
@@ -97,6 +99,10 @@ The different types of hash indexes have the following characteristics:
   that have a value of `null` in the index attribute(s) will still be indexed. 
   A key value of `null` may only occur once in the index, so this type of index cannot 
   be used for optional attributes.
+
+  The unique option can also be used to ensure that
+  [no duplicate edges](Hash.md#ensure-uniqueness-of-relations-in-edge-collections) are
+  created, by adding a combined index for the fields `_from` and `_to` to an edge collection.
 
 * **unique, sparse hash index**: all documents in the collection must have different 
   values for the attributes covered by the unique index. Documents in which at least one
