@@ -1,6 +1,8 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* added option `--server.max-packet-size` for client tools
+
 * forward ported V8 Comparator bugfix for inline heuristics from 
   https://github.com/v8/v8/commit/5ff7901e24c2c6029114567de5a08ed0f1494c81
 
