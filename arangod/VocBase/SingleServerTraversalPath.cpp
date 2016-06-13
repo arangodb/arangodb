@@ -67,7 +67,7 @@ void SingleServerTraversalPath::lastEdgeToVelocyPack(arangodb::Transaction* trx,
   result.add(VPackSlice(cached->second->data()));
 }
 
-void SingleServerTraversalPath::lastVertexToVelocyPack(Transaction* trx, VPackBuilder& result) {
+void SingleServerTraversalPath::lastVertexToVelocyPack(arangodb::Transaction* trx, VPackBuilder& result) {
   std::shared_ptr<VPackBuffer<uint8_t>> vertex =
       _traverser->fetchVertexData(_path.vertices.back());
   result.add(VPackSlice(vertex->data()));
