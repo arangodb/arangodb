@@ -209,7 +209,7 @@ const DOC_NOT_FOUND = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
 router.post('/entries', function (req, res) {
   const data = req.body;
   const meta = foxxColl.save(req.body);
-  res.json(Object.assign(data, meta));
+  res.send(Object.assign(data, meta));
 })
 .body(joi.object().required(), 'Entry to store in the collection.')
 .response(joi.object().required(), 'Entry stored in the collection.')
@@ -219,7 +219,7 @@ router.post('/entries', function (req, res) {
 router.get('/entries/:key', function (req, res) {
   try {
     const data = foxxColl.document(req.pathParams.key);
-    res.json(data)
+    res.send(data)
   } catch (e) {
     if (!e.isArangoError || e.errorNum !== DOC_NOT_FOUND) {
       throw e;
@@ -258,7 +258,7 @@ router.get('/entries', function (req, res) {
     FOR entry IN ${foxxColl}
     RETURN entry._key
   `);
-  res.json(keys)
+  res.send(keys);
 })
 .response(joi.array().items(
   joi.string().required()

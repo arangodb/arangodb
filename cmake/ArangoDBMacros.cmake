@@ -1,5 +1,11 @@
 include(GNUInstallDirs)
 
+# install the visual studio runtime:
+if (MSVC)
+  include(InstallRequiredSystemLibraries)
+  INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION bin COMPONENT Libraries)
+endif()
+
 # etc -------------------------------
 set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
 
@@ -162,9 +168,9 @@ macro (install_command_alias name where alias)
       TARGET ${name}
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
-	      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$(Configuration)/${alias}.exe)
+	      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}.exe)
     install(
-      PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$(Configuration)/${alias}.exe
+      PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}.exe
       DESTINATION ${where})
   else ()
     add_custom_command(
