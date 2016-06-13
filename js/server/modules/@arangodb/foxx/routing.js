@@ -141,6 +141,21 @@ exports.routeService = function (service, throwOnErrors) {
     error = routeLegacyService(service, throwOnErrors);
   }
 
+  const defaultDocument = service.manifest.defaultDocument;
+  if (defaultDocument) {
+    service.routes.routes.push({
+      url: {match: '/'},
+      action: {
+        do: '@arangodb/actions/redirectRequest',
+        options: {
+          permanently: false,
+          destination: defaultDocument,
+          relative: true
+        }
+      }
+    });
+  }
+
   if (service.manifest.files) {
     const files = service.manifest.files;
     _.each(files, function (file, path) {
