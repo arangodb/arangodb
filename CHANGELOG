@@ -1,7 +1,17 @@
-v3.0.0 (XXXX-XX-XX)
--------------------
+v3.0.0-rc2 (2015-06-12)
+-----------------------
 
 * added option `--server.max-packet-size` for client tools
+
+* renamed option `--server.ssl-protocol` to `--ssl.protocol` in client tools
+  (was already done for arangod, but overlooked for client tools)
+
+* fix handling of `--ssl.protocol` value 5 (TLS v1.2) in client tools, which
+  claimed to support it but didn't
+
+
+v3.0.0-rc1 (2015-06-10)
+-----------------------
 
 * forward ported V8 Comparator bugfix for inline heuristics from 
   https://github.com/v8/v8/commit/5ff7901e24c2c6029114567de5a08ed0f1494c81
