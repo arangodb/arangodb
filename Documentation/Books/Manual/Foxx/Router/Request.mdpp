@@ -141,7 +141,7 @@ The request object specifies the following properties:
 
 `req.acceptsLanguages(...languages): string | false`
 
-These methods wrap the corresponding content negotiation methods of the [accepts module][ACCEPTS]for the current request.
+These methods wrap the corresponding content negotiation methods of the [accepts module][ACCEPTS] for the current request.
 
 **Examples**
 

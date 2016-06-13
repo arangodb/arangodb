@@ -120,3 +120,6 @@ router.post('/signup', function (req, res) {
 }).required(), 'Credentials')
 .description('Creates a new user and logs them in.');
 ```
+
+[AUTH]: ./Auth.md
+[SESSIONS]: ./Sessions/README.md

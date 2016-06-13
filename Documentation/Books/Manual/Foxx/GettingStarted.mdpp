@@ -12,7 +12,7 @@ First we need to create a manifest. Create a new file called `manifest.json` and
 }
 ```
 
-This just tells ArangoDB the service is compatible with versions 3.0.0 and later (all the way up to but not including 4.0.0), allowing older versions of ArangoDB to understand that this service likely won't work for them and newer versions what behaviour to emulate should they still support it.
+This just tells ArangoDB the service is compatible with versions 3.0.0 and later (all the way up to but not including 4.0.0), allowing older versions of ArangoDB to understand that this service likely won't work for them and newer versions what behavior to emulate should they still support it.
 
 The little hat to the left of the version number is not a typo, it's called a "caret" and indicates the version range. Foxx uses semantic versioning (also called "semver") for most of its version handling. You can find out more about how semver works at the [official semver website][SEMVER].
 
@@ -59,7 +59,7 @@ The `router` provides the methods `get`, `post`, etc corresponding to each HTTP 
 
 These methods take an optional path (if omitted, it defaults to `"/"`) as well as a request handler, which is a function taking the `req` ([request][REQUEST]) and `res` ([response][RESPONSE]) objects to handle the incoming request and generate the outgoing response. If you have used the express framework in Node.js, you may already be familiar with how this works, otherwise check out [the chapter on routes][ROUTES].
 
-The object returned by the router's methods provides additional methods to attach metadata and validation to the route. We're using `summary` and `description` help documenting what the route does -- these aren't strictly necessary but give us some nice auto-generated documentation. The `response` method lets us additionally document the response content type and what the response body will represent.
+The object returned by the router's methods provides additional methods to attach metadata and validation to the route. We're using `summary` and `description` to document what the route does -- these aren't strictly necessary but give us some nice auto-generated documentation. The `response` method lets us additionally document the response content type and what the response body will represent.
 
 !SECTION Try it out
 
@@ -110,7 +110,7 @@ router.get('/hello/:name', function (req, res) {
 
 The first line imports the [`joi` module from npm][JOI] which comes bundled with ArangoDB. Joi is a validation library that is used throughout Foxx to define schemas and parameter types.
 
-**Note**: You can bundle your own modules from npm by installing them in your service folder and making sure the `node_modules` folder is included in your zip archive. For more information see [the section on module dependencies in the chapter on dependencies][DEPENDENCIES].
+**Note**: You can bundle your own modules from npm by installing them in your service folder and making sure the `node_modules` folder is included in your zip archive. For more information see the section on [module dependencies in the chapter on dependencies][DEPENDENCIES].
 
 The `pathParam` method allows us to specify parameters we are expecting in the path. The first argument corresponds to the parameter name in the path, the second argument is a joi schema the parameter is expected to match and the final argument serves to describe the parameter in the API documentation.
 
@@ -154,7 +154,7 @@ The `body` method works the same way as the `response` method except the schema 
 
 !SECTION Creating collections
 
-The real power of Foxx comes from interacting with the database itself. In order to be able to use a collection from within our service, we should first make sure that collection actually exists. The right place to create collections your service is going to use is in [a *setup* script][SCRIPTS], which Foxx will execute for you when installing or updating the service.
+The real power of Foxx comes from interacting with the database itself. In order to be able to use a collection from within our service, we should first make sure that the collection actually exists. The right place to create collections your service is going to use is in [a *setup* script][SCRIPTS], which Foxx will execute for you when installing or updating the service.
 
 First create a new folder called "scripts" in the service folder, which will be where our scripts are going to live. For simplicity's sake, our setup script will live in a file called `setup.js` inside that folder:
 
@@ -169,11 +169,11 @@ if (!db._collection(collectionName)) {
 }
 ```
 
-The script uses the `db` object from the `@arangodb` module, which lets us interact with the database the Foxx service was installed in and collections inside that database. Because the script may be executed multiple times (i.e. whenever we update the service or when the server is restarted) we need to make sure we don't accidentally try to create the same collection twice (which would result in an exception); we do that by first checking whether it already exists before creating it.
+The script uses the [`db` object][DBOBJECT] from the `@arangodb` module, which lets us interact with the database the Foxx service was installed in and the collections inside that database. Because the script may be executed multiple times (i.e. whenever we update the service or when the server is restarted) we need to make sure we don't accidentally try to create the same collection twice (which would result in an exception); we do that by first checking whether it already exists before creating it.
 
 The `_collection` method looks up a collection by name and returns `null` if no collection with that name was found. The `_createDocumentCollection` method creates a new document collection by name (`_createEdgeCollection` also exists and works analogously for edge collections).
 
-**Note**: Because we have hardcoded the collection name, multiple copies of the service installed alongside each other in the same database will share the same collection. Because this may not always be what you want the [Foxx context][CONTEXT] also provides the `collectionName` method which applies a mount point specific prefix to any given collection name to make it unique to the service. It also provides the `collection` method, which behaves almost exactly like `db._collection` except it also applies the prefix before looking the collection up.
+**Note**: Because we have hardcoded the collection name, multiple copies of the service installed alongside each other in the same database will share the same collection. Because this may not always be what you want, the [Foxx context][CONTEXT] also provides the `collectionName` method which applies a mount point specific prefix to any given collection name to make it unique to the service. It also provides the `collection` method, which behaves almost exactly like `db._collection` except it also applies the prefix before looking the collection up.
 
 Next we need to tell our service about the script by adding it to the manifest file:
 
@@ -247,7 +247,7 @@ Instead of defining our own response logic for the error case we just use `res.t
 
 Storing and retrieving entries is fine, but right now we have to memorize each key when we create an entry. Let's add a route that gives us a list of the keys of all entries so we can use those to look an entry up in detail.
 
-The naïve approach would be to use the `toArray()` method to conver the entire collection to an array and just return that. But we're only interested in the keys and there might potentially be so many entries that first retrieving every single document might get unwieldy. Let's write a short AQL query to do this instead:
+The naïve approach would be to use the `toArray()` method to convert the entire collection to an array and just return that. But we're only interested in the keys and there might potentially be so many entries that first retrieving every single document might get unwieldy. Let's write a short AQL query to do this instead:
 
 ```js
 // continued
@@ -271,11 +271,11 @@ Here we're using two new things:
 
 The `_query` method executes an AQL query in the active database.
 
-The `aql` template string handler allows us to write multi-line AQL queries and also handles query parameters and collection names. Instead of hardcoding the name of the collection we want to use in the query we can simply reference the `foxxColl`variable we defined earlier -- it recognizes the value as an ArangoDB collection object and knows we are specifying a collection rather than a regular value even though AQL distinguishes between the two.
+The `aql` template string handler allows us to write multi-line AQL queries and also handles query parameters and collection names. Instead of hardcoding the name of the collection we want to use in the query we can simply reference the `foxxColl` variable we defined earlier -- it recognizes the value as an ArangoDB collection object and knows we are specifying a collection rather than a regular value even though AQL distinguishes between the two.
 
 **Note**: If you aren't used to JavaScript template strings and template string handlers just think of `aql` as a function that receives the multiline string split at every `${}` expression as well as an array of the values of those expressions -- that's actually all there is to it.
 
-Alternatively here's a version without template strings (notice how much cleaner the `aql` version will be in comparison when you have multiple variables):
+Alternatively, here's a version without template strings (notice how much cleaner the `aql` version will be in comparison when you have multiple variables):
 
 ```js
 const keys = db._query(
@@ -313,4 +313,6 @@ You now know how to create a Foxx service from scratch, how to handle user input
 [README]: ./README.md
 [REQUESTMODULE]: ./Modules.md
 [DEPENDENCIES]: ./Dependencies.md
+[CONTEXT]: ./Context.md
+[DBOBJECT]: ../Appendix/References/DBObject.md
 [TESTS]: ./Testing.md
