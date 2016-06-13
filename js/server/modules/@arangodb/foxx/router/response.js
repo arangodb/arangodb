@@ -74,7 +74,11 @@ module.exports = class SyntheticResponse {
     if (typeof data === 'string' || data instanceof Buffer) {
       this._raw.body = data;
     } else if (typeof data === 'object') {
-      this._raw.body = JSON.stringify(data);
+      if (this.context.isDevelopment) {
+        this._raw.body = JSON.stringify(data, null, 2);
+      } else {
+        this._raw.body = JSON.stringify(data);
+      }
     } else {
       this._raw.body = String(data);
     }
@@ -118,7 +122,11 @@ module.exports = class SyntheticResponse {
     }
     if (!dataIsBuffer) {
       if (typeof data === 'object') {
-        data = JSON.stringify(data);
+        if (this.context.isDevelopment) {
+          data = JSON.stringify(data, null, 2);
+        } else {
+          data = JSON.stringify(data);
+        }
       } else {
         data = String(data);
       }
