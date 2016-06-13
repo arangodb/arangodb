@@ -401,7 +401,8 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
       TRI_ASSERT(_toSearchPos < _toSearch.size());
 
       _tmpEdges.clear();
-      auto& next = _toSearch[_toSearchPos++];
+      auto next = _toSearch[_toSearchPos++];
+      TRI_ASSERT(next != nullptr);
       this->_edgeGetter->getAllEdges(next->vertex, _tmpEdges, _currentDepth);
       if (!_tmpEdges.empty()) {
         bool didInsert = false;
