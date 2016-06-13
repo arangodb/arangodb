@@ -34,6 +34,7 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const _ = require("lodash");
 const wait = require("internal").wait;
+const supervisionState = require("@arangodb/cluster").supervisionState;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,7 +62,7 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function waitForSynchronousReplication(database) {
-    console.warn("Waiting for synchronous replication to settle...");
+    console.info("Waiting for synchronous replication to settle...");
     global.ArangoClusterInfo.flush();
     for (var i = 0; i < c.length; ++i) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(database,
@@ -76,7 +77,7 @@ function MovingShardsSuite () {
         );
         let replicas = ccinfo.map(s => s.servers.length);
         if (_.all(replicas, x => x === replFactor)) {
-          console.warn("Replication up and running!");
+          console.info("Replication up and running!");
           break;
         }
         wait(0.5);
@@ -90,24 +91,44 @@ function MovingShardsSuite () {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get cleaned out servers
+////////////////////////////////////////////////////////////////////////////////
+
+  function getCleanedOutServers() {
+    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator001");
+    var request = require("@arangodb/request");
+    var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    var url = endpointToURL(coordEndpoint);
+    var res = request({ method: "GET",
+                        url: url + "/_admin/cluster/numberOfServers"});
+    var body = res.body;
+    if (typeof body === "string") {
+      body = JSON.parse(body);
+    }
+    return body;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether or not a server is clean
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testServerEmpty(id, fromCollNr, toCollNr) {
+  function testServerEmpty(id, checkList, fromCollNr, toCollNr) {
     if (fromCollNr === undefined) {
       fromCollNr = 0;
     }
     if (toCollNr === undefined) {
       toCollNr = c.length - 1;
     }
+    var count;
+    var ok;
     for (var i = fromCollNr; i <= toCollNr; ++i) {
-      var count = 100;
-      var ok = false;
+      count = 100;
+      ok = false;
       while (--count > 0) {
         wait(1.0);
         global.ArangoClusterInfo.flush();
         var servers = findCollectionServers("_system", c[i].name());
-        console.warn("Seeing servers:", i, c[i].name(), servers);
+        console.info("Seeing servers:", i, c[i].name(), servers);
         if (servers.indexOf(id) === -1) {
           // Now check current as well:
           var collInfo = global.ArangoClusterInfo.getCollectionInfo(
@@ -131,14 +152,25 @@ function MovingShardsSuite () {
       if (!ok) {
         return false;
       }
-      
     }
 
-    // Now get to work, first get the write lock on the Plan in the Agency:
-    //var success = ArangoAgency.lockRead("Target/CleanedServers", 0.5);
-    //print(ArangoAgency.get("Target/CleanedServers", false, true));
+    if (checkList) {
+      // Wait until the server appears in the list of cleanedOutServers:
+      count = 100;
+      while (--count > 0) {
+        var obj = getCleanedOutServers();
+        if (obj.cleanedServers.indexOf(id) < 0) {
+          break;
+        }
+        console.info("cleanedServers:", obj);
+        wait(1.0);
+      }
+      if (count <= 0) {
+        ok = false;
+      }
+    }
 
-    return true;
+    return ok;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,9 +214,17 @@ function MovingShardsSuite () {
     var url = endpointToURL(coordEndpoint);
     var numberOfDBServers = global.ArangoClusterInfo.getDBServers().length;
     var body = {"cleanedServers":[], "numberOfDBServers":numberOfDBServers};
-    return request({ method: "PUT",
-                   url: url + "/_admin/cluster/numberOfServers",
-                   body: JSON.stringify(body) });
+    try {
+      var res = request({ method: "PUT",
+                      url: url + "/_admin/cluster/numberOfServers",
+                      body: JSON.stringify(body) });
+      return res;
+    }
+    catch (err) {
+      console.error("Exception for PUT /_admin/cluster/numberOfServers:",
+                    err.stack);
+      return false;
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +237,6 @@ function MovingShardsSuite () {
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var body = {database, collection, shard, fromServer, toServer};
-    console.error("Harhar:", body);
     return request({ method: "POST",
                    url: url + "/_admin/cluster/moveShard",
                    body: JSON.stringify(body) });
@@ -209,7 +248,7 @@ function MovingShardsSuite () {
 
   function createSomeCollections(n, nrShards, replFactor) {
     var systemCollServers = findCollectionServers("_system", "_graphs");
-    console.warn("System collections use servers:", systemCollServers);
+    console.info("System collections use servers:", systemCollServers);
     for (var i = 0; i < n; ++i) {
       ++count;
       while (true) {
@@ -218,12 +257,12 @@ function MovingShardsSuite () {
         var coll = db._create(name, {numberOfShards: nrShards,
                                      replicationFactor: replFactor});
         var servers = findCollectionServers("_system", name);
-        console.warn("Test collections uses servers:", servers);
+        console.info("Test collections uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
           c.push(coll);
           break;
         }
-        console.warn("Need to recreate collection to avoid system collection servers.");
+        console.info("Need to recreate collection to avoid system collection servers.");
       }
     }
   }
@@ -247,6 +286,27 @@ function MovingShardsSuite () {
       name = "DBServer" + ans;
     }
     return name;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for Supervision to finish jobs
+////////////////////////////////////////////////////////////////////////////////
+
+  function waitForSupervision() {
+    var count = 100;
+    while (--count > 0) {
+      var state = supervisionState();
+      if (!state.error &&
+          Object.keys(state.ToDo).length === 0 &&
+          Object.keys(state.Pending).length === 0) {
+        return true;
+      }
+      console.info("Waiting for supervision jobs to finish:",
+                   "ToDo jobs:", Object.keys(state.ToDo).length,
+                   "Pending jobs:", Object.keys(state.Pending).length);
+      wait(1.0);
+    }
+    return false;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,18 +347,18 @@ function MovingShardsSuite () {
 /// @brief cleaning out collection with one shard without replication
 ////////////////////////////////////////////////////////////////////////////////
 
-/*    testShrinkNoReplication : function() {
+    testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
       shrinkCluster(4);
-      assertTrue(testServerEmpty("DBServer005"));
+      assertTrue(testServerEmpty("DBServer005", true));
+      assertTrue(waitForSupervision());
       shrinkCluster(3);
-      assertTrue(testServerEmpty("DBServer004"));
+      assertTrue(testServerEmpty("DBServer004", true));
+      assertTrue(waitForSupervision());
       shrinkCluster(2);
-      assertTrue(testServerEmpty("DBServer003"));
-      shrinkCluster(1);
-      assert(testServerEmpty("DBServer002"));
-    },*/
-
+      assertTrue(testServerEmpty("DBServer003", true));
+      assertTrue(waitForSupervision());
+    },
     
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moving away a shard from a follower
@@ -313,7 +373,8 @@ function MovingShardsSuite () {
           "_system", c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
       moveShard("_system", c[0]._id, shard, fromServer, toServer);
-      assertTrue(testServerEmpty(fromServer));
+      assertTrue(testServerEmpty(fromServer), false);
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -329,7 +390,8 @@ function MovingShardsSuite () {
           "_system", c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
       moveShard("_system", c[0]._id, shard, fromServer, toServer);
-      assertTrue(testServerEmpty(fromServer));
+      assertTrue(testServerEmpty(fromServer), false);
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -346,7 +408,8 @@ function MovingShardsSuite () {
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       moveShard("_system", c[1]._id, shard, fromServer, toServer);
-      assertTrue(testServerEmpty(fromServer, 1, 1));
+      assertTrue(testServerEmpty(fromServer, false, 1, 1));
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -363,7 +426,8 @@ function MovingShardsSuite () {
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       moveShard("_system", c[1]._id, shard, fromServer, toServer);
-      assertTrue(testServerEmpty(fromServer, 1, 1));
+      assertTrue(testServerEmpty(fromServer, false, 1, 1));
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -380,7 +444,8 @@ function MovingShardsSuite () {
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       moveShard("_system", c[1]._id, shard, fromServer, toServer);
-      assertTrue(testServerEmpty(fromServer, 1, 1));
+      assertTrue(testServerEmpty(fromServer, false, 1, 1));
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -397,7 +462,8 @@ function MovingShardsSuite () {
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       moveShard("_system", c[1]._id, shard, fromServer, toServer);
-      assertTrue(testServerEmpty(fromServer, 1, 1));
+      assertTrue(testServerEmpty(fromServer, false, 1, 1));
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -409,7 +475,8 @@ function MovingShardsSuite () {
       var servers = findCollectionServers("_system", c[0].name());
       var toClean = servers[1];
       cleanOutServer(toClean);
-      assertTrue(testServerEmpty(toClean));
+      assertTrue(testServerEmpty(toClean, true));
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -421,7 +488,8 @@ function MovingShardsSuite () {
       var servers = findCollectionServers("_system", c[0].name());
       var toClean = servers[0];
       cleanOutServer(toClean);
-      assertTrue(testServerEmpty(toClean));
+      assertTrue(testServerEmpty(toClean, true));
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,7 +502,8 @@ function MovingShardsSuite () {
       var servers = findCollectionServers("_system", c[1].name());
       var toClean = servers[0];
       cleanOutServer(toClean);
-      assertTrue(testServerEmpty(toClean));
+      assertTrue(testServerEmpty(toClean, true));
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -447,7 +516,8 @@ function MovingShardsSuite () {
       var servers = findCollectionServers("_system", c[1].name());
       var toClean = servers[0];
       cleanOutServer(toClean);
-      assertTrue(testServerEmpty(toClean));
+      assertTrue(testServerEmpty(toClean, true));
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -460,7 +530,8 @@ function MovingShardsSuite () {
       var servers = findCollectionServers("_system", c[1].name());
       var toClean = servers[1];
       cleanOutServer(toClean);
-      assertTrue(testServerEmpty(toClean));
+      assertTrue(testServerEmpty(toClean, true));
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -473,7 +544,8 @@ function MovingShardsSuite () {
       var servers = findCollectionServers("_system", c[1].name());
       var toClean = servers[0];
       cleanOutServer(toClean);
-      assertTrue(testServerEmpty(toClean));
+      assertTrue(testServerEmpty(toClean, true));
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
