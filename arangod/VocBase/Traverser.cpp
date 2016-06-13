@@ -152,12 +152,17 @@ bool arangodb::traverser::TraverserOptions::getCollectionAndSearchValue(
     return false;
   }
   TRI_edge_direction_e dir;
+  TRI_ASSERT(!_directions.empty());
   if (_directions.size() == 1) {
     dir = _directions.at(0);
   } else {
     dir = _directions.at(index);
   }
+
+  TRI_ASSERT(!_collections.empty());
   name = _collections.at(index);
+  
+  TRI_ASSERT(!_indexHandles.empty());
   indexHandle = _indexHandles.at(index);
 
   builder.clear();

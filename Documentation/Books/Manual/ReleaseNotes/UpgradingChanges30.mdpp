@@ -58,6 +58,17 @@ id component at the end. The new pattern is `collection-<id>-<random>`, where `<
 is the collection id and `<random>` is a random number. Previous versions of ArangoDB 
 used a pattern `collection-<id>` without the random number.
 
+!SECTION User Management
+
+Unlike ArangoDB 2, ArangoDB 3.0 users are now separated from databases
+and you can grant one or more database permission to a user.
+
+If you one to mimic the behavior of ArangoDB, you should name your
+users like `username@dbname`.
+
+Users that can access to the *_system* database are allowed to manage users and
+permissions for all databases.
+
 !SECTION Edges and edges attributes
 
 In ArangoDB prior to 3.0 the attributes `_from` and `_to` of edges were treated
@@ -108,6 +119,49 @@ Additionally, when completely replacing the data of existing edges via the AQL `
 operation, it is now required to specify values for the `_from` and `_to` attributes,
 as `REPLACE` requires the entire new document to be specified. If either `_from` or `_to`
 are missing from the replacement document, an `REPLACE` operation will fail.
+
+!SUBSUBSECTION Graph functions
+
+In version 3.0 all former graph related functions have been removed from AQL to be replaced
+by native AQL constructs.
+These constructs allow for more fine-grained filtering on several graph levels.
+Also this allows the AQL optimizer to automatically improve these queries by
+enhancing them with appropriate indexes.
+We have create recipes to upgrade from 2.8 to 3.0 when using these functions.
+
+The functions:
+
+* GRAPH_COMMON_NEIGHBORS
+* GRAPH_COMMON_PROPERTIES
+* GRAPH_DISTANCE_TO
+* GRAPH_EDGES
+* GRAPH_NEIGHBORS
+* GRAPH_TRAVERSAL
+* GRAPH_TRAVERSAL_TREE
+* GRAPH_SHORTEST_PATH
+* GRAPH_PATHS
+* GRAPH_VERTICES
+
+are covered in [Migrating GRAPH_* Functions from 2.8 or earlier to 3.0](https://docs.arangodb.com/cookbook/AQL/MigratingGraphFunctionsTo3.html)
+
+* GRAPH_ABSOLUTE_BETWEENNESS
+* GRAPH_ABSOLUTE_CLOSENESS
+* GRAPH_ABSOLUTE_ECCENTRICITY
+* GRAPH_BETWEENNESS
+* GRAPH_CLOSENESS
+* GRAPH_DIAMETER
+* GRAPH_ECCENTRICITY
+* GRAPH_RADIUS
+
+are covered in [Migrating GRAPH_* Measurements from 2.8 or earlier to 3.0](https://docs.arangodb.com/cookbook/AQL/MigratingMeasurementsTo3.html)
+
+* EDGES
+* NEIGHBORS
+* PATHS
+* TRAVERSAL
+* TRAVERSAL_TREE
+
+are covered in  [#Migrating anonymous graph Functions from 2.8 or earlier to 3.0](https://docs.arangodb.com/cookbook/AQL/MigratingEdgeFunctionsTo3.html)
 
 !SUBSECTION Typecasting functions
 
@@ -441,11 +495,25 @@ As cap constraints have been removed in ArangoDB 3.0 it is not possible to creat
 index of type "cap" with a collection's `ensureIndex()` function. The dedicated function
 `ensureCapConstraint()` has also been removed from the collection API.
 
+!SUBSUBSECTION Graph Blueprints JS Module
+
+The deprecated module `graph-blueprints` has been deleted.
+All it's features are covered by the `general-graph` module.
+
+!SUBSUBSECTION General Graph Fluent AQL interface
+
+The fluent interface has been removed from ArangoDB.
+It's features were completely overlapping with ["aqb"](https://github.com/arangodb/aqbjs)
+which comes pre installed as well.
+Please switch to AQB instead.
+
 !SUBSUBSECTION Undocumented APIs
 
-The undocumented functions `BY_EXAMPLE_HASH()` and `BY_EXAMPLE_SKIPLIST()` and
-`BY_CONDITION_SKIPLIST` have been removed. These functions were always hidden and not 
-intended to be part of the public JavaScript API for collections.
+The undocumented functions `BY_EXAMPLE_HASH()` and `BY_EXAMPLE_SKIPLIST()`,
+`BY_CONDITION_SKIPLIST`, `CPP_NEIGHBORS` and `CPP_SHORTEST_PATH` have been removed.
+These functions were always hidden and not intended to be part of
+the public JavaScript API for collections.
+
 
 !SECTION HTTP API changes
 
@@ -584,6 +652,9 @@ Some data-modification operations in the named graphs API at `/_api/gharial` now
 HTTP 202 (Accepted) or HTTP 201 (Created) if the operation succeeds. Which status code is returned
 depends on the `waitForSync` attribute of the affected collection. In previous versions some
 of these operations return HTTP 200 regardless of the `waitForSync` value.
+
+The deprecated graph API `/_api/graph` has been removed.
+All it's features can be replaced using `/_api/gharial` and AQL instead.
 
 !SUBSECTION Simple queries API
 

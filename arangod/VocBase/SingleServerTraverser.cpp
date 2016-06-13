@@ -300,8 +300,8 @@ TraversalPath* SingleServerTraverser::next() {
 }
 
 bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
-                                                 size_t& eColIdx,
-                                                 VPackValueLength*& last) {
+                                                   size_t& eColIdx,
+                                                   VPackValueLength*& last) {
   while (true) {
     std::string eColName;
     arangodb::Transaction::IndexHandle indexHandle;
@@ -320,6 +320,7 @@ bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVerte
       // If we get here there are no valid edges at all
       return false;
     }
+    
     std::shared_ptr<OperationCursor> cursor = _trx->indexScan(
         eColName, arangodb::Transaction::CursorType::INDEX, indexHandle,
         _builder.slice(), 0, UINT64_MAX, Transaction::defaultBatchSize(), false);
@@ -449,9 +450,10 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
       // Some error, ignore and go to next
       continue;
     }
+    mptrs.clear();
     while (cursor->hasMore()) {
-      mptrs.clear();
       cursor->getMoreMptr(mptrs, UINT64_MAX);
+      edges.reserve(mptrs.size());
 
       _traverser->_readDocuments += static_cast<size_t>(mptrs.size());
       for (auto const& mptr : mptrs) {
@@ -465,12 +467,25 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
           continue;
         }
         std::string id = _trx->extractIdString(edge);
+        if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
+          // test if edge is already on this path
+          auto found = std::find(edges.begin(), edges.end(), id);
+          if (found != edges.end()) {
+            // This edge is already on the path, next
+            continue;
+          }
+        } else if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
+          if (_traverser->_edges.find(id) != _traverser->_edges.end()) {
+            // This edge is already on the path, next
+            continue;
+          }
+        }
 
         // TODO Optimize. May use VPack everywhere.
         VPackBuilder tmpBuilder = VPackBuilder::clone(edge);
         _traverser->_edges.emplace(id, tmpBuilder.steal());
 
-        edges.emplace_back(id);
+        edges.emplace_back(std::move(id));
       }
     }
   }

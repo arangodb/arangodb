@@ -1,3 +1,27 @@
 !CHAPTER Related modules
 
 TODO
+
+!SECTION The `@arangodb` module
+
+TODO
+
+!SUBSECTION The `db` object
+
+TODO
+
+!SUBSECTION The `aql` template string handler
+
+TODO
+
+!SUBSECTION The `errors` object
+
+TODO
+
+!SECTION The `@arangodb/request` module
+
+TODO
+
+!SECTION The `@arangodb/general-graph` module
+
+TODO
