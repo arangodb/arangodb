@@ -31,7 +31,6 @@
 
 #include <deque>
 #include <stack>
-#include <thread>
 
 namespace arangodb {
 namespace basics {
@@ -49,6 +48,7 @@ struct VertexGetter {
   virtual ~VertexGetter() = default;
   virtual bool getVertex(edgeIdentifier const&, vertexIdentifier const&, size_t,
                          vertexIdentifier&) = 0;
+  virtual void setStartVertex(std::string const&) {}
 };
 
 template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
@@ -162,7 +162,7 @@ class DepthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdentif
   /// @brief Get the next Path element from the traversal.
   //////////////////////////////////////////////////////////////////////////////
 
-  const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next() override {
+  EnumeratedPath<edgeIdentifier, vertexIdentifier> const& next() override {
     if (this->_isFirst) {
       this->_isFirst = false;
       return this->_enumeratedPath;
@@ -245,7 +245,7 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
     PathStep(){};
 
    public:
-    PathStep(vertexIdentifier const& vertex) : sourceIdx(0), vertex(vertex){};
+    PathStep(vertexIdentifier const& vertex) : sourceIdx(0), vertex(vertex) {}
 
     PathStep(size_t sourceIdx, edgeIdentifier const& edge,
              vertexIdentifier const& vertex)
@@ -262,7 +262,7 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
     vertexIdentifier vertex;
 
    private:
-    NextStep(){};
+    NextStep() {}
 
    public:
     NextStep(size_t sourceIdx, vertexIdentifier const& vertex)
