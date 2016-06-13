@@ -66,7 +66,7 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function waitForSynchronousReplication(database) {
-    console.warn("Waiting for synchronous replication to settle...");
+    console.info("Waiting for synchronous replication to settle...");
     global.ArangoClusterInfo.flush();
     cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
@@ -77,10 +77,10 @@ function SynchronousReplicationSuite () {
       );
       let replicas = ccinfo.map(s => s.servers.length);
       if (_.all(replicas, x => x === 2)) {
-        console.warn("Replication up and running!");
+        console.info("Replication up and running!");
         return true;
       }
-      console.warn("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
+      console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       wait(0.5);
       global.ArangoClusterInfo.flush();
     }
@@ -99,7 +99,7 @@ function SynchronousReplicationSuite () {
                           x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
-    console.warn("Have failed follower", follower);
+    console.info("Have failed follower", follower);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +114,7 @@ function SynchronousReplicationSuite () {
                           x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
-    console.warn("Have healed follower", follower);
+    console.info("Have healed follower", follower);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +129,7 @@ function SynchronousReplicationSuite () {
                           x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
-    console.warn("Have failed leader", leader);
+    console.info("Have failed leader", leader);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +144,7 @@ function SynchronousReplicationSuite () {
                           x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
-    console.warn("Have healed leader", leader);
+    console.info("Have healed leader", leader);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -318,16 +318,16 @@ function SynchronousReplicationSuite () {
 
     setUp : function () {
       var systemCollServers = findCollectionServers("_system", "_graphs");
-      console.warn("System collections use servers:", systemCollServers);
+      console.info("System collections use servers:", systemCollServers);
       while (true) {
         db._drop(cn);
         c = db._create(cn, {numberOfShards: 1, replicationFactor: 2});
         var servers = findCollectionServers("_system", cn);
-        console.warn("Test collections uses servers:", servers);
+        console.info("Test collections uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
           return;
         }
-        console.warn("Need to recreate collection to avoid system collection servers.");
+        console.info("Need to recreate collection to avoid system collection servers.");
       }
     },
 

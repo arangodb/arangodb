@@ -293,7 +293,7 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function waitForSupervision() {
-    var count = 100;
+    var count = 300;
     while (--count > 0) {
       var state = supervisionState();
       if (!state.error &&
