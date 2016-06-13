@@ -30,7 +30,7 @@
       }
     },
 
-    render: function () {
+    render: function (navi) {
 
       var self = this;
 
@@ -48,6 +48,10 @@
           arangoHelper.arangoError("Cluster", "Could not fetch sharding information.");
         }
       });
+
+      if (navi !== false) {
+        arangoHelper.buildNodesSubNav('Shards');
+      }
     },
 
     continueRender: function(collections) {
