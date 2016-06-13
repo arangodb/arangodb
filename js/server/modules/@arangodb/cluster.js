@@ -1746,8 +1746,9 @@ function moveShard(info) {
     return "Combination of database, collection, shard and fromServer does not make sense.";
   }
 
+  var id;
   try {
-    var id = global.ArangoClusterInfo.uniqid();
+    id = global.ArangoClusterInfo.uniqid();
     var todo = { "type": "moveShard",
                  "database": info.database,
                  "collection": collInfo.id,
@@ -1759,10 +1760,10 @@ function moveShard(info) {
                  "creator": ArangoServerState.id() };
     global.ArangoAgency.set("Target/ToDo/" + id, todo);
   } catch (e1) {
-    return "Cannot write to agency.";
+    return {error: true, errorMessage: "Cannot write to agency."};
   }
 
-  return "";
+  return {error: false, id: id};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1872,6 +1873,25 @@ function rebalanceShards() {
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief supervision state
+////////////////////////////////////////////////////////////////////////////////
+
+function supervisionState() {
+  try {
+    var result = global.ArangoAgency.get("Target");
+    result = result.arango.Target;
+    var proj = { ToDo: result.ToDo, Pending: result.Pending,
+                 Failed: result.Failed, Finished: result.Finished,
+                 error: false };
+    return proj;
+  }
+  catch (err) {
+    return { error: true, errorMsg: "could not read /Target in agency",
+             exception: err };
+  }
+}
+
 
 exports.bootstrapDbServers            = bootstrapDbServers;
 exports.coordinatorId                 = coordinatorId;
@@ -1888,4 +1908,4 @@ exports.synchronizeOneShard           = synchronizeOneShard;
 exports.shardDistribution             = shardDistribution;
 exports.rebalanceShards               = rebalanceShards;
 exports.moveShard                     = moveShard;
-
+exports.supervisionState              = supervisionState;
