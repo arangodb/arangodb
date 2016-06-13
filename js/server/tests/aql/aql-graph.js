@@ -689,7 +689,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
           _from: vn + "/" + from,
           _to: vn + "/" + to, 
           _key: from + "" + to,
-		  type: type
+          type: type
         });
       };
 
@@ -703,52 +703,52 @@ function ahuacatlQueryBreadthFirstTestSuite () {
 
       makeEdge("E", "C","enemy");
       makeEdge("E", "F","friend");
-	  
-	  makeEdge("C","A","friend");
+      
+      makeEdge("C","A","friend");
     },
 
     tearDown : cleanUp,
 
-	testNonUniqueVerticesDefaultDepth : function() {
-		var query = `
+    testNonUniqueVerticesDefaultDepth : function() {
+      var query = `
         FOR v IN OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
-	  assertEqual(actual.length, 4);
-	  assertEqual(actual, [ "B","D","E","F" ]);
-	},
-	
-	testNonUniqueVerticesMaxDepth2 : function() {
-		var query = `
+      assertEqual(actual.length, 4);
+      assertEqual(actual, [ "B","D","E","F" ]);
+    },
+    
+    testNonUniqueVerticesMaxDepth2 : function() {
+      var query = `
         FOR v IN 1..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
-	  assertEqual(actual.length, 8);
-	  assertEqual(actual, [ "B","C","C","D","D","E","F","F" ]);
-	},
-	
-	testNonUniqueVerticesMinDepth0 : function() {
-		var query = `
+      assertEqual(actual.length, 8);
+      assertEqual(actual, [ "B","C","C","D","D","E","F","F" ]);
+    },
+    
+    testNonUniqueVerticesMinDepth0 : function() {
+      var query = `
         FOR v IN 0..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
-	  assertEqual(actual.length, 9);
-	  assertEqual(actual, [ "A","B","C","C","D","D","E","F","F" ]);
-	},
-	
-	testNonUniqueVerticesMinDepth2 : function() {
-		var query = `
+      assertEqual(actual.length, 9);
+      assertEqual(actual, [ "A","B","C","C","D","D","E","F","F" ]);
+    },
+    
+    testNonUniqueVerticesMinDepth2 : function() {
+      var query = `
         FOR v IN 2..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
-	  assertEqual(actual.length, 4);
-	  assertEqual(actual, [ "C","C","D","F" ]);
-	},
-	
+      assertEqual(actual.length, 4);
+      assertEqual(actual, [ "C","C","D","F" ]);
+    },
+    
     testUniqueVerticesMaxDepth2 : function () {
       var query = `
         FOR v IN 1..2 OUTBOUND "${center}" ${en}
@@ -758,8 +758,8 @@ function ahuacatlQueryBreadthFirstTestSuite () {
       assertEqual(actual.length, 5);
       assertEqual(actual, [ "B","C","D","E","F" ]);
     },
-	
-	testUniqueVerticesMinDepth0 : function () {
+    
+    testUniqueVerticesMinDepth0 : function () {
       var query = `
         FOR v IN 0..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueVertices: 'global'}
@@ -768,7 +768,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
       assertEqual(actual.length, 6);
       assertEqual(actual, [ "A","B","C","D","E","F" ]);
     },
-	
+    
     testUniqueVerticesMinDepth2 : function () {
       var query = `
         FOR v IN 2..2 OUTBOUND "${center}" ${en}
@@ -782,47 +782,47 @@ function ahuacatlQueryBreadthFirstTestSuite () {
       assertEqual(actual.length, 1);
       assertEqual(actual, [ "C" ]);
     },
-	
-	testNonUniqueEdgesDefaultDepth : function() {
-	  var query = `
+    
+    testNonUniqueEdgesDefaultDepth : function() {
+      var query = `
         FOR v,e IN OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
-	  assertEqual(actual.length, 4);
-	  assertEqual(actual, [ "AB","AD","AE","AF" ]);
-	},
-	
-	testNonUniqueEdgesMaxDepth2 : function() {
-		var query = `
+      assertEqual(actual.length, 4);
+      assertEqual(actual, [ "AB","AD","AE","AF" ]);
+    },
+    
+    testNonUniqueEdgesMaxDepth2 : function() {
+      var query = `
         FOR v,e IN 1..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
-	  assertEqual(actual.length, 10);
-	  assertEqual(actual, [ "AB","AD","AE","AF","BC","BD","CA","CA","EC","EF" ]);
-	},
-	
-	testNonUniqueEdgesMinDepth0 : function() {
-		var query = `
+      assertEqual(actual.length, 10);
+      assertEqual(actual, [ "AB","AD","AE","AF","BC","BD","CA","CA","EC","EF" ]);
+    },
+    
+    testNonUniqueEdgesMinDepth0 : function() {
+      var query = `
         FOR v,e IN 0..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: false}
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
-	  assertEqual(actual.length, 11);
-	  assertEqual(actual, [ null,"AB","AD","AE","AF","BC","BD","CA","CA","EC","EF" ]);
-	},
-	
-	testNonUniqueEdgesMinDepth2 : function() {
-		var query = `
+      assertEqual(actual.length, 11);
+      assertEqual(actual, [ null,"AB","AD","AE","AF","BC","BD","CA","CA","EC","EF" ]);
+    },
+    
+    testNonUniqueEdgesMinDepth2 : function() {
+      var query = `
         FOR v,e IN 2..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
-	  assertEqual(actual.length, 6);
-	  assertEqual(actual, [ "BC","BD","CA","CA","EC","EF" ]);
-	},
-	
+      assertEqual(actual.length, 6);
+      assertEqual(actual, [ "BC","BD","CA","CA","EC","EF" ]);
+    },
+    
     testUniqueEdgesMaxDepth4 : function () {
       var query = `
         FOR v,e IN 1..3 OUTBOUND "${center}" ${en}
@@ -832,8 +832,8 @@ function ahuacatlQueryBreadthFirstTestSuite () {
       assertEqual(actual.length, 9);
       assertEqual(actual, [ "AB","AD","AE","AF","BC","BD","CA","EC","EF" ]);
     },
-	
-	testUniqueEdgesMinDepth0 : function () {
+    
+    testUniqueEdgesMinDepth0 : function () {
       var query = `
         FOR v,e IN 0..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
@@ -842,7 +842,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
       assertEqual(actual.length, 10);
       assertEqual(actual, [ null,"AB","AD","AE","AF","BC","BD","CA","EC","EF" ]);
     },
-	
+    
     testUniqueEdgesMinDepth2 : function () {
       var query = `
         FOR v,e IN 2..3 OUTBOUND "${center}" ${en}
@@ -852,67 +852,67 @@ function ahuacatlQueryBreadthFirstTestSuite () {
       assertEqual(actual.length, 5);
       assertEqual(actual, [ "BC","BD","CA","EC","EF" ]);
     },
-	
+    
     testFilterPathMaxDepth3 : function () {
       var query = `
-		FOR v,e,p IN 1..3 OUTBOUND "${center}" ${en}
+        FOR v,e,p IN 1..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
-		FILTER p.edges[0].type == "friend" && p.edges[1].type == "enemy" 
+        FILTER p.edges[0].type == "friend" && p.edges[1].type == "enemy" 
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 2);
       assertEqual(actual, [ "BC","CA" ]);
     },
-	
-	testFilterPathMaxDepth2 : function () {
+    
+    testFilterPathMaxDepth2 : function () {
       var query = `
-		FOR v,e,p IN 1..2 OUTBOUND "${center}" ${en}
+        FOR v,e,p IN 1..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
-		FILTER p.edges[0].type == "friend" && p.edges[1].type == "enemy" 
+        FILTER p.edges[0].type == "friend" && p.edges[1].type == "enemy" 
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 1);
       assertEqual(actual, [ "BC" ]);
     },
-	
-	testFilterPathMinDepth3 : function () {
+    
+    testFilterPathMinDepth3 : function () {
       var query = `
-		FOR v,e,p IN 3..3 OUTBOUND "${center}" ${en}
+        FOR v,e,p IN 3..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
-		FILTER p.edges[0].type == "friend" && p.edges[1].type == "enemy" 
+        FILTER p.edges[0].type == "friend" && p.edges[1].type == "enemy" 
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 1);
       assertEqual(actual, [ "CA" ]);
     },
-	
-	testFilterPathDepth3 : function () {
+    
+    testFilterPathDepth3 : function () {
       var query = `
-		FOR v,e,p IN 1..3 OUTBOUND "${center}" ${en}
+        FOR v,e,p IN 1..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
-		FILTER p.edges[0].type == "enemy" && p.edges[1].type == "enemy" && p.edges[2].type == "friend" 
+        FILTER p.edges[0].type == "enemy" && p.edges[1].type == "enemy" && p.edges[2].type == "friend" 
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 1);
       assertEqual(actual, [ "CA" ]);
     },
-	
-	testFilterPathStartsWith : function () {
+    
+    testFilterPathStartsWith : function () {
       var query = `
-		FOR v,e,p IN 1..3 OUTBOUND "${center}" ${en}
+        FOR v,e,p IN 1..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
-		FILTER p.edges[0].type == "friend" 
+        FILTER p.edges[0].type == "friend" 
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 5);
       assertEqual(actual, [ "AB","AD","BC","BD","CA" ]);
     },
-	
-	testFilterPathStartsWithDepth2 : function () {
+    
+    testFilterPathStartsWithDepth2 : function () {
       var query = `
-		FOR v,e,p IN 2..3 OUTBOUND "${center}" ${en}
+        FOR v,e,p IN 2..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
-		FILTER p.edges[0].type == "friend" 
+        FILTER p.edges[0].type == "friend" 
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 3);
