@@ -131,7 +131,13 @@ function MovingShardsSuite () {
       if (!ok) {
         return false;
       }
+      
     }
+
+    // Now get to work, first get the write lock on the Plan in the Agency:
+    //var success = ArangoAgency.lockRead("Target/CleanedServers", 0.5);
+    //print(ArangoAgency.get("Target/CleanedServers", false, true));
+
     return true;
   }
 
@@ -147,6 +153,37 @@ function MovingShardsSuite () {
     var body = {"server": id};
     return request({ method: "POST",
                    url: url + "/_admin/cluster/cleanOutServer",
+                   body: JSON.stringify(body) });
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief order the cluster to reduce number of db servers
+////////////////////////////////////////////////////////////////////////////////
+
+  function shrinkCluster(toNum) {
+    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator001");
+    var request = require("@arangodb/request");
+    var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    var url = endpointToURL(coordEndpoint);
+    var body = {"numberOfDBServers":toNum};
+    return request({ method: "PUT",
+                     url: url + "/_admin/cluster/numberOfServers",
+                     body: JSON.stringify(body) });
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief order the cluster to clean out a server:
+////////////////////////////////////////////////////////////////////////////////
+
+  function resetCleanedOutServers() {
+    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator001");
+    var request = require("@arangodb/request");
+    var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    var url = endpointToURL(coordEndpoint);
+    var numberOfDBServers = global.ArangoClusterInfo.getDBServers().length;
+    var body = {"cleanedServers":[], "numberOfDBServers":numberOfDBServers};
+    return request({ method: "PUT",
+                   url: url + "/_admin/cluster/numberOfServers",
                    body: JSON.stringify(body) });
   }
 
@@ -235,6 +272,7 @@ function MovingShardsSuite () {
         c[i].drop();
       }
       c = [];
+      resetCleanedOutServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,6 +283,23 @@ function MovingShardsSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleaning out collection with one shard without replication
+////////////////////////////////////////////////////////////////////////////////
+
+/*    testShrinkNoReplication : function() {
+      assertTrue(waitForSynchronousReplication("_system"));
+      shrinkCluster(4);
+      assertTrue(testServerEmpty("DBServer005"));
+      shrinkCluster(3);
+      assertTrue(testServerEmpty("DBServer004"));
+      shrinkCluster(2);
+      assertTrue(testServerEmpty("DBServer003"));
+      shrinkCluster(1);
+      assert(testServerEmpty("DBServer002"));
+    },*/
+
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moving away a shard from a follower
 ////////////////////////////////////////////////////////////////////////////////
