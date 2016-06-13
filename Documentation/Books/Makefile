@@ -55,7 +55,7 @@ ppbook-precheck-bad-code-sections:
 
 ppbook-check-html-link:
 	@echo "##### checking for invalid HTML links in $(NAME)"
-	@echo "$(ALLBOOKS)" |sed -e 's; ;\n;g' |sed -e 's;^;/;' -e 's;$$;/;' > /tmp/books.regex
+	@echo "$(ALLBOOKS)" | tr " " "\n" | sed -e 's;^;/;' -e 's;$$;/;' > /tmp/books.regex
 
 	@egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME)|grep '\.md:'| grep 'html'| grep -v 'http://' | grep -v 'https://' | grep -v 'header.css' | grep -v -f /tmp/books.regex > /tmp/relative_html_links.txt ||true
 	@if test "`cat /tmp/relative_html_links.txt |wc -l`" -gt 0; then \
