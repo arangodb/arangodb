@@ -222,7 +222,7 @@ RX = [
     # Error codes replace
     (re.compile(r"(####)#+"), r""),
     #  (re.compile(r"- (\w+):\s*@LIT{(.+)}"), r"\n*\g<1>* - **\g<2>**:"),
-    (re.compile(r"(.+),(\d+),\"(.+)\",\"(.+)\""), r"\n*\g<2>* - **\g<3>**: \g<4>"),
+    (re.compile(r"(.+),(\d+),\"(.+)\",\"(.+)\""), r"\n- *\g<2>* - **\g<1>** - **\g<3>**:\n     \g<4>"),
 
     (re.compile(r"TODOSWAGGER.*"),r"")
     ]
