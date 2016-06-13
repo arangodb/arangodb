@@ -347,13 +347,19 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
     for (auto& it : _schreier) {
       delete it;
     }
+    for (auto& it : _toSearch) {
+      delete it;
+    }
+    for (auto& it : _nextDepth) {
+      delete it;
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.
   //////////////////////////////////////////////////////////////////////////////
 
-  const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next() override {
+  EnumeratedPath<edgeIdentifier, vertexIdentifier> const& next() override {
     if (_lastReturned < _schreierIndex) {
       // We still have something on our stack.
       // Paths have been read but not returned.
