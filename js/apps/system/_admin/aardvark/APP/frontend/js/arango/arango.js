@@ -297,8 +297,26 @@
       this.buildSubNavBar(menus);
     },
 
+    buildNodesSubNav: function(activeKey, disabled) {
+      var menus = {
+        Overview: {
+          route: '#nodes'
+        },
+        Shards: {
+          route: '#shards'
+        }
+      };
+
+      menus[activeKey].active = true;
+      if (disabled) {
+        menus[disabled].disabled = true;
+      }
+      this.buildSubNavBar(menus);
+    },
+
     scaleability: undefined,
 
+    /*
     //nav for cluster/nodes view
     buildNodesSubNav: function(type) {
 
@@ -363,6 +381,7 @@
 
       this.buildSubNavBar(menus);
     },
+    */
 
     //nav for collection view
     buildCollectionSubNav: function(collectionName, activeKey) {
