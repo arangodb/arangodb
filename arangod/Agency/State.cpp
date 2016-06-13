@@ -195,7 +195,7 @@ std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
   for (size_t i = start - _cur; i <= end - _cur; ++i) {  // TODO:: Check bounds
     try {
       slices.push_back(VPackSlice(_log.at(i).entry->data()));
-    } catch (std::exception const& e) {
+    } catch (std::exception const&) {
       break;
     } 
   }

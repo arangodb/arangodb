@@ -98,9 +98,9 @@
 #
 * [Deployment](Deployment/README.md)
   * [Single instance](Deployment/Single.md)
+  * [Cluster: Local test](Deployment/Local.md)
   * [Cluster: DC/OS](Deployment/Mesos.md)
   * [Cluster: Docker](Deployment/Docker.md)
-  * [Cluster: Local test](Deployment/Local.md)
 #
 * [Administration](Administration/README.md)
   * [Managing Users](Administration/ManagingUsers.md)

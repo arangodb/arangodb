@@ -1,4 +1,4 @@
-!SECTION ArangoDB and Docker
+!SECTION ArangoDB Cluster and Docker
 
 !SUBSECTION Networking
 
@@ -6,7 +6,7 @@ A bit of extra care has to be invested in how docker isolates its network. By de
 
 To simply make arangodb available on all host interfaces on port 8529:
 
-`docker run -p 8529:8529 -e ARANGO_RANDOM_ROOT_PASSWORD=1 arangodb`
+`docker run -p 8529:8529 -e ARANGO_NO_AUTH=1 arangodb`
 
 Another possibility is to start docker via network mode `host`. This is possible but generally not recommended. To do it anyway check the docker documentation for details.
 
