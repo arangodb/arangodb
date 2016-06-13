@@ -701,7 +701,7 @@ ArangoDB returned an HTTP status code 200 (ok). Clients can still send this head
 ArangoDB 3.0 but this will not influence the HTTP status code produced by ArangoDB.
 
 The "location" header produced by ArangoDB 3.0 will now always contain the database 
-name. This was also the default in previous versions of ArangoDB, but the behaviour
+name. This was also the default in previous versions of ArangoDB, but the behavior
 could be overridden by sending the HTTP header `x-arango-version: 1.4`. Clients can
 still send the header, but this will not make the database name in the "location"
 response header disappear.

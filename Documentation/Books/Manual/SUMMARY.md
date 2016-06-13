@@ -62,6 +62,7 @@
   * [Working with Edges](Graphs/Edges/README.md)
 #
 * [Foxx Microservices](Foxx/README.md)
+  * [Foxx Anatomy](Foxx/Anatomy.md)
   * [Getting started](Foxx/GettingStarted.md)
   * [Service manifest](Foxx/Manifest.md)
   * [Service context](Foxx/Context.md)
