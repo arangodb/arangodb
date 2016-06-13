@@ -65,7 +65,7 @@ static int FetchDocumentById(arangodb::Transaction* trx,
 }
 
 SingleServerTraverser::SingleServerTraverser(
-    TraverserOptions& opts, Transaction* trx,
+    TraverserOptions& opts, arangodb::Transaction* trx,
     std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
         expressions)
     : Traverser(opts, expressions), _trx(trx) {

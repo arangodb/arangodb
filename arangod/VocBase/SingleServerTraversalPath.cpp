@@ -25,7 +25,7 @@
 
 using namespace arangodb::traverser;
 
-void SingleServerTraversalPath::getDocumentByIdentifier(Transaction* trx,
+void SingleServerTraversalPath::getDocumentByIdentifier(arangodb::Transaction* trx,
                                                         std::string const& identifier,
                                                         VPackBuilder& result) {
   std::shared_ptr<VPackBuffer<uint8_t>> vertex =
@@ -33,7 +33,7 @@ void SingleServerTraversalPath::getDocumentByIdentifier(Transaction* trx,
   result.add(VPackSlice(vertex->data()));
 }
 
-void SingleServerTraversalPath::pathToVelocyPack(Transaction* trx,
+void SingleServerTraversalPath::pathToVelocyPack(arangodb::Transaction* trx,
                                                  VPackBuilder& result) {
   result.openObject();
   result.add(VPackValue("edges"));
@@ -56,7 +56,7 @@ void SingleServerTraversalPath::pathToVelocyPack(Transaction* trx,
   result.close();
 }
 
-void SingleServerTraversalPath::lastEdgeToVelocyPack(Transaction* trx, VPackBuilder& result) {
+void SingleServerTraversalPath::lastEdgeToVelocyPack(arangodb::Transaction* trx, VPackBuilder& result) {
   if (_path.edges.empty()) {
     result.add(arangodb::basics::VelocyPackHelper::NullValue());
     return;
