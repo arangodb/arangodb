@@ -93,6 +93,9 @@
 //Support View
 @import 'support';
 
+// Extra CSS for internet explorer :)
+@import 'ie';
+
 // Data Tables, TODO: might all be superflous
 @import 'dataTables';
 
@@ -102,5 +105,4 @@
 
 // Plugin
 @import 'uploadfile';
-
 @import 'animate';

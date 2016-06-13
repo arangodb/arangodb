@@ -302,6 +302,7 @@
         return;
       }
       this.shardsView = new window.ShardsView({
+        dbServers: this.dbServers 
       });
       this.shardsView.render();
     },

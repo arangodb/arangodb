@@ -37,15 +37,11 @@ using namespace arangodb::basics;
 namespace arangodb {
 namespace httpclient {
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief empty map, used for headers
-////////////////////////////////////////////////////////////////////////////////
-
 std::unordered_map<std::string, std::string> const SimpleHttpClient::NO_HEADERS {};
 
-// -----------------------------------------------------------------------------
-// constructors and destructors
-// -----------------------------------------------------------------------------
+/// @brief default value for max packet size
+size_t SimpleHttpClient::MaxPacketSize = 128 * 1024 * 1024;
 
 SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
                                    double requestTimeout, bool warn)
@@ -60,7 +56,7 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
       _locationRewriter({nullptr, nullptr}),
       _nextChunkedSize(0),
       _result(nullptr),
-      _maxPacketSize(128 * 1024 * 1024),
+      _maxPacketSize(MaxPacketSize),
       _maxRetries(3),
       _retryWaitTime(1 * 1000 * 1000),
       _retryMessage(),

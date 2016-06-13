@@ -334,7 +334,6 @@ function mountController(service, mount, filename) {
 }
 
 exports.routeService = function (service, throwOnErrors) {
-  const defaultDocument = service.manifest.defaultDocument;
   let error = null;
 
   service.routes = {
@@ -352,21 +351,6 @@ exports.routeService = function (service, throwOnErrors) {
       module: service.main
     }
   };
-
-  if (defaultDocument) {
-    // only add redirection if src and target are not the same
-    service.routes.routes.push({
-      url: {match: '/'},
-      action: {
-        do: '@arangodb/actions/redirectRequest',
-        options: {
-          permanently: false,
-          destination: defaultDocument,
-          relative: true
-        }
-      }
-    });
-  }
 
   try {
     // mount all controllers

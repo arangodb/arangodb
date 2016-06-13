@@ -537,114 +537,14 @@
     },
 
     getCoordStatHistory: function(callback) {
-      var self = this, promises = [], historyUrl;
-
-      var merged = {
-        http: {}
-      };
-
-      var getHistory = function(url) {
-        return $.get(url, {count: self.statCollectCoord.size()}, null, 'json');
-      };
-
-      var mergeHistory = function(data) {
-
-        var onetime = ['times'];
-        var values = [
-          'physicalMemory',
-          'residentSizeCurrent',
-          'clientConnections15M',
-          'clientConnectionsCurrent'
-        ];
-        var http = [
-          'optionsPerSecond',
-          'putsPerSecond',
-          'headsPerSecond',
-          'postsPerSecond',
-          'getsPerSecond',
-          'deletesPerSecond',
-          'othersPerSecond',
-          'patchesPerSecond'
-        ];
-        var arrays = [
-          'bytesSentPerSecond',
-          'bytesReceivedPerSecond',
-          'avgRequestTime'
-        ];
-
-        var counter = 0, counter2;
-
-        _.each(data, function(stat) {
-          if (stat.enabled) {
-            self.statsEnabled = true;
-          }
-          else {
-            self.statsEnabled = false;
-          }
-
-          if (typeof stat === 'object') {
-            if (counter === 0) {
-              //one time value
-              _.each(onetime, function(value) {
-                merged[value] = stat[value];
-              });
-
-              //values
-              _.each(values, function(value) {
-                merged[value] = stat[value];
-              });
-
-              //http requests arrays
-              _.each(http, function(value) {
-                merged.http[value] = stat[value];
-              });
-
-              //arrays
-              _.each(arrays, function(value) {
-                merged[value] = stat[value];
-              });
-
-            }
-            else {
-              //values
-              _.each(values, function(value) {
-                merged[value] = merged[value] + stat[value];
-              });
-              //http requests arrays
-              _.each(http, function(value) {
-                  counter2 = 0;
-                  _.each(stat[value], function(x) {
-                    merged.http[value][counter] = merged.http[value][counter] + x;
-                    counter2++;
-                  });
-              });
-              _.each(arrays, function(value) {
-                counter2 = 0;
-                _.each(stat[value], function(x) {
-                  merged[value][counter] = merged[value][counter] + x;
-                  counter2++;
-                });
-              });
-            }
-          counter++;
-          }
-        });
-      };
-
-      this.statCollectCoord.each(function(coord) {
-        historyUrl = coord.url + '/short';
-        promises.push(getHistory(historyUrl));
-      });
-
-      $.when.apply($, promises).done(function() {
-        //wait until all data is here
-        var arr = [];
-        _.each(promises, function(stat) {
-          arr.push(stat.responseJSON);
-        });
-        mergeHistory(arr);
-        callback(merged);
-      });
+      $.ajax({
+        url: "statistics/coordshort",
+        json: true,
+      })
+      .success(function(data) {
+        this.statsEnabled = data.enabled;
+        callback(data.data);
+      }.bind(this));
     }
 
   });

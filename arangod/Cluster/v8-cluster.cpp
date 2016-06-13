@@ -955,6 +955,10 @@ static void JS_GetCoordinators(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  if (!ServerState::instance()->isRunningInCluster()) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("ArangoDB is not running in cluster mode");
+  }
+
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("getCoordinators()");
   }

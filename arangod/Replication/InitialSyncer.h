@@ -57,7 +57,7 @@ class InitialSyncer : public Syncer {
  public:
   InitialSyncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*,
                 std::unordered_map<std::string, bool> const&,
-                std::string const&, bool);
+                std::string const&, bool verbose);
 
   ~InitialSyncer();
 

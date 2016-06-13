@@ -273,6 +273,15 @@ def LIT(txt, wordboundary = ['<b>','</b>']):
     return r.sub(subpattern, txt)
 
 ################################################################################
+### @brief LIT
+###
+### \ -> needs to become \\ so \n's in the text can be differciated.
+################################################################################
+
+def BACKSLASH(txt):
+    return txt.replace('\\', '\\\\\\')
+
+################################################################################
 ### @brief Typegraphy
 ################################################################################
 
@@ -292,7 +301,7 @@ def Typography(txt):
     r = rc(r"""@ref [a-zA-Z0-9]+""", MS)
     txt = r.sub("the manual", txt)
     txt = re.sub(r"@endDocuBlock", "", txt)
-
+    txt = BACKSLASH(txt);
     return txt
 
 ################################################################################

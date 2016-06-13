@@ -361,7 +361,6 @@
           label: user.get("user")
         });
       });
-      console.log(users);
 
       tableContent.push(
         window.modalView.createSelectEntry(

@@ -210,6 +210,12 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
     config->_incremental = value.getBoolean();
   }
 
+  value = slice.get("useCollectionId");
+
+  if (value.isBoolean()) {
+    config->_useCollectionId = value.getBoolean();
+  }
+
   value = slice.get("ignoreErrors");
 
   if (value.isNumber()) {
@@ -463,6 +469,7 @@ TRI_replication_applier_configuration_t::
       _requireFromPresent(false),
       _incremental(false),
       _verbose(false),
+      _useCollectionId(true),
       _restrictType(),
       _restrictCollections() {}
 
@@ -509,6 +516,7 @@ void TRI_replication_applier_configuration_t::toVelocyPack(
   builder.add("requireFromPresent", VPackValue(_requireFromPresent));
   builder.add("verbose", VPackValue(_verbose));
   builder.add("incremental", VPackValue(_incremental));
+  builder.add("useCollectionId", VPackValue(_useCollectionId));
   builder.add("restrictType", VPackValue(_restrictType));
 
   builder.add("restrictCollections", VPackValue(VPackValueType::Array));
@@ -800,6 +808,7 @@ void TRI_replication_applier_configuration_t::update(
   _requireFromPresent = src->_requireFromPresent;
   _verbose = src->_verbose;
   _incremental = src->_incremental;
+  _useCollectionId = src->_useCollectionId;
   _restrictType = src->_restrictType;
   _restrictCollections = src->_restrictCollections;
   _connectionRetryWaitTime = src->_connectionRetryWaitTime;

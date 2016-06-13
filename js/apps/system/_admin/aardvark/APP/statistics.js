@@ -26,9 +26,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+const download = internal.download;
 const cluster = require('@arangodb/cluster');
 
 const db = require('@arangodb').db;
+const _ = require('lodash');
 
 const STATISTICS_INTERVAL = require('@arangodb/statistics').STATISTICS_INTERVAL;
 const STATISTICS_HISTORY_INTERVAL = require('@arangodb/statistics').STATISTICS_HISTORY_INTERVAL;
@@ -403,6 +405,108 @@ router.use((req, res, next) => {
   next();
 });
 
+router.get("/coordshort", function(req, res) {
+  var merged = {
+    http: {}
+  };
+
+  var mergeHistory = function(data) {
+
+    var onetime = ['times'];
+    var values = [
+      'physicalMemory',
+      'residentSizeCurrent',
+      'clientConnections15M',
+      'clientConnectionsCurrent'
+    ];
+    var http = [
+      'optionsPerSecond',
+      'putsPerSecond',
+      'headsPerSecond',
+      'postsPerSecond',
+      'getsPerSecond',
+      'deletesPerSecond',
+      'othersPerSecond',
+      'patchesPerSecond'
+    ];
+    var arrays = [
+      'bytesSentPerSecond',
+      'bytesReceivedPerSecond',
+      'avgRequestTime'
+    ];
+
+    var counter = 0, counter2;
+
+    _.each(data, function(stat) {
+      //if (stat.enabled) {
+      //  self.statsEnabled = true;
+     // }
+      //else {
+      //  self.statsEnabled = false;
+      //}
+
+      if (typeof stat === 'object') {
+        if (counter === 0) {
+          //one time value
+          _.each(onetime, function(value) {
+            merged[value] = stat[value];
+          });
+
+          //values
+          _.each(values, function(value) {
+            merged[value] = stat[value];
+          });
+
+          //http requests arrays
+          _.each(http, function(value) {
+            merged.http[value] = stat[value];
+          });
+
+          //arrays
+          _.each(arrays, function(value) {
+            merged[value] = stat[value];
+          });
+
+        }
+        else {
+          //values
+          _.each(values, function(value) {
+            merged[value] = merged[value] + stat[value];
+          });
+          //http requests arrays
+          _.each(http, function(value) {
+            counter2 = 0;
+            _.each(stat[value], function(x) {
+              merged.http[value][counter] = merged.http[value][counter] + x;
+              counter2++;
+            });
+          });
+          _.each(arrays, function(value) {
+            counter2 = 0;
+            _.each(stat[value], function(x) {
+              merged[value][counter] = merged[value][counter] + x;
+              counter2++;
+            });
+          });
+        }
+        counter++;
+      }
+    });
+  };
+
+  var coordinators = global.ArangoClusterInfo.getCoordinators();
+  
+  var coordinatorStats = coordinators.map(coordinator => {
+    var endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinator);
+    var response = download(endpoint.replace(/^tcp/, "http") + "/_db/_system/_admin/aardvark/statistics/short?count=" + coordinators.length);
+    return JSON.parse(response.body);
+  });
+  
+  mergeHistory(coordinatorStats);
+  res.json({"enabled": coordinatorStats.some(stat => stat.enabled), "data": merged});
+})
+.summary("Short term history for all coordinators")
+.description("This function is used to get the statistics history.");
 
 router.get("/short", function (req, res) {
   const start = req.queryParams.start;

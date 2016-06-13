@@ -31,7 +31,6 @@
 
 #include <deque>
 #include <stack>
-#include <thread>
 
 namespace arangodb {
 namespace basics {
@@ -49,6 +48,7 @@ struct VertexGetter {
   virtual ~VertexGetter() = default;
   virtual bool getVertex(edgeIdentifier const&, vertexIdentifier const&, size_t,
                          vertexIdentifier&) = 0;
+  virtual void setStartVertex(std::string const&) {}
 };
 
 template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
@@ -162,7 +162,7 @@ class DepthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdentif
   /// @brief Get the next Path element from the traversal.
   //////////////////////////////////////////////////////////////////////////////
 
-  const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next() override {
+  EnumeratedPath<edgeIdentifier, vertexIdentifier> const& next() override {
     if (this->_isFirst) {
       this->_isFirst = false;
       return this->_enumeratedPath;
@@ -245,7 +245,7 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
     PathStep(){};
 
    public:
-    PathStep(vertexIdentifier const& vertex) : sourceIdx(0), vertex(vertex){};
+    PathStep(vertexIdentifier const& vertex) : sourceIdx(0), vertex(vertex) {}
 
     PathStep(size_t sourceIdx, edgeIdentifier const& edge,
              vertexIdentifier const& vertex)
@@ -262,7 +262,7 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
     vertexIdentifier vertex;
 
    private:
-    NextStep(){};
+    NextStep() {}
 
    public:
     NextStep(size_t sourceIdx, vertexIdentifier const& vertex)
@@ -347,13 +347,19 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
     for (auto& it : _schreier) {
       delete it;
     }
+    for (auto& it : _toSearch) {
+      delete it;
+    }
+    for (auto& it : _nextDepth) {
+      delete it;
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.
   //////////////////////////////////////////////////////////////////////////////
 
-  const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next() override {
+  EnumeratedPath<edgeIdentifier, vertexIdentifier> const& next() override {
     if (_lastReturned < _schreierIndex) {
       // We still have something on our stack.
       // Paths have been read but not returned.
@@ -390,12 +396,13 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
         TRI_ASSERT(_nextDepth.empty());
         TRI_ASSERT(_currentDepth <= this->_maxDepth);
       }
-      // This access is always save.
+      // This access is always safe.
       // If not it should have bailed out before.
       TRI_ASSERT(_toSearchPos < _toSearch.size());
 
       _tmpEdges.clear();
-      auto& next = _toSearch[_toSearchPos++];
+      auto next = _toSearch[_toSearchPos++];
+      TRI_ASSERT(next != nullptr);
       this->_edgeGetter->getAllEdges(next->vertex, _tmpEdges, _currentDepth);
       if (!_tmpEdges.empty()) {
         bool didInsert = false;

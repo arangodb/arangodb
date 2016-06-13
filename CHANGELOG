@@ -1,10 +1,22 @@
-v3.0.0-rc2 (2015-06-12)
+v3.0.0-rc2 (2016-06-12)
 -----------------------
 
-* forward ported V8 Comparator bugfix for inline heuristics from 
+* added option `--server.max-packet-size` for client tools
+
+* renamed option `--server.ssl-protocol` to `--ssl.protocol` in client tools
+  (was already done for arangod, but overlooked for client tools)
+
+* fix handling of `--ssl.protocol` value 5 (TLS v1.2) in client tools, which
+  claimed to support it but didn't
+
+
+v3.0.0-rc1 (2016-06-10)
+-----------------------
+
+* forward ported V8 Comparator bugfix for inline heuristics from
   https://github.com/v8/v8/commit/5ff7901e24c2c6029114567de5a08ed0f1494c81
 
-* changed to-string conversion for AQL objects and arrays, used by the AQL 
+* changed to-string conversion for AQL objects and arrays, used by the AQL
   function `TO_STRING()` and implicit to-string casts in AQL
 
   - arrays are now converted into their JSON-stringify equivalents, e.g.
@@ -12,7 +24,7 @@ v3.0.0-rc2 (2015-06-12)
     - `[ ]` is now converted to `[]`
     - `[ 1, 2, 3 ]` is now converted to `[1,2,3]`
     - `[ "test", 1, 2 ] is now converted to `["test",1,2]`
-    
+
     Previous versions of ArangoDB converted arrays with no members into the
     empty string, and non-empty arrays into a comma-separated list of member
     values, without the surrounding angular brackets. Additionally, string
