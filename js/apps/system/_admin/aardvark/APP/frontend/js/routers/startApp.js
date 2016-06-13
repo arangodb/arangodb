@@ -12,6 +12,11 @@
       }
     });
 
+    //set ajax cache globally to false. otherwise IE + EDGE will cache everything
+    $.ajaxSetup({
+      cache: false
+    });
+
     $(document).ready(function() {
       window.App = new window.Router();
       Backbone.history.start();
