@@ -111,7 +111,7 @@
           self.dbServer = self.dbServers[0];
 
           self.dbServer.each(function(model) {
-            if (model.get("name") === 'DBServer1') {
+            if (model.get("name") === 'DBServer001') {
               self.dbServer = model;
             }
           });

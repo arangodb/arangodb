@@ -205,11 +205,11 @@ var mType = {
     REPLICATION_MARKER_REMOVE: 2302
   };
 
-function syncCollectionFinalize(database, collname, collid, from, config) {
+function syncCollectionFinalize(database, collname, from, config) {
   var url = endpointToURL(config.endpoint) + "/_db/" + database + 
-            "/_api/replication/logger-follow?collection=" + collid + "&from=";
+            "/_api/replication/logger-follow?collection=" + collname + "&from=";
 
-  var coll = require("internal").db[collid];
+  var coll = require("internal").db[collname];
 
   var transactions = {};
 
@@ -237,11 +237,12 @@ function syncCollectionFinalize(database, collname, collid, from, config) {
         return;
       }
       catch (err) {
+        console.debug("syncCollectionFinalize: insert1", entry, JSON.stringify(err));
       }
       try {
         coll.replace(entry.data._key, entry.data, {isRestore: true});
       } catch (errx) {
-        console.error("syncCollectionFinalize: replace1", entry, errx);
+        console.error("syncCollectionFinalize: replace1", entry, JSON.stringify(errx));
         throw errx;
       }
     } else if (entry.type === mType.REPLICATION_MARKER_EDGE) {
@@ -253,11 +254,12 @@ function syncCollectionFinalize(database, collname, collid, from, config) {
         return;
       }
       catch (err) {
+        console.debug("syncCollectionFinalize: insert2", entry, JSON.stringify(err));
       }
       try {
         coll.replace(entry.key, entry.data, {isRestore: true});
       } catch (errx) {
-        console.error("syncCollectionFinalize: replace2", entry, errx);
+        console.error("syncCollectionFinalize: replace2", entry, JSON.stringify(errx));
         throw errx;
       }
     } else if (entry.type === mType.REPLICATION_MARKER_REMOVE) {
@@ -267,7 +269,7 @@ function syncCollectionFinalize(database, collname, collid, from, config) {
       try {
         coll.remove(entry.key);
       } catch (errx) {
-        console.error("syncCollectionFinalize: remove", entry, errx);
+        console.error("syncCollectionFinalize: remove", entry, JSON.stringify(errx));
         throw errx;
       }
     } else if (entry.type === mType.REPLICATION_TRANSACTION_START) {
@@ -286,21 +288,21 @@ function syncCollectionFinalize(database, collname, collid, from, config) {
       try {
         coll.ensureIndex(entry.index);
       } catch(errx) {
-        console.error("syncCollectionFinalize: ensureIndex", entry, errx);
+        console.error("syncCollectionFinalize: ensureIndex", entry, JSON.stringify(errx));
         throw errx;
       }
     } else if (entry.type === mType.REPLICATION_INDEX_DROP) {
       try {
         coll.dropIndex(entry.id);
       } catch(errx) {
-        console.error("syncCollectionFinalize: dropIndex", entry, errx);
+        console.error("syncCollectionFinalize: dropIndex", entry, JSON.stringify(errx));
         throw errx;
       }
     } else if (entry.type === mType.REPLICATION_COLLECTION_CHANGE) {
       try {
         coll.properties(entry.collection);
       } catch(errx) {
-        console.error("syncCollectionFinalize: properties", entry, errx);
+        console.error("syncCollectionFinalize: properties", entry, JSON.stringify(errx));
         throw errx;
       }
     } else {

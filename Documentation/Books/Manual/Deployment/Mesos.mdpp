@@ -15,8 +15,7 @@ DC/OS comes with its own package management. Packages can be installed from the 
         2. Open your browser and go to the DC/OS admin interface
         3. Open the "Universe" tab
         4. Locate arangodb and hit "Install Package"
-        5. Optionally review the settings (Advanced Installation)
-        6. Press "Install Package"
+        5. Press "Install Package"
 
 2. Installing via DC/OS Commandline
 
@@ -37,7 +36,7 @@ After installing DC/OS will start deploying the ArangoDB cluster on the DC/OS cl
 
 !SUBSUBSECTION ArangoDB Mesos framework
 
-As soon as ArangoDB was deployed Mesos will keep your cluster running. The web interface has many monitoring facilities so be sure to make yourself familiar with the DC/OS webinterface. As a fault tolerant system Mesos will take care of most failure scenarios automatically. Mesos does that by running ArangoDB as a so called "framework". This framework has been specifically built to keep ArangoDB running in a healthy condition on the Mesos cluster. From time to time a task might fail. The ArangoDB framework will then take care of rescheduling the failed task. As it knows about the very specifics of each cluster task and its role it will automatically take care of most failure scenarios.
+As soon as ArangoDB was deployed Mesos will keep your cluster running. The webinterface has many monitoring facilities so be sure to make yourself familiar with the DC/OS webinterface. As a fault tolerant system Mesos will take care of most failure scenarios automatically. Mesos does that by running ArangoDB as a so called "framework". This framework has been specifically built to keep ArangoDB running in a healthy condition on the Mesos cluster. From time to time a task might fail. The ArangoDB framework will then take care of rescheduling the failed task. As it knows about the very specifics of each cluster task and its role it will automatically take care of most failure scenarios.
 
 To inspect what the framework is doing go to `http://webinterface-url/mesos` in your browser. Locate the task "arangodb" and inspect stderr in the "Sandbox". This can be of interest for example when a slave got lost and the framework is rescheduling the task.
 

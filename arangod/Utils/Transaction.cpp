@@ -2407,7 +2407,6 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   std::vector<TRI_doc_mptr_t*> result;
   result.reserve(1000);
   while (cursor->hasMore()) {
-    result.clear();
     cursor->getMoreMptr(result, 1000);
     for (auto const& mptr : result) {
       resultBuilder.add(VPackValue(mptr->vpack(), VPackValueType::External));

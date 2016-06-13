@@ -3061,6 +3061,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
       VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
   config._incremental = VelocyPackHelper::getBooleanValue(
       body, "incremental", defaults._incremental);
+  config._useCollectionId = VelocyPackHelper::getBooleanValue(
+      body, "useCollectionId", defaults._useCollectionId);
   config._requireFromPresent = VelocyPackHelper::getBooleanValue(
       body, "requireFromPresent", defaults._requireFromPresent);
   config._restrictType = VelocyPackHelper::getStringValue(
@@ -3215,6 +3217,8 @@ void RestReplicationHandler::handleCommandSync() {
       VelocyPackHelper::getBooleanValue(body, "incremental", false);
   bool const keepBarrier =
       VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
+  bool const useCollectionId =
+      VelocyPackHelper::getBooleanValue(body, "useCollectionId", true);
 
   std::unordered_map<std::string, bool> restrictCollections;
   VPackSlice const restriction = body.get("restrictCollections");
@@ -3248,6 +3252,7 @@ void RestReplicationHandler::handleCommandSync() {
   config._password = password;
   config._includeSystem = includeSystem;
   config._verbose = verbose;
+  config._useCollectionId = useCollectionId;
         
   // wait until all data in current logfile got synced
   arangodb::wal::LogfileManager::instance()->waitForSync(5.0);
