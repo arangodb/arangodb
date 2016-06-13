@@ -1,0 +1,40 @@
+!CHAPTER The "db" Object
+
+*db.name* returns a [collection object](CollectionObject.md) for the collection *name*.
+
+The following methods exists on the *_db* object:
+
+*Database*
+
+* [db._createDatabase(name, options, users)](../../DataModeling/Databases/WorkingWith.html#create-database)
+* [db._databases()](../../DataModeling/Databases/WorkingWith.html#list-databases)
+* [db._dropDatabase(name, options, users)](../../DataModeling/Databases/WorkingWith.html#drop-database)
+* [db._useDatabase(name)](../../DataModeling/Databases/WorkingWith.html#use-database)
+
+*Indexes*
+
+* [db._index(index)](../../Indexing/WorkingWithIndexes.html#fetching-an-index-by-handle)
+* [db._dropIndex(index)](../../Indexing/WorkingWithIndexes.html#dropping-an-index)
+
+*Properties*
+
+* [db._id()](../../DataModeling/Databases/WorkingWith.html#id)
+* [db._isSystem()](../../DataModeling/Databases/WorkingWith.html#issystem)
+* [db._name()](../../DataModeling/Databases/WorkingWith.html#name)
+* [db._path()](../../DataModeling/Databases/WorkingWith.html#path)
+* [db._version()](../../DataModeling/Documents/DocumentMethods.html#get-the-version-of-arangodb)
+
+*Collection*
+
+* [db._collection(name)](../../DataModeling/Collections/DatabaseMethods.html#collection)
+* [db._create(name)](../../DataModeling/Collections/DatabaseMethods.html#create)
+* [db._drop(name)](../../DataModeling/Collections/DatabaseMethods.html#drop)
+* [db._truncate(name)](../../DataModeling/Collections/DatabaseMethods.html#truncate)
+
+*Document*
+
+* [db._document(object)](../../DataModeling/Documents/DatabaseMethods.html#document)
+* [db._exists(object)](../../DataModeling/Documents/DatabaseMethods.html#exists)
+* [db._remove(selector)](../../DataModeling/Documents/DatabaseMethods.html#remove)
+* [db._replace(selector,data)](../../DataModeling/Documents/DatabaseMethods.html#replace)
+* [db._update(selector,data)](../../DataModeling/Documents/DatabaseMethods.html#update)

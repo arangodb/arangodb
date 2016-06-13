@@ -169,6 +169,9 @@
   * [Incompatible changes in 2.3](ReleaseNotes/UpgradingChanges23.md)
 #
 * [Appendix](Appendix/README.md)
+  * [References](Appendix/References/README.md)
+    * [db](Appendix/References/DBObject.md)
+    * [collection](Appendix/References/CollectionObject.md)
   * [JavaScript Modules](Appendix/JavaScriptModules/README.md)
     * ["console"](Appendix/JavaScriptModules/Console.md)
     * ["fs"](Appendix/JavaScriptModules/FS.md)
