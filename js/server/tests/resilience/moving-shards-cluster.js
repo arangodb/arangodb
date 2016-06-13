@@ -279,7 +279,6 @@ function MovingShardsSuite () {
 
     var name = "DBServer" + ans;
     while (list.indexOf(name) >= 0) {
-      require("internal").print(list, name);
       count += 1;
       str = "" + count;
       ans = pad.substring(0, pad.length - str.length) + str;
