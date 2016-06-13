@@ -1,4 +1,3 @@
-
 @startDocuBlock API_EDGE_READ_ALL
 @brief reads all edges from collection
 
