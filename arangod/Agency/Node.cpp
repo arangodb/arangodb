@@ -513,14 +513,9 @@ bool Node::applieOp(VPackSlice const& slice) {
 
 // Apply slice to this node
 bool Node::applies(VPackSlice const& slice) {
-  if (slice.isObject()) {
-    // Object is an operation?
-    if (slice.hasKey("op")) {
-      if (applieOp(slice)) {
-        return true;
-      }
-    }
 
+  if (slice.isObject()) {
+    
     // Object is special case json
     for (auto const& i : VPackObjectIterator(slice)) {
       std::string key = i.key.copyString();
@@ -534,11 +529,11 @@ bool Node::applies(VPackSlice const& slice) {
         _children[key]->applies(i.value);
       }
     }
-
+    
   } else {
     *this = slice;
   }
-
+  
   return true;
 }
 
