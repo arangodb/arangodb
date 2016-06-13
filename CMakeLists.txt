@@ -119,6 +119,11 @@ configure_file(
 ## OPERATION SYSTEM
 ################################################################################
 
+option(HOMEBREW
+  "whether to install for homebrew"
+  Off
+)
+
 if (WIN32)
   set(WINDOWS TRUE)
   set(MSBUILD TRUE)

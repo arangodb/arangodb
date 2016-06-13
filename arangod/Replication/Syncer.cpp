@@ -79,6 +79,7 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
   _localServerIdString = StringUtils::itoa(_localServerId);
 
   _configuration.update(configuration);
+  _useCollectionId = _configuration._useCollectionId;
 
   _masterInfo._endpoint = configuration->_endpoint;
 
@@ -439,7 +440,10 @@ int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(VelocyPackHelper::getNumericValue<int>(
       slice, "type", static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
 
-  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  TRI_vocbase_col_t* col = nullptr;
+  if (_useCollectionId) {
+    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  }
 
   if (col == nullptr) {
     // try looking up the collection by name then
@@ -480,7 +484,11 @@ int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
 
 int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
   TRI_voc_cid_t const cid = getCid(slice);
-  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  TRI_vocbase_col_t* col = nullptr;
+  
+  if (_useCollectionId) {
+    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  }
 
   if (col == nullptr) {
     std::string cname = getCName(slice);

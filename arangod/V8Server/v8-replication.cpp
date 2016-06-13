@@ -310,6 +310,11 @@ static void JS_SynchronizeReplication(
         TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("keepBarrier")));
   }
 
+  if (object->Has(TRI_V8_ASCII_STRING("useCollectionId"))) {
+    config._useCollectionId =
+        TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("useCollectionId")));
+  }
+
   std::string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType,
                        verbose);

@@ -98,9 +98,9 @@
 #
 * [Deployment](Deployment/README.md)
   * [Single instance](Deployment/Single.md)
+  * [Cluster: Local test](Deployment/Local.md)
   * [Cluster: DC/OS](Deployment/Mesos.md)
   * [Cluster: Docker](Deployment/Docker.md)
-  * [Cluster: Local test](Deployment/Local.md)
 #
 * [Administration](Administration/README.md)
   * [Managing Users](Administration/ManagingUsers.md)
@@ -169,6 +169,9 @@
   * [Incompatible changes in 2.3](ReleaseNotes/UpgradingChanges23.md)
 #
 * [Appendix](Appendix/README.md)
+  * [References](Appendix/References/README.md)
+    * [db](Appendix/References/DBObject.md)
+    * [collection](Appendix/References/CollectionObject.md)
   * [JavaScript Modules](Appendix/JavaScriptModules/README.md)
     * ["console"](Appendix/JavaScriptModules/Console.md)
     * ["fs"](Appendix/JavaScriptModules/FS.md)

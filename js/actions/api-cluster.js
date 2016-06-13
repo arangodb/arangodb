@@ -1002,10 +1002,11 @@ actions.defineHttp({
 ///
 /// @ RESTDESCRIPTION sets the number of coordinators and DBServers desired, 
 /// which are stored in `/Target` in the agency. A body of the form
-///     { "numberOfCoordinators": 12, "numberOfDBServers": 12 }
+///     { "numberOfCoordinators": 12, "numberOfDBServers": 12,
+///       "cleanedServers": [] }
 /// must be supplied. Either one of the values can be left out and will 
-/// then not be changed. Either value can be `null` to indicate that the
-/// cluster cannot be scaled.
+/// then not be changed. Either numeric value can be `null` to indicate 
+/// that the cluster cannot be scaled.
 ///
 /// @ RESTRETURNCODES
 ///
@@ -1063,7 +1064,7 @@ actions.defineHttp({
                        {numberOfCoordinators: nrCoordinators,
                         numberOfDBServers: nrDBServers,
                         cleanedServers});
-    } else {
+    } else {  // PUT
       var body = actions.getJsonBody(req, res);
       if (body === undefined) {
         return;
@@ -1094,6 +1095,17 @@ actions.defineHttp({
         }
       }
       catch (e2) {
+        ok = false;
+      }
+      try {
+        if (body.hasOwnProperty("cleanedServers") &&
+            typeof body.cleanedServers === "object" &&
+            Array.isArray(body.cleanedServers)) {
+          ArangoAgency.set("Target/CleanedServers",
+                           body.cleanedServers);
+        }
+      }
+      catch (e3) {
         ok = false;
       }
       if (!ok) {
@@ -1279,10 +1291,10 @@ actions.defineHttp({
 /// The attribute name is the collection name. Each value is an object
 /// of the following form:
 /// 
-///     { "collection1": { "Plan": { "s100001": ["DBServer1", "DBServer2"],
-///                                  "s100002": ["DBServer3", "DBServer4"] },
-///                        "Current": { "s100001": ["DBServer1", "DBServer2"],
-///                                     "s100002": ["DBServer3"] } },
+///     { "collection1": { "Plan": { "s100001": ["DBServer001", "DBServer002"],
+///                                  "s100002": ["DBServer003", "DBServer004"] },
+///                        "Current": { "s100001": ["DBServer001", "DBServer002"],
+///                                     "s100002": ["DBServer003"] } },
 ///       "collection2": ...
 ///     }
 ///
