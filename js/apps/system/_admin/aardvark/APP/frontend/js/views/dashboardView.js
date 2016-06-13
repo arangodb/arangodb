@@ -418,22 +418,20 @@
             valueList = [valueList[0], read, write];
           }
 
-          self.history[self.server][f].push(valueList);
+          self.history[self.server][f].unshift(valueList);
         }
       });
 		},
 
     cutOffHistory: function (f, cutoff) {
-      var self = this, v;
+      var self = this, v, h = self.history[self.server][f];
 
-      while (self.history[self.server][f].length !== 0) {
-        v = self.history[self.server][f][0][0];
-
-        if (v >= cutoff) {
+      while (h.length !== 0) {
+        if (h[h.length -1][0] >= cutoff) {
           break;
         }
 
-        self.history[self.server][f].shift();
+        h.pop();
       }
     },
 
