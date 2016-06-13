@@ -132,7 +132,7 @@ endmacro ()
 
 # installs a config file -------------------------------------------------------
 macro (install_config name)
-  if (MSVC OR DARWIN)
+  if (MSVC OR (DARWIN AND NOT HOMEBREW))
     generate_root_config(${name})
   else ()
     generate_path_config(${name})
