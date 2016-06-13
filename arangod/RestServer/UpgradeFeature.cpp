@@ -113,6 +113,10 @@ void UpgradeFeature::start() {
 
   // and force shutdown
   if (_upgrade || init->isInitDatabase() || init->restoreAdmin()) {
+    if (init->isInitDatabase()) {
+      *_result = EXIT_SUCCESS;
+    }
+    
     server()->beginShutdown();
   }
 }
@@ -172,6 +176,8 @@ void UpgradeFeature::changeAdminPassword(std::string const& defaultPassword) {
 
   // and return from the context
   LOG(TRACE) << "finished to restore admin user";
+
+  *_result = EXIT_SUCCESS;
 }
 
 void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {

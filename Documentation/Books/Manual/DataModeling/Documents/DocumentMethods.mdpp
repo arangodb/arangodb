@@ -1224,9 +1224,3 @@ as second argument.
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock accessViaGeoIndex
-
-`edge.setProperty(name, value)`
-
-Changes or sets the property *name* an *edges* to *value*.
-
-

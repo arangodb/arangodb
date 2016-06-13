@@ -43,8 +43,8 @@ class GeneralClientConnection;
 
 class SimpleHttpClient {
  private:
-  SimpleHttpClient(SimpleHttpClient const&);
-  SimpleHttpClient& operator=(SimpleHttpClient const&);
+  SimpleHttpClient(SimpleHttpClient const&) = delete;
+  SimpleHttpClient& operator=(SimpleHttpClient const&) = delete;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -175,6 +175,14 @@ class SimpleHttpClient {
                            std::string (*func)(void*, std::string const&)) {
     _locationRewriter.data = data;
     _locationRewriter.func = func;
+  }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set the value for max packet size
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void setMaxPacketSize(size_t value) {
+    MaxPacketSize = value;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -408,7 +416,7 @@ class SimpleHttpClient {
 
   std::vector<std::pair<std::string, std::string>> _pathToBasicAuth;
 
-  size_t const _maxPacketSize;
+  size_t _maxPacketSize;
 
  public:
   size_t _maxRetries;
@@ -434,6 +442,9 @@ class SimpleHttpClient {
 
   // empty map, used for headers
   static std::unordered_map<std::string, std::string> const NO_HEADERS;
+
+  // default value for max packet size
+  static size_t MaxPacketSize;
 };
 }
 }

@@ -362,7 +362,7 @@ function agencyTestSuite () {
       }
 
       var requests = [
-        ["/_api/agency/write", [[{"/arango/Plan/DBServers/DBServer1":{"new":"none","op":"set"}}]]],
+        ["/_api/agency/write", [[{"/arango/Plan/DBServers/DBServer001":{"new":"none","op":"set"}}]]],
         ["/_api/agency/read", [["/arango/Plan/DBServers"]]],
       ];
       
@@ -371,7 +371,7 @@ function agencyTestSuite () {
         assertEqual(res.statusCode, 200);
       });
 
-      assertEqual(res.body, JSON.stringify([{"arango":{"Plan":{"DBServers":{"DBServer1":"none"}}}}]));
+      assertEqual(res.body, JSON.stringify([{"arango":{"Plan":{"DBServers":{"DBServer001":"none"}}}}]));
     }
   };
 }

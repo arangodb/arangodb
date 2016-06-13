@@ -165,7 +165,8 @@ std::vector<check_t> Supervision::checkDBServers() {
     del->openArray();
     del->openObject();
     for (auto const& srv : todelete) {
-      del->add(_agencyPrefix + healthPrefix + srv, VPackValue(VPackValueType::Object));
+      del->add(_agencyPrefix + healthPrefix + srv,
+               VPackValue(VPackValueType::Object));
       del->add("op", VPackValue("delete"));
       del->close();
     }
@@ -273,7 +274,8 @@ std::vector<check_t> Supervision::checkCoordinators() {
     del->openArray();
     del->openObject();
     for (auto const& srv : todelete) {
-      del->add(_agencyPrefix + healthPrefix + srv, VPackValue(VPackValueType::Object));
+      del->add(_agencyPrefix + healthPrefix + srv,
+               VPackValue(VPackValueType::Object));
       del->add("op", VPackValue("delete"));
       del->close();
     }
@@ -450,7 +452,8 @@ void Supervision::shrinkCluster () {
 
     // Minimum 1 DB server must remain
     if (availServers.size() == 1) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Only one db server left for operation";
+      LOG_TOPIC(DEBUG, Logger::AGENCY) <<
+        "Only one db server left for operation";
       return;
     }
 
@@ -464,9 +467,9 @@ void Supervision::shrinkCluster () {
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
-        } catch (std::exception const&) {
-          LOG_TOPIC(DEBUG, Logger::AGENCY) <<
-            "Cannot retrieve replication factor for collection " << collptr.first;
+        } catch (std::exception const& e) {
+          LOG_TOPIC(DEBUG, Logger::AGENCY) << "Cannot retrieve replication " <<
+            "factor for collection " << collptr.first;
           return;
         }
       }
@@ -537,7 +540,7 @@ void Supervision::getUniqueIds() {
   while (!this->isStopping()) {
     try {
       latestId = std::stoul(
-          _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
+        _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
     } catch (...) {
       std::this_thread::sleep_for (std::chrono::seconds(1));
       continue;

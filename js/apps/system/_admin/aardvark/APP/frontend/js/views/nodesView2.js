@@ -29,7 +29,7 @@
         //start polling with interval
         this.intervalFunction = window.setInterval(function() {
           if (window.location.hash === '#nodes') {
-            self.render();
+            self.render(false);
           }
         }, this.interval);
       }
@@ -45,7 +45,7 @@
       window.App.navigate("#node/" + encodeURIComponent(name), {trigger: true});
     },
 
-    render: function () {
+    render: function (navi) {
 
       var self = this;
 
@@ -75,6 +75,9 @@
         }
       });
 
+      if (navi !== false) {
+        arangoHelper.buildNodesSubNav('Overview');
+      }
     },
 
     continueRender: function(nodes, scaling) {
