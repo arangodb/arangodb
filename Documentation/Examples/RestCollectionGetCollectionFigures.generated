@@ -50,7 +50,7 @@ location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products
     <span class="hljs-string">"waitingFor"</span> : <span class="hljs-string">"-"</span>, 
     <span class="hljs-string">"compactionStatus"</span> : { 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-06-12T19:06:45Z"</span> 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-06-13T09:37:46Z"</span> 
     } 
   }, 
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
