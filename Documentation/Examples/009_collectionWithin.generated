@@ -59,7 +59,7 @@ arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/-10"</span> 
   }, 
   { 
-    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1568520.556798576</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1568520.5567985761</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5400"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5400"</span>, 
     <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"5400"</span>, 
@@ -70,7 +70,7 @@ arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/10"</span> 
   }, 
   { 
-    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1568520.556798576</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1568520.5567985761</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5622"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5622"</span>, 
     <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"5622"</span>, 
@@ -81,7 +81,7 @@ arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/10/10"</span> 
   }, 
   { 
-    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1568520.556798576</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1568520.5567985761</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5394"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5394"</span>, 
     <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"5394"</span>, 
@@ -92,7 +92,7 @@ arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/-10"</span> 
   }, 
   { 
-    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1568520.556798576</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1568520.5567985761</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5616"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5616"</span>, 
     <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"5616"</span>, 

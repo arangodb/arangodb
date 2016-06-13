@@ -8,7 +8,7 @@ arangosh&gt; g._shortestPath([{_id: <span class="hljs-string">'germanCity/Cologn
       { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20233"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20253"</span>, 
         <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"loc"</span> : [ 
           <span class="hljs-number">50.9364</span>, 
@@ -19,7 +19,7 @@ arangosh&gt; g._shortestPath([{_id: <span class="hljs-string">'germanCity/Cologn
       { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20239"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20259"</span>, 
         <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"loc"</span> : [ 
           <span class="hljs-number">45.76</span>, 
@@ -30,11 +30,11 @@ arangosh&gt; g._shortestPath([{_id: <span class="hljs-string">'germanCity/Cologn
     ], 
     <span class="hljs-string">"edges"</span> : [ 
       { 
-        <span class="hljs-string">"_key"</span> : <span class="hljs-string">"20279"</span>, 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/20279"</span>, 
+        <span class="hljs-string">"_key"</span> : <span class="hljs-string">"20299"</span>, 
+        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/20299"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20279"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20299"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">700</span> 
       } 
     ], 
