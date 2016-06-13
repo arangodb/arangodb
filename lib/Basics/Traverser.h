@@ -347,13 +347,19 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
     for (auto& it : _schreier) {
       delete it;
     }
+    for (auto& it : _toSearch) {
+      delete it;
+    }
+    for (auto& it : _nextDepth) {
+      delete it;
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.
   //////////////////////////////////////////////////////////////////////////////
 
-  const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next() override {
+  EnumeratedPath<edgeIdentifier, vertexIdentifier> const& next() override {
     if (_lastReturned < _schreierIndex) {
       // We still have something on our stack.
       // Paths have been read but not returned.
@@ -390,7 +396,7 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
         TRI_ASSERT(_nextDepth.empty());
         TRI_ASSERT(_currentDepth <= this->_maxDepth);
       }
-      // This access is always save.
+      // This access is always safe.
       // If not it should have bailed out before.
       TRI_ASSERT(_toSearchPos < _toSearch.size());
 

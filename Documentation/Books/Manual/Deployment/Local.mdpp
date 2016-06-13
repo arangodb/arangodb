@@ -1,8 +1,8 @@
 !SECTION Launching a local ArangoDB cluster for testing
 
-An ArangoDB cluster consists of needs several running tasks which form the cluster. ArangoDB itself won't start or monitor any of these tasks. So it will need some kind of supervisor which is monitoring and starting these tasks. For production usage we recommend using Mesos as the cluster supervisor. 
+An ArangoDB cluster consists of several running tasks which form the cluster. ArangoDB itself won't start or monitor any of these tasks. So it will need some kind of supervisor which is monitoring and starting these tasks. For production usage we recommend using Mesos as the cluster supervisor.
 
-However starting a cluster locally is possible and a very easy method to get a first impression of an ArangoDB cluster.
+However starting a cluster locally is possible and a very easy method to get a first impression of what an ArangoDB cluster looks like.
 
 The easiest way to start a local cluster for testing purposes is to run `scripts/startLocalCluster.sh`. This will start 1 Agency, 2 DBServers and 1 Coordinator. To stop the cluster issue `scripts/stopLocalCluster.sh`.
 
@@ -36,9 +36,11 @@ build/bin/arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:
 build/bin/arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8531 --cluster.my-address tcp://127.0.0.1:8531 --cluster.my-local-info coord1 --cluster.my-role COORDINATOR --cluster.agency-endpoint tcp://127.0.0.1:5001 coordinator &
 ```
 
+Upon registering with the agency during startup the cluster will assign an ID to every task. Instead of starting with `--cluster.my-local-info` you can start with this ID from now on. The generated ID will be printed out to the log or can be accessed via the http API by calling `http://server-address/_admin/server/id`.
+
 !SUBSECTION Secondaries
 
-Secondaries need a bit more work. Secondaries need to have some primary assigned. To do that there is a special route. To register the a Secondary you must first find out the Server-ID of the primary server. This can be done by looking at the startup log or (for simple testing purposes like we do in startLocalCluster) just increment a counter because the IDs ArangoDB will generate will be DBServer1, DBServer2 and so forth. Then generate your own ID for the secondary (put it into "newSecondary") you are about to start and call one of the coordinators like this:
+Secondaries need a bit more work. Secondaries need to have some primary assigned. To do that there is a special route. To register a Secondary you must first find out the Server-ID of the primary server. Then generate your own ID for the secondary (put it into "newSecondary") you are about to start and call one of the coordinators like this:
 
 `curl -f -X PUT --data "{\"primary\": \"DBServer1\", \"oldSecondary\": \"none\", \"newSecondary\": \"Secondary1\"}" -H "Content-Type: application/json" :8530/_admin/cluster/replaceSecondary`
 
