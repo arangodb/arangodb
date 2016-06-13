@@ -105,8 +105,8 @@ FOR vertex[, edge[, path]]
 - `IN` `min..max`: the minimal and maximal depth for the traversal:
   - **min** (number, *optional*): edges and vertices returned by this query will
     start at the traversal depth of *min* (thus edges and vertices below will
-    not be returned). If not specified, it defaults to 1, which is the minimal
-    possible value.
+    not be returned). If not specified, it defaults to 1. The minimal
+    possible value is 0.
   - **max** (number, *optional*): up to *max* length paths are traversed.
     If omitted, *max* defaults to *min*. Thus only the vertices and edges in
     the range of *min* are returned. *max* can not be specified without *min*.
