@@ -308,7 +308,7 @@ foxxRouter.get('/download/zip', function (req, res) {
   const dir = fs.join(fs.makeAbsolute(service.root), service.path);
   const zipPath = fmUtils.zipDirectory(dir);
   const name = mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
-  res.download(zipPath, `${name}.zip`);
+  res.download(zipPath, `${name}_${service.manifest.version}.zip`);
 })
 .summary('Download a service as zip archive')
 .description(dd`
