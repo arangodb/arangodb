@@ -297,6 +297,7 @@ function makeArgsArangod(options, appDir) {
     "javascript.v8-contexts": "5",
     "http.trusted-origin": "all",
     "log.level": "warning",
+    "log.level": "replication:warning",
     "server.allow-use-database": "true",
     "server.authentication": "false",
     "server.threads": "20",
