@@ -29,7 +29,7 @@ arangosh> users.grantDatabase("admin@testapp", "testdb");
 This grants the user access to the database *testdb*. `revokeDatabase`
 will revoke the right.
 
-!SECTION Comparision to ArangoDB 2
+!SECTION Comparison to ArangoDB 2
 
 ArangoDB 2 contained separate users per database. It was not possible
 to give an user access to two or more databases. This proved

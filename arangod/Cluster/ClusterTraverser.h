@@ -96,6 +96,10 @@ class ClusterTraverser : public Traverser {
 
     void reset() override;
 
+    void setStartVertex(std::string const& id) override {
+      _returnedVertices.emplace(id);
+    }
+
    private:
     std::unordered_set<std::string> _returnedVertices;
   };
@@ -149,8 +153,9 @@ class ClusterTraversalPath : public TraversalPath {
  public:
   ClusterTraversalPath(
       ClusterTraverser const* traverser,
-      const arangodb::basics::EnumeratedPath<std::string, std::string>& path)
-      : _path(path), _traverser(traverser) {}
+      arangodb::basics::EnumeratedPath<std::string, std::string> const& path)
+      : _path(path), _traverser(traverser) {
+  }
 
   void pathToVelocyPack(Transaction*, arangodb::velocypack::Builder&) override;
 

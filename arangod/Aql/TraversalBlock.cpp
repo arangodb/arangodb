@@ -382,7 +382,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   size_t const curRegs = cur->getNrRegs();
 
   if (_pos == 0) {
-    // Initial initialisation
+    // Initial initialization
     initializePaths(cur);
   }
 

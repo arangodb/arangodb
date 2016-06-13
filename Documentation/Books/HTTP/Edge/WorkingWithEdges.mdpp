@@ -8,7 +8,7 @@ These attributes are mandatory and must contain the document-handle
 of the from and to vertices of an edge.
 
 Use the general document
-[REST api](../Document/WorkingWithDocuments.html)
+[REST api](../Document/WorkingWithDocuments.md)
 for create/read/update/delete.
 
 <!-- Rest/Graph edges -->

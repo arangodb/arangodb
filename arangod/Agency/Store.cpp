@@ -147,31 +147,27 @@ Store::~Store() {
 std::vector<bool> Store::apply(query_t const& query) {
   std::vector<bool> applied;
   MUTEX_LOCKER(storeLocker, _storeLock);
-  /*for (auto const& i : VPackArrayIterator(query->slice())) {
-    LOG(WARN) << i[0].typeName();
-    LOG(WARN) << i[0].keyAt(0).copyString();
-    } */ 
   for (auto const& i : VPackArrayIterator(query->slice())) {
     switch (i.length()) {
-      case 1:
+    case 1:
+      applied.push_back(applies(i[0]));
+      break;  // no precond
+    case 2:
+      if (check(i[1])) {  // precondition
         applied.push_back(applies(i[0]));
-        break;  // no precond
-      case 2:
-        if (check(i[1])) {  // precondition
-          applied.push_back(applies(i[0]));
-        } else {  // precondition failed
-          LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
-          applied.push_back(false);
-        }
-        break;
-      default:  // wrong
-        LOG_TOPIC(ERR, Logger::AGENCY)
-            << "We can only handle log entry with or without precondition!";
+      } else {  // precondition failed
+        LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
         applied.push_back(false);
-        break;
+      }
+      break;
+    default:  // wrong
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << "We can only handle log entry with or without precondition!";
+      applied.push_back(false);
+      break;
     }
   }
-
+  
   _cv.signal();
 
   return applied;
@@ -510,10 +506,38 @@ void Store::run() {
 
 }
 
+bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 
-// Apply a request to my key value tree
-bool Store::applies(arangodb::velocypack::Slice const& slice) {
-  return _node.applies(slice);
+  std::vector<std::string> keys;
+  std::vector<std::string> abskeys;
+  std::vector<size_t> idx;
+  size_t counter = 0;
+
+  for (const auto& atom : VPackObjectIterator(transaction)) {
+    std::string key(atom.key.copyString()); 
+    keys.push_back(key);
+    abskeys.push_back(((key[0]=='/') ? key : std::string("/")+key));
+    idx.push_back(counter++);
+  }
+
+  sort(idx.begin(), idx.end(),
+       [&abskeys](size_t i1, size_t i2) {return abskeys[i1] < abskeys[i2];});
+  
+  for (const auto& i : idx) {
+
+    std::string const& key = keys.at(i);
+    Slice value = transaction.get(key);
+    
+    if (value.isObject() && value.hasKey("op")) {
+      _node(key).applieOp(value);
+    } else {
+      _node(key).applies(value);
+    }
+    
+  }
+
+  return true;
+  
 }
 
 

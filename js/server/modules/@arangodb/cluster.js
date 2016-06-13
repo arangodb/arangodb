@@ -1022,7 +1022,7 @@ function synchronizeOneShard(database, shard, planId, leader) {
       try {
         sy = rep.syncCollection(shard, 
             { endpoint: ep, incremental: true,
-              keepBarrier: true });
+              keepBarrier: true, useCollectionId: false });
         break;
       }
       catch (err) {
@@ -1063,8 +1063,7 @@ function synchronizeOneShard(database, shard, planId, leader) {
         if (lockJobId !== false) {
           try {
             var sy2 = rep.syncCollectionFinalize(
-              database, shard, sy.collections[0].id, 
-              sy.lastLogTick, { endpoint: ep });
+              database, shard, sy.lastLogTick, { endpoint: ep });
             if (sy2.error) {
               console.error("synchronizeOneShard: Could not synchronize shard",
                             shard, sy2);

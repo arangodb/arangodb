@@ -65,7 +65,7 @@ static int FetchDocumentById(arangodb::Transaction* trx,
 }
 
 SingleServerTraverser::SingleServerTraverser(
-    TraverserOptions& opts, Transaction* trx,
+    TraverserOptions& opts, arangodb::Transaction* trx,
     std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
         expressions)
     : Traverser(opts, expressions), _trx(trx) {
@@ -386,7 +386,6 @@ void SingleServerTraverser::EdgeGetter::nextEdge(
         _traverser->_edges.emplace(_trx->extractIdString(edge), nullptr);
       }
 
-      ++_traverser->_filteredPaths; 
       TRI_ASSERT(last != nullptr);
       (*last)++;
       continue;
@@ -463,7 +462,6 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
             // Insert a dummy to please the uniqueness
             _traverser->_edges.emplace(_trx->extractIdString(edge), nullptr);
           }
-          ++_traverser->_filteredPaths; 
           continue;
         }
         std::string id = _trx->extractIdString(edge);

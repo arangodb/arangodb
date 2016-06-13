@@ -1291,10 +1291,10 @@ actions.defineHttp({
 /// The attribute name is the collection name. Each value is an object
 /// of the following form:
 /// 
-///     { "collection1": { "Plan": { "s100001": ["DBServer1", "DBServer2"],
-///                                  "s100002": ["DBServer3", "DBServer4"] },
-///                        "Current": { "s100001": ["DBServer1", "DBServer2"],
-///                                     "s100002": ["DBServer3"] } },
+///     { "collection1": { "Plan": { "s100001": ["DBServer001", "DBServer002"],
+///                                  "s100002": ["DBServer003", "DBServer004"] },
+///                        "Current": { "s100001": ["DBServer001", "DBServer002"],
+///                                     "s100002": ["DBServer003"] } },
 ///       "collection2": ...
 ///     }
 ///
