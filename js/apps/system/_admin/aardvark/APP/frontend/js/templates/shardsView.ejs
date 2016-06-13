@@ -5,45 +5,47 @@
       <% var disabled = ' '; %>
 
       <% _.each(collections, function(collection, name) { %>
+        <% if (name.substring(0,1) !== '_') { %>
 
-        <div class="sectionHeader pure-g">
-          <div class="pure-u-1-1">
-            <div class="title" style="position: relative; top: -4px;">
-              <%= name %>
-            </div>
-          </div>
-        </div>
-
-        <div class="pure-g pure-table pure-table-header pure-title" style="clear: both">
-          <div class="pure-table-row">
-            <div class="<%= genClass %> left">Shard</div>
-            <div class="<%= genClass %> left ">Leader</div>
-            <div class="<%= genClass %> left">Followers</div>
-          </div>
-        </div>
-
-        <% var counter = 0; %>
-        <% _.each(collection.Plan, function(shard, name) { %>
-          <div class="pure-g pure-table pure-table-body">
-            <div class="pure-table-row disabled">
-
-              <div class="<%= genClass %> left"><%= name %></div>
-              <% if (name === Object.keys(collection.Current)[counter]) { %>
-                <div class="<%= genClass %> positive left"><%= shard.leader %></div>
-              <% } else { %>
-                <div class="<%= genClass %> negative left"><%= shard.leader %></div>
-              <% } %>
-              <% if (shard.followers.length === 0) { %>
-                <div class="<%= genClass %> left"> no followers </div>
-              <% } else { %>
-                <div class="<%= genClass %> left"><%= shard.follower %></div>
-              <% } %>
+          <div class="sectionHeader pure-g">
+            <div class="pure-u-1-1">
+              <div class="title" style="position: relative; top: -4px;">
+                <%= name %>
+              </div>
             </div>
           </div>
 
-          <% counter++; %>
-        <% }); %>
+          <div class="pure-g pure-table pure-table-header pure-title" style="clear: both">
+            <div class="pure-table-row">
+              <div class="<%= genClass %> left">Shard</div>
+              <div class="<%= genClass %> left ">Leader</div>
+              <div class="<%= genClass %> left">Followers</div>
+            </div>
+          </div>
 
+          <% var counter = 0; %>
+          <% _.each(collection.Plan, function(shard, name) { %>
+            <div class="pure-g pure-table pure-table-body">
+              <div class="pure-table-row disabled">
+
+                <div class="<%= genClass %> left"><%= name %></div>
+                <% if (name === Object.keys(collection.Current)[counter]) { %>
+                  <div class="<%= genClass %> positive left"><%= shard.leader %></div>
+                <% } else { %>
+                  <div class="<%= genClass %> negative left"><%= shard.leader %></div>
+                <% } %>
+                <% if (shard.followers.length === 0) { %>
+                  <div class="<%= genClass %> left"> no followers </div>
+                <% } else { %>
+                  <div class="<%= genClass %> left"><%= shard.follower %></div>
+                <% } %>
+              </div>
+            </div>
+
+            <% counter++; %>
+          <% }); %>
+
+        <% } %>
       <% }); %>
 
   </div>
