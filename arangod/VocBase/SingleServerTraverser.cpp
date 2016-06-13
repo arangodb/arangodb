@@ -470,7 +470,7 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
         VPackBuilder tmpBuilder = VPackBuilder::clone(edge);
         _traverser->_edges.emplace(id, tmpBuilder.steal());
 
-        edges.emplace_back(id);
+        edges.emplace_back(std::move(id));
       }
     }
   }

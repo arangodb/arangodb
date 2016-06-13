@@ -396,7 +396,7 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
         TRI_ASSERT(_nextDepth.empty());
         TRI_ASSERT(_currentDepth <= this->_maxDepth);
       }
-      // This access is always save.
+      // This access is always safe.
       // If not it should have bailed out before.
       TRI_ASSERT(_toSearchPos < _toSearch.size());
 
