@@ -481,10 +481,8 @@ void Constituent::run() {
         _cast = false;  // New round set not cast vote
       }
 
-      int32_t left = 1000000*config().minPing,
-        right = 1000000*config().maxPing;
-      long rand_wait = static_cast<long>(
-        RandomGenerator::interval(left, right));
+      int32_t left = 1000000*config().minPing, right = 1000000*config().maxPing;
+      long rand_wait = static_cast<long>(RandomGenerator::interval(left, right));
 
       {
         CONDITION_LOCKER(guardv, _cv);
