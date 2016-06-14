@@ -34,11 +34,10 @@
         img.icon {
           background-color: $c-white;
           border-radius: 3px;
-          height: auto;
-          max-height: 162px;
-          max-width: 162px;
+          box-sizing: border-box;
+          height: 100%;
+          width: 100%;
           padding: 10px;
-          width: auto;
         }
 
       }
