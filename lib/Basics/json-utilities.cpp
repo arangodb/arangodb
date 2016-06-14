@@ -155,7 +155,11 @@ static TRI_json_t* UniquifyArrayJson(TRI_json_t const* array) {
 
     // don't push value if it is the same as the last value
     if (last == nullptr || TRI_CompareValuesJson(p, last, false) != 0) {
-      TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), p);
+      int res = TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), p);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return nullptr;
+      }
 
       // remember last element
       last = p;
@@ -223,7 +227,11 @@ static TRI_json_t* GetMergedKeyArray(TRI_json_t const* lhs,
         static_cast<TRI_json_t const*>(TRI_AtVector(&lhs->_value._objects, i));
 
     TRI_ASSERT(TRI_IsStringJson(key));
-    TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, keys.get(), key);
+    int res = TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, keys.get(), key);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return nullptr;
+    }
   }
 
   n = TRI_LengthVector(&rhs->_value._objects);
@@ -233,7 +241,11 @@ static TRI_json_t* GetMergedKeyArray(TRI_json_t const* lhs,
         static_cast<TRI_json_t const*>(TRI_AtVector(&rhs->_value._objects, i));
 
     TRI_ASSERT(TRI_IsStringJson(key));
-    TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, keys.get(), key);
+    int res = TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, keys.get(), key);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      return nullptr;
+    }
   }
 
   // sort the key array in place
@@ -370,25 +382,27 @@ int TRI_CompareValuesJson(TRI_json_t const* lhs, TRI_json_t const* rhs,
 
       std::unique_ptr<TRI_json_t> keys(GetMergedKeyArray(lhs, rhs));
 
-      if (keys != nullptr) {
-        auto json = keys.get();
-        size_t const n = TRI_LengthVector(&json->_value._objects);
+      if (keys == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
 
-        for (size_t i = 0; i < n; ++i) {
-          auto keyElement = static_cast<TRI_json_t const*>(
-              TRI_AtVector(&json->_value._objects, i));
-          TRI_ASSERT(TRI_IsStringJson(keyElement));
+      auto json = keys.get();
+      size_t const n = TRI_LengthVector(&json->_value._objects);
 
-          TRI_json_t const* lhsValue = TRI_LookupObjectJson(
-              lhs, keyElement->_value._string.data);  // may be NULL
-          TRI_json_t const* rhsValue = TRI_LookupObjectJson(
-              rhs, keyElement->_value._string.data);  // may be NULL
+      for (size_t i = 0; i < n; ++i) {
+        auto keyElement = static_cast<TRI_json_t const*>(
+            TRI_AtVector(&json->_value._objects, i));
+        TRI_ASSERT(TRI_IsStringJson(keyElement));
 
-          int result = TRI_CompareValuesJson(lhsValue, rhsValue, useUTF8);
+        TRI_json_t const* lhsValue = TRI_LookupObjectJson(
+            lhs, keyElement->_value._string.data);  // may be NULL
+        TRI_json_t const* rhsValue = TRI_LookupObjectJson(
+            rhs, keyElement->_value._string.data);  // may be NULL
 
-          if (result != 0) {
-            return result;
-          }
+        int result = TRI_CompareValuesJson(lhsValue, rhsValue, useUTF8);
+
+        if (result != 0) {
+          return result;
         }
       }
       // fall-through to returning 0

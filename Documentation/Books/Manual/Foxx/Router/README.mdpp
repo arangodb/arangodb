@@ -4,7 +4,7 @@
 
 TODO
 
-Routers need to be mounted to expose their HTTP routes. See [service context][CONTEXT].
+Routers need to be mounted to expose their HTTP routes. See [service context](../Context.md).
 
 !SECTION Creating a router
 
@@ -32,7 +32,7 @@ TODO
 
 * **path**: `string` (Default: `"/"`)
 
-  The path of the request handler relative to the base path the Router is mounted at. If omitted, the request handler will handle requests to the base path of the Router. For information on defining dynamic routes see the section on path parameters in the [chapter on router endpoints][ENDPOINTS].
+  The path of the request handler relative to the base path the Router is mounted at. If omitted, the request handler will handle requests to the base path of the Router. For information on defining dynamic routes see the section on path parameters in the [chapter on router endpoints](Endpoints.md).
 
 * **handler**: `Function`
 
@@ -48,7 +48,7 @@ TODO
 
 * **name**: `string` (optional)
 
-  A name that can be used to generate URLs for the endpoint. For more information see the `reverse` method of the [request object][REQUEST].
+  A name that can be used to generate URLs for the endpoint. For more information see the `reverse` method of the [request object](Request.md).
 
 TODO
 
@@ -70,10 +70,6 @@ TODO
 
 * **name**: `string` (optional)
 
-  A name that can be used to generate URLs for endpoints of this router. For more information see the `reverse` method of the [request object][REQUEST]. Has no effect if *handler* is a Middleware.
+  A name that can be used to generate URLs for endpoints of this router. For more information see the `reverse` method of the [request object](Request.md). Has no effect if *handler* is a Middleware.
 
 TODO
-
-[CONTEXT]: ../Context.md
-[ENDPOINTS]: ./Endpoints.md
-[REQUEST]: ./Request.md

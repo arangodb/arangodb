@@ -1100,7 +1100,9 @@
 
     listenKey: function (e) {
       if (e.keyCode === 13) {
-        this.saveAQL(e);
+        if ($('#modalButton1').html() === 'Update') {
+          this.saveAQL();
+        }
       }
       this.checkSaveName();
     },
@@ -1116,7 +1118,7 @@
       }, 500);
     },
 
-    createCustomQueryModal: function(){
+    createCustomQueryModal: function() {
       var buttons = [], tableContent = [];
       tableContent.push(
         window.modalView.createTextEntry(
@@ -1166,7 +1168,9 @@
     },
 
     saveAQL: function (e) {
-      e.stopPropagation();
+      if (e) {
+        e.stopPropagation();
+      }
 
       //update queries first, before writing
       this.refreshAQL();
@@ -1548,10 +1552,7 @@
         if (data.id) {
           $.ajax({
             url: '/_api/cursor/' + encodeURIComponent(data.id),
-            type: 'DELETE',
-            error: function(error) {
-              console.log(error);
-            }
+            type: 'DELETE'
           });
         }
       };
@@ -1605,11 +1606,13 @@
               }
             }
             catch (e) {
-              console.log(error);
-              if (error.code !== 400) {
-                arangoHelper.arangoError("Query", "Successfully aborted.");
-              }
               self.removeOutputEditor(counter);
+              if (error.code === 409) {
+                return;
+              }
+              if (error.code !== 400) {
+                arangoHelper.arangoNotification("Query", "Successfully aborted.");
+              }
             }
 
             window.progressView.hide();

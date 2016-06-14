@@ -4,7 +4,7 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
 * **configuration**: `Object` (optional)
 
-  An object defining the [configuration options][CONFIG] this service requires.
+  An object defining the [configuration options](Configuration.md) this service requires.
 
 * **defaultDocument**: `string` (optional)
 
@@ -29,11 +29,11 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
 * **dependencies**: `Object` (optional) and **provides**: `Object` (optional)
 
-  Objects specifying other services this service has as [dependencies][DEPS] and what dependencies it can provide to other services.
+  Objects specifying other services this service has as [dependencies](Dependencies.md) and what dependencies it can provide to other services.
 
 * **engines**: `Object` (optional)
 
-  An object indicating the [semantic version ranges][SEMVER] of ArangoDB (or compatible environments) the service will be compatible with, e.g.:
+  An object indicating the [semantic version ranges](http://semver.org) of ArangoDB (or compatible environments) the service will be compatible with, e.g.:
 
   ```json
   "engines": {
@@ -45,7 +45,7 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
 * **files**: `Object` (optional)
 
-  An object defining [file assets][ASSETS] served by this service.
+  An object defining [file assets](Assets.md) served by this service.
 
 * **lib**: `string` (Default: `"."`)
 
@@ -71,11 +71,11 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
 * **scripts**: `Object` (optional)
 
-  An object defining [named scripts][SCRIPTS] provided by this service, which can either be used directly or as queued jobs by other services.
+  An object defining [named scripts](Scripts.md) provided by this service, which can either be used directly or as queued jobs by other services.
 
 * **tests**: `string` or `Array<string>` (optional)
 
-  A path or list of paths of JavaScript [tests][TESTING] provided for this service.
+  A path or list of paths of JavaScript [tests](Testing.md) provided for this service.
 
 Additionally manifests can provide the following metadata:
 
@@ -97,7 +97,7 @@ Additionally manifests can provide the following metadata:
 
 * **license**: `string` (optional)
 
-  A string identifying the license under which the service is published, ideally in the form of an [SPDX license identifier][SPDX]. This will be shown in the web interface.
+  A string identifying the license under which the service is published, ideally in the form of an [SPDX license identifier](https://spdx.org/licenses). This will be shown in the web interface.
 
 * **name**: `string` (optional)
 
@@ -109,7 +109,7 @@ Additionally manifests can provide the following metadata:
 
 * **version**: `string` (optional)
 
-  The version number of the Foxx service. The version number must follow the [semantic versioning format][SEMVER]. This will be shown in the web interface.
+  The version number of the Foxx service. The version number must follow the [semantic versioning format](http://semver.org). This will be shown in the web interface.
 
 **Examples**
 
@@ -146,11 +146,3 @@ Additionally manifests can provide the following metadata:
   "tests": "dist/**.spec.js"
 }
 ```
-
-[SEMVER]: http://semver.org/
-[SPDX]: https://spdx.org/licenses/
-[CONFIG]: ./Configuration.md
-[DEPS]: ./Dependencies.md
-[ASSETS]: ./Assets.md
-[SCRIPTS]: ./Scripts.md
-[TESTING]: ./Testing.md

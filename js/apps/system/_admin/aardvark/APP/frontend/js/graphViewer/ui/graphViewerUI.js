@@ -632,6 +632,9 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   viewerConfig = viewerConfig || {};
   viewerConfig.zoom = true;
 
+  $('#subNavigationBar .breadcrumb').html(
+    'Graph: ' + adapterConfig.graphName
+  );
 
   svg = createSVG();
 

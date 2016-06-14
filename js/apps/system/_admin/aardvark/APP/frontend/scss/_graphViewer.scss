@@ -146,4 +146,20 @@ div.gv-colour-list {
   }
 }
 
+#tab-content-create-graph {
+  .addAfter,
+  .addDelete,
+  .delete {
+    margin-top: -9px;
+    position: absolute;
+    right: 13px;
+  }
 
+  .tableRow {
+    &.first {
+      border-top: 10px solid $c-white;
+    }
+  }
+
+
+}

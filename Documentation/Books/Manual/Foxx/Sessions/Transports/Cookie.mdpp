@@ -25,7 +25,7 @@ module.context.use(sessions);
 
 `cookieTransport([options]): Transport`
 
-Creates a [Transport][TRANSPORT] that can be used in the sessions middleware.
+Creates a [Transport](README.md) that can be used in the sessions middleware.
 
 **Arguments**
 
@@ -43,13 +43,10 @@ Creates a [Transport][TRANSPORT] that can be used in the sessions middleware.
 
   * **algorithm**: `string` (optional)
 
-    The algorithm used to sign and verify the cookie. If no algorithm is specified, the cookie will not be signed or verified. See the [cookie method on the response object][RESPONSE].
+    The algorithm used to sign and verify the cookie. If no algorithm is specified, the cookie will not be signed or verified. See the [cookie method on the response object](../../Router/Response.md).
 
   * **secret**: `string` (optional)
 
     Secret to use for the signed cookie. Will be ignored if no algorithm is provided.
 
 If a string is passed instead of an options object, it will be interpreted as the *name* option.
-
-[RESPONSE]: ../../Router/Response.md
-[TRANSPORT]: ./README.md

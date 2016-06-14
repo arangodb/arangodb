@@ -12,7 +12,7 @@ TODO
 
 * **request**: `Request`
 
-  [Request object][REQUEST] to extract a session identifier from.
+  [Request object](../../Router/Request.md) to extract a session identifier from.
 
 TODO
 
@@ -30,7 +30,7 @@ TODO
 
 * **response**: `Response`
 
-  [Response object][RESPONSE] to attach a session identifier to.
+  [Response object](../../Router/Response.md) to attach a session identifier to.
 
 * **sid**: `string`
 
@@ -59,6 +59,3 @@ TODO
 **Examples**
 
 TODO
-
-[REQUEST]: ../../Router/Request.md
-[RESPONSE]: ../../Router/Response.md

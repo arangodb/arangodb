@@ -46,7 +46,6 @@
     },
 
     mapStatToFigure : {
-      residentSize : ["times", "residentSizePercent"],
       pageFaults : ["times", "majorPageFaultsPerSecond", "minorPageFaultsPerSecond"],
       systemUserTime : ["times", "systemTimePerSecond", "userTimePerSecond"],
       totalTime : ["times", "avgQueueTime", "avgRequestTime", "avgIoTime"],
@@ -81,21 +80,6 @@
               }
 
               return parseFloat(y.toPrecision(3));
-            }
-          }
-        }
-      },
-
-      residentSize: {
-        header: "Memory",
-        axes: {
-          y: {
-            labelsKMG2: false,
-            axisLabelFormatter: function (y) {
-              return parseFloat(y.toPrecision(3) * 100) + "%";
-            },
-            valueFormatter: function (y) {
-              return parseFloat(y.toPrecision(3) * 100) + "%";
             }
           }
         }

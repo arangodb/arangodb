@@ -167,7 +167,7 @@ static bool ShouldFail(size_t n) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-static char* FailMalloc(TRI_memory_zone_t* zone, size_t n) {
+static void* FailMalloc(TRI_memory_zone_t* zone, size_t n) {
   // we can fail, so let's check whether we should fail intentionally...
   if (zone->_failable && ShouldFail(n)) {
     // intentionally return NULL
@@ -175,7 +175,7 @@ static char* FailMalloc(TRI_memory_zone_t* zone, size_t n) {
     return nullptr;
   }
 
-  return static_cast<char*>(BuiltInMalloc(n));
+  return BuiltInMalloc(n);
 }
 #endif
 
@@ -184,7 +184,7 @@ static char* FailMalloc(TRI_memory_zone_t* zone, size_t n) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-static char* FailRealloc(TRI_memory_zone_t* zone, void* old, size_t n) {
+static void* FailRealloc(TRI_memory_zone_t* zone, void* old, size_t n) {
   // we can fail, so let's check whether we should fail intentionally...
   if (zone->_failable && ShouldFail(n)) {
     // intentionally return NULL
@@ -192,7 +192,7 @@ static char* FailRealloc(TRI_memory_zone_t* zone, void* old, size_t n) {
     return nullptr;
   }
 
-  return static_cast<char*>(BuiltInRealloc(old, n));
+  return BuiltInRealloc(old, n);
 }
 #endif
 

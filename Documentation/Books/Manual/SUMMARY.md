@@ -62,7 +62,7 @@
   * [Working with Edges](Graphs/Edges/README.md)
 #
 * [Foxx Microservices](Foxx/README.md)
-  * [Foxx Anatomy](Foxx/Anatomy.md)
+  * [At a glance](Foxx/AtAGlance.md)
   * [Getting started](Foxx/GettingStarted.md)
   * [Service manifest](Foxx/Manifest.md)
   * [Service context](Foxx/Context.md)
@@ -83,7 +83,8 @@
   * [Serving files](Foxx/Assets.md)
   * [Writing tests](Foxx/Testing.md)
   * [Scripts and queued jobs](Foxx/Scripts.md)
-  * [Legacy mode for 2.x](Foxx/LegacyMode.md)
+  * [Migrating 2.x services](Foxx/Migrating2x.md)
+  * [Legacy compatibility mode](Foxx/LegacyMode.md)
   * [User management](Foxx/Users.md)
   * [Related modules](Foxx/Modules.md)
     * [Authentication](Foxx/Auth.md)

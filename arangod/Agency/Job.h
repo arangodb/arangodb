@@ -69,7 +69,7 @@ inline arangodb::consensus::write_ret_t transact (
   
   LOG_TOPIC(DEBUG, Logger::AGENCY) << envelope->toJson();
   auto ret = _agent->write(envelope);
-  if (waitForCommit) {
+  if (waitForCommit && !ret.indices.empty()) {
     auto maximum = *std::max_element(ret.indices.begin(), ret.indices.end());
     if (maximum > 0) {  // some baby has worked
       _agent->waitFor(maximum);

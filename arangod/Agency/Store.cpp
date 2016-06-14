@@ -36,6 +36,7 @@
 
 #include <ctime>
 #include <iomanip>
+#include <regex>
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
@@ -523,11 +524,13 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   std::vector<std::string> keys;
   std::vector<std::string> abskeys;
   std::vector<size_t> idx;
+  std::regex reg("/+");
   size_t counter = 0;
 
   for (const auto& atom : VPackObjectIterator(transaction)) {
-    std::string key(atom.key.copyString()); 
+    std::string key(atom.key.copyString());
     keys.push_back(key);
+    key = std::regex_replace(key, reg, "/");
     abskeys.push_back(((key[0]=='/') ? key : std::string("/")+key));
     idx.push_back(counter++);
   }
@@ -541,9 +544,9 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
     Slice value = transaction.get(key);
     
     if (value.isObject() && value.hasKey("op")) {
-      _node(key).applieOp(value);
+      _node(abskeys.at(i)).applieOp(value);
     } else {
-      _node(key).applies(value);
+      _node(abskeys.at(i)).applies(value);
     }
     
   }

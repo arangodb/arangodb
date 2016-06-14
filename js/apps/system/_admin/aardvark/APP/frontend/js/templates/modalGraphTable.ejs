@@ -93,10 +93,10 @@
             %>
             <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
             <% if (row.addAdd) {%>
-              <button id="<%='addAfter_' + row.id%>" class="graphViewer-icon-button gv-icon-small add"></button>
+              <button id="<%='addAfter_' + row.id%>" class="graphViewer-icon-button gv-icon-small add addAfter"></button>
             <% } %>
             <% if (row.addDelete) {%>
-              <button id="<%='remove_' + row.id%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
+              <button id="<%='remove_' + row.id%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete addDelete"></button>
             <% } %>
             <%
                 break;

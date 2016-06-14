@@ -438,7 +438,7 @@ function agencyTestSuite () {
 /// @brief Test nasty willful attempt to break
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOrder : function () {
+    testOrderEvil : function () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
                   [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
@@ -452,8 +452,27 @@ function agencyTestSuite () {
       writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
       assertEqual(readAndCheck([["a/e"],["a/b","d"]]),
                   [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test nasty willful attempt to break
+////////////////////////////////////////////////////////////////////////////////
+
+    testSlashORama : function () {
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"//////////////////////a/////////////////////b//":
+                       {"b///////c":4}}]]);
+      assertEqual(readAndCheck([["/"]]), [{a:{b:{b:{c:4}}}}]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"////////////////////////": "Hi there!"}]]);
+      assertEqual(readAndCheck([["/"]]), ["Hi there!"]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck(
+        [[{"/////////////////\\/////a/////////////^&%^&$^&%$////////b\\\n//":
+           {"b///////c":4}}]]);
+      assertEqual(readAndCheck([["/"]]),
+                  [{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}]);
+    }
   };
 }
 

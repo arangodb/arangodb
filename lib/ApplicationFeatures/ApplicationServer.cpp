@@ -45,7 +45,13 @@ ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options)
 
 ApplicationServer::~ApplicationServer() {
   for (auto& it : _features) {
-    delete it.second;
+    try {
+      delete it.second;
+    } catch (...) {
+      // we must skip over errors here as we're in the destructor.
+      // we cannot rely on the LoggerFeature being present either, so
+      // we have to suppress errors here
+    }
   }
 
   ApplicationServer::server = nullptr;

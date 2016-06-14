@@ -60,7 +60,7 @@ see [Troubleshooting](../Troubleshooting/README.md).
 By default, authentication is enabled. There default user is
 `root`. Depending on the installation method used, the installation
 processed either prompted for the root password or the default root
-password is empty (see [above](#securing_the_installation).
+password is empty (see [above](#securing-the-installation).
 
 It should look like this:
 TODO MISSING

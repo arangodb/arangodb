@@ -108,46 +108,51 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
-                              std::string const& message) {
-  if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
-    LOG(ERR) << "encountered out-of-memory error";
+                              std::string const& message) noexcept {
+  try {
+    if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
+      LOG(ERR) << "encountered out-of-memory error";
+    }
+
+    v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(message);
+
+    if (errorMessage.IsEmpty()) {
+      isolate->ThrowException(v8::Object::New(isolate));
+      return;
+    }
+
+    v8::Handle<v8::Value> err = v8::Exception::Error(errorMessage);
+
+    if (err.IsEmpty()) {
+      isolate->ThrowException(v8::Object::New(isolate));
+      return;
+    }
+
+    v8::Handle<v8::Object> errorObject = err->ToObject();
+
+    if (errorObject.IsEmpty()) {
+      isolate->ThrowException(v8::Object::New(isolate));
+      return;
+    }
+
+    errorObject->Set(TRI_V8_ASCII_STRING("errorNum"),
+                    v8::Number::New(isolate, errorNumber));
+    errorObject->Set(TRI_V8_ASCII_STRING("errorMessage"), errorMessage);
+
+    TRI_GET_GLOBALS();
+    TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
+
+    v8::Handle<v8::Object> ArangoError = ArangoErrorTempl->NewInstance();
+
+    if (!ArangoError.IsEmpty()) {
+      errorObject->SetPrototype(ArangoError);
+    }
+
+    isolate->ThrowException(errorObject);
+  } catch (...) {
+    // must not throw from here, as a C++ exception must not escape the
+    // C++ bindings that are called by V8. if it does, the program will crash
   }
-
-  v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(message);
-
-  if (errorMessage.IsEmpty()) {
-    isolate->ThrowException(v8::Object::New(isolate));
-    return;
-  }
-
-  v8::Handle<v8::Value> err = v8::Exception::Error(errorMessage);
-
-  if (err.IsEmpty()) {
-    isolate->ThrowException(v8::Object::New(isolate));
-    return;
-  }
-
-  v8::Handle<v8::Object> errorObject = err->ToObject();
-
-  if (errorObject.IsEmpty()) {
-    isolate->ThrowException(v8::Object::New(isolate));
-    return;
-  }
-
-  errorObject->Set(TRI_V8_ASCII_STRING("errorNum"),
-                   v8::Number::New(isolate, errorNumber));
-  errorObject->Set(TRI_V8_ASCII_STRING("errorMessage"), errorMessage);
-
-  TRI_GET_GLOBALS();
-  TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
-
-  v8::Handle<v8::Object> ArangoError = ArangoErrorTempl->NewInstance();
-
-  if (!ArangoError.IsEmpty()) {
-    errorObject->SetPrototype(ArangoError);
-  }
-
-  isolate->ThrowException(errorObject);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4032,7 +4037,6 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
 
 void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber) {
   v8::HandleScope scope(isolate);
-
   CreateErrorObject(isolate, errorNumber, TRI_errno_string(errorNumber));
 }
 
@@ -4055,9 +4059,15 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
   v8::HandleScope scope(isolate);
 
   if (autoPrepend) {
-    CreateErrorObject(
-        isolate, errorNumber,
-        message + ": " + std::string(TRI_errno_string(errorNumber)));
+    try {
+      // does string concatenation, so we must wrap this in a try...catch block
+      CreateErrorObject(
+          isolate, errorNumber,
+          message + ": " + std::string(TRI_errno_string(errorNumber)));
+    } catch (...) {
+      // we cannot do anything about this here, but no C++ exception must
+      // escape the C++ bindings called by V8
+    }
   } else {
     CreateErrorObject(isolate, errorNumber, message);
   }
