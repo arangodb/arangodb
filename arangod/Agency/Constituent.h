@@ -136,11 +136,10 @@ class Constituent : public arangodb::Thread {
 
   term_t _term;                /**< @brief term number */
   std::atomic<bool> _cast;     /**< @brief cast a vote this term */
-  std::atomic<state_t> _state; /**< @brief State (follower, candidate, leader)*/
 
   arangodb::consensus::id_t _leaderID; /**< @brief Current leader */
   arangodb::consensus::id_t _id;       /**< @brief My own id */
-  constituency_t _constituency;        /**< @brief List of consituents */
+
   std::mt19937 _gen;                   /**< @brief Random number generator */
   role_t _role;                        /**< @brief My role */
   Agent* _agent;                       /**< @brief My boss */
