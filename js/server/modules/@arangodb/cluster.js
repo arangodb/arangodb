@@ -1040,31 +1040,12 @@ function synchronizeOneShard(database, shard, planId, leader) {
     var ep = ArangoClusterInfo.getServerEndpoint(leader);
     // First once without a read transaction:
     var sy;
-    var count = 3600;   // Try for a full hour, this is because there
-                        // can only be one syncCollection in flight
-                        // at a time
-    while (true) {
-      if (isStopping()) {
-        throw "server is shutting down";
-      }
-      try {
-        sy = rep.syncCollection(shard, 
-            { endpoint: ep, incremental: true,
-              keepBarrier: true, useCollectionId: false });
-        break;
-      }
-      catch (err) {
-        console.info("synchronizeOneShard: syncCollection did not work,",
-                     "trying again later for shard", shard, err);
-      }
-      if (--count <= 0) {
-        console.error("synchronizeOneShard: syncCollection did not work",
-                      "after many tries, giving up on shard", shard);
-        throw "syncCollection did not work";
-      }
-      wait(1.0);
+    if (isStopping()) {
+      throw "server is shutting down";
     }
-
+    sy = rep.syncCollection(shard, 
+        { endpoint: ep, incremental: true,
+          keepBarrier: true, useCollectionId: false });
     if (sy.error) {
       console.error("synchronizeOneShard: could not initially synchronize",
                     "shard ", shard, sy);
@@ -1093,7 +1074,7 @@ function synchronizeOneShard(database, shard, planId, leader) {
             var sy2 = rep.syncCollectionFinalize(
               database, shard, sy.lastLogTick, { endpoint: ep });
             if (sy2.error) {
-              console.error("synchronizeOneShard: Could not synchronize shard",
+              console.error("synchronizeOneShard: Could not finalize shard synchronization",
                             shard, sy2);
               ok = false;
             } else {
