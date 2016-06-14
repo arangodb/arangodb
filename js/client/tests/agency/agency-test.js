@@ -438,7 +438,7 @@ function agencyTestSuite () {
 /// @brief Test nasty willful attempt to break
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOrder : function () {
+    testOrderEvil : function () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
                   [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
