@@ -155,33 +155,6 @@
       return collectionExists(name);
     }
 
-    function waitForSyncRepl(dbName, collName) {
-      console.debug("waitForSyncRepl:", dbName, collName);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
-      var count = 120;
-      while (--count > 0) {
-        var shards = Object.keys(cinfo.shards);
-        var ccinfo = shards.map(function(s) {
-          return global.ArangoClusterInfo.getCollectionInfoCurrent(dbName,
-                    collName, s).servers;
-        });
-        console.debug("waitForSyncRepl", shards, cinfo.shards, ccinfo);
-        var ok = true;
-        for (var i = 0; i < shards.length; ++i) {
-          if (cinfo.shards[shards[i]].length !== ccinfo[i].length) {
-            ok = false;
-          }
-        }
-        if (ok) {
-          console.debug("waitForSyncRepl: OK");
-          return true;
-        }
-        require("internal").wait(1.0);
-      }
-      console.warn("waitForSyncRepl: BAD");
-      return false;
-    }
-
     ////////////////////////////////////////////////////////////////////////////////
     // adds a task
     ///
@@ -813,9 +786,7 @@
         var dbName = db._name();
         var colls = db._collections();
         colls = colls.filter(c => c.name()[0] === "_");
-        colls.forEach(function(c) {
-          waitForSyncRepl(dbName, c.name());
-        });
+        require("@arangodb/cluster").waitForSyncRepl(dbName, colls);
         return true;
       }
     });
