@@ -75,11 +75,10 @@ inline static bool endpointPathFromUrl(
   path = "/";
   size_t pos = 7;
 
-  if (url.find("http://") == 0) {
+  if (url.compare(0, pos, "http://") == 0) {
     ep << "tcp://";
-  } else if (url.find("https://") == 0) {
+  } else if (url.compare(0, ++pos, "https://") == 0) {
     ep << "ssl://";
-    ++pos;
   } else {
     return false;
   }
