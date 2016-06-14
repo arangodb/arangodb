@@ -30,11 +30,6 @@ echo "$0: compiling ArangoDB"
 (cd build && make -j1)
 
 echo
-echo "$0: linting ArangoDB JS"
-
-./utils/jslint.sh
-
-echo
 echo "$0: testing ArangoDB"
 
 ulimit -c unlimited -S # enable core files

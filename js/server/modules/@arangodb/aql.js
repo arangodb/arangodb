@@ -4901,7 +4901,6 @@ function AQL_FAIL (message) {
   THROW("FAIL", INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, "");
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for date creation
 ////////////////////////////////////////////////////////////////////////////////
@@ -5721,7 +5720,7 @@ exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 exports.reload = reloadUserFunctions;
 exports.clearCaches = clearCaches;
 exports.lookupFunction = GET_USERFUNCTION;
-exports.warnFromFunction = WARN;
+exports.throwFromFunction = THROW;
 exports.fixValue = FIX_VALUE;
 
 // initialize the query engine

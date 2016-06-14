@@ -89,7 +89,7 @@ function QuickieSuite () {
       c.ensureIndex({type: "hash", fields: ["Hallo"]});
       i = c.getIndexes();
       assertEqual(2, i.length); // We have a primary index and a hash Index
-      aql = db._query("FOR x IN UnitTestCollection FILTER x.Hallo == 14RETURN x._key").toArray();
+      aql = db._query("FOR x IN UnitTestCollection FILTER x.Hallo == 14 RETURN x._key").toArray();
       assertEqual(1, aql.length);
       assertEqual(r._key, aql[0]);
       c.remove(r._key);

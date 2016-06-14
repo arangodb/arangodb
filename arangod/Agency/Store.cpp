@@ -36,6 +36,7 @@
 
 #include <ctime>
 #include <iomanip>
+#include <regex>
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
@@ -51,32 +52,34 @@ struct Empty {
 /// @brief Split strings by separator
 inline std::vector<std::string> split(const std::string& value,
                                       char separator) {
-  std::vector<std::string> result;
-  std::string::size_type p = (value.find(separator) == 0) ? 1 : 0;
-  std::string::size_type q;
+  std::vector<std::string> res;
+  std::string::size_type q, p = (value.find(separator) == 0) ? 1 : 0;
+
   while ((q = value.find(separator, p)) != std::string::npos) {
-    result.emplace_back(value, p, q - p);
+    res.emplace_back(value, p, q - p);
     p = q + 1;
   }
-  result.emplace_back(value, p);
-  result.erase(std::find_if(result.rbegin(), result.rend(), NotEmpty()).base(),
-               result.end());
-  return result;
+  res.emplace_back(value, p);
+  res.erase(
+    std::find_if(res.rbegin(), res.rend(), NotEmpty()).base(), res.end());
+  
+  return res;
+  
 }
 
 
 // Build endpoint from URL
-inline static bool endpointPathFromUrl(std::string const& url,
-                                       std::string& endpoint,
-                                       std::string& path) {
+inline static bool endpointPathFromUrl(
+  std::string const& url, std::string& endpoint, std::string& path) {
+  
   std::stringstream ep;
   path = "/";
   size_t pos = 7;
-  if (url.find("http://") == 0) {
+
+  if (url.compare(0, pos, "http://") == 0) {
     ep << "tcp://";
-  } else if (url.find("https://") == 0) {
+  } else if (url.compare(0, ++pos, "https://") == 0) {
     ep << "ssl://";
-    ++pos;
   } else {
     return false;
   }
@@ -96,6 +99,7 @@ inline static bool endpointPathFromUrl(std::string const& url,
   endpoint = ep.str();
 
   return true;
+  
 }
 
 
@@ -145,30 +149,36 @@ Store::~Store() {
 
 // Apply queries multiple queries to store
 std::vector<bool> Store::apply(query_t const& query) {
+
   std::vector<bool> applied;
   MUTEX_LOCKER(storeLocker, _storeLock);
-  for (auto const& i : VPackArrayIterator(query->slice())) {
-    switch (i.length()) {
-    case 1:
-      applied.push_back(applies(i[0]));
-      break;  // no precond
-    case 2:
-      if (check(i[1])) {  // precondition
+
+  try {
+    for (auto const& i : VPackArrayIterator(query->slice())) {
+      switch (i.length()) {
+      case 1:
         applied.push_back(applies(i[0]));
-      } else {  // precondition failed
-        LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+        break;  // no precond
+      case 2:
+        if (check(i[1])) {  // precondition
+          applied.push_back(applies(i[0]));
+        } else {  // precondition failed
+          LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+          applied.push_back(false);
+        }
+        break;
+      default:  // wrong
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "We can only handle log entry with or without precondition!";
         applied.push_back(false);
+        break;
       }
-      break;
-    default:  // wrong
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << "We can only handle log entry with or without precondition!";
-      applied.push_back(false);
-      break;
     }
-  }
-  
   _cv.signal();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << __FILE__ << ":" << __LINE__ << " " << e.what();
+  }
 
   return applied;
 }
@@ -179,15 +189,18 @@ std::string const& Store::name() const {
 }
 
 // template<class T, class U> std::multimap<std::string, std::string>
-std::ostream& operator<<(std::ostream& os,
-                         std::multimap<std::string, std::string> const& m) {
+std::ostream& operator<<(
+  std::ostream& os, std::multimap<std::string, std::string> const& m) {
+
   for (auto const& i : m) {
     os << i.first << ": " << i.second << std::endl;
   }
+  
   return os;
+  
 }
 
-// Apply external
+// Notification type
 struct notify_t {
   std::string key;
   std::string modified;
@@ -248,8 +261,8 @@ std::vector<bool> Store::apply(
   for (auto const& url : urls) {
     Builder body;  // host
     body.openObject();
-    body.add("term", VPackValue(0));
-    body.add("index", VPackValue(0));
+    body.add("term", VPackValue(_agent->term()));
+    body.add("index", VPackValue(_agent->lastCommited()));
     auto ret = in.equal_range(url);
 
     for (auto it = ret.first; it != ret.second; ++it) {
@@ -511,11 +524,13 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   std::vector<std::string> keys;
   std::vector<std::string> abskeys;
   std::vector<size_t> idx;
+  std::regex reg("/+");
   size_t counter = 0;
 
   for (const auto& atom : VPackObjectIterator(transaction)) {
-    std::string key(atom.key.copyString()); 
+    std::string key(atom.key.copyString());
     keys.push_back(key);
+    key = std::regex_replace(key, reg, "/");
     abskeys.push_back(((key[0]=='/') ? key : std::string("/")+key));
     idx.push_back(counter++);
   }
@@ -529,9 +544,9 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
     Slice value = transaction.get(key);
     
     if (value.isObject() && value.hasKey("op")) {
-      _node(key).applieOp(value);
+      _node(abskeys.at(i)).applieOp(value);
     } else {
-      _node(key).applies(value);
+      _node(abskeys.at(i)).applies(value);
     }
     
   }

@@ -368,22 +368,14 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
 
   if (lType == TRI_JSON_OBJECT) {
     // this is a rather exceptional case, so we can
-    // afford the inefficiency to convert to node to
+    // afford the inefficiency to convert the node to
     // JSON for comparison
     // (this saves us from writing our own compare function
     // for array AstNodes)
-    auto lJson = lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
-    auto rJson = rhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+    std::unique_ptr<TRI_json_t> lJson(lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+    std::unique_ptr<TRI_json_t> rJson(rhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
 
-    int res = TRI_CompareValuesJson(lJson, rJson, compareUtf8);
-
-    if (lJson != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, lJson);
-    }
-    if (rJson != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, rJson);
-    }
-    return res;
+    return TRI_CompareValuesJson(lJson.get(), rJson.get(), compareUtf8);
   }
 
   // all things equal

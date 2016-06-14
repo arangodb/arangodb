@@ -189,7 +189,7 @@ function agencyTestSuite () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test a document
+/// @brief test document/transaction assignment
 ////////////////////////////////////////////////////////////////////////////////
 
     testDocument : function () {
@@ -198,12 +198,20 @@ function agencyTestSuite () {
                   [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple transaction
+////////////////////////////////////////////////////////////////////////////////
+
     testTransaction : function () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,4]},"e":12},"d":false}],
                      [{"a":{"b":{"c":[1,2,3]}}}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
                   [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "new" operator
+////////////////////////////////////////////////////////////////////////////////
 
     testOpSetNew : function () {
       writeAndCheck([[{"a/z":{"op":"set","new":12}}]]);
@@ -228,6 +236,10 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "push" operator
+////////////////////////////////////////////////////////////////////////////////
+
     testOpPush : function () {
       writeAndCheck([[{"/a/b/c":{"op":"push","new":"max"}}]]);
       assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);
@@ -242,11 +254,19 @@ function agencyTestSuite () {
                   [{a:{euler:[2.71828182845904523536]}}]);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "remove" operator
+////////////////////////////////////////////////////////////////////////////////
+
     testOpRemove : function () {
       writeAndCheck([[{"/a/euler":{"op":"delete"}}]]);
       assertEqual(readAndCheck([["/a/euler"]]), [{a:{}}]);
     },
      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "prepend" operator
+////////////////////////////////////////////////////////////////////////////////
+
     testOpPrepend : function () {
       writeAndCheck([[{"/a/b/c":{"op":"prepend","new":3.141592653589793}}]]);
       assertEqual(readAndCheck([["/a/b/c"]]),
@@ -268,6 +288,10 @@ function agencyTestSuite () {
                   [{a:{euler:[1.25,2.71828182845904523536]}}]);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "shift" operator
+////////////////////////////////////////////////////////////////////////////////
+
     testOpShift : function () {
       writeAndCheck([[{"/a/f":{"op":"shift"}}]]); // none before
       assertEqual(readAndCheck([["/a/f"]]), [{a:{f:[]}}]);
@@ -278,6 +302,10 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/b/d":{"op":"shift"}}]]); // on existing scalar
       assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);        
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "pop" operator
+////////////////////////////////////////////////////////////////////////////////
 
     testOpPop : function () {
       writeAndCheck([[{"/a/f":{"op":"pop"}}]]); // none before
@@ -291,6 +319,10 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);        
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "increment" operator
+////////////////////////////////////////////////////////////////////////////////
+
     testOpIncrement : function () {
       writeAndCheck([[{"/version":{"op":"delete"}}]]);
       writeAndCheck([[{"/version":{"op":"increment"}}]]); // none before
@@ -299,6 +331,10 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{version:2}]);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "decrement" operator
+////////////////////////////////////////////////////////////////////////////////
+
     testOpDecrement : function () {
       writeAndCheck([[{"/version":{"op":"delete"}}]]);
       writeAndCheck([[{"/version":{"op":"decrement"}}]]); // none before
@@ -306,6 +342,10 @@ function agencyTestSuite () {
       writeAndCheck([[{"/version":{"op":"decrement"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:-2}]);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "op" keyword in other places than as operator
+////////////////////////////////////////////////////////////////////////////////
 
     testOpInStrangePlaces : function () {
       writeAndCheck([[{"/op":12}]]);
@@ -334,45 +374,104 @@ function agencyTestSuite () {
       writeAndCheck([[{"/op/a/b/d/ttl":{"op":"decrement"}}]]);
       assertEqual(readAndCheck([["/op/a/b/d"]]), [{op:{a:{b:{d:{ttl:14}}}}}]);
     },
-    
-    testInit: function() {
-      // mop: wait until leader has been determined
-      let leaderEndpoint;
-      let res;
 
-      if (agencyServers.length > 1) {
-        let leaderTests = 0;
-        while (true) {
-          res = request.get(agencyServers[whoseTurn] + "/_api/agency/config");
-          var config = JSON.parse(res.body);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief op delete on top node
+////////////////////////////////////////////////////////////////////////////////
 
-          // mop: leader election still in progress
-          if (config.leaderId > 127) {
-            if (leaderTests++ > 10) {
-              throw new Error("Agency doesn't report a valid leader after 10 checks. Bailing out!");
-            }
-          } else {
-            leaderEndpoint = config.configuration.endpoints[config.leaderId].replace("tcp", "http");
-            break;
-          }
-          wait(0.05);
-        }
-      } else {
-        leaderEndpoint = agencyServers[0].replace("tcp", "http");
-      }
+    testOperatorsOnRootNode : function () {
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      writeAndCheck([[{"/":{"op":"increment"}}]]);
+      assertEqual(readAndCheck([["/"]]), [1]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"/":{"op":"decrement"}}]]);
+      assertEqual(readAndCheck([["/"]]), [-1]);
+      writeAndCheck([[{"/":{"op":"push","new":"Hello"}}]]);
+      assertEqual(readAndCheck([["/"]]), [["Hello"]]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"/":{"op":"push","new":"Hello"}}]]);
+      assertEqual(readAndCheck([["/"]]), [["Hello"]]);
+      writeAndCheck([[{"/":{"op":"pop"}}]]);
+      assertEqual(readAndCheck([["/"]]), [[]]);
+      writeAndCheck([[{"/":{"op":"pop"}}]]);
+      assertEqual(readAndCheck([["/"]]), [[]]);
+      writeAndCheck([[{"/":{"op":"push","new":"Hello"}}]]);
+      assertEqual(readAndCheck([["/"]]), [["Hello"]]);
+      writeAndCheck([[{"/":{"op":"shift"}}]]);
+      assertEqual(readAndCheck([["/"]]), [[]]);
+      writeAndCheck([[{"/":{"op":"shift"}}]]);
+      assertEqual(readAndCheck([["/"]]), [[]]);
+      writeAndCheck([[{"/":{"op":"prepend","new":"Hello"}}]]);
+      assertEqual(readAndCheck([["/"]]), [["Hello"]]);
+      writeAndCheck([[{"/":{"op":"shift"}}]]);
+      assertEqual(readAndCheck([["/"]]), [[]]);
+      writeAndCheck([[{"/":{"op":"pop"}}]]);
+      assertEqual(readAndCheck([["/"]]), [[]]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+    },
 
-      var requests = [
-        ["/_api/agency/write", [[{"/arango/Plan/DBServers/DBServer001":{"new":"none","op":"set"}}]]],
-        ["/_api/agency/read", [["/arango/Plan/DBServers"]]],
-      ];
-      
-      requests.forEach(requestStruct => {
-        res = request.post(leaderEndpoint + requestStruct[0], {body: JSON.stringify(requestStruct[1]), headers: {"Content-Type": "application/json"}});
-        assertEqual(res.statusCode, 200);
-      });
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test that order should not matter
+////////////////////////////////////////////////////////////////////////////////
 
-      assertEqual(res.body, JSON.stringify([{"arango":{"Plan":{"DBServers":{"DBServer001":"none"}}}}]));
+    testOrder : function () {
+      writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
+      assertEqual(readAndCheck([["a/e"],["a/b","d"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test nasty willful attempt to break
+////////////////////////////////////////////////////////////////////////////////
+
+    testOrderEvil : function () {
+      writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
+      assertEqual(readAndCheck([["a/e"],["a/b","d"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test nasty willful attempt to break
+////////////////////////////////////////////////////////////////////////////////
+
+    testSlashORama : function () {
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"//////////////////////a/////////////////////b//":
+                       {"b///////c":4}}]]);
+      assertEqual(readAndCheck([["/"]]), [{a:{b:{b:{c:4}}}}]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"////////////////////////": "Hi there!"}]]);
+      assertEqual(readAndCheck([["/"]]), ["Hi there!"]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"/////////////////\/////a/////////////////////b\//": {"b///////\c":4}}]]);
     }
+
+
+
   };
 }
 

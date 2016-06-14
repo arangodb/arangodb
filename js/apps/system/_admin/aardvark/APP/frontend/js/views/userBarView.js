@@ -17,7 +17,10 @@
 
     initialize: function (options) {
       this.userCollection = options.userCollection;
-      this.userCollection.fetch({async: true});
+      this.userCollection.fetch({
+        cache: false,
+        async: true
+      });
       this.userCollection.bind("change:extra", this.render.bind(this));
     },
 

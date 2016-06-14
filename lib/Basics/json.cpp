@@ -556,8 +556,8 @@ bool TRI_IsStringJson(TRI_json_t const* json) { return IsString(json); }
 /// @brief adds a new sub-object to an array, copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PushBackArrayJson(TRI_memory_zone_t* zone, TRI_json_t* array,
-                           TRI_json_t const* object) {
+int TRI_PushBackArrayJson(TRI_memory_zone_t* zone, TRI_json_t* array,
+                          TRI_json_t const* object) {
   TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
 
   TRI_json_t* dst =
@@ -565,11 +565,11 @@ void TRI_PushBackArrayJson(TRI_memory_zone_t* zone, TRI_json_t* array,
 
   if (dst == nullptr) {
     // out of memory
-    return;
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // directly copy value into the obtained address
-  TRI_CopyToJson(zone, dst, object);
+  return TRI_CopyToJson(zone, dst, object);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

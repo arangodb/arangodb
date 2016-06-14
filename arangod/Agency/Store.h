@@ -82,6 +82,9 @@ class Store : public arangodb::Thread {
   /// @brief Notify observers
   void notifyObservers() const;
 
+  /// @brief See how far the path matches anything in store
+  size_t matchPath(std::vector<std::string> const& pv) const;
+
   /// @brief Get node specified by path vector
   Node operator()(std::vector<std::string> const& pv);
   /// @brief Get node specified by path vector

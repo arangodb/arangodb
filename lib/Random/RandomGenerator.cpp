@@ -23,16 +23,16 @@
 
 #include "RandomGenerator.h"
 
-#include <random>
 #include <chrono>
+#include <random>
 
 #ifdef _WIN32
 #include <Wincrypt.h>
 #endif
 
-#include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Thread.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -471,7 +471,8 @@ void RandomGenerator::initialize(RandomType type) {
 void RandomGenerator::shutdown() { _device.reset(nullptr); }
 
 int16_t RandomGenerator::interval(int16_t left, int16_t right) {
-  return static_cast<int16_t>(interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
+  return static_cast<int16_t>(
+      interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
 }
 
 int32_t RandomGenerator::interval(int32_t left, int32_t right) {
@@ -506,19 +507,17 @@ int64_t RandomGenerator::interval(int64_t left, int64_t right) {
 
     if (dRandom < low) {
       return -1 - static_cast<int64_t>(dRandom);
-    }
-    else {
+    } else {
       return static_cast<int64_t>(dRandom - low);
     }
-  }
-  else {
+  } else {
     uint64_t d = high - low;
     return static_cast<int64_t>(interval(d)) + low;
   }
 }
 
 uint16_t RandomGenerator::interval(uint16_t right) {
-  return static_cast<uint16_t>(static_cast<uint32_t>(right));
+  return static_cast<uint16_t>(interval(static_cast<uint32_t>(right)));
 }
 
 uint32_t RandomGenerator::interval(uint32_t right) {
@@ -552,8 +551,7 @@ uint64_t RandomGenerator::interval(uint64_t right) {
     uint32_t low = static_cast<uint32_t>(right - highMax);
     uint64_t lowRandom = static_cast<uint64_t>(interval(low));
     return highRandom | lowRandom;
-  }
-  else {
+  } else {
     uint64_t lowRandom = static_cast<uint64_t>(interval(UINT32_MAX));
     return highRandom | lowRandom;
   }
