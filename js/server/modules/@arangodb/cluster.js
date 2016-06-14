@@ -960,36 +960,64 @@ function cleanupCurrentCollections (plannedCollections, currentCollections,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lock key space
+////////////////////////////////////////////////////////////////////////////////
+
+function lockSyncKeyspace() {
+  while (!global.KEY_SET_CAS("shardSynchronization", "lock", 1, null)) {
+    wait(0.001);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlock key space
+////////////////////////////////////////////////////////////////////////////////
+
+function unlockSyncKeyspace() {
+  global.KEY_SET("shardSynchronization", "lock", null);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief launch a scheduled job if needed
 ////////////////////////////////////////////////////////////////////////////////
 
-function launchJob() {
+function tryLaunchJob() {
   const registerTask = require("internal").registerTask;
-  var jobs = global.KEYSPACE_GET("shardSynchronization");
-  if (jobs.running === null) {
-    var shards = Object.keys(jobs.scheduled);
-    if (shards.length > 0) {
-      var jobInfo = jobs.scheduled[shards[0]];
-      try {
-        registerTask({
-          database: jobInfo.database,
-          params: {database: jobInfo.database, shard: jobInfo.shard, 
-                   planId: jobInfo.planId, leader: jobInfo.leader},
-          command: function(params) {
-            require("@arangodb/cluster").synchronizeOneShard(
-              params.database, params.shard, params.planId, params.leader);
-          }});
-      } catch (err) {
-        if (! require("internal").isStopping()) {
-          console.error("Could not registerTask for shard synchronization.");
+  var isStopping = require("internal").isStopping;
+  if (isStopping()) {
+    return;
+  }
+  lockSyncKeyspace();
+  try {
+    var jobs = global.KEYSPACE_GET("shardSynchronization");
+    if (jobs.running === null) {
+      var shards = Object.keys(jobs.scheduled);
+      if (shards.length > 0) {
+        var jobInfo = jobs.scheduled[shards[0]];
+        try {
+          registerTask({
+            database: jobInfo.database,
+            params: {database: jobInfo.database, shard: jobInfo.shard, 
+                     planId: jobInfo.planId, leader: jobInfo.leader},
+            command: function(params) {
+              require("@arangodb/cluster").synchronizeOneShard(
+                params.database, params.shard, params.planId, params.leader);
+            }});
+        } catch (err) {
+          if (! require("internal").isStopping()) {
+            console.error("Could not registerTask for shard synchronization.");
+          }
+          return;
         }
-        return;
+        global.KEY_SET("shardSynchronization", "running", jobInfo);
+        console.debug("scheduleOneShardSynchronization: have launched job", jobInfo);
+        delete jobs.scheduled[shards[0]];
+        global.KEY_SET("shardSynchronization", "scheduled", jobs.scheduled);
       }
-      global.KEY_SET("shardSynchronization", "running", jobInfo);
-      console.debug("scheduleOneShardSynchronization: have launched job", jobInfo);
-      delete jobs.scheduled[shards[0]];
-      global.KEY_SET("shardSynchronization", "scheduled", jobs.scheduled);
     }
+  }
+  finally {
+    unlockSyncKeyspace();
   }
 }
 
@@ -1006,7 +1034,7 @@ function synchronizeOneShard(database, shard, planId, leader) {
   var ok = false;
   const rep = require("@arangodb/replication");
 
-  console.info("synchronizeOneShard: trying to synchronize local shard '%s/%s' for central '%s/%s'",
+  console.warn("synchronizeOneShard: trying to synchronize local shard '%s/%s' for central '%s/%s'",
                database, shard, database, planId);
   try {
     var ep = ArangoClusterInfo.getServerEndpoint(leader);
@@ -1105,10 +1133,16 @@ function synchronizeOneShard(database, shard, planId, leader) {
     }
   }
   // Tell others that we are done:
-  global.KEY_SET("shardSynchronization", "running", null);
-  if (!isStopping()) {
-    launchJob();  // start a new one if needed
+  lockSyncKeyspace();
+  try {
+    global.KEY_SET("shardSynchronization", "running", null);
   }
+  finally {
+    unlockSyncKeyspace();
+  }
+  tryLaunchJob();  // start a new one if needed
+  console.warn("synchronizeOneShard: donedone, %s/%s, %s/%s", 
+               database, shard, database, planId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1118,32 +1152,36 @@ function synchronizeOneShard(database, shard, planId, leader) {
 function scheduleOneShardSynchronization(database, shard, planId, leader) {
   console.debug("scheduleOneShardSynchronization:", database, shard, planId,
                 leader);
-  var jobs;
   try {
-    jobs = global.KEYSPACE_GET("shardSynchronization");
+    global.KEY_GET("shardSynchronization", "lock");
   }
   catch (e) {
     global.KEYSPACE_CREATE("shardSynchronization");
     global.KEY_SET("shardSynchronization", "scheduled", {});
     global.KEY_SET("shardSynchronization", "running", null);
-    jobs = { scheduled: {}, running: null };
+    global.KEY_SET("shardSynchronization", "lock", null);
   }
 
-  if ((jobs.running !== null && jobs.running.shard === shard) ||
-      jobs.scheduled.hasOwnProperty(shard)) {
-    console.debug("task is already running or scheduled,",
-                  "ignoring scheduling request");
-    return false;
-  }
+  lockSyncKeyspace();
+  try {
+    var jobs = global.KEYSPACE_GET("shardSynchronization");
+    if ((jobs.running !== null && jobs.running.shard === shard) ||
+        jobs.scheduled.hasOwnProperty(shard)) {
+      console.debug("task is already running or scheduled,",
+                    "ignoring scheduling request");
+      return false;
+    }
 
-  // If we reach this, we actually have to schedule a new task:
-  var jobInfo = { database, shard, planId, leader };
-  jobs.scheduled[shard] = jobInfo;
-  global.KEY_SET("shardSynchronization", "scheduled", jobs.scheduled);
-  console.debug("scheduleOneShardSynchronization: have scheduled job", jobInfo);
-  if (jobs.running === null) {  // no job scheduled, so start it:
-    launchJob();
+    // If we reach this, we actually have to schedule a new task:
+    var jobInfo = { database, shard, planId, leader };
+    jobs.scheduled[shard] = jobInfo;
+    global.KEY_SET("shardSynchronization", "scheduled", jobs.scheduled);
+    console.debug("scheduleOneShardSynchronization: have scheduled job", jobInfo);
   }
+  finally {
+    unlockSyncKeyspace();
+  }
+  tryLaunchJob();
   return true;
 }
 
