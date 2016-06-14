@@ -18,7 +18,7 @@ module.context.use(sessions);
 
 `headerTransport([options]): Transport`
 
-Creates a [Transport][TRANSPORT] that can be used in the sessions middleware.
+Creates a [Transport](README.md) that can be used in the sessions middleware.
 
 **Arguments**
 
@@ -31,5 +31,3 @@ Creates a [Transport][TRANSPORT] that can be used in the sessions middleware.
     Name of the header that contains the session identifier (not case sensitive).
 
 If a string is passed instead of an options object, it will be interpreted as the *name* option.
-
-[TRANSPORT]: ./README.md

@@ -467,11 +467,12 @@ function agencyTestSuite () {
       writeAndCheck([[{"////////////////////////": "Hi there!"}]]);
       assertEqual(readAndCheck([["/"]]), ["Hi there!"]);
       writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck([[{"/////////////////\/////a/////////////////////b\//": {"b///////\c":4}}]]);
+      writeAndCheck(
+        [[{"/////////////////\\/////a/////////////^&%^&$^&%$////////b\\\n//":
+           {"b///////c":4}}]]);
+      assertEqual(readAndCheck([["/"]]),
+                  [{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}]);
     }
-
-
-
   };
 }
 

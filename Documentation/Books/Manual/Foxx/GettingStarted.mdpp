@@ -14,7 +14,7 @@ First we need to create a manifest. Create a new file called `manifest.json` and
 
 This just tells ArangoDB the service is compatible with versions 3.0.0 and later (all the way up to but not including 4.0.0), allowing older versions of ArangoDB to understand that this service likely won't work for them and newer versions what behavior to emulate should they still support it.
 
-The little hat to the left of the version number is not a typo, it's called a "caret" and indicates the version range. Foxx uses semantic versioning (also called "semver") for most of its version handling. You can find out more about how semver works at the [official semver website][SEMVER].
+The little hat to the left of the version number is not a typo, it's called a "caret" and indicates the version range. Foxx uses semantic versioning (also called "semver") for most of its version handling. You can find out more about how semver works at the [official semver website](http://semver.org).
 
 Next we'll need to specify an entry point to our service. This is the JavaScript file that will be executed to define our service's HTTP endpoints. We can do this by adding a "main" field to our manifest:
 
@@ -37,7 +37,7 @@ const router = createRouter();
 module.context.use(router);
 ```
 
-The first line causes our file to be interpreted using [strict mode][STRICT]. All examples in the ArangoDB documentation assume strict mode, so you might want to familiarize yourself with it if you haven't encountered it before.
+The first line causes our file to be interpreted using [strict mode](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode). All examples in the ArangoDB documentation assume strict mode, so you might want to familiarize yourself with it if you haven't encountered it before.
 
 The second line imports the `@arangodb/foxx/router` module which provides a function for creating new Foxx routers. We're using this function to create a new `router` object which we'll be using for our service.
 
@@ -57,7 +57,7 @@ router.get('/hello-world', function (req, res) {
 
 The `router` provides the methods `get`, `post`, etc corresponding to each HTTP verb as well as the catch-all `all`. These methods indicate that the given route should be used to handle incoming requests with the given HTTP verb (or any method when using `all`).
 
-These methods take an optional path (if omitted, it defaults to `"/"`) as well as a request handler, which is a function taking the `req` ([request][REQUEST]) and `res` ([response][RESPONSE]) objects to handle the incoming request and generate the outgoing response. If you have used the express framework in Node.js, you may already be familiar with how this works, otherwise check out [the chapter on routes][ROUTES].
+These methods take an optional path (if omitted, it defaults to `"/"`) as well as a request handler, which is a function taking the `req` ([request](Router/Request.md)) and `res` ([response](Router/Response.md)) objects to handle the incoming request and generate the outgoing response. If you have used the express framework in Node.js, you may already be familiar with how this works, otherwise check out [the chapter on routes](Router/Endpoints.md).
 
 The object returned by the router's methods provides additional methods to attach metadata and validation to the route. We're using `summary` and `description` to document what the route does -- these aren't strictly necessary but give us some nice auto-generated documentation. The `response` method lets us additionally document the response content type and what the response body will represent.
 
@@ -108,9 +108,9 @@ router.get('/hello/:name', function (req, res) {
 .description('Prints a personalized greeting.');
 ```
 
-The first line imports the [`joi` module from npm][JOI] which comes bundled with ArangoDB. Joi is a validation library that is used throughout Foxx to define schemas and parameter types.
+The first line imports the [`joi` module from npm](https://www.npmjs.com/package/joi) which comes bundled with ArangoDB. Joi is a validation library that is used throughout Foxx to define schemas and parameter types.
 
-**Note**: You can bundle your own modules from npm by installing them in your service folder and making sure the `node_modules` folder is included in your zip archive. For more information see the section on [module dependencies in the chapter on dependencies][DEPENDENCIES].
+**Note**: You can bundle your own modules from npm by installing them in your service folder and making sure the `node_modules` folder is included in your zip archive. For more information see the section on [module dependencies in the chapter on dependencies](Dependencies.md).
 
 The `pathParam` method allows us to specify parameters we are expecting in the path. The first argument corresponds to the parameter name in the path, the second argument is a joi schema the parameter is expected to match and the final argument serves to describe the parameter in the API documentation.
 
@@ -154,7 +154,7 @@ The `body` method works the same way as the `response` method except the schema 
 
 !SECTION Creating collections
 
-The real power of Foxx comes from interacting with the database itself. In order to be able to use a collection from within our service, we should first make sure that the collection actually exists. The right place to create collections your service is going to use is in [a *setup* script][SCRIPTS], which Foxx will execute for you when installing or updating the service.
+The real power of Foxx comes from interacting with the database itself. In order to be able to use a collection from within our service, we should first make sure that the collection actually exists. The right place to create collections your service is going to use is in [a *setup* script](Scripts.md), which Foxx will execute for you when installing or updating the service.
 
 First create a new folder called "scripts" in the service folder, which will be where our scripts are going to live. For simplicity's sake, our setup script will live in a file called `setup.js` inside that folder:
 
@@ -169,11 +169,11 @@ if (!db._collection(collectionName)) {
 }
 ```
 
-The script uses the [`db` object][DBOBJECT] from the `@arangodb` module, which lets us interact with the database the Foxx service was installed in and the collections inside that database. Because the script may be executed multiple times (i.e. whenever we update the service or when the server is restarted) we need to make sure we don't accidentally try to create the same collection twice (which would result in an exception); we do that by first checking whether it already exists before creating it.
+The script uses the [`db` object](../Appendix/References/DBObject.md) from the `@arangodb` module, which lets us interact with the database the Foxx service was installed in and the collections inside that database. Because the script may be executed multiple times (i.e. whenever we update the service or when the server is restarted) we need to make sure we don't accidentally try to create the same collection twice (which would result in an exception); we do that by first checking whether it already exists before creating it.
 
 The `_collection` method looks up a collection by name and returns `null` if no collection with that name was found. The `_createDocumentCollection` method creates a new document collection by name (`_createEdgeCollection` also exists and works analogously for edge collections).
 
-**Note**: Because we have hardcoded the collection name, multiple copies of the service installed alongside each other in the same database will share the same collection. Because this may not always be what you want, the [Foxx context][CONTEXT] also provides the `collectionName` method which applies a mount point specific prefix to any given collection name to make it unique to the service. It also provides the `collection` method, which behaves almost exactly like `db._collection` except it also applies the prefix before looking the collection up.
+**Note**: Because we have hardcoded the collection name, multiple copies of the service installed alongside each other in the same database will share the same collection. Because this may not always be what you want, the [Foxx context](Context.md) also provides the `collectionName` method which applies a mount point specific prefix to any given collection name to make it unique to the service. It also provides the `collection` method, which behaves almost exactly like `db._collection` except it also applies the prefix before looking the collection up.
 
 Next we need to tell our service about the script by adding it to the manifest file:
 
@@ -288,31 +288,14 @@ const keys = db._query(
 
 You now know how to create a Foxx service from scratch, how to handle user input and how to access the database from within your Foxx service to store, retrieve and query data you store inside ArangoDB. This should allow you to build meaningful APIs for your own applications but there are many more things you can do with Foxx:
 
-* Need to go faster? Turn on [development mode][README] and hack on your code right on the server.
+* Need to go faster? Turn on [development mode](README.md) and hack on your code right on the server.
 
-* Concerned about security? You could add [authentication][AUTH] to your service to protect access to the data before it even leaves the database.
+* Concerned about security? You could add [authentication](Auth.md) to your service to protect access to the data before it even leaves the database.
 
-* Writing a single page app? You could [store some basic assets][ASSETS] right inside your Foxx service.
+* Writing a single page app? You could [store some basic assets](Assets.md) right inside your Foxx service.
 
-* Need to integrate external services? You can [make HTTP requests][REQUESTMODULE] from inside Foxx and use [queued jobs][SCRIPTS] to perform that work in the background.
+* Need to integrate external services? You can [make HTTP requests](Modules.md) from inside Foxx and use [queued jobs](Scripts.md) to perform that work in the background.
 
-* Tired of reinventing the wheel? Learn about [dependencies][DEPENDENCIES].
+* Tired of reinventing the wheel? Learn about [dependencies](Dependencies.md).
 
-* Everything broken? You can [write tests][TESTS] to make sure your logic remains sound.
-
-[AUTH]: ./Auth.md
-[SEMVER]: http://semver.org/
-[STRICT]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode
-[JOI]: https://www.npmjs.com/package/joi
-[ROUTER]: ./Router/README.md
-[REQUEST]: ./Router/Request.md
-[RESPONSE]: ./Router/Response.md
-[ROUTES]: ./Router/Endpoints.md
-[SCRIPTS]: ./Scripts.md
-[ASSETS]: ./Assets.md
-[README]: ./README.md
-[REQUESTMODULE]: ./Modules.md
-[DEPENDENCIES]: ./Dependencies.md
-[CONTEXT]: ./Context.md
-[DBOBJECT]: ../Appendix/References/DBObject.md
-[TESTS]: ./Testing.md
+* Everything broken? You can [write tests](Testing.md) to make sure your logic remains sound.

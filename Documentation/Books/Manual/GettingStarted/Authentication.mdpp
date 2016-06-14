@@ -7,7 +7,7 @@ all databases.
 
 You should create a database for your application together with a
 user that has access rights to this database. See
-[Managing Users](../Administration/ManagingUsers/index.html).
+[Managing Users](../Administration/ManagingUsers.md).
 
 Use the *arangosh* to create a new database and user.
 
