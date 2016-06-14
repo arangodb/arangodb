@@ -302,24 +302,11 @@
     },
 
     successConfirmation: function () {
-
       arangoHelper.arangoNotification('Document saved.');
-
-      $('#documentEditor .tree').animate({backgroundColor: '#C6FFB0'}, 500);
-      $('#documentEditor .tree').animate({backgroundColor: '#FFFFF'}, 500);
-
-      $('#documentEditor .ace_content').animate({backgroundColor: '#C6FFB0'}, 500);
-      $('#documentEditor .ace_content').animate({backgroundColor: '#FFFFF'}, 500);
     },
 
     errorConfirmation: function (e) {
       arangoHelper.arangoError("Document editor: ", e);
-
-      $('#documentEditor .tree').animate({backgroundColor: '#FFB0B0'}, 500);
-      $('#documentEditor .tree').animate({backgroundColor: '#FFFFF'}, 500);
-
-      $('#documentEditor .ace_content').animate({backgroundColor: '#FFB0B0'}, 500);
-      $('#documentEditor .ace_content').animate({backgroundColor: '#FFFFF'}, 500);
     },
 
     enableSaveButton: function () {
