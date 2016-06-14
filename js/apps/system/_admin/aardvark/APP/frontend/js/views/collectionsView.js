@@ -539,6 +539,18 @@
             tableContent,
             advanced
           );
+
+          //select2 workaround
+          $('#s2id_new-collection-shardBy .select2-search-field input').on('focusout', function(e) {
+            if ($('.select2-drop').is(':visible')) {
+              if (!$('#select2-search-field input').is(':focus')) {
+                window.setTimeout(function() {
+                  $(e.currentTarget).parent().parent().parent().select2('close');
+                }, 80);
+              }
+            }
+          });
+
         }
       }.bind(this);
 
