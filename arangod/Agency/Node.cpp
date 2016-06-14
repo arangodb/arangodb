@@ -484,7 +484,13 @@ bool Node::applieOp(VPackSlice const& slice) {
   std::string oper = slice.get("op").copyString();
 
   if (oper == "delete") {
-    return _parent->removeChild(_node_name);
+    if (_parent == nullptr) { // root node
+      _children.clear();
+      _value.clear();
+      return true;
+    } else {                   
+      return _parent->removeChild(_node_name);
+    }
   } else if (oper == "set") {  // "op":"set"
     return handle<SET>(slice);
   } else if (oper == "increment") {  // "op":"increment"
@@ -513,7 +519,7 @@ bool Node::applieOp(VPackSlice const& slice) {
 
 // Apply slice to this node
 bool Node::applies(VPackSlice const& slice) {
-
+  
   if (slice.isObject()) {
     
     // Object is special case json

@@ -372,7 +372,7 @@ write_ret_t Agent::write(query_t const& query) {
   std::vector<bool> applied;
   std::vector<index_t> indices;
   index_t maxind = 0;
-  
+
   // Only leader else redirect
   if (!_constituent.leading()) {
     return write_ret_t(false, _constituent.leaderID());

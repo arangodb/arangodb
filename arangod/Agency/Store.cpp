@@ -151,28 +151,33 @@ std::vector<bool> Store::apply(query_t const& query) {
 
   std::vector<bool> applied;
   MUTEX_LOCKER(storeLocker, _storeLock);
-  for (auto const& i : VPackArrayIterator(query->slice())) {
-    switch (i.length()) {
-    case 1:
-      applied.push_back(applies(i[0]));
-      break;  // no precond
-    case 2:
-      if (check(i[1])) {  // precondition
+
+  try {
+    for (auto const& i : VPackArrayIterator(query->slice())) {
+      switch (i.length()) {
+      case 1:
         applied.push_back(applies(i[0]));
-      } else {  // precondition failed
-        LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+        break;  // no precond
+      case 2:
+        if (check(i[1])) {  // precondition
+          applied.push_back(applies(i[0]));
+        } else {  // precondition failed
+          LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+          applied.push_back(false);
+        }
+        break;
+      default:  // wrong
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "We can only handle log entry with or without precondition!";
         applied.push_back(false);
+        break;
       }
-      break;
-    default:  // wrong
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << "We can only handle log entry with or without precondition!";
-      applied.push_back(false);
-      break;
     }
-  }
-  
   _cv.signal();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << __FILE__ << ":" << __LINE__ << " " << e.what();
+  }
 
   return applied;
 }
