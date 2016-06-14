@@ -17,6 +17,7 @@
     refetchCollections: function() {
       var self = this;
       this.collection.fetch({
+        cache: false,
         success: function() {
           self.checkLockedCollections();
         }
@@ -164,6 +165,7 @@
     updateCollectionsView: function() {
       var self = this;
       this.collection.fetch({
+        cache: false,
         success: function() {
           self.render();
         }
