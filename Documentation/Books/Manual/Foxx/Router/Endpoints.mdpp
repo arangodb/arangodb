@@ -92,6 +92,8 @@ Returns the endpoint.
 **Examples**
 
 ```js
+router.get(/* ... */)
+.queryParam('num', joi.number().required());
 ```
 
 !SECTION body
