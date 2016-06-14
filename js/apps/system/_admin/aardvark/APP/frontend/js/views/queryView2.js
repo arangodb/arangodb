@@ -1100,7 +1100,9 @@
 
     listenKey: function (e) {
       if (e.keyCode === 13) {
-        this.saveAQL(e);
+        if ($('#modalButton1').html() === 'Update') {
+          this.saveAQL();
+        }
       }
       this.checkSaveName();
     },
@@ -1116,7 +1118,7 @@
       }, 500);
     },
 
-    createCustomQueryModal: function(){
+    createCustomQueryModal: function() {
       var buttons = [], tableContent = [];
       tableContent.push(
         window.modalView.createTextEntry(
@@ -1166,7 +1168,9 @@
     },
 
     saveAQL: function (e) {
-      e.stopPropagation();
+      if (e) {
+        e.stopPropagation();
+      }
 
       //update queries first, before writing
       this.refreshAQL();
@@ -1219,6 +1223,7 @@
         });
       }
 
+      console.log("saving");
       var callback = function(error) {
         if (error) {
           arangoHelper.arangoError("Query", "Could not save query");
