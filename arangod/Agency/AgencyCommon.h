@@ -36,50 +36,47 @@
 namespace arangodb {
 namespace consensus {
 
-typedef uint64_t term_t;  // Term type
-typedef uint32_t id_t;    // Id type
 
-enum role_t {  // Role
-  FOLLOWER,
-  CANDIDATE,
-  LEADER
-};
+/// @brief Term type
+typedef uint64_t term_t;
 
-const std::vector<std::string> roleStr ({"Follower", "Candidate", "Leader"});
 
-struct constituent_t {  // Constituent type
-  id_t id;
-  std::string endpoint;
-};
+/// @brief Id type
+typedef uint32_t id_t;
 
-typedef std::vector<constituent_t> constituency_t;  // Constituency type
-typedef uint32_t state_t;                           // State type
-typedef std::chrono::duration<long, std::ratio<1, 1000>>
-    duration_t;  // Duration type
 
+/// @brief Agent roles
+enum role_t {FOLLOWER, CANDIDATE, LEADER};
+
+
+/// @brief Duration type
+typedef std::chrono::duration<long, std::ratio<1, 1000>> duration_t;
+
+
+/// @brief Log query type 
 using query_t = std::shared_ptr<arangodb::velocypack::Builder>;
 
-struct vote_ret_t {
-  query_t result;
-  explicit vote_ret_t(query_t res) : result(res) {}
-};
 
+/// @brief Log entry index type
+typedef uint64_t index_t;
+
+
+/// @brief Read request return type
 struct read_ret_t {
-  bool accepted;  // Query processed
-  id_t redirect;  // Otherwise redirect to
-  std::vector<bool> success;
-  query_t result;  // Result
+  bool accepted;  ///< @brief Query accepted (i.e. we are leader)
+  id_t redirect;  ///< @brief If not accepted redirect id
+  std::vector<bool> success; ///< @brief Query's precond OK
+  query_t result;  ///< @brief Query result
   read_ret_t(bool a, id_t id, std::vector<bool> suc = std::vector<bool>(),
              query_t res = nullptr)
       : accepted(a), redirect(id), success(suc), result(res) {}
 };
 
-typedef uint64_t index_t;
 
-typedef std::initializer_list<index_t> index_list_t;
+/// @brief Write request return type
 struct write_ret_t {
-  bool accepted;  // Query processed
-  id_t redirect;  // Otherwise redirect to
+  bool accepted;  ///< @brief Query accepted (i.e. we are leader)
+  id_t redirect;  ///< @brief If not accepted redirect id
   std::vector<bool> applied;
   std::vector<index_t> indices;  // Indices of log entries (if any) to wait for
   write_ret_t() : accepted(false), redirect(0) {}
@@ -89,54 +86,41 @@ struct write_ret_t {
       : accepted(a), redirect(id), applied(app), indices(idx) {}
 };
 
-using namespace std::chrono;
+
+/// @brief Buffer type
 using buffer_t = std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>;
-/**
- * @brief State entry
- */
+
+
+/// @brief State entry
 struct log_t {
-  index_t index;
-  term_t term;
-  id_t leaderId;
-  buffer_t entry;
-  milliseconds timestamp;
+
+  index_t index;          ///< @brief Log index
+  term_t term;            ///< @brief Log term
+  id_t leaderId;          ///< @brief Leader's ID
+  buffer_t entry;         ///< @brief To log
+  std::chrono::milliseconds timestamp; ///< @brief Timestamp
+
   log_t(index_t idx, term_t t, id_t lid, buffer_t const& e)
-      : index(idx),
-        term(t),
-        leaderId(lid),
-        entry(e),
-        timestamp(duration_cast<milliseconds>(
-            system_clock::now().time_since_epoch())) {}
+    : index(idx), term(t), leaderId(lid), entry(e),
+      timestamp(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch())) {}
+  
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
     o << l.index << " " << l.term << " " << l.leaderId << " "
       << l.entry->toString() << " " << l.timestamp.count();
     return o;
   }
+  
 };
 
-enum agencyException { QUERY_NOT_APPLICABLE };
 
-struct append_entries_t {
-  term_t term;
-  bool success;
-  append_entries_t(term_t t, bool s) : term(t), success(s) {}
-};
-
-struct collect_ret_t {
-  index_t prev_log_index;
-  term_t prev_log_term;
-  std::vector<index_t> indices;
-  collect_ret_t() : prev_log_index(0), prev_log_term(0) {}
-  collect_ret_t(index_t pli, term_t plt, std::vector<index_t> const& idx)
-      : prev_log_index(pli), prev_log_term(plt), indices(idx) {}
-  size_t size() const { return indices.size(); }
-};
-
+/// @brief Private RPC return type
 struct priv_rpc_ret_t {
   bool success;
   term_t term;
   priv_rpc_ret_t(bool s, term_t t) : success(s), term(t) {}
 };
+
 }
 }
 

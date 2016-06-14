@@ -25,7 +25,7 @@
   !define TRI_UNINSTALL_REG_PATH "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@";
   !define TRI_SVC_NAME 'ArangoDB'
 ; Put some of the more custom ones in from the CMakeFile:
-@CPACK_NSIS_DEFINES@
+@CPACK_ARANGODB_NSIS_DEFINES@
 
 ;--------------------------------
 ;Variables

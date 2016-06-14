@@ -84,8 +84,8 @@ std::vector<check_t> Supervision::checkDBServers() {
   for (auto const& machine : machinesPlanned) {
 
     bool good = false;
-    std::string lastHeartbeatTime, lastHeartbeatStatus, lastHeartbeatAcked,
-      lastStatus, heartbeatTime, heartbeatStatus, serverID;
+    std::string lastHeartbeatTime, lastHeartbeatAcked, lastStatus, heartbeatTime,
+      heartbeatStatus, serverID;
 
     serverID        = machine.first;
     heartbeatTime   = _snapshot(syncPrefix + serverID + "/time").toJson();
@@ -195,8 +195,8 @@ std::vector<check_t> Supervision::checkCoordinators() {
   for (auto const& machine : machinesPlanned) {
 
     bool good = false;
-    std::string lastHeartbeatTime, lastHeartbeatStatus, lastHeartbeatAcked,
-      lastStatus, heartbeatTime, heartbeatStatus, serverID;
+    std::string lastHeartbeatTime, lastHeartbeatAcked, lastStatus, heartbeatTime,
+      heartbeatStatus, serverID;
 
     serverID        = machine.first;
     heartbeatTime   = _snapshot(syncPrefix + serverID + "/time").toJson();
@@ -208,8 +208,6 @@ std::vector<check_t> Supervision::checkCoordinators() {
     try {           // Existing
       lastHeartbeatTime =
         _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
-      lastHeartbeatStatus =
-        _snapshot(healthPrefix + serverID + "/LastHeartbeatStatus").toJson();
       lastStatus = _snapshot(healthPrefix + serverID + "/Status").toJson();
       if (lastHeartbeatTime != heartbeatTime) { // Update
         good = true;
