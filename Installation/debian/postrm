@@ -5,7 +5,7 @@ set -e
 
 if [ purge = "$1" ]; then
 	rm -rf /usr/share/arangodb/js/apps
-	rm -rf /var/log/arangodb
+	rm -rf /var/log/arangodb3
 	rm -rf /var/lib/arangodb3
 	rm -rf /var/lib/arangodb3-apps 
 	rm -rf /var/run/arangodb
