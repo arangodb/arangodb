@@ -185,15 +185,10 @@
       };
 
       this.collection.create(options, {
-        wait: false,
         error: function(data, err) {
-          console.log("ERROR");
           self.handleError(err.status, err.statusText, dbname);
         },
-        success: function() {
-
-          //TODO
-          // add root user to newly created database
+        success: function(data) {
 
           if (userName !== 'root') {
             $.ajax({
@@ -214,12 +209,15 @@
             })
           });
 
-          self.updateDatabases();
-          arangoHelper.arangoNotification("Database created.");
-          window.modalView.hide();
-          window.App.naviView.dbSelectionView.render($("#dbSelect"));
+          if (window.location.hash === '#databases') {
+            self.updateDatabases();
+          }
+          arangoHelper.arangoNotification("Database " + data.get("name") + " created.");
         }
       });
+
+      arangoHelper.arangoNotification("Database creation in progress.");
+      window.modalView.hide();
     },
 
     submitDeleteDatabase: function(dbname) {
