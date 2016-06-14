@@ -83,7 +83,7 @@
   * [Serving files](Foxx/Assets.md)
   * [Writing tests](Foxx/Testing.md)
   * [Scripts and queued jobs](Foxx/Scripts.md)
-  * [Legacy mode for 2.x](Foxx/LegacyMode.md)
+  * [Legacy compatibility mode](Foxx/LegacyMode.md)
   * [User management](Foxx/Users.md)
   * [Related modules](Foxx/Modules.md)
     * [Authentication](Foxx/Auth.md)
