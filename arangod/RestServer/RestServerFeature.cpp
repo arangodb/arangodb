@@ -267,8 +267,6 @@ void RestServerFeature::generateNewJwtSecret() {
   for (size_t i = 0; i < RestServerFeature::_maxSecretLength; i++) {
     _jwtSecret += (1 + RandomGenerator::interval(m));
   }
-
-  LOG(ERR) << _jwtSecret;
 }
 
 void RestServerFeature::prepare() {
