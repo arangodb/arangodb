@@ -120,7 +120,7 @@ exports.validateRequestBody = function validateRequestBody(def, req) {
     const result = schema.validate(body);
 
     if (result.error) {
-      result.error.message = result.error.message.replace(/^"value"/, '"request body"');
+      result.error.message = result.error.message.replace(/^"value"/, 'request body');
       throw result.error;
     }
 
