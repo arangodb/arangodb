@@ -1177,8 +1177,9 @@ actions.defineHttp({
       return;
     }
     var ok = true;
+    var id;
     try {
-      var id = ArangoClusterInfo.uniqid();
+      id = ArangoClusterInfo.uniqid();
       var todo = { "type": "cleanOutServer",
                    "server": body.server,
                    "jobId": id,
@@ -1191,10 +1192,10 @@ actions.defineHttp({
     }
     if (!ok) {
       actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
-                          "Cannot write to agency.");
+                          {error: true, errorMsg: "Cannot write to agency."});
       return;
     }
-    actions.resultOk(req, res, actions.HTTP_ACCEPTED, true);
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, {error: false, id: id});
   }
 });
 
@@ -1270,12 +1271,12 @@ actions.defineHttp({
           "body must be an object with string attributes 'database', 'collection', 'shard', 'fromServer' and 'toServer'"); 
       return;
     }
-    var errorMsg = require("@arangodb/cluster").moveShard(body);
-    if (errorMsg !== "") {
-      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE, errorMsg);
+    var r = require("@arangodb/cluster").moveShard(body);
+    if (r.error) {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE, r);
       return;
     }
-    actions.resultOk(req, res, actions.HTTP_ACCEPTED, true);
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, r);
   }
 });
 
@@ -1303,7 +1304,7 @@ actions.defineHttp({
 /// @ RESTRETURNCODE{200} is returned when everything went well and the
 /// job is scheduled.
 ///
-/// @ RESTRETURNCODE{403} server is not a coordinator or method was not POST.
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not GET.
 ///
 /// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
@@ -1387,6 +1388,54 @@ actions.defineHttp({
       return;
     }
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, true);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_getSupervisionState
+/// (intentionally not in manual)
+/// @brief returns information about the state of Supervision jobs
+///
+/// @ RESTHEADER{GET /_admin/cluster/supervisionState, Get information
+/// about the state of Supervision jobs.
+///
+/// @ RESTDESCRIPTION Returns an object with attributes `ToDo`, `Pending`,
+/// `Failed` and `Finished` mirroring the state of Supervision jobs in
+/// the agency.
+///
+/// @ RESTRETURNCODES
+///
+/// @ RESTRETURNCODE{200} is returned when everything went well and the
+/// job is scheduled.
+///
+/// @ RESTRETURNCODE{403} server is not a coordinator or method was not GET.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/supervisionState",
+  allowUseDatabase: false,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require("@arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only coordinators can serve this request");
+      return;
+    }
+    if (req.requestType !== actions.GET) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only the GET method is allowed");
+      return;
+    }
+
+    var result = require("@arangodb/cluster").supervisionState();
+    if (result.error) {
+      actions.resultError(req, res, actions.HTTP_BAD, result);
+      return;
+    }
+    actions.resultOk(req, res, actions.HTTP_OK, result);
   }
 });
 

@@ -91,7 +91,7 @@ is also a change when compared to pre-2.5 behavior, when documents with missing 
 coordinate values may have caused errors on insertion when the geo index' `unique` flag was set
 and its `ignoreNull` flag was not. 
 
-This was confusing and has been rectified in 2.5. The method `ensureGeoConstaint()` now does the 
+This was confusing and has been rectified in 2.5. The method `ensureGeoConstraint()` now does the 
 same as `ensureGeoIndex()`. Furthermore, the attributes `constraint`, `unique`, `ignoreNull` and 
 `sparse` flags are now completely ignored when creating geo indexes. Client index creation code
 therefore does not need to set the `ignoreNull` or `constraint` attributes when creating a geo

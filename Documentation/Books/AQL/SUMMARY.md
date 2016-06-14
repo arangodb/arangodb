@@ -13,7 +13,7 @@
   * [Query Results](Fundamentals/QueryResults.md)
   * [Query Errors](Fundamentals/QueryErrors.md)
 * [Operators](Operators.md)
-* [Data Modification Queries](DataModification.md)
+* [Data Queries](DataQueries.md)
 * [High level Operations](Operations/README.md)
   * [FOR](Operations/For.md)
   * [RETURN](Operations/Return.md)

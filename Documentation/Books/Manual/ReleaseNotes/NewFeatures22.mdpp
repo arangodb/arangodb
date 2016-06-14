@@ -40,7 +40,7 @@ And this query removes documents from collection *backup*:
       REMOVE doc IN backup
 
 For more information on data-modification queries, please refer to
-[Data modification queries](../../../AQL/DataModification.html).
+[Data modification queries](../../AQL/DataQueries.html#data-modification-queries).
 
 !SUBSECTION Updatable variables
 
