@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global frontendConfig, Backbone, templateEngine, $, window, noty */
+/*global frontendConfig, Backbone, templateEngine, $, window, noty, arangoHelper */
 (function () {
   "use strict";
 
@@ -19,7 +19,7 @@
 
       // TODO save user property if check should be enabled/disabled
       window.setTimeout(function() {
-        if (frontendConfig.authenticationEnabled === false && frontendConfig.isCluster === false) {
+        if (frontendConfig.authenticationEnabled === false && frontendConfig.isCluster === false && arangoHelper.showAuthDialog() === true) {
           window.arangoHelper.arangoWarning(
             "Warning", "Authentication is disabled. Do not use this setup in production mode."
           );
@@ -76,7 +76,20 @@
             }];
           }
           else if (latestModel.get('type') === 'warning') {
-            time = 10000;
+            time = 15000;
+            buttons = [
+              {
+                addClass: 'button-warning', text: 'Close', onClick: function($noty) {
+                  $noty.close();
+                }
+              },
+              {
+                addClass: 'button-danger', text: 'Don\'t show again.', onClick: function($noty) {
+                  $noty.close();
+                  window.arangoHelper.doNotShowAgain();
+                }
+              }
+            ];
           }
 
           $.noty.clearQueue();
