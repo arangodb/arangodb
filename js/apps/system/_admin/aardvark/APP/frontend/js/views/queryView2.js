@@ -1606,10 +1606,13 @@
               }
             }
             catch (e) {
-              if (error.code !== 400) {
-                arangoHelper.arangoError("Query", "Successfully aborted.");
-              }
               self.removeOutputEditor(counter);
+              if (error.code === 409) {
+                return;
+              }
+              if (error.code !== 400) {
+                arangoHelper.arangoNotification("Query", "Successfully aborted.");
+              }
             }
 
             window.progressView.hide();
