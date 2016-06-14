@@ -24,8 +24,6 @@
 #ifndef ARANGOD_CONSENSUS_CONSTITUENT_H
 #define ARANGOD_CONSENSUS_CONSTITUENT_H 1
 
-#include <random>
-
 #include "AgencyCommon.h"
 #include "AgentConfiguration.h"
 #include "NotifierThread.h"
@@ -48,8 +46,6 @@ class Agent;
 /// @brief RAFT leader election
 class Constituent : public arangodb::Thread {
  public:
-  /// @brief Distribution type
-  typedef std::uniform_real_distribution<double> dist_t;
 
   /// @brief Default ctor
   Constituent();
@@ -140,7 +136,6 @@ class Constituent : public arangodb::Thread {
   arangodb::consensus::id_t _leaderID; /**< @brief Current leader */
   arangodb::consensus::id_t _id;       /**< @brief My own id */
 
-  std::mt19937 _gen;                   /**< @brief Random number generator */
   role_t _role;                        /**< @brief My role */
   Agent* _agent;                       /**< @brief My boss */
   arangodb::consensus::id_t _votedFor;

@@ -179,7 +179,9 @@
 
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
-        this.arangoCollectionsStore.fetch();
+        this.arangoCollectionsStore.fetch({
+          cache: false
+        });
 
         window.spotlightView = new window.SpotlightView({
           collection: this.arangoCollectionsStore 
@@ -191,6 +193,7 @@
         this.notificationList = new window.NotificationCollection();
 
         this.currentDB.fetch({
+          cache: false,
           success: function() {
             self.naviView = new window.NavigationView({
               database: self.arangoDatabase,
@@ -485,6 +488,7 @@
 
       if (this.foxxList.length === 0) {
         this.foxxList.fetch({
+          cache: false,
           success: function() {
             callback();
           }
@@ -527,6 +531,7 @@
         });
       }
       this.arangoCollectionsStore.fetch({
+        cache: false,
         success: function () {
           self.collectionsView.render();
         }
@@ -542,6 +547,7 @@
         return;
       }
       this.arangoCollectionsStore.fetch({
+        cache: false,
         success: function () {
           self.indicesView = new window.IndicesView({
             collectionName: colname,
@@ -563,6 +569,7 @@
         return;
       }
       this.arangoCollectionsStore.fetch({
+        cache: false,
         success: function () {
           self.settingsView = new window.SettingsView({
             collectionName: colname,
@@ -584,6 +591,7 @@
         return;
       }
       this.arangoCollectionsStore.fetch({
+        cache: false,
         success: function () {
           self.infoView = new window.InfoView({
             collectionName: colname,

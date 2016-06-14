@@ -1,4 +1,5 @@
-#community {
+#community,
+#documentation {
   padding-bottom: 40px;
   padding-left: 40px;
   padding-right: 40px;
@@ -19,5 +20,20 @@
   .center {
     margin-top: 10px;
     text-align: center;
+  }
+
+  ul {
+    list-style-type: none;
+    margin: 0 0 10px 10px;
+  }
+
+  .menu {
+    li:first-child {
+      padding-top: 20px;
+    }
+
+    li:last-child {
+      padding-top: 20px;
+    }
   }
 }
