@@ -64,6 +64,10 @@ module.exports = class SyntheticRequest {
     return this._raw.headers;
   }
 
+  set headers(headers) {
+    this._raw.headers = headers;
+  }
+
   get method() {
     return this._raw.requestType;
   }
