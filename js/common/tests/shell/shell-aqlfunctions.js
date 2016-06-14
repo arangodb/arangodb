@@ -494,6 +494,23 @@ function AqlFunctionsSuite () {
 /// @brief register a function and run a query
 ////////////////////////////////////////////////////////////////////////////////
 
+    testQueryThrow : function () {
+      unregister("UnitTests::tryme");
+      aqlfunctions.register("UnitTests::tryme", function (what) { throw "peng"; }, true);
+
+      try {
+        db._createStatement({ query: "RETURN UnitTests::tryme(4)" }).execute().toArray();
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function and run a query
+////////////////////////////////////////////////////////////////////////////////
+
     testQueryReturnUndefined : function () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme", function (what) { }, true);
