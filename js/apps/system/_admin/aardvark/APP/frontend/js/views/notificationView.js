@@ -19,7 +19,7 @@
 
       // TODO save user property if check should be enabled/disabled
       window.setTimeout(function() {
-        if (frontendConfig.authenticationEnabled === false) {
+        if (frontendConfig.authenticationEnabled === false && frontendConfig.isCluster === false) {
           window.arangoHelper.arangoWarning(
             "Warning", "Authentication is disabled. Do not use this setup in production mode."
           );
@@ -76,7 +76,7 @@
             }];
           }
           else if (latestModel.get('type') === 'warning') {
-            time = 20000;
+            time = 10000;
           }
 
           $.noty.clearQueue();
