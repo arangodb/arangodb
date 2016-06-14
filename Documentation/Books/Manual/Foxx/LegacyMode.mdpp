@@ -12,7 +12,7 @@ In order to mark an existing service as a legacy service, just make sure the fol
 }
 ```
 
-This [semantic version range][SEMVER] denotes that the service is known to work with ArangoDB 2.8.0 and supports all newer versions of ArangoDB up to but not including 3.0.0 (nor any development version of 3.0.0 and greater).
+This [semantic version range](http://semver.org) denotes that the service is known to work with ArangoDB 2.8.0 and supports all newer versions of ArangoDB up to but not including 3.0.0 (nor any development version of 3.0.0 and greater).
 
 Any similar version range the does not include 3.0.0 or greater will have the same effect (e.g. `^2.5.0` will also trigger the legacy mode, as will `1.2.3`, but `>=2.8.0` will not as it indicates compatibility with *all* versions greater or equal 2.8.0, not just those within the 2.x version range).
 
@@ -74,5 +74,3 @@ As built-in support for CoffeeScript was removed in 3.0 any service using Coffee
 The `@arangodb/request` module when used with the `json` option previously overwrote the string in the `body` property of the response object of the response with the parsed JSON body. In 2.8 this was changed so the parsed JSON body is added as the `json` property of the response object in addition to overwriting the `body` property. In 3.0 and later (including legacy mode) the `body` property is no longer overwritten and must use the `json` property instead. Note that this only affects code using the `json` option when making the request.
 
 Additionally, any feature not supported in 2.8 will also not work in legacy mode. When migrating from an older version of ArangoDB it is a good idea to migrate to ArangoDB 2.8 first for an easier upgrade path.
-
-[SEMVER]: http://semver.org/

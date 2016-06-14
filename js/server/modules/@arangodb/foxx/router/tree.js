@@ -194,7 +194,8 @@ function applyPathParams(route) {
           ? union(context._pathParams, context.router._pathParams)
           : context._pathParams
         ),
-        params
+        params,
+        'path parameter'
       );
     } catch (e) {
       if (item.router || item.endpoint) {
@@ -208,6 +209,7 @@ function applyPathParams(route) {
 function dispatch(route, req, res) {
   let pathParams = {};
   let queryParams = Object.assign({}, req.queryParams);
+  let headers = Object.assign({}, req.headers);
 
   {
     let basePath = [];
@@ -271,7 +273,23 @@ function dispatch(route, req, res) {
       try {
         item.queryParams = validation.validateParams(
           context._queryParams,
-          req.queryParams
+          req.queryParams,
+          'query parameter'
+        );
+      } catch (e) {
+        throw Object.assign(
+          new httperr.BadRequest(e.message),
+          {cause: e}
+        );
+      }
+    }
+
+    if (context._headers.size) {
+      try {
+        item.headers = validation.validateParams(
+          context._headers,
+          req.headers,
+          'header'
         );
       } catch (e) {
         throw Object.assign(
@@ -283,6 +301,7 @@ function dispatch(route, req, res) {
 
     let tempPathParams = req.pathParams;
     let tempQueryParams = req.queryParams;
+    let tempHeaders = req.headers;
     let tempSuffix = req.suffix;
     let tempPath = req.path;
     let tempReverse = req.reverse;
@@ -351,11 +370,14 @@ function dispatch(route, req, res) {
     if (item.endpoint || item.router) {
       pathParams = Object.assign(pathParams, item.pathParams);
       queryParams = Object.assign(queryParams, item.queryParams);
+      headers = Object.assign(headers, item.headers);
       req.pathParams = pathParams;
       req.queryParams = queryParams;
+      req.headers = headers;
     } else {
       req.pathParams = Object.assign({}, pathParams, item.pathParams);
       req.queryParams = Object.assign({}, queryParams, item.queryParams);
+      req.headers = Object.assign({}, headers, item.headers);
     }
 
     if (!context._handler) {
@@ -370,6 +392,7 @@ function dispatch(route, req, res) {
     req.reverse = tempReverse;
     req.path = tempPath;
     req.suffix = tempSuffix;
+    req.headers = tempHeaders;
     req.queryParams = tempQueryParams;
     req.pathParams = tempPathParams;
   }

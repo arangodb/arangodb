@@ -334,12 +334,12 @@ else ()
 
   option(USE_OPTIMIZE_FOR_ARCHITECTURE "try to determine CPU architecture" ON)
 
-  if (NOT ${USE_OPTIMIZE_FOR_ARCHITECTURE})
+  if (USE_OPTIMIZE_FOR_ARCHITECTURE)
     # mop: core2 (merom) is our absolute minimum!
-    SET(TARGET_ARCHITECTURE "merom")
+    # SET(TARGET_ARCHITECTURE "merom")
+    include(OptimizeForArchitecture)
+    OptimizeForArchitecture()
   endif ()
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
 
   set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
@@ -804,9 +804,6 @@ add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoimp     zlibstatic)
 add_dependencies(arangorestore zlibstatic)
 add_dependencies(arangosh      zlibstatic)
-if (TARGET prepare_debian)
-  add_dependencies(arangod       prepare_debian)
-endif()
 
 if (NOT USE_PRECOMPILED_V8)
   # all binaries depend on v8_build because it contains ICU as well

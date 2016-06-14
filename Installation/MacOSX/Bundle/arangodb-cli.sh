@@ -55,7 +55,7 @@ INFOFILE="/tmp/ArangoDB-CLI.info.$$"
   echo "   '${ROOTDIR}/Contents/MacOS/opt/arangodb/var/lib/arangodb3'"
   echo ""
   echo "The log file is located at"
-  echo "   '${ROOTDIR}/Contents/MacOS/opt/arangodb/var/log/arangodb/arangod.log'"
+  echo "   '${ROOTDIR}/Contents/MacOS/opt/arangodb/var/log/arangodb3/arangod.log'"
   echo ""
   echo "You can access the server using a browser at 'http://127.0.0.1:8529/'"
   echo "or start the ArangoDB shell"
@@ -71,6 +71,6 @@ INFOFILE="/tmp/ArangoDB-CLI.info.$$"
 /usr/bin/osascript <<-EOF
 tell application "Terminal"
   activate
-  do script "clear && cat $INFOFILE && rm $INFOFILE && sleep 20 && exec tail -1 -f ${ROOTDIR}/Contents/MacOS/opt/arangodb/var/log/arangodb/arangod.log"
+  do script "clear && cat $INFOFILE && rm $INFOFILE && sleep 20 && exec tail -1 -f ${ROOTDIR}/Contents/MacOS/opt/arangodb/var/log/arangodb3/arangod.log"
 end tell
 EOF

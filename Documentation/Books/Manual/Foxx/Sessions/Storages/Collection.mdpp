@@ -8,7 +8,7 @@ The collection session storage persists sessions to a collection in the database
 
 `collectionStorage(options): Storage`
 
-Creates a [Storage][STORAGES] that can be used in the sessions middleware.
+Creates a [Storage](README.md) that can be used in the sessions middleware.
 
 **Arguments**
 
@@ -70,5 +70,3 @@ Removes the session from the collection. Has no effect if the session was alread
  A session object.
 
 Returns `true` if the session was removed or `false` if it had no effect.
-
-[STORAGES]: ./README.md

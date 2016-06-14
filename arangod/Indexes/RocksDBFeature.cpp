@@ -68,8 +68,14 @@ RocksDBFeature::RocksDBFeature(
 }
 
 RocksDBFeature::~RocksDBFeature() {
-  delete _db;
-  delete _comparator;
+  try {
+    delete _db;
+  } catch (...) {
+  }
+  try {
+    delete _comparator;
+  } catch (...) {
+  }
 }
 
 void RocksDBFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -54,6 +54,10 @@ module.exports = class SyntheticResponse {
     return this._raw.headers;
   }
 
+  set headers(headers) {
+    this._raw.headers = headers;
+  }
+
   get statusCode() {
     return this._raw.responseCode;
   }

@@ -20,7 +20,7 @@ module.context.use(sessions);
 
 `jwtStorage(options): Storage`
 
-Creates a [Storage][STORAGES] that can be used in the sessions middleware.
+Creates a [Storage](README.md) that can be used in the sessions middleware.
 
 **Note:** while the "none" algorithm (i.e. no signature) is supported this dummy algorithm provides no security and allows clients to make arbitrary modifications to the payload and should not be used unless you are certain you specifically need it.
 
@@ -56,5 +56,3 @@ Creates a [Storage][STORAGES] that can be used in the sessions middleware.
     If set to `false` the signature will not be verified but still generated (unless using the "none" algorithm).
 
 If a string is passed instead of an options object it will be interpreted as the *secret* option.
-
-[STORAGES]: ./README.md

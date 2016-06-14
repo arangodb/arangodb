@@ -123,7 +123,7 @@ HttpHandler::status_t RestAgencyHandler::handleWrite() {
       Builder body;
       body.openObject();
       body.add("message",
-               VPackValue("Excpecting array of arrays as outermost structure"));
+               VPackValue("Excpecting array of arrays as body for writes"));
       body.close();
       generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
       return HttpHandler::status_t(HANDLER_DONE);
