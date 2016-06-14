@@ -345,7 +345,7 @@ if (MSVC)
     DIRECTORY "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons"
     DESTINATION ${TRI_RESOURCEDIR})
 
-  set(CPACK_NSIS_DEFINES "
+  set(CPACK_ARANGODB_NSIS_DEFINES "
     !define BITS ${BITS}
     !define TRI_FRIENDLY_SVC_NAME '${ARANGODB_FRIENDLY_STRING}'
     !define TRI_AARDVARK_URL 'http://127.0.0.1:8529'
@@ -367,7 +367,7 @@ configure_file("${CMAKE_SOURCE_DIR}/Installation/cmake/CMakeCPackOptions.cmake.i
     "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake" @ONLY)
 set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake")
 
-if (NOT(MSVC OR DARWIN))
+if (NOT(MSVC))
   # components
   install(
     FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init

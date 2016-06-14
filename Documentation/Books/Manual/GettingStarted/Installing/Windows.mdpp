@@ -1,6 +1,6 @@
 !CHAPTER Windows
 
-The default installation directory is *C:\Program Files\ArangoDB-3.x.y*. During the
+The default installation directory is *C:\Program Files\ArangoDB-3.x.x*. During the
 installation process you may change this. In the following description we will assume
 that ArangoDB has been installed in the location *&lt;ROOTDIR&gt;*.
 
@@ -16,28 +16,28 @@ Installing for multiple users: Keep the default directory. After the
 installation edit the file *&lt;ROOTDIR&gt;\etc\ArangoDB\arangod.conf*. Adjust the
 *directory* and *app-path* so that these paths point into your home directory.
 
-       [database]
-       directory = @HOMEDRIVE@\@HOMEPATH@\arangodb\databases
+    [database]
+    directory = @HOMEDRIVE@\@HOMEPATH@\arangodb\databases
 
-       [javascript]
-       app-path = @HOMEDRIVE@\@HOMEPATH@\arangodb\apps
+    [javascript]
+    app-path = @HOMEDRIVE@\@HOMEPATH@\arangodb\apps
 
-       Create the directories for each user that wants to use ArangoDB.
+Create the directories for each user that wants to use ArangoDB.
 
 Installing as Service: Keep the default directory. After the installation open
 a command line as administrator (search for *cmd* and right click *run as
 administrator*).
 
-       cmd> arangod --install-service
-       INFO: adding service 'ArangoDB - the multi-model database' (internal 'ArangoDB')
-       INFO: added service with command line '"C:\Program Files (x86)\ArangoDB 1.4.4\bin\arangod.exe" --start-service'
+    cmd> arangod --install-service
+    INFO: adding service 'ArangoDB - the multi-model database' (internal 'ArangoDB')
+    INFO: added service with command line '"C:\Program Files (x86)\ArangoDB 3.x.x\bin\arangod.exe" --start-service'
 
-       Open the service manager and start ArangoDB. In order to enable logging
-       edit the file "<ROOTDIR>\etc\arangodb\arangod.conf" and uncomment the file
-       option.
+Open the service manager and start ArangoDB. In order to enable logging
+edit the file "<ROOTDIR>\etc\arangodb\arangod.conf" and uncomment the file
+option.
 
-       [log]
-       file = @ROOTDIR@\var\log\arangodb\arangod.log
+    [log]
+    file = @ROOTDIR@\var\log\arangodb\arangod.log
 
 
 !SUBSECTION Client, Server and Lock-Files

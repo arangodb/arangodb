@@ -306,12 +306,13 @@ void ClusterFeature::prepare() {
   if (role == ServerState::ROLE_COORDINATOR) {
     ClusterInfo* ci = ClusterInfo::instance();
 
+    double start = TRI_microtime();
     while (true) {
       LOG(INFO) << "Waiting for a DBserver to show up...";
       ci->loadCurrentDBServers();
       std::vector<ServerID> DBServers = ci->getCurrentDBServers();
-      if (!DBServers.empty()) {
-        LOG(INFO) << "Found a DBserver.";
+      if (DBServers.size() > 1 || TRI_microtime() - start > 30.0) {
+        LOG(INFO) << "Found " << DBServers.size() << " DBservers.";
         break;
       }
 

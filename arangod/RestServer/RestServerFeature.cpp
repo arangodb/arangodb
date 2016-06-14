@@ -95,16 +95,17 @@ RestServerFeature::RestServerFeature(
       _jobManager(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Agency");
+  startsAfter("CheckVersion");
+  startsAfter("Database");
   startsAfter("Dispatcher");
   startsAfter("Endpoint");
+  startsAfter("FoxxQueues");
+  startsAfter("LogfileManager");
+  startsAfter("Random");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("Agency");
-  startsAfter("LogfileManager");
-  startsAfter("Database");
   startsAfter("Upgrade");
-  startsAfter("CheckVersion");
-  startsAfter("FoxxQueues");
 }
 
 void RestServerFeature::collectOptions(
@@ -211,8 +212,6 @@ void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                << RestServerFeature::_maxSecretLength;
       FATAL_ERROR_EXIT();
     }
-  } else {
-    generateNewJwtSecret();
   }
 }
 
@@ -270,7 +269,13 @@ void RestServerFeature::generateNewJwtSecret() {
   }
 }
 
-void RestServerFeature::prepare() { HttpHandlerFactory::setMaintenance(true); }
+void RestServerFeature::prepare() {
+  if (_jwtSecret.empty()) {
+    generateNewJwtSecret();
+  }
+
+  HttpHandlerFactory::setMaintenance(true);
+}
 
 void RestServerFeature::start() {
   RESTSERVER = this;
@@ -459,7 +464,7 @@ void RestServerFeature::defineHandlers() {
       "/_api/aql",
       RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
-  
+
   _handlerFactory->addPrefixHandler(
       "/_api/aql-builtin",
       RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);

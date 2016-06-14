@@ -48,7 +48,10 @@
     },
 
     initialize: function() {
-      this.collection.fetch({async: true});
+      this.collection.fetch({
+        async: true,
+        cache: false
+      });
     },
       
     checkBoxes: function (e) {
@@ -236,6 +239,7 @@
     updateDatabases: function() {
       var self = this;
       this.collection.fetch({
+        cache: false,
         success: function() {
           self.render();
           window.App.handleSelectDatabase();

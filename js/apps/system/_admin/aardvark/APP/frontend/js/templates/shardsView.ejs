@@ -37,6 +37,10 @@
             <div class="pure-g pure-table pure-table-body">
               <div class="pure-table-row" collection="<%= collectionName %>" shard="<%= name %>" leader="<%= shard.leader%>">
 
+                <% if (name.substring(0,1) === '_') { %>
+                <%   name = name.slice(1) %>
+                <% } %>
+
                 <div class="<%= genClass %> left"><%= name %></div>
 
                 <% if (name === Object.keys(collection.Current)[counter]) { %>

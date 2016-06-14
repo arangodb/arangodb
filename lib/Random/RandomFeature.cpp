@@ -57,6 +57,6 @@ void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                                                    generators));
 }
 
-void RandomFeature::start() {
+void RandomFeature::prepare() {
   RandomGenerator::initialize((RandomGenerator::RandomType)_randomGenerator);
 }

@@ -207,19 +207,7 @@
           name = "root";
         }
         var url = "query/download/" + encodeURIComponent(name);
-        $.ajax(url)
-        .success(function(result, dummy, request) {
-          var blob = new Blob([JSON.stringify(result)], {type: "application/octet-stream"});
-          var blobUrl = window.URL.createObjectURL(blob);
-          var a = document.createElement("a");
-          document.body.appendChild(a);
-          a.style = "display: none";
-          a.href = blobUrl;
-          a.download = request.getResponseHeader("Content-Disposition").replace(/.* filename="([^")]*)"/, "$1");
-          a.click();
-          window.URL.revokeObjectURL(blobUrl);
-          document.body.removeChild(a);
-        });
+        arangoHelper.download(url);
       });
     },
 
@@ -407,19 +395,7 @@
             bindVars: this.bindParamTableObj
           })));
         }
-        $.ajax(url)
-        .success(function(result, dummy, request) {
-          var blob = new Blob([JSON.stringify(result)], {type: "application/octet-stream"});
-          var blobUrl = window.URL.createObjectURL(blob);
-          var a = document.createElement("a");
-          document.body.appendChild(a);
-          a.style = "display: none";
-          a.href = blobUrl;
-          a.download = request.getResponseHeader("Content-Disposition").replace(/.* filename="([^")]*)"/, "$1");
-          a.click();
-          window.URL.revokeObjectURL(blobUrl);
-          document.body.removeChild(a);
-        });
+        arangoHelper.download(url);
       }
       else {
         arangoHelper.arangoError("Query error", "could not query result.");

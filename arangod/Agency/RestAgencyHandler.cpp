@@ -119,6 +119,26 @@ HttpHandler::status_t RestAgencyHandler::handleWrite() {
       return HttpHandler::status_t(HANDLER_DONE);
     }
 
+    if (!query->slice().isArray()) {
+      Builder body;
+      body.openObject();
+      body.add("message",
+               VPackValue("Excpecting array of arrays as outermost structure"));
+      body.close();
+      generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
+      return HttpHandler::status_t(HANDLER_DONE);
+    }
+
+    if (query->slice().length() == 0) {
+      Builder body;
+      body.openObject();
+      body.add(
+        "message", VPackValue("Empty request."));
+      body.close();
+      generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
+      return HttpHandler::status_t(HANDLER_DONE);
+    }
+
     write_ret_t ret = _agent->write(query);
 
     if (ret.accepted) {  // We're leading and handling the request
@@ -176,12 +196,6 @@ HttpHandler::status_t RestAgencyHandler::handleWrite() {
   }
   return HttpHandler::status_t(HANDLER_DONE);
 }
-
-/*inline HttpHandler::status_t RestAgencyHandler::handleReplicate () {
-  if (_request->requestType() == GeneralRequest::RequestType::POST) {
-
-  }
-  }*/
 
 inline HttpHandler::status_t RestAgencyHandler::handleRead() {
   arangodb::velocypack::Options options;

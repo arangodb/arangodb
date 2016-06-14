@@ -39,8 +39,10 @@ The function may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection using the near operator is
 to use the AQL *NEAR* function in an [AQL query](../../AQL/Functions/Geo.html) as follows: 
 
-    FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) 
-      RETURN doc
+```js
+FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) 
+    RETURN doc
+```
 
 @EXAMPLES
 

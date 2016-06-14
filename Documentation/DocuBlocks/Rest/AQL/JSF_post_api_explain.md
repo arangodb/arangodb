@@ -62,7 +62,7 @@ is set to *true*.
 
 Each plan in the result is a JSON object with the following attributes:
 - *nodes*: the array of execution nodes of the plan. The array of available node types
-  can be found [here](../Aql/Optimizer.md)
+  can be found [here](../../AQL/Optimizer.html)
 
 - *estimatedCost*: the total estimated cost for the plan. If there are multiple
   plans, the optimizer will choose the plan with the lowest total cost.
@@ -70,7 +70,7 @@ Each plan in the result is a JSON object with the following attributes:
 - *collections*: an array of collections used in the query
 
 - *rules*: an array of rules the optimizer applied. An overview of the
-  available rules can be found [here](../Aql/Optimizer.md)
+  available rules can be found [here](../../AQL/Optimizer.html)
 
 - *variables*: array of variables used in the query (note: this may contain
   internal variables created by the optimizer)

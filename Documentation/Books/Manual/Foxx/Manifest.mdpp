@@ -4,7 +4,7 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
 * **configuration**: `Object` (optional)
 
-  An object defining the configuration options this service requires. For more information on this field see [the chapter on configuration][CONFIG].
+  An object defining the [configuration options][CONFIG] this service requires.
 
 * **defaultDocument**: `string` (optional)
 
@@ -29,7 +29,7 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
 * **dependencies**: `Object` (optional) and **provides**: `Object` (optional)
 
-  Objects specifying other services this service has as dependencies and what dependencies it can provide to other services. For more information on these fields see [the chapter on dependencies][DEPS].
+  Objects specifying other services this service has as [dependencies][DEPS] and what dependencies it can provide to other services.
 
 * **engines**: `Object` (optional)
 
@@ -45,7 +45,7 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
 * **files**: `Object` (optional)
 
-  An object defining file assets served by this service. For more information on assets see [the chapter on assets][ASSETS].
+  An object defining [file assets][ASSETS] served by this service.
 
 * **lib**: `string` (Default: `"."`)
 
@@ -71,11 +71,11 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
 * **scripts**: `Object` (optional)
 
-  An object defining named scripts provided by this service, which can either be used directly or as queued jobs by other service. For more information on scripts and queued jobs see [the chapter on scripts][SCRIPTS].
+  An object defining [named scripts][SCRIPTS] provided by this service, which can either be used directly or as queued jobs by other services.
 
 * **tests**: `string` or `Array<string>` (optional)
 
-  A path or list of paths of JavaScript tests provided for this service. For more information on tests see [the chapter on testing Foxx services][TESTING].
+  A path or list of paths of JavaScript [tests][TESTING] provided for this service.
 
 Additionally manifests can provide the following metadata:
 
@@ -101,7 +101,7 @@ Additionally manifests can provide the following metadata:
 
 * **name**: `string` (optional)
 
-  The name of the Foxx service. Allowed characters are the A-Z, 0-9 and the ASCII hyphen (`-`) and underscore (`_`) characters. The name must not start with a number. This will be shown in the web interface.
+  The name of the Foxx service. Allowed characters are A-Z, 0-9, the ASCII hyphen (`-`) and underscore (`_`) characters. The name must not start with a number. This will be shown in the web interface.
 
 * **thumbnail**: `string` (optional)
 

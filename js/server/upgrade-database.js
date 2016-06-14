@@ -773,6 +773,24 @@
       }
     });
 
+    // waitForSyncReplication
+    addTask({
+      name: "waitSyncReplSettle",
+      description: "wait until synchronous replication has settled",
+
+      system: DATABASE_ALL,
+      cluster: [CLUSTER_COORDINATOR_GLOBAL],
+      database: [DATABASE_INIT],
+
+      task: function() {
+        var dbName = db._name();
+        var colls = db._collections();
+        colls = colls.filter(c => c.name()[0] === "_");
+        require("@arangodb/cluster").waitForSyncRepl(dbName, colls);
+        return true;
+      }
+    });
+
     return upgradeDatabase();
   }
 

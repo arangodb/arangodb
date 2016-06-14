@@ -296,7 +296,7 @@ function makeArgsArangod(options, appDir) {
     "javascript.startup-directory": JS_DIR,
     "javascript.v8-contexts": "5",
     "http.trusted-origin": "all",
-    "log.level": "warning",
+    "log.level": "warn",
     "server.allow-use-database": "true",
     "server.authentication": "false",
     "server.threads": "20",
@@ -471,11 +471,11 @@ function analyzeCoreDumpWindows(instanceInfo) {
 function analyzeServerCrash(arangod, options, checkStr)
 {
   serverCrashed = true;
-  const storeArangodPath = "/var/tmp/arangod_" + arangod.pid;
+  const storeArangodPath = arangod.rootDir + "/arangod_" + arangod.pid;
 
   print(RED +
         "during: " + checkStr + ": Core dump written; copying arangod to " +
-        arangod.rootDir + " for later analysis.\n" +
+        storeArangodPath + " for later analysis.\n" +
         "Server shut down with :\n" +
         yaml.safeDump(arangod) +
         "marking build as crashy.");
