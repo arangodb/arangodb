@@ -79,13 +79,10 @@ Constituent::Constituent()
     _term(0),
     _leaderID((std::numeric_limits<arangodb::consensus::id_t>::max)()),
     _id(0),
-    // XXX #warning KAVEH use RandomGenerator
-    _gen(std::random_device()()),
     _role(FOLLOWER),
     _agent(nullptr),
     _votedFor((std::numeric_limits<arangodb::consensus::id_t>::max)()),
     _notifier(nullptr) {
-  _gen.seed(RandomGenerator::interval(UINT32_MAX));
     }
 
 
@@ -109,8 +106,9 @@ bool Constituent::waitForSync() const {
 
 /// Random sleep times in election process
 duration_t Constituent::sleepFor(double min_t, double max_t) {
-  dist_t dis(min_t, max_t);
-  return duration_t((long)std::round(dis(_gen) * 1000.0));
+  int32_t left = 1000*min_t, right = 1000*max_t;
+  return duration_t(
+    static_cast<long>(RandomGenerator::interval(left, right)));
 }
 
 
@@ -483,8 +481,8 @@ void Constituent::run() {
         _cast = false;  // New round set not cast vote
       }
 
-      dist_t dis(config().minPing, config().maxPing);
-      long rand_wait = static_cast<long>(dis(_gen) * 1000000.0);
+      int32_t left = 1000000*config().minPing, right = 1000000*config().maxPing;
+      long rand_wait = static_cast<long>(RandomGenerator::interval(left, right));
 
       {
         CONDITION_LOCKER(guardv, _cv);
