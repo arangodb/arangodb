@@ -1223,7 +1223,6 @@
         });
       }
 
-      console.log("saving");
       var callback = function(error) {
         if (error) {
           arangoHelper.arangoError("Query", "Could not save query");
@@ -1553,10 +1552,7 @@
         if (data.id) {
           $.ajax({
             url: '/_api/cursor/' + encodeURIComponent(data.id),
-            type: 'DELETE',
-            error: function(error) {
-              console.log(error);
-            }
+            type: 'DELETE'
           });
         }
       };
@@ -1610,7 +1606,6 @@
               }
             }
             catch (e) {
-              console.log(error);
               if (error.code !== 400) {
                 arangoHelper.arangoError("Query", "Successfully aborted.");
               }
