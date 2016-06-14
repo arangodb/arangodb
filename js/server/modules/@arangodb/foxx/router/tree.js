@@ -194,7 +194,8 @@ function applyPathParams(route) {
           ? union(context._pathParams, context.router._pathParams)
           : context._pathParams
         ),
-        params
+        params,
+        'path parameter'
       );
     } catch (e) {
       if (item.router || item.endpoint) {
@@ -271,7 +272,8 @@ function dispatch(route, req, res) {
       try {
         item.queryParams = validation.validateParams(
           context._queryParams,
-          req.queryParams
+          req.queryParams,
+          'query parameter'
         );
       } catch (e) {
         throw Object.assign(

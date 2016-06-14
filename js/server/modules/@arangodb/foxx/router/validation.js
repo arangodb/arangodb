@@ -29,7 +29,10 @@ const mediaTyper = require('media-typer');
 const requestParts = require('internal').requestParts;
 
 
-exports.validateParams = function validateParams(typeDefs, rawParams) {
+exports.validateParams = function validateParams(typeDefs, rawParams, type) {
+  if (!type) {
+    type = 'parameter';
+  }
   const params = {};
   for (const entry of typeDefs) {
     const name = entry[0];
@@ -37,7 +40,9 @@ exports.validateParams = function validateParams(typeDefs, rawParams) {
     if (def.schema.isJoi) {
       const result = def.schema.validate(rawParams[name]);
       if (result.error) {
-        throw result.error;
+        const e = result.error;
+        e.message = e.message.replace(/^"value"/, `${type} "${name}"`);
+        throw e;
       }
       params[name] = result.value;
     }
