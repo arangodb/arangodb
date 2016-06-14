@@ -200,7 +200,7 @@ HttpHandler::status_t PathHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-void PathHandler::handleError(const Exception&) {
+void PathHandler::handleError(Exception const&) {
   createResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
 }
 }

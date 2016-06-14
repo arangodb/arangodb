@@ -219,8 +219,8 @@ bool TRI_IsStringJson(TRI_json_t const* json);
 /// @brief adds a new sub-object to an array, copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PushBackArrayJson(TRI_memory_zone_t*, TRI_json_t* array,
-                           TRI_json_t const* object);
+int TRI_PushBackArrayJson(TRI_memory_zone_t*, TRI_json_t* array,
+                          TRI_json_t const* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new sub-object to an array, not copying it
