@@ -397,8 +397,7 @@ The length of a path is by default the amount of edges from one start vertex to
 an end vertex. The option weight allows the user to define an edge attribute
 representing the length.
 
-The complexity of the function is described
-[here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).
+<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms). -->
 
 
 **Parameters**
@@ -516,8 +515,7 @@ of the vertices defined by the examples.
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertexExample.
 
-The complexity of the function is described
-[here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).
+<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms). -->
 
 
 **Parameters**
@@ -596,8 +594,7 @@ of the vertices defined by the examples.
 
 Similar to [_absoluteEccentricity](#absoluteeccentricity) but returns a normalized result.
 
-The complexity of the function is described
-[here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).
+<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms). -->
 
 
 **Examples**
@@ -640,8 +637,7 @@ of the vertices defined by the examples.
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for *vertexExample*.
 
-The complexity of the function is described
-[here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).
+<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).-->
 
 
 **Parameters**
@@ -720,8 +716,7 @@ of graphs vertices.
 
 Similar to [_absoluteCloseness](#absolutecloseness) but returns a normalized value.
 
-The complexity of the function is described
-[here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).
+<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms). -->
 
 
 **Examples**
@@ -774,8 +769,7 @@ of all vertices in the graph.
 
 `graph._absoluteBetweenness(vertexExample, options)`
 
-The complexity of the function is described
-[here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).
+<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms). -->
 
 
 **Parameters**
@@ -892,10 +886,9 @@ Get the
 [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 of a graph.
 
-`graph._radius(options)`
+`
 
-The complexity of the function is described
-[here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).
+<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).-->
 
 
 **Parameters**
@@ -963,8 +956,7 @@ of a graph.
 
 `graph._diameter(graphName, options)`
 
-The complexity of the function is described
-[here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).
+<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here](../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).-->
 
 
 **Parameters**
