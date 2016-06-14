@@ -1,12 +1,45 @@
 !CHAPTER Foxx service context
 
-TODO
+The service context provides access to methods and attributes that are specific to a given service. In a Foxx service the context is generally available as the `module.context` variable. Within a router's request handler the request and response objects' `context` attribute also provide access to the context of the service the route was mounted in (which may be different from the one the route handler was defined in).
+
+**Examples**
+
+```js
+// in service /my-foxx-1
+const createRouter = require('@arangodb/foxx/router');
+const router = createRouter();
+
+// See the chapter on dependencies for more info on
+// how exports and dependencies work across services
+module.exports = {routes: router};
+
+router.get(function (req, res) {
+  module.context.mount === '/my-foxx-1';
+  req.context.mount === '/my-foxx-2';
+  res.write('Hello from my-foxx-1');
+});
+
+// in service /my-foxx-2
+const createRouter = require('@arangodb/foxx/router');
+const router2 = createRouter();
+
+module.context.use(router2);
+
+router2.post(function (req, res) {
+  module.context.mount === '/my-foxx-2';
+  req.context.mount === '/my-foxx-2';
+  res.write('Hello from my-foxx-2');
+});
+
+const router1 = module.context.dependencies.myFoxx1.routes;
+module.context.use(router1);
+```
 
 The service context specifies the following properties:
 
 * **argv**: `any`
 
-  Any arguments passed in if the current file was executed as a [script][SCRIPTS] or queued job.
+  Any arguments passed in if the current file was executed as a [script](Scripts.md) or queued job.
 
 * **basePath**: `string`
 
@@ -30,7 +63,7 @@ The service context specifies the following properties:
 
 * **isDevelopment**: `boolean`
 
-  TODO
+  Indicates whether the service is running in [development mode](AtAGlance.md).
 
 * **isProduction**: `boolean`
 
@@ -38,7 +71,7 @@ The service context specifies the following properties:
 
 * **manifest**: `Object`
 
-  TODO
+  The parsed [manifest file](Manifest.md) of the service.
 
 * **mount**: `string`
 
@@ -159,9 +192,6 @@ Mounts a given router on the service to expose the router's routes on the servic
 
   A router or middleware to mount.
 
-Returns the [Endpoint][ENDPOINTS] for the given router or middleware.
+Returns an [Endpoint](Router/Endpoints.md) for the given router or middleware.
 
 **Note**: Mounting services at run time (e.g. within request handlers or queued jobs) is not supported.
-
-[SCRIPTS]: ./Scripts.md
-[ENDPOINTS]: ./Router/Endpoints.md

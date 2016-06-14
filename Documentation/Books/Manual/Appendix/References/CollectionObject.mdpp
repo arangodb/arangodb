@@ -1,11 +1,11 @@
 !CHAPTER The "collection" Object
 
-The following methods exists on the collection object (returned by *db.name*):
+The following methods exist on the collection object (returned by *db.name*):
 
 *Collection*
 
 * [collection.checksum()](../../DataModeling/Collections/CollectionMethods.md#checksum)
-* [collection.count()](../../DataModeling/Collections/CollectionMethods.md#count)
+* [collection.count()](../../DataModeling/Documents/DocumentMethods.md#count)
 * [collection.drop()](../../DataModeling/Collections/CollectionMethods.md#drop)
 * [collection.figures()](../../DataModeling/Collections/CollectionMethods.md#figures)
 * [collection.load()](../../DataModeling/Collections/CollectionMethods.md#load)
@@ -13,9 +13,9 @@ The following methods exists on the collection object (returned by *db.name*):
 * [collection.reserve()](../../DataModeling/Collections/CollectionMethods.md#reserve)
 * [collection.revision()](../../DataModeling/Collections/CollectionMethods.md#revision)
 * [collection.rotate()](../../DataModeling/Collections/CollectionMethods.md#rotate)
-* [collection.toArray()](../../DataModeling/Collections/CollectionMethods.md#toarray)
+* [collection.toArray()](../../DataModeling/Documents/DocumentMethods.md#toarray)
 * [collection.truncate()](../../DataModeling/Collections/CollectionMethods.md#truncate)
-* [collection.type()](../../DataModeling/Collections/CollectionMethods.md#type)
+* [collection.type()](../../DataModeling/Documents/DocumentMethods.md#collection-type)
 * [collection.unload()](../../DataModeling/Collections/CollectionMethods.md#unload)
 
 *Indexes*
@@ -27,24 +27,24 @@ The following methods exists on the collection object (returned by *db.name*):
 
 *Document*
 
-* [collection.all()](../../DataModeling/Collections/CollectionMethods.md#all)
-* [collection.any()](../../DataModeling/Collections/CollectionMethods.md#any)
-* [collection.closedRange(attribute, left, right)](../../DataModeling/Collections/CollectionMethods.md#closed-range)
-* [collection.document(object)](../../DataModeling/Collections/CollectionMethods.md#document)
-* [collection.documents(keys)](../../DataModeling/Collections/CollectionMethods.md#lookup-by-keys)
-* [collection.edges(vertex-id)](../../DataModeling/Collections/CollectionMethods.md#misc)
-* [collection.exists(object)](../../DataModeling/Collections/CollectionMethods.md#exists)
-* [collection.firstExample(example)](../../DataModeling/Collections/CollectionMethods.md#first-example)
-* [collection.inEdges(vertex-id)](../../DataModeling/Collections/CollectionMethods.md#misc)
-* [collection.insert(data)](../../DataModeling/Collections/CollectionMethods.md#insert)
-* [collection.iterate(iterator,options)](../../DataModeling/Collections/CollectionMethods.md#misc)
-* [collection.outEdges(vertex-id)](../../DataModeling/Collections/CollectionMethods.md#misc)
-* [collection.queryByExample(example)](../../DataModeling/Collections/CollectionMethods.md#query-by-example)
-* [collection.range(attribute, left, right)](../../DataModeling/Collections/CollectionMethods.md#range)
-* [collection.remove(selector)](../../DataModeling/Collections/CollectionMethods.md#remove)
-* [collection.removeByKeys(keys)](../../DataModeling/Collections/CollectionMethods.md#remove-by-keys)
+* [collection.all()](../../DataModeling/Documents/DocumentMethods.md#all)
+* [collection.any()](../../DataModeling/Documents/DocumentMethods.md#any)
+* [collection.closedRange(attribute, left, right)](../../DataModeling/Documents/DocumentMethods.md#closed-range)
+* [collection.document(object)](../../DataModeling/Documents/DocumentMethods.md#document)
+* [collection.documents(keys)](../../DataModeling/Documents/DocumentMethods.md#lookup-by-keys)
+* [collection.edges(vertex-id)](../../DataModeling/Documents/DocumentMethods.md#misc)
+* [collection.exists(object)](../../DataModeling/Documents/DocumentMethods.md#exists)
+* [collection.firstExample(example)](../../DataModeling/Documents/DocumentMethods.md#first-example)
+* [collection.inEdges(vertex-id)](../../DataModeling/Documents/DocumentMethods.md#misc)
+* [collection.insert(data)](../../DataModeling/Documents/DocumentMethods.md#insert)
+* [collection.iterate(iterator,options)](../../DataModeling/Documents/DocumentMethods.md#misc)
+* [collection.outEdges(vertex-id)](../../DataModeling/Documents/DocumentMethods.md#misc)
+* [collection.queryByExample(example)](../../DataModeling/Documents/DocumentMethods.md#query-by-example)
+* [collection.range(attribute, left, right)](../../DataModeling/Documents/DocumentMethods.md#range)
+* [collection.remove(selector)](../../DataModeling/Documents/DocumentMethods.md#remove)
+* [collection.removeByKeys(keys)](../../DataModeling/Documents/DocumentMethods.md#remove-by-keys)
 * [collection.rename()](../../DataModeling/Collections/CollectionMethods.md#rename)
-* [collection.replace(selector, data)](../../DataModeling/Collections/CollectionMethods.md#replace)
-* [collection.replaceByExample(example, data)](../../DataModeling/Collections/CollectionMethods.md#replace-by-example)
-* [collection.update(selector, data)](../../DataModeling/Collections/CollectionMethods.md#update)
-* [collection.updateByExample(example, data)](../../DataModeling/Collections/CollectionMethods.md#update-by-example)
+* [collection.replace(selector, data)](../../DataModeling/Documents/DocumentMethods.md#replace)
+* [collection.replaceByExample(example, data)](../../DataModeling/Documents/DocumentMethods.md#replace-by-example)
+* [collection.update(selector, data)](../../DataModeling/Documents/DocumentMethods.md#update)
+* [collection.updateByExample(example, data)](../../DataModeling/Documents/DocumentMethods.md#update-by-example)

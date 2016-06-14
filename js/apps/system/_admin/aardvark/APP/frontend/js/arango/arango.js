@@ -769,6 +769,20 @@
       }
       return this.backendUrl("/_db/" + encodeURIComponent(databaseName) + url);
     },
+
+    showAuthDialog: function() {
+      var toShow = true, show = localStorage.getItem('authenticationNotification');
+
+      if (show === 'false') {
+        toShow = false;
+      }
+
+      return toShow;
+    },
+
+    doNotShowAgain: function() {
+      localStorage.setItem('authenticationNotification', false);
+    },
     
     download: function(url) {
       $.ajax(url)
