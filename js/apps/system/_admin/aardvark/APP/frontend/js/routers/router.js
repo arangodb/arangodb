@@ -591,8 +591,8 @@
         return;
       }
       this.arangoCollectionsStore.fetch({
+        cache: false,
         success: function () {
-          cache: false,
           self.infoView = new window.InfoView({
             collectionName: colname,
             collection: self.arangoCollectionsStore.findWhere({
