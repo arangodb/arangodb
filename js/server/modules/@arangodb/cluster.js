@@ -960,36 +960,64 @@ function cleanupCurrentCollections (plannedCollections, currentCollections,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lock key space
+////////////////////////////////////////////////////////////////////////////////
+
+function lockSyncKeyspace() {
+  while (!global.KEY_SET_CAS("shardSynchronization", "lock", 1, null)) {
+    wait(0.001);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlock key space
+////////////////////////////////////////////////////////////////////////////////
+
+function unlockSyncKeyspace() {
+  global.KEY_SET("shardSynchronization", "lock", null);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief launch a scheduled job if needed
 ////////////////////////////////////////////////////////////////////////////////
 
-function launchJob() {
+function tryLaunchJob() {
   const registerTask = require("internal").registerTask;
-  var jobs = global.KEYSPACE_GET("shardSynchronization");
-  if (jobs.running === null) {
-    var shards = Object.keys(jobs.scheduled);
-    if (shards.length > 0) {
-      var jobInfo = jobs.scheduled[shards[0]];
-      try {
-        registerTask({
-          database: jobInfo.database,
-          params: {database: jobInfo.database, shard: jobInfo.shard, 
-                   planId: jobInfo.planId, leader: jobInfo.leader},
-          command: function(params) {
-            require("@arangodb/cluster").synchronizeOneShard(
-              params.database, params.shard, params.planId, params.leader);
-          }});
-      } catch (err) {
-        if (! require("internal").isStopping()) {
-          console.error("Could not registerTask for shard synchronization.");
+  var isStopping = require("internal").isStopping;
+  if (isStopping()) {
+    return;
+  }
+  lockSyncKeyspace();
+  try {
+    var jobs = global.KEYSPACE_GET("shardSynchronization");
+    if (jobs.running === null) {
+      var shards = Object.keys(jobs.scheduled);
+      if (shards.length > 0) {
+        var jobInfo = jobs.scheduled[shards[0]];
+        try {
+          registerTask({
+            database: jobInfo.database,
+            params: {database: jobInfo.database, shard: jobInfo.shard, 
+                     planId: jobInfo.planId, leader: jobInfo.leader},
+            command: function(params) {
+              require("@arangodb/cluster").synchronizeOneShard(
+                params.database, params.shard, params.planId, params.leader);
+            }});
+        } catch (err) {
+          if (! require("internal").isStopping()) {
+            console.error("Could not registerTask for shard synchronization.");
+          }
+          return;
         }
-        return;
+        global.KEY_SET("shardSynchronization", "running", jobInfo);
+        console.debug("scheduleOneShardSynchronization: have launched job", jobInfo);
+        delete jobs.scheduled[shards[0]];
+        global.KEY_SET("shardSynchronization", "scheduled", jobs.scheduled);
       }
-      global.KEY_SET("shardSynchronization", "running", jobInfo);
-      console.debug("scheduleOneShardSynchronization: have launched job", jobInfo);
-      delete jobs.scheduled[shards[0]];
-      global.KEY_SET("shardSynchronization", "scheduled", jobs.scheduled);
     }
+  }
+  finally {
+    unlockSyncKeyspace();
   }
 }
 
@@ -1012,31 +1040,12 @@ function synchronizeOneShard(database, shard, planId, leader) {
     var ep = ArangoClusterInfo.getServerEndpoint(leader);
     // First once without a read transaction:
     var sy;
-    var count = 3600;   // Try for a full hour, this is because there
-                        // can only be one syncCollection in flight
-                        // at a time
-    while (true) {
-      if (isStopping()) {
-        throw "server is shutting down";
-      }
-      try {
-        sy = rep.syncCollection(shard, 
-            { endpoint: ep, incremental: true,
-              keepBarrier: true, useCollectionId: false });
-        break;
-      }
-      catch (err) {
-        console.info("synchronizeOneShard: syncCollection did not work,",
-                     "trying again later for shard", shard, err);
-      }
-      if (--count <= 0) {
-        console.error("synchronizeOneShard: syncCollection did not work",
-                      "after many tries, giving up on shard", shard);
-        throw "syncCollection did not work";
-      }
-      wait(1.0);
+    if (isStopping()) {
+      throw "server is shutting down";
     }
-
+    sy = rep.syncCollection(shard, 
+        { endpoint: ep, incremental: true,
+          keepBarrier: true, useCollectionId: false });
     if (sy.error) {
       console.error("synchronizeOneShard: could not initially synchronize",
                     "shard ", shard, sy);
@@ -1065,7 +1074,7 @@ function synchronizeOneShard(database, shard, planId, leader) {
             var sy2 = rep.syncCollectionFinalize(
               database, shard, sy.lastLogTick, { endpoint: ep });
             if (sy2.error) {
-              console.error("synchronizeOneShard: Could not synchronize shard",
+              console.error("synchronizeOneShard: Could not finalize shard synchronization",
                             shard, sy2);
               ok = false;
             } else {
@@ -1105,10 +1114,16 @@ function synchronizeOneShard(database, shard, planId, leader) {
     }
   }
   // Tell others that we are done:
-  global.KEY_SET("shardSynchronization", "running", null);
-  if (!isStopping()) {
-    launchJob();  // start a new one if needed
+  lockSyncKeyspace();
+  try {
+    global.KEY_SET("shardSynchronization", "running", null);
   }
+  finally {
+    unlockSyncKeyspace();
+  }
+  tryLaunchJob();  // start a new one if needed
+  console.info("synchronizeOneShard: donedone, %s/%s, %s/%s", 
+               database, shard, database, planId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1118,32 +1133,36 @@ function synchronizeOneShard(database, shard, planId, leader) {
 function scheduleOneShardSynchronization(database, shard, planId, leader) {
   console.debug("scheduleOneShardSynchronization:", database, shard, planId,
                 leader);
-  var jobs;
   try {
-    jobs = global.KEYSPACE_GET("shardSynchronization");
+    global.KEY_GET("shardSynchronization", "lock");
   }
   catch (e) {
     global.KEYSPACE_CREATE("shardSynchronization");
     global.KEY_SET("shardSynchronization", "scheduled", {});
     global.KEY_SET("shardSynchronization", "running", null);
-    jobs = { scheduled: {}, running: null };
+    global.KEY_SET("shardSynchronization", "lock", null);
   }
 
-  if ((jobs.running !== null && jobs.running.shard === shard) ||
-      jobs.scheduled.hasOwnProperty(shard)) {
-    console.debug("task is already running or scheduled,",
-                  "ignoring scheduling request");
-    return false;
-  }
+  lockSyncKeyspace();
+  try {
+    var jobs = global.KEYSPACE_GET("shardSynchronization");
+    if ((jobs.running !== null && jobs.running.shard === shard) ||
+        jobs.scheduled.hasOwnProperty(shard)) {
+      console.debug("task is already running or scheduled,",
+                    "ignoring scheduling request");
+      return false;
+    }
 
-  // If we reach this, we actually have to schedule a new task:
-  var jobInfo = { database, shard, planId, leader };
-  jobs.scheduled[shard] = jobInfo;
-  global.KEY_SET("shardSynchronization", "scheduled", jobs.scheduled);
-  console.debug("scheduleOneShardSynchronization: have scheduled job", jobInfo);
-  if (jobs.running === null) {  // no job scheduled, so start it:
-    launchJob();
+    // If we reach this, we actually have to schedule a new task:
+    var jobInfo = { database, shard, planId, leader };
+    jobs.scheduled[shard] = jobInfo;
+    global.KEY_SET("shardSynchronization", "scheduled", jobs.scheduled);
+    console.debug("scheduleOneShardSynchronization: have scheduled job", jobInfo);
   }
+  finally {
+    unlockSyncKeyspace();
+  }
+  tryLaunchJob();
   return true;
 }
 

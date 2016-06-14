@@ -175,16 +175,17 @@ std::vector<log_t> State::get(arangodb::consensus::index_t start,
   return entries;
 }
 
-std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
-                                      arangodb::consensus::index_t end) const {
+std::vector<VPackSlice> State::slices(
+  arangodb::consensus::index_t start, arangodb::consensus::index_t end) const {
+  
   std::vector<VPackSlice> slices;
   MUTEX_LOCKER(mutexLocker, _logLock);
 
-  if (start < _log.front().index) {
+  if (start < _log.front().index) { // no start specified
     start = _log.front().index;
   }
 
-  if (start > _log.back().index) {
+  if (start > _log.back().index) {  // no end specified
     return slices;
   }
 
@@ -192,7 +193,7 @@ std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
     end = _log.back().index;
   }
 
-  for (size_t i = start - _cur; i <= end - _cur; ++i) {  // TODO:: Check bounds
+  for (size_t i = start - _cur; i <= end - _cur; ++i) {
     try {
       slices.push_back(VPackSlice(_log.at(i).entry->data()));
     } catch (std::exception const&) {

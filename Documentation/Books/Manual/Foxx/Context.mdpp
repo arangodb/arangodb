@@ -6,11 +6,11 @@ The service context specifies the following properties:
 
 * **argv**: `any`
 
-  Any arguments passed in if the current file was executed as a script or queued job. For more information see the [chapter on scripts and queued jobs][SCRIPTS].
+  Any arguments passed in if the current file was executed as a [script][SCRIPTS] or queued job.
 
 * **basePath**: `string`
 
-  The file system path of the service, i.e. the folder in which the service was installed by ArangoDB.
+  The file system path of the service, i.e. the folder in which the service was installed to by ArangoDB.
 
 * **baseUrl**: `string`
 

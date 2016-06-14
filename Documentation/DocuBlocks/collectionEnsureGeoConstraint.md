@@ -1,6 +1,6 @@
 
 
-@brief ensures that a geo constraint exists
+@brief ensures that a geo index exists
 `collection.ensureIndex({ type: "geo", fields: [ "location" ] })`
 
 Since ArangoDB 2.5, this method is an alias for *ensureGeoIndex* since 

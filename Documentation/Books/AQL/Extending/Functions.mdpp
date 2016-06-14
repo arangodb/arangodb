@@ -1,6 +1,6 @@
 !CHAPTER Registering and Unregistering User Functions
 
-AQL user functions can be registered  in the selected database 
+AQL user functions can be registered in the selected database 
 using the *aqlfunctions* object as follows:
 
 ```js
@@ -8,7 +8,36 @@ var aqlfunctions = require("@arangodb/aql/functions");
 ```
 
 To register a function, the fully qualified function name plus the
-function code must be specified.
+function code must be specified. This can easily be done in
+[arangosh](../../Manual/GettingStarted/Arangosh.html). For testing, it may be
+sufficient to directly type the function code in the shell. To manage more
+complex code, you may write it in the code editor of your choice and save it
+as file. For example:
+
+```js
+/* path/to/file.js */
+'use strict';
+
+function greeting(name) {
+    if (name === undefined) {
+        name = "World";
+    }
+    return `Hello ${name}!`;
+}
+
+module.exports = greeting;
+```
+
+Then require it in the shell in order to register a user-defined function:
+
+```
+arangosh> var func = require("path/to/file.js");
+arangosh> aqlfunctions.register("HUMAN::GREETING", func, true);
+```
+
+Note that a return value of *false* means that the function `HUMAN::GREETING`
+was newly created, and not that it failed to register. *true* is returned
+if a function of that name existed before and was just updated.
 
 The [HTTP Interface](../../HTTP/AqlUserFunctions/index.html) also offers User Functions management.
 

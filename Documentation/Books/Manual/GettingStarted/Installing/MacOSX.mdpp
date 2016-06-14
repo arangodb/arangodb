@@ -18,6 +18,8 @@ installed as:
 
     /usr/local/sbin/arangod
 
+You can start the server by running the command `/usr/local/sbin/arangod &`.
+
 The ArangoDB shell will be installed as:
 
     /usr/local/bin/arangosh
@@ -41,6 +43,7 @@ also need to update homebrew:
     brew update
 
 !SUBSECTION Known issues
+
 - Performance - the LLVM delivered as of Mac OS X El Capitan builds slow binaries. Use GCC instead,
   until this issue has been fixed by Apple.
 - the Commandline argument parsing doesn't accept blanks in filenames; the CLI version below does.

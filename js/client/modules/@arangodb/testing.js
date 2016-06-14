@@ -471,11 +471,11 @@ function analyzeCoreDumpWindows(instanceInfo) {
 function analyzeServerCrash(arangod, options, checkStr)
 {
   serverCrashed = true;
-  const storeArangodPath = "/var/tmp/arangod_" + arangod.pid;
+  const storeArangodPath = arangod.rootDir + "/arangod_" + arangod.pid;
 
   print(RED +
         "during: " + checkStr + ": Core dump written; copying arangod to " +
-        arangod.rootDir + " for later analysis.\n" +
+        storeArangodPath + " for later analysis.\n" +
         "Server shut down with :\n" +
         yaml.safeDump(arangod) +
         "marking build as crashy.");
