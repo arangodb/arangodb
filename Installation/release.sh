@@ -3,6 +3,35 @@ set -e
 
 TAG=1
 BOOK=1
+BUILD=1
+SWAGGER=1
+EXAMPLES=1
+LINT=1
+
+if [ "$1" == "--no-lint" ];  then
+  LINT=0
+  shift
+fi
+
+if [ "$1" == "--no-build" ];  then
+  BUILD=0
+  shift
+fi
+
+if [ "$1" == "--recycle-build" ];  then
+  BUILD=2
+  shift
+fi
+
+if [ "$1" == "--no-swagger" ];  then
+  SWAGGER=0
+  shift
+fi
+
+if [ "$1" == "--no-examples" ];  then
+  EXAMPLES=0
+  shift
+fi
 
 if [ "$1" == "--no-commit" ];  then
   TAG=0
@@ -51,17 +80,24 @@ if [ `uname` == "Darwin" ];  then
   CMAKE_CONFIGURE="${CMAKE_CONFIGURE} -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11"
 fi
 
-echo "COMPILING"
-rm -rf build && mkdir build
+if [ "$BUILD" != "0" ];  then
+  echo "COMPILING"
 
-(
-  cd build
-  cmake .. ${CMAKE_CONFIGURE}
-  make -j 8
-)
+  if [ "$BUILD" == "1" ];  then
+    rm -rf build && mkdir build
+  fi
 
-echo "LINTING"
-./utils/jslint.sh
+  (
+    cd build
+    cmake .. ${CMAKE_CONFIGURE}
+    make -j 8
+  )
+fi
+
+if [ "$LINT" == "1" ]; then
+  echo "LINTING"
+  ./utils/jslint.sh
+fi
 
 git add -f \
   README \
@@ -75,11 +111,15 @@ git add -f \
   js/common/bootstrap/errors.js \
   CMakeLists.txt
 
-echo "SWAGGER"
-./utils/generateSwagger.sh
+if [ "$EXAMPLES" == "1" ];  then
+  echo "EXAMPLES"
+  ./utils/generateExamples.sh
+fi
 
-echo "EXAMPLES"
-./utils/generateExamples.sh
+if [ "$SWAGGER" == "1" ];  then
+  echo "SWAGGER"
+  ./utils/generateSwagger.sh
+fi
 
 echo "GRUNT"
 (

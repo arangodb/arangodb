@@ -1,3 +1,3 @@
 #!/bin/sh
 
-/etc/init.d/arangodb stop
+/etc/init.d/arangodb3 stop

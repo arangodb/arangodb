@@ -303,5 +303,5 @@ build-books:
 	done
 
 	make check-docublocks
-	#make book-check-dangling-anchors
+	make book-check-dangling-anchors
 	echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html
