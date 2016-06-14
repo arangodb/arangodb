@@ -1034,7 +1034,7 @@ function synchronizeOneShard(database, shard, planId, leader) {
   var ok = false;
   const rep = require("@arangodb/replication");
 
-  console.warn("synchronizeOneShard: trying to synchronize local shard '%s/%s' for central '%s/%s'",
+  console.info("synchronizeOneShard: trying to synchronize local shard '%s/%s' for central '%s/%s'",
                database, shard, database, planId);
   try {
     var ep = ArangoClusterInfo.getServerEndpoint(leader);
@@ -1141,7 +1141,7 @@ function synchronizeOneShard(database, shard, planId, leader) {
     unlockSyncKeyspace();
   }
   tryLaunchJob();  // start a new one if needed
-  console.warn("synchronizeOneShard: donedone, %s/%s, %s/%s", 
+  console.info("synchronizeOneShard: donedone, %s/%s, %s/%s", 
                database, shard, database, planId);
 }
 
