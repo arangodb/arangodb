@@ -42,4 +42,3 @@ Each entry in the `files` attribute can represent either a single file or a dire
   If set to `true` the file will be served with gzip-encoding if supported by the client. This can be useful when serving text files like client-side JavaScript, CSS or HTML.
 
 If a string is provided instead of an object, it will be interpreted as the *path* option.
-

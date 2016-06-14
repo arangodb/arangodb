@@ -1,4 +1,4 @@
-!CHAPTER Foxx anatomy
+!CHAPTER Foxx at a glance
 
 Each Foxx service is defined by a [JSON manifest](Manifest.md) specifying the
 entry point, any scripts defined by the service, possible configuration
