@@ -65,8 +65,6 @@ The `@arangodb/foxx` module also provides the same exports as in 2.8, namely:
 * `getExports` and `requireApp` from `@arangodb/foxx/manager`
 * `queues` from `@arangodb/foxx/queues`
 
-**Note:** The `org/arangodb` module is aliased to the new name `@arangodb` in ArangoDB 3.0.0 and the `@arangodb` module was aliased to the old name `org/arangodb` in ArangoDB 2.8.0. Either one will work in 2.8 and 3.0 but outside of legacy services you should use `@arangodb` going forward.
-
 !SECTION Incompatibilities with 2.8 and earlier
 
 As built-in support for CoffeeScript was removed in 3.0 any service using CoffeeScript source files directly will not work in legacy compatibility mode. If you want to use an alternative language like CoffeeScript, make sure to pre-compile the raw source files to JavaScript and use the compiled JavaScript files in the service.
@@ -74,3 +72,5 @@ As built-in support for CoffeeScript was removed in 3.0 any service using Coffee
 The `@arangodb/request` module when used with the `json` option previously overwrote the string in the `body` property of the response object of the response with the parsed JSON body. In 2.8 this was changed so the parsed JSON body is added as the `json` property of the response object in addition to overwriting the `body` property. In 3.0 and later (including legacy compatibility mode) the `body` property is no longer overwritten and must use the `json` property instead. Note that this only affects code using the `json` option when making the request.
 
 Additionally, any feature not supported in 2.8 will also not work in legacy compatibility mode. When migrating from an older version of ArangoDB it is a good idea to migrate to ArangoDB 2.8 first for an easier upgrade path.
+
+**Note:** The `org/arangodb` module is aliased to the new name `@arangodb` in ArangoDB 3.0.0 and the `@arangodb` module was aliased to the old name `org/arangodb` in ArangoDB 2.8.0. Either one will work in 2.8 and 3.0 but outside of legacy services you should use `@arangodb` going forward.
