@@ -205,17 +205,6 @@
       }, 200);
 
     },
-		
-		cleanupHistory: function(f) {
-			// clean up too big history data
-			if (this.history[this.server].hasOwnProperty(f)) {
-	      if (this.history[this.server][f].length > this.defaultTimeFrame / this.interval) {
-			    while (this.history[this.server][f].length > this.defaultTimeFrame / this.interval) {
-	          this.history[this.server][f].shift();
-	        }
-			  }
-			}
-		},
 
     updateCharts: function () {
       var self = this;
@@ -354,11 +343,6 @@
         });
 
         g.updateOptions(opts);
-        
-        //clean up history
-        if (this.history[this.server].hasOwnProperty(figure)) {
-          this.cleanupHistory(figure);
-        }
       }
       $(window).trigger('resize');
       this.resize();
@@ -418,22 +402,20 @@
             valueList = [valueList[0], read, write];
           }
 
-          self.history[self.server][f].push(valueList);
+          self.history[self.server][f].unshift(valueList);
         }
       });
 		},
 
     cutOffHistory: function (f, cutoff) {
-      var self = this, v;
+      var self = this, v, h = self.history[self.server][f];
 
-      while (self.history[self.server][f].length !== 0) {
-        v = self.history[self.server][f][0][0];
-
-        if (v >= cutoff) {
+      while (h.length !== 0) {
+        if (h[h.length -1][0] >= cutoff) {
           break;
         }
 
-        self.history[self.server][f].shift();
+        h.pop();
       }
     },
 
