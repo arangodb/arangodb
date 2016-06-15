@@ -783,7 +783,12 @@ exports.toArgv = function(structure, longOptsEqual) {
           vec.push('--' + key);
           if (structure[key] !== false) {
             if (structure[key] !== true) {
-              vec.push(structure[key]);
+              if (structure[key] !== null) {
+                // The null case is for the case one wants to add an option 
+                // with an equals sign all in the key, which is necessary if
+                // one wants to specify an option multiple times.
+                vec.push(structure[key]);
+              }
             } else {
               vec.push('true');
             }
