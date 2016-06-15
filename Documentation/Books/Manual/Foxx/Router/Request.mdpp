@@ -4,6 +4,14 @@ TODO
 
 The request object specifies the following properties:
 
+* **arangoUser**: `string | null`
+
+  TODO
+
+* **arangoVersion**: `number`
+
+  TODO
+
 * **baseUrl**: `string`
 
   Root-relative base URL of the service, i.e. the prefix `"/_db/"` followed by the value of *database*.
@@ -108,6 +116,10 @@ The request object specifies the following properties:
   This is set to `false` when *protocol* is `"http"` and `true` when *protocol* is `"https"`.
 
 * **suffix**: `string`
+
+  TODO
+
+* **trustProxy**: `boolean`
 
   TODO
 
