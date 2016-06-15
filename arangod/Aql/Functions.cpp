@@ -222,6 +222,45 @@ static AqlValue ExtractFunctionParameterValue(
   return parameters.at(position);
 }
 
+/// @brief extra a collection name from an AqlValue
+static std::string ExtractCollectionName(arangodb::AqlTransaction* trx,
+                                         VPackFunctionParameters const& parameters,
+                                         size_t position) {
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, position);
+
+  std::string identifier;
+  
+  if (value.isString()) {
+    // already a string
+    identifier = value.slice().copyString();
+  } else {
+    AqlValueMaterializer materializer(trx);
+    VPackSlice s = materializer.slice(value, true);
+    VPackSlice id = s;
+
+    if (s.isObject() && s.hasKey(StaticStrings::IdString)) {
+      id = s.get(StaticStrings::IdString);
+    } 
+    if (id.isString()) {
+      identifier = id.copyString();
+    } else if (id.isCustom()) {
+      identifier = trx->extractIdString(s);
+    }
+  }
+
+  if (!identifier.empty()) {
+    size_t pos = identifier.find('/');
+
+    if (pos != std::string::npos) {
+      return identifier.substr(0, pos);
+    }
+
+    return identifier;
+  }
+
+  return StaticStrings::Empty;
+}
+
 /// @brief register warning
 static void RegisterWarning(arangodb::aql::Query* query,
                             char const* functionName, int code) {
@@ -3795,44 +3834,14 @@ AqlValue Functions::IsSameCollection(
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "IS_SAME_COLLECTION", 2, 2);
 
-  AqlValue first = ExtractFunctionParameterValue(trx, parameters, 0);
-
-  if (!first.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "IS_SAME_COLLECTION");
-  }
-
-  std::string const collectionName(first.slice().copyString());
-
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 1);
-      
-  AqlValueMaterializer materializer(trx);
-  VPackSlice s = materializer.slice(value, true);
-  VPackSlice id = s;
-  std::string identifier;
-
-  if (s.isObject() && s.hasKey(StaticStrings::IdString)) {
-    id = s.get(StaticStrings::IdString);
-  } 
-  if (id.isString()) {
-    identifier = id.copyString();
-  } else if (id.isCustom()) {
-    identifier = trx->extractIdString(s);
-  }
-
-  if (!identifier.empty()) {
-    size_t pos = identifier.find('/');
-
-    if (pos != std::string::npos) {
-      bool const isSame = (collectionName == identifier.substr(0, pos));
-      return AqlValue(isSame);
-    }
-
-    // fallthrough intentional
+  std::string const first = ExtractCollectionName(trx, parameters, 0);
+  std::string const second = ExtractCollectionName(trx, parameters, 1);
+  
+  if (!first.empty() && !second.empty()) {
+    return AqlValue(first == second);
   }
 
   RegisterWarning(query, "IS_SAME_COLLECTION",
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
-
