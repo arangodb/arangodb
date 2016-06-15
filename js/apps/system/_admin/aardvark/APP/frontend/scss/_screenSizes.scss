@@ -1,3 +1,25 @@
+// HEIGHTS
+
+@media (max-height: 490px) {
+  .social-icons {
+    display: none;
+  }
+}
+
+@media (max-height: 525px) {
+  .navlogo {
+    .version {
+      display: none;
+    }
+  }
+
+  .shortcut-icons {
+    display: none;
+  }
+}
+
+// WIDTHS
+
 @media (max-width: 568px) {
 
   //PAGINATION

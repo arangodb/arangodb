@@ -100,8 +100,8 @@
       tableContent.push(
         window.modalView.createReadOnlyEntry(
           'doc-delete-button',
-          'Delete',
-          'Delete this ' + this.type + '?',
+          'Confirm delete, document id is',
+          this.type._id,
           undefined,
           undefined,
           false,
@@ -127,18 +127,8 @@
         }
       }.bind(this);
 
-      if (this.type === 'document') {
-        var callbackDoc = function(error) {
-          if (error) {
-            arangoHelper.arangoError('Error', 'Could not delete document');
-          }
-          else {
-            successFunction();
-          }
-        }.bind(this);
-        this.collection.deleteDocument(this.colid, this.docid, callbackDoc);
-      }
-      else if (this.type === 'edge') {
+      
+      if (this.type._from && this.type._to) {
         var callbackEdge = function(error) {
           if (error) {
             arangoHelper.arangoError('Edge error', 'Could not delete edge');
@@ -148,6 +138,17 @@
           }
         }.bind(this);
         this.collection.deleteEdge(this.colid, this.docid, callbackEdge);
+      }
+      else {
+        var callbackDoc = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Error', 'Could not delete document');
+          }
+          else {
+            successFunction();
+          }
+        }.bind(this);
+        this.collection.deleteDocument(this.colid, this.docid, callbackDoc);
       }
     },
 
