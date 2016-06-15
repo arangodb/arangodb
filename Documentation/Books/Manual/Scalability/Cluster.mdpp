@@ -2,6 +2,10 @@
 
 ArangoDB has been designed as a distributed multi model database. In this chapter we will give a short outline on the cluster archtiecture.
 
+!SUBSECTION Cluster ID
+
+Every node in a cluster will be assigned a uniquely generated ID during its startup. As such a node is identifiable througout the cluster. All cluster operations will communicate via this ID.
+
 !SUBSECTION Roles in an ArangoDB cluster
 
 In an ArangoDB cluster there are 4 distinct roles: Agents, Coordinators, Primaries, Secondaries. In the following sections we will shed light on each of them.
