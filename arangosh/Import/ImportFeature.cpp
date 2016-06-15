@@ -235,7 +235,7 @@ void ImportFeature::start() {
   }
 
   // separator
-  if (_separator.length() == 1) {
+  if (_separator.length() == 1 || _separator == "\\r" || _separator == "\\n" || _separator == "\\t") {
     ih.setSeparator(_separator);
   } else {
     LOG(FATAL) << "_separator must be exactly one character.";
