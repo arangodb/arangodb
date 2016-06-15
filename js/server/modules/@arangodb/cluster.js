@@ -1034,7 +1034,7 @@ function synchronizeOneShard(database, shard, planId, leader) {
   var ok = false;
   const rep = require("@arangodb/replication");
 
-  console.info("synchronizeOneShard: trying to synchronize local shard '%s/%s' for central '%s/%s'",
+  console.debug("synchronizeOneShard: trying to synchronize local shard '%s/%s' for central '%s/%s'",
                database, shard, database, planId);
   try {
     var ep = ArangoClusterInfo.getServerEndpoint(leader);
@@ -1122,8 +1122,8 @@ function synchronizeOneShard(database, shard, planId, leader) {
     unlockSyncKeyspace();
   }
   tryLaunchJob();  // start a new one if needed
-  console.info("synchronizeOneShard: donedone, %s/%s, %s/%s", 
-               database, shard, database, planId);
+  console.debug("synchronizeOneShard: done, %s/%s, %s/%s", 
+                database, shard, database, planId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1925,18 +1925,18 @@ function waitForSyncReplOneCollection(dbName, collName) {
       return global.ArangoClusterInfo.getCollectionInfoCurrent(dbName,
                 collName, s).servers;
     });
-    console.debug("waitForSyncRepl", shards, cinfo.shards, ccinfo);
+    console.debug("waitForSyncRepl", dbName, collName, shards, cinfo.shards, ccinfo);
     var ok = true;
     for (var i = 0; i < shards.length; ++i) {
       if (cinfo.shards[shards[i]].length !== ccinfo[i].length) {
         ok = false;
       }
     }
-    require("internal").wait(0.5);
     if (ok) {
-      console.debug("waitForSyncRepl: OK");
+      console.debug("waitForSyncRepl: OK:", dbName, collName, shards);
       return true;
     }
+    require("internal").wait(0.5);
   }
   console.warn("waitForSyncRepl:", dbName, collName, ": BAD");
   return false;
@@ -1950,7 +1950,6 @@ function waitForSyncRepl(dbName, collList) {
   for (var i = 0; i < collList.length; ++i) {
     ok = waitForSyncReplOneCollection(dbName, collList[i].name()) && ok;
   }
-  require("internal").wait(3.0); // For all synchronouse replications to settle
   return ok;
 }
 

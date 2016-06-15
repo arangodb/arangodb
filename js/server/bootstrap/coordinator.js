@@ -56,6 +56,15 @@
   }
 
   if (internal.threadNumber === 0) {
+    // Wait for synchronous replication of system colls to settle:
+    console.info("Waiting for synchronous replication of system collections...");
+    var db = internal.db;
+    var colls = db._collections();
+    colls = colls.filter(c => c.name()[0] === "_");
+    require("@arangodb/cluster").waitForSyncRepl("_system", colls);
+  }
+
+  if (internal.threadNumber === 0) {
     console.info("bootstraped coordinator %s", global.ArangoServerState.id());
   }
 
