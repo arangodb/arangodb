@@ -367,6 +367,8 @@ Some general changes in behaviour that might trip you up:
 
 * When a request is made with an HTTP verb not supported by an endpoint, Foxx will now respond with a 405 (method not allowed) error with an appropriate `Allowed` header listing the supported HTTP verbs for that endpoint.
 
+* Foxx will no longer parse your JSDoc comments to generate route documentation (use the `summary` and `description` methods of the endpoint instead).
+
 * The `apiDocumentation` method now lives on the service context and behaves slightly differently.
 
 * There is no router equivalent for the `activateAuthentication` and `activateSessions` methods. Instead you should use the session middleware (see the section on sessions below).
