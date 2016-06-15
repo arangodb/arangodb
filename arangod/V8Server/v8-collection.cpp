@@ -2753,6 +2753,10 @@ static void JS_CollectionsVocbase(
     colls = TRI_CollectionsVocBase(vocbase);
   }
 
+  std::sort(colls.begin(), colls.end(), [](TRI_vocbase_col_t const* lhs, TRI_vocbase_col_t const* rhs) -> bool {
+    return StringUtils::tolower(lhs->namec_str()) < StringUtils::tolower(rhs->namec_str());
+  });
+
   bool error = false;
   // already create an array of the correct size
   v8::Handle<v8::Array> result = v8::Array::New(isolate);

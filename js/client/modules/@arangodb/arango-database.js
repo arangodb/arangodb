@@ -259,7 +259,13 @@ ArangoDatabase.prototype._collections = function () {
       result.push(collection);
     }
 
-    return result;
+    return result.sort(function(l, r) {
+      // we assume no two collections have the same name
+      if (l.name().toLowerCase() < r.name().toLowerCase()) {
+        return -1;
+      }
+      return 1;
+    });
   }
 
   return undefined;
