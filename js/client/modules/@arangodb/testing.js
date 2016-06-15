@@ -1359,6 +1359,10 @@ function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
     args["log.level"] = 'error';
   }
 
+  // flush log messages directly and not asynchronously
+  // (helps debugging)  
+  args["log.force-direct"] = 'true';
+
   if (protocol === "ssl") {
     args["ssl.keyfile"] = fs.join("UnitTests", "server.pem");
   }
