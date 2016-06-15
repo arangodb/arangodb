@@ -367,7 +367,7 @@ configure_file("${CMAKE_SOURCE_DIR}/Installation/cmake/CMakeCPackOptions.cmake.i
     "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake" @ONLY)
 set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake")
 
-if (NOT(MSVC))
+if (NOT(MSVC OR DARWIN))
   # components
   install(
     FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
