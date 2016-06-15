@@ -255,7 +255,7 @@ var printEdgeDefinitions = function(defs) {
 
 var wrapCollection = function(col) {
   var wrapper = {};
-  _.each(_.functions(col), function(func) {
+  _.each(_.functionsIn(col), function(func) {
     wrapper[func] = function() {
       return col[func].apply(col, arguments);
     };
