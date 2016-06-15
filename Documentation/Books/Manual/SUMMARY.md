@@ -13,7 +13,7 @@
     * [Compiling](GettingStarted/Installing/Compiling.md)
     * [Cluster setup](GettingStarted/Installing/Cluster.md)
   * [Authentication](GettingStarted/Authentication.md)
-  * [Using the Web Interface](GettingStarted/WebInterface.md)
+  * [Using the Web Interface](GettingStarted/WebInterface/README.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
   # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
 #
