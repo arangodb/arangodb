@@ -18,6 +18,7 @@
   # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
 #
 * [Scalability](Scalability/README.md)
+  * [Cluster](Scalability/Cluster.md)
 #  * [Joins](Scalability/Joins.md)
 #
 * [Data model & modeling](DataModeling/README.md)
