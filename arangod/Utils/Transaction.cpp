@@ -626,7 +626,7 @@ std::string Transaction::extractKeyPart(VPackSlice const slice) {
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
     if (!k.isString()) {
-      return ""; // fail
+      return StaticStrings::Empty; // fail
     }
     return k.copyString();
   } 
@@ -638,7 +638,7 @@ std::string Transaction::extractKeyPart(VPackSlice const slice) {
     }
     return key;
   } 
-  return "";
+  return StaticStrings::Empty;
 }
 
 //////////////////////////////////////////////////////////////////////////////
