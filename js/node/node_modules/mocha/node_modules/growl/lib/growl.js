@@ -15,7 +15,7 @@ var exec = require('child_process').exec
 function which(name) {
   var paths = process.env.PATH.split(':');
   var loc;
-  
+
   for (var i = 0, len = paths.length; i < len; ++i) {
     loc = path.join(paths[i], name);
     if (exists(loc)) return loc;
@@ -31,6 +31,9 @@ switch(os.type()) {
         , msg: '-message'
         , title: '-title'
         , subtitle: '-subtitle'
+        , icon: '-appIcon'
+        , sound:  '-sound'
+        , url: '-open'
         , priority: {
               cmd: '-execute'
             , range: []
@@ -61,21 +64,35 @@ switch(os.type()) {
     }
     break;
   case 'Linux':
-    cmd = {
-        type: "Linux"
-      , pkg: "notify-send"
-      , msg: ''
-      , sticky: '-t 0'
-      , icon: '-i'
-      , priority: {
-          cmd: '-u'
-        , range: [
-            "low"
-          , "normal"
-          , "critical"
-        ]
-      }
-    };
+    if (which('growl')) {
+      cmd = {
+          type: "Linux-Growl"
+        , pkg: "growl"
+        , msg: '-m'
+        , title: '-title'
+        , subtitle: '-subtitle'
+        , host: {
+            cmd: '-H'
+          , hostname: '192.168.33.1'
+        }
+      };
+    } else {
+      cmd = {
+          type: "Linux"
+        , pkg: "notify-send"
+        , msg: ''
+        , sticky: '-t 0'
+        , icon: '-i'
+        , priority: {
+            cmd: '-u'
+          , range: [
+              "low"
+            , "normal"
+            , "critical"
+          ]
+        }
+      };
+    }
     break;
   case 'Windows_NT':
     cmd = {
@@ -85,6 +102,7 @@ switch(os.type()) {
       , sticky: '/s:true'
       , title: '/t:'
       , icon: '/i:'
+      , url: '/cu:'
       , priority: {
             cmd: '/p:'
           , range: [
@@ -120,6 +138,7 @@ exports.version = '1.4.1'
  *  - sticky  Make the notification stick (defaults to false)
  *  - priority  Specify an int or named key (default is 0)
  *  - name    Application name (defaults to growlnotify)
+ *  - sound   Sound efect ( in OSx defined in preferences -> sound -> effects) * works only in OSX > 10.8x
  *  - image
  *    - path to an icon sets --iconpath
  *    - path to an image sets --image
@@ -131,6 +150,7 @@ exports.version = '1.4.1'
  *
  *   growl('New email')
  *   growl('5 new emails', { title: 'Thunderbird' })
+ *   growl('5 new emails', { title: 'Thunderbird', sound: 'Purr' })
  *   growl('Email sent', function(){
  *     // ... notification sent
  *   })
@@ -147,6 +167,14 @@ function growl(msg, options, fn) {
     , options = options || {}
     , fn = fn || function(){};
 
+  if (options.exec) {
+    cmd = {
+        type: "Custom"
+      , pkg: options.exec
+      , range: []
+    };
+  }
+
   // noop
   if (!cmd) return fn(new Error('growl not supported on this platform'));
   args = [cmd.pkg];
@@ -162,6 +190,9 @@ function growl(msg, options, fn) {
         flag = flag || ext && (image = ext) && 'icon'
         flag = flag || 'icon'
         args.push('--' + flag, quote(image))
+        break;
+      case 'Darwin-NotificationCenter':
+        args.push(cmd.icon, quote(image));
         break;
       case 'Linux':
         args.push(cmd.icon, quote(image));
@@ -186,6 +217,11 @@ function growl(msg, options, fn) {
     }
   }
 
+  //sound
+  if(options.sound && cmd.type === 'Darwin-NotificationCenter'){
+    args.push(cmd.sound, options.sound)
+  }
+
   // name
   if (options.name && cmd.type === "Darwin-Growl") {
     args.push('--name', options.name);
@@ -194,12 +230,14 @@ function growl(msg, options, fn) {
   switch(cmd.type) {
     case 'Darwin-Growl':
       args.push(cmd.msg);
-      args.push(quote(msg));
+      args.push(quote(msg).replace(/\\n/g, '\n'));
       if (options.title) args.push(quote(options.title));
       break;
     case 'Darwin-NotificationCenter':
       args.push(cmd.msg);
-      args.push(quote(msg));
+      var stringifiedMsg = quote(msg);
+      var escapedMsg = stringifiedMsg.replace(/\\n/g, '\n');
+      args.push(escapedMsg);
       if (options.title) {
         args.push(cmd.title);
         args.push(quote(options.title));
@@ -208,24 +246,42 @@ function growl(msg, options, fn) {
         args.push(cmd.subtitle);
         args.push(quote(options.subtitle));
       }
+      if (options.url) {
+        args.push(cmd.url);
+        args.push(quote(options.url));
+      }
       break;
-    case 'Darwin-Growl':
+    case 'Linux-Growl':
       args.push(cmd.msg);
-      args.push(quote(msg));
+      args.push(quote(msg).replace(/\\n/g, '\n'));
       if (options.title) args.push(quote(options.title));
+      if (cmd.host) {
+        args.push(cmd.host.cmd, cmd.host.hostname)
+      }
       break;
     case 'Linux':
       if (options.title) {
         args.push(quote(options.title));
         args.push(cmd.msg);
-        args.push(quote(msg));
+        args.push(quote(msg).replace(/\\n/g, '\n'));
       } else {
-        args.push(quote(msg));
+        args.push(quote(msg).replace(/\\n/g, '\n'));
       }
       break;
     case 'Windows':
-      args.push(quote(msg));
+      args.push(quote(msg).replace(/\\n/g, '\n'));
       if (options.title) args.push(cmd.title + quote(options.title));
+      if (options.url) args.push(cmd.url + quote(options.url));
+      break;
+    case 'Custom':
+      args[0] = (function(origCommand) {
+        var message = options.title
+          ? options.title + ': ' + msg
+          : msg;
+        var command = origCommand.replace(/(^|[^%])%s/g, '$1' + quote(message));
+        if (command === origCommand) args.push(quote(message));
+        return command;
+      })(args[0]);
       break;
   }
 

@@ -21,7 +21,7 @@ module.exports.preferredMediaTypes = preferredMediaTypes;
  * @private
  */
 
-var simpleMediaTypeRegExp = /^\s*(\S+?)\/([^;\s]+)\s*(?:;(.*))?$/;
+var simpleMediaTypeRegExp = /^\s*([^\s\/;]+)\/([^;\s]+)\s*(?:;(.*))?$/;
 
 /**
  * Parse the Accept header.

@@ -48,13 +48,11 @@
                     exception = e;
                 }
 
-                if (typeof oldDone !== "function") {
-                    if (typeof exception !== "undefined") {
-                        sandbox.restore();
-                        throw exception;
-                    } else {
-                        sandbox.verifyAndRestore();
-                    }
+                if (typeof exception !== "undefined") {
+                    sandbox.restore();
+                    throw exception;
+                } else if (typeof oldDone !== "function") {
+                    sandbox.verifyAndRestore();
                 }
 
                 return result;

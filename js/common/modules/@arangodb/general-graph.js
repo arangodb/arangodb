@@ -430,7 +430,7 @@ var _relation = function (
 
 var _list = function() {
   var gdb = getGraphCollection();
-  return _.pluck(gdb.toArray(), "_key");
+  return _.map(gdb.toArray(), "_key");
 };
 
 
@@ -664,8 +664,8 @@ var bindEdgeCollections = function(self, edgeCollections) {
           if (edgeDefinition.collection === key) {
             var fromCollection = from.split("/")[0];
             var toCollection = to.split("/")[0];
-            if (! _.contains(edgeDefinition.from, fromCollection)
-              || ! _.contains(edgeDefinition.to, toCollection)) {
+            if (! _.includes(edgeDefinition.from, fromCollection)
+              || ! _.includes(edgeDefinition.to, toCollection)) {
               var err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_EDGE.code;
               err.errorMessage =
@@ -2145,7 +2145,7 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
     err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.message;
     throw err;
   }
-  if (_.contains(this.__orphanCollections, vertexCollectionName)) {
+  if (_.includes(this.__orphanCollections, vertexCollectionName)) {
     err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.code;
     err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.message;

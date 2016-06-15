@@ -16,10 +16,10 @@ Synopsis
     block.broadcast;                // 10.15.255.255
     block.size;                     // 1048576
     block.first;                    // 10.0.0.1
-    block.last;                     // 10.0.255.254
+    block.last;                     // 10.15.255.254
 
     block.contains('10.0.8.10');    // true
-    block.contains('10.8.0.10');    // false
+    block.contains('10.8.0.10');    // true
     block.contains('192.168.1.20'); // false
 
     block.forEach(function(ip, long, index));

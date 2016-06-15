@@ -1,4 +1,11 @@
-## v1.1.2
+## v1.3.2
+* Handle Safari stack entries with no location information
+
+## v1.3.0
+* Significantly improved handling of eval()
+* Add many browsers to CI
+
+## v1.2.2
 * Handle native functions in V8 stack traces
 
 ## v1.2.0

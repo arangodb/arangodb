@@ -76,7 +76,7 @@ function Model(attributes) {
 
   if (this.schema) {
     if (this.schema.isJoi) {
-      this.schema = _.object(_.map(this.schema._inner.children, function (prop) {
+      this.schema = _.fromPairs(_.map(this.schema._inner.children, function (prop) {
         return [prop.key, prop.schema];
       }));
     }
