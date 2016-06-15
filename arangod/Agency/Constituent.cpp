@@ -131,7 +131,7 @@ void Constituent::term(term_t t) {
 
   if (tmp != t) {
     
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
       << _id << ": " << roleStr[_role] << " term " << t;
 
     Builder body;
@@ -180,7 +180,7 @@ void Constituent::follow(term_t t) {
   MUTEX_LOCKER(guard, _castLock);
 
   if (_role != FOLLOWER) {
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
       << _id << ": Converting to follower in term " << t;
   }
   
@@ -203,7 +203,7 @@ void Constituent::lead(std::vector<bool> const& votes) {
     }
     ss << ")";
     
-    LOG_TOPIC(INFO, Logger::AGENCY) << ss.str();
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
     _agent->lead();  // We need to rebuild spear_head and read_db;
   }
   
@@ -219,7 +219,7 @@ void Constituent::candidate() {
   MUTEX_LOCKER(guard, _castLock);
   
   if (_role != CANDIDATE)
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
         << _id << ": Converted to candidate in term " << _term;
   
   _role = CANDIDATE;
