@@ -449,10 +449,9 @@ function BaseMiddleware() {
                     response.contentType,
                     response.bodyFromFile);
       } else {
-        console.log("%s, outgoing response with status %s of type %s, no body",
+        console.log("%s, outgoing response with status %s, no body",
                     options.mount,
-                    response.responseCode || 200,
-                    response.contentType);
+                    response.responseCode || 200);
       }
     }
   };
