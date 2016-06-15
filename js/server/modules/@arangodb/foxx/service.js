@@ -218,6 +218,15 @@ module.exports = class FoxxService {
               error.cause = e;
             }
             if (logLevel) {
+              console[logLevel](`Service "${
+                service.mount
+              }" encountered error ${
+                e.statusCode || 500
+              } while handling ${
+                req.requestType
+              } ${
+                req.absoluteUrl()
+              }`);
               console[`${logLevel}Lines`](e.stack);
               let err = e.cause;
               while (err && err.stack) {
