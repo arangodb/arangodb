@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_CHAR_LENGTH_PAIR_H
-#define ARANGODB_BASICS_CHAR_LENGTH_PAIR_H 1
+#ifndef ARANGODB_BASICS_STRING_REF_H
+#define ARANGODB_BASICS_STRING_REF_H 1
 
 #include "Basics/Common.h"
 #include "Basics/fasthash.h"
@@ -31,11 +31,11 @@ namespace arangodb {
 
 /// @brief a struct describing a C character array
 /// not responsible for memory management!
-struct CharLengthPair {
-  CharLengthPair() = delete;
-  explicit CharLengthPair(std::string const& str) : data(str.c_str()), length(str.size()) {}
-  explicit CharLengthPair(char const* data) : data(data), length(strlen(data)) {}
-  CharLengthPair(char const* data, size_t length) : data(data), length(length) {}
+struct StringRef {
+  StringRef() = delete;
+  explicit StringRef(std::string const& str) : data(str.c_str()), length(str.size()) {}
+  explicit StringRef(char const* data) : data(data), length(strlen(data)) {}
+  StringRef(char const* data, size_t length) : data(data), length(length) {}
 
   char const* data;
   size_t length;
@@ -46,16 +46,16 @@ struct CharLengthPair {
 namespace std {
 
 template <>
-struct hash<arangodb::CharLengthPair> {
-  size_t operator()(arangodb::CharLengthPair const& value) const noexcept {
+struct hash<arangodb::StringRef> {
+  size_t operator()(arangodb::StringRef const& value) const noexcept {
     return fasthash64(value.data, value.length, 0xdeadbeef) ^ std::hash<size_t>()(value.length);
   }
 };
 
 template <>
-struct equal_to<arangodb::CharLengthPair> {
-  bool operator()(arangodb::CharLengthPair const& lhs,
-                  arangodb::CharLengthPair const& rhs) const {
+struct equal_to<arangodb::StringRef> {
+  bool operator()(arangodb::StringRef const& lhs,
+                  arangodb::StringRef const& rhs) const {
     if (lhs.length != rhs.length) {
       return false;
     }
