@@ -47,11 +47,11 @@
 #include "Indexes/Index.h"
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/Transaction.h"
-#include "V8Server/V8Traverser.h"
 #include "VocBase/KeyGenerator.h"
 
 using namespace arangodb;
