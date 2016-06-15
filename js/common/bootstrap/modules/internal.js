@@ -1746,7 +1746,7 @@ if (typeof ENV !== 'undefined') {
 ////////////////////////////////////////////////////////////////////////////////
 
 if (typeof TRUSTED_PROXIES !== 'undefined') {
-  exports.trustedProxies = new global.TRUSTED_PROXIES();
+  exports.trustedProxies = global.TRUSTED_PROXIES;
   delete global.TRUSTED_PROXIES;
 }
 
@@ -1756,7 +1756,7 @@ if (typeof TRUSTED_PROXIES !== 'undefined') {
 ////////////////////////////////////////////////////////////////////////////////
 
 if (typeof AUTHENTICATION_ENABLED !== 'undefined') {
-  exports.authenticationEnabled = new global.AUTHENTICATION_ENABLED();
+  exports.authenticationEnabled = global.AUTHENTICATION_ENABLED;
   delete global.AUTHENTICATION_ENABLED;
 }
 
