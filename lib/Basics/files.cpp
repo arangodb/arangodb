@@ -86,6 +86,19 @@ static TRI_vector_t FileDescriptors;
 static TRI_read_write_lock_t FileNamesLock;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the character is a directory separator
+////////////////////////////////////////////////////////////////////////////////
+///
+     
+static constexpr bool IsDirSeparatorChar(char c) { 
+  // the check for c != TRI_DIR_SEPARATOR_CHAR is required
+  // for g++6. otherwise it will warn about equal expressions
+  // in the two branches
+  return (c == TRI_DIR_SEPARATOR_CHAR || 
+          (TRI_DIR_SEPARATOR_CHAR != '/' && c == '/'));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief removes trailing path separators from path
 ///
 /// @note path will be modified in-place
@@ -101,7 +114,7 @@ static void RemoveTrailingSeparator(char* path) {
   if (n > 0) {
     char* p = path + n - 1;
 
-    while (p > s && (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/')) {
+    while (p > s && IsDirSeparatorChar(*p)) {
       *p = '\0';
       --p;
     }
@@ -121,7 +134,7 @@ static void NormalizePath(char* path) {
   char* e = path + strlen(p);
 
   for (; p < e; ++p) {
-    if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
+    if (IsDirSeparatorChar(*p)) {
       *p = TRI_DIR_SEPARATOR_CHAR;
     }
   }
@@ -644,12 +657,10 @@ char* TRI_Dirname(char const* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Basename(char const* path) {
-  size_t n;
-
-  n = strlen(path);
+  size_t n = strlen(path);
 
   if (1 < n) {
-    if (path[n - 1] == TRI_DIR_SEPARATOR_CHAR || path[n - 1] == '/') {
+    if (IsDirSeparatorChar(path[n - 1])) {
       n -= 1;
     }
   }
@@ -657,26 +668,24 @@ char* TRI_Basename(char const* path) {
   if (n == 0) {
     return TRI_DuplicateString("");
   } else if (n == 1) {
-    if (*path == TRI_DIR_SEPARATOR_CHAR || *path == '/') {
+    if (IsDirSeparatorChar(*path)) {
       return TRI_DuplicateString(TRI_DIR_SEPARATOR_STR);
-    } else {
-      return TRI_DuplicateString(path, n);
-    }
+    } 
+    return TRI_DuplicateString(path, n);
   } else {
     char const* p;
 
     for (p = path + (n - 2); path < p; --p) {
-      if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
+      if (IsDirSeparatorChar(*p)) {
         break;
       }
     }
 
     if (path == p) {
-      if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
+      if (IsDirSeparatorChar(*p)) {
         return TRI_DuplicateString(path + 1, n - 1);
-      } else {
-        return TRI_DuplicateString(path, n);
-      }
+      } 
+      return TRI_DuplicateString(path, n);
     } else {
       n -= p - path;
 
