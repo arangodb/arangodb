@@ -35,7 +35,6 @@ const crypto = require('@arangodb/crypto');
 
 module.exports = class SyntheticRequest {
   constructor(req, context) {
-    this.user = req.user; 
     this._url = parseUrl(req.url);
     this._raw = req;
     this.context = context;

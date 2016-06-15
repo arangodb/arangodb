@@ -22,6 +22,11 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
+module.context.use(function (req, res, next) {
+  // Expose internal request user
+  req.user = req._raw.user;
+  next();
+});
 module.context.use(require('./aardvark'));
 module.context.use('/foxxes', require('./foxxes'));
 module.context.use('/cluster', require('./cluster'));
