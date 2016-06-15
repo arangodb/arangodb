@@ -1,4 +1,4 @@
-/*global ArangoServerState, ArangoClusterInfo, ArangoClusterComm*/
+/*global ArangoServerState, ArangoClusterComm*/
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -397,8 +397,8 @@ function computeStatisticsLong (attrs, clusterId) {
 
 
 router.use((req, res, next) => {
-  if (global.AUTHENTICATION_ENABLED()) {
-    if (!req.user) {
+  if (internal.authenticationEnabled()) {
+    if (!req.arangoUser) {
       throw new httperr.Unauthorized();
     }
   }
