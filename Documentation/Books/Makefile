@@ -57,7 +57,7 @@ ppbook-check-html-link:
 	@echo "##### checking for invalid HTML links in $(NAME)"
 	@echo "$(ALLBOOKS)" | tr " " "\n" | sed -e 's;^;/;' -e 's;$$;/;' > /tmp/books.regex
 
-	@egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME)|grep '\.md:'| grep 'html'| grep -v 'http://' | grep -v 'https://' | grep -v 'header.css' | grep -v -f /tmp/books.regex > /tmp/relative_html_links.txt ||true
+	@egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME)|grep '\.md:'| grep 'html'| grep -v 'http://' | grep -v 'https://' | grep -v 'header.css' | grep -v -f /tmp/books.regex > /tmp/relative_html_links.txt || true
 	@if test "`cat /tmp/relative_html_links.txt |wc -l`" -gt 0; then \
 		echo "Found links to .html files inside of the document! use <foo>.md instead!"; \
 		echo; \
@@ -131,7 +131,7 @@ book-check-dangling-anchors:
 			echo "File referenced by $${i} doesn't exist."; \
 			NO=$$((NO + 1)); \
 		else if grep -q "^$$ANCHOR$$" /tmp/tags/$$FN; then \
-			    /bin/true; \
+			    true; \
 			else \
 			    echo "Anchor not found in $$i"; \
 			    NO=$$((NO + 1)); \
