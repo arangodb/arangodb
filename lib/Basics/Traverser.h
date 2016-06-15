@@ -59,7 +59,7 @@ struct EdgeGetter {
                        edgeItem*&, size_t&) = 0;
 
   virtual void getAllEdges(vertexIdentifier const&,
-                           std::vector<edgeIdentifier>&, size_t) = 0;
+                           std::unordered_set<edgeIdentifier>&, size_t) = 0;
 };
 
 
@@ -303,7 +303,7 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
   /// @brief Vector storing the position at current search depth
   //////////////////////////////////////////////////////////////////////////////
 
-   std::vector<edgeIdentifier> _tmpEdges;
+   std::unordered_set<edgeIdentifier> _tmpEdges;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Marker for the search depth. Used to abort searching.
