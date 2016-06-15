@@ -375,6 +375,8 @@ Some general changes in behaviour that might trip you up:
 
 * There is no `del` alias for the `delete` method on routers. It has always been safe to use keywords as method names in Foxx, so the use of this alias was already discouraged before.
 
+* The `allRoutes` proxy is no lot available on routers but can easily be replaced with middleware or child routers.
+
 !SUBSECTION Before, after and around
 
 The `before`, `after` and `around` methods can easily be replaced by middleware:
@@ -412,6 +414,34 @@ The main differences between the new endpoints and the objects returned by contr
 * `bodyParam` is now simply called `body`; it is no longer neccessary or possible to give the body a name and the request body will not show up in the request parameters. It's also possible to specify a MIME type
 
 * `body`, `queryParam` and `pathParam` now take position arguments instead of an object. For specifics see the [endpoint documentation](Router/Endpoints.md).
+
+* `notes` is now called `description` and takes a single string argument.
+
+* `onlyIf` and `onlyIfAuthenticated` are no longer available; they can be emulated with middleware if necessary:
+
+Old:
+
+```js
+ctrl.get(/* ... */)
+.onlyIf(function (req) {
+  if (!req.user) {
+    throw new Error('Not authenticated!');
+  }
+});
+```
+
+New:
+
+```js
+router.use(function (req, res, next) {
+  if (!req.arangoUser) {
+    res.throw(403, 'Not authenticated!');
+  }
+  next();
+});
+
+router.get(/* ... */);
+```
 
 !SUBSECTION Error handling
 
@@ -476,6 +506,28 @@ Additionally the `req.server` and `req.client` attributes are no longer availabl
 
 * `req.remotePort` defaults to `client.port`
 
+Finally, the `req.cookie` method now takes the `signed` options directly.
+
+Old:
+
+```js
+const sid = req.cookie('sid', {
+  signed: {
+    secret: 'keyboardcat',
+    algorithm: 'sha256'
+  }
+});
+```
+
+New:
+
+```js
+const sid = req.cookie('sid', {
+  secret: 'keyboardcat',
+  algorithm: 'sha256'
+});
+```
+
 !SUBSUBSECTION Request bodies
 
 The `req.body` is no longer a method and no longer automatically parses JSON request bodies unless a request body was defined. The `req.rawBody` now corresponds to the `req.rawBodyBuffer` of ArangoDB 2.x and is also no longer a method.
@@ -535,7 +587,35 @@ router.post('/', function (req, res) {
 
 !SUBSECTION Response objects
 
-TODO
+The response object has a lot of new methods in ArangoDB 3.0 but otherwise remains similar to the response object of previous versions:
+
+The `res.send` method behaves very differently from how the method with the same name behaved in ArangoDB 2.x: the conversion now takes the response body definition of the route into account. There is a new method `res.write` that implements the old behaviour.
+
+Note that consecutive calls to `res.write` will append to the response body rather than replacing it like `res.send`.
+
+The `res.cookie` method now takes the `signed` options as part of the regular options object.
+
+Old:
+
+```js
+res.cookie('sid', 'abcdef', {
+  ttl: 60 * 60,
+  signed: {
+    secret: 'keyboardcat',
+    algorithm: 'sha256'
+  }
+});
+```
+
+New:
+
+```js
+res.cookie('sid', 'abcdef', {
+  ttl: 60 * 60,
+  secret: 'keyboardcat',
+  algorithm: 'sha256'
+});
+```
 
 !SUBSECTION Dependency injection
 
@@ -696,3 +776,7 @@ function query(propName, uppercase) {
 
 query('user', true);
 ```
+
+!SECTION Other changes
+
+The `console` object in later versions of ArangoDB 2.x implemented a special Foxx console API and would optionally log messages to a collection. ArangoDB 3.0 restores the original behaviour where `console` is the same object available from the [console module](../Appendix/JavaScriptModules/Console.md).
