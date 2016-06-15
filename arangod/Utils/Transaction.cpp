@@ -633,10 +633,10 @@ std::string Transaction::extractKeyPart(VPackSlice const slice) {
   if (slice.isString()) {
     std::string key = slice.copyString();
     size_t pos = key.find('/');
-    if (pos != std::string::npos) {
-      key = key.substr(pos + 1);
+    if (pos == std::string::npos) {
+      return key;
     }
-    return key;
+    return key.substr(pos + 1);
   } 
   return StaticStrings::Empty;
 }

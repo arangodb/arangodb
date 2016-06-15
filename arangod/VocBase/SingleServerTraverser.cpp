@@ -52,9 +52,7 @@ static int FetchDocumentById(arangodb::Transaction* trx,
   std::string col = id.substr(0, pos);
   trx->addCollectionAtRuntime(col);
   builder.clear();
-  builder.openObject();
-  builder.add(arangodb::StaticStrings::KeyString, VPackValue(id.substr(pos + 1)));
-  builder.close();
+  builder.add(VPackValue(id.substr(pos + 1)));
 
   int res = trx->documentFastPath(col, builder.slice(), result);
 

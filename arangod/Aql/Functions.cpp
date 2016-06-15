@@ -578,17 +578,12 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
                                     VPackBuilder& result) {
   TransactionBuilderLeaser searchBuilder(trx);
 
-  searchBuilder->openObject();
-  searchBuilder->add(VPackValue(StaticStrings::KeyString));
-
   size_t pos = identifier.find('/');
   if (pos == std::string::npos) {
     searchBuilder->add(VPackValue(identifier));
-    searchBuilder->close();
   } else {
     if (collectionName.empty()) {
       searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
-      searchBuilder->close();
       collectionName = identifier.substr(0, pos);
     } else if (identifier.substr(0, pos) != collectionName) {
       // Requesting an _id that cannot be stored in this collection
@@ -598,7 +593,6 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     } else {
       searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
-      searchBuilder->close();
     }
   }
 
@@ -2539,14 +2533,8 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
   }
   std::string collectionName(collectionValue.slice().copyString());
 
-  bool notFound = false; // TODO: what does this do?
-
   AqlValue id = ExtractFunctionParameterValue(trx, parameters, 1);
   if (id.isString()) {
-    if (notFound) {
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-    }
-
     TransactionBuilderLeaser builder(trx);
     std::string identifier(id.slice().copyString());
     GetDocumentByIdentifier(trx, collectionName, identifier, true, *builder.get());
@@ -2559,16 +2547,16 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
   if (id.isArray()) {
     TransactionBuilderLeaser builder(trx);
     builder->openArray();
-    if (!notFound) {
-      AqlValueMaterializer materializer(trx);
-      VPackSlice idSlice = materializer.slice(id, false);
-      for (auto const& next : VPackArrayIterator(idSlice)) {
-        if (next.isString()) {
-          std::string identifier(next.copyString());
-          GetDocumentByIdentifier(trx, collectionName, identifier, true, *builder.get());
-        }
+
+    AqlValueMaterializer materializer(trx);
+    VPackSlice idSlice = materializer.slice(id, false);
+    for (auto const& next : VPackArrayIterator(idSlice)) {
+      if (next.isString()) {
+        std::string identifier(next.copyString());
+        GetDocumentByIdentifier(trx, collectionName, identifier, true, *builder.get());
       }
     }
+
     builder->close();
     return AqlValue(builder.get());
   }
