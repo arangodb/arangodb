@@ -21,7 +21,7 @@ module.exports.preferredCharsets = preferredCharsets;
  * @private
  */
 
-var simpleCharsetRegExp = /^\s*(\S+?)\s*(?:;(.*))?$/;
+var simpleCharsetRegExp = /^\s*([^\s;]+)\s*(?:;(.*))?$/;
 
 /**
  * Parse the Accept-Charset header.

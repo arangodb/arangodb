@@ -13,6 +13,7 @@
  *
  * @param {Mixed} obj constructed Assertion
  * @param {Array} type A list of allowed types for this assertion
+ * @namespace Utils
  * @name expectTypes
  * @api public
  */

@@ -5,7 +5,7 @@ module.exports = function(hljs) {
   };
   var TABLE = {
     className: 'variable',
-    begin: /</, end: />/
+    begin: /<(?!\/)/, end: />/
   };
   var QUOTE_STRING = {
     className: 'string',

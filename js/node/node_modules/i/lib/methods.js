@@ -205,7 +205,6 @@ inflect.humanize = function (lower_case_and_underscored_word) {
 inflect.titleize = function (word) {
   var self;
   self = inflect.humanize(inflect.underscore(word));
-  self = util.string.gsub(self, /[^a-zA-Z:']/, ' ');
   return util.string.capitalize(self);
 };
 

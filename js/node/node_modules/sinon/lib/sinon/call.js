@@ -155,8 +155,12 @@
             },
 
             toString: function () {
-                var callStr = this.proxy.toString() + "(";
+                var callStr = this.proxy ? this.proxy.toString() + "(" : "";
                 var args = [];
+
+                if (!this.args) {
+                    return ":(";
+                }
 
                 for (var i = 0, l = this.args.length; i < l; ++i) {
                     args.push(sinon.format(this.args[i]));

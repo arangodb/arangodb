@@ -356,9 +356,9 @@ module.exports = class FoxxService {
   needsConfiguration() {
     const config = this.getConfiguration();
     const deps = this.getDependencies();
-    return _.any(config, function (cfg) {
+    return _.some(config, function (cfg) {
       return cfg.current === undefined && cfg.required !== false;
-    }) || _.any(deps, function (dep) {
+    }) || _.some(deps, function (dep) {
       return dep.current === undefined && dep.definition.required !== false;
     });
   }

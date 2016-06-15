@@ -1,13 +1,14 @@
+'use strict';
+
 // Load modules
 
-var Any = require('./any');
-var Errors = require('./errors');
-var Hoek = require('hoek');
+const Any = require('./any');
+const Hoek = require('hoek');
 
 
 // Declare internals
 
-var internals = {};
+const internals = {};
 
 
 internals.Boolean = function () {
@@ -21,19 +22,19 @@ Hoek.inherits(internals.Boolean, Any);
 
 internals.Boolean.prototype._base = function (value, state, options) {
 
-    var result = {
-        value: value
+    const result = {
+        value
     };
 
     if (typeof value === 'string' &&
         options.convert) {
 
-        var lower = value.toLowerCase();
+        const lower = value.toLowerCase();
         result.value = (lower === 'true' || lower === 'yes' || lower === 'on' ? true
                                                                               : (lower === 'false' || lower === 'no' || lower === 'off' ? false : value));
     }
 
-    result.errors = (typeof result.value === 'boolean') ? null : Errors.create('boolean.base', null, state, options);
+    result.errors = (typeof result.value === 'boolean') ? null : this.createError('boolean.base', null, state, options);
     return result;
 };
 

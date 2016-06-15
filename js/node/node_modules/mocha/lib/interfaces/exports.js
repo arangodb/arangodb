@@ -6,7 +6,7 @@ var Suite = require('../suite');
 var Test = require('../test');
 
 /**
- * TDD-style interface:
+ * Exports-style (as Node.js module) interface:
  *
  *     exports.Array = {
  *       '#indexOf()': {
@@ -53,7 +53,7 @@ module.exports = function(suite) {
       } else {
         suite = Suite.create(suites[0], key);
         suites.unshift(suite);
-        visit(obj[key]);
+        visit(obj[key], file);
         suites.shift();
       }
     }

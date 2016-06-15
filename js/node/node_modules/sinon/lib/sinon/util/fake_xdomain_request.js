@@ -7,8 +7,24 @@
 /**
  * Fake XDomainRequest object
  */
+
+/**
+ * Returns the global to prevent assigning values to 'this' when this is undefined.
+ * This can occur when files are interpreted by node in strict mode.
+ * @private
+ */
+function getGlobal() {
+    "use strict";
+
+    return typeof window !== "undefined" ? window : global;
+}
+
 if (typeof sinon === "undefined") {
-    this.sinon = {};
+    if (typeof this === "undefined") {
+        getGlobal().sinon = {};
+    } else {
+        this.sinon = {};
+    }
 }
 
 // wrapper for global
