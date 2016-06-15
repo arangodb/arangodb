@@ -53,7 +53,7 @@ class Store : public arangodb::Thread {
   Store& operator= (Store&& rhs);
 
   /// @brief Apply entry in query
-  std::vector<bool> apply(query_t const& query);
+  std::vector<bool> apply(query_t const& query, bool verbose = false);
 
   /// @brief Apply entry in query
   std::vector<bool> apply(std::vector<Slice> const& query, bool inform = true);

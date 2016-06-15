@@ -21,7 +21,7 @@ module.exports.preferredLanguages = preferredLanguages;
  * @private
  */
 
-var simpleLanguageRegExp = /^\s*(\S+?)(?:-(\S+?))?\s*(?:;(.*))?$/;
+var simpleLanguageRegExp = /^\s*([^\s\-;]+)(?:-([^\s;]+))?\s*(?:;(.*))?$/;
 
 /**
  * Parse the Accept-Language header.

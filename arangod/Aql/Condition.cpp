@@ -264,6 +264,13 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other) const {
   return false;
 }
 
+/// @brief clears the attribute access data
+static inline void clearAttributeAccess(
+    std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>& parts) {
+  parts.first = nullptr;
+  parts.second.clear();
+}
+
 /// @brief create the condition
 Condition::Condition(Ast* ast)
     : _ast(ast), _root(nullptr), _isNormalized(false), _isSorted(false) {}
@@ -377,6 +384,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
     return result;
   }
 
+  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> parts;
   AstNode const* node = _root->getMember(0);
   n = node->numMembers();
 
@@ -384,7 +392,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
     auto member = node->getMember(i);
 
     if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> parts;
+      clearAttributeAccess(parts);
 
       auto lhs = member->getMember(0);
       auto rhs = member->getMember(1);
@@ -470,6 +478,7 @@ AstNode* Condition::removeIndexCondition(Variable const* variable,
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
   size_t const n = andNode->numMembers();
 
+  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> result;
   std::unordered_set<size_t> toRemove;
 
   for (size_t i = 0; i < n; ++i) {
@@ -482,8 +491,7 @@ AstNode* Condition::removeIndexCondition(Variable const* variable,
       auto rhs = operand->getMember(1);
 
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-            result;
+        clearAttributeAccess(result);
 
         if (lhs->isAttributeAccessForVariable(result) &&
             result.first == variable) {
@@ -498,8 +506,7 @@ AstNode* Condition::removeIndexCondition(Variable const* variable,
 
       if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
           rhs->type == NODE_TYPE_EXPANSION) {
-        std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-            result;
+        clearAttributeAccess(result);
 
         if (rhs->isAttributeAccessForVariable(result) &&
             result.first == variable) {
@@ -599,6 +606,8 @@ void Condition::optimize(ExecutionPlan* plan) {
 
   TRI_ASSERT(_root != nullptr);
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
+  
+  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> varAccess;
 
   // handle sub nodes of top-level OR node
   size_t n = _root->numMembers();
@@ -673,11 +682,11 @@ void Condition::optimize(ExecutionPlan* plan) {
         auto rhs = operand->getMember(1);
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          storeAttributeAccess(variableUsage, lhs, j, ATTRIBUTE_LEFT);
+          storeAttributeAccess(varAccess, variableUsage, lhs, j, ATTRIBUTE_LEFT);
         }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
             rhs->type == NODE_TYPE_EXPANSION) {
-          storeAttributeAccess(variableUsage, rhs, j, ATTRIBUTE_RIGHT);
+          storeAttributeAccess(varAccess, variableUsage, rhs, j, ATTRIBUTE_RIGHT);
         }
       }
     }
@@ -841,17 +850,17 @@ void Condition::optimize(ExecutionPlan* plan) {
 }
 
 /// @brief registers an attribute access for a particular (collection) variable
-void Condition::storeAttributeAccess(VariableUsageType& variableUsage,
-                                     AstNode const* node, size_t position,
-                                     AttributeSideType side) {
-  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-      result;
+void Condition::storeAttributeAccess(
+    std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>& varAccess,
+    VariableUsageType& variableUsage,
+    AstNode const* node, size_t position,
+    AttributeSideType side) {
 
-  if (!node->isAttributeAccessForVariable(result)) {
+  if (!node->isAttributeAccessForVariable(varAccess)) {
     return;
   }
 
-  auto variable = result.first;
+  auto variable = varAccess.first;
 
   if (variable != nullptr) {
     auto it = variableUsage.find(variable);
@@ -862,7 +871,7 @@ void Condition::storeAttributeAccess(VariableUsageType& variableUsage,
     }
 
     std::string attributeName;
-    TRI_AttributeNamesToString(result.second, attributeName, false);
+    TRI_AttributeNamesToString(varAccess.second, attributeName, false);
 
     auto it2 = (*it).second.find(attributeName);
 
@@ -914,6 +923,7 @@ bool Condition::canRemove(ConditionPart const& me,
   TRI_ASSERT(otherCondition != nullptr);
   TRI_ASSERT(otherCondition->type == NODE_TYPE_OPERATOR_NARY_OR);
 
+  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> result;
   auto andNode = otherCondition->getMemberUnchecked(0);
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
   size_t const n = andNode->numMembers();
@@ -926,8 +936,7 @@ bool Condition::canRemove(ConditionPart const& me,
       auto rhs = operand->getMember(1);
 
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-            result;
+        clearAttributeAccess(result);
 
         if (lhs->isAttributeAccessForVariable(result)) {
           if (rhs->isConstant()) {
@@ -948,8 +957,7 @@ bool Condition::canRemove(ConditionPart const& me,
 
       if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
           rhs->type == NODE_TYPE_EXPANSION) {
-        std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-            result;
+        clearAttributeAccess(result);
 
         if (rhs->isAttributeAccessForVariable(result)) {
           if (lhs->isConstant()) {

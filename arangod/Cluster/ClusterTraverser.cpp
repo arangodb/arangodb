@@ -290,7 +290,7 @@ void ClusterTraverser::ClusterEdgeGetter::getEdge(
 }
 
 void ClusterTraverser::ClusterEdgeGetter::getAllEdges(
-    std::string const& startVertex, std::vector<std::string>& result,
+    std::string const& startVertex, std::unordered_set<std::string>& result,
     size_t depth) {
   std::string collName;
   TRI_edge_direction_e dir;
@@ -351,7 +351,7 @@ void ClusterTraverser::ClusterEdgeGetter::getAllEdges(
       VPackBuilder tmpBuilder;
       tmpBuilder.add(edge);
       _traverser->_edges.emplace(edgeId, tmpBuilder.steal());
-      result.emplace_back(std::move(edgeId));
+      result.emplace(std::move(edgeId));
     }
   }
   _traverser->fetchVertices(verticesToFetch, depth + 1);

@@ -60,6 +60,7 @@ SortCondition::SortCondition(
 
   bool foundDirection = false;
 
+  std::vector<arangodb::basics::AttributeName> fieldNames;
   size_t const n = sorts.size();
 
   for (size_t i = 0; i < n; ++i) {
@@ -73,7 +74,8 @@ SortCondition::SortCondition(
       auto node = (*it).second;
 
       if (node != nullptr && node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        std::vector<arangodb::basics::AttributeName> fieldNames;
+        fieldNames.clear();
+        
         while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           fieldNames.emplace_back(
               arangodb::basics::AttributeName(node->getString()));

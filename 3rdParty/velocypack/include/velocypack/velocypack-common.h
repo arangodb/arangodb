@@ -162,13 +162,14 @@ static inline int64_t toInt64(uint64_t v) noexcept {
 // specified length, starting at the specified byte offset
 template <typename T>
 static inline T readInteger(uint8_t const* start, ValueLength length) noexcept {
+  VELOCYPACK_ASSERT(length > 0);
   uint64_t value = 0;
   uint64_t x = 0;
   uint8_t const* end = start + length;
-  do {
+  while (start < end) {
     value += static_cast<T>(*start++) << x;
     x += 8;
-  } while (start < end);
+  }
   return value;
 }
 

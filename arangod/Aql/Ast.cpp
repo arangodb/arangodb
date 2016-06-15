@@ -1196,9 +1196,6 @@ AstNode* Ast::createNodeShortestPath(
   return node;
 }
 
-
-
-
 /// @brief create an AST function call node
 AstNode* Ast::createNodeFunctionCall(char const* functionName,
                                      AstNode const* arguments) {
@@ -2999,11 +2996,11 @@ std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name) {
 
   if (functionName.find(':') == std::string::npos) {
     // prepend default namespace for internal functions
-    return std::make_pair(functionName, true);
+    return std::make_pair(std::move(functionName), true);
   }
 
   // user-defined function
-  return std::make_pair(functionName, false);
+  return std::make_pair(std::move(functionName), false);
 }
 
 /// @brief create a node of the specified type

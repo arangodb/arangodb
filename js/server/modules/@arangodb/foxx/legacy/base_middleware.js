@@ -169,7 +169,7 @@ function BaseMiddleware() {
           if (key === "content-type") {
             this.contentType = value;
           }
-        }, this);
+        }.bind(this));
       },
 
 ////////////////////////////////////////////////////////////////////////////////

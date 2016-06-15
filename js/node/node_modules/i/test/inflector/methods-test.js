@@ -301,6 +301,9 @@
         },
         'with hyphens': function(topic) {
           return assert.equal(topic.titleize('x-men: the last stand'), 'X Men: The Last Stand');
+        },
+        'with ampersands': function(topic) {
+          return assert.equal(topic.titleize('garfunkel & oates'), 'Garfunkel & Oates');
         }
       },
       'tableize': function(topic) {

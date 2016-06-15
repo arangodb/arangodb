@@ -1208,10 +1208,14 @@ TRI_collection_t* TRI_CreateCollection(
 
   TRI_IF_FAILURE("CreateCollection::tempDirectory") { return nullptr; }
 
-  // create a temporary file
+  // create a temporary file (.tmp)
   std::string const tmpfile(
       arangodb::basics::FileUtils::buildFilename(tmpname.c_str(), ".tmp"));
   res = TRI_WriteFile(tmpfile.c_str(), "", 0);
+ 
+  // this file will be renamed to this filename later...
+  std::string const tmpfile2(
+      arangodb::basics::FileUtils::buildFilename(dirname.c_str(), ".tmp"));
 
   TRI_IF_FAILURE("CreateCollection::tempFile") { return nullptr; }
 
@@ -1257,6 +1261,9 @@ TRI_collection_t* TRI_CreateCollection(
   }
 
   InitCollection(vocbase, collection, dirname, parameters);
+ 
+  // delete .tmp file
+  TRI_UnlinkFile(tmpfile2.c_str());
 
   return collection;
 }

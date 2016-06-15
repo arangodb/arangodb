@@ -10,21 +10,19 @@ shouldFailWithError = (msg) ->
             catch e
                 return e
         'should fail': (e) ->
-            assert.ok isError(e), 'is an Error object'
-
-    context["with error `#{msg}'"] = (e) ->
-        assert.ok e.message?.toLowerCase().indexOf(msg.toLowerCase()) > -1, "'#{e.message}' =~ #{msg}"
+            assert.ok isError(e), "is an Error object #{e}"
+        "with error `#{msg}'": (e) ->
+            assert.ok e.message?.toLowerCase().indexOf(msg.toLowerCase()) > -1, "'#{e.message}' =~ #{msg}"
 
     return context
 
 isError = (e) ->
-    return typeof e is 'object' and Object.prototype.toString.call e is '[object Error]'
+    return typeof e == 'object' and Object.prototype.toString.call(e) == '[object Error]'
 
 vows.describe('IPs with bytes greater than 255')
     .addBatch
         '209.256.68.22/255.255.224.0': shouldFailWithError 'Invalid net'
         '209.180.68.22/256.255.224.0': shouldFailWithError 'Invalid mask'
-        '1.1.1.1/': shouldFailWithError 'Invalid mask'
         '209.500.70.33/19': shouldFailWithError 'Invalid net'
         '140.999.82': shouldFailWithError 'Invalid net'
         '899.174': shouldFailWithError 'Invalid net'

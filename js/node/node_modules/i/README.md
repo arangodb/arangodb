@@ -2,6 +2,8 @@
 
 customizable inflections for nodejs
 
+**NOTE: 0.3.2 was accidentally unpublished from the server and npm doesn't allow me to publish it back. Please upgrade to 0.3.3**
+
 ## Installation
 
 ```bash

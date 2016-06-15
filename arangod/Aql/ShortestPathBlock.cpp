@@ -229,6 +229,7 @@ struct EdgeWeightExpanderLocal {
                   std::vector<ArangoDBPathFinder::Step*>& result) {
     std::vector<TRI_doc_mptr_t*> cursor;
     std::shared_ptr<arangodb::OperationCursor> edgeCursor;
+    std::unordered_map<VPackSlice, size_t> candidates;
     for (auto const& edgeCollection : _block->_collectionInfos) {
       TRI_ASSERT(edgeCollection != nullptr);
       if (_reverse) {
@@ -236,7 +237,8 @@ struct EdgeWeightExpanderLocal {
       } else {
         edgeCursor = edgeCollection->getEdges(source);
       }
-      std::unordered_map<VPackSlice, size_t> candidates;
+      
+      candidates.clear();
 
       auto inserter = [&](VPackSlice const& s, VPackSlice const& t,
                           double currentWeight, VPackSlice edge) {
@@ -297,6 +299,8 @@ struct EdgeWeightExpanderCluster {
   void operator()(VPackSlice const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
     int res = TRI_ERROR_NO_ERROR;
+    std::unordered_map<VPackSlice, size_t> candidates;
+
     for (auto const& edgeCollection : _block->_collectionInfos) {
       TRI_ASSERT(edgeCollection != nullptr);
       VPackBuilder edgesBuilder;
@@ -310,7 +314,7 @@ struct EdgeWeightExpanderCluster {
         THROW_ARANGO_EXCEPTION(res);
       }
 
-      std::unordered_map<VPackSlice, size_t> candidates;
+      candidates.clear();
 
       auto inserter = [&](VPackSlice const& s, VPackSlice const& t,
                           double currentWeight, VPackSlice const& edge) {
@@ -318,7 +322,7 @@ struct EdgeWeightExpanderCluster {
         if (cand == candidates.end()) {
           // Add weight
           auto step = std::make_unique<ArangoDBPathFinder::Step>(
-              t, s, currentWeight, std::move(edge));
+              t, s, currentWeight, edge);
           result.emplace_back(step.release());
           candidates.emplace(t, result.size() - 1);
         } else {
@@ -500,8 +504,7 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
     AqlValue const& in = items->getValueReference(_pos, _startReg);
     if (in.isObject()) {
       try {
-        std::string idString = _trx->extractIdString(in.slice());
-        _opts.setStart(idString);
+        _opts.setStart(_trx->extractIdString(in.slice()));
       }
       catch (...) {
         // _id or _key not present... ignore this error and fall through
@@ -618,6 +621,7 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
   inheritRegisters(cur, res.get(), _pos);
 
   // TODO this might be optimized in favor of direct mptr.
+  // TODO: lease builder?
   VPackBuilder resultBuilder;
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {

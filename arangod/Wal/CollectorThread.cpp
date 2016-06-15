@@ -973,9 +973,7 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
         // it is only safe to access the queue if this flag is not set
         auto it = _operationsQueue.find(cid);
         if (it == _operationsQueue.end()) {
-          std::vector<CollectorCache*> ops;
-          ops.push_back(cache);
-          _operationsQueue.emplace(cid, ops);
+          _operationsQueue.emplace(cid, std::vector<CollectorCache*>({cache}));
           _logfileManager->increaseCollectQueueSize(logfile);
         } else {
           (*it).second.push_back(cache);
