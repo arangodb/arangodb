@@ -518,11 +518,15 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     // double value
     // conversion might fail with out-of-range error
     try {
-      double num = StringUtils::doubleDecimal(field, fieldLength);
-      bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL);
-      if (!failed) {
-        _lineBuffer.appendDecimal(num);
-        return;
+      std::string tmp(field, fieldLength);
+      size_t pos = 0;
+      double num = std::stod(tmp, &pos);
+      if (pos == fieldLength) {
+        bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL);
+        if (!failed) {
+          _lineBuffer.appendDecimal(num);
+          return;
+        }
       }
       // NaN, +inf, -inf
       // fall-through to appending the number as a string
