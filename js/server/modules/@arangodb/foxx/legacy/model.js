@@ -112,7 +112,7 @@ Object.assign(Model.prototype, {
     if (is.object(attributeName)) {
       _.each(attributeName, function (value, key) {
         this.set(key, value);
-      }, this);
+      }.bind(this));
       return this;
     }
 
