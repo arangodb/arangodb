@@ -77,13 +77,13 @@ Constituent::Constituent()
     _vocbase(nullptr),
     _queryRegistry(nullptr),
     _term(0),
+    _cast(false),
     _leaderID((std::numeric_limits<arangodb::consensus::id_t>::max)()),
     _id(0),
     _role(FOLLOWER),
     _agent(nullptr),
     _votedFor((std::numeric_limits<arangodb::consensus::id_t>::max)()),
-    _notifier(nullptr) {
-    }
+    _notifier(nullptr) {}
 
 
 /// Shutdown if not already
@@ -131,7 +131,8 @@ void Constituent::term(term_t t) {
 
   if (tmp != t) {
     
-    LOG_TOPIC(INFO, Logger::AGENCY) << roleStr[_role] << " term " << t;
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << _id << ": " << roleStr[_role] << " term " << t;
 
     Builder body;
     body.add(VPackValue(VPackValueType::Object));
@@ -179,8 +180,8 @@ void Constituent::follow(term_t t) {
   MUTEX_LOCKER(guard, _castLock);
 
   if (_role != FOLLOWER) {
-    LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Role change: Converting to follower in term " << t;
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << _id << ": Converting to follower in term " << t;
   }
   
   _term = t;
@@ -190,13 +191,19 @@ void Constituent::follow(term_t t) {
 
 
 /// Become leader
-void Constituent::lead() {
+void Constituent::lead(std::vector<bool> const& votes) {
 
   MUTEX_LOCKER(guard, _castLock);
 
   if (_role != LEADER) {
-    LOG_TOPIC(INFO, Logger::AGENCY)
-        << "Role change: Converted to leader in term " << _term;
+    std::stringstream ss;
+    ss << _id << ": Converted to leader in term " << _term << " with votes (";
+    for (auto const& vote : votes) {
+      ss << vote;
+    }
+    ss << ")";
+    
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
     _agent->lead();  // We need to rebuild spear_head and read_db;
   }
   
@@ -212,8 +219,8 @@ void Constituent::candidate() {
   MUTEX_LOCKER(guard, _castLock);
   
   if (_role != CANDIDATE)
-    LOG_TOPIC(INFO, Logger::AGENCY)
-        << "Role change: Converted to candidate in term " << _term;
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << _id << ": Converted to candidate in term " << _term;
   
   _role = CANDIDATE;
   
@@ -300,18 +307,23 @@ void Constituent::notifyAll() {
 /// @brief Vote
 bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
                        index_t prevLogIndex, term_t prevLogTerm) {
+
   term_t t = 0;
   arangodb::consensus::id_t lid = 0;
+  bool cast = false;
+
   {
     MUTEX_LOCKER(guard, _castLock);
     t = _term;
     lid = _leaderID;
+    cast = _cast;
+    _cast = true;
   }
-  if (term > t || (t == term && lid == id)) {
+  
+  if (term > t || (t == term && lid == id && !cast)) {
     this->term(term);
     {
       MUTEX_LOCKER(guard, _castLock);
-      _cast = true;    // Note that I voted this time around.
       _votedFor = id;  // The guy I voted for I assume leader.
       _leaderID = id;
     }
@@ -323,9 +335,10 @@ bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
       _cv.signal();
     }
     return true;
-  } else {  // Myself running or leading
-    return false;
-  }
+  } 
+
+  return false;
+  
 }
 
 /// @brief Call to election
@@ -405,7 +418,7 @@ void Constituent::callElection() {
 
   // Evaluate election results
   if (yea > size() / 2) {
-    lead();
+    lead(votes);
   } else {
     follow(_term);
   }

@@ -118,6 +118,27 @@ bool MoveShard::start() {
     curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
   Slice current = _snapshot(curPath).slice();
+  Slice planned = _snapshot(planPath).slice();
+
+  TRI_ASSERT(current.isArray());
+  TRI_ASSERT(planned.isArray());
+  
+  for (auto const& srv : VPackArrayIterator(current)) {
+    TRI_ASSERT(srv.isString());
+    if (srv.copyString() == _to) {
+      finish("Shards/" + _shard, false,
+             "ToServer must not be already holding the shard.");
+      return false;
+    }
+  }
+  for (auto const& srv : VPackArrayIterator(planned)) {
+    TRI_ASSERT(srv.isString());
+    if (srv.copyString() == _to) {
+      finish("Shards/" + _shard, false,
+             "ToServer must not be planned for shard already.");
+      return false;
+    }
+  }
   
   // Copy todo to pending
   Builder todo, pending;

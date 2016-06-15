@@ -1,41 +1,43 @@
+'use strict';
+
 // Load modules
 
-var Code = require('code');
-var Lab = require('lab');
-var Hoek = require('hoek');
-var Topo = require('..');
+const Code = require('code');
+const Lab = require('lab');
+const Hoek = require('hoek');
+const Topo = require('..');
 
 
 // Declare internals
 
-var internals = {};
+const internals = {};
 
 
 // Test shortcuts
 
-var lab = exports.lab = Lab.script();
-var describe = lab.describe;
-var it = lab.it;
-var expect = Code.expect;
+const lab = exports.lab = Lab.script();
+const describe = lab.describe;
+const it = lab.it;
+const expect = Code.expect;
 
 
-describe('Topo', function () {
+describe('Topo', () => {
 
-    var testDeps = function (scenario) {
+    const testDeps = function (scenario) {
 
-        var topo = new Topo();
-        scenario.forEach(function (record, i) {
+        const topo = new Topo();
+        scenario.forEach((record, i) => {
 
-            var options = record.before || record.after || record.group ? { before: record.before, after: record.after, group: record.group } : null;
+            const options = record.before || record.after || record.group ? { before: record.before, after: record.after, group: record.group } : null;
             topo.add(record.id, options);
         });
 
         return topo.nodes.join('');
     };
 
-    it('sorts dependencies', function (done) {
+    it('sorts dependencies', (done) => {
 
-        var scenario = [
+        const scenario = [
             { id: '0', before: 'a' },
             { id: '1', after: 'f', group: 'a' },
             { id: '2', before: 'a' },
@@ -52,9 +54,9 @@ describe('Topo', function () {
         done();
     });
 
-    it('sorts dependencies (before as array)', function (done) {
+    it('sorts dependencies (before as array)', (done) => {
 
-        var scenario = [
+        const scenario = [
             { id: '0', group: 'a' },
             { id: '1', group: 'b' },
             { id: '2', before: ['a', 'b'] }
@@ -64,9 +66,9 @@ describe('Topo', function () {
         done();
     });
 
-    it('sorts dependencies (after as array)', function (done) {
+    it('sorts dependencies (after as array)', (done) => {
 
-        var scenario = [
+        const scenario = [
             { id: '0', after: ['a', 'b'] },
             { id: '1', group: 'a' },
             { id: '2', group: 'b' }
@@ -77,9 +79,9 @@ describe('Topo', function () {
     });
 
 
-    it('sorts dependencies (seq)', function (done) {
+    it('sorts dependencies (seq)', (done) => {
 
-        var scenario = [
+        const scenario = [
             { id: '0' },
             { id: '1' },
             { id: '2' },
@@ -90,36 +92,36 @@ describe('Topo', function () {
         done();
     });
 
-    it('sorts dependencies (explicitly using after or before)', function (done) {
+    it('sorts dependencies (explicitly using after or before)', (done) => {
 
-        var set = '0123456789abcdefghijklmnopqrstuvwxyz';
-        var groups = set.split('');
+        const set = '0123456789abcdefghijklmnopqrstuvwxyz';
+        const groups = set.split('');
 
         // Use Fisher-Yates for shuffling
 
-        var fisherYates = function (array) {
+        const fisherYates = function (array) {
 
-            var i = array.length;
+            let i = array.length;
             while (--i) {
-                var j = Math.floor(Math.random() * (i + 1));
-                var tempi = array[i];
-                var tempj = array[j];
+                const j = Math.floor(Math.random() * (i + 1));
+                const tempi = array[i];
+                const tempj = array[j];
                 array[i] = tempj;
                 array[j] = tempi;
             }
         };
 
-        var scenarioAfter = [];
-        var scenarioBefore = [];
-        for (var i = 0, il = groups.length; i < il; ++i) {
-            var item = {
+        const scenarioAfter = [];
+        const scenarioBefore = [];
+        for (let i = 0; i < groups.length; ++i) {
+            const item = {
                 id: groups[i],
                 group: groups[i]
             };
-            var afterMod = {
+            const afterMod = {
                 after: i ? groups.slice(0, i) : []
             };
-            var beforeMod = {
+            const beforeMod = {
                 before: groups.slice(i + 1)
             };
 
@@ -135,15 +137,15 @@ describe('Topo', function () {
         done();
     });
 
-    it('throws on circular dependency', function (done) {
+    it('throws on circular dependency', (done) => {
 
-        var scenario = [
+        const scenario = [
             { id: '0', before: 'a', group: 'b' },
             { id: '1', before: 'c', group: 'a' },
             { id: '2', before: 'b', group: 'c' }
         ];
 
-        expect(function () {
+        expect(() => {
 
             testDeps(scenario);
         }).to.throw('item added into group c created a dependencies error');
@@ -151,11 +153,11 @@ describe('Topo', function () {
         done();
     });
 
-    describe('merge()', function () {
+    describe('merge()', () => {
 
-        it('merges objects', function (done) {
+        it('merges objects', (done) => {
 
-            var topo = new Topo();
+            const topo = new Topo();
             topo.add('0', { before: 'a' });
             topo.add('2', { before: 'a' });
             topo.add('4', { after: 'c', group: 'b' });
@@ -163,7 +165,7 @@ describe('Topo', function () {
             topo.add('8', { before: 'd' });
             expect(topo.nodes.join('')).to.equal('02486');
 
-            var other = new Topo();
+            const other = new Topo();
             other.add('1', { after: 'f', group: 'a' });
             other.add('3', { before: ['b', 'c'], group: 'a' });
             other.add('5', { group: 'c' });
@@ -176,9 +178,9 @@ describe('Topo', function () {
             done();
         });
 
-        it('merges objects (explicit sort)', function (done) {
+        it('merges objects (explicit sort)', (done) => {
 
-            var topo = new Topo();
+            const topo = new Topo();
             topo.add('0', { before: 'a', sort: 1 });
             topo.add('2', { before: 'a', sort: 2 });
             topo.add('4', { after: 'c', group: 'b', sort: 3 });
@@ -186,7 +188,7 @@ describe('Topo', function () {
             topo.add('8', { before: 'd', sort: 5 });
             expect(topo.nodes.join('')).to.equal('02486');
 
-            var other = new Topo();
+            const other = new Topo();
             other.add('1', { after: 'f', group: 'a', sort: 6 });
             other.add('3', { before: ['b', 'c'], group: 'a', sort: 7 });
             other.add('5', { group: 'c', sort: 8 });
@@ -199,9 +201,9 @@ describe('Topo', function () {
             done();
         });
 
-        it('merges objects (mixed sort)', function (done) {
+        it('merges objects (mixed sort)', (done) => {
 
-            var topo = new Topo();
+            const topo = new Topo();
             topo.add('0', { before: 'a', sort: 1 });
             topo.add('2', { before: 'a', sort: 3 });
             topo.add('4', { after: 'c', group: 'b', sort: 5 });
@@ -209,7 +211,7 @@ describe('Topo', function () {
             topo.add('8', { before: 'd', sort: 9 });
             expect(topo.nodes.join('')).to.equal('02486');
 
-            var other = new Topo();
+            const other = new Topo();
             other.add('1', { after: 'f', group: 'a', sort: 2 });
             other.add('3', { before: ['b', 'c'], group: 'a', sort: 4 });
             other.add('5', { group: 'c', sort: 6 });
@@ -222,18 +224,18 @@ describe('Topo', function () {
             done();
         });
 
-        it('merges objects (multiple)', function (done) {
+        it('merges objects (multiple)', (done) => {
 
-            var topo1 = new Topo();
+            const topo1 = new Topo();
             topo1.add('0', { before: 'a', sort: 1 });
             topo1.add('2', { before: 'a', sort: 3 });
             topo1.add('4', { after: 'c', group: 'b', sort: 5 });
 
-            var topo2 = new Topo();
+            const topo2 = new Topo();
             topo2.add('6', { group: 'd', sort: 7 });
             topo2.add('8', { before: 'd', sort: 9 });
 
-            var other = new Topo();
+            const other = new Topo();
             other.add('1', { after: 'f', group: 'a', sort: 2 });
             other.add('3', { before: ['b', 'c'], group: 'a', sort: 4 });
             other.add('5', { group: 'c', sort: 6 });
@@ -246,16 +248,16 @@ describe('Topo', function () {
             done();
         });
 
-        it('throws on circular dependency', function (done) {
+        it('throws on circular dependency', (done) => {
 
-            var topo = new Topo();
+            const topo = new Topo();
             topo.add('0', { before: 'a', group: 'b' });
             topo.add('1', { before: 'c', group: 'a' });
 
-            var other = new Topo();
+            const other = new Topo();
             other.add('2', { before: 'b', group: 'c' });
 
-            expect(function () {
+            expect(() => {
 
                 topo.merge(other);
             }).to.throw('merge created a dependencies error');

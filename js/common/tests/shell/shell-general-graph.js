@@ -710,7 +710,7 @@ function GeneralGraphCreationSuite() {
 
       g1._extendEdgeDefinitions(dr2);
       assertEqual([dr1, dr2], g1.__edgeDefinitions);
-      var edgeDefinition = _.findWhere(g1.__edgeDefinitions, {collection: ec2});
+      var edgeDefinition = _.find(g1.__edgeDefinitions, {collection: ec2});
       assertEqual(edgeDefinition.from, [vc1, vc2, vc3, vc4]);
       assertEqual(edgeDefinition.to, [vc1, vc2, vc3, vc4]);
 

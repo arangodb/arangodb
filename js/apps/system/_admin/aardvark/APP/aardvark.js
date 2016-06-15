@@ -25,12 +25,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const joi = require('joi');
-const Netmask = require('netmask').Netmask;
 const dd = require('dedent');
 const internal = require('internal');
 const db = require('@arangodb').db;
 const errors = require('@arangodb').errors;
-const joinPath = require('path').posix.join;
 const notifications = require('@arangodb/configuration').notifications;
 const examples = require('@arangodb/graph-examples/example-graph');
 const createRouter = require('@arangodb/foxx/router');
@@ -44,50 +42,22 @@ API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 const router = createRouter();
 module.exports = router;
 
-let trustedProxies = TRUSTED_PROXIES();
-
-let trustedProxyBlocks;
-if (Array.isArray(trustedProxies)) {
-  trustedProxyBlocks = [];
-  trustedProxies.forEach(trustedProxy => {
-    try {
-      trustedProxyBlocks.push(new Netmask(trustedProxy));
-    } catch (e) {
-      console.warn("Error parsing trusted proxy " + trustedProxy, e);
-    }
-  });
-} else {
-  trustedProxyBlocks = null;
-}
-
-let isTrustedProxy = function(proxyAddress) {
-  if (trustedProxies === null) {
-    return true;
-  }
-
-  return trustedProxyBlocks.some(block => {
-    return block.contains(proxyAddress);
-  });
-}
-
 router.get('/config.js', function(req, res) {
-  let basePath = '';
-  if (req.headers.hasOwnProperty('x-forwarded-for')
-      && req.headers.hasOwnProperty('x-script-name')
-      && isTrustedProxy(req.remoteAddress)) {
-    basePath = req.headers['x-script-name'];
-  }
-  res.set('content-type', 'text/javascript');
-  res.send("var frontendConfig = " + JSON.stringify({
-    "basePath": basePath, 
-    "db": req.database, 
-    "authenticationEnabled": global.AUTHENTICATION_ENABLED(),
-    "isCluster": cluster.isCluster()
-  }));
-});
+  const scriptName = req.get('x-script-name');
+  const basePath = req.trustProxy && scriptName || '';
+  res.send(
+    `var frontendConfig = ${JSON.stringify({
+      basePath: basePath,
+      db: req.database,
+      authenticationEnabled: internal.authenticationEnabled(),
+      isCluster: cluster.isCluster()
+    })}`
+  );
+})
+.response(['text/javascript']);
 
 router.get('/whoAmI', function(req, res) {
-  res.json({user: req.user || null});
+  res.json({user: req.arangoUser || null});
 })
 .summary('Return the current user')
 .description(dd`
@@ -100,8 +70,8 @@ const authRouter = createRouter();
 router.use(authRouter);
 
 authRouter.use((req, res, next) => {
-  if (global.AUTHENTICATION_ENABLED()) {
-    if (!req.user) {
+  if (internal.authenticationEnabled()) {
+    if (!req.arangoUser) {
       res.throw('unauthorized');
     }
   }
