@@ -76,7 +76,7 @@ function MovingShardsSuite () {
                                                                  c[i].name(), s)
         );
         let replicas = ccinfo.map(s => s.servers.length);
-        if (_.all(replicas, x => x === replFactor)) {
+        if (_.every(replicas, x => x === replFactor)) {
           console.info("Replication up and running!");
           break;
         }

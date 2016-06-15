@@ -129,7 +129,7 @@
           arangoHelper.arangoError("DB","Could not fetch databases");
         }
         else {
-          callback(false, _.contains(list, "_system"));
+          callback(false, _.includes(list, "_system"));
         }
       }.bind(this);
 

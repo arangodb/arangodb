@@ -121,12 +121,9 @@ git checkout -b <topic-branch-name>
 
 4. Commit your changes in logical chunks. Use Git's [interactive rebase](https://help.github.com/articles/interactive-rebase) feature to tidy up your commits before making them public.
 
-5. Run you code to make sure it works.
+5. Run you code to make sure it works. If you're still having problems please try to run `make clean` and then test your code again.
 
 ```bash
-npm i
-rm chai.js
-make chai.js
 npm test
 # when finished running tests...
 git checkout chai.js

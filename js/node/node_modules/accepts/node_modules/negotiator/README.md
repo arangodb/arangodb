@@ -194,7 +194,7 @@ and more.
 [npm-image]: https://img.shields.io/npm/v/negotiator.svg
 [npm-url]: https://npmjs.org/package/negotiator
 [node-version-image]: https://img.shields.io/node/v/negotiator.svg
-[node-version-url]: http://nodejs.org/download/
+[node-version-url]: https://nodejs.org/en/download/
 [travis-image]: https://img.shields.io/travis/jshttp/negotiator/master.svg
 [travis-url]: https://travis-ci.org/jshttp/negotiator
 [coveralls-image]: https://img.shields.io/coveralls/jshttp/negotiator/master.svg

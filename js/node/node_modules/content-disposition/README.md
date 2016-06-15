@@ -67,7 +67,7 @@ it). The type is normalized to lower-case.
 ### contentDisposition.parse(string)
 
 ```js
-var disposition = contentDisposition.parse('attachment; filename="EURO rates.txt"; filename*=UTF-8\'\'%e2%82%ac%20rates.txt"');
+var disposition = contentDisposition.parse('attachment; filename="EURO rates.txt"; filename*=UTF-8\'\'%e2%82%ac%20rates.txt');
 ```
 
 Parse a `Content-Disposition` header string. This automatically handles extended

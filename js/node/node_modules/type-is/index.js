@@ -40,7 +40,7 @@ module.exports.match = mimeMatch
  * @public
  */
 
-function typeis(value, types_) {
+function typeis (value, types_) {
   var i
   var types = types_
 
@@ -89,9 +89,9 @@ function typeis(value, types_) {
  * @public
  */
 
-function hasbody(req) {
-  return req.headers['transfer-encoding'] !== undefined
-    || !isNaN(req.headers['content-length'])
+function hasbody (req) {
+  return req.headers['transfer-encoding'] !== undefined ||
+    !isNaN(req.headers['content-length'])
 }
 
 /**
@@ -120,7 +120,7 @@ function hasbody(req) {
  * @public
  */
 
-function typeofrequest(req, types_) {
+function typeofrequest (req, types_) {
   var types = types_
 
   // no body
@@ -158,7 +158,7 @@ function typeofrequest(req, types_) {
  * @private
  */
 
-function normalize(type) {
+function normalize (type) {
   if (typeof type !== 'string') {
     // invalid type
     return false
@@ -192,7 +192,7 @@ function normalize(type) {
  * @private
  */
 
-function mimeMatch(expected, actual) {
+function mimeMatch (expected, actual) {
   // invalid type
   if (expected === false) {
     return false
@@ -214,8 +214,8 @@ function mimeMatch(expected, actual) {
 
   // validate suffix wildcard
   if (expectedParts[1].substr(0, 2) === '*+') {
-    return expectedParts[1].length <= actualParts[1].length + 1
-      && expectedParts[1].substr(1) === actualParts[1].substr(1 - expectedParts[1].length)
+    return expectedParts[1].length <= actualParts[1].length + 1 &&
+      expectedParts[1].substr(1) === actualParts[1].substr(1 - expectedParts[1].length)
   }
 
   // validate subtype
@@ -234,7 +234,7 @@ function mimeMatch(expected, actual) {
  * @private
  */
 
-function normalizeType(value) {
+function normalizeType (value) {
   // parse the type
   var type = typer.parse(value)
 
@@ -253,7 +253,7 @@ function normalizeType(value) {
  * @private
  */
 
-function tryNormalizeType(value) {
+function tryNormalizeType (value) {
   try {
     return normalizeType(value)
   } catch (err) {
