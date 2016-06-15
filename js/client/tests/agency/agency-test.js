@@ -100,7 +100,7 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingleTopLevel : function () {
-      wait(2);
+      wait(5);
       assertEqual(readAndCheck([["/x"]]), [{}]);
       writeAndCheck([[{x:12}]]);
       assertEqual(readAndCheck([["/x"]]), [{x:12}]);

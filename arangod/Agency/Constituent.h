@@ -108,7 +108,7 @@ class Constituent : public arangodb::Thread {
   void candidate();
 
   /// @brief Become leader
-  void lead();
+  void lead(std::vector<bool> const&);
 
   /// @brief Call for vote (by leader or candidates after timeout)
   void callElection();
