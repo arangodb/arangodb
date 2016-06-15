@@ -278,7 +278,7 @@ if [ -n "$SECONDARIES" ]; then
                 --server.endpoint tcp://127.0.0.1:$PORT \
                 --cluster.my-id $CLUSTER_ID \
                 --log.file cluster/$PORT.log \
-                --server.statistics false \
+                --server.statistics true \
                 --javascript.startup-directory ./js \
                 --server.authentication false \
                 --javascript.app-path ./js/apps \
