@@ -22,11 +22,6 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-const db = require('@arangodb').db;
-const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
-const systemStorage = require('@arangodb/foxx/sessions/storages/_system');
-const sessions = systemStorage();
-
 module.context.use(require('./aardvark'));
 module.context.use('/foxxes', require('./foxxes'));
 module.context.use('/cluster', require('./cluster'));
