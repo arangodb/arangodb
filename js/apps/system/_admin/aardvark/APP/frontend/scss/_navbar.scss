@@ -149,21 +149,11 @@ $navbar-size: 150px;
       margin-top: 6px;
       position: absolute;
 
-      &.fa-twitter {
-        margin-left: 7px;
-      }
-
-      &.fa-envelope {
-        margin-left: -19px;
-      }
-
-      &.fa-google {
-        margin-left: -17px;
-        margin-top: 7px;
-      }
-
+      &.fa-twitter,
+      &.fa-google,
+      &.fa-slack,
       &.fa-stack-overflow {
-        margin-left: -17px;
+        margin-left: 7px;
       }
     }
   }
