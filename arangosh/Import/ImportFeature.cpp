@@ -51,7 +51,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
       _typeImport("json"),
       _overwrite(false),
       _quote("\""),
-      _separator(","),
+      _separator(""),
       _progress(true),
       _onDuplicateAction("error"),
       _result(result) {
@@ -116,7 +116,7 @@ void ImportFeature::collectOptions(
   options->addOption("--quote", "quote character(s), used for csv",
                      new StringParameter(&_quote));
 
-  options->addOption("--separator", "field separator, used for csv",
+  options->addOption("--separator", "field separator, used for csv and tsv",
                      new StringParameter(&_separator));
 
   options->addOption("--progress", "show progress",
@@ -205,6 +205,8 @@ void ImportFeature::start() {
 
   if (_typeImport == "csv") {
     std::cout << "quote:                  " << _quote << std::endl;
+  } 
+  if (_typeImport == "csv" || _typeImport == "tsv") {
     std::cout << "separator:              " << _separator << std::endl;
   }
 
@@ -232,6 +234,14 @@ void ImportFeature::start() {
   } else {
     LOG(FATAL) << "Wrong length of quote character.";
     FATAL_ERROR_EXIT();
+  }
+
+  if (_separator.empty()) {
+    if (_typeImport == "csv") {
+      _separator = ",";
+    } else if (_typeImport == "tsv") {
+      _separator = "\\t";
+    }
   }
 
   // separator
@@ -298,7 +308,6 @@ void ImportFeature::start() {
     else if (_typeImport == "tsv") {
       std::cout << "Starting TSV import..." << std::endl;
       ih.setQuote("");
-      ih.setSeparator("\\t");
       ok = ih.importDelimited(_collectionName, _filename,
                               arangodb::import::ImportHelper::TSV);
     }
