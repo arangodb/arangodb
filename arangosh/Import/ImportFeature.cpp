@@ -237,9 +237,8 @@ void ImportFeature::start() {
   }
 
   if (_separator.empty()) {
-    if (_typeImport == "csv") {
-      _separator = ",";
-    } else if (_typeImport == "tsv") {
+    _separator = ",";
+    if (_typeImport == "tsv") {
       _separator = "\\t";
     }
   }
