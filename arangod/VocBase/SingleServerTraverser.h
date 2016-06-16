@@ -80,8 +80,8 @@ class SingleServerTraverser : public Traverser {
                                             arangodb::velocypack::ValueLength> {
    public:
     EdgeGetter(SingleServerTraverser* traverser,
-                        TraverserOptions const& opts,
-                        Transaction* trx)
+               TraverserOptions const& opts,
+               Transaction* trx)
         : _traverser(traverser), _opts(opts), _trx(trx) {}
 
     //////////////////////////////////////////////////////////////////////////////

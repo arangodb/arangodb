@@ -48,6 +48,7 @@ namespace traverser {
 ///       not freed as long as this struct is in use!
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 struct VertexId {
   TRI_voc_cid_t cid;
   char const* key;
@@ -70,13 +71,7 @@ struct VertexId {
 
 // EdgeId and VertexId are similar here. both have a key and a cid
 typedef VertexId EdgeId;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper function to convert an _id string into a VertexId
-////////////////////////////////////////////////////////////////////////////////
-
-VertexId IdStringToVertexId(arangodb::CollectionNameResolver const* resolver,
-                            std::string const& vertex);
+*/
 
 class TraverserExpression {
  public:
@@ -171,9 +166,6 @@ class ShortestPath {
   size_t length() { return _vertices.size(); };
 
  private:
-  /// @brief Local builder to create a search value
-  arangodb::velocypack::Builder _searchBuilder;
-
   /// @brief Count how many documents have been read
   size_t _readDocuments;
 
@@ -417,6 +409,7 @@ class Traverser {
 }  // traverser
 }  // arangodb
 
+/*
 namespace std {
 template <>
 struct hash<arangodb::traverser::VertexId> {
@@ -449,5 +442,6 @@ struct less<arangodb::traverser::VertexId> {
   }
 };
 }
+*/
 
 #endif

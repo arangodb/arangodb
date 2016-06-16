@@ -243,7 +243,7 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
     PathStep() {}
 
    public:
-    PathStep(vertexIdentifier const& vertex) : sourceIdx(0), vertex(vertex) {}
+    explicit PathStep(vertexIdentifier const& vertex) : sourceIdx(0), vertex(vertex) {}
 
     PathStep(size_t sourceIdx, edgeIdentifier const& edge,
              vertexIdentifier const& vertex)
@@ -453,6 +453,15 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
 
  private:
 
+  inline size_t getDepth(size_t index) const {
+    size_t depth = 0;
+    while (index != 0) {
+      ++depth;
+      index = _schreier[index]->sourceIdx;
+    }
+    return depth;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Build the enumerated path for the given index in the schreier
   ///        vector.
@@ -460,23 +469,27 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
 
   void computeEnumeratedPath(size_t index) {
     TRI_ASSERT(index < _schreier.size());
-    std::vector<edgeIdentifier> edges;
-    std::vector<vertexIdentifier> vertices;
-    PathStep* current = nullptr;
-    while (index != 0) {
-      current = _schreier[index];
-      vertices.push_back(current->vertex);
-      edges.push_back(current->edge);
-      index = current->sourceIdx;
-    }
-    current = _schreier[0];
-    vertices.push_back(current->vertex);
 
-    // Computed path. Insert it into the path enumerator.
+    size_t depth = getDepth(index);
     this->_enumeratedPath.edges.clear();
     this->_enumeratedPath.vertices.clear();
-    std::copy(vertices.rbegin(), vertices.rend(), std::back_inserter(this->_enumeratedPath.vertices));
-    std::copy(edges.rbegin(), edges.rend(), std::back_inserter(this->_enumeratedPath.edges));
+    this->_enumeratedPath.edges.resize(depth);
+    this->_enumeratedPath.vertices.resize(depth + 1);
+
+    // Computed path. Insert it into the path enumerator.
+    PathStep* current = nullptr;
+    while (index != 0) {
+      TRI_ASSERT(depth > 0);
+      current = _schreier[index];
+      this->_enumeratedPath.vertices[depth] = current->vertex;
+      this->_enumeratedPath.edges[depth - 1] = current->edge;
+      
+      index = current->sourceIdx;
+      --depth;
+    }
+
+    current = _schreier[0];
+    this->_enumeratedPath.vertices[0] = current->vertex;
   }
 };
 
