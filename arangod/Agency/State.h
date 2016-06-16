@@ -25,8 +25,6 @@
 #define ARANGOD_CONSENSUS_STATE_H 1
 
 #include "AgencyCommon.h"
-
-#include "Basics/Thread.h"
 #include "Cluster/ClusterComm.h"
 
 #include <velocypack/vpack.h>

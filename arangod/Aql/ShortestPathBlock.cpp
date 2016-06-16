@@ -56,7 +56,7 @@ using namespace arangodb::aql;
 
 class HopWeightCalculator {
  public:
-  HopWeightCalculator(){};
+  HopWeightCalculator() {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Callable weight calculator for edge
@@ -246,7 +246,7 @@ struct EdgeWeightExpanderLocal {
         if (cand == candidates.end()) {
           // Add weight
           auto step = std::make_unique<ArangoDBPathFinder::Step>(
-              t, s, currentWeight, std::move(edge));
+              t, s, currentWeight, edge);
           result.emplace_back(step.release());
           candidates.emplace(t, result.size() - 1);
         } else {

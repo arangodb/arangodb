@@ -46,7 +46,19 @@
   global.UPGRADE_ARGS.isRelaunch = false;
 
   // run the local upgrade-database script
-  return internal.loadStartup("server/bootstrap/local-database.js");
+  var res = internal.loadStartup("server/bootstrap/local-database.js");
+
+  // Wait for synchronous replication to settle:
+  var db = require("internal").db;
+  var dbName = db._name();
+  if (dbName !== "_system") {
+    // for _system we run this already at bootstrap
+    var colls = db._collections();
+    colls = colls.filter(c => c.name()[0] === "_");
+    require("@arangodb/cluster").waitForSyncRepl(dbName, colls);
+  }
+
+  return res;
 }());
 
 

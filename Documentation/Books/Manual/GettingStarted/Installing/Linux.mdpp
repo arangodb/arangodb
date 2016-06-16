@@ -8,11 +8,42 @@
   easily install ArangoDB using yum, aptitude, urpmi or zypper.
 - Alternatively, see [Compiling](Compiling.md) if you want to build ArangoDB
   yourself.
-- Start up the database server, normally this is done by
-  executing `etc/init.d/arangod start`. The exact command
-  depends on your Linux distribution
+- Start up the database server
 
-After these steps there should be a running instance of *_arangod_* -
+Normally, this is done by executing the following command:
+
+    unix> /etc/init.d/arangod start
+ 
+It will start the server, and do that as well at system boot time.
+
+To stop the server you can use the following command:
+
+    unix> /etc/init.d/arangod stop
+
+The exact commands depend on your Linux distribution.
+You may require root privileges to execute these commands.
+
+If you compiled ArangoDB from source and did not use any installation
+package – or using non-default locations and/or multiple ArangoDB
+instances on the same host – you may want to start the server process 
+manually. You can do so by invoking the arangod binary from the command
+line as shown below:
+
+```
+unix> /usr/local/sbin/arangod /tmp/vocbase
+20ZZ-XX-YYT12:37:08Z [8145] INFO using built-in JavaScript startup files
+20ZZ-XX-YYT12:37:08Z [8145] INFO ArangoDB (version 1.x.y) is ready for business
+20ZZ-XX-YYT12:37:08Z [8145] INFO Have Fun!
+```
+
+To stop the database server gracefully, you can
+either press CTRL-C or by send the SIGINT signal to the server process. 
+On many systems this can be achieved with the following command:
+
+    unix> kill -2 `pidof arangod`
+
+
+Once you started the server, there should be a running instance of *_arangod_* -
 the ArangoDB database server.
 
     unix> ps auxw | fgrep arangod

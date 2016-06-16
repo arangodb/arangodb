@@ -438,7 +438,7 @@ struct FunctionDefiner {
               true, true, &Functions::FirstDocument});
     add({"PARSE_IDENTIFIER", "AQL_PARSE_IDENTIFIER", ".", true, true,
               false, true, true, &Functions::ParseIdentifier});
-    add({"IS_SAME_COLLECTION", "AQL_IS_SAME_COLLECTION", "ch,as", true, true,
+    add({"IS_SAME_COLLECTION", "AQL_IS_SAME_COLLECTION", "chas,chas", true, true,
                false, true, true, &Functions::IsSameCollection});
     add({"CURRENT_USER", "AQL_CURRENT_USER", "", false,
                               false, false, false, true});

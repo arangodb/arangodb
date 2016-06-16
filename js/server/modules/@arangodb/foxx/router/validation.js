@@ -37,7 +37,7 @@ exports.validateParams = function validateParams(typeDefs, rawParams, type) {
   for (const entry of typeDefs) {
     const name = entry[0];
     const def = entry[1];
-    if (def.schema.isJoi) {
+    if (def.schema && typeof def.schema.validate === 'function') {
       const result = def.schema.validate(rawParams[name]);
       if (result.error) {
         const e = result.error;
@@ -45,6 +45,8 @@ exports.validateParams = function validateParams(typeDefs, rawParams, type) {
         throw e;
       }
       params[name] = result.value;
+    } else {
+      params[name] = rawParams[name];
     }
   }
   return params;

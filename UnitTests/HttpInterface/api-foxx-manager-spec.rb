@@ -48,7 +48,7 @@ describe ArangoDB do
       end
 
       it "should install from github" do
-        body = JSON.dump({mount: @mount, appInfo: "git:arangodb/itzpapalotl", options: {}})
+        body = JSON.dump({mount: @mount, appInfo: "git:arangodb/itzpapalotl:v1.2.0", options: {}})
         doc = ArangoDB.log_post("#{@prefix}-install-git", "#{@api}/install", :body => body)
         doc.code.should eq(200)
         validate_app(@random)

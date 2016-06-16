@@ -208,91 +208,52 @@ class CollectionNameResolver {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a collection name for a collection id, this implements
-  /// some magic in the cluster case: a DBserver in a cluster will automatically
-  /// translate the local collection ID into a cluster wide collection name.
-  ///
-  /// the name is copied into <buffer>. the caller is responsible for allocating
-  /// a big-enough buffer (that is, at least 64 bytes). no NUL byte is appended
-  /// to the buffer. the length of the collection name is returned.
-  //////////////////////////////////////////////////////////////////////////////
-
-  size_t getCollectionName(char* buffer, TRI_voc_cid_t cid) const {
-    auto it = _resolvedIds.find(cid);
-
-    if (it != _resolvedIds.end()) {
-      memcpy(buffer, (*it).second.c_str(), (*it).second.size());
-      return (*it).second.size();
-    }
-
-    std::string name = localNameLookup(cid);
-    size_t s = name.size();
-
-    memcpy(buffer, name.c_str(), s);
-    _resolvedIds.emplace(cid, std::move(name));
-    return s;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a cluster-wide collection name for a cluster-wide
   /// collection id
   //////////////////////////////////////////////////////////////////////////////
 
   std::string getCollectionNameCluster(TRI_voc_cid_t cid) const {
-    if (!ServerState::isRunningInCluster(_serverRole)) {
+    // First check the cache:
+    auto it = _resolvedIds.find(cid);
+
+    if (it != _resolvedIds.end()) {
+      return (*it).second;
+    }
+
+    if (!ServerState::isClusterRole(_serverRole)) {
+      // This handles the case of a standalone server
       return getCollectionName(cid);
     }
 
+    std::string name;
+    
+    if (ServerState::isDBServer(_serverRole)) {
+      // This might be a local system collection:
+      name = localNameLookup(cid);
+      if (name != "_unknown") {
+        _resolvedIds.emplace(cid, name);
+        return name;
+      }
+    }
+
     int tries = 0;
 
     while (tries++ < 2) {
       std::shared_ptr<CollectionInfo> ci =
           ClusterInfo::instance()->getCollection(
               _vocbase->_name, arangodb::basics::StringUtils::itoa(cid));
-      std::string name = ci->name();
+      name = ci->name();
 
       if (name.empty()) {
         ClusterInfo::instance()->flush();
         continue;
       }
+      _resolvedIds.emplace(cid, name);
       return name;
     }
 
+    LOG(ERR) << "CollectionNameResolver: was not able to resolve id " << cid;
     return "_unknown";
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a cluster-wide collection name for a cluster-wide
-  /// collection id
-  ///
-  /// the name is copied into <buffer>. the caller is responsible for allocating
-  /// a big-enough buffer (that is, at least 64 bytes). no NUL byte is appended
-  /// to the buffer. the length of the collection name is returned.
-  //////////////////////////////////////////////////////////////////////////////
-
-  size_t getCollectionNameCluster(char* buffer, TRI_voc_cid_t cid) const {
-    if (!ServerState::isRunningInCluster(_serverRole)) {
-      return getCollectionName(buffer, cid);
-    }
-
-    int tries = 0;
-
-    while (tries++ < 2) {
-      std::shared_ptr<CollectionInfo> ci =
-          ClusterInfo::instance()->getCollection(
-              _vocbase->_name, arangodb::basics::StringUtils::itoa(cid));
-      std::string name = ci->name();
-
-      if (name.empty()) {
-        ClusterInfo::instance()->flush();
-        continue;
-      }
-      memcpy(buffer, name.c_str(), name.size());
-      return name.size();
-    }
-
-    memcpy(buffer, "_unknown", strlen("_unknown"));
-    return strlen("_unknown");
   }
 
   //////////////////////////////////////////////////////////////////////////////

@@ -31,11 +31,33 @@ const parseRange = require('range-parser');
 const querystring = require('querystring');
 const getRawBodyBuffer = require('internal').rawRequestBody;
 const crypto = require('@arangodb/crypto');
+const Netmask = require('netmask').Netmask;
+const trustedProxies = require('internal').trustedProxies();
+const trustedProxyBlocks = [];
+
+if (Array.isArray(trustedProxies)) {
+  for (const trustedProxy of trustedProxies) {
+    try {
+      trustedProxyBlocks.push(new Netmask(trustedProxy));
+    } catch (e) {
+      console.warnLines(
+        `Error parsing trusted proxy "${trustedProxy}":\n${e.stack}`
+      );
+    }
+  }
+}
+
+function shouldTrustProxy(address) {
+  if (trustedProxies === null) {
+    return null;
+  }
+  return trustedProxyBlocks
+  .some((block) => block.contains(address));
+}
 
 
 module.exports = class SyntheticRequest {
   constructor(req, context) {
-    this.user = req.user; 
     this._url = parseUrl(req.url);
     this._raw = req;
     this.context = context;
@@ -47,12 +69,18 @@ module.exports = class SyntheticRequest {
     this.body = getRawBodyBuffer(req);
     this.rawBody = this.body;
 
-    const server = extractServer(req, context.trustProxy);
+    this.trustProxy = (
+      typeof context.trustProxy === 'boolean'
+      ? context.trustProxy
+      : shouldTrustProxy(req.client.address)
+    );
+
+    const server = extractServer(req, this.trustProxy);
     this.protocol = server.protocol;
     this.hostname = server.hostname;
     this.port = server.port;
 
-    const client = extractClient(req, context.trustProxy);
+    const client = extractClient(req, this.trustProxy);
     this.remoteAddress = client.ip;
     this.remoteAddresses = client.ips;
     this.remotePort = client.port;
@@ -146,6 +174,14 @@ module.exports = class SyntheticRequest {
   }
 
   // idiosyncratic
+
+  get arangoUser() {
+    return this._raw.user;
+  }
+
+  get arangoVersion() {
+    return this._raw.compatibility;
+  }
 
   get database() {
     return this._raw.database;

@@ -28,8 +28,6 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/Thread.h"
-#include "Basics/ConditionVariable.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>

@@ -48,7 +48,7 @@
   function upgrade() {
 
     // default replication factor for system collections
-    const DEFAULT_REPLICATION_FACTOR_SYSTEM = 1;
+    const DEFAULT_REPLICATION_FACTOR_SYSTEM = 2;
 
     // system database only
     const DATABASE_SYSTEM = 1000;
@@ -770,24 +770,6 @@
           replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: "_graphs"
         });
-      }
-    });
-
-    // waitForSyncReplication
-    addTask({
-      name: "waitSyncReplSettle",
-      description: "wait until synchronous replication has settled",
-
-      system: DATABASE_ALL,
-      cluster: [CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT],
-
-      task: function() {
-        var dbName = db._name();
-        var colls = db._collections();
-        colls = colls.filter(c => c.name()[0] === "_");
-        require("@arangodb/cluster").waitForSyncRepl(dbName, colls);
-        return true;
       }
     });
 

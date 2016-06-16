@@ -93,7 +93,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_ARANGO_USE_SYSTEM_DATABASE, "operation only allowed in system database");
   REG_ERROR(ERROR_ARANGO_ENDPOINT_NOT_FOUND, "endpoint not found");
   REG_ERROR(ERROR_ARANGO_INVALID_KEY_GENERATOR, "invalid key generator");
-  REG_ERROR(ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE, "edge attribute missing");
+  REG_ERROR(ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE, "edge attribute missing or invalid");
   REG_ERROR(ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING, "index insertion warning - attribute missing in document");
   REG_ERROR(ERROR_ARANGO_INDEX_CREATION_FAILED, "index creation failed");
   REG_ERROR(ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT, "write-throttling timeout");

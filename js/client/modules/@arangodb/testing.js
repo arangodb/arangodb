@@ -297,6 +297,7 @@ function makeArgsArangod(options, appDir) {
     "javascript.v8-contexts": "5",
     "http.trusted-origin": "all",
     "log.level": "warn",
+    "log.level=replication=warn": null,
     "server.allow-use-database": "true",
     "server.authentication": "false",
     "server.threads": "20",
@@ -1358,6 +1359,10 @@ function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
   } else {
     args["log.level"] = 'error';
   }
+
+  // flush log messages directly and not asynchronously
+  // (helps debugging)  
+  args["log.force-direct"] = 'true';
 
   if (protocol === "ssl") {
     args["ssl.keyfile"] = fs.join("UnitTests", "server.pem");

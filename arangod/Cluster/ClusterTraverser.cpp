@@ -490,9 +490,9 @@ arangodb::traverser::TraversalPath* ClusterTraverser::next() {
     }
   }
 
-  auto p = std::make_unique<ClusterTraversalPath>(this, path);
   if (countEdges < _opts.minDepth) {
     return next();
   }
-  return p.release();
+  
+  return new ClusterTraversalPath(this, path);
 }

@@ -626,19 +626,19 @@ std::string Transaction::extractKeyPart(VPackSlice const slice) {
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
     if (!k.isString()) {
-      return ""; // fail
+      return StaticStrings::Empty; // fail
     }
     return k.copyString();
   } 
   if (slice.isString()) {
     std::string key = slice.copyString();
     size_t pos = key.find('/');
-    if (pos != std::string::npos) {
-      key = key.substr(pos + 1);
+    if (pos == std::string::npos) {
+      return key;
     }
-    return key;
+    return key.substr(pos + 1);
   } 
-  return "";
+  return StaticStrings::Empty;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -653,17 +653,18 @@ std::string Transaction::makeIdFromCustom(CollectionNameResolver const* resolver
 
   uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
   // create a buffer big enough for collection name + _key
-  char buffer[TRI_COL_NAME_LENGTH + TRI_VOC_KEY_MAX_LENGTH + 2];
-  size_t len = resolver->getCollectionNameCluster(&buffer[0], cid);
-  buffer[len] = '/';
+  std::string buffer;
+  buffer.reserve(TRI_COL_NAME_LENGTH + TRI_VOC_KEY_MAX_LENGTH + 2);
+  buffer.append(resolver->getCollectionNameCluster(cid));
+  buffer.append("/");
 
   VPackValueLength keyLength;
   char const* p = key.getString(keyLength);
   if (p == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid _key value");
   }
-  memcpy(&buffer[len + 1], p, static_cast<size_t>(keyLength));
-  return std::string(&buffer[0], static_cast<size_t>(len + 1 + keyLength));
+  buffer.append(p, static_cast<size_t>(keyLength));
+  return buffer;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1291,6 +1292,8 @@ int Transaction::documentFastPath(std::string const& collectionName,
 
   if (ServerState::isCoordinator(_serverRole)) {
     OperationOptions options; // use default configuration
+    options.ignoreRevs = true;
+
     OperationResult opRes = documentCoordinator(collectionName, value, options);
     if (opRes.failed()) {
       return opRes.code;

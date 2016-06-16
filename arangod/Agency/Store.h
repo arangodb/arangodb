@@ -25,6 +25,8 @@
 #define ARANGOD_CONSENSUS_STORE_H 1
 
 #include "Node.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Thread.h"
 
 namespace arangodb {
 namespace consensus {

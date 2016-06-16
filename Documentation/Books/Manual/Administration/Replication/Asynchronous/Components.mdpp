@@ -1,43 +1,13 @@
 !CHAPTER Components
 
-The replication architecture in ArangoDB before version 2.2 consisted of two main 
-components, which could be used together or in isolation: the *replication logger* 
-and the *replication applier*. Since ArangoDB 2.2, the replication logger has no
-special purpose anymore and is available for downwards-compatibility only.
-
-The replication applier can be administered via the command line or a REST API 
-(see [HTTP Interface for Replication](../../../HTTP/Replications/index.html)).
-
-As replication is configured on a per-database level and there can be multiple 
-databases inside one ArangoDB instance, there can be multiple replication appliers
-in one ArangoDB instance.
-
 !SUBSECTION Replication Logger
 
 !SUBSUBSECTION Purpose
 
-The purpose of the replication logger in ArangoDB before version 2.2 was to log all 
-changes that modify the state of data in a specific database on a master server. 
-This included document insertions, updates, and deletions as well as creating, dropping, 
-renaming and changing collections and indexes.
-
-When the replication logger was used, it logged all these write operations for the
-database in its own event log, which was a system collection named *_replication*.
-
-Reading the events sequentially from the *_replication* collection provides a list of 
-all write operations carried out in the master database. Replication clients could then
-request these events from the logger and apply them on their own.
-
-Starting with ArangoDB 2.2, the *_replication* system collection is not used anymore.
-Instead, the server will write all data-modification operations into its write-ahead log.
-The write-ahead log can be queried by clients, so the need for an extra event log is 
-gone.
+The replication logger will write all data-modification operations into the write-ahead log.
+This log may then be read by clients to replay any data modification on a different server.
 
 !SUBSUBSECTION Checking the state
-
-Starting with version 2.2, ArangoDB will log all data-modification operations in its
-write-ahead log automatically. There is no need to explicitly start or configure the
-replication logger on the master.
 
 To query the current state of the logger, use the *state* command:
   
@@ -62,9 +32,7 @@ The result might look like this:
 }
 ```
 
-In old versions of ArangoDB, the *running* attribute indicated whether the logger 
-was currently enabled and logged any events. In ArangoDB 2.2 and higher, this attribute
-will always have a value of *true*, as the replication logger cannot be turned off.
+The *running* attribute will always be true. In earlier versions of ArangoDB the replication was optional and this could have been *false*. 
 
 The *totalEvents* attribute indicates how many log events have been logged since the start 
 of the ArangoDB server. Finally, the *lastLogTick* value indicates the id of the last 
@@ -81,18 +49,10 @@ the logger provides the *firstTick* and *tickRanges* functions:
     require("@arangodb/replication").logger.firstTick();
 
 This will return the minimum tick value that the server can provide to replication
-clients via its replication APIS. The *tickRanges* function returns the minimum and
+clients via its replication APIs. The *tickRanges* function returns the minimum and
 maximum tick values per logfile:
 
     require("@arangodb/replication").logger.tickRanges();
-
-
-!SUBSUBSECTION Configuration
-
-Since ArangoDB 2.2, no special configuration is necessary for the replication logger.
-All operations are written to a server's write-ahead log, and the write-ahead log is 
-used for replication, too.
-
 
 !SUBSECTION Replication Applier
 

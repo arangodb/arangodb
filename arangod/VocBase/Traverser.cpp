@@ -33,30 +33,6 @@
 
 using TraverserExpression = arangodb::traverser::TraverserExpression;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper to transform a vertex _id string to VertexId struct.
-/// NOTE:  Make sure the given string is not freed as long as the resulting
-///        VertexId is in use
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::traverser::VertexId arangodb::traverser::IdStringToVertexId(
-    CollectionNameResolver const* resolver, std::string const& vertex) {
-  size_t split;
-  char const* str = vertex.c_str();
-
-  if (!TRI_ValidateDocumentIdKeyGenerator(str, vertex.size(), &split)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-  }
-
-  std::string const collectionName = vertex.substr(0, split);
-  auto cid = resolver->getCollectionIdCluster(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-  return VertexId(cid, const_cast<char*>(str + split + 1));
-}
-
 /// @brief Class Shortest Path
 
 
@@ -79,17 +55,16 @@ void arangodb::traverser::ShortestPath::edgeToVelocyPack(Transaction*, size_t po
 void arangodb::traverser::ShortestPath::vertexToVelocyPack(Transaction* trx, size_t position, VPackBuilder& builder) {
   TRI_ASSERT(position < length());
   VPackSlice v = _vertices[position];
-  _searchBuilder.clear();
   TRI_ASSERT(v.isString());
   std::string collection =  v.copyString();
   size_t p = collection.find("/");
   TRI_ASSERT(p != std::string::npos);
-  _searchBuilder.openObject();
-  _searchBuilder.add(StaticStrings::KeyString, VPackValue(collection.substr(p + 1)));
-  _searchBuilder.close();
+
+  TransactionBuilderLeaser searchBuilder(trx);
+  searchBuilder->add(VPackValue(collection.substr(p + 1)));
   collection = collection.substr(0, p);
 
-  int res = trx->documentFastPath(collection, _searchBuilder.slice(), builder);
+  int res = trx->documentFastPath(collection, searchBuilder->slice(), builder);
   if (res != TRI_ERROR_NO_ERROR) {
     builder.clear(); // Just in case...
     builder.add(basics::VelocyPackHelper::NullValue());

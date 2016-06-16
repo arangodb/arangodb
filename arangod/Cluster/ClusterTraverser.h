@@ -34,7 +34,7 @@ namespace traverser {
 
 class ClusterTraversalPath;
 
-class ClusterTraverser : public Traverser {
+class ClusterTraverser final : public Traverser {
   friend class ClusterTraversalPath;
 
  public:

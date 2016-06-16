@@ -32,11 +32,11 @@ exports.createNativeRequest = function (opts) {
     headers: opts.headers || {},
     cookies: opts.cookies || {},
     server: opts.server || {
-      address: '127.0.0.1',
+      address: '198.51.100.1',
       port: opts.port || 8529
     },
     client: opts.client || {
-      address: '127.0.0.1',
+      address: '203.0.113.1',
       port: 33333
     }
   };

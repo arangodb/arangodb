@@ -126,7 +126,7 @@ bool SocketTask::fillReadBuffer() {
   //   if (myerrno != EWOULDBLOCK && myerrno != EAGAIN)
   // having two identical branches (because EWOULDBLOCK == EAGAIN on Linux).
   // however, posix states that there may be systems where EWOULDBLOCK != EAGAIN...
-  if (myerrno != EWOULDBLOCK && (EWOULDBLOCK != EAGAIN && myerrno != EAGAIN)) {
+  if (myerrno != EWOULDBLOCK && (EWOULDBLOCK == EAGAIN || myerrno != EAGAIN)) {
     LOG(DEBUG) << "read from socket failed with " << myerrno << ": " << strerror(myerrno);
 
     return false;
@@ -172,7 +172,7 @@ bool SocketTask::handleWrite() {
         return handleWrite();
       }
 
-      if (myerrno != EWOULDBLOCK && (EAGAIN != EWOULDBLOCK && myerrno != EAGAIN)) {
+      if (myerrno != EWOULDBLOCK && (EAGAIN == EWOULDBLOCK || myerrno != EAGAIN)) {
         LOG(DEBUG) << "writing to socket failed with " << myerrno << ": " << strerror(myerrno);
 
         return false;

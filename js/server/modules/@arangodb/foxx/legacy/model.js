@@ -84,8 +84,7 @@ function Model(attributes) {
       _.union(_.keys(this.schema), _.keys(attributes)),
       function (key) {
         this.set(key, attributes && attributes[key]);
-      },
-      this
+      }.bind(this)
     );
   } else if (attributes) {
     this.attributes = _.clone(attributes);

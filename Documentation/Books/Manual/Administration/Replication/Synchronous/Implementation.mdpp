@@ -1,0 +1,59 @@
+!CHAPTER Implementation
+
+!SUBSECTION Architecture inside the cluster
+
+Synchronous replication can be configured per collection via the property *replicationFactor*. Synchronous replication requires a cluster to operate.
+
+Whenever you specify a *replicationFactor* greater than 1 when creating a collection synchronous replication is activated. The cluster will determine suitable *leaders* and *followers* for every requested shard (*numberOfShards*) within the cluster. For every shard in a collection only the leader will be asked. Using *synchronous replication* alone will guarantee consistent high availabilty at the cost of reduced performance (due to every request having to be executed on the followers). Combining it with [Sharding.md](sharding) will counteract that issue.
+
+In a cluster synchronous replication will be managed by the *coordinators* for the client. The data will always be stored on *primaries*.
+
+The following example will give you an idea of how synchronous operation has been implemented in ArangoDB.
+
+1. Connect to a coordinator via arangosh
+2. Create a collection
+
+    127.0.0.1:8530@_system> db._create("test", {"replicationFactor": 2})
+
+3. the coordinator will figure out a *leader* and 1 *follower* and create 1 *shard* (as this is the default)
+3. Insert data
+
+    127.0.0.1:8530@_system> db.test.insert({"replication": "😎"})
+
+4. The coordinator will write the data to the leader and the follower
+5. Only if both were successful the result will be successful
+
+    { 
+        "_id" : "test/7987", 
+        "_key" : "7987", 
+        "_rev" : "7987" 
+    }
+
+!SUBSECTION Automatic failover
+
+Whenever the leader of a shard is failing and there is a query trying to access data of that shard the coordinator will continue retrying to contact the leader until it timeouts. Every 15 seconds the internal cluster supervision will validate cluster health. If the leader didn't come back in time the supervision will reorganize the cluster. The coordinator will then contact the new leader.
+
+The process is best outlined using an example:
+
+1. Leader of a shard (lets name it DBServer1) is going down
+2. Coordinator is asked to return a document of a shard DBServer1 is managing:
+
+    127.0.0.1:8530@_system> db.test.document("100069")
+
+3. Coordinator tries to contact the leader (DBServer1) and timeouts
+4. Coordinator retries to contact the leader (DBServer1) and timeouts
+5. Supervision detects outage of DBServer1
+6. Supervision promotes one of the followers to be leader and makes DBServer1 a follower
+7. Coordinator retries to contact the leader (DBServer2) and returns the result
+
+    { 
+        "_key" : "100069", 
+        "_id" : "test/100069", 
+        "_rev" : "513", 
+        "replication" : "😎"
+    }
+8. After a while supervision declares DBServer1 to be completely dead
+9. New followers are determined from the pool of dbservers
+10. New followers sync their data from the leader
+
+Please note that there may still be timeouts. Depending on when exactly the request has been done (in regard to the supervision heartbeat) and depending on the time needed to reconfigure the cluster the coordinator might fail with a timeout error!

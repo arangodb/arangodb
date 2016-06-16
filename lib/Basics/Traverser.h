@@ -243,7 +243,7 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
     PathStep() {}
 
    public:
-    PathStep(vertexIdentifier const& vertex) : sourceIdx(0), vertex(vertex) {}
+    explicit PathStep(vertexIdentifier const& vertex) : sourceIdx(0), vertex(vertex) {}
 
     PathStep(size_t sourceIdx, edgeIdentifier const& edge,
              vertexIdentifier const& vertex)
@@ -257,14 +257,13 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
 
   struct NextStep {
     size_t sourceIdx;
-    vertexIdentifier vertex;
 
    private:
-    NextStep() {}
+    NextStep() = delete;
 
    public:
-    NextStep(size_t sourceIdx, vertexIdentifier const& vertex)
-        : sourceIdx(sourceIdx), vertex(vertex) {}
+    explicit NextStep(size_t sourceIdx)
+        : sourceIdx(sourceIdx) {}
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -289,13 +288,13 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
   /// @brief Vector to store where to continue search on next depth
   //////////////////////////////////////////////////////////////////////////////
 
-   std::vector<NextStep*> _nextDepth;
+   std::vector<NextStep> _nextDepth;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Vector storing the position at current search depth
   //////////////////////////////////////////////////////////////////////////////
 
-   std::vector<NextStep*> _toSearch;
+   std::vector<NextStep> _toSearch;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Vector storing the position at current search depth
@@ -327,13 +326,14 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
         _lastReturned(0),
         _currentDepth(0),
         _toSearchPos(0) {
+
+    _schreier.reserve(32);
     auto step = std::make_unique<PathStep>(startVertex);
     _schreier.emplace_back(step.get());
     step.release();
+    
+    _toSearch.emplace_back(NextStep(0));
 
-    auto next = std::make_unique<NextStep>(0, startVertex);
-    _toSearch.emplace_back(next.get());
-    next.release();
     if (this->_maxDepth > 0) {
       // We build the search values
       // only for one depth less
@@ -343,12 +343,6 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
 
   ~BreadthFirstEnumerator() {
     for (auto& it : _schreier) {
-      delete it;
-    }
-    for (auto& it : _toSearch) {
-      delete it;
-    }
-    for (auto& it : _nextDepth) {
       delete it;
     }
   }
@@ -383,9 +377,6 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
         // we swap current and next.
         // So now current is filled
         // and next is empty.
-        for (auto& it : _toSearch) {
-          delete it;
-        }
         _toSearch.clear();
         _toSearchPos = 0;
         _toSearch.swap(_nextDepth);
@@ -399,23 +390,22 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
       TRI_ASSERT(_toSearchPos < _toSearch.size());
 
       _tmpEdges.clear();
-      auto next = _toSearch[_toSearchPos++];
-      TRI_ASSERT(next != nullptr);
-      this->_edgeGetter->getAllEdges(next->vertex, _tmpEdges, _currentDepth);
+      auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
+      auto const& nextVertex = _schreier[nextIdx]->vertex;
+
+      this->_edgeGetter->getAllEdges(nextVertex, _tmpEdges, _currentDepth);
       if (!_tmpEdges.empty()) {
         bool didInsert = false;
+        vertexIdentifier v;
         for (auto const& e : _tmpEdges) {
-          vertexIdentifier v;
           bool valid =
-              this->_vertexGetter->getVertex(e, next->vertex, _currentDepth, v);
+              this->_vertexGetter->getVertex(e, nextVertex, _currentDepth, v);
           if (valid) {
-            auto step = std::make_unique<PathStep>(next->sourceIdx, e, v);
+            auto step = std::make_unique<PathStep>(nextIdx, e, v);
             _schreier.emplace_back(step.get());
             step.release();
             if (_currentDepth < this->_maxDepth) {
-              auto nextSearch = std::make_unique<NextStep>(_schreierIndex, v);
-              _nextDepth.emplace_back(nextSearch.get());
-              nextSearch.release();
+              _nextDepth.emplace_back(NextStep(_schreierIndex));
             }
             _schreierIndex++;
             didInsert = true;
@@ -453,6 +443,15 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
 
  private:
 
+  inline size_t getDepth(size_t index) const {
+    size_t depth = 0;
+    while (index != 0) {
+      ++depth;
+      index = _schreier[index]->sourceIdx;
+    }
+    return depth;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Build the enumerated path for the given index in the schreier
   ///        vector.
@@ -460,23 +459,27 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
 
   void computeEnumeratedPath(size_t index) {
     TRI_ASSERT(index < _schreier.size());
-    std::vector<edgeIdentifier> edges;
-    std::vector<vertexIdentifier> vertices;
-    PathStep* current = nullptr;
-    while (index != 0) {
-      current = _schreier[index];
-      vertices.push_back(current->vertex);
-      edges.push_back(current->edge);
-      index = current->sourceIdx;
-    }
-    current = _schreier[0];
-    vertices.push_back(current->vertex);
 
-    // Computed path. Insert it into the path enumerator.
+    size_t depth = getDepth(index);
     this->_enumeratedPath.edges.clear();
     this->_enumeratedPath.vertices.clear();
-    std::copy(vertices.rbegin(), vertices.rend(), std::back_inserter(this->_enumeratedPath.vertices));
-    std::copy(edges.rbegin(), edges.rend(), std::back_inserter(this->_enumeratedPath.edges));
+    this->_enumeratedPath.edges.resize(depth);
+    this->_enumeratedPath.vertices.resize(depth + 1);
+
+    // Computed path. Insert it into the path enumerator.
+    PathStep* current = nullptr;
+    while (index != 0) {
+      TRI_ASSERT(depth > 0);
+      current = _schreier[index];
+      this->_enumeratedPath.vertices[depth] = current->vertex;
+      this->_enumeratedPath.edges[depth - 1] = current->edge;
+      
+      index = current->sourceIdx;
+      --depth;
+    }
+
+    current = _schreier[0];
+    this->_enumeratedPath.vertices[0] = current->vertex;
   }
 };
 

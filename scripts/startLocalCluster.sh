@@ -157,6 +157,7 @@ startTerminal() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
+                --log.level info \
                 --server.statistics true \
                 --server.threads 5 \
                 --javascript.startup-directory ./js \
@@ -183,6 +184,7 @@ startDebugger() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
+                --log.level info \
                 --server.statistics false \
                 --server.threads 5 \
                 --javascript.startup-directory ./js \
@@ -210,6 +212,7 @@ startRR() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
+                --log.level info \
                 --server.statistics true \
                 --server.threads 5 \
                 --javascript.startup-directory ./js \
@@ -287,7 +290,7 @@ if [ -n "$SECONDARIES" ]; then
                 --server.endpoint tcp://127.0.0.1:$PORT \
                 --cluster.my-id $CLUSTER_ID \
                 --log.file cluster/$PORT.log \
-                --server.statistics false \
+                --server.statistics true \
                 --javascript.startup-directory ./js \
                 --server.authentication false \
                 --javascript.app-path ./js/apps \

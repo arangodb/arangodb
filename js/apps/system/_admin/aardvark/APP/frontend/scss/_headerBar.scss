@@ -302,19 +302,26 @@ div.headerBar {
     margin-left: 10px;
   }
 
-  .fa {
-    font-size: 14pt;
-  }
-
   .information {
     float: right;
-    font-size: 12pt;
+    font-size: 12.5pt;
+    font-weight: 100;
+
+    .fa {
+      font-size: 17pt;
+    }
 
     span:first-child {
       margin-left: 10px;
     }
 
     span {
+
+      span {
+        position: relative;
+        top: -2px;
+      }
+
       &.positive {
         color: $c-positive;
       }

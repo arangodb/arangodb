@@ -96,7 +96,7 @@ std::string Node::uri() const {
   std::stringstream path;
   std::deque<std::string> names;
   names.push_front(name());
-  while (par != 0) {
+  while (par != nullptr) {
     names.push_front(par->name());
     par = par->_parent;
   }
@@ -243,8 +243,8 @@ Node const& Node::operator()(std::string const& path) const {
 
 // lh-store
 Node const& Node::root() const {
-  Node* par = _parent, * tmp = 0;
-  while (par != 0) {
+  Node* par = _parent, * tmp = nullptr;
+  while (par != nullptr) {
     tmp = par;
     par = par->_parent;
   }
@@ -253,8 +253,8 @@ Node const& Node::root() const {
 
 // rh-store
 Node& Node::root() {
-  Node* par = _parent, * tmp = 0;
-  while (par != 0) {
+  Node* par = _parent, * tmp = nullptr;
+  while (par != nullptr) {
     tmp = par;
     par = par->_parent;
   }
@@ -591,7 +591,7 @@ void Node::toBuilder(Builder& builder) const {
 // Print internals to ostream
 std::ostream& Node::print(std::ostream& o) const {
   Node const* par = _parent;
-  while (par != 0) {
+  while (par != nullptr) {
     par = par->_parent;
     o << "  ";
   }

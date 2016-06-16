@@ -1,25 +1,3 @@
-
-!CHAPTER Exploring Collections and Documents
-
-ArangoDB is a database that serves documents to clients.
-
-* A *document* contains zero or more attributes, each one of these
-  attributes has a value. A value can either be an atomic type, i. e.
-  integer, strings, boolean, an array or an embedded document. Documents
-  are normally represented as JSON objects
-* Documents are grouped into *collections*. A collection contains zero
-  or more documents
-* *Queries* are used to filter documents based on certain criteria.
-  Queries can be as simple as a "query by example" or as complex as
-  ["joins"](../../AQL/Examples/Join.html) using many collections or graph structures
-* *Cursors* are used to iterate over the result of a query
-* *Indexes* are used to speed up searches. There are various
-  types of indexes such as [hash indexes](../Indexing/Hash.md) and [geo indexes](../Indexing/Geo.md)
-
-If you are familiar with RDBMS then it is safe to compare collections
-to tables and documents to rows. However, bringing structure to the
-"rows" has many advantages - as you will see later.
-
 !SECTION Starting the JavaScript shell
 
 The easiest way to connect to the database is the JavaScript shell

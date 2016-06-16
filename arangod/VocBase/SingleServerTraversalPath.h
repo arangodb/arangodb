@@ -22,17 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-#ifndef ARANGOD_SINGLE_SERVER_TRAVERSER_PATH_H
-#define ARANGOD_SINGLE_SERVER_TRAVERSER_PATH_H 1
+#ifndef ARANGOD_SINGLE_SERVER_TRAVERSAL_PATH_H
+#define ARANGOD_SINGLE_SERVER_TRAVERSAL_PATH_H 1
 
 #include "VocBase/SingleServerTraverser.h"
 
 namespace arangodb {
 namespace traverser {
 
-class SingleServerTraversalPath : public TraversalPath {
+class SingleServerTraversalPath final : public TraversalPath {
  public:
-  explicit SingleServerTraversalPath(
+  SingleServerTraversalPath(
       arangodb::basics::EnumeratedPath<std::string, std::string> const& path,
       SingleServerTraverser* traverser)
       : _traverser(traverser), _path(path) {}
@@ -50,15 +50,9 @@ class SingleServerTraversalPath : public TraversalPath {
 
  private:
 
-  void getDocumentByIdentifier(Transaction*, std::string const&,
-                               arangodb::velocypack::Builder&);
-
   SingleServerTraverser* _traverser;
 
   arangodb::basics::EnumeratedPath<std::string, std::string> _path;
-
-  arangodb::velocypack::Builder _searchBuilder;
-
 };
 
 } // namespace traverser

@@ -52,7 +52,7 @@ function createStatisticsCollection (name) {
                              
     try {
       r = db._create(name, { isSystem: true, waitForSync: false,
-                             replicationFactor: 1,
+                             replicationFactor: 2,
                              journalSize: 8 * 1024 * 1024,
                              distributeShardsLike: "_graphs" });
     }
@@ -620,7 +620,7 @@ exports.startup = function () {
   internal.registerTask({
     id: "statistics-periodic-task-installer",
     name: "statistics-periodic-task-installer",
-    offset: 60,
+    offset: 10,
     command: "require('@arangodb/statistics').installPeriodicTasks();"
   });
 };

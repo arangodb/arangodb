@@ -27,6 +27,7 @@
 const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
+const internal = require('internal');
 const marked = require('marked');
 const highlightAuto = require('highlight.js').highlightAuto;
 const errors = require('@arangodb').errors;
@@ -43,8 +44,8 @@ anonymousRouter.use(router);
 module.exports = anonymousRouter;
 
 router.use((req, res, next) => {
-  if (global.AUTHENTICATION_ENABLED()) {
-    if (!req.user) {
+  if (internal.authenticationEnabled()) {
+    if (!req.arangoUser) {
       res.throw('unauthorized');
     }
   }
@@ -275,7 +276,7 @@ foxxRouter.post('/tests', function (req, res) {
 
 foxxRouter.post('/scripts/:name', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
-  const name = req.queryParams.name;
+  const name = req.pathParams.name;
   try {
     res.json(FoxxManager.runScript(name, mount, req.body));
   } catch (e) {
