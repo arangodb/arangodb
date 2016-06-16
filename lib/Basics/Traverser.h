@@ -393,7 +393,6 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
       auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
       auto const& nextVertex = _schreier[nextIdx]->vertex;
 
-      TRI_ASSERT(next != nullptr);
       this->_edgeGetter->getAllEdges(nextVertex, _tmpEdges, _currentDepth);
       if (!_tmpEdges.empty()) {
         bool didInsert = false;
