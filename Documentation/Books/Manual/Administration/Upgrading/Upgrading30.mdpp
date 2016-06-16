@@ -37,8 +37,8 @@ arangodump --server.database _system --server.username myuser --server.password 
 The dumps produced by `arangodump` can now be imported into ArangoDB 3.0 using 
 the 3.0 version of `arangodump`:
 
-```
 # in 3.0
+```
 arangorestore --server.database _system --input-directory dump-system
 arangorestore --server.database mydb --input-directory dump-mydb
 ...
@@ -49,8 +49,7 @@ be told to create it automatically using the option `--create-database true`:
 
 ```
 arangorestore --server.database mydb --create-database true --input-directory dump-mydb
-...
-
+```
 And again it may be required to provide access credentials when invoking 
 `arangorestore`:
 

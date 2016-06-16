@@ -144,6 +144,7 @@
     * [Firewall setup](Administration/Sharding/FirewallSetup.md)
 #
 * [Troubleshooting](Troubleshooting/README.md)
+  * [arangod](Troubleshooting/Arangod.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
   * [Datafile Debugger](Troubleshooting/DatafileDebugger.md)
   * [Arangobench](Troubleshooting/Arangobench.md)
