@@ -653,17 +653,18 @@ std::string Transaction::makeIdFromCustom(CollectionNameResolver const* resolver
 
   uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
   // create a buffer big enough for collection name + _key
-  char buffer[TRI_COL_NAME_LENGTH + TRI_VOC_KEY_MAX_LENGTH + 2];
-  size_t len = resolver->getCollectionNameCluster(&buffer[0], cid);
-  buffer[len] = '/';
+  std::string buffer;
+  buffer.reserve(TRI_COL_NAME_LENGTH + TRI_VOC_KEY_MAX_LENGTH + 2);
+  buffer.append(resolver->getCollectionNameCluster(cid));
+  buffer.append("/");
 
   VPackValueLength keyLength;
   char const* p = key.getString(keyLength);
   if (p == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid _key value");
   }
-  memcpy(&buffer[len + 1], p, static_cast<size_t>(keyLength));
-  return std::string(&buffer[0], static_cast<size_t>(len + 1 + keyLength));
+  buffer.append(p, static_cast<size_t>(keyLength));
+  return buffer;
 }
 
 //////////////////////////////////////////////////////////////////////////////
