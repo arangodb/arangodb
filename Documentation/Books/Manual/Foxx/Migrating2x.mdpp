@@ -387,7 +387,9 @@ New:
 'use strict';
 const createRouter = require('org/arangodb/foxx/router');
 const router = createRouter();
-module.context.use(router);
+// If you are importing this file from your entry file ("main"):
+module.exports = router;
+// Otherwise: module.context.use(router);
 
 router.get('/hello', function (req, res) {
   // ...
