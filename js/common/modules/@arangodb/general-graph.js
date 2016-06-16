@@ -128,6 +128,12 @@ var registerCompatibilityFunctions = function() {
   }, false);
 };
 
+var fixWeight = function (options) {
+  if (!options.hasOwnProperty("weightAttribute") && options.hasOwnProperty("weight")) {
+    options.weightAttribute = options.weight;
+  }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transform a string into an array.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1490,14 +1496,15 @@ Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, o
     query += "ANY ";
   }
   query += `SHORTEST_PATH start TO target GRAPH @graphName `;
-  if (options.hasOwnProperty("weight") && options.hasOwnProperty("defaultWeight")) {
-    query += `OPTIONS {weight: @attribute, defaultWeight: @default}
+  fixWeight(options);
+  if (options.hasOwnProperty("weightAttribute") && options.hasOwnProperty("defaultWeight")) {
+    query += `OPTIONS {weightAttribute: @attribute, defaultWeight: @default}
     RETURN {
       v: v,
       e: e,
       d: IS_NULL(e) ? 0 : (IS_NUMBER(e[@attribute]) ? e[@attribute] : @default)
     }) `;
-    bindVars.attribute = options.weight;
+    bindVars.attribute = options.weightAttribute;
     bindVars.default = options.defaultWeight;
   } else {
     query += "RETURN {v: v, e: e, d: IS_NULL(e) ? 0 : 1}) ";
@@ -1534,10 +1541,11 @@ Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, opt
     query += "ANY ";
   }
   query += `SHORTEST_PATH start TO target GRAPH @graphName `;
-  if (options.hasOwnProperty("weight") && options.hasOwnProperty("defaultWeight")) {
-    query += `OPTIONS {weight: @attribute, defaultWeight: @default}
+  fixWeight(options);
+  if (options.hasOwnProperty("weightAttribute") && options.hasOwnProperty("defaultWeight")) {
+    query += `OPTIONS {weightAttribute: @attribute, defaultWeight: @default}
               FILTER e != null RETURN IS_NUMBER(e[@attribute]) ? e[@attribute] : @default) `;
-    bindVars.attribute = options.weight;
+    bindVars.attribute = options.weightAttribute;
     bindVars.default = options.defaultWeight;
   } else {
     query += "FILTER e != null RETURN 1) ";
@@ -1575,10 +1583,11 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
     query += "ANY ";
   }
   query += "SHORTEST_PATH start TO target GRAPH @graphName ";
-  if (options.hasOwnProperty("weight") && options.hasOwnProperty("defaultWeight")) {
-    query += `OPTIONS {weight: @attribute, defaultWeight: @default}
+  fixWeight(options);
+  if (options.hasOwnProperty("weightAttribute") && options.hasOwnProperty("defaultWeight")) {
+    query += `OPTIONS {weightAttribute: @attribute, defaultWeight: @default}
               FILTER e != null RETURN IS_NUMBER(e[@attribute]) ? e[@attribute] : @default) `;
-    bindVars.attribute = options.weight;
+    bindVars.attribute = options.weightAttribute;
     bindVars.default = options.defaultWeight;
   } else {
     query += "FILTER e != null RETURN 1) ";
@@ -1617,10 +1626,11 @@ Graph.prototype._farness = Graph.prototype._absoluteCloseness = function(vertexE
     query += "ANY ";
   }
   query += "SHORTEST_PATH start TO target GRAPH @graphName ";
-  if (options.hasOwnProperty("weight") && options.hasOwnProperty("defaultWeight")) {
-    query += `OPTIONS {weight: @attribute, defaultWeight: @default}
+  fixWeight(options);
+  if (options.hasOwnProperty("weightAttribute") && options.hasOwnProperty("defaultWeight")) {
+    query += `OPTIONS {weightAttribute: @attribute, defaultWeight: @default}
               FILTER e != null RETURN IS_NUMBER(e[@attribute]) ? e[@attribute] : @default) `;
-    bindVars.attribute = options.weight;
+    bindVars.attribute = options.weightAttribute;
     bindVars.default = options.defaultWeight;
   } else {
     query += "FILTER e != null RETURN 1) ";
@@ -1704,9 +1714,10 @@ Graph.prototype._absoluteBetweenness = function(example, options) {
     query += "ANY ";
   }
   query += "SHORTEST_PATH start TO target GRAPH @graphName ";
-  if (options.hasOwnProperty("weight") && options.hasOwnProperty("defaultWeight")) {
-    query += `OPTIONS {weight: @attribute, defaultWeight: @default} `;
-    bindVars.attribute = options.weight;
+  fixWeight(options);
+  if (options.hasOwnProperty("weightAttribute") && options.hasOwnProperty("defaultWeight")) {
+    query += `OPTIONS {weightAttribute: @attribute, defaultWeight: @default} `;
+    bindVars.attribute = options.weightAttribute;
     bindVars.default = options.defaultWeight;
   }
   query += `
@@ -1784,10 +1795,11 @@ Graph.prototype._radius = function(options) {
     query += "ANY ";
   }
   query += "SHORTEST_PATH s TO t GRAPH @graphName ";
-  if (options.hasOwnProperty("weight") && options.hasOwnProperty("defaultWeight")) {
-    query += `OPTIONS {weight: @attribute, defaultWeight: @default}
+  fixWeight(options);
+  if (options.hasOwnProperty("weightAttribute") && options.hasOwnProperty("defaultWeight")) {
+    query += `OPTIONS {weightAttribute: @attribute, defaultWeight: @default}
               FILTER e != null RETURN IS_NUMBER(e[@attribute]) ? e[@attribute] : @default) `;
-    bindVars.attribute = options.weight;
+    bindVars.attribute = options.weightAttribute;
     bindVars.default = options.defaultWeight;
   } else {
     query += "FILTER e != null RETURN 1) ";
@@ -1828,10 +1840,11 @@ Graph.prototype._diameter = function(options) {
     "graphName": this.__name
   };
   query += "SHORTEST_PATH s TO t GRAPH @graphName ";
-  if (options.hasOwnProperty("weight") && options.hasOwnProperty("defaultWeight")) {
-    query += `OPTIONS {weight: @attribute, defaultWeight: @default}
+  fixWeight(options);
+  if (options.hasOwnProperty("weightAttribute") && options.hasOwnProperty("defaultWeight")) {
+    query += `OPTIONS {weightAttribute: @attribute, defaultWeight: @default}
               FILTER e != null RETURN IS_NUMBER(e[@attribute]) ? e[@attribute] : @default)) `;
-    bindVars.attribute = options.weight;
+    bindVars.attribute = options.weightAttribute;
     bindVars.default = options.defaultWeight;
   } else {
     query += "RETURN 1)) - 1 ";
