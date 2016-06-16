@@ -45,6 +45,8 @@ exports.validateParams = function validateParams(typeDefs, rawParams, type) {
         throw e;
       }
       params[name] = result.value;
+    } else {
+      params[name] = rawParams[name];
     }
   }
   return params;
