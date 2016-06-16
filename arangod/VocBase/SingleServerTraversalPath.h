@@ -22,15 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-#ifndef ARANGOD_SINGLE_SERVER_TRAVERSER_PATH_H
-#define ARANGOD_SINGLE_SERVER_TRAVERSER_PATH_H 1
+#ifndef ARANGOD_SINGLE_SERVER_TRAVERSAL_PATH_H
+#define ARANGOD_SINGLE_SERVER_TRAVERSAL_PATH_H 1
 
 #include "VocBase/SingleServerTraverser.h"
 
 namespace arangodb {
 namespace traverser {
 
-class SingleServerTraversalPath : public TraversalPath {
+class SingleServerTraversalPath final : public TraversalPath {
  public:
   SingleServerTraversalPath(
       arangodb::basics::EnumeratedPath<std::string, std::string> const& path,

@@ -136,11 +136,6 @@ exports.routeService = function (service, throwOnErrors) {
 
   service._reset();
 
-  let error = null;
-  if (service.legacy) {
-    error = routeLegacyService(service, throwOnErrors);
-  }
-
   const defaultDocument = service.manifest.defaultDocument;
   if (defaultDocument) {
     service.routes.routes.push({
@@ -154,6 +149,24 @@ exports.routeService = function (service, throwOnErrors) {
         }
       }
     });
+  }
+
+  let error = null;
+  if (service.legacy) {
+    error = routeLegacyService(service, throwOnErrors);
+  } else {
+    if (service.manifest.main) {
+      try {
+        service.main.exports = service.run(service.manifest.main);
+      } catch (e) {
+        console.errorLines(`Cannot execute Foxx service at ${service.mount}: ${e.stack}`);
+        error = e;
+        if (throwOnErrors) {
+          throw e;
+        }
+      }
+    }
+    service.buildRoutes();
   }
 
   if (service.manifest.files) {
@@ -175,22 +188,6 @@ exports.routeService = function (service, throwOnErrors) {
       };
       service.routes.routes.push(route);
     });
-  }
-
-  if (!service.legacy) {
-    if (service.manifest.main) {
-      try {
-        service.main.exports = service.run(service.manifest.main);
-      } catch (e) {
-        console.errorLines(`Cannot execute Foxx service at ${service.mount}: ${e.stack}`);
-        error = e;
-        if (throwOnErrors) {
-          throw e;
-        }
-      }
-    }
-
-    service.buildRoutes();
   }
 
   service.main.loaded = true;

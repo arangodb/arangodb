@@ -8,8 +8,6 @@ removed in later versions of ArangoDB:
   case, the replication applier on the slave will stop and report an error. Administrators
   can then either "fix" the problem or re-sync the data from the master to the slave
   and start the applier again.
-* the replication is an asynchronous master-slave replication. There is currently no
-  way to use it as a synchronous replication, or a multi-master replication.
 * at the moment it is assumed that only the replication applier executes write 
   operations on a slave. ArangoDB currently does not prevent users from carrying out
   their own write operations on slaves, though this might lead to undefined behavior
@@ -29,7 +27,7 @@ removed in later versions of ArangoDB:
 * master servers do not know which slaves are or will be connected to them. All servers
   in a replication setup are currently only loosely coupled. There currently is no way 
   for a client to query which servers are present in a replication.
-* failover must currently be handled by clients or client APIs.
+* when not using our mesos integration failover must be handled by clients or client APIs.
 * there currently is one replication applier per ArangoDB database. It is thus not 
   possible to have a slave apply operations from multiple masters into the same target
   database.

@@ -29,6 +29,7 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Logger/LogAppender.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -105,6 +106,7 @@ void SchedulerFeature::validateOptions(
 }
 
 void SchedulerFeature::start() {
+  ArangoGlobalContext::CONTEXT->maskAllSignals();
   buildScheduler();
   buildHangupHandler();
 

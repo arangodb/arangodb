@@ -1292,6 +1292,8 @@ int Transaction::documentFastPath(std::string const& collectionName,
 
   if (ServerState::isCoordinator(_serverRole)) {
     OperationOptions options; // use default configuration
+    options.ignoreRevs = true;
+
     OperationResult opRes = documentCoordinator(collectionName, value, options);
     if (opRes.failed()) {
       return opRes.code;

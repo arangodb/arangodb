@@ -1199,12 +1199,17 @@ int getDocumentOnCoordinator(
         if (!options.ignoreRevs && slice.hasKey(StaticStrings::RevString)) {
           headers->emplace("if-match", slice.get(StaticStrings::RevString).copyString());
         }
+      
+        VPackSlice keySlice = slice;
+        if (slice.isObject()) {
+          keySlice = slice.get(StaticStrings::KeyString);
+        }
+
         // We send to single endpoint
         requests.emplace_back(
             "shard:" + it.first, reqType,
             baseUrl + StringUtils::urlEncode(it.first) + "/" +
-                StringUtils::urlEncode(
-                    slice.get(StaticStrings::KeyString).copyString()) +
+                StringUtils::urlEncode(keySlice.copyString()) +
                 optsUrlPart,
             body);
         requests[0].setHeaders(headers);
@@ -1267,11 +1272,14 @@ int getDocumentOnCoordinator(
       headers->emplace("if-match", slice.get(StaticStrings::RevString).copyString());
     }
     for (auto const& shard : *shardList) {
+      VPackSlice keySlice = slice;
+      if (slice.isObject()) {
+        keySlice = slice.get(StaticStrings::KeyString);
+      }
       ClusterCommRequest req(
           "shard:" + shard, reqType,
           baseUrl + StringUtils::urlEncode(shard) + "/" +
-              StringUtils::urlEncode(
-                  slice.get(StaticStrings::KeyString).copyString()) +
+              StringUtils::urlEncode(keySlice.copyString()) +
               optsUrlPart,
           nullptr);
       auto headersCopy =

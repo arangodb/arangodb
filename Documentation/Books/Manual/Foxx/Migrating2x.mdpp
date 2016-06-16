@@ -519,6 +519,8 @@ The names of some attributes of the request object have been adjusted to more cl
 
 * `req.parameters` is now called `req.queryParams`
 
+* `req.params()` is now called `req.param()`
+
 * `req.requestType` is now called `req.method`
 
 * `req.compatibility` is now called `req.arangoVersion`
@@ -627,6 +629,30 @@ The response object has a lot of new methods in ArangoDB 3.0 but otherwise remai
 The `res.send` method behaves very differently from how the method with the same name behaved in ArangoDB 2.x: the conversion now takes the response body definition of the route into account. There is a new method `res.write` that implements the old behaviour.
 
 Note that consecutive calls to `res.write` will append to the response body rather than replacing it like `res.send`.
+
+The `res.contentType` property is also no longer available. If you want to set the MIME type of the response body to an explicit value you should set the `content-type` header instead:
+
+Old:
+
+```js
+res.contentType = 'application/json';
+res.body = JSON.stringify(results);
+```
+
+New:
+
+```js
+res.set('content-type', 'application/json');
+res.body = JSON.stringify(results);
+```
+
+Or simply:
+
+```js
+// sets the content type to JSON
+// if it has not already been set
+res.json(results);
+```
 
 The `res.cookie` method now takes the `signed` options as part of the regular options object.
 
