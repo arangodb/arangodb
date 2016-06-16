@@ -620,7 +620,7 @@ exports.startup = function () {
   internal.registerTask({
     id: "statistics-periodic-task-installer",
     name: "statistics-periodic-task-installer",
-    offset: 60,
+    offset: 10,
     command: "require('@arangodb/statistics').installPeriodicTasks();"
   });
 };
