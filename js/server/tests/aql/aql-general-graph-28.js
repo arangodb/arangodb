@@ -1197,7 +1197,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
     testInBoundPaths: function () {
       var actual, result = {}, i = 0, ed;
 
-      actual = getQueryResults("FOR e IN arangodb::GRAPH_PATHS('bla3',  {direction : 'inbound', minLength : 1}) SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
+      actual = getQueryResults("FOR e IN arangodb::GRAPH_PATHS('bla3',  {direction : 'inbound', minLength : 1}) SORT e.source._key,e.destination._key,LENGTH(e.edges) RETURN [e.source._key,e.destination._key,e.edges]");
 
       actual.forEach(function (p) {
         i++;
@@ -1212,8 +1212,8 @@ function ahuacatlQueryGeneralPathsTestSuite() {
       assertEqual(result["2:v2v1"], "|v1->v2");
       assertEqual(result["3:v5v1"], "|v1->v5");
       assertEqual(result["4:v5v1"], "|v2->v5|v1->v2");
-      assertEqual(result["5:v5v2"], "|v1->v5|v2->v1");
-      assertEqual(result["6:v5v2"], "|v2->v5");
+      assertEqual(result["5:v5v2"], "|v2->v5");
+      assertEqual(result["6:v5v2"], "|v1->v5|v2->v1");
       assertEqual(result["7:v5v3"], "|v3->v5");
       assertEqual(result["8:v7v4"], "|v4->v7");
     }
