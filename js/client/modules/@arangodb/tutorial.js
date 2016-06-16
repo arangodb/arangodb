@@ -153,6 +153,7 @@ var lessons = [
            "database and all of its collections, use '_dropDatabase':\n\n" +
            "  db._createDatabase(\"mydb\");\n" +
            "  db._useDatabase(\"mydb\");\n" +
+           "  db._useDatabase(\"_system\");\n" +
            "  db._dropDatabase(\"mydb\");"
   }
 ];
