@@ -84,3 +84,7 @@ The replication applier on the slave can be used to perform a one-time synchroni
 with the master (and then stop), or to perform an ongoing replication of changes. To
 resume replication on slave restart, the *autoStart* attribute of the replication 
 applier must be set to *true*. 
+
+!SUBSUBSECTION Replication overhead
+
+As the master servers are logging any write operation in the write-ahead-log anyway replication doesn't cause any extra overhead on the master. However it will of course cause some overhead for the master to serve incoming read requests of the slaves. Returning the requested data is however a trivial task for the master and should not result in a notable performance degration in production.

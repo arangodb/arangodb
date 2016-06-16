@@ -137,7 +137,6 @@
     * [Example Setup](Administration/Replication/ExampleSetup.md)
     * [Syncing Collections](Administration/Replication/SyncingCollections.md)
     * [Replication Limitations](Administration/Replication/Limitations.md)
-    * [Replication Overhead](Administration/Replication/Overhead.md)
   * [Sharding](Administration/Sharding/README.md)
     * [Implementation](Administration/Sharding/StatusOfImplementation.md)
     * [Authentication](Administration/Sharding/Authentication.md)
