@@ -26,7 +26,7 @@ Previously Foxx distinguished between `exports` and `controllers`, each of which
 
 The easiest way to migrate services using multiple exports and/or controllers is to create a separate entry file that imports these files:
 
-Before (manifest.json):
+Old (manifest.json):
 
 ```json
 {
@@ -42,7 +42,7 @@ Before (manifest.json):
 }
 ```
 
-After (manifest.json):
+New (manifest.json):
 
 ```json
 {
@@ -50,7 +50,7 @@ After (manifest.json):
 }
 ```
 
-After (index.js):
+New (index.js):
 
 ```js
 'use strict';
