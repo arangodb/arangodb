@@ -27,6 +27,7 @@ const SwaggerContext = require('@arangodb/foxx/router/swagger-context');
 const Route = require('@arangodb/foxx/router/route');
 const Middleware = require('@arangodb/foxx/router/middleware');
 const tokenize = require('@arangodb/foxx/router/tokenize');
+const check = require('@arangodb/foxx/check-args');
 
 const Router = module.exports = class Router extends SwaggerContext {
   constructor() {
@@ -36,13 +37,21 @@ const Router = module.exports = class Router extends SwaggerContext {
     this._namedRoutes = new Map();
   }
 
+  _PRINT(ctx) {
+    ctx.output += '[Router]';
+  }
+
   use(path, fn, name) {
-    if (typeof path !== 'string') {
-      fn = path;
-      path = '/*';
-    }
-    if (fn instanceof Router) {
-      if (path.charAt(path.length - 1) !== '*') {
+    [path, fn, name] = check(
+      'router.use',
+      ['path?', 'fn', 'name?'],
+      ['string', check.validateMountable, 'string'],
+      [path, fn, name]
+    );
+    if (fn.isFoxxRouter) {
+      if (!path) {
+        path = '/*';
+      } else if (path.charAt(path.length - 1) !== '*') {
         if (path.charAt(path.length - 1) !== '/') {
           path += '/';
         }
@@ -77,6 +86,12 @@ const Router = module.exports = class Router extends SwaggerContext {
   }
 
   all(path, handler, name) {
+    [path, handler, name] = check(
+      'router.all',
+      ['path?', 'handler', 'name?'],
+      ['string', 'function', 'string'],
+      [path, handler, name]
+    );
     const route = new Route(ALL_METHODS, path, handler, name);
     this._routes.push(route);
     if (route.name) {
@@ -86,9 +101,16 @@ const Router = module.exports = class Router extends SwaggerContext {
   }
 };
 
+Router.prototype.isFoxxRouter = true;
 
 ALL_METHODS.forEach(function (method) {
   Router.prototype[method.toLowerCase()] = function (path, handler, name) {
+    [path, handler, name] = check(
+      `router.${method.toLowerCase()}`,
+      ['path?', 'handler', 'name?'],
+      ['string', 'function', 'string'],
+      [path, handler, name]
+    );
     const route = new Route([method], path, handler, name);
     this._routes.push(route);
     if (route.name) {
