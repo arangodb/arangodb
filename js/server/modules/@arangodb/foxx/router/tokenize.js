@@ -59,7 +59,7 @@ module.exports = Object.assign(
       }
       name = name.slice(1);
       ctx._pathParamNames.push(name);
-      ctx._pathParams.set(name, {type: DEFAULT_PARAM_SCHEMA});
+      ctx.pathParam(name, DEFAULT_PARAM_SCHEMA);
       return $_PARAM;
     });
     if (tokens[tokens.length - 1] !== $_WILDCARD) {
