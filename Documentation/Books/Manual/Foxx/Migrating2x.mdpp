@@ -519,6 +519,8 @@ The names of some attributes of the request object have been adjusted to more cl
 
 * `req.parameters` is now called `req.queryParams`
 
+* `req.params()` is now called `req.param()`
+
 * `req.requestType` is now called `req.method`
 
 * `req.compatibility` is now called `req.arangoVersion`
