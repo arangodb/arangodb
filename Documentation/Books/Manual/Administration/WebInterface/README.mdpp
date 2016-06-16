@@ -1,0 +1,11 @@
+!CHAPTER Web Interface
+
+ArangoDB comes with a built-in web interface for administration. The surface differentiate wheter you use a standalone instance or a cluster setup.
+
+Standalone: 
+
+![Standalone Standalone](images/overView.png)
+
+Cluster:
+
+![Cluster Frontend](images/clusterOverView.png)
