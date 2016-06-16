@@ -269,6 +269,16 @@ bool TraversalBlock::morePaths(size_t hint) {
     return false;
   }
 
+  if (usesVertexOutput()) {
+    _vertices.reserve(hint);
+  }
+  if (usesEdgeOutput()) {
+    _edges.reserve(hint);
+  }
+  if (usesPathOutput()) {
+    _paths.reserve(hint);
+  }
+
   TransactionBuilderLeaser tmp(_trx);
   for (size_t j = 0; j < hint; ++j) {
     std::unique_ptr<arangodb::traverser::TraversalPath> p(_traverser->next());
