@@ -42,6 +42,14 @@ Before (manifest.json):
 }
 ```
 
+After (manifest.json):
+
+```json
+{
+  "main": "index.js"
+}
+```
+
 After (index.js):
 
 ```js
