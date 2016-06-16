@@ -298,6 +298,7 @@ inline bool Node::observedBy(std::string const& url) const {
 namespace arangodb {
 namespace consensus {
 
+/// Set value
 template <>
 bool Node::handle<SET>(VPackSlice const& slice) {
   Slice val = slice.get("new");
@@ -331,6 +332,8 @@ bool Node::handle<SET>(VPackSlice const& slice) {
   return true;
 }
 
+
+/// Increment integer value or set 1
 template <>
 bool Node::handle<INCREMENT>(VPackSlice const& slice) {
   Builder tmp;
@@ -345,6 +348,8 @@ bool Node::handle<INCREMENT>(VPackSlice const& slice) {
   return true;
 }
 
+
+/// Decrement integer value or set -1
 template <>
 bool Node::handle<DECREMENT>(VPackSlice const& slice) {
   Builder tmp;
@@ -359,6 +364,8 @@ bool Node::handle<DECREMENT>(VPackSlice const& slice) {
   return true;
 }
 
+
+/// Append element to array
 template <>
 bool Node::handle<PUSH>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
@@ -377,6 +384,8 @@ bool Node::handle<PUSH>(VPackSlice const& slice) {
   return true;
 }
 
+
+/// Remove element from end of array.
 template <>
 bool Node::handle<POP>(VPackSlice const& slice) {
   Builder tmp;
@@ -396,6 +405,8 @@ bool Node::handle<POP>(VPackSlice const& slice) {
   return true;
 }
 
+
+/// Prepend element to array
 template <>
 bool Node::handle<PREPEND>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
@@ -414,6 +425,8 @@ bool Node::handle<PREPEND>(VPackSlice const& slice) {
   return true;
 }
 
+
+/// Remove element from front of array
 template <>
 bool Node::handle<SHIFT>(VPackSlice const& slice) {
   Builder tmp;
@@ -434,6 +447,7 @@ bool Node::handle<SHIFT>(VPackSlice const& slice) {
   return true;
 }
 
+
 /// Add observer for this node
 template <>
 bool Node::handle<OBSERVE>(VPackSlice const& slice) {
@@ -453,6 +467,8 @@ bool Node::handle<OBSERVE>(VPackSlice const& slice) {
   return false;
 }
 
+
+/// Remove observer for this node
 template <>
 bool Node::handle<UNOBSERVE>(VPackSlice const& slice) {
   if (!slice.hasKey("url")) return false;
@@ -478,6 +494,15 @@ bool Node::handle<UNOBSERVE>(VPackSlice const& slice) {
 
   return false;
 }
+
+
+/// Check if element is in array
+template <>
+bool Node::handle<IN>(VPackSlice const& slice) {
+  return true;
+}
+
+
 }
 }
 
@@ -510,6 +535,8 @@ bool Node::applieOp(VPackSlice const& slice) {
     return handle<OBSERVE>(slice);
   } else if (oper == "unobserve") {  // "op":"unobserve"
     return handle<UNOBSERVE>(slice);
+  } else if (oper == "unobserve") {  // "op":"unobserve"
+    return handle<IN>(slice);
   } else {  // "op" might not be a key word after all
     LOG_TOPIC(WARN, Logger::AGENCY)
         << "Keyword 'op' without known operation. Handling as regular key.";
