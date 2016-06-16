@@ -4,6 +4,7 @@ include(GNUInstallDirs)
 if (MSVC)
   include(InstallRequiredSystemLibraries)
   INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION bin COMPONENT Libraries)
+  INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT} DESTINATION bin COMPONENT Libraries)
 endif()
 
 # etc -------------------------------
