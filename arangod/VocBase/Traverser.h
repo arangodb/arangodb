@@ -205,7 +205,6 @@ struct TraverserOptions {
   std::vector<std::string> _collections;
   std::vector<TRI_edge_direction_e> _directions;
   std::vector<arangodb::Transaction::IndexHandle> _indexHandles;
-  arangodb::velocypack::Builder _builder;
 
  public:
   uint64_t minDepth;
