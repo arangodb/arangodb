@@ -1,0 +1,11 @@
+!CHAPTER Collections
+
+![Collections](images/collectionsView.png)
+
+ * A: Toggle filter properties 
+ * B: Search collection by name
+ * C: Filter properties
+ * D: Create a new collection
+ * E: Collection type
+ * F: Collection state(unloaded, loaded, ...)
+ * G: Collection name

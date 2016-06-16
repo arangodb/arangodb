@@ -146,6 +146,7 @@
     * [Firewall setup](Administration/Sharding/FirewallSetup.md)
   * [Web Interface](Administration/WebInterface/README.md)
     * [AQL Editor](Administration/WebInterface/AqlEditor.md)
+    * [Collections](Administration/WebInterface/Collections.md)
     * [Graph Viewer](Administration/WebInterface/GraphViewer.md)
 #
 * [Troubleshooting](Troubleshooting/README.md)
