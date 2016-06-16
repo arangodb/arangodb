@@ -1468,6 +1468,8 @@ Graph.prototype._paths = function(options) {
     FOR v, e, p IN ${options.minLength || 0}..${options.maxLength || 10} ${options.direction || "OUTBOUND"} source GRAPH @graphName `;
   if (options.followCycles) {
     query += `OPTIONS {uniqueEdges: "none"} `;
+  } else {
+    query += `OPTIONS {uniqueVertices: "path"} `;
   }
   query += `RETURN {source: source, destination: v, edges: p.edges, vertice: p.vertices}`;
 
@@ -1510,7 +1512,11 @@ Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, o
     query += "RETURN {v: v, e: e, d: IS_NULL(e) ? 0 : 1}) ";
   }
   query += `
-  FILTER LENGTH(p) > 0
+  FILTER LENGTH(p) > 0`;
+  if (options.stopAtFirstMatch) {
+    query += `SORT SUM(p[*].d) LIMIT 1 `;
+  }
+  query += `
   RETURN {
     vertices: p[*].v._id,
     edges: p[* FILTER CURRENT.e != null].e,
