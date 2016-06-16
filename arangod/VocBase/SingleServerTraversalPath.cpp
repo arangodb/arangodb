@@ -25,14 +25,6 @@
 
 using namespace arangodb::traverser;
 
-void SingleServerTraversalPath::getDocumentByIdentifier(arangodb::Transaction* trx,
-                                                        std::string const& identifier,
-                                                        VPackBuilder& result) {
-  std::shared_ptr<VPackBuffer<uint8_t>> vertex =
-      _traverser->fetchVertexData(_path.vertices.back());
-  result.add(VPackSlice(vertex->data()));
-}
-
 void SingleServerTraversalPath::pathToVelocyPack(arangodb::Transaction* trx,
                                                  VPackBuilder& result) {
   result.openObject();

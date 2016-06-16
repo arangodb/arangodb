@@ -41,43 +41,6 @@ class Slice;
 }
 namespace traverser {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Template for a vertex id. Is simply a pair of cid and key
-/// NOTE: This struct will never free the value asigned to char const* key
-///       The environment has to make sure that the string it points to is
-///       not freed as long as this struct is in use!
-////////////////////////////////////////////////////////////////////////////////
-
-struct VertexId {
-  TRI_voc_cid_t cid;
-  char const* key;
-
-  VertexId() : cid(0), key("") {}
-
-  VertexId(TRI_voc_cid_t cid, char const* key) : cid(cid), key(key) {}
-
-  bool operator==(VertexId const& other) const {
-    if (cid == other.cid) {
-      return strcmp(key, other.key) == 0;
-    }
-    return false;
-  }
-
-  std::string toString(arangodb::CollectionNameResolver const* resolver) const {
-    return resolver->getCollectionNameCluster(cid) + "/" + std::string(key);
-  }
-};
-
-// EdgeId and VertexId are similar here. both have a key and a cid
-typedef VertexId EdgeId;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper function to convert an _id string into a VertexId
-////////////////////////////////////////////////////////////////////////////////
-
-VertexId IdStringToVertexId(arangodb::CollectionNameResolver const* resolver,
-                            std::string const& vertex);
-
 class TraverserExpression {
  public:
   bool isEdgeAccess;
@@ -171,9 +134,6 @@ class ShortestPath {
   size_t length() { return _vertices.size(); };
 
  private:
-  /// @brief Local builder to create a search value
-  arangodb::velocypack::Builder _searchBuilder;
-
   /// @brief Count how many documents have been read
   size_t _readDocuments;
 
@@ -416,38 +376,5 @@ class Traverser {
 };
 }  // traverser
 }  // arangodb
-
-namespace std {
-template <>
-struct hash<arangodb::traverser::VertexId> {
- public:
-  size_t operator()(arangodb::traverser::VertexId const& s) const {
-    size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
-    size_t h2 = static_cast<size_t>(TRI_FnvHashString(s.key));
-    return h1 ^ (h2 << 1);
-  }
-};
-
-template <>
-struct equal_to<arangodb::traverser::VertexId> {
- public:
-  bool operator()(arangodb::traverser::VertexId const& s,
-                  arangodb::traverser::VertexId const& t) const {
-    return s.cid == t.cid && strcmp(s.key, t.key) == 0;
-  }
-};
-
-template <>
-struct less<arangodb::traverser::VertexId> {
- public:
-  bool operator()(arangodb::traverser::VertexId const& lhs,
-                  arangodb::traverser::VertexId const& rhs) {
-    if (lhs.cid != rhs.cid) {
-      return lhs.cid < rhs.cid;
-    }
-    return strcmp(lhs.key, rhs.key) < 0;
-  }
-};
-}
 
 #endif

@@ -23,9 +23,11 @@
 
 #include "SingleServerTraverser.h"
 #include "Utils/OperationCursor.h"
+#include "Utils/Transaction.h"
 #include "VocBase/MasterPointer.h"
 #include "VocBase/SingleServerTraversalPath.h"
 
+using namespace arangodb;
 using namespace arangodb::traverser;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +39,6 @@ using namespace arangodb::traverser;
 
 static int FetchDocumentById(arangodb::Transaction* trx,
                              std::string const& id,
-                             VPackBuilder& builder,
                              VPackBuilder& result) {
   size_t pos = id.find('/');
   if (pos == std::string::npos) {
@@ -49,12 +50,10 @@ static int FetchDocumentById(arangodb::Transaction* trx,
     return TRI_ERROR_INTERNAL;
   }
 
-  std::string col = id.substr(0, pos);
-  trx->addCollectionAtRuntime(col);
-  builder.clear();
-  builder.add(VPackValue(id.substr(pos + 1)));
+  TransactionBuilderLeaser builder(trx);
+  builder->add(VPackValue(id.substr(pos + 1)));
 
-  int res = trx->documentFastPath(col, builder.slice(), result);
+  int res = trx->documentFastPath(id.substr(0, pos), builder->slice(), result);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     THROW_ARANGO_EXCEPTION(res);
@@ -125,7 +124,7 @@ std::shared_ptr<VPackBuffer<uint8_t>> SingleServerTraverser::fetchVertexData(
   auto it = _vertices.find(id);
   if (it == _vertices.end()) {
     VPackBuilder tmp;
-    int res = FetchDocumentById(_trx, id, _builder, tmp);
+    int res = FetchDocumentById(_trx, id, tmp);
     ++_readDocuments;
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_ASSERT(res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
@@ -143,7 +142,7 @@ bool SingleServerTraverser::VertexGetter::getVertex(std::string const& edge,
                                                   std::string const& vertex,
                                                   size_t depth,
                                                   std::string& result) {
-  auto const& it = _traverser->_edges.find(edge);
+  auto it = _traverser->_edges.find(edge);
   TRI_ASSERT(it != _traverser->_edges.end());
   VPackSlice v(it->second->data());
   // NOTE: We assume that we only have valid edges.
@@ -165,7 +164,7 @@ void SingleServerTraverser::VertexGetter::reset(std::string const&) {
 bool SingleServerTraverser::UniqueVertexGetter::getVertex(
     std::string const& edge, std::string const& vertex, size_t depth,
     std::string& result) {
-  auto const& it = _traverser->_edges.find(edge);
+  auto it = _traverser->_edges.find(edge);
   TRI_ASSERT(it != _traverser->_edges.end());
   VPackSlice v(it->second->data());
   // NOTE: We assume that we only have valid edges.
@@ -209,7 +208,7 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
           if (fetchVertex) {
             fetchVertex = false;
             VPackBuilder tmp;
-            int result = FetchDocumentById(_trx, v, _builder, tmp);
+            int result = FetchDocumentById(_trx, v, tmp);
             ++_readDocuments;
             if (result != TRI_ERROR_NO_ERROR) {
               // Vertex does not exist
@@ -290,11 +289,11 @@ TraversalPath* SingleServerTraverser::next() {
     }
   }
 
-  auto p = std::make_unique<SingleServerTraversalPath>(path, this);
   if (countEdges < _opts.minDepth) {
     return next();
   }
-  return p.release();
+
+  return new SingleServerTraversalPath(path, this);
 }
 
 bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
