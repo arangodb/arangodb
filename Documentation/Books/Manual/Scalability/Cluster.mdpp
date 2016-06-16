@@ -33,3 +33,7 @@ Secondaries are asynchronous followers of primaries. They are perfectly suitable
 !SUBSECTION Sharding
 
 Using the roles outlined above an ArangoDB cluster is able to distribute data in so called shards across multiple primaries. From the outside this process is fully transparent and as such we achieve the goals of what other systems call "master-master replication". In an ArangoDB cluster you talk to any coordinator and whenever you read or write data it will automatically figure out where the data is stored (read) or to be stored (write). The information about the shards is shared across the coordinators using the Agency.
+
+!SUBSECTION Authentication
+
+As of version 3.0 ArangoDB authentication is **NOT** supported within a cluster. You **HAVE** to properly secure your cluster to the outside. Most setups will have a secured data center anyway and ArangoDB will be accessed from the outside via an application. To this application only the coordinators need to be made available. If you want to isolate even further you can install a reverse proxy like haproxy or nginx in front of the coordinators (that will also allow easy access from the application).
