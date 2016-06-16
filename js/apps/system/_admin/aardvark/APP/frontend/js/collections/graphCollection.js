@@ -11,12 +11,13 @@
       desc: false
     },
 
-    url: frontendConfig.basePath + "/_api/gharial",
+    //url: frontendConfig.basePath + "/_api/gharial",
+    url: arangoHelper.databaseUrl('/_api/gharial'),
 
     dropAndDeleteGraph: function(name, callback) {
       $.ajax({
         type: "DELETE",
-        url: frontendConfig.basePath + "/_api/gharial/" + encodeURIComponent(name) + "?dropCollections=true",
+        url: arangoHelper.databaseUrl('/_api/gharial/') + encodeURIComponent(name) + "?dropCollections=true",
         contentType: "application/json",
         processData: true,
         success: function() {
