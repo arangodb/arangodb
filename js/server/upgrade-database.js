@@ -48,7 +48,7 @@
   function upgrade() {
 
     // default replication factor for system collections
-    const DEFAULT_REPLICATION_FACTOR_SYSTEM = 1;
+    const DEFAULT_REPLICATION_FACTOR_SYSTEM = 2;
 
     // system database only
     const DATABASE_SYSTEM = 1000;
