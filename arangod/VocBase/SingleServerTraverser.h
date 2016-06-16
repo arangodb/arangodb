@@ -32,7 +32,7 @@ class EdgeIndex;
 
 namespace traverser {
 
-class SingleServerTraverser : public Traverser {
+class SingleServerTraverser final : public Traverser {
 
   friend class SingleServerTraversalPath;
 
@@ -69,8 +69,6 @@ class SingleServerTraverser : public Traverser {
     std::unordered_set<std::string> _returnedVertices;
   };
 
-
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief callable class to load edges based on opts.
   //////////////////////////////////////////////////////////////////////////////
@@ -92,7 +90,6 @@ class SingleServerTraverser : public Traverser {
                  arangodb::velocypack::ValueLength*&, size_t&) override;
 
     void getAllEdges(std::string const&, std::unordered_set<std::string>&, size_t) override;
-
 
    private:
 
@@ -186,6 +183,8 @@ public:
   SingleServerTraverser(
       TraverserOptions&, Transaction*,
       std::unordered_map<size_t, std::vector<TraverserExpression*>> const*);
+  
+  ~SingleServerTraverser();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reset the traverser to use another start vertex
@@ -241,12 +240,9 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::velocypack::Builder _builder;
-
-  
-
+ 
 };
 } // namespace traverser
 } // namespace arangodb
-
 
 #endif

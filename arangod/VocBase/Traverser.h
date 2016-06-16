@@ -244,18 +244,6 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Traverser(arangodb::Transaction* trx)
-      : _readDocuments(0),
-        _filteredPaths(0),
-        _pruneNext(false),
-        _done(true),
-        _opts(trx),
-        _expressions(nullptr) {}
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Constructor. This is an abstract only class.
-  //////////////////////////////////////////////////////////////////////////////
-
   Traverser(TraverserOptions& opts,
             std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
                 expressions)
@@ -263,8 +251,22 @@ class Traverser {
         _filteredPaths(0),
         _pruneNext(false),
         _done(true),
+        _hasVertexConditions(false),
+        _hasEdgeConditions(false),
         _opts(opts),
-        _expressions(expressions) {}
+        _expressions(expressions) {
+    
+    TRI_ASSERT(_expressions != nullptr);
+    for (auto& it : *_expressions) {
+      for (auto& it2 : it.second) {
+        if (it2->isEdgeAccess) {
+          _hasEdgeConditions = true;
+        } else {
+          _hasVertexConditions = true;
+        }
+      }
+    }
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destructor
@@ -359,6 +361,13 @@ class Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _done;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not we have valid expressions
+  //////////////////////////////////////////////////////////////////////////////
+  
+  bool _hasVertexConditions;
+  bool _hasEdgeConditions;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief options for traversal
