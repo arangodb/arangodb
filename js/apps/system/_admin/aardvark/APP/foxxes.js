@@ -275,7 +275,7 @@ foxxRouter.post('/tests', function (req, res) {
 
 
 foxxRouter.post('/scripts/:name', function (req, res) {
-  const mount = decodeURIComponent(req.pathParams.mount);
+  const mount = decodeURIComponent(req.queryParams.mount);
   const name = req.pathParams.name;
   try {
     res.json(FoxxManager.runScript(name, mount, req.body));
