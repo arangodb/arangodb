@@ -630,6 +630,30 @@ The `res.send` method behaves very differently from how the method with the same
 
 Note that consecutive calls to `res.write` will append to the response body rather than replacing it like `res.send`.
 
+The `res.contentType` property is also no longer available. If you want to set the MIME type of the response body to an explicit value you should set the `content-type` header instead:
+
+Old:
+
+```js
+res.contentType = 'application/json';
+res.body = JSON.stringify(results);
+```
+
+New:
+
+```js
+res.set('content-type', 'application/json');
+res.body = JSON.stringify(results);
+```
+
+Or simply:
+
+```js
+// sets the content type to JSON
+// if it has not already been set
+res.json(results);
+```
+
 The `res.cookie` method now takes the `signed` options as part of the regular options object.
 
 Old:
