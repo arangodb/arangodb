@@ -49,6 +49,7 @@
 
       //fetch collection defined in router
       this.collection.fetch({
+        cache: false,
         success: function() {
           self.collection.whoAmI(callback);
         }
@@ -107,6 +108,7 @@
       }.bind(this);
       
       this.collection.fetch({
+        cache: false,
         success: function() {
           callbackFunction();
         }
@@ -193,6 +195,7 @@
     updateUserManagement: function() {
       var self = this;
       this.collection.fetch({
+        cache: false,
         success: function() {
           self.render();
         }
@@ -208,7 +211,9 @@
         e.currentTarget = $(e.currentTarget).find('img');
       }
 
-      this.collection.fetch();
+      this.collection.fetch({
+        cache: false
+      });
       var username = this.evaluateUserName($(e.currentTarget).attr("id"), '_edit-user');
       if (username === '') {
         username = $(e.currentTarget).attr('id');
@@ -275,6 +280,7 @@
     updateUserProfile: function() {
       var self = this;
       this.collection.fetch({
+        cache: false,
         success: function() {
           self.render();
         }
