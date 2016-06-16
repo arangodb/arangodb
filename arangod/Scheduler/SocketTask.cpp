@@ -122,13 +122,17 @@ bool SocketTask::fillReadBuffer() {
     return fillReadBuffer();
   }
 
-  if (myerrno != EWOULDBLOCK && myerrno != EAGAIN) {
+  // condition is required like this because g++ 6 will complain about 
+  //   if (myerrno != EWOULDBLOCK && myerrno != EAGAIN)
+  // having two identical branches (because EWOULDBLOCK == EAGAIN on Linux).
+  // however, posix states that there may be systems where EWOULDBLOCK != EAGAIN...
+  if (myerrno != EWOULDBLOCK && (EWOULDBLOCK == EAGAIN || myerrno != EAGAIN)) {
     LOG(DEBUG) << "read from socket failed with " << myerrno << ": " << strerror(myerrno);
 
     return false;
   }
 
-  TRI_ASSERT(myerrno == EWOULDBLOCK || myerrno == EAGAIN);
+  TRI_ASSERT(myerrno == EWOULDBLOCK || (EWOULDBLOCK != EAGAIN && myerrno == EAGAIN));
 
   // from man(2) read:
   // The  file  descriptor  fd  refers  to  a socket and has been marked
@@ -168,13 +172,13 @@ bool SocketTask::handleWrite() {
         return handleWrite();
       }
 
-      if (myerrno != EWOULDBLOCK || myerrno != EAGAIN) {
+      if (myerrno != EWOULDBLOCK && (EAGAIN == EWOULDBLOCK || myerrno != EAGAIN)) {
         LOG(DEBUG) << "writing to socket failed with " << myerrno << ": " << strerror(myerrno);
 
         return false;
       }
 
-      TRI_ASSERT(myerrno == EWOULDBLOCK || myerrno == EAGAIN);
+      TRI_ASSERT(myerrno == EWOULDBLOCK || (EWOULDBLOCK != EAGAIN && myerrno == EAGAIN));
       nr = 0;
     }
 

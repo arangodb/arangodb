@@ -148,6 +148,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/ReadWriteLockCPP11.cpp
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
+  Basics/StringHeap.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/ThreadPool.cpp

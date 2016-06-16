@@ -1114,8 +1114,7 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
                << "and reload it into this ArangoDB instance with arangorestore";
       TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
-
-      return nullptr;
+      FATAL_ERROR_EXIT();
     }
 
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);

@@ -218,6 +218,15 @@ module.exports = class FoxxService {
               error.cause = e;
             }
             if (logLevel) {
+              console[logLevel](`Service "${
+                service.mount
+              }" encountered error ${
+                e.statusCode || 500
+              } while handling ${
+                req.requestType
+              } ${
+                req.absoluteUrl()
+              }`);
               console[`${logLevel}Lines`](e.stack);
               let err = e.cause;
               while (err && err.stack) {
@@ -356,9 +365,9 @@ module.exports = class FoxxService {
   needsConfiguration() {
     const config = this.getConfiguration();
     const deps = this.getDependencies();
-    return _.any(config, function (cfg) {
+    return _.some(config, function (cfg) {
       return cfg.current === undefined && cfg.required !== false;
-    }) || _.any(deps, function (dep) {
+    }) || _.some(deps, function (dep) {
       return dep.current === undefined && dep.definition.required !== false;
     });
   }

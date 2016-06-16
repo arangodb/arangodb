@@ -24,7 +24,7 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-const dd = require('dedent');
+const internal = require('internal');
 const cluster = require('@arangodb/cluster');
 const createRouter = require('@arangodb/foxx/router');
 
@@ -33,8 +33,8 @@ module.exports = router;
 
 
 router.use((req, res, next) => {
-  if (global.AUTHENTICATION_ENABLED()) {
-    if (!req.user) {
+  if (internal.authenticationEnabled()) {
+    if (!req.arangoUser) {
       res.throw('unauthorized');
     }
   }

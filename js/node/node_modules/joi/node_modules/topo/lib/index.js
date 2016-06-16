@@ -1,11 +1,13 @@
+'use strict';
+
 // Load modules
 
-var Hoek = require('hoek');
+const Hoek = require('hoek');
 
 
 // Declare internals
 
-var internals = {};
+const internals = {};
 
 
 exports = module.exports = internals.Topo = function () {
@@ -17,26 +19,24 @@ exports = module.exports = internals.Topo = function () {
 
 internals.Topo.prototype.add = function (nodes, options) {
 
-    var self = this;
-
     options = options || {};
 
     // Validate rules
 
-    var before = [].concat(options.before || []);
-    var after = [].concat(options.after || []);
-    var group = options.group || '?';
-    var sort = options.sort || 0;                   // Used for merging only
+    const before = [].concat(options.before || []);
+    const after = [].concat(options.after || []);
+    const group = options.group || '?';
+    const sort = options.sort || 0;                   // Used for merging only
 
     Hoek.assert(before.indexOf(group) === -1, 'Item cannot come before itself:', group);
     Hoek.assert(before.indexOf('?') === -1, 'Item cannot come before unassociated items');
     Hoek.assert(after.indexOf(group) === -1, 'Item cannot come after itself:', group);
     Hoek.assert(after.indexOf('?') === -1, 'Item cannot come after unassociated items');
 
-    ([].concat(nodes)).forEach(function (node, i) {
+    ([].concat(nodes)).forEach((node, i) => {
 
-        var item = {
-            seq: self._items.length,
+        const item = {
+            seq: this._items.length,
             sort: sort,
             before: before,
             after: after,
@@ -44,12 +44,12 @@ internals.Topo.prototype.add = function (nodes, options) {
             node: node
         };
 
-        self._items.push(item);
+        this._items.push(item);
     });
 
     // Insert event
 
-    var error = this._sort();
+    const error = this._sort();
     Hoek.assert(!error, 'item', (group !== '?' ? 'added into group ' + group : ''), 'created a dependencies error');
 
     return this.nodes;
@@ -59,11 +59,11 @@ internals.Topo.prototype.add = function (nodes, options) {
 internals.Topo.prototype.merge = function (others) {
 
     others = [].concat(others);
-    for (var o = 0, ol = others.length; o < ol; ++o) {
-        var other = others[o];
+    for (let i = 0; i < others.length; ++i) {
+        const other = others[i];
         if (other) {
-            for (var i = 0, il = other._items.length; i < il; ++i) {
-                var item = Hoek.shallow(other._items[i]);
+            for (let j = 0; j < other._items.length; ++j) {
+                const item = Hoek.shallow(other._items[j]);
                 this._items.push(item);
             }
         }
@@ -72,11 +72,11 @@ internals.Topo.prototype.merge = function (others) {
     // Sort items
 
     this._items.sort(internals.mergeSort);
-    for (i = 0, il = this._items.length; i < il; ++i) {
+    for (let i = 0; i < this._items.length; ++i) {
         this._items[i].seq = i;
     }
 
-    var error = this._sort();
+    const error = this._sort();
     Hoek.assert(!error, 'merge created a dependencies error');
 
     return this.nodes;
@@ -93,14 +93,14 @@ internals.Topo.prototype._sort = function () {
 
     // Construct graph
 
-    var groups = {};
-    var graph = {};
-    var graphAfters = {};
+    const groups = {};
+    const graph = {};
+    const graphAfters = {};
 
-    for (var i = 0, il = this._items.length; i < il; ++i) {
-        var item = this._items[i];
-        var seq = item.seq;                         // Unique across all items
-        var group = item.group;
+    for (let i = 0; i < this._items.length; ++i) {
+        const item = this._items[i];
+        const seq = item.seq;                         // Unique across all items
+        const group = item.group;
 
         // Determine Groups
 
@@ -113,25 +113,25 @@ internals.Topo.prototype._sort = function () {
 
         // Build second intermediary graph with 'after'
 
-        var after = item.after;
-        for (var j = 0, jl = after.length; j < jl; ++j) {
+        const after = item.after;
+        for (let j = 0; j < after.length; ++j) {
             graphAfters[after[j]] = (graphAfters[after[j]] || []).concat(seq);
         }
     }
 
     // Expand intermediary graph
 
-    var graphNodes = Object.keys(graph);
-    for (i = 0, il = graphNodes.length; i < il; ++i) {
-        var node = graphNodes[i];
-        var expandedGroups = [];
+    let graphNodes = Object.keys(graph);
+    for (let i = 0; i < graphNodes.length; ++i) {
+        const node = graphNodes[i];
+        const expandedGroups = [];
 
-        var graphNodeItems = Object.keys(graph[node]);
-        for (j = 0, jl = graphNodeItems.length; j < jl; ++j) {
-            group = graph[node][graphNodeItems[j]];
+        const graphNodeItems = Object.keys(graph[node]);
+        for (let j = 0; j < graphNodeItems.length; ++j) {
+            const group = graph[node][graphNodeItems[j]];
             groups[group] = groups[group] || [];
 
-            for (var k = 0, kl = groups[group].length; k < kl; ++k) {
+            for (let k = 0; k < groups[group].length; ++k) {
 
                 expandedGroups.push(groups[group][k]);
             }
@@ -141,13 +141,13 @@ internals.Topo.prototype._sort = function () {
 
     // Merge intermediary graph using graphAfters into final graph
 
-    var afterNodes = Object.keys(graphAfters);
-    for (i = 0, il = afterNodes.length; i < il; ++i) {
-        group = afterNodes[i];
+    const afterNodes = Object.keys(graphAfters);
+    for (let i = 0; i < afterNodes.length; ++i) {
+        const group = afterNodes[i];
 
         if (groups[group]) {
-            for (j = 0, jl = groups[group].length; j < jl; ++j) {
-                node = groups[group][j];
+            for (let j = 0; j < groups[group].length; ++j) {
+                const node = groups[group][j];
                 graph[node] = graph[node].concat(graphAfters[group]);
             }
         }
@@ -155,29 +155,29 @@ internals.Topo.prototype._sort = function () {
 
     // Compile ancestors
 
-    var children;
-    var ancestors = {};
+    let children;
+    const ancestors = {};
     graphNodes = Object.keys(graph);
-    for (i = 0, il = graphNodes.length; i < il; ++i) {
-        node = graphNodes[i];
+    for (let i = 0; i < graphNodes.length; ++i) {
+        const node = graphNodes[i];
         children = graph[node];
 
-        for (j = 0, jl = children.length; j < jl; ++j) {
+        for (let j = 0; j < children.length; ++j) {
             ancestors[children[j]] = (ancestors[children[j]] || []).concat(node);
         }
     }
 
     // Topo sort
 
-    var visited = {};
-    var sorted = [];
+    const visited = {};
+    const sorted = [];
 
-    for (i = 0, il = this._items.length; i < il; ++i) {
-        var next = i;
+    for (let i = 0; i < this._items.length; ++i) {
+        let next = i;
 
         if (ancestors[i]) {
             next = null;
-            for (j = 0, jl = this._items.length; j < jl; ++j) {
+            for (let j = 0; j < this._items.length; ++j) {
                 if (visited[j] === true) {
                     continue;
                 }
@@ -186,10 +186,10 @@ internals.Topo.prototype._sort = function () {
                     ancestors[j] = [];
                 }
 
-                var shouldSeeCount = ancestors[j].length;
-                var seenCount = 0;
-                for (var l = 0, ll = shouldSeeCount; l < ll; ++l) {
-                    if (sorted.indexOf(ancestors[j][l]) >= 0) {
+                const shouldSeeCount = ancestors[j].length;
+                let seenCount = 0;
+                for (let k = 0; k < shouldSeeCount; ++k) {
+                    if (sorted.indexOf(ancestors[j][k]) >= 0) {
                         ++seenCount;
                     }
                 }
@@ -212,17 +212,16 @@ internals.Topo.prototype._sort = function () {
         return new Error('Invalid dependencies');
     }
 
-    var seqIndex = {};
-    for (i = 0, il = this._items.length; i < il; ++i) {
-
-        item = this._items[i];
+    const seqIndex = {};
+    for (let i = 0; i < this._items.length; ++i) {
+        const item = this._items[i];
         seqIndex[item.seq] = item;
     }
 
-    var sortedNodes = [];
-    this._items = sorted.map(function (value) {
+    const sortedNodes = [];
+    this._items = sorted.map((value) => {
 
-        var sortedItem = seqIndex[value];
+        const sortedItem = seqIndex[value];
         sortedNodes.push(sortedItem.node);
         return sortedItem;
     });

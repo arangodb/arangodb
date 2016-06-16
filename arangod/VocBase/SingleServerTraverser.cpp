@@ -52,9 +52,7 @@ static int FetchDocumentById(arangodb::Transaction* trx,
   std::string col = id.substr(0, pos);
   trx->addCollectionAtRuntime(col);
   builder.clear();
-  builder.openObject();
-  builder.add(arangodb::StaticStrings::KeyString, VPackValue(id.substr(pos + 1)));
-  builder.close();
+  builder.add(VPackValue(id.substr(pos + 1)));
 
   int res = trx->documentFastPath(col, builder.slice(), result);
 
@@ -432,7 +430,7 @@ void SingleServerTraverser::EdgeGetter::getEdge(std::string const& startVertex,
 }
 
 void SingleServerTraverser::EdgeGetter::getAllEdges(
-    std::string const& startVertex, std::vector<std::string>& edges,
+    std::string const& startVertex, std::unordered_set<std::string>& edges,
     size_t depth) {
   size_t idxId = 0;
   std::string eColName;
@@ -467,7 +465,7 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
         std::string id = _trx->extractIdString(edge);
         if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
           // test if edge is already on this path
-          auto found = std::find(edges.begin(), edges.end(), id);
+          auto found = edges.find(id);
           if (found != edges.end()) {
             // This edge is already on the path, next
             continue;
@@ -483,7 +481,7 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
         VPackBuilder tmpBuilder = VPackBuilder::clone(edge);
         _traverser->_edges.emplace(id, tmpBuilder.steal());
 
-        edges.emplace_back(std::move(id));
+        edges.emplace(std::move(id));
       }
     }
   }

@@ -76,7 +76,7 @@ function Model(attributes) {
 
   if (this.schema) {
     if (this.schema.isJoi) {
-      this.schema = _.object(_.map(this.schema._inner.children, function (prop) {
+      this.schema = _.fromPairs(_.map(this.schema._inner.children, function (prop) {
         return [prop.key, prop.schema];
       }));
     }
@@ -84,8 +84,7 @@ function Model(attributes) {
       _.union(_.keys(this.schema), _.keys(attributes)),
       function (key) {
         this.set(key, attributes && attributes[key]);
-      },
-      this
+      }.bind(this)
     );
   } else if (attributes) {
     this.attributes = _.clone(attributes);
@@ -112,7 +111,7 @@ Object.assign(Model.prototype, {
     if (is.object(attributeName)) {
       _.each(attributeName, function (value, key) {
         this.set(key, value);
-      }, this);
+      }.bind(this));
       return this;
     }
 

@@ -46,7 +46,7 @@ class AuthEntry {
 
   AuthEntry(std::string const& username, std::string const& passwordMethod,
             std::string const& passwordSalt, std::string const& passwordHash,
-            std::unordered_map<std::string, AuthLevel> databases, AuthLevel allDatabases,
+            std::unordered_map<std::string, AuthLevel> const& databases, AuthLevel allDatabases,
             bool active, bool mustChange)
       : _username(username),
         _passwordMethod(passwordMethod),

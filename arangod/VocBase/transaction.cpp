@@ -176,6 +176,8 @@ static char const* StatusTransaction(const TRI_transaction_status_e status) {
 static void FreeOperations(TRI_transaction_t* trx) {
   bool const mustRollback = (trx->_status == TRI_TRANSACTION_ABORTED);
   bool const isSingleOperation = IsSingleOperationTransaction(trx);
+      
+  std::unordered_map<TRI_voc_fid_t, std::pair<int64_t, int64_t>> stats;
 
   for (auto& trxCollection : trx->_collections) {
     if (trxCollection->_operations == nullptr) {
@@ -196,7 +198,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
     } else {
       // update datafile statistics for all operations
       // pair (number of dead markers, size of dead markers)
-      std::unordered_map<TRI_voc_fid_t, std::pair<int64_t, int64_t>> stats;
+      stats.clear();
 
       for (auto it = trxCollection->_operations->rbegin();
            it != trxCollection->_operations->rend(); ++it) {

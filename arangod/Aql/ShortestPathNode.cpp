@@ -24,12 +24,12 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ShortestPathNode.h"
+#include "ShortestPathNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Indexes/Index.h"
-#include "V8Server/V8Traverser.h"
 #include "Utils/CollectionNameResolver.h"
+#include "V8Server/V8Traverser.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -57,7 +57,7 @@ static void parseNodeInput(AstNode const* node, std::string& id,
   }
 }
 
-static TRI_edge_direction_e parseDirection (uint64_t const dirNum) {
+static TRI_edge_direction_e parseDirection (uint64_t dirNum) {
   switch (dirNum) {
     case 0:
       return TRI_EDGE_ANY;
@@ -123,7 +123,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
                                        msg);
       }
       _graphJson.add(arangodb::basics::Json(eColName));
-      _edgeColls.push_back(eColName);
+      _edgeColls.push_back(std::move(eColName));
     }
   } else {
     if (_edgeColls.empty()) {

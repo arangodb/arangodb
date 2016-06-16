@@ -203,7 +203,7 @@
 ///   Will be raised when there is an attempt to delete a non-existing endpoint.
 /// - 1232: @LIT{invalid key generator}
 ///   Will be raised when an invalid key generator description is used.
-/// - 1233: @LIT{edge attribute missing}
+/// - 1233: @LIT{edge attribute missing or invalid}
 ///   will be raised when the _from or _to values of an edge are undefined or
 ///   contain an invalid value.
 /// - 1234: @LIT{index insertion warning - attribute missing in document}
@@ -1534,7 +1534,7 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1233: ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE
 ///
-/// edge attribute missing
+/// edge attribute missing or invalid
 ///
 /// will be raised when the _from or _to values of an edge are undefined or
 /// contain an invalid value.

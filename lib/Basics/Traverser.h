@@ -59,9 +59,8 @@ struct EdgeGetter {
                        edgeItem*&, size_t&) = 0;
 
   virtual void getAllEdges(vertexIdentifier const&,
-                           std::vector<edgeIdentifier>&, size_t) = 0;
+                           std::unordered_set<edgeIdentifier>&, size_t) = 0;
 };
-
 
 
 template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
@@ -72,7 +71,6 @@ class PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to get the next edge from index.
   //////////////////////////////////////////////////////////////////////////////
-
 
   EdgeGetter<edgeIdentifier, vertexIdentifier, edgeItem>* _edgeGetter;
 
@@ -125,7 +123,7 @@ class PathEnumerator {
   ///        any path having this prefix anymore.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void prune()  = 0;
+  virtual void prune() = 0;
 };
 
 template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
@@ -242,7 +240,7 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
     vertexIdentifier vertex;
 
    private:
-    PathStep(){};
+    PathStep() {}
 
    public:
     PathStep(vertexIdentifier const& vertex) : sourceIdx(0), vertex(vertex) {}
@@ -303,7 +301,7 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
   /// @brief Vector storing the position at current search depth
   //////////////////////////////////////////////////////////////////////////////
 
-   std::vector<edgeIdentifier> _tmpEdges;
+   std::unordered_set<edgeIdentifier> _tmpEdges;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Marker for the search depth. Used to abort searching.
@@ -462,26 +460,25 @@ class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdent
 
   void computeEnumeratedPath(size_t index) {
     TRI_ASSERT(index < _schreier.size());
-    std::deque<edgeIdentifier> edges;
-    std::deque<vertexIdentifier> vertices;
+    std::vector<edgeIdentifier> edges;
+    std::vector<vertexIdentifier> vertices;
     PathStep* current = nullptr;
     while (index != 0) {
       current = _schreier[index];
-      vertices.push_front(current->vertex);
-      edges.push_front(current->edge);
+      vertices.push_back(current->vertex);
+      edges.push_back(current->edge);
       index = current->sourceIdx;
     }
     current = _schreier[0];
-    vertices.push_front(current->vertex);
+    vertices.push_back(current->vertex);
 
     // Computed path. Insert it into the path enumerator.
     this->_enumeratedPath.edges.clear();
     this->_enumeratedPath.vertices.clear();
-    std::copy(vertices.begin(), vertices.end(), std::back_inserter(this->_enumeratedPath.vertices));
-    std::copy(edges.begin(), edges.end(), std::back_inserter(this->_enumeratedPath.edges));
+    std::copy(vertices.rbegin(), vertices.rend(), std::back_inserter(this->_enumeratedPath.vertices));
+    std::copy(edges.rbegin(), edges.rend(), std::back_inserter(this->_enumeratedPath.edges));
   }
 };
-
 
 }
 }

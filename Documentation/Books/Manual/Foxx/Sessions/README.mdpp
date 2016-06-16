@@ -10,7 +10,7 @@ The session middleware adds the `session` and `sessionStorage` properties to the
 // Create a session middleware
 const sessions = sessionsMiddleware({
   storage: module.context.collection('sessions'),
-  transports: ['header', 'cookie']
+  transport: ['header', 'cookie']
 });
 // First enable the middleware for this service
 module.context.use(sessions);

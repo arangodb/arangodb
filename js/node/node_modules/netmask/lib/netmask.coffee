@@ -20,12 +20,13 @@ class Netmask
         unless mask
             # try to find the mask in the net (i.e.: 1.2.3.4/24 or 1.2.3.4/255.255.255.0)
             [net, mask] = net.split('/', 2)
-            unless mask
-                switch net.split('.').length
-                    when 1 then mask = 8
-                    when 2 then mask = 16
-                    when 3 then mask = 24
-                    when 4 then mask = 32
+        unless mask
+            switch net.split('.').length
+                when 1 then mask = 8
+                when 2 then mask = 16
+                when 3 then mask = 24
+                when 4 then mask = 32
+                else throw new Error("Invalid net address: #{net}")
 
         if typeof mask is 'string' and mask.indexOf('.') > -1
             # Compute bitmask, the netmask as a number of bits in the network portion of the address for this block (eg.: 24)
@@ -40,7 +41,9 @@ class Netmask
         else if mask
             # The mask was passed as bitmask, compute the mask as long from it
             @bitmask = parseInt(mask, 10)
-            @maskLong = (0xffffffff << (32 - @bitmask)) >>> 0
+            @maskLong = 0
+            if @bitmask > 0
+                @maskLong = (0xffffffff << (32 - @bitmask)) >>> 0
         else
             throw new Error("Invalid mask: empty")
 
@@ -72,7 +75,7 @@ class Netmask
             ip = new Netmask(ip)
 
         if ip instanceof Netmask
-            return @contains(ip.base) and @contains(ip.broadcast)
+            return @contains(ip.base) and @contains((ip.broadcast || ip.last))
         else
             return (ip2long(ip) & @maskLong) >>> 0 == ((@netLong & @maskLong)) >>> 0
 

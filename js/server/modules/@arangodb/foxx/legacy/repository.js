@@ -79,7 +79,7 @@ function Repository(collection, opts) {
   if (this.indexes) {
     _.each(this.indexes, function (index) {
       this.collection.ensureIndex(index);
-    }, this);
+    }.bind(this));
   }
 
   EventEmitter.call(this);
@@ -90,7 +90,7 @@ function Repository(collection, opts) {
       return;
     }
     this.on(eventName, listener.bind(this.model));
-  }, this);
+  }.bind(this));
 }
 
 
@@ -145,7 +145,7 @@ Object.assign(Repository.prototype, {
     var rawDocuments = this.collection.byExample(example).toArray();
     return _.map(rawDocuments, function (rawDocument) {
       return new this.model(rawDocument);
-    }, this);
+    }.bind(this));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +172,7 @@ Object.assign(Repository.prototype, {
     }
     return _.map(rawDocuments.toArray(), function (rawDocument) {
       return new this.model(rawDocument);
-    }, this);
+    }.bind(this));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -322,7 +322,7 @@ var indexPrototypes = {
       var rawDocuments = this.collection.range(attribute, left, right).toArray();
       return _.map(rawDocuments, function (rawDocument) {
         return new this.model(rawDocument);
-      }, this);
+      }.bind(this));
     }
   },
   geo: {
@@ -355,7 +355,7 @@ var indexPrototypes = {
           model[distance] = rawDocument._distance;
         }
         return model;
-      }, this);
+      }.bind(this));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,7 +386,7 @@ var indexPrototypes = {
           model[distance] = rawDocument._distance;
         }
         return model;
-      }, this);
+      }.bind(this));
     }
   },
   fulltext: {
@@ -404,7 +404,7 @@ var indexPrototypes = {
       }
       return _.map(rawDocuments.toArray(), function (rawDocument) {
         return new this.model(rawDocument);
-      }, this);
+      }.bind(this));
     }
   }
 };

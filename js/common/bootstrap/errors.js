@@ -97,7 +97,7 @@
     "ERROR_ARANGO_USE_SYSTEM_DATABASE" : { "code" : 1230, "message" : "operation only allowed in system database" },
     "ERROR_ARANGO_ENDPOINT_NOT_FOUND" : { "code" : 1231, "message" : "endpoint not found" },
     "ERROR_ARANGO_INVALID_KEY_GENERATOR" : { "code" : 1232, "message" : "invalid key generator" },
-    "ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE" : { "code" : 1233, "message" : "edge attribute missing" },
+    "ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE" : { "code" : 1233, "message" : "edge attribute missing or invalid" },
     "ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING" : { "code" : 1234, "message" : "index insertion warning - attribute missing in document" },
     "ERROR_ARANGO_INDEX_CREATION_FAILED" : { "code" : 1235, "message" : "index creation failed" },
     "ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT" : { "code" : 1236, "message" : "write-throttling timeout" },

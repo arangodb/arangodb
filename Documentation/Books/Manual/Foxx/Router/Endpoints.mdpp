@@ -153,7 +153,7 @@ If the endpoint is a child router, all routes of that router will use this respo
 
   If the value is a schema or a model with a schema, the actual schema will not be used to validate the response body and only serves to document the response in more detail in the API documentation.
 
-  If the value is a model or a schema and the mime type has been omitted, the mime type will default to JSON instead.
+  If the value is a model or a schema and the MIME type has been omitted, the MIME type will default to JSON instead.
 
   If the value is explicitly set to `null` and the status code has been omitted, the status code will default to `204` ("no content") instead of `200`.
 
@@ -161,11 +161,11 @@ If the endpoint is a child router, all routes of that router will use this respo
 
 * **mimes**: `Array<string>` (optional)
 
-  An array of mime types the route might respond with for this status code.
+  An array of MIME types the route might respond with for this status code.
 
-  Common non-mime aliases like "json" or "html" are also supported and will be expanded to the appropriate mime type (e.g. "application/json" and "text/html").
+  Common non-mime aliases like "json" or "html" are also supported and will be expanded to the appropriate MIME type (e.g. "application/json" and "text/html").
 
-  When using the `response.send` method the response body will be converted to the appropriate mime type if possible.
+  When using the `response.send` method the response body will be converted to the appropriate MIME type if possible.
 
 * **description**: `string` (optional)
 

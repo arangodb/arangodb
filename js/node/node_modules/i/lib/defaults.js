@@ -12,7 +12,7 @@ module.exports = function (inflect) {
   inflect.plural(/([ti])um$/i, '$1a');
   inflect.plural(/([ti])a$/i, '$1a');
   inflect.plural(/sis$/i, 'ses');
-  inflect.plural(/(?:([^f])fe|([lr])f)$/i, '$1ves');
+  inflect.plural(/(?:([^fa])fe|(?:(oa)f)|([lr])f)$/i, '$1ves');
   inflect.plural(/(hive)$/i, '$1s');
   inflect.plural(/([^aeiouy]|qu)y$/i, '$1ies');
   inflect.plural(/(x|ch|ss|sh)$/i, '$1es');
@@ -23,7 +23,6 @@ module.exports = function (inflect) {
   inflect.plural(/^(oxen)$/i, '$1');
   inflect.plural(/(quiz)$/i, '$1zes');
 
-
   inflect.singular(/s$/i, '');
   inflect.singular(/(n)ews$/i, '$1ews');
   inflect.singular(/([ti])a$/i, '$1um');
@@ -32,6 +31,7 @@ module.exports = function (inflect) {
   inflect.singular(/([^f])ves$/i, '$1fe');
   inflect.singular(/(hive)s$/i, '$1');
   inflect.singular(/(tive)s$/i, '$1');
+  inflect.singular(/(oave)s$/i, 'oaf');
   inflect.singular(/([lr])ves$/i, '$1f');
   inflect.singular(/([^aeiouy]|qu)ies$/i, '$1y');
   inflect.singular(/(s)eries$/i, '$1eries');
@@ -58,6 +58,11 @@ module.exports = function (inflect) {
   inflect.irregular('move', 'moves');
   inflect.irregular('cow', 'kine');
   inflect.irregular('zombie', 'zombies');
+  inflect.irregular('oaf', 'oafs', true);
+  inflect.irregular('jefe', 'jefes');
+  inflect.irregular('save', 'saves');
+  inflect.irregular('safe', 'safes');
+  inflect.irregular('fife', 'fifes');
 
-  inflect.uncountable(['equipment', 'information', 'rice', 'money', 'species', 'series', 'fish', 'sheep', 'jeans']);
+  inflect.uncountable(['equipment', 'information', 'rice', 'money', 'species', 'series', 'fish', 'sheep', 'jeans', 'sushi']);
 }

@@ -59,7 +59,7 @@ module.exports = {
 
 If you previously did not define the `defaultDocument` field, please note that in ArangoDB 3.0 the field will no longer default to the value `index.html` when omitted:
 
-Before:
+Old:
 
 ```json
 {
@@ -67,7 +67,7 @@ Before:
 }
 ```
 
-After:
+New:
 
 ```json
 {
@@ -77,7 +77,7 @@ After:
 
 This also means it is no longer necessary to specify the `defaultDocument` field with an empty value to prevent the redirect and be able to serve requests at the `/` (root) path of the mount point:
 
-Before:
+Old:
 
 ```json
 {
@@ -85,7 +85,7 @@ Before:
 }
 ```
 
-After:
+New:
 
 ```json
 {
@@ -99,7 +99,7 @@ The `assets` field is no longer supported in ArangoDB 3.0 outside of legacy comp
 
 If you previously used the field to serve individual files as-is you can simply use the `files` field instead:
 
-Before:
+Old:
 
 ```json
 {
@@ -112,7 +112,7 @@ Before:
 }
 ```
 
-After:
+New:
 
 ```json
 {
@@ -163,7 +163,7 @@ Previously Foxx was heavily built around the concept of repositories and models,
 
 Repositories mostly wrapped methods that already existed on ArangoDB collection objects and primarily dealt with converting between plain ArangoDB documents and Foxx model instances. In ArangoDB 3.0 you can simply use these collections directly and treat documents as plain JavaScript objects.
 
-Before:
+Old:
 
 ```js
 'use strict';
@@ -181,7 +181,7 @@ res.json(models.map(function (model) {
 }));
 ```
 
-After:
+New:
 
 ```js
 'use strict';
@@ -199,7 +199,7 @@ The main purpose of models in ArangoDB 2.x was to validate incoming data using j
 
 If you previously relied on the automatic validation of Foxx model instances when setting attributes or instantiating models from untrusted data, you can simply use the schema's `validate` method directly.
 
-Before:
+Old:
 
 ```js
 'use strict';
@@ -221,7 +221,7 @@ if (!model.isValid) {
 }
 ```
 
-After:
+New:
 
 ```js
 'use strict';
@@ -248,7 +248,7 @@ While most use cases for models can now be replaced with plain joi schemas, ther
 
 A model in Foxx now refers to a plain JavaScript object with an optional `schema` attribute and the optional methods `forClient` and `fromClient`. Models can be used instead of plain joi schemas to define request and response bodies but there are no model "instances" in ArangoDB 3.0.
 
-Before:
+Old:
 
 ```js
 'use strict';
@@ -271,7 +271,7 @@ ctrl.get(/* ... */)
 .bodyParam('body', {type: MyModel});
 ```
 
-After:
+New:
 
 ```js
 'use strict';
@@ -301,7 +301,7 @@ Note that even in 2.x these events would not fire when using queries or manipula
 
 This behaviour is no longer available in ArangoDB 3.0 but can be emulated by using an `EventEmitter` directly if it is not possible to solve the problem differently:
 
-Before:
+Old:
 
 ```js
 'use strict';
@@ -321,7 +321,7 @@ myRepo.remove(model);
 // -> "myName was removed successfully"
 ```
 
-After:
+New:
 
 ```js
 'use strict';
@@ -357,25 +357,296 @@ afterRemove(doc);
 
 !SECTION Controllers vs routers
 
-TODO
+Foxx Controllers have been replaced with [routers](Router/README.md). This is more than a cosmetic change as there are significant differences in behaviour:
+
+Controllers were automatically mounted when the file defining them was executed. Routers need to be explicitly mounted using the `module.context.use` method. Routers can also be exported, imported and even nested. This makes it easier to split up complex routing trees across multiple files.
+
+Old:
+
+```js
+'use strict';
+const Foxx = require('org/arangodb/foxx');
+const ctrl = new Foxx.Controller(applicationContext);
+
+ctrl.get('/hello', function (req, res) {
+  // ...
+});
+```
+
+New:
+
+```js
+'use strict';
+const createRouter = require('org/arangodb/foxx/router');
+const router = createRouter();
+module.context.use(router);
+
+router.get('/hello', function (req, res) {
+  // ...
+});
+```
+
+Some general changes in behaviour that might trip you up:
+
+* When specifying path parameters with schemas Foxx will now ignore the route if the schema does not match (i.e. `/hello/foxx` will no longer match `/hello/:num` if `num` specifies a schema that doesn't match the value `"foxx"`). With controllers this could previously result in users seeing a 400 (bad request) error when they should instead be served a 404 (not found) response.
+
+* When a request is made with an HTTP verb not supported by an endpoint, Foxx will now respond with a 405 (method not allowed) error with an appropriate `Allowed` header listing the supported HTTP verbs for that endpoint.
+
+* Foxx will no longer parse your JSDoc comments to generate route documentation (use the `summary` and `description` methods of the endpoint instead).
+
+* The `apiDocumentation` method now lives on the service context and behaves slightly differently.
+
+* There is no router equivalent for the `activateAuthentication` and `activateSessions` methods. Instead you should use the session middleware (see the section on sessions below).
+
+* There is no `del` alias for the `delete` method on routers. It has always been safe to use keywords as method names in Foxx, so the use of this alias was already discouraged before.
+
+* The `allRoutes` proxy is no lot available on routers but can easily be replaced with middleware or child routers.
+
+!SUBSECTION Before, after and around
+
+The `before`, `after` and `around` methods can easily be replaced by middleware:
+
+Old:
+
+```js
+let start;
+ctrl.before(function (req, res) {
+  start = Date.now();
+});
+ctrl.after(function (req, res) {
+  console.log('Request handled in ', (Date.now() - start), 'ms');
+});
+```
+
+New:
+
+```js
+router.use(function (req, res, next) {
+  let start = Date.now();
+  next();
+  console.log('Request handled in ', (Date.now() - start), 'ms');
+});
+```
+
+Note that unlike `around` middleware receives the `next` function as the *third* argument (the "opts" argument has no equivalent).
 
 !SUBSECTION The request context
 
-TODO
+When defining a route on a controller the controller would return an object called *request context*. Routers return a similar object called *endpoint*. Routers also return endpoints when mounting child routers or middleware, as does the `use` method of the service context.
+
+The main differences between the new endpoints and the objects returned by controllers in previous versions of ArangoDB are:
+
+* `bodyParam` is now simply called `body`; it is no longer neccessary or possible to give the body a name and the request body will not show up in the request parameters. It's also possible to specify a MIME type
+
+* `body`, `queryParam` and `pathParam` now take position arguments instead of an object. For specifics see the [endpoint documentation](Router/Endpoints.md).
+
+* `notes` is now called `description` and takes a single string argument.
+
+* `onlyIf` and `onlyIfAuthenticated` are no longer available; they can be emulated with middleware if necessary:
+
+Old:
+
+```js
+ctrl.get(/* ... */)
+.onlyIf(function (req) {
+  if (!req.user) {
+    throw new Error('Not authenticated!');
+  }
+});
+```
+
+New:
+
+```js
+router.use(function (req, res, next) {
+  if (!req.arangoUser) {
+    res.throw(403, 'Not authenticated!');
+  }
+  next();
+});
+
+router.get(/* ... */);
+```
+
+!SUBSECTION Error handling
+
+The `errorResponse` method provided by controller request contexts has no equivalent in router endpoints. If you want to handle specific error types with specific status codes you need to catch them explicitly, either in the route or in a middleware:
+
+Old:
+
+```js
+ctrl.get('/puppies', function (req, res) {
+  // Exception is thrown here
+})
+.errorResponse(TooManyPuppiesError, 400, 'Something went wrong!');
+```
+
+New:
+
+```js
+ctrl.get('/puppies', function (req, res) {
+  try {
+    // Exception is thrown here
+  } catch (e) {
+    if (!(e instanceof TooManyPuppiesError)) {
+      throw e;
+    }
+    res.throw(400, 'Something went wrong!');
+  }
+})
+// The "error" method merely documents the meaning
+// of the status code and has no other effect.
+.error(400, 'Thrown if there are too many puppies.');
+```
+
+Note that errors created with `http-errors` are still handled by Foxx intelligently. In fact `res.throw` is just a helper method for creating and throwing these errors.
 
 !SUBSECTION Request objects
 
-TODO
+The names of some attributes of the request object have been adjusted to more closely align with those of the corresponding methods on the endpoint objects and established conventions in other JavaScript frameworks:
+
+* `req.urlParameters` is now called `req.pathParams`
+
+* `req.parameters` is now called `req.queryParams`
+
+* `req.requestType` is now called `req.method`
+
+* `req.compatibility` is now called `req.arangoVersion`
+
+* `req.user` is now called `req.arangoUser`
+
+Some attributes have been removed:
+
+* `req.cookies` has been removed entirely (use `req.cookie(name)`)
+
+* `req.requestBody` has been removed entirely (see below)
+
+Additionally the `req.server` and `req.client` attributes are no longer available. The information is now exposed in a way that can (optionally) transparently handle proxy forwarding headers:
+
+* `req.hostname` defaults to `req.server.address`
+
+* `req.port` defaults to `req.server.port`
+
+* `req.remoteAddress` defaults to `client.address`
+
+* `req.remotePort` defaults to `client.port`
+
+Finally, the `req.cookie` method now takes the `signed` options directly.
+
+Old:
+
+```js
+const sid = req.cookie('sid', {
+  signed: {
+    secret: 'keyboardcat',
+    algorithm: 'sha256'
+  }
+});
+```
+
+New:
+
+```js
+const sid = req.cookie('sid', {
+  secret: 'keyboardcat',
+  algorithm: 'sha256'
+});
+```
+
+!SUBSUBSECTION Request bodies
+
+The `req.body` is no longer a method and no longer automatically parses JSON request bodies unless a request body was defined. The `req.rawBody` now corresponds to the `req.rawBodyBuffer` of ArangoDB 2.x and is also no longer a method.
+
+Old:
+
+```js
+ctrl.post('/', function (req, res) {
+  const data = req.body();
+  // ...
+});
+```
+
+New:
+
+```js
+router.post('/', function (req, res) {
+  const data = req.body;
+  // ...
+})
+.body(['json']);
+```
+
+Or simply:
+
+```js
+const joi = require('joi');
+router.post('/', function (req, res) {
+  const data = req.body;
+  // ...
+})
+.body(joi.object().optional());
+```
+
+!SUBSUBSECTION Multipart requests
+
+The `req.requestParts` method has been removed entirely. If you need to accept multipart request bodies, you can simply define the request body using a multipart MIME type like `multipart/form-data`:
+
+Old:
+
+```js
+ctrl.post('/', function (req, res) {
+  const parts = req.requestParts();
+  // ...
+});
+```
+
+New:
+
+```js
+router.post('/', function (req, res) {
+  const parts = req.body;
+  // ...
+})
+.body(['multipart/form-data']);
+```
 
 !SUBSECTION Response objects
 
-TODO
+The response object has a lot of new methods in ArangoDB 3.0 but otherwise remains similar to the response object of previous versions:
+
+The `res.send` method behaves very differently from how the method with the same name behaved in ArangoDB 2.x: the conversion now takes the response body definition of the route into account. There is a new method `res.write` that implements the old behaviour.
+
+Note that consecutive calls to `res.write` will append to the response body rather than replacing it like `res.send`.
+
+The `res.cookie` method now takes the `signed` options as part of the regular options object.
+
+Old:
+
+```js
+res.cookie('sid', 'abcdef', {
+  ttl: 60 * 60,
+  signed: {
+    secret: 'keyboardcat',
+    algorithm: 'sha256'
+  }
+});
+```
+
+New:
+
+```js
+res.cookie('sid', 'abcdef', {
+  ttl: 60 * 60,
+  secret: 'keyboardcat',
+  algorithm: 'sha256'
+});
+```
 
 !SUBSECTION Dependency injection
 
-There is no equivalent of the `addInjector` method available in ArangoDB 2.x controllers. Most use cases can be solved by simply using plain variables but if 
+There is no equivalent of the `addInjector` method available in ArangoDB 2.x controllers. Most use cases can be solved by simply using plain variables but if you need something more flexible you can also use middleware:
 
-Before:
+Old:
 
 ```js
 ctrl.addInjector('magicNumber', function () {
@@ -387,7 +658,7 @@ ctrl.get('/', function (req, res, injected) {
 });
 ```
 
-After:
+New:
 
 ```js
 function magicMiddleware(name) {
@@ -424,12 +695,113 @@ router.get('/', function (req, res) {
 
 !SECTION Sessions
 
-TODO
+The `ctrl.activateSessions` method and the related `util-sessions-local` Foxx service have been replaced with the [Foxx sessions](Sessions/README.md) middleware. It is no longer possible to use the built-in session storage but you can simply pass in any document collection directly.
 
-!SECTION Auth, users and OAuth2
+Old:
 
-TODO
+```js
+const localSessions = applicationContext.dependencies.localSessions;
+const sessionStorage = localSessions.sessionStorage;
+ctrl.activateSessions({
+  sessionStorage: sessionStorage,
+  cookie: {secret: 'keyboardcat'}
+});
+
+ctrl.destroySession('/logout', function (req, res) {
+  res.json({message: 'Goodbye!'});
+});
+```
+
+New:
+
+```js
+const sessionMiddleware = require('@arangodb/foxx/sessions');
+const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+router.use(sessionMiddleware({
+  storage: module.context.collection('sessions'),
+  transport: cookieTransport('keyboardcat')
+}));
+
+router.post('/logout', function (req, res) {
+  req.sessionStorage.clear(req.session);
+  res.json({message: 'Goodbye!'});
+});
+```
+
+!SECTION Auth and OAuth2
+
+The `util-simple-auth` and `util-oauth2` Foxx services have been replaced with the [Foxx auth](Auth.md) and [Foxx OAuth2](OAuth2.md) modules. It is no longer necessary to install these services as dependencies in order to use the functionality.
+
+Old:
+
+```js
+'use strict';
+const auth = applicationContext.dependencies.simpleAuth;
+
+// ...
+
+const valid = auth.verifyPassword(authData, password);
+```
+
+New:
+
+```js
+'use strict';
+const createAuth = require('@arangodb/foxx/auth');
+const auth = createAuth(); // Use default configuration
+
+// ...
+
+const valid = auth.verifyPassword(authData, password);
+```
 
 !SECTION Foxx queries
 
-TODO
+The `createQuery` method has been removed. It can be trivially replaced with plain JavaScript functions and direct calls to [the `db._query` method](Modules.md):
+
+Old:
+
+```js
+'use strict';
+const Foxx = require('org/arangodb/foxx');
+const query = Foxx.createQuery({
+    query: 'FOR u IN _users SORT u.user ASC RETURN u[@propName]',
+    params: ['propName'],
+    transform: function (results, uppercase) {
+        return (
+          uppercase
+          ? results[0].toUpperCase()
+          : results[0].toLowerCase()
+        );
+    }
+});
+
+query('user', true);
+```
+
+New:
+
+```js
+'use strict';
+const db = require('@arangodb').db;
+const aql = require('@arangodb').aql;
+
+function query(propName, uppercase) {
+  const results = db._query(aql`
+    FOR u IN _users
+    SORT u.user ASC
+    RETURN u[${propName}]
+  `);
+  return (
+    uppercase
+    ? results[0].toUpperCase()
+    : results[0].toLowerCase()
+  );
+}
+
+query('user', true);
+```
+
+!SECTION Other changes
+
+The `console` object in later versions of ArangoDB 2.x implemented a special Foxx console API and would optionally log messages to a collection. ArangoDB 3.0 restores the original behaviour where `console` is the same object available from the [console module](../Appendix/JavaScriptModules/Console.md).

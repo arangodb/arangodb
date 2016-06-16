@@ -347,7 +347,6 @@ SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
   TRI_ASSERT(searchValues.isArray());
   TRI_ASSERT(searchValues.length() <= _fields.size());
 
-
   VPackBuilder leftSearch;
   VPackSlice lastNonEq;
   leftSearch.openArray();
@@ -831,19 +830,21 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext* context,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
-  VPackBuilder searchValues;
-  searchValues.openArray();
+
+  TransactionBuilderLeaser searchValues(trx);
+  searchValues->openArray();
   bool needNormalize = false;
   if (node == nullptr) {
     // We only use this index for sort. Empty searchValue
-    VPackArrayBuilder guard(&searchValues);
+    searchValues->openArray();
+    searchValues->close();
 
     TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   } else {
     // Create the search Values for the lookup
-    VPackArrayBuilder guard(&searchValues);
+    VPackArrayBuilder guard(searchValues.builder());
 
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
     size_t unused = 0;
@@ -896,30 +897,30 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
       // We found an access for this field
       
       if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-        searchValues.openObject();
-        searchValues.add(VPackValue(TRI_SLICE_KEY_EQUAL));
+        searchValues->openObject();
+        searchValues->add(VPackValue(TRI_SLICE_KEY_EQUAL));
         TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
       } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
         if (isAttributeExpanded(usedFields)) {
-          searchValues.openObject();
-          searchValues.add(VPackValue(TRI_SLICE_KEY_EQUAL));
+          searchValues->openObject();
+          searchValues->add(VPackValue(TRI_SLICE_KEY_EQUAL));
           TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
         } else {
           needNormalize = true;
-          searchValues.openObject();
-          searchValues.add(VPackValue(TRI_SLICE_KEY_IN));
+          searchValues->openObject();
+          searchValues->add(VPackValue(TRI_SLICE_KEY_IN));
         }
       } else {
         // This is a one-sided range
         break;
       }
       // We have to add the value always, the key was added before
-      value->toVelocyPackValue(searchValues);
-      searchValues.close();
+      value->toVelocyPackValue(*searchValues.builder());
+      searchValues->close();
     }
 
     // Now handle the next element, which might be a range
@@ -928,7 +929,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
       if (it != found.end()) {
         auto rangeConditions = it->second;
         TRI_ASSERT(rangeConditions.size() <= 2);
-        VPackObjectBuilder searchElement(&searchValues);
+        VPackObjectBuilder searchElement(searchValues.builder());
         for (auto& comp : rangeConditions) {
           TRI_ASSERT(comp->numMembers() == 2);
           arangodb::aql::AstNode const* access = nullptr;
@@ -938,30 +939,30 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
           switch (comp->type) {
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
               if (isReverseOrder) {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_GT));
+                searchValues->add(VPackValue(TRI_SLICE_KEY_GT));
               } else {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_LT));
+                searchValues->add(VPackValue(TRI_SLICE_KEY_LT));
               }
               break;
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
               if (isReverseOrder) {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_GE));
+                searchValues->add(VPackValue(TRI_SLICE_KEY_GE));
               } else {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_LE));
+                searchValues->add(VPackValue(TRI_SLICE_KEY_LE));
               }
               break;
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
               if (isReverseOrder) {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_LT));
+                searchValues->add(VPackValue(TRI_SLICE_KEY_LT));
               } else {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_GT));
+                searchValues->add(VPackValue(TRI_SLICE_KEY_GT));
               }
               break;
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
               if (isReverseOrder) {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_LE));
+                searchValues->add(VPackValue(TRI_SLICE_KEY_LE));
               } else {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_GE));
+                searchValues->add(VPackValue(TRI_SLICE_KEY_GE));
               }
               break;
           default:
@@ -970,21 +971,21 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
             TRI_ASSERT(false);
             return nullptr;
           }
-          value->toVelocyPackValue(searchValues);
+          value->toVelocyPackValue(*searchValues.builder());
         }
       }
     }
   }
-  searchValues.close();
+  searchValues->close();
 
   TRI_IF_FAILURE("SkiplistIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
   if (needNormalize) {
-    VPackBuilder expandedSearchValues;
-    expandInSearchValues(searchValues.slice(), expandedSearchValues);
-    VPackSlice expandedSlice = expandedSearchValues.slice();
+    TransactionBuilderLeaser expandedSearchValues(trx);
+    expandInSearchValues(searchValues->slice(), *expandedSearchValues.builder());
+    VPackSlice expandedSlice = expandedSearchValues->slice();
     std::vector<IndexIterator*> iterators;
     try {
       for (auto const& val : VPackArrayIterator(expandedSlice)) {
@@ -1009,7 +1010,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     }
     return new MultiIndexIterator(iterators);
   }
-  VPackSlice searchSlice = searchValues.slice();
+  VPackSlice searchSlice = searchValues->slice();
   TRI_ASSERT(searchSlice.length() == 1);
   searchSlice = searchSlice.at(0);
   return lookup(trx, searchSlice, reverse);

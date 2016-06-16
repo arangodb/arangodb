@@ -47,11 +47,11 @@
 #include "Indexes/Index.h"
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/Transaction.h"
-#include "V8Server/V8Traverser.h"
 #include "VocBase/KeyGenerator.h"
 
 using namespace arangodb;
@@ -220,6 +220,45 @@ static AqlValue ExtractFunctionParameterValue(
     return AqlValue();
   }
   return parameters.at(position);
+}
+
+/// @brief extra a collection name from an AqlValue
+static std::string ExtractCollectionName(arangodb::AqlTransaction* trx,
+                                         VPackFunctionParameters const& parameters,
+                                         size_t position) {
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, position);
+
+  std::string identifier;
+  
+  if (value.isString()) {
+    // already a string
+    identifier = value.slice().copyString();
+  } else {
+    AqlValueMaterializer materializer(trx);
+    VPackSlice s = materializer.slice(value, true);
+    VPackSlice id = s;
+
+    if (s.isObject() && s.hasKey(StaticStrings::IdString)) {
+      id = s.get(StaticStrings::IdString);
+    } 
+    if (id.isString()) {
+      identifier = id.copyString();
+    } else if (id.isCustom()) {
+      identifier = trx->extractIdString(s);
+    }
+  }
+
+  if (!identifier.empty()) {
+    size_t pos = identifier.find('/');
+
+    if (pos != std::string::npos) {
+      return identifier.substr(0, pos);
+    }
+
+    return identifier;
+  }
+
+  return StaticStrings::Empty;
 }
 
 /// @brief register warning
@@ -539,17 +578,12 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
                                     VPackBuilder& result) {
   TransactionBuilderLeaser searchBuilder(trx);
 
-  searchBuilder->openObject();
-  searchBuilder->add(VPackValue(StaticStrings::KeyString));
-
   size_t pos = identifier.find('/');
   if (pos == std::string::npos) {
     searchBuilder->add(VPackValue(identifier));
-    searchBuilder->close();
   } else {
     if (collectionName.empty()) {
       searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
-      searchBuilder->close();
       collectionName = identifier.substr(0, pos);
     } else if (identifier.substr(0, pos) != collectionName) {
       // Requesting an _id that cannot be stored in this collection
@@ -559,7 +593,6 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     } else {
       searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
-      searchBuilder->close();
     }
   }
 
@@ -2500,14 +2533,8 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
   }
   std::string collectionName(collectionValue.slice().copyString());
 
-  bool notFound = false; // TODO: what does this do?
-
   AqlValue id = ExtractFunctionParameterValue(trx, parameters, 1);
   if (id.isString()) {
-    if (notFound) {
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-    }
-
     TransactionBuilderLeaser builder(trx);
     std::string identifier(id.slice().copyString());
     GetDocumentByIdentifier(trx, collectionName, identifier, true, *builder.get());
@@ -2520,16 +2547,16 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
   if (id.isArray()) {
     TransactionBuilderLeaser builder(trx);
     builder->openArray();
-    if (!notFound) {
-      AqlValueMaterializer materializer(trx);
-      VPackSlice idSlice = materializer.slice(id, false);
-      for (auto const& next : VPackArrayIterator(idSlice)) {
-        if (next.isString()) {
-          std::string identifier(next.copyString());
-          GetDocumentByIdentifier(trx, collectionName, identifier, true, *builder.get());
-        }
+
+    AqlValueMaterializer materializer(trx);
+    VPackSlice idSlice = materializer.slice(id, false);
+    for (auto const& next : VPackArrayIterator(idSlice)) {
+      if (next.isString()) {
+        std::string identifier(next.copyString());
+        GetDocumentByIdentifier(trx, collectionName, identifier, true, *builder.get());
       }
     }
+
     builder->close();
     return AqlValue(builder.get());
   }
@@ -3795,44 +3822,14 @@ AqlValue Functions::IsSameCollection(
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "IS_SAME_COLLECTION", 2, 2);
 
-  AqlValue first = ExtractFunctionParameterValue(trx, parameters, 0);
-
-  if (!first.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "IS_SAME_COLLECTION");
-  }
-
-  std::string const collectionName(first.slice().copyString());
-
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 1);
-      
-  AqlValueMaterializer materializer(trx);
-  VPackSlice s = materializer.slice(value, true);
-  VPackSlice id = s;
-  std::string identifier;
-
-  if (s.isObject() && s.hasKey(StaticStrings::IdString)) {
-    id = s.get(StaticStrings::IdString);
-  } 
-  if (id.isString()) {
-    identifier = id.copyString();
-  } else if (id.isCustom()) {
-    identifier = trx->extractIdString(s);
-  }
-
-  if (!identifier.empty()) {
-    size_t pos = identifier.find('/');
-
-    if (pos != std::string::npos) {
-      bool const isSame = (collectionName == identifier.substr(0, pos));
-      return AqlValue(isSame);
-    }
-
-    // fallthrough intentional
+  std::string const first = ExtractCollectionName(trx, parameters, 0);
+  std::string const second = ExtractCollectionName(trx, parameters, 1);
+  
+  if (!first.empty() && !second.empty()) {
+    return AqlValue(first == second);
   }
 
   RegisterWarning(query, "IS_SAME_COLLECTION",
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
-

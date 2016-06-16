@@ -158,6 +158,12 @@ struct Job {
     finished.add("op", VPackValue("delete"));
     finished.close();
 
+    // --- Delete todo
+    finished.add(_agencyPrefix + toDoPrefix + _jobId,
+                 VPackValue(VPackValueType::Object));
+    finished.add("op", VPackValue("delete"));
+    finished.close();
+
     // --- Remove block if specified
     if (type != "") {
       finished.add(_agencyPrefix + "/Supervision/" + type,

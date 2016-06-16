@@ -313,11 +313,9 @@ function checkMountedSystemService(dbname) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check a manifest for completeness
-///
-/// this implements issue #590: Manifest Lint
 ////////////////////////////////////////////////////////////////////////////////
 
-function checkManifest(filename, inputManifest, mount) {
+function checkManifest(filename, inputManifest, mount, isDevelopment) {
   const serverVersion = plainServerVersion();
   const errors = [];
   const warnings = [];
@@ -340,15 +338,19 @@ function checkManifest(filename, inputManifest, mount) {
   if (manifest.engines && manifest.engines.arangodb) {
     if (semver.gtr('3.0.0', manifest.engines.arangodb)) {
       legacy = true;
-      notices.push(il`
-        Service expects version ${manifest.engines.arangodb}
-        and will run in legacy compatibility mode.
-      `);
+      if (!isDevelopment) {
+        notices.push(il`
+          Service expects version ${manifest.engines.arangodb}
+          and will run in legacy compatibility mode.
+        `);
+      }
     } else if (!semver.satisfies(serverVersion, manifest.engines.arangodb)) {
-      warnings.push(il`
-        ArangoDB version ${serverVersion} probably not compatible
-        with expected version ${manifest.engines.arangodb}.
-      `);
+      if (!isDevelopment) {
+        warnings.push(il`
+          ArangoDB version ${serverVersion} probably not compatible
+          with expected version ${manifest.engines.arangodb}.
+        `);
+      }
     }
   }
 
@@ -365,7 +367,7 @@ function checkManifest(filename, inputManifest, mount) {
   }
 
   if (manifest.version && !semver.valid(manifest.version)) {
-    warnings.push(`Not a valid version: "${manifest.verison}"`);
+    warnings.push(`Not a valid version: "${manifest.version}"`);
   }
 
   if (manifest.provides) {
@@ -405,25 +407,17 @@ function checkManifest(filename, inputManifest, mount) {
     }
   }
 
+  const prefix = `Manifest for service at "${mount}"`;
   if (notices.length) {
-    console.infoLines(dd`
-      Manifest for service at "${mount}":
-      ${notices.join('\n')}
-    `);
+    console.infoLines(`${prefix}:\n  ${notices.join('\n  ')}`);
   }
 
   if (warnings.length) {
-    console.warnLines(dd`
-      Manifest for service at "${mount}":
-      ${warnings.join('\n')}
-    `);
+    console.warnLines(`${prefix}:\n  ${warnings.join('\n  ')}`);
   }
 
   if (errors.length) {
-    console.errorLines(dd`
-      Manifest for service at "${mount}":
-      ${errors.join('\n')}
-    `);
+    console.errorLines(`${prefix}:\n  ${errors.join('\n  ')}`);
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
       errorMessage: dd`
@@ -458,7 +452,7 @@ function checkManifest(filename, inputManifest, mount) {
 /// All errors are handled including file not found. Returns undefined if manifest is invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-function validateManifestFile(filename, mount) {
+function validateManifestFile(filename, mount, isDevelopment) {
   let mf;
   if (!fs.exists(filename)) {
     throwFileNotFound(`Cannot find manifest file "${filename}"`);
@@ -478,7 +472,7 @@ function validateManifestFile(filename, mount) {
     );
   }
   try {
-    mf = checkManifest(filename, mf, mount);
+    mf = checkManifest(filename, mf, mount, isDevelopment);
   } catch (e) {
     throw Object.assign(
       new ArangoError({
@@ -590,7 +584,7 @@ function serviceConfig(mount, options, activateDevelopment) {
     path: path,
     options: options || {},
     mount: mount,
-    manifest: validateManifestFile(file, mount),
+    manifest: validateManifestFile(file, mount, activateDevelopment),
     isSystem: isSystemMount(mount),
     isDevelopment: activateDevelopment || false
   };

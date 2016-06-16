@@ -626,19 +626,19 @@ std::string Transaction::extractKeyPart(VPackSlice const slice) {
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
     if (!k.isString()) {
-      return ""; // fail
+      return StaticStrings::Empty; // fail
     }
     return k.copyString();
   } 
   if (slice.isString()) {
     std::string key = slice.copyString();
     size_t pos = key.find('/');
-    if (pos != std::string::npos) {
-      key = key.substr(pos + 1);
+    if (pos == std::string::npos) {
+      return key;
     }
-    return key;
+    return key.substr(pos + 1);
   } 
-  return "";
+  return StaticStrings::Empty;
 }
 
 //////////////////////////////////////////////////////////////////////////////

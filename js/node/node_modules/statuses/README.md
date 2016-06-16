@@ -11,7 +11,7 @@ HTTP status utility for node.
 ## API
 
 ```js
-var status = require('statuses');
+var status = require('statuses')
 ```
 
 ### var code = status(Integer || String)
@@ -19,8 +19,8 @@ var status = require('statuses');
 If `Integer` or `String` is a valid HTTP code or status message, then the appropriate `code` will be returned. Otherwise, an error will be thrown.
 
 ```js
-status(403) // => 'Forbidden'
-status('403') // => 'Forbidden'
+status(403) // => 403
+status('403') // => 403
 status('forbidden') // => 403
 status('Forbidden') // => 403
 status(306) // throws, as it's not supported by node.js
@@ -78,7 +78,7 @@ status.retry[503] // => true
 ### statuses/codes.json
 
 ```js
-var codes = require('statuses/codes.json');
+var codes = require('statuses/codes.json')
 ```
 
 This is a JSON file of the status codes
@@ -97,18 +97,18 @@ To rebuild `codes.json`, run the following:
 
 ```bash
 # update src/iana.json
-npm run update
+npm run fetch
 # build codes.json
 npm run build
 ```
 
-[npm-image]: https://img.shields.io/npm/v/statuses.svg?style=flat
+[npm-image]: https://img.shields.io/npm/v/statuses.svg
 [npm-url]: https://npmjs.org/package/statuses
-[node-version-image]: http://img.shields.io/badge/node.js-%3E%3D_0.6-brightgreen.svg?style=flat
-[node-version-url]: http://nodejs.org/download/
-[travis-image]: https://img.shields.io/travis/jshttp/statuses.svg?style=flat
+[node-version-image]: https://img.shields.io/badge/node.js-%3E%3D_0.6-brightgreen.svg
+[node-version-url]: https://nodejs.org/en/download
+[travis-image]: https://img.shields.io/travis/jshttp/statuses.svg
 [travis-url]: https://travis-ci.org/jshttp/statuses
-[coveralls-image]: https://img.shields.io/coveralls/jshttp/statuses.svg?style=flat
+[coveralls-image]: https://img.shields.io/coveralls/jshttp/statuses.svg
 [coveralls-url]: https://coveralls.io/r/jshttp/statuses?branch=master
-[downloads-image]: http://img.shields.io/npm/dm/statuses.svg?style=flat
+[downloads-image]: https://img.shields.io/npm/dm/statuses.svg
 [downloads-url]: https://npmjs.org/package/statuses

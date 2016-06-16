@@ -121,7 +121,7 @@ class EdgeCollectionInfo {
 /// @brief Return name of the wrapped collection
 ////////////////////////////////////////////////////////////////////////////////
 
-  std::string const& getName(); 
+  std::string const& getName() const; 
 
 };
 

@@ -734,7 +734,7 @@ void V8DealerFeature::shutdownContexts() {
     }
   }
 
-  // send all busy contexts a termate signal
+  // send all busy contexts a terminate signal
   {
     CONDITION_LOCKER(guard, _contextCondition);
 
