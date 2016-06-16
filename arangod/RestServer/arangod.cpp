@@ -82,7 +82,6 @@ using namespace arangodb::wal;
 static int runServer(int argc, char** argv) {
   ArangoGlobalContext context(argc, argv);
   context.installSegv();
-  context.maskAllSignals();
   context.runStartupChecks();
 
   std::string name = context.binaryName();
