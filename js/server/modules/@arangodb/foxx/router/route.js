@@ -28,9 +28,7 @@ const actions = require('@arangodb/actions');
 
 module.exports = class Route extends SwaggerContext {
   constructor(methods, path, handler, name) {
-    if (typeof path !== 'string') {
-      name = handler;
-      handler = path;
+    if (!path) {
       path = '/';
     }
     super(path);
@@ -42,5 +40,9 @@ module.exports = class Route extends SwaggerContext {
     )) {
       this.body(null);
     }
+  }
+
+  _PRINT(ctx) {
+    ctx.output += `[FoxxRoute: "${this.path}"]`;
   }
 };

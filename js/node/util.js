@@ -398,6 +398,10 @@ function formatValue(ctx, value, recurseTimes) {
     base = ' ' + '[Boolean: ' + formatted + ']';
   }
 
+  if (ctx.simpleJoi && value && value.isJoi) {
+    return '[Schema: ' + value._type + ']';
+  }
+
   if (!base && typeof value._PRINT === 'function') {
     base = ' ' + arangoPrint(value);
   }

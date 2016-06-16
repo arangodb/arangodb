@@ -45,6 +45,10 @@ module.exports = class SyntheticResponse {
     this.context = context;
   }
 
+  _PRINT(ctx) {
+    ctx.output += '[OutgoingResponse]';
+  }
+
   // Node compat
 
   get headers() {
