@@ -89,6 +89,7 @@
 
       if (refetch) {
         this.collection.fetch({
+          cache: false,
           success: function() {
             callback();
           }
@@ -213,6 +214,7 @@
 
       var self = this;
       this.collection.fetch({
+        cache: false,
 
         success: function() {
           self.collection.sort();
@@ -303,7 +305,9 @@
 
     editGraph : function(e) {
       e.stopPropagation();
-      this.collection.fetch();
+      this.collection.fetch({
+        cache: false
+      });
       this.graphToEdit = this.evaluateGraphName($(e.currentTarget).attr("id"), '_settings');
       var graph = this.collection.findWhere({_key: this.graphToEdit});
       this.createEditGraphModal(
@@ -469,6 +473,7 @@
     updateGraphManagementView: function() {
       var self = this;
       this.collection.fetch({
+        cache: false,
         success: function() {
           self.render();
         }
