@@ -50,10 +50,7 @@ static int FetchDocumentById(arangodb::Transaction* trx,
     return TRI_ERROR_INTERNAL;
   }
 
-  TransactionBuilderLeaser builder(trx);
-  builder->add(VPackValue(id.substr(pos + 1)));
-
-  int res = trx->documentFastPathLocal(id.substr(0, pos), builder->slice(), mptr);
+  int res = trx->documentFastPathLocal(id.substr(0, pos), id.substr(pos + 1), mptr);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     THROW_ARANGO_EXCEPTION(res);

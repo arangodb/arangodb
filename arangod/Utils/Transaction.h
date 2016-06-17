@@ -458,7 +458,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
   
   int documentFastPathLocal(std::string const& collectionName,
-                            arangodb::velocypack::Slice const value,
+                            std::string const& key,
                             TRI_doc_mptr_t* result);
  
   //////////////////////////////////////////////////////////////////////////////

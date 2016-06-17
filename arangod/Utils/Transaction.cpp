@@ -1336,20 +1336,15 @@ int Transaction::documentFastPath(std::string const& collectionName,
 //////////////////////////////////////////////////////////////////////////////
 
 int Transaction::documentFastPathLocal(std::string const& collectionName,
-                                       VPackSlice const value,
+                                       std::string const& key,
                                        TRI_doc_mptr_t* result) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
-  if (!value.isObject() && !value.isString()) {
-    // must provide a document object or string
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
   orderDitch(cid); // will throw when it fails
 
-  std::string key(Transaction::extractKeyPart(value));
   if (key.empty()) {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
