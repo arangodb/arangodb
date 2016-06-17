@@ -208,18 +208,23 @@ void RestVocbaseBaseHandler::generate20x(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type, VPackOptions const* options) {
   VPackSlice slice = result.slice();
-  TRI_ASSERT(slice.isObject() || slice.isArray());
-  if (slice.isObject()) {
-    _response->setHeaderNC(
-        StaticStrings::Etag,
-        "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
-    // pre 1.4 location headers withdrawn for >= 3.0
-    std::string escapedHandle(assembleDocumentId(
-        collectionName, slice.get(StaticStrings::KeyString).copyString(),
-        true));
-    _response->setHeaderNC(StaticStrings::Location,
-                           std::string("/_db/" + _request->databaseName() +
-                                       DOCUMENT_PATH + "/" + escapedHandle));
+  if (slice.isNone()) {
+    // will happen if silent == true
+    slice = VelocyPackHelper::EmptyObjectValue(); 
+  } else {
+    TRI_ASSERT(slice.isObject() || slice.isArray());
+    if (slice.isObject()) {
+      _response->setHeaderNC(
+          StaticStrings::Etag,
+          "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
+      // pre 1.4 location headers withdrawn for >= 3.0
+      std::string escapedHandle(assembleDocumentId(
+          collectionName, slice.get(StaticStrings::KeyString).copyString(),
+          true));
+      _response->setHeaderNC(StaticStrings::Location,
+                            std::string("/_db/" + _request->databaseName() +
+                                        DOCUMENT_PATH + "/" + escapedHandle));
+    }
   }
 
   writeResult(slice, *options);
