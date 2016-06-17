@@ -139,7 +139,7 @@ To install ArangoDB via marathon you need a proper config file:
 
 Carefully review the settings (especially the IPs and the resources). Then you can deploy to Marathon:
 
-`curl -X POST -H "Content-Type: application/json" http://url-of-marathon/v2/apps -d @arangodb3.json`
+    curl -X POST -H "Content-Type: application/json" http://url-of-marathon/v2/apps -d @arangodb3.json
 
 Alternatively use the web interface of Marathon to deploy ArangoDB.
 
