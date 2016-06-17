@@ -30,7 +30,9 @@
 
   <script type="text/javascript">
     $(function () {
-      var url = window.location.href.replace("index.html", "swagger.json");
+      var url = window.location.href.replace("index.html", "swagger.json").replace(/#.*/, "");
+      var jwt = localStorage.getItem("jwt");
+      if (jwt) $.ajaxSettings.headers = {authorization: 'bearer ' + jwt};
 
       // Pre load translate...
       if(window.SwaggerTranslator) {
@@ -39,6 +41,7 @@
       window.swaggerUi = new SwaggerUi({
         url: url,
         validatorUrl: null,
+        useJQuery: true,
         dom_id: "swagger-ui-container",
         supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
         onComplete: function(swaggerApi, swaggerUi){
@@ -123,5 +126,6 @@
 <body class="swagger-section">
 <div id="message-bar" class="swagger-ui-wrap" data-sw-translate>&nbsp;</div>
 <div id="swagger-ui-container" class="swagger-ui-wrap"></div>
+<input type="hidden" id="input_apiKey">
 </body>
 </html>

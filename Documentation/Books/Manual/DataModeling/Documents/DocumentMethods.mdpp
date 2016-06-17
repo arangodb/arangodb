@@ -353,48 +353,48 @@ only an error object.
 
 Returns the document for a document-handle:
 
-    @startDocuBlockInline documentsCollectionNameValid
-    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameValid}
+    @startDocuBlockInline documentsCollectionNameValidPlain
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameValidPlain}
     ~ db._create("example");
     ~ var myid = db.example.insert({_key: "2873916"});
       db.example.document("example/2873916");
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentsCollectionNameValid
+    @endDocuBlock documentsCollectionNameValidPlain
 
 Returns the document for a document-key:
 
-    @ startDocuBlockInline documentsCollectionNameValidByKey
-    @ EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameValidByKey}
+    @startDocuBlockInline documentsCollectionNameValidByKey
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameValidByKey}
     ~ db._create("example");
     ~ var myid = db.example.insert({_key: "2873916"});
       db.example.document("2873916");
     ~ db._drop("example");
-    @ END_EXAMPLE_ARANGOSH_OUTPUT
-    @ endDocuBlock documentsCollectionNameValidByKey
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionNameValidByKey
 
 Returns the document for an object:
 
-    @ startDocuBlockInline documentsCollectionNameValidByObject
-    @ EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameValidByObject}
+    @startDocuBlockInline documentsCollectionNameValidByObject
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameValidByObject}
     ~ db._create("example");
     ~ var myid = db.example.insert({_key: "2873916"});
       db.example.document({_id: "example/2873916"});
     ~ db._drop("example");
-    @ END_EXAMPLE_ARANGOSH_OUTPUT
-    @ endDocuBlock documentsCollectionNameValidByObject
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionNameValidByObject
 
 Returns the document for an array of two keys:
 
-    @ startDocuBlockInline documentsCollectionNameValidMulti
-    @ EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameValidMulti}
+    @startDocuBlockInline documentsCollectionNameValidMulti
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameValidMulti}
     ~ db._create("example");
     ~ var myid = db.example.insert({_key: "2873916"});
     ~ var myid = db.example.insert({_key: "2873917"});
       db.example.document(["2873916","2873917"]);
     ~ db._drop("example");
-    @ END_EXAMPLE_ARANGOSH_OUTPUT
-    @ endDocuBlock documentsCollectionNameValidMulti
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionNameValidMulti
 
 An error is raised if the document is unknown:
 
@@ -565,23 +565,23 @@ multiple documents with one call.
 **Examples**
 
 
-    @startDocuBlockInline documentsCollectionInsert
-    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionInsert}
+    @startDocuBlockInline documentsCollectionInsertSingle
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionInsertSingle}
     ~ db._create("example");
       db.example.insert({ Hello : "World" });
       db.example.insert({ Hello : "World" }, {waitForSync: true});
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentsCollectionInsert
+    @endDocuBlock documentsCollectionInsertSingle
 
-    @ startDocuBlockInline documentsCollectionInsertMulti
-    @ EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionInsertMulti}
+    @startDocuBlockInline documentsCollectionInsertMulti
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionInsertMulti}
     ~ db._create("example");
-      db.example.insert([{ Hello : "World" }, {Hello: "there"']);
+      db.example.insert([{ Hello : "World" }, {Hello: "there"}])
       db.example.insert([{ Hello : "World" }, {}], {waitForSync: true});
     ~ db._drop("example");
-    @ END_EXAMPLE_ARANGOSH_OUTPUT
-    @ endDocuBlock documentsCollectionInsertMulti
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionInsertMulti
 
 
 

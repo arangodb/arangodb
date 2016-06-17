@@ -41,7 +41,7 @@ void ClusterTraversalPath::pathToVelocyPack(Transaction*, VPackBuilder& result) 
     auto cached = _traverser->_edges.find(it);
     // All edges are cached!!
     TRI_ASSERT(cached != _traverser->_edges.end());
-    result.add(VPackSlice(cached->second->data()));
+    result.add(VPackSlice((*cached).second->data()));
   }
   result.close();
   result.add(VPackValue("vertices"));
@@ -50,17 +50,18 @@ void ClusterTraversalPath::pathToVelocyPack(Transaction*, VPackBuilder& result) 
     // All vertices are cached!!
     auto cached = _traverser->_vertices.find(it);
     TRI_ASSERT(cached != _traverser->_vertices.end());
-    result.add(VPackSlice(cached->second->data()));
+    result.add(VPackSlice((*cached).second->data()));
   }
   result.close();
   result.close();
 }
 
-void ClusterTraversalPath::lastVertexToVelocyPack(Transaction*, VPackBuilder& result) {
+aql::AqlValue ClusterTraversalPath::lastVertexToAqlValue(Transaction*){
   TRI_ASSERT(!_path.vertices.empty());
   auto cached = _traverser->_vertices.find(_path.vertices.back());
   TRI_ASSERT(cached != _traverser->_vertices.end());
-  result.add(VPackSlice(cached->second->data()));
+  
+  return aql::AqlValue((*cached).second->data());
 }
 
 void ClusterTraversalPath::lastEdgeToVelocyPack(Transaction*, VPackBuilder& result) {
@@ -68,10 +69,11 @@ void ClusterTraversalPath::lastEdgeToVelocyPack(Transaction*, VPackBuilder& resu
     result.add(arangodb::basics::VelocyPackHelper::NullValue());
     return;
   }
+
   auto cached = _traverser->_edges.find(_path.edges.back());
   // All edges are cached!!
   TRI_ASSERT(cached != _traverser->_edges.end());
-  result.add(VPackSlice(cached->second->data()));
+  result.add(VPackSlice((*cached).second->data()));
 }
 
 bool ClusterTraverser::VertexGetter::getVertex(std::string const& edgeId,

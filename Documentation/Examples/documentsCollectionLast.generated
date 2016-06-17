@@ -1,3 +1,0 @@
-arangosh&gt; db.example.last(<span class="hljs-number">2</span>);
-<span class="hljs-built_in">TypeError</span>: db.example.last is not a <span class="hljs-function"><span class="hljs-keyword">function</span>
-</span>

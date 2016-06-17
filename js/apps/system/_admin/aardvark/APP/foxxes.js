@@ -332,15 +332,25 @@ router.get('/fishbowl', function (req, res) {
 
 
 anonymousRouter.get('/docs/standalone/*', module.context.apiDocumentation(
-  (req) => ({
-    appPath: decodeURIComponent(req.queryParams.mount)
-  })
+  (req, res) => {
+    if (req.suffix === 'swagger.json' && !req.arangoUser) {
+      res.throw('unauthorized');
+    }
+    return {
+      appPath: decodeURIComponent(req.queryParams.mount)
+    };
+  }
 ));
 
 
 anonymousRouter.get('/docs/*', module.context.apiDocumentation(
-  (req) => ({
-    appPath: decodeURIComponent(req.queryParams.mount),
-    indexFile: 'index-alt.html'
-  })
+  (req, res) => {
+    if (req.suffix === 'swagger.json' && !req.arangoUser) {
+      res.throw('unauthorized');
+    }
+    return {
+      appPath: decodeURIComponent(req.queryParams.mount),
+      indexFile: 'index-alt.html'
+    };
+  }
 ));

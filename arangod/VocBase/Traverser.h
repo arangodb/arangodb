@@ -28,6 +28,7 @@
 #include "Basics/hashes.h"
 #include "Basics/ShortestPathFinder.h"
 #include "Basics/Traverser.h"
+#include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
@@ -180,8 +181,7 @@ class TraversalPath {
   /// @brief Builds only the last vertex as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void lastVertexToVelocyPack(Transaction*,
-                                      arangodb::velocypack::Builder&) = 0;
+  virtual aql::AqlValue lastVertexToAqlValue(Transaction*) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents
