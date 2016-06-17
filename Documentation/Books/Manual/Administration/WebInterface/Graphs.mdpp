@@ -1,0 +1,9 @@
+!CHAPTER Graphs
+
+The *Graphs* tab provides a viewer facility for graph data stored in ArangoDB. It
+allows browsing ArangoDB graphs stored in the *_graphs* system collection or a
+graph consisting of an arbitrary vertex and [edge collection](../../Appendix/Glossary.md#edge-collection).
+
+Please note that the graph viewer requires client-side SVG and that you need a
+browser capable of rendering that. Especially Internet Explorer browsers older
+than version 9 are likely to not support this.
