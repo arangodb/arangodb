@@ -25,6 +25,7 @@
 #define ARANGOD_SINGLE_SERVER_TRAVERSER_H 1
 
 #include "VocBase/Traverser.h"
+#include "Aql/AqlValue.h"
 
 namespace arangodb {
 
@@ -207,9 +208,7 @@ public:
   /// @brief Fetch the vertex data from the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> fetchVertexData(
-      std::string const&);
-
+  aql::AqlValue fetchVertexData(std::string const&);
 
   std::vector<TRI_document_collection_t*> _edgeCols;
 
@@ -223,9 +222,7 @@ public:
   /// @brief Cache for vertex documents
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<std::string,
-                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-      _vertices;
+  std::unordered_map<std::string, uint8_t const*> _vertices;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Cache for edge documents

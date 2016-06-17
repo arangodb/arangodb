@@ -26,6 +26,7 @@
 #define ARANGOD_SINGLE_SERVER_TRAVERSAL_PATH_H 1
 
 #include "VocBase/SingleServerTraverser.h"
+#include "Aql/AqlValue.h"
 
 namespace arangodb {
 namespace traverser {
@@ -45,8 +46,7 @@ class SingleServerTraversalPath final : public TraversalPath {
   void lastEdgeToVelocyPack(arangodb::Transaction*,
                             arangodb::velocypack::Builder&) override;
 
-  void lastVertexToVelocyPack(arangodb::Transaction*,
-                              arangodb::velocypack::Builder&) override;
+  aql::AqlValue lastVertexToAqlValue(arangodb::Transaction*) override;
 
  private:
 

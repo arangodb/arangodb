@@ -162,8 +162,7 @@ class ClusterTraversalPath final : public TraversalPath {
   void lastEdgeToVelocyPack(Transaction*,
                             arangodb::velocypack::Builder&) override;
 
-  void lastVertexToVelocyPack(Transaction*,
-                              arangodb::velocypack::Builder&) override;
+  aql::AqlValue lastVertexToAqlValue(Transaction*) override;
 
  private:
   arangodb::basics::EnumeratedPath<std::string, std::string> _path;

@@ -39,7 +39,7 @@ using namespace arangodb::traverser;
 
 static int FetchDocumentById(arangodb::Transaction* trx,
                              std::string const& id,
-                             VPackBuilder& result) {
+                             TRI_doc_mptr_t* mptr) {
   size_t pos = id.find('/');
   if (pos == std::string::npos) {
     TRI_ASSERT(false);
@@ -53,7 +53,7 @@ static int FetchDocumentById(arangodb::Transaction* trx,
   TransactionBuilderLeaser builder(trx);
   builder->add(VPackValue(id.substr(pos + 1)));
 
-  int res = trx->documentFastPath(id.substr(0, pos), builder->slice(), result);
+  int res = trx->documentFastPathLocal(id.substr(0, pos), builder->slice(), mptr);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     THROW_ARANGO_EXCEPTION(res);
@@ -97,14 +97,14 @@ bool SingleServerTraverser::edgeMatchesConditions(VPackSlice e, size_t depth) {
 }
 
 bool SingleServerTraverser::vertexMatchesConditions(std::string const& v,
-                                                   size_t depth) {
+                                                    size_t depth) {
   if (_hasVertexConditions) {
     TRI_ASSERT(_expressions != nullptr);
     auto it = _expressions->find(depth);
 
     if (it != _expressions->end()) {
       bool fetchVertex = true;
-      std::shared_ptr<VPackBuffer<uint8_t>> vertex;
+      aql::AqlValue vertex;
       for (auto const& exp : it->second) {
         TRI_ASSERT(exp != nullptr);
 
@@ -113,7 +113,7 @@ bool SingleServerTraverser::vertexMatchesConditions(std::string const& v,
             fetchVertex = false;
             vertex = fetchVertexData(v);
           }
-          if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
+          if (!exp->matchesCheck(_trx, vertex.slice())) {
             ++_filteredPaths;
             return false;
           }
@@ -124,27 +124,23 @@ bool SingleServerTraverser::vertexMatchesConditions(std::string const& v,
   return true;
 }
 
-std::shared_ptr<VPackBuffer<uint8_t>> SingleServerTraverser::fetchVertexData(
-    std::string const& id) {
-
+aql::AqlValue SingleServerTraverser::fetchVertexData(std::string const& id) {
   auto it = _vertices.find(id);
 
   if (it == _vertices.end()) {
-    VPackBuilder tmp;
-    int res = FetchDocumentById(_trx, id, tmp);
+    TRI_doc_mptr_t mptr;
+    int res = FetchDocumentById(_trx, id, &mptr);
     ++_readDocuments;
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_ASSERT(res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-      tmp.add(VPackValue(VPackValueType::Null));
-      return tmp.steal();
+      return aql::AqlValue(basics::VelocyPackHelper::NullValue());
     }
 
-    auto shared_buffer = tmp.steal();
-    _vertices.emplace(id, shared_buffer);
-    return shared_buffer;
+    uint8_t const* p = mptr.vpack();
+    _vertices.emplace(id, p);
+    return aql::AqlValue(p);
   }
 
-  return it->second;
+  return aql::AqlValue((*it).second);
 }
 
 bool SingleServerTraverser::VertexGetter::getVertex(std::string const& edge,
@@ -209,7 +205,7 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
 
   if (it != _expressions->end()) {
     if (!it->second.empty()) {
-      std::shared_ptr<VPackBuffer<uint8_t>> vertex;
+      TRI_doc_mptr_t vertex;
       bool fetchVertex = true;
       for (auto const& exp : it->second) {
         TRI_ASSERT(exp != nullptr);
@@ -217,18 +213,17 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
         if (!exp->isEdgeAccess) {
           if (fetchVertex) {
             fetchVertex = false;
-            VPackBuilder tmp;
-            int result = FetchDocumentById(_trx, v, tmp);
+            int result = FetchDocumentById(_trx, v, &vertex);
             ++_readDocuments;
             if (result != TRI_ERROR_NO_ERROR) {
               // Vertex does not exist
               _done = true;
               return;
             }
-            vertex = tmp.steal();
-            _vertices.emplace(v, vertex);
+
+            _vertices.emplace(v, vertex.vpack());
           }
-          if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
+          if (!exp->matchesCheck(_trx, VPackSlice(vertex.vpack()))) {
             ++_filteredPaths;
             _done = true;
             return;
