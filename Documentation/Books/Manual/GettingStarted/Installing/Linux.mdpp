@@ -8,7 +8,7 @@
   easily install ArangoDB using yum, aptitude, urpmi or zypper.
 - Alternatively, see [Compiling](Compiling.md) if you want to build ArangoDB
   yourself.
-- Start up the database server
+- Start up the database server.
 
 Normally, this is done by executing the following command:
 
@@ -22,6 +22,12 @@ To stop the server you can use the following command:
 
 The exact commands depend on your Linux distribution.
 You may require root privileges to execute these commands.
+
+!SECTION Linux Mint
+
+Please use the corresponding Ubuntu or Debian packages.
+
+!SECTION Non-Standard Installation
 
 If you compiled ArangoDB from source and did not use any installation
 package – or using non-default locations and/or multiple ArangoDB
@@ -60,8 +66,3 @@ make sure to start the server once with the *--database.upgrade* option.
 
 Note that you may have to enable logging first. If you start the server
 in a shell, you should see errors logged there as well.
-
-
-!SUBSECTION Linux Mint
-
-Please use the corresponding Ubuntu or Debian packages.

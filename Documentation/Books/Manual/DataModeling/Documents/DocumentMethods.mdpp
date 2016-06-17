@@ -1143,7 +1143,6 @@ an object with the following sub-attributes:
 
 !SUBSECTION Collection type
 
-
 `collection.type()`
 
 Returns the type of a collection. Possible values are:
@@ -1152,7 +1151,6 @@ Returns the type of a collection. Possible values are:
 
 
 !SUBSECTION Get the Version of ArangoDB
-
 
 `db._version()`
 
@@ -1169,27 +1167,98 @@ database.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock dbVersion
 
+!SUBSECTION Edges
+
+Edges are normal documents that always contain a `_from` and a `_to`
+attribute.  Therefore, you can use the document methods to operate on
+edges. The following methods, however, are specific to edges.
+
+`edge-collection.edges(vertex)`
+
+The *edges* operator finds all edges starting from (outbound) or ending
+in (inbound) *vertex*.
+
+`edge-collection.edges(vertices)`
+
+The *edges* operator finds all edges starting from (outbound) or ending
+in (inbound) a document from *vertices*, which must a list of documents
+or document handles.
+
+    @startDocuBlockInline EDGCOL_02_Relation
+    @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_Relation}
+      db._create("vertex");
+      db._createEdgeCollection("relation");
+    ~ var myGraph = {};
+      myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
+      myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
+    | myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2,
+                                      { label : "knows"});
+      db._document(myGraph.e1);
+      db.relation.edges(myGraph.e1._id);
+    ~ db._drop("relation");
+    ~ db._drop("vertex");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock EDGCOL_02_Relation
+
+`edge-collection.inEdges(vertex)`
+
+The *edges* operator finds all edges ending in (inbound) *vertex*.
+
+`edge-collection.inEdges(vertices)`
+
+The *edges* operator finds all edges ending in (inbound) a document from
+*vertices*, which must a list of documents or document handles.
+
+**Examples**
+
+    @startDocuBlockInline EDGCOL_02_inEdges
+    @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_inEdges}
+      db._create("vertex");
+      db._createEdgeCollection("relation");
+    ~ var myGraph = {};
+      myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
+      myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
+    | myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2,
+                                      { label : "knows"});
+      db._document(myGraph.e1);
+      db.relation.inEdges(myGraph.v1._id);
+      db.relation.inEdges(myGraph.v2._id);
+    ~ db._drop("relation");
+    ~ db._drop("vertex");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock EDGCOL_02_inEdges
+
+`edge-collection.outEdges(vertex)`
+
+The *edges* operator finds all edges starting from (outbound)
+*vertices*.
+
+`edge-collection.outEdges(vertices)`
+
+The *edges* operator finds all edges starting from (outbound) a document
+from *vertices*, which must a list of documents or document handles.
+
+    
+**Examples**
+
+    @startDocuBlockInline EDGCOL_02_outEdges
+    @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_outEdges}
+      db._create("vertex");
+      db._createEdgeCollection("relation");
+    ~ var myGraph = {};
+      myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
+      myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
+    | myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2,
+                                      { label : "knows"});
+      db._document(myGraph.e1);
+      db.relation.outEdges(myGraph.v1._id);
+      db.relation.outEdges(myGraph.v2._id);
+    ~ db._drop("relation");
+    ~ db._drop("vertex");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock EDGCOL_02_outEdges
 
 !SUBSECTION Misc
-
-
-`collection.edges(vertex-id)`
-
-Returns all edges connected to the vertex specified by *vertex-id*.
-
-
-
-`collection.inEdges(vertex-id)`
-
-Returns inbound edges connected to the vertex specified by *vertex-id*.
-
-
-
-`collection.outEdges(vertex-id)`
-
-Returns outbound edges connected to the vertex specified by *vertex-id*.
-
-
 
 `collection.iterate(iterator, options)`
 
@@ -1205,9 +1274,7 @@ as second argument.
   - *probability* (optional, default all): a number between *0* and
     *1*. Documents are chosen with this probability.
 
-
 **Examples**
-
 
     @startDocuBlockInline accessViaGeoIndex
     @EXAMPLE_ARANGOSH_OUTPUT{accessViaGeoIndex}
