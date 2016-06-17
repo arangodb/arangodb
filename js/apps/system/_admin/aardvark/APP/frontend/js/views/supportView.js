@@ -18,8 +18,13 @@
       this.$el.html(this.template.render({}));
     },
 
-    resize: function() {
-      $('.innerContent').height($('.centralRow').height() - 170);
+    resize: function(auto) {
+      if (auto) {
+        $('.innerContent').css('height', 'auto');
+      }
+      else {
+        $('.innerContent').height($('.centralRow').height() - 170);
+      }
     },
 
     renderSwagger: function() {
@@ -47,6 +52,9 @@
             $('#swagger iframe').css('width', '100%');
             $('#swagger iframe').css('margin-top', '-13px');
             self.resize();
+          }
+          else {
+            self.resize(true);
           }
           $('#' + view).show();
         }
