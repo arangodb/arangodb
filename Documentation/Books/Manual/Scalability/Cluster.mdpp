@@ -4,15 +4,15 @@ ArangoDB has been designed as a distributed multi model database. In this chapte
 
 !SUBSECTION Cluster ID
 
-Every node in a cluster will be assigned a uniquely generated ID during its startup. As such a node is identifiable throughout the cluster. All cluster operations will communicate via this ID.
+Every node in a cluster will be assigned a uniquely generated ID during its startup. Using its ID a node is identifiable througout the cluster. All cluster operations will communicate via this ID.
 
 !SUBSECTION Roles in an ArangoDB cluster
 
-In an ArangoDB cluster there are 4 distinct roles: Agents, Coordinators, Primaries, Secondaries. In the following sections we will shed light on each of them.
+In an ArangoDB cluster there are 4 distinct roles: Agents, Coordinators, Primaries and Secondaries. In the following sections we will shed light on each of them.
 
 !SUBSUBSECTION Agents
 
-One or multiple Agents form the Agency in an ArangoDB cluster. The Agency is the central place to store the configuration in a cluster. Without it none of the other components can operate. While generally invisible to the outside it is the heart of the cluster. To be able to serve a such a critical component in the cluster the Agents are using the [Raft Consensus Algorithm](https://raft.github.io/) at their core. The algorithm formally guarantees conflict free configuration management within the ArangoDB cluster.
+One or multiple Agents form the Agency in an ArangoDB cluster. The Agency is the central place to store the configuration in a cluster. Without it none of the other components can operate. While generally invisible to the outside it is the heart of the cluster. As such, failure tolerance is of course a must have for the Agency. To achieve that the Agents are using the [Raft Consensus Algorithm](https://raft.github.io/). The algorithm formally guarantees conflict free configuration management within the ArangoDB cluster.
 
 At its core the Agency manages a big configuration tree. It supports transactional read and write operations on this tree.
 
