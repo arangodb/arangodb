@@ -67,4 +67,4 @@ The `@arangodb/foxx` module also provides the same exports as in 2.8, namely:
 
 Any feature not supported in 2.8 will also not work in legacy compatibility mode. When migrating from an older version of ArangoDB it is a good idea to migrate to ArangoDB 2.8 first for an easier upgrade path.
 
-Additionally please note the differences laid out in the section titled ["Migrating from pre-2.8"](Migrating2x.md#migrating-from-pre-28) in the migration guide.
+Additionally please note the differences laid out in the section titled ["Migrating from pre-2.8"](Migrating2x.md#migrating-from-pre28) in the migration guide.
