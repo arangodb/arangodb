@@ -783,6 +783,12 @@
     doNotShowAgain: function() {
       localStorage.setItem('authenticationNotification', false);
     },
+
+    renderEmpty: function(string) {
+      $('#content').html(
+        '<div class="noContent"><p>' + string + '</p></div>'
+      );
+    },
     
     download: function(url) {
       $.ajax(url)

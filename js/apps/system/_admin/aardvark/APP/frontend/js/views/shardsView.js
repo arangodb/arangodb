@@ -45,8 +45,21 @@
         contentType: "application/json",
         processData: false,
         async: true,
-        success: function(data) {
-          self.continueRender(data);
+        success: function(collections) {
+          var collsAvailable = false, collName;
+          _.each(collections, function(ignore, name) { 
+          collName = name.substring(0, 1);
+            if (collName !== '_' && name !== 'error' && name !== 'code') {
+              collsAvailable = true;
+            }
+          });
+
+          if (collsAvailable) {
+            self.continueRender(collections);
+          }
+          else {
+            arangoHelper.renderEmpty("No collections and no shards available");
+          }
         },
         error: function() {
           arangoHelper.arangoError("Cluster", "Could not fetch sharding information.");
