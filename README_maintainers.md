@@ -14,6 +14,7 @@ following commands from a clone of the source repository:
     cd build
     cmake ..
     make
+    cd ..
 
 After that, the binaries will reside in `build/bin`. To quickly start
 up your compiled ArangoDB, simply do
