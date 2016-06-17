@@ -25,6 +25,16 @@
       'mouseleave #app-scripts': 'hideDropdown'
     },
 
+    resize: function(auto) {
+      if (auto) {
+        $('.innerContent').css('height', 'auto');
+      }
+      else {
+        $('.innerContent').height($('.centralRow').height() - 150);
+        $('#swagger iframe').height($('.centralRow').height() - 150);
+      }
+    },
+
     changeSubview: function(e) {
       _.each(this.navs, function(nav) {
         $(nav).removeClass('active');
@@ -38,17 +48,21 @@
       });
 
       if (e.currentTarget.id === 'service-readme') {
+        this.resize(true);
         $('#readme').show();
       }
       else if (e.currentTarget.id === 'service-api') {
+        this.resize();
         $('#swagger').show();
       }
       else if (e.currentTarget.id === 'service-info') {
+        this.resize(true);
         this.render();
         $('#information').show();
         $('#sideinformation').show();
       }
       else if (e.currentTarget.id === 'service-settings') {
+        this.resize(true);
         this.showConfigDialog();
         $('.headerButtonBar').show();
         $('#settings').show();
@@ -216,6 +230,7 @@
     },
 
     render: function(mode) {
+      this.resize();
       this.model.fetchThumbnail(function() {
         var callback = function(error, db) {
           var self = this;
