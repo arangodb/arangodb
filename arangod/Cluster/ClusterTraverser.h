@@ -34,7 +34,7 @@ namespace traverser {
 
 class ClusterTraversalPath;
 
-class ClusterTraverser : public Traverser {
+class ClusterTraverser final : public Traverser {
   friend class ClusterTraversalPath;
 
  public:
@@ -149,7 +149,7 @@ class ClusterTraverser : public Traverser {
   std::unique_ptr<arangodb::basics::PathEnumerator<std::string, std::string, size_t>> _enumerator;
 };
 
-class ClusterTraversalPath : public TraversalPath {
+class ClusterTraversalPath final : public TraversalPath {
  public:
   ClusterTraversalPath(
       ClusterTraverser const* traverser,

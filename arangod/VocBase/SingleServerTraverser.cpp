@@ -23,9 +23,11 @@
 
 #include "SingleServerTraverser.h"
 #include "Utils/OperationCursor.h"
+#include "Utils/Transaction.h"
 #include "VocBase/MasterPointer.h"
 #include "VocBase/SingleServerTraversalPath.h"
 
+using namespace arangodb;
 using namespace arangodb::traverser;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +39,6 @@ using namespace arangodb::traverser;
 
 static int FetchDocumentById(arangodb::Transaction* trx,
                              std::string const& id,
-                             VPackBuilder& builder,
                              VPackBuilder& result) {
   size_t pos = id.find('/');
   if (pos == std::string::npos) {
@@ -49,14 +50,10 @@ static int FetchDocumentById(arangodb::Transaction* trx,
     return TRI_ERROR_INTERNAL;
   }
 
-  std::string col = id.substr(0, pos);
-  trx->addCollectionAtRuntime(col);
-  builder.clear();
-  builder.openObject();
-  builder.add(arangodb::StaticStrings::KeyString, VPackValue(id.substr(pos + 1)));
-  builder.close();
+  TransactionBuilderLeaser builder(trx);
+  builder->add(VPackValue(id.substr(pos + 1)));
 
-  int res = trx->documentFastPath(col, builder.slice(), result);
+  int res = trx->documentFastPath(id.substr(0, pos), builder->slice(), result);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     THROW_ARANGO_EXCEPTION(res);
@@ -69,6 +66,7 @@ SingleServerTraverser::SingleServerTraverser(
     std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
         expressions)
     : Traverser(opts, expressions), _trx(trx) {
+
   _edgeGetter = std::make_unique<EdgeGetter>(this, opts, trx);
   if (opts.uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
@@ -77,42 +75,18 @@ SingleServerTraverser::SingleServerTraverser(
   }
 }
 
+SingleServerTraverser::~SingleServerTraverser() {}
+
 bool SingleServerTraverser::edgeMatchesConditions(VPackSlice e, size_t depth) {
-  TRI_ASSERT(_expressions != nullptr);
+  if (_hasEdgeConditions) {
+    TRI_ASSERT(_expressions != nullptr);
+    auto it = _expressions->find(depth);
 
-  auto it = _expressions->find(depth);
+    if (it != _expressions->end()) {
+      for (auto const& exp : it->second) {
+        TRI_ASSERT(exp != nullptr);
 
-  if (it != _expressions->end()) {
-    for (auto const& exp : it->second) {
-      TRI_ASSERT(exp != nullptr);
-
-      if (exp->isEdgeAccess && !exp->matchesCheck(_trx, e)) {
-        ++_filteredPaths;
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-bool SingleServerTraverser::vertexMatchesConditions(std::string const& v,
-                                                  size_t depth) {
-  TRI_ASSERT(_expressions != nullptr);
-
-  auto it = _expressions->find(depth);
-
-  if (it != _expressions->end()) {
-    bool fetchVertex = true;
-    std::shared_ptr<VPackBuffer<uint8_t>> vertex;
-    for (auto const& exp : it->second) {
-      TRI_ASSERT(exp != nullptr);
-
-      if (!exp->isEdgeAccess) {
-        if (fetchVertex) {
-          fetchVertex = false;
-          vertex = fetchVertexData(v);
-        }
-        if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
+        if (exp->isEdgeAccess && !exp->matchesCheck(_trx, e)) {
           ++_filteredPaths;
           return false;
         }
@@ -122,30 +96,62 @@ bool SingleServerTraverser::vertexMatchesConditions(std::string const& v,
   return true;
 }
 
+bool SingleServerTraverser::vertexMatchesConditions(std::string const& v,
+                                                   size_t depth) {
+  if (_hasVertexConditions) {
+    TRI_ASSERT(_expressions != nullptr);
+    auto it = _expressions->find(depth);
+
+    if (it != _expressions->end()) {
+      bool fetchVertex = true;
+      std::shared_ptr<VPackBuffer<uint8_t>> vertex;
+      for (auto const& exp : it->second) {
+        TRI_ASSERT(exp != nullptr);
+
+        if (!exp->isEdgeAccess) {
+          if (fetchVertex) {
+            fetchVertex = false;
+            vertex = fetchVertexData(v);
+          }
+          if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
+            ++_filteredPaths;
+            return false;
+          }
+        }
+      }
+    }
+  }
+  return true;
+}
+
 std::shared_ptr<VPackBuffer<uint8_t>> SingleServerTraverser::fetchVertexData(
     std::string const& id) {
+
   auto it = _vertices.find(id);
+
   if (it == _vertices.end()) {
     VPackBuilder tmp;
-    int res = FetchDocumentById(_trx, id, _builder, tmp);
+    int res = FetchDocumentById(_trx, id, tmp);
     ++_readDocuments;
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_ASSERT(res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       tmp.add(VPackValue(VPackValueType::Null));
       return tmp.steal();
     }
+
     auto shared_buffer = tmp.steal();
     _vertices.emplace(id, shared_buffer);
     return shared_buffer;
   }
+
   return it->second;
 }
 
 bool SingleServerTraverser::VertexGetter::getVertex(std::string const& edge,
-                                                  std::string const& vertex,
-                                                  size_t depth,
-                                                  std::string& result) {
-  auto const& it = _traverser->_edges.find(edge);
+                                                    std::string const& vertex,
+                                                    size_t depth,
+                                                    std::string& result) {
+  auto it = _traverser->_edges.find(edge);
   TRI_ASSERT(it != _traverser->_edges.end());
   VPackSlice v(it->second->data());
   // NOTE: We assume that we only have valid edges.
@@ -167,7 +173,8 @@ void SingleServerTraverser::VertexGetter::reset(std::string const&) {
 bool SingleServerTraverser::UniqueVertexGetter::getVertex(
     std::string const& edge, std::string const& vertex, size_t depth,
     std::string& result) {
-  auto const& it = _traverser->_edges.find(edge);
+  
+  auto it = _traverser->_edges.find(edge);
   TRI_ASSERT(it != _traverser->_edges.end());
   VPackSlice v(it->second->data());
   // NOTE: We assume that we only have valid edges.
@@ -211,7 +218,7 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
           if (fetchVertex) {
             fetchVertex = false;
             VPackBuilder tmp;
-            int result = FetchDocumentById(_trx, v, _builder, tmp);
+            int result = FetchDocumentById(_trx, v, tmp);
             ++_readDocuments;
             if (result != TRI_ERROR_NO_ERROR) {
               // Vertex does not exist
@@ -260,7 +267,7 @@ TraversalPath* SingleServerTraverser::next() {
   if (_opts.uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
     // it is sufficient to check if any of the vertices on the path is equal to the end.
     // Then we prune and any intermediate equality cannot happen.
-    auto last = path.vertices.back();
+    auto& last = path.vertices.back();
     auto found = std::find(path.vertices.begin(), path.vertices.end(), last);
     TRI_ASSERT(found != path.vertices.end()); // We have to find it once, it is at least the last!
     if ((++found) != path.vertices.end()) {
@@ -276,7 +283,7 @@ TraversalPath* SingleServerTraverser::next() {
       _opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
     // Only if we use breadth first
     // and vertex uniqueness is not guaranteed
-    // We have to validate edges on path uniquness.
+    // We have to validate edges on path uniqueness.
     // Otherwise this situation cannot occur.
     // If two edges are identical than at least their start or end vertex
     // is on the path twice: A -> B <- A
@@ -292,18 +299,19 @@ TraversalPath* SingleServerTraverser::next() {
     }
   }
 
-  auto p = std::make_unique<SingleServerTraversalPath>(path, this);
   if (countEdges < _opts.minDepth) {
     return next();
   }
-  return p.release();
+
+  return new SingleServerTraversalPath(path, this);
 }
 
 bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
                                                    size_t& eColIdx,
                                                    VPackValueLength*& last) {
+  std::string eColName;
+
   while (true) {
-    std::string eColName;
     arangodb::Transaction::IndexHandle indexHandle;
     if (last != nullptr) {
       // The cursor is empty clean up
@@ -339,12 +347,14 @@ bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVerte
 void SingleServerTraverser::EdgeGetter::nextEdge(
     std::string const& startVertex, size_t& eColIdx, VPackValueLength*& last,
     std::vector<std::string>& edges) {
+
   if (last == nullptr) {
     _posInCursor.push(0);
     last = &_posInCursor.top();
   } else {
     ++(*last);
   }
+
   while (true) {
     TRI_ASSERT(!_cursors.empty());
     auto cursor = _cursors.top();
@@ -379,6 +389,7 @@ void SingleServerTraverser::EdgeGetter::nextEdge(
       last = &_posInCursor.top();
       continue;
     }
+
     edge = edge.at(*last);
     if (!_traverser->edgeMatchesConditions(edge, edges.size())) {
       if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
@@ -434,6 +445,7 @@ void SingleServerTraverser::EdgeGetter::getEdge(std::string const& startVertex,
 void SingleServerTraverser::EdgeGetter::getAllEdges(
     std::string const& startVertex, std::unordered_set<std::string>& edges,
     size_t depth) {
+
   size_t idxId = 0;
   std::string eColName;
   arangodb::Transaction::IndexHandle indexHandle;

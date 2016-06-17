@@ -269,7 +269,17 @@ bool TraversalBlock::morePaths(size_t hint) {
     return false;
   }
 
-  VPackBuilder tmp;
+  if (usesVertexOutput()) {
+    _vertices.reserve(hint);
+  }
+  if (usesEdgeOutput()) {
+    _edges.reserve(hint);
+  }
+  if (usesPathOutput()) {
+    _paths.reserve(hint);
+  }
+
+  TransactionBuilderLeaser tmp(_trx);
   for (size_t j = 0; j < hint; ++j) {
     std::unique_ptr<arangodb::traverser::TraversalPath> p(_traverser->next());
 
@@ -279,19 +289,19 @@ bool TraversalBlock::morePaths(size_t hint) {
     }
 
     if (usesVertexOutput()) {
-      tmp.clear();
-      p->lastVertexToVelocyPack(_trx, tmp);
-      _vertices.emplace_back(tmp.slice());
+      tmp->clear();
+      p->lastVertexToVelocyPack(_trx, *tmp.builder());
+      _vertices.emplace_back(tmp->slice());
     }
     if (usesEdgeOutput()) {
-      tmp.clear();
-      p->lastEdgeToVelocyPack(_trx, tmp);
-      _edges.emplace_back(tmp.slice());
+      tmp->clear();
+      p->lastEdgeToVelocyPack(_trx, *tmp.builder());
+      _edges.emplace_back(tmp->slice());
     }
     if (usesPathOutput()) {
-      tmp.clear();
-      p->pathToVelocyPack(_trx, tmp);
-      _paths.emplace_back(tmp.slice());
+      tmp->clear();
+      p->pathToVelocyPack(_trx, *tmp.builder());
+      _paths.emplace_back(tmp->slice());
     }
     _engine->_stats.scannedIndex += p->getReadDocuments();
 
