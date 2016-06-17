@@ -1,10 +1,10 @@
 !CHAPTER Cluster Scalability
 
-ArangoDB has been designed as a distributed multi model database. In this chapter we will give a short outline on the cluster archtiecture.
+ArangoDB has been designed as a distributed multi model database. In this chapter we will give a short outline on the cluster architecture.
 
 !SUBSECTION Cluster ID
 
-Every node in a cluster will be assigned a uniquely generated ID during its startup. As such a node is identifiable througout the cluster. All cluster operations will communicate via this ID.
+Every node in a cluster will be assigned a uniquely generated ID during its startup. As such a node is identifiable throughout the cluster. All cluster operations will communicate via this ID.
 
 !SUBSECTION Roles in an ArangoDB cluster
 
