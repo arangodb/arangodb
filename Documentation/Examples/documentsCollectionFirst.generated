@@ -1,3 +1,0 @@
-arangosh&gt; db.example.first(<span class="hljs-number">1</span>);
-<span class="hljs-built_in">TypeError</span>: db.example.first is not a <span class="hljs-function"><span class="hljs-keyword">function</span>
-</span>
