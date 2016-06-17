@@ -350,7 +350,10 @@ static void collectResultsFromAllShards(
     int commError = handleGeneralCommErrors(&res);
     if (commError != TRI_ERROR_NO_ERROR) {
       auto tmpBuilder = std::make_shared<VPackBuilder>();
-      auto weSend = shardMap.find(res.shardID);
+      // If there was no answer whatsoever, we cannot rely on the shardId
+      // being present in the result struct:
+      auto weSend = req.done ? shardMap.find(res.shardID)
+                             : shardMap.find(req.destination.substr(6));
       TRI_ASSERT(weSend != shardMap.end());  // We send sth there earlier.
       size_t count = weSend->second.size();
       for (size_t i = 0; i < count; ++i) {
@@ -1335,7 +1338,7 @@ int getDocumentOnCoordinator(
 
   }
 
-  // We select all results from all shards an merge them back again.
+  // We select all results from all shards and merge them back again.
   std::vector<std::shared_ptr<VPackBuilder>> allResults;
   allResults.reserve(shardList->size());
   // If no server responds we return 500
