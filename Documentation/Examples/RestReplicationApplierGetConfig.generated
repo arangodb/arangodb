@@ -18,6 +18,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   <span class="hljs-string">"requireFromPresent"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"verbose"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"incremental"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"useCollectionId"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"restrictType"</span> : <span class="hljs-string">""</span>, 
   <span class="hljs-string">"restrictCollections"</span> : [ ], 
   <span class="hljs-string">"connectionRetryWaitTime"</span> : <span class="hljs-number">15</span>, 

@@ -104,10 +104,7 @@ static void ValidateParameters(std::vector<AqlValue> const& parameters,
 
 /// @brief Insert a mptr into the result
 static void InsertMasterPointer(TRI_doc_mptr_t const* mptr, VPackBuilder& builder) {
-  //builder.add(VPackValue(static_cast<void const*>(mptr->vpack()),
-  //                       VPackValueType::External));
-  // This is the future, for now we have to copy:
-  builder.add(VPackSlice(mptr->vpack()));
+  builder.addExternal(mptr->vpack());
 }
 
 /// @brief clear the regex cache in a thread
