@@ -242,9 +242,9 @@ function lookupService(mount) {
       return serviceCache[dbname][mount];
     }
     throw new ArangoError({
-      errorNum: errors.ERROR_APP_NOT_FOUND.code,
+      errorNum: errors.ERROR_SERVICE_NOT_FOUND.code,
       errorMessage: dd`
-        ${errors.ERROR_APP_NOT_FOUND.message}
+        ${errors.ERROR_SERVICE_NOT_FOUND.message}
         Mount path: "${mount}".
       `
     });
@@ -318,8 +318,6 @@ function checkMountedSystemService(dbname) {
 function checkManifest(filename, inputManifest, mount, isDevelopment) {
   const serverVersion = plainServerVersion();
   const errors = [];
-  const warnings = [];
-  const notices = [];
   const manifest = {};
   let legacy = false;
 
@@ -328,8 +326,12 @@ function checkManifest(filename, inputManifest, mount, isDevelopment) {
     const value = inputManifest[key];
     const result = joi.validate(value, schema);
     if (result.error) {
-      const error = result.error.message.replace(/^"value"/, `Field "${key}"`);
-      errors.push(`${error} (was "${util.format(value)}").`);
+      const error = result.error.message.replace(/^"value"/, `Value`);
+      errors.push(il`
+        Service at "${mount}" specifies manifest field "${key}"
+        with invalid value "${util.format(value)}":
+        ${error}
+      `);
     } else {
       manifest[key] = result.value;
     }
@@ -339,16 +341,16 @@ function checkManifest(filename, inputManifest, mount, isDevelopment) {
     if (semver.gtr('3.0.0', manifest.engines.arangodb)) {
       legacy = true;
       if (!isDevelopment) {
-        notices.push(il`
-          Service expects version ${manifest.engines.arangodb}
+        console.infoLines(il`
+          Service at "${mount}" expects version "${manifest.engines.arangodb}"
           and will run in legacy compatibility mode.
         `);
       }
     } else if (!semver.satisfies(serverVersion, manifest.engines.arangodb)) {
       if (!isDevelopment) {
-        warnings.push(il`
-          ArangoDB version ${serverVersion} probably not compatible
-          with expected version ${manifest.engines.arangodb}.
+        console.warnLines(il`
+          Service at "${mount}" expects version "${manifest.engines.arangodb}"
+          which is likely incompatible with installed version "${serverVersion}".
         `);
       }
     }
@@ -360,14 +362,22 @@ function checkManifest(filename, inputManifest, mount, isDevelopment) {
     }
     manifest[key] = inputManifest[key];
     if (key === 'engine' && !inputManifest.engines) {
-      warnings.push('Unknown field "engine". Did you mean "engines"?');
+      console.warnLines(il`
+        Service at "${mount}" specifies unknown manifest field "engine".
+        Did you mean "engines"?
+      `);
     } else if (!legacy || legacyManifestFields.indexOf(key) === -1) {
-      warnings.push(`Unknown field "${key}".`);
+      console.warnLines(il`
+        Service at "${mount}" specifies unknown manifest field "${key}".
+      `);
     }
   }
 
   if (manifest.version && !semver.valid(manifest.version)) {
-    warnings.push(`Not a valid version: "${manifest.version}"`);
+    console.warnLines(il`
+      Service at "${mount}" specifies manifest field "version"
+      with invalid value "${manifest.version}".
+    `);
   }
 
   if (manifest.provides) {
@@ -385,7 +395,10 @@ function checkManifest(filename, inputManifest, mount, isDevelopment) {
     for (const name of Object.keys(manifest.provides)) {
       const version = manifest.provides[name];
       if (!semver.valid(version)) {
-        errors.push(`Provided "${name}" invalid version: "${version}".`);
+        errors.push(il`
+          Service at "${mount}" specifies manifest field "provides"
+          with "${name}" set to invalid value "${version}".
+        `);
       }
     }
   }
@@ -402,26 +415,22 @@ function checkManifest(filename, inputManifest, mount, isDevelopment) {
       }
       const version = manifest.dependencies[key].version;
       if (!semver.validRange(version)) {
-        errors.push(`Dependency "${key}" invalid version: "${version}".`);
+        errors.push(il`
+          Service at "${mount}" specifies manifest field "dependencies"
+          with "${key}" set to invalid value "${version}".
+        `);
       }
     }
   }
 
-  const prefix = `Manifest for service at "${mount}"`;
-  if (notices.length) {
-    console.infoLines(`${prefix}:\n  ${notices.join('\n  ')}`);
-  }
-
-  if (warnings.length) {
-    console.warnLines(`${prefix}:\n  ${warnings.join('\n  ')}`);
-  }
-
   if (errors.length) {
-    console.errorLines(`${prefix}:\n  ${errors.join('\n  ')}`);
+    for (const error of errors) {
+      console.errorLines(error);
+    }
     throw new ArangoError({
-      errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+      errorNum: errors.ERROR_INVALID_SERVICE_MANIFEST.code,
       errorMessage: dd`
-        ${errors.ERROR_INVALID_APPLICATION_MANIFEST.message}
+        ${errors.ERROR_INVALID_SERVICE_MANIFEST.message}
         Manifest for service at "${mount}":
         ${errors.join('\n')}
       `
@@ -476,9 +485,9 @@ function validateManifestFile(filename, mount, isDevelopment) {
   } catch (e) {
     throw Object.assign(
       new ArangoError({
-        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+        errorNum: errors.ERROR_INVALID_SERVICE_MANIFEST.code,
         errorMessage: dd`
-          ${errors.ERROR_INVALID_APPLICATION_MANIFEST.message}
+          ${errors.ERROR_INVALID_SERVICE_MANIFEST.message}
           File: ${filename}
           Cause: ${e.stack}
         `
@@ -948,9 +957,9 @@ function _scanFoxx(mount, options, activateDevelopment) {
           var old = utils.getStorage().firstExample({ mount: mount });
           if (old === null) {
             throw new ArangoError({
-              errorNum: errors.ERROR_APP_NOT_FOUND.code,
+              errorNum: errors.ERROR_SERVICE_NOT_FOUND.code,
               errorMessage: dd`
-                ${errors.ERROR_APP_NOT_FOUND.message}
+                ${errors.ERROR_SERVICE_NOT_FOUND.message}
                 Mount path: "${mount}".
               `
             });
@@ -1075,9 +1084,9 @@ function _install(serviceInfo, mount, options, runSetup) {
   options = options || {};
   if (fs.exists(targetPath)) {
     throw new ArangoError({
-      errorNum: errors.ERROR_APP_MOUNTPOINT_CONFLICT.code,
+      errorNum: errors.ERROR_SERVICE_MOUNTPOINT_CONFLICT.code,
       errorMessage: dd`
-        ${errors.ERROR_APP_MOUNTPOINT_CONFLICT.message}
+        ${errors.ERROR_SERVICE_MOUNTPOINT_CONFLICT.message}
         Mount path: "${mount}".
       `
     });
@@ -1591,8 +1600,8 @@ function requireService(mount) {
   var service = lookupService(mount);
   if (service.needsConfiguration()) {
     throw new ArangoError({
-      errorNum: errors.ERROR_APP_NEEDS_CONFIGURATION.code,
-      errorMessage: errors.ERROR_APP_NEEDS_CONFIGURATION.message
+      errorNum: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.code,
+      errorMessage: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.message
     });
   }
   return routeAndExportService(service, true).exports;

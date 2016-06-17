@@ -426,8 +426,8 @@ exports.stringPadding = function (str, len, pad, dir) {
 
 exports.throwDownloadError = function (msg) {
   throw new exports.ArangoError({
-    errorNum: exports.errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code,
-    errorMessage: exports.errors.ERROR_APPLICATION_DOWNLOAD_FAILED.message + ': ' + String(msg)
+    errorNum: exports.errors.ERROR_SERVICE_DOWNLOAD_FAILED.code,
+    errorMessage: exports.errors.ERROR_SERVICE_DOWNLOAD_FAILED.message + ': ' + String(msg)
   });
 };
 

@@ -242,8 +242,8 @@ var moveAppToServer = function(serviceInfo) {
   }
   if (! response.filename) {
     throw new ArangoError({
-      errorNum: errors.ERROR_APPLICATION_UPLOAD_FAILED.code,
-      errorMessage: errors.ERROR_APPLICATION_UPLOAD_FAILED.message
+      errorNum: errors.ERROR_SERVICE_UPLOAD_FAILED.code,
+      errorMessage: errors.ERROR_SERVICE_UPLOAD_FAILED.message
                   + ": " + String(response.errorMessage)
     });
   }

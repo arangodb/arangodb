@@ -5,7 +5,7 @@
   
   // mop: copy paste from common/bootstrap/errors.js
   var errors = {
-    "ERROR_APPLICATION_DOWNLOAD_FAILED" : { "code" : 1752, "message" : "application download failed" },
+    "ERROR_SERVICE_DOWNLOAD_FAILED" : { "code" : 1752, "message" : "service download failed" },
   };
 
   var appStoreTemplate = templateEngine.createTemplate("applicationListView.ejs");
@@ -31,7 +31,7 @@
         res = result.responseJSON;
       } 
       switch(res.errorNum) {
-        case errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code:
+        case errors.ERROR_SERVICE_DOWNLOAD_FAILED.code:
           arangoHelper.arangoError("Services", "Unable to download application from the given repository.");
           break;
         default:

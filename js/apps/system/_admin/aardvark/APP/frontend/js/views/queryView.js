@@ -5,11 +5,11 @@
 
 (function () {
   "use strict";
-  window.queryView2 = Backbone.View.extend({
+  window.queryView = Backbone.View.extend({
     el: '#content',
     bindParamId: '#bindParamEditor',
     myQueriesId: '#queryTable',
-    template: templateEngine.createTemplate("queryView2.ejs"),
+    template: templateEngine.createTemplate("queryView.ejs"),
     table: templateEngine.createTemplate("arangoTable.ejs"),
 
     outputDiv: '#outputEditors',

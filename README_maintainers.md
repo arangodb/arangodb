@@ -1,10 +1,31 @@
 
 ArangoDB Maintainers manual
 ===========================
+
 This file contains documentation about the build process, documentation generation means, unittests - put short - if you want to hack parts of arangod this could be interesting for you.
 
 CMake
 =====
+
+Essentially, you can compile ArangoDB from source by issueing the
+following commands from a clone of the source repository:
+
+    mkdir build
+    cd build
+    cmake ..
+    make
+    cd ..
+
+After that, the binaries will reside in `build/bin`. To quickly start
+up your compiled ArangoDB, simply do
+
+    build/bin/arangod -c etc/relative/arangod.conf data
+
+This will use a configuration file that is included in the source
+repository.
+
+CMake flags
+-----------
  * *-DUSE_MAINTAINER_MODE* - generate lex/yacc files
  * *-DUSE_BACKTRACE=1* - add backtraces to native code asserts & exceptions
  * *-DUSE_FAILURE_TESTS=1* - adds javascript hook to crash the server for data integrity tests

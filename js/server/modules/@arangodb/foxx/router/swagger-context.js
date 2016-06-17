@@ -24,16 +24,14 @@
 
 const _ = require('lodash');
 const joi = require('joi');
-const assert = require('assert');
 const statuses = require('statuses');
 const mimeTypes = require('mime-types');
 const mediaTyper = require('media-typer');
+const check = require('@arangodb/foxx/check-args');
 const joiToJsonSchema = require('joi-to-json-schema');
-const il = require('@arangodb/util').inline;
 const tokenize = require('@arangodb/foxx/router/tokenize');
 
 const MIME_JSON = 'application/json; charset=utf-8';
-const MIME_BINARY = 'application/octet-stream';
 const DEFAULT_ERROR_SCHEMA = joi.object().keys({
   error: joi.allow(true).required(),
   errorNum: joi.number().integer().optional(),
@@ -41,6 +39,15 @@ const DEFAULT_ERROR_SCHEMA = joi.object().keys({
   code: joi.number().integer().optional()
 });
 
+const PARSED_JSON_MIME = (function (mime) {
+  const contentType = mimeTypes.contentType(mime) || mime;
+  const parsed = mediaTyper.parse(contentType);
+  return mediaTyper.format(_.pick(parsed, [
+    'type',
+    'subtype',
+    'suffix'
+  ]));
+}(MIME_JSON));
 
 module.exports = exports = class SwaggerContext {
   constructor(path) {
@@ -70,243 +77,166 @@ module.exports = exports = class SwaggerContext {
   }
 
   header(name, schema, description) {
-    if (typeof schema === 'string') {
-      description = schema;
-      schema = undefined;
-    }
+    [name, schema, description] = check(
+      'endpoint.header',
+      ['name', 'schema?', 'description?'],
+      ['string', check.validateSchema, 'string'],
+      [name, schema, description]
+    );
     this._headers.set(name, {schema, description});
     return this;
   }
 
   pathParam(name, schema, description) {
-    if (typeof schema === 'string') {
-      description = schema;
-      schema = undefined;
-    }
+    [name, schema, description] = check(
+      'endpoint.pathParam',
+      ['name', 'schema?', 'description?'],
+      ['string', check.validateSchema, 'string'],
+      [name, schema, description]
+    );
     this._pathParams.set(name, {schema, description});
     return this;
   }
 
   queryParam(name, schema, description) {
-    if (typeof schema === 'string') {
-      description = schema;
-      schema = undefined;
-    }
+    [name, schema, description] = check(
+      'endpoint.queryParam',
+      ['name', 'schema?', 'description?'],
+      ['string', check.validateSchema, 'string'],
+      [name, schema, description]
+    );
     this._queryParams.set(name, {schema, description});
     return this;
   }
 
   body(model, mimes, description) {
-    if (
-      typeof model === 'string'
-      || (Array.isArray(model) && typeof model[0] === 'string')
-    ) {
-      description = mimes;
-      mimes = model;
-      model = undefined;
+    [model, mimes, description] = check(
+      'endpoint.body',
+      ['model?', 'mimes?', 'description?'],
+      [check.validateModel, check.validateMimes, 'string'],
+      [model, mimes, description]
+    );
+
+    if (!model) {
+      model = {multiple: false};
     }
 
-    if (typeof mimes === 'string') {
-      description = mimes;
-      mimes = undefined;
-    }
-
-    let multiple = false;
-    if (Array.isArray(model)) {
-      if (model.length !== 1) {
-        throw new Error(il`
-          Model must be a model or schema
-          or an array containing exactly one model or schema.
-          If you are trying to use multiple schemas
-          try using joi.alternatives instead.
-        `);
-      }
-      model = model[0];
-      multiple = true;
-    }
-
-    if (model === null && !mimes) {
+    if (model.model === null) {
       this._bodyParam = {
         model: null,
-        multiple,
+        multiple: model.multiple,
         contentTypes: null,
         description
       };
-      return;
+      return this;
     }
 
     if (!mimes) {
       mimes = [];
     }
 
-    if (!mimes.length && model) {
-      mimes.push(MIME_JSON);
-    }
-
-    const contentTypes = mimes.map((mime) => {
-      if (mime === 'binary') {
-        mime = MIME_BINARY;
-      }
-      const contentType = mimeTypes.contentType(mime) || mime;
-      const parsed = mediaTyper.parse(contentType);
-      return mediaTyper.format(_.pick(parsed, [
-        'type',
-        'subtype',
-        'suffix'
-      ]));
-    });
-
-    if (model) {
-      if (model.isJoi) {
-        model = {schema: model};
-      } else {
-        model = _.clone(model);
-      }
-      if (model.schema && !model.schema.isJoi) {
-        model.schema = joi.object(model.schema).required();
-      }
-      if (!model.forClient && typeof model.toClient === 'function') {
-        console.warn(il`
-          Found unexpected "toClient" method on request body model.
-          Did you mean "forClient"?
-        `);
-      }
-      assert(!model.forClient || typeof model.forClient === 'function', il`
-        Request body model forClient handler must be a function,
-        not ${typeof model.forClient}
-      `);
-      assert(!model.fromClient || typeof model.fromClient === 'function', il`
-        Request body model fromClient handler must be a function,
-        not ${typeof model.fromClient}
-      `);
+    if (!mimes.length && model.model) {
+      mimes.push(PARSED_JSON_MIME);
     }
 
     this._bodyParam = {
-      model,
-      multiple,
-      contentTypes,
+      model: model.model,
+      multiple: model.multiple,
+      contentTypes: mimes,
       description
     };
     return this;
   }
 
   response(status, model, mimes, description) {
-    if (typeof status === 'string') {
-      status = statuses(status);
+    [status, model, mimes, description] = check(
+      'endpoint.response',
+      ['status?', 'model?', 'mimes?', 'description?'],
+      [check.validateStatus, check.validateModel, check.validateMimes, 'string'],
+      [status, model, mimes, description]
+    );
+
+    if (!model) {
+      model = {multiple: false};
     }
 
-    let statusCode = Number(status);
-
-    if (!status || Number.isNaN(statusCode)) {
-      description = mimes;
-      mimes = model;
-      model = status;
-      statusCode = model === null ? 204 : 200;
+    if (!status) {
+      status = model.model === null ? 204 : 200;
     }
 
-    if (
-      typeof model === 'string'
-      || (Array.isArray(model) && typeof model[0] === 'string')
-    ) {
-      description = mimes;
-      mimes = model;
-      model = undefined;
-    }
 
-    if (typeof mimes === 'string') {
-      description = mimes;
-      mimes = undefined;
-    }
-
-    let multiple = false;
-    if (Array.isArray(model)) {
-      if (model.length !== 1) {
-        throw new Error(il`
-          Model must be a model or schema
-          or an array containing exactly one model or schema.
-          If you are trying to use multiple schemas
-          try using joi.alternatives instead.
-        `);
-      }
-      model = model[0];
-      multiple = true;
+    if (model.model === null) {
+      this._responses.set(status, {
+        model: null,
+        multiple: model.multiple,
+        contentTypes: null,
+        description
+      });
+      return this;
     }
 
     if (!mimes) {
       mimes = [];
     }
 
-    if (!mimes.length && model) {
-      mimes.push(MIME_JSON);
+    if (!mimes.length && model.model) {
+      mimes.push(PARSED_JSON_MIME);
     }
 
-    const contentTypes = mimes.map((mime) => {
-      if (mime === 'binary') {
-        mime = MIME_BINARY;
-      }
-      const contentType = mimeTypes.contentType(mime) || mime;
-      const parsed = mediaTyper.parse(contentType);
-      return mediaTyper.format(_.pick(parsed, [
-        'type',
-        'subtype',
-        'suffix'
-      ]));
-    });
-
-    if (model) {
-      if (model.isJoi) {
-        model = {schema: model};
-      } else {
-        model = _.clone(model);
-      }
-      if (model.schema && !model.schema.isJoi) {
-        model.schema = joi.object(model.schema).required();
-      }
-      if (!model.forClient && typeof model.toClient === 'function') {
-        console.warn(il`
-          Found unexpected "toClient" method on response body model at ${statusCode}.
-          Did you mean "forClient"?
-        `);
-      }
-      assert(!model.forClient || typeof model.forClient === 'function', il`
-        Response body model forClient handler at ${statusCode} must be a function,
-        not ${typeof model.forClient}
-      `);
-      assert(!model.fromClient || typeof model.fromClient === 'function', il`
-        Response body model fromClient handler at ${statusCode} must be a function,
-        not ${typeof model.fromClient}
-      `);
-    }
-
-    this._responses.set(statusCode, {
-      model,
-      multiple,
-      contentTypes,
+    this._responses.set(status, {
+      model: model.model,
+      multiple: model.multiple,
+      contentTypes: mimes,
       description
     });
     return this;
   }
 
   error(status, description) {
-    return this.response(
-      status,
-      DEFAULT_ERROR_SCHEMA,
-      null,
-      description
+    [status, description] = check(
+      'endpoint.error',
+      ['status', 'description?'],
+      [check.validateStatus, 'string'],
+      [status, description]
     );
+    this._responses.set(status, {
+      model: DEFAULT_ERROR_SCHEMA,
+      multiple: false,
+      contentTypes: [PARSED_JSON_MIME],
+      description
+    });
+    return this;
   }
 
   summary(text) {
+    [text] = check(
+      'endpoint.summary',
+      ['text'],
+      ['string'],
+      [text]
+    );
     this._summary = text;
     return this;
   }
 
   description(text) {
+    [text] = check(
+      'endpoint.description',
+      ['text'],
+      ['string'],
+      [text]
+    );
     this._description = text;
     return this;
   }
 
   deprecated(flag) {
+    [flag] = check(
+      'endpoint.deprecated',
+      ['flag?'],
+      ['boolean'],
+      [flag]
+    );
     this._deprecated = typeof flag === 'boolean' ? flag : true;
     return this;
   }
@@ -483,7 +413,7 @@ module.exports = exports = class SwaggerContext {
       if (def.contentTypes && def.contentTypes.length) {
         response.schema = (
           schema
-          ? joi2schema(schema.isJoi ? schema : joi.object(schema), def.multiple)
+          ? joi2schema(schema, def.multiple)
           : {type: 'string'}
         );
       }

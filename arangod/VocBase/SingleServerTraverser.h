@@ -25,6 +25,7 @@
 #define ARANGOD_SINGLE_SERVER_TRAVERSER_H 1
 
 #include "VocBase/Traverser.h"
+#include "Aql/AqlValue.h"
 
 namespace arangodb {
 
@@ -153,7 +154,6 @@ class SingleServerTraverser final : public Traverser {
     //////////////////////////////////////////////////////////////////////////////
 
     arangodb::velocypack::Builder _builder;
-
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -207,9 +207,7 @@ public:
   /// @brief Fetch the vertex data from the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> fetchVertexData(
-      std::string const&);
-
+  aql::AqlValue fetchVertexData(std::string const&);
 
   std::vector<TRI_document_collection_t*> _edgeCols;
 
@@ -220,27 +218,19 @@ public:
   Transaction* _trx;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Cache for vertex documents
+  /// @brief Cache for vertex documents, points from _id to start of 
+  /// document VPack value (in datafiles)
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<std::string,
-                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-      _vertices;
+  std::unordered_map<std::string, uint8_t const*> _vertices;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Cache for edge documents
+  /// @brief Cache for edge documents, points from _id to start of edge
+  /// VPack value (in datafiles)
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<std::string,
-                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-      _edges;
+  std::unordered_map<std::string, uint8_t const*> _edges;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Shared builder to create temporary objects like search values
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::velocypack::Builder _builder;
- 
 };
 } // namespace traverser
 } // namespace arangodb

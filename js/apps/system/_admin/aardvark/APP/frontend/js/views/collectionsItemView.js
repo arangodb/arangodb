@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, exports, Backbone, EJS, _, $, templateEngine, arangoHelper, Joi*/
+/*global window, frontendConfig, exports, Backbone, EJS, _, $, templateEngine, arangoHelper, Joi*/
 
 (function() {
   "use strict";
@@ -212,7 +212,12 @@
               }
             }.bind(this);
 
-            this.model.renameCollection(newname, callbackRename);
+            if (frontendConfig.isCluster === false) {
+              this.model.renameCollection(newname, callbackRename);
+            }
+            else {
+              callbackRename();
+            }
           }
           else if (status === 'unloaded') {
             if (this.model.get('name') !== newname) {
@@ -227,7 +232,12 @@
                 }
               }.bind(this);
 
-              this.model.renameCollection(newname, callbackRename2);
+              if (frontendConfig.isCluster === false) {
+                this.model.renameCollection(newname, callbackRename2);
+              }
+              else {
+                callbackRename2();
+              }
             }
             else {
               window.modalView.hide();

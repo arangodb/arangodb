@@ -86,6 +86,10 @@ module.exports = class SyntheticRequest {
     this.remotePort = client.port;
   }
 
+  _PRINT(ctx) {
+    ctx.output += '[IncomingRequest]';
+  }
+
   // Node compat
 
   get headers() {
