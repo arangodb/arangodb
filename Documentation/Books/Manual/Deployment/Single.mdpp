@@ -14,30 +14,30 @@ Please note that ArangoDB will only work on 64bit.
 
 !SUBSECTION Docker
 
-The most simple way to deploy ArangoDB is using [Docker](https://docker.io/). To get a general understanding of docker have a look at their excellent documentation.
+The simplest way to deploy ArangoDB is using [Docker](https://docker.io/). To get a general understanding of Docker have a look at [their excellent documentation](https://docs.docker.com/).
 
 !SUBSUBSECTION Authentication
 
-To start the official docker container you will have to decide on an authentication method. Otherwise the container won't start.
+To start the official Docker container you will have to decide on an authentication method. Otherwise the container won't start.
 
-Provide one of the arguments to docker as an environment variable.
+Provide one of the arguments to Docker as an environment variable.
 
 There are three options:
 
 1. ARANGO_NO_AUTH=1
 
-        Disable authentication completely. Useful for local testing or for operating in a trusted network (without a public interface).
+   Disable authentication completely. Useful for local testing or for operating in a trusted network (without a public interface).
         
 2. ARANGO_ROOT_PASSWORD=password
 
-        Start ArangoDB with the given password for root
+   Start ArangoDB with the given password for root
         
 3. ARANGO_RANDOM_ROOT_PASSWORD=1
 
-        Let ArangoDB generate a random root password
+   Let ArangoDB generate a random root password
         
-To get quickly going:
+To get going quickly:
 
 `docker run -e ARANGO_RANDOM_ROOT_PASSWORD=1 arangodb`
 
-For an in depth guide about docker and arangodb please check the official documentation: https://hub.docker.com/r/_/arangodb/
+For an in depth guide about Docker and ArangoDB please check the official documentation: https://hub.docker.com/r/_/arangodb/
