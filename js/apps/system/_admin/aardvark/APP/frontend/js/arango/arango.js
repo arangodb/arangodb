@@ -453,6 +453,10 @@
       window.App.notificationList.add({title:title, content: content, info: info, type: 'warning'});
     },
 
+    arangoMessage: function (title, content, info) {
+      window.App.notificationList.add({title:title, content: content, info: info, type: 'message'});
+    },
+
     hideArangoNotifications: function() {
       $.noty.clearQueue();
       $.noty.closeAll();

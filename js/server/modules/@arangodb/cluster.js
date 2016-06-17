@@ -1738,7 +1738,10 @@ function shardDistribution() {
     result[collName] = {Plan: format(collInfo.shards),
                         Current: format(collInfoCurrent)};
   }
-  return result;
+
+  return {
+    results: result
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
