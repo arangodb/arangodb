@@ -302,7 +302,9 @@ Returns the number of living documents in the collection.
 `collection.toArray()`
 
 Converts the collection into an array of documents. Never use this call
-in a production environment.
+in a production environment as it will basically create a copy of your
+collection in RAM which will use resources depending on the number and size
+of the documents in your collecion.
 
 
 !SUBSECTION Document

@@ -26,11 +26,9 @@ const SwaggerContext = require('@arangodb/foxx/router/swagger-context');
 
 module.exports = class Middleware extends SwaggerContext {
   constructor(path, fn) {
-    if (typeof path !== 'string') {
-      fn = path;
-      path = '/';
-    }
-    if (path.charAt(path.length - 1) !== '*') {
+    if (!path) {
+      path = '/*';
+    } else if (path.charAt(path.length - 1) !== '*') {
       if (path.charAt(path.length - 1) !== '/') {
         path += '/';
       }
@@ -42,5 +40,9 @@ module.exports = class Middleware extends SwaggerContext {
     if (typeof fn.register === 'function') {
       this._handler = fn.register(this) || fn;
     }
+  }
+
+  _PRINT(ctx) {
+    ctx.output += `[FoxxMiddleware: "${this.path}"]`;
   }
 };

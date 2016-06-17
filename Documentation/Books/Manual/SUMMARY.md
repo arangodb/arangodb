@@ -13,7 +13,7 @@
     * [Compiling](GettingStarted/Installing/Compiling.md)
     * [Cluster setup](GettingStarted/Installing/Cluster.md)
   * [Authentication](GettingStarted/Authentication.md)
-  * [Using the Web Interface](GettingStarted/WebInterface/README.md)
+  * [Accessing the Web Interface](GettingStarted/WebInterface/README.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
   # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
 #
@@ -144,6 +144,10 @@
     * [Implementation](Administration/Sharding/StatusOfImplementation.md)
     * [Authentication](Administration/Sharding/Authentication.md)
     * [Firewall setup](Administration/Sharding/FirewallSetup.md)
+  * [Web Interface](Administration/WebInterface/README.md)
+    * [AQL Editor](Administration/WebInterface/AqlEditor.md)
+    * [Collections](Administration/WebInterface/Collections.md)
+    * [Graph Viewer](Administration/WebInterface/GraphViewer.md)
 #
 * [Troubleshooting](Troubleshooting/README.md)
   * [arangod](Troubleshooting/Arangod.md)

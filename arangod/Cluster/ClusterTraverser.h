@@ -149,7 +149,7 @@ class ClusterTraverser final : public Traverser {
   std::unique_ptr<arangodb::basics::PathEnumerator<std::string, std::string, size_t>> _enumerator;
 };
 
-class ClusterTraversalPath : public TraversalPath {
+class ClusterTraversalPath final : public TraversalPath {
  public:
   ClusterTraversalPath(
       ClusterTraverser const* traverser,

@@ -192,12 +192,18 @@
             self.render();
           }
         },
-        error: function () {
-          self.isOffline = true;
-          self.isOfflineCounter++;
-          if (self.isOfflineCounter >= 1) {
-            //arangoHelper.arangoError("Server", "Server is offline");
-            self.showServerStatus(false);
+        error: function (jqXHR) {
+          if (jqXHR.status === 401) {
+            self.showServerStatus(true);
+            window.App.navigate("login", {trigger: true});
+          }
+          else {
+            self.isOffline = true;
+            self.isOfflineCounter++;
+            if (self.isOfflineCounter >= 1) {
+              //arangoHelper.arangoError("Server", "Server is offline");
+              self.showServerStatus(false);
+            }
           }
         }
       });

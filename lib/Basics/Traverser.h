@@ -29,7 +29,6 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 
-#include <deque>
 #include <stack>
 
 namespace arangodb {
@@ -127,7 +126,7 @@ class PathEnumerator {
 };
 
 template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
-class DepthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdentifier, edgeItem> {
+class DepthFirstEnumerator final : public PathEnumerator<edgeIdentifier, vertexIdentifier, edgeItem> {
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief The pointers returned for edge indexes on this path. Used to
@@ -171,7 +170,7 @@ class DepthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdentif
       prune();
     }
 
-    // Avoid tail recusion. May crash on high search depth
+    // Avoid tail recursion. May crash on high search depth
     while (true) {
       if (_lastEdges.empty()) {
         this->_enumeratedPath.edges.clear();
@@ -227,7 +226,7 @@ class DepthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdentif
 };
 
 template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
-class BreadthFirstEnumerator : public PathEnumerator<edgeIdentifier, vertexIdentifier, edgeItem> {
+class BreadthFirstEnumerator final : public PathEnumerator<edgeIdentifier, vertexIdentifier, edgeItem> {
  private:
 
   //////////////////////////////////////////////////////////////////////////////

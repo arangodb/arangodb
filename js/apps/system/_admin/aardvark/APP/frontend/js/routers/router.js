@@ -304,9 +304,11 @@
         this.navigate("#dashboard", {trigger: true});
         return;
       }
-      this.shardsView = new window.ShardsView({
-        dbServers: this.dbServers 
-      });
+      if (!this.shardsView) {
+        this.shardsView = new window.ShardsView({
+          dbServers: this.dbServers
+        });
+      }
       this.shardsView.render();
     },
 

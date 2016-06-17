@@ -283,7 +283,7 @@ TraversalPath* SingleServerTraverser::next() {
       _opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
     // Only if we use breadth first
     // and vertex uniqueness is not guaranteed
-    // We have to validate edges on path uniquness.
+    // We have to validate edges on path uniqueness.
     // Otherwise this situation cannot occur.
     // If two edges are identical than at least their start or end vertex
     // is on the path twice: A -> B <- A

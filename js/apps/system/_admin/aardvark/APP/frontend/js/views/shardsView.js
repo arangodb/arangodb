@@ -46,10 +46,27 @@
         processData: false,
         async: true,
         success: function(data) {
-          self.continueRender(data);
+          var collsAvailable = false, collName;
+          self.shardDistribution = data.results;
+
+          _.each(data.results, function(ignore, name) { 
+          collName = name.substring(0, 1);
+            if (collName !== '_' && name !== 'error' && name !== 'code') {
+              collsAvailable = true;
+            }
+          });
+
+          if (collsAvailable) {
+            self.continueRender(data.results);
+          }
+          else {
+            arangoHelper.renderEmpty("No collections and no shards available");
+          }
         },
-        error: function() {
-          arangoHelper.arangoError("Cluster", "Could not fetch sharding information.");
+        error: function(data) {
+          if (data.readyState !== 0) {
+            arangoHelper.arangoError("Cluster", "Could not fetch sharding information.");
+          }
         }
       });
 
@@ -59,6 +76,7 @@
     },
 
     moveShard: function(e) {
+      var self = this;
       var dbName = window.App.currentDB.get("name");
       var collectionName = $(e.currentTarget).attr("collection");
       var shardName = $(e.currentTarget).attr("shard");
@@ -67,16 +85,31 @@
       var buttons = [],
         tableContent = [];
 
-      var array = [];
-      this.dbServers[0].each(function(db) {
+      var obj = {}, array = [];
+
+      self.dbServers[0].each(function(db) {
         if (db.get("name") !== fromServer) {
-          array.push({
+          obj[db.get("name")] = {
             value: db.get("name"),
             label: db.get("name")
-          });
+          };
         }
       });
+
+      _.each(self.shardDistribution[collectionName].Plan[shardName].followers, function(follower) {
+        delete obj[follower];
+      });
+
+      _.each(obj, function(value) {
+        array.push(value);
+      });
+
       array = array.reverse();
+      
+      if (array.length === 0) {
+        arangoHelper.arangoMessage("Shards", "No database server for moving the shard is available.");
+        return;
+      }
 
       tableContent.push(
         window.modalView.createSelectEntry(
