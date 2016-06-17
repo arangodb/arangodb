@@ -25,17 +25,25 @@
 #define ARANGODB_BASICS_STRING_REF_H 1
 
 #include "Basics/Common.h"
-#include "Basics/fasthash.h"
+#include "Basics/xxhash.h"
 
 namespace arangodb {
 
 /// @brief a struct describing a C character array
 /// not responsible for memory management!
 struct StringRef {
-  StringRef() = delete;
+  StringRef() : data(""), length(0) {}
   explicit StringRef(std::string const& str) : data(str.c_str()), length(str.size()) {}
   explicit StringRef(char const* data) : data(data), length(strlen(data)) {}
   StringRef(char const* data, size_t length) : data(data), length(length) {}
+
+  bool operator==(StringRef const& other) const {
+    return (length == other.length && memcmp(data, other.data, length) == 0);
+  }
+  
+  bool operator==(std::string const& other) const {
+    return (length == other.size() && memcmp(data, other.c_str(), length) == 0);
+  }
 
   char const* data;
   size_t length;
@@ -48,7 +56,7 @@ namespace std {
 template <>
 struct hash<arangodb::StringRef> {
   size_t operator()(arangodb::StringRef const& value) const noexcept {
-    return fasthash64(value.data, value.length, 0xdeadbeef) ^ std::hash<size_t>()(value.length);
+    return XXH64(value.data, value.length, 0xdeadbeef); 
   }
 };
 
