@@ -289,9 +289,7 @@ bool TraversalBlock::morePaths(size_t hint) {
     }
 
     if (usesVertexOutput()) {
-      tmp->clear();
-      p->lastVertexToVelocyPack(_trx, *tmp.builder());
-      _vertices.emplace_back(tmp->slice());
+      _vertices.emplace_back(p->lastVertexToAqlValue(_trx));
     }
     if (usesEdgeOutput()) {
       tmp->clear();

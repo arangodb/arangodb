@@ -131,7 +131,6 @@ int EdgeCollectionInfo::getReverseEdgesCoordinator(VPackSlice const& vertexId,
   return res;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Compute the weight of an edge
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,8 +145,7 @@ double EdgeCollectionInfo::weightEdge(VPackSlice const edge) {
 /// @brief Return name of the wrapped collection
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const& EdgeCollectionInfo::getName() {
+std::string const& EdgeCollectionInfo::getName() const {
   return _collectionName;
 }
-
 
