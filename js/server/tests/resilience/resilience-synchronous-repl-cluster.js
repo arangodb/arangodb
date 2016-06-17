@@ -328,6 +328,8 @@ function SynchronousReplicationSuite () {
           return;
         }
         console.info("Need to recreate collection to avoid system collection servers.");
+        waitForSynchronousReplication("_system");
+        console.info("Synchronous replication has settled, now dropping again.");
       }
     },
 
