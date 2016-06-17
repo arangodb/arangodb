@@ -1,0 +1,26 @@
+arangosh&gt; db.example.insert([{ Hello : <span class="hljs-string">"World"</span> }, {Hello: <span class="hljs-string">"there"</span>}])
+[ 
+  { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15593"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15593"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15593"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15597"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15597"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15597"</span> 
+  } 
+]
+arangosh&gt; db.example.insert([{ Hello : <span class="hljs-string">"World"</span> }, {}], {waitForSync: <span class="hljs-literal">true</span>});
+[ 
+  { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15601"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15601"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15601"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15605"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15605"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15605"</span> 
+  } 
+]

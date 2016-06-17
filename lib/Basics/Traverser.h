@@ -170,7 +170,7 @@ class DepthFirstEnumerator final : public PathEnumerator<edgeIdentifier, vertexI
       prune();
     }
 
-    // Avoid tail recusion. May crash on high search depth
+    // Avoid tail recursion. May crash on high search depth
     while (true) {
       if (_lastEdges.empty()) {
         this->_enumeratedPath.edges.clear();

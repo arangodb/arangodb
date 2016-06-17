@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocBase/SingleServerTraversalPath.h"
+#include "Aql/AqlValue.h"
 
+using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
 void SingleServerTraversalPath::pathToVelocyPack(arangodb::Transaction* trx,
@@ -34,15 +36,13 @@ void SingleServerTraversalPath::pathToVelocyPack(arangodb::Transaction* trx,
     auto cached = _traverser->_edges.find(it);
     // All edges are cached!!
     TRI_ASSERT(cached != _traverser->_edges.end());
-    result.add(VPackSlice(cached->second->data()));
+    result.addExternal((*cached).second);
   }
   result.close();
   result.add(VPackValue("vertices"));
   result.openArray();
   for (auto const& it : _path.vertices) {
-    std::shared_ptr<VPackBuffer<uint8_t>> vertex =
-        _traverser->fetchVertexData(it);
-    result.add(VPackSlice(vertex->data()));
+    result.add(_traverser->fetchVertexData(it).slice());
   }
   result.close();
   result.close();
@@ -56,13 +56,10 @@ void SingleServerTraversalPath::lastEdgeToVelocyPack(arangodb::Transaction* trx,
   auto cached = _traverser->_edges.find(_path.edges.back());
   // All edges are cached!!
   TRI_ASSERT(cached != _traverser->_edges.end());
-  result.add(VPackSlice(cached->second->data()));
+  result.addExternal((*cached).second);
 }
 
-void SingleServerTraversalPath::lastVertexToVelocyPack(arangodb::Transaction* trx, VPackBuilder& result) {
-  std::shared_ptr<VPackBuffer<uint8_t>> vertex =
-      _traverser->fetchVertexData(_path.vertices.back());
-  result.add(VPackSlice(vertex->data()));
+AqlValue SingleServerTraversalPath::lastVertexToAqlValue(arangodb::Transaction* trx) {
+  return _traverser->fetchVertexData(_path.vertices.back());
 }
-
 

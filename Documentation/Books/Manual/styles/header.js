@@ -14,7 +14,7 @@ function appendHeader() {
 
 
   function rerenderNavbar() {
-    $('#header').remove();
+    $('.arangodb-header').remove();
     appendHeader();
     renderGoogleSearch();
   };
@@ -35,7 +35,7 @@ function appendHeader() {
   };
   addGoogleSrc();
 
-  $("#version-switcher").on("change", function(e) {
+  $(".arangodb-version-switcher").on("change", function(e) {
     window.location.href = "https://docs.arangodb.com/" + e.target.value;
   });
 

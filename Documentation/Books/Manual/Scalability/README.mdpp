@@ -1,7 +1,5 @@
 !CHAPTER Scalability
 
-Text zur eventuellen Wiederverwertung:
-
 For single instance setups we provide binary packages for various Linux
 distributions, for Mac OSX and for Windows, as well as Docker images. 
 Installation is mostly straightforward using the standard package managers
@@ -20,8 +18,10 @@ initial deployment, but also the later management of automatic
 replacement of failed instances and the scaling of the ArangoDB cluster
 (triggered manually or even automatically).
 
-As of June 2016, we offer Apache Mesos integration, later there will be
-integration with other cluster management infrastructures.
+As of June 2016, we offer Apache Mesos integration, later there will
+be integration with other cluster management infrastructures.  See the
+[Deployment](../Deployment/README.md) chapter and its subsections for
+instructions.
 
 It is possible to deploy an ArangoDB cluster by simply launching a bunch of 
 Docker containers with the right command line options to link them up, 
@@ -33,5 +33,3 @@ ArangoDB cluster cannot within itself launch additional instances, replacement
 of failed nodes is not automatic and scaling up and down has to be managed
 manually. This is why we do not recommend this setup for production 
 deployment.
-
-TODO: Verweise auf das Deployment chapter.

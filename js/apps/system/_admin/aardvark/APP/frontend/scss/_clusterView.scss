@@ -61,6 +61,10 @@
           color: $c-positive;
         }
 
+        &.warning {
+          color: $c-warning;
+        }
+
         &.negative {
           color: $c-negative;
         }

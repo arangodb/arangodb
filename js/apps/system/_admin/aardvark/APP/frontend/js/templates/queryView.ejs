@@ -1,101 +1,136 @@
 <script id="queryView.ejs" type="text/template">
-  <div class="headerBar">
-    <a class="arangoHeader">AQL Editor</a>
-  </div>
 
-  <div id="queryContent" class="innerContent">
-    <ul class="arango-tab">
-      <li><a href="#result" data-toggle="pill" id="result-switch">Result</a></li>
-      <!--<li><a href="#explain" data-toggle="pill" id="explain-switch">Explain</a></li>-->
-      <li><a href="#query" data-toggle="pill" id="query-switch">Query</a></li>
-      <li><a href="#customs" data-toggle="pill" id="customs-switch">My Queries</a></li>
-    </ul>
-    <div class="tab-content" id="tabContentCustoms">
-      <div class="tab-pane" id="customs">
-        <div id="editorToolbar" class="query-toolbar editor-toolbar">
-          <span class="queryTooltips" title="Upload your queries." id="import-query"><i class="fa fa-upload"></i></span>
-          <span class="queryTooltips" title="Download your listed queries." id="export-query"><i class="fa fa-download"></i></span>
-        </div>
-        <div id="customsDiv" class="query-div">
+  <div id="queryContent" class="queryContent">
+
+    <div class="arangoToolbar arangoToolbarTop">
+      <div class="pull-left">
+        <button id="toggleQueries1" class="button-primary"><i class="fa fa-star-o"></i>Queries</button>
+        <button id="toggleQueries2" class="button-primary" style="display: none"><i class="fa fa-star"></i>Queries</button>
+        <button id="saveCurrentQuery" class="button-success"><i class="fa fa-save"></i>Save</button>
+      </div>
+
+      <div class="pull-right">
+        <span id="querySpotlight" class="action"><i class="fa fa-magic"></i></span>
+        <div class="styled-select">
+          <select id="querySize" class="query-size"/>
         </div>
       </div>
     </div>
-    <div class="tab-content" id="tabContentQuery">
-      <div class="tab-pane active" id="query">
-        <div id="queryDiv" class="query-div">
-          <div id="editorToolbar" class="query-toolbar editor-toolbar">
-            <span class="queryTooltips" title="Clear" id="clearInput"><i class="fa fa-trash-o"></i></span>
-            <span class="queryTooltips" title="Save current query" id="addAQL"><i class="fa fa-save"></i></span>
-            <span class="queryTooltips" title="Comment" id="commentText"><i class="fa fa-comment"></i></span>
-            <span class="queryTooltips" title="Redo" id="redoText"><i class="fa fa-undo fa-flip-horizontal"></i></span>
-            <span class="queryTooltips" title="Undo" id="undoText"><i class="fa fa-undo"></i></span>
+
+    <div class="inputEditorWrapper">
+      <div class="aqlEditorWrapper" class="arangoEditor">
+        <span id="clearQuery" class="aceAction"><i class="fa fa-times-circle"></i></span>
+        <div id="aqlEditor"></div>
+        <div id="queryTable" style="display: none"></div>
+      </div>
+
+      <div class="bindParamEditorWrapper" class="arangoEditor">
+        <span id="switchTypes" class="aceAction type">JSON</span>
+        <div id="bindParamEditor"></div>
+        <div id="bindParamAceEditor" style="display: none"></div>
+
+        <div id="previewWrapper" class="previewWrapper" style="display: none">
+          <div id="previewBar" class="previewBar">
+            <span>Preview</span>
           </div>
-
-          <div id="aqlEditor" class='aql-editor'></div>
-          <div id="varsEditorHeader" class='vars-editor-header'>Bind parameters:
-            <i title='Example: </br> { </br>"@collection": "mycollection", </br>"key": "testkey"</br> } </br> Use bind parameters with @@collection and @key in your query' class="fa fa-info-circle"></i>
-          </div>
-          <div id="varsEditor" class='vars-editor'></div>
-
-
-          <div id="wideButtonDiv" class="wide-button-div">
-            <div>
-
-              <div id="shortcutDiv" class="shortcuts shortcut-div showHotkeyHelp">
-              </div>
-            </div>
-            <div class="queryBottomActions">
-
-              <button id="submitQueryButton" class="button-success query-button">Execute</button>
-              <button id="explainQueryButton" class="button-success query-button">Explain</button>
-              <button id="clearQueryButton" class="button-close query-button">Clear</button>
-              <div class="styled-select">
-                <select id="querySelect" class="query-select"/>
-              </div>
-              <div class="styled-select querySizeDiv">
-                <select id="querySize" class="query-size"/>
-              </div>
-            </div>
-          </div>
+          <div id="queryPreview"></div>
         </div>
-
 
       </div>
     </div>
-<!--
-    <div class="tab-content" id="tabContentExplain">
 
-      <div class="tab-pane" id="explain">
-        <div id="outputToolbar" class="query-toolbar output-toolbar">
-        </div>
-        <div class="explain-warnings"></div>
-        <div class="contentDiv query-output">
-          <svg id="explainOutput" class="explain-tree"></svg>
-        </div>
+    <div class="arangoToolbar arangoToolbarBottom">
+      <div class="pull-right">
+        <button id="exportQuery" class="button-success query-button" style="display:none">Export Queries</button>
+        <button id="importQuery" class="button-success query-button" style="display:none">Import Queries</button>
+        <button id="executeQuery" class="button-success query-button">Execute</button>
+        <button id="explainQuery" class="button-info query-button">Explain</button>
+        <button id="removeResults" class="button-close query-button" style="display: none">Remove results</button>
       </div>
-
-    </div>
--->
-    <div class="tab-content" id="tabContentResult">
-
-      <div class="tab-pane" id="result">
-        <div id="outputToolbar" class="query-toolbar output-toolbar">
-          <!--
-          <span class="icon_arangodb icon_arangodb_trash queryTooltips " title="Clear" id="clearOutput"></span>
-          <span class="icon_arangodb icon_arangodb_arrow1 queryTooltips" title="Unfold" id="bigOutput"></span>
-          -->
-        </div>
-        <div id="queryOutput" class="contentDiv query-output">
-        </div>
-        <div class="pull-left queryExecutionTime"></div>
-        <div class="queryBottomActions">
-          <button id="downloadQueryResult" style="margin-bottom: 10px; display: none" class="button-success query-button">Download</button>
-        </div>
-      </div>
-
     </div>
 
   </div>
 
+  <div id="outputEditors" class="outputEditors">
+  </div>
 
+  <div id="queryImportDialog" class="modal hide fade in" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false" style="display: none;">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Import custom queries</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tbody>
+          <tr class="tableRow">
+            <th class="collectionTh">Format:</th>
+            <th class="collectionTh" colspan="2">
+              <p>JSON documents embedded into a list:</p>
+              <p></p>
+              <p>[{</p>
+              <p style="margin-left: 10px">"name": "Query Name",</p>
+              <p style="margin-left: 10px">"value": "Query Definition",</p>
+              <p style="margin-left: 10px">"parameter": "Query Bind Parameter as Object"</p>
+              <p>}]</p>
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionTh">File:</th>
+            <th class="collectionTh" colspan="2">
+              <input id="importQueries" name="importQueries" type="file" style="border: 0" />
+            </th>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="modal-footer">
+      <button id="confirmQueryImport" class="button-success disabled" style="float:right">Import</button>
+      <button id="closeQueryModal" class="button-close">Cancel</button>
+    </div>
+
+
+</script>
+
+<script id="queryViewOutput.ejs" type="text/template">
+
+  <div id="outputEditorWrapper<%= counter %>" class="outputEditorWrapper">
+    <div class="arangoToolbar arangoToolbarTop">
+      <div class="pull-left">
+        <span class="toolbarType"><%=type%></span>
+          <span id="spinner"><i class="fa fa-spinner fa-spin"></i><i>Query is operating ...</i></span>
+      </div>
+      <div class="pull-right">
+        <span class="action"><i class="fa fa-close" element="outputEditor<%= counter %>" style="display: none"></i></span>
+      </div>
+      <div class="pull-right">
+        <% if (type === 'Query') { %>
+          <span class="switchAce" counter="<%=counter%>" style="display: none">Result</span>
+        <% } else { %>
+          <span class="switchAce" counter="<%=counter%>">AQL</span>
+        <% } %>
+      </div>
+    </div>
+    <div id="outputEditor<%= counter %>" style="opacity: 0.5"></div>
+    <div id="sentWrapper<%= counter %>" class="sentWrapper" style="display: none">
+      <div class="pull-left">
+        <div id="sentQueryEditor<%= counter %>"></div>
+      </div>
+      <div class="pull-right">
+        <div id="sentBindParamEditor<%= counter %>"></div>
+      </div>
+    </div>
+    <div class="arangoToolbar arangoToolbarBottom">
+      <div class="pull-right">
+        <% if (type === 'Query') { %>
+          <button id="downloadQueryResult" counter="<%=counter%>" style="display: none; margin-right: 0;" class="button-success">Download</button>
+          <button id="copy2aqlEditor" counter="<%=counter%>" style="display: none; margin-right: 8px;" class="button-success">Copy to editor</button>
+          <button id="cancelCurrentQuery" class="button-danger" style="margin-right: 5px">Cancel</button>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  </div>
 </script>

@@ -304,9 +304,11 @@
         this.navigate("#dashboard", {trigger: true});
         return;
       }
-      this.shardsView = new window.ShardsView({
-        dbServers: this.dbServers 
-      });
+      if (!this.shardsView) {
+        this.shardsView = new window.ShardsView({
+          dbServers: this.dbServers
+        });
+      }
       this.shardsView.render();
     },
 
@@ -674,12 +676,12 @@
         this.waitForInit(this.query.bind(this));
         return;
       }
-      if (!this.queryView2) {
-        this.queryView2 = new window.queryView2({
+      if (!this.queryView) {
+        this.queryView = new window.queryView({
           collection: this.queryCollection
         });
       }
-      this.queryView2.render();
+      this.queryView.render();
     },
    
     helpUs: function (initialized) {
@@ -855,9 +857,6 @@
       }
       if (this.queryView) {
         this.queryView.resize();
-      }
-      if (this.queryView2) {
-        this.queryView2.resize();
       }
       if (this.documentsView) {
         this.documentsView.resize();

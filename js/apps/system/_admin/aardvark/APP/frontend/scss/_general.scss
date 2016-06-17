@@ -7,6 +7,17 @@
   line-height: 30px;
 }
 
+.noContent {
+  background-color: $c-white;
+  padding: 50px;
+
+  p {
+    font-size: 12pt;
+    font-weight: 100;
+    text-align: center;
+  }
+}
+
 .row {
   margin-bottom: 20px;
   margin-left: 0;

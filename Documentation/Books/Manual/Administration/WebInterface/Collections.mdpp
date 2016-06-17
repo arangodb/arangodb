@@ -1,11 +1,19 @@
 !CHAPTER Collections
 
+The collections section displays all available collections. From here you can create new collections and jump into a collection for details (click on a collection tile).
+
 ![Collections](images/collectionsView.png)
 
- * A: Toggle filter properties 
- * B: Search collection by name
- * C: Filter properties
- * D: Create a new collection
- * E: Collection type
- * F: Collection state(unloaded, loaded, ...)
- * G: Collection name
+Functions:
+
+ - A: Toggle filter properties
+ - B: Search collection by name
+ - D: Create collection
+ - C: Filter properties
+ - H: Show collection details (click tile)
+
+Information:
+
+ - E: Collection type
+ - F: Collection state(unloaded, loaded, ...)
+ - G: Collection name

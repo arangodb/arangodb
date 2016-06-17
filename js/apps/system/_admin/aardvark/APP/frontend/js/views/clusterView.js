@@ -168,7 +168,7 @@
       this.renderValue('#clusterRam', [usedMem, totalMem]);
     },
 
-    renderValue: function(id, value, error) {
+    renderValue: function(id, value, error, warning) {
       if (typeof value === 'number') {
         $(id).html(value);
       }
@@ -176,6 +176,12 @@
         var a = value[0], b = value[1];
 
         var percent = 1 / (b/a) * 100;
+        if (percent > 90) {
+          error = true;
+        }
+        else if (percent > 70 && percent < 90) {
+          warning = true;
+        }
         $(id).html(percent.toFixed(1) + ' %');
       }
       else if (typeof value === 'string') {
@@ -184,11 +190,18 @@
 
       if (error) {
         $(id).addClass('negative');
+        $(id).removeClass('warning');
         $(id).removeClass('positive');
+      }
+      else if (warning) {
+        $(id).addClass('warning');
+        $(id).removeClass('positive');
+        $(id).removeClass('negative');
       }
       else {
         $(id).addClass('positive');
         $(id).removeClass('negative');
+        $(id).removeClass('warning');
       }
 
     },
