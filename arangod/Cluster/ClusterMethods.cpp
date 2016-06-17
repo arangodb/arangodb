@@ -352,8 +352,8 @@ static void collectResultsFromAllShards(
       auto tmpBuilder = std::make_shared<VPackBuilder>();
       // If there was no answer whatsoever, we cannot rely on the shardId
       // being present in the result struct:
-      auto weSend = req.done ? shardMap.find(res.shardID)
-                             : shardMap.find(req.destination.substr(6));
+      ShardID sId = req.destination.substr(6);
+      auto weSend = shardMap.find(sId);
       TRI_ASSERT(weSend != shardMap.end());  // We send sth there earlier.
       size_t count = weSend->second.size();
       for (size_t i = 0; i < count; ++i) {
@@ -362,7 +362,7 @@ static void collectResultsFromAllShards(
         tmpBuilder->add("errorNum", VPackValue(commError));
         tmpBuilder->close();
       }
-      resultMap.emplace(res.shardID, tmpBuilder);
+      resultMap.emplace(sId, tmpBuilder);
     } else {
       TRI_ASSERT(res.answer != nullptr);
       resultMap.emplace(res.shardID,
