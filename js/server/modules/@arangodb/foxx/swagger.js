@@ -30,7 +30,7 @@ const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
 const swaggerJson = require('@arangodb/foxx/legacy/swagger').swaggerJson;
 
-const NOT_FOUND = errors.ERROR_APP_NOT_FOUND.code;
+const NOT_FOUND = errors.ERROR_SERVICE_NOT_FOUND.code;
 const SWAGGER_ROOT = fs.join(internal.startupPath, 'server', 'assets', 'swagger');
 
 

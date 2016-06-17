@@ -242,9 +242,9 @@ function lookupService(mount) {
       return serviceCache[dbname][mount];
     }
     throw new ArangoError({
-      errorNum: errors.ERROR_APP_NOT_FOUND.code,
+      errorNum: errors.ERROR_SERVICE_NOT_FOUND.code,
       errorMessage: dd`
-        ${errors.ERROR_APP_NOT_FOUND.message}
+        ${errors.ERROR_SERVICE_NOT_FOUND.message}
         Mount path: "${mount}".
       `
     });
@@ -428,9 +428,9 @@ function checkManifest(filename, inputManifest, mount, isDevelopment) {
       console.errorLines(error);
     }
     throw new ArangoError({
-      errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+      errorNum: errors.ERROR_INVALID_SERVICE_MANIFEST.code,
       errorMessage: dd`
-        ${errors.ERROR_INVALID_APPLICATION_MANIFEST.message}
+        ${errors.ERROR_INVALID_SERVICE_MANIFEST.message}
         Manifest for service at "${mount}":
         ${errors.join('\n')}
       `
@@ -485,9 +485,9 @@ function validateManifestFile(filename, mount, isDevelopment) {
   } catch (e) {
     throw Object.assign(
       new ArangoError({
-        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+        errorNum: errors.ERROR_INVALID_SERVICE_MANIFEST.code,
         errorMessage: dd`
-          ${errors.ERROR_INVALID_APPLICATION_MANIFEST.message}
+          ${errors.ERROR_INVALID_SERVICE_MANIFEST.message}
           File: ${filename}
           Cause: ${e.stack}
         `
@@ -957,9 +957,9 @@ function _scanFoxx(mount, options, activateDevelopment) {
           var old = utils.getStorage().firstExample({ mount: mount });
           if (old === null) {
             throw new ArangoError({
-              errorNum: errors.ERROR_APP_NOT_FOUND.code,
+              errorNum: errors.ERROR_SERVICE_NOT_FOUND.code,
               errorMessage: dd`
-                ${errors.ERROR_APP_NOT_FOUND.message}
+                ${errors.ERROR_SERVICE_NOT_FOUND.message}
                 Mount path: "${mount}".
               `
             });
@@ -1084,9 +1084,9 @@ function _install(serviceInfo, mount, options, runSetup) {
   options = options || {};
   if (fs.exists(targetPath)) {
     throw new ArangoError({
-      errorNum: errors.ERROR_APP_MOUNTPOINT_CONFLICT.code,
+      errorNum: errors.ERROR_SERVICE_MOUNTPOINT_CONFLICT.code,
       errorMessage: dd`
-        ${errors.ERROR_APP_MOUNTPOINT_CONFLICT.message}
+        ${errors.ERROR_SERVICE_MOUNTPOINT_CONFLICT.message}
         Mount path: "${mount}".
       `
     });
@@ -1600,8 +1600,8 @@ function requireService(mount) {
   var service = lookupService(mount);
   if (service.needsConfiguration()) {
     throw new ArangoError({
-      errorNum: errors.ERROR_APP_NEEDS_CONFIGURATION.code,
-      errorMessage: errors.ERROR_APP_NEEDS_CONFIGURATION.message
+      errorNum: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.code,
+      errorMessage: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.message
     });
   }
   return routeAndExportService(service, true).exports;
