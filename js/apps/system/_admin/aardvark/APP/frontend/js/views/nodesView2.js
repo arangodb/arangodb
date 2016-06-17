@@ -109,6 +109,7 @@
         if (!scale) {
           $('.title').css('position', 'relative');
           $('.title').css('top', '-4px');
+          $('.sectionHeader .information').css('margin-top', '-3px');
         }
 
       }.bind(this);
