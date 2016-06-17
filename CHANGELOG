@@ -9,9 +9,14 @@ v3.0.0-rc2 (2016-06-12)
 * fix handling of `--ssl.protocol` value 5 (TLS v1.2) in client tools, which
   claimed to support it but didn't
 
+* config file can use '@include' to include a different config file as base
+
 
 v3.0.0-rc1 (2016-06-10)
 -----------------------
+
+* the user management has changed: it now has users that are independent of
+  databases. A user can have one or more database assigned to the user.
 
 * forward ported V8 Comparator bugfix for inline heuristics from
   https://github.com/v8/v8/commit/5ff7901e24c2c6029114567de5a08ed0f1494c81
@@ -33,19 +38,19 @@ v3.0.0-rc1 (2016-06-10)
     - `[ ]` was converted to ``
     - `[ 1, 2, 3 ]` was converted to `1,2,3`
     - `[ "test", 1, 2 ] was converted to `test,1,2`
-  
+
   - objects are now converted to their JSON-stringify equivalents, e.g.
 
     - `{ }` is converted to `{}`
     - `{ a: 1, b: 2 }` is converted to `{"a":1,"b":2}`
     - `{ "test" : "foobar" }` is converted to `{"test":"foobar"}`
-    
+
     Previous versions of ArangoDB always converted objects into the string
-    `[object Object]`  
+    `[object Object]`
 
   This change affects also the AQL functions `CONCAT()` and `CONCAT_SEPARATOR()`
   which treated array values differently in previous versions. Previous versions
-  of ArangoDB automatically flattened array values on the first level of the array, 
+  of ArangoDB automatically flattened array values on the first level of the array,
   e.g. `CONCAT([1, 2, 3, [ 4, 5, 6 ]])` produced `1,2,3,4,5,6`. Now this will produce
   `[1,2,3,[4,5,6]]`. To flatten array members on the top level, you can now use
   the more explicit `CONCAT(FLATTEN([1, 2, 3, [4, 5, 6]], 1))`.
@@ -66,7 +71,7 @@ v3.0.0-rc1 (2016-06-10)
   Additionally the `db` object's `_listEndpoints()` function was renamed to just
   `_endpoints()`.
 
-* changed default value of `--server.authentication` from `false` to `true` in 
+* changed default value of `--server.authentication` from `false` to `true` in
   configuration files etc/relative/arangod.conf and etc/arangodb/arangod.conf.in.
   This means the server will be started with authentication enabled by default,
   requiring all client connections to provide authentication data when connecting
@@ -76,7 +81,7 @@ v3.0.0-rc1 (2016-06-10)
 
 * Changed result format for querying all collections via the API GET `/_api/collection`.
 
-  Previous versions of ArangoDB returned an object with an attribute named `collections` 
+  Previous versions of ArangoDB returned an object with an attribute named `collections`
   and an attribute named `names`. Both contained all available collections, but
   `collections` contained the collections as an array, and `names` contained the
   collections again, contained in an object in which the attribute names were the
@@ -144,28 +149,28 @@ v3.0.0-rc1 (2016-06-10)
   loop one level higher, eliminating the subquery completely. For example, the query
 
       FOR i IN (FOR j IN [1,2,3] RETURN j) RETURN i
-      
+
   will be transformed by the rule to:
-   
+
       FOR i IN [1,2,3] RETURN i
-      
+
   The query
 
       FOR name IN (FOR doc IN _users FILTER doc.status == 1 RETURN doc.name) LIMIT 2 RETURN name
-      
+
   will be transformed into
-  
+
       FOR tmp IN _users FILTER tmp.status == 1 LIMIT 2 RETURN tmp.name
-       
+
   The rule will only fire when the subquery is used as an operand to a `FOR` loop, and
   if the subquery does not contain a `COLLECT` with an `INTO` variable.
 
 * added new endpoint "srv://" for DNS service records
 
-* The result order of the AQL functions VALUES and ATTRIBUTES has never been 
-  guaranteed and it only had the "correct" ordering by accident when iterating 
-  over objects that were not loaded from the database. This accidental behavior 
-  is now changed by introduction of VelocyPack. No ordering is guaranteed unless 
+* The result order of the AQL functions VALUES and ATTRIBUTES has never been
+  guaranteed and it only had the "correct" ordering by accident when iterating
+  over objects that were not loaded from the database. This accidental behavior
+  is now changed by introduction of VelocyPack. No ordering is guaranteed unless
   you specify the sort parameter.
 
 * removed configure option `--enable-logger`
