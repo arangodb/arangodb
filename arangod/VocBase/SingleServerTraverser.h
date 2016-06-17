@@ -225,12 +225,11 @@ public:
   std::unordered_map<std::string, uint8_t const*> _vertices;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Cache for edge documents
+  /// @brief Cache for edge documents, points from _id to start of edge
+  /// VPack value (in datafiles)
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<std::string,
-                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-      _edges;
+  std::unordered_map<std::string, uint8_t const*> _edges;
 
 };
 } // namespace traverser

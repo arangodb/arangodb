@@ -36,7 +36,7 @@ void SingleServerTraversalPath::pathToVelocyPack(arangodb::Transaction* trx,
     auto cached = _traverser->_edges.find(it);
     // All edges are cached!!
     TRI_ASSERT(cached != _traverser->_edges.end());
-    result.add(VPackSlice((*cached).second->data()));
+    result.addExternal((*cached).second);
   }
   result.close();
   result.add(VPackValue("vertices"));
@@ -56,7 +56,7 @@ void SingleServerTraversalPath::lastEdgeToVelocyPack(arangodb::Transaction* trx,
   auto cached = _traverser->_edges.find(_path.edges.back());
   // All edges are cached!!
   TRI_ASSERT(cached != _traverser->_edges.end());
-  result.add(VPackSlice((*cached).second->data()));
+  result.addExternal((*cached).second);
 }
 
 AqlValue SingleServerTraversalPath::lastVertexToAqlValue(arangodb::Transaction* trx) {

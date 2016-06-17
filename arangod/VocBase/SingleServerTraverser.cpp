@@ -146,7 +146,7 @@ bool SingleServerTraverser::VertexGetter::getVertex(std::string const& edge,
                                                     std::string& result) {
   auto it = _traverser->_edges.find(edge);
   TRI_ASSERT(it != _traverser->_edges.end());
-  VPackSlice v(it->second->data());
+  VPackSlice v((*it).second);
   // NOTE: We assume that we only have valid edges.
   VPackSlice from = Transaction::extractFromFromDocument(v);
   if (from.isEqualString(vertex)) {
@@ -169,7 +169,7 @@ bool SingleServerTraverser::UniqueVertexGetter::getVertex(
   
   auto it = _traverser->_edges.find(edge);
   TRI_ASSERT(it != _traverser->_edges.end());
-  VPackSlice v(it->second->data());
+  VPackSlice v((*it).second);
   // NOTE: We assume that we only have valid edges.
   VPackSlice from = Transaction::extractFromFromDocument(v);
   if (from.isEqualString(vertex)) {
@@ -382,18 +382,18 @@ void SingleServerTraverser::EdgeGetter::nextEdge(
       continue;
     }
 
-    edge = edge.at(*last);
+    edge = edge.at(*last).resolveExternal();
+    std::string id = _trx->extractIdString(edge);
     if (!_traverser->edgeMatchesConditions(edge, edges.size())) {
       if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
         // Insert a dummy to please the uniqueness
-        _traverser->_edges.emplace(_trx->extractIdString(edge), nullptr);
+        _traverser->_edges.emplace(id, nullptr);
       }
 
       TRI_ASSERT(last != nullptr);
       (*last)++;
       continue;
     }
-    std::string id = _trx->extractIdString(edge);
     if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
       // test if edge is already on this path
       auto found = std::find(edges.begin(), edges.end(), id);
@@ -412,10 +412,8 @@ void SingleServerTraverser::EdgeGetter::nextEdge(
       }
     }
 
-    VPackBuilder tmpBuilder = VPackBuilder::clone(edge);
-    _traverser->_edges.emplace(id, tmpBuilder.steal());
-
-    edges.emplace_back(id);
+    _traverser->_edges.emplace(id, edge.begin());
+    edges.emplace_back(std::move(id));
     return;
   }
 }
@@ -459,16 +457,18 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
       edges.reserve(mptrs.size());
 
       _traverser->_readDocuments += static_cast<size_t>(mptrs.size());
+        
+      std::string id;
       for (auto const& mptr : mptrs) {
         VPackSlice edge(mptr->vpack());
+        id = _trx->extractIdString(edge);
         if (!_traverser->edgeMatchesConditions(edge, depth)) {
           if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
             // Insert a dummy to please the uniqueness
-            _traverser->_edges.emplace(_trx->extractIdString(edge), nullptr);
+            _traverser->_edges.emplace(id, nullptr);
           }
           continue;
         }
-        std::string id = _trx->extractIdString(edge);
         if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
           // test if edge is already on this path
           auto found = edges.find(id);
@@ -483,10 +483,7 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
           }
         }
 
-        // TODO Optimize. May use VPack everywhere.
-        VPackBuilder tmpBuilder = VPackBuilder::clone(edge);
-        _traverser->_edges.emplace(id, tmpBuilder.steal());
-
+        _traverser->_edges.emplace(id, edge.begin());
         edges.emplace(std::move(id));
       }
     }

@@ -1271,7 +1271,6 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
   }
 }
 
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return one document from a collection, fast path
 ///        If everything went well the result will contain the found document

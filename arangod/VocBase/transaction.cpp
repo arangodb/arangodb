@@ -251,7 +251,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_transaction_collection_t* FindCollection(
-    const TRI_transaction_t* const trx, const TRI_voc_cid_t cid,
+    TRI_transaction_t const* trx, TRI_voc_cid_t cid,
     size_t* position) {
 
   size_t const n = trx->_collections.size();
@@ -269,7 +269,6 @@ static TRI_transaction_collection_t* FindCollection(
       // found
       return trxCollection;
     }
-
     // next
   }
 
@@ -766,9 +765,8 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction(
         !HasHint(trx, TRI_TRANSACTION_HINT_NO_USAGE_LOCK)) {
       // not opened. probably a mistake made by the caller
       return nullptr;
-    } else {
-      // ok
     }
+    // ok
   }
 
   // check if access type matches

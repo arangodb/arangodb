@@ -52,7 +52,7 @@ class SingleServerTraversalPath final : public TraversalPath {
 
   SingleServerTraverser* _traverser;
 
-  arangodb::basics::EnumeratedPath<std::string, std::string> _path;
+  arangodb::basics::EnumeratedPath<std::string, std::string> const _path;
 };
 
 } // namespace traverser
