@@ -1322,7 +1322,7 @@ int Transaction::documentFastPath(std::string const& collectionName,
   TRI_ASSERT(hasDitch(cid));
 
   TRI_ASSERT(mptr.vpack() != nullptr);
-  result.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
+  result.addExternal(mptr.vpack());
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1441,7 +1441,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     }
   
     if (!options.silent) {
-      resultBuilder.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
+      resultBuilder.addExternal(mptr.vpack());
     } else if (isMultiple) {
       resultBuilder.add(VPackSlice::nullSlice());
     }
@@ -2412,7 +2412,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   while (cursor->hasMore()) {
     cursor->getMoreMptr(result, 1000);
     for (auto const& mptr : result) {
-      resultBuilder.add(VPackValue(mptr->vpack(), VPackValueType::External));
+      resultBuilder.addExternal(mptr->vpack());
     }
   }
 
