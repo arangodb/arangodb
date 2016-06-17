@@ -1,4 +1,23 @@
-v3.0.0-rc2 (2016-06-12)
+v3.0.0-rc3 (????-??-??)
+-----------------------
+
+* renamed various Foxx errors to no longer refer to Foxx services as apps
+
+* adjusted various error messages in Foxx to be more informative
+
+* specifying "files" in a Foxx manifest to be mounted at the service root
+  no longer results in 404s when trying to access non-file routes
+
+* undeclared path parameters in Foxx no longer break the service
+
+* trusted reverse proxy support is now handled more consistently
+
+* ArangoDB request compatibility and user are now exposed in Foxx
+
+* all bundled NPM modules have been upgraded to their latest versions
+
+
+v3.0.0-rc2 (2015-06-12)
 -----------------------
 
 * added option `--server.max-packet-size` for client tools
