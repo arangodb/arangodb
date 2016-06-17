@@ -154,7 +154,6 @@ class SingleServerTraverser final : public Traverser {
     //////////////////////////////////////////////////////////////////////////////
 
     arangodb::velocypack::Builder _builder;
-
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -219,7 +218,8 @@ public:
   Transaction* _trx;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Cache for vertex documents
+  /// @brief Cache for vertex documents, points from _id to start of 
+  /// document VPack value (in datafiles)
   //////////////////////////////////////////////////////////////////////////////
 
   std::unordered_map<std::string, uint8_t const*> _vertices;
@@ -232,12 +232,6 @@ public:
                      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
       _edges;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Shared builder to create temporary objects like search values
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::velocypack::Builder _builder;
- 
 };
 } // namespace traverser
 } // namespace arangodb
