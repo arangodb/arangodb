@@ -275,10 +275,10 @@ ERROR_USER_CHANGE_PASSWORD,1704,"user must change his password","Will be raised 
 ## Service management errors
 ################################################################################
 
-ERROR_APPLICATION_INVALID_NAME,1750,"invalid service name","Will be raised when an invalid service name is specified."
-ERROR_APPLICATION_INVALID_MOUNT,1751,"invalid mount","Will be raised when an invalid mount is specified."
-ERROR_APPLICATION_DOWNLOAD_FAILED,1752,"service download failed","Will be raised when a service download from the central repository failed."
-ERROR_APPLICATION_UPLOAD_FAILED,1753,"service upload failed","Will be raised when a service upload from the client to the ArangoDB server failed."
+ERROR_SERVICE_INVALID_NAME,1750,"invalid service name","Will be raised when an invalid service name is specified."
+ERROR_SERVICE_INVALID_MOUNT,1751,"invalid mount","Will be raised when an invalid mount is specified."
+ERROR_SERVICE_DOWNLOAD_FAILED,1752,"service download failed","Will be raised when a service download from the central repository failed."
+ERROR_SERVICE_UPLOAD_FAILED,1753,"service upload failed","Will be raised when a service upload from the client to the ArangoDB server failed."
 
 ################################################################################
 ## Key value access errors
@@ -357,12 +357,12 @@ SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised w
 ################################################################################
 
 ERROR_MALFORMED_MANIFEST_FILE,3000,"malformed manifest file","The manifest file is malformed. It is not in a valid JSON format."
-ERROR_INVALID_APPLICATION_MANIFEST,3001,"manifest file is invalid","The manifest file of this application is invalid."
+ERROR_INVALID_SERVICE_MANIFEST,3001,"manifest file is invalid","The manifest file of this service is invalid."
 ERROR_INVALID_FOXX_OPTIONS,3004,"invalid foxx options","The options used to configure the foxx are invalid."
 ERROR_INVALID_MOUNTPOINT,3007,"mountpoint is invalid","mountpoint is invalid"
-ERROR_APP_NOT_FOUND,3009,"Service not found","No service found at this mountpoint"
-ERROR_APP_NEEDS_CONFIGURATION,3010,"Service not configured","The service has to be configured before it can be used"
-ERROR_APP_MOUNTPOINT_CONFLICT,3011,"mountpoint already in use","A service has already been installed at this mountpoint"
+ERROR_SERVICE_NOT_FOUND,3009,"Service not found","No service found at this mountpoint"
+ERROR_SERVICE_NEEDS_CONFIGURATION,3010,"Service not configured","The service has to be configured before it can be used"
+ERROR_SERVICE_MOUNTPOINT_CONFLICT,3011,"mountpoint already in use","A service has already been installed at this mountpoint"
 
 ################################################################################
 ## JavaScript module loader errors

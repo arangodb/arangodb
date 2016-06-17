@@ -89,7 +89,7 @@ describe('Foxx Manager install', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-name'), '/unittest/broken');
       }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_INVALID_APPLICATION_MANIFEST.code);
+      .with.property('errorNum', errors.ERROR_INVALID_SERVICE_MANIFEST.code);
     });
 
     it('with malformed controller file', function() {

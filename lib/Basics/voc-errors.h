@@ -2672,27 +2672,27 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_USER_CHANGE_PASSWORD                                    (1704)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1750: ERROR_APPLICATION_INVALID_NAME
+/// @brief 1750: ERROR_SERVICE_INVALID_NAME
 ///
 /// invalid application name
 ///
 /// Will be raised when an invalid application name is specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_INVALID_NAME                                (1750)
+#define TRI_ERROR_SERVICE_INVALID_NAME                                (1750)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1751: ERROR_APPLICATION_INVALID_MOUNT
+/// @brief 1751: ERROR_SERVICE_INVALID_MOUNT
 ///
 /// invalid mount
 ///
 /// Will be raised when an invalid mount is specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_INVALID_MOUNT                               (1751)
+#define TRI_ERROR_SERVICE_INVALID_MOUNT                               (1751)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1752: ERROR_APPLICATION_DOWNLOAD_FAILED
+/// @brief 1752: ERROR_SERVICE_DOWNLOAD_FAILED
 ///
 /// application download failed
 ///
@@ -2700,10 +2700,10 @@ void TRI_InitializeErrorMessages ();
 /// failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_DOWNLOAD_FAILED                             (1752)
+#define TRI_ERROR_SERVICE_DOWNLOAD_FAILED                             (1752)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1753: ERROR_APPLICATION_UPLOAD_FAILED
+/// @brief 1753: ERROR_SERVICE_UPLOAD_FAILED
 ///
 /// application upload failed
 ///
@@ -2711,7 +2711,7 @@ void TRI_InitializeErrorMessages ();
 /// server failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APPLICATION_UPLOAD_FAILED                               (1753)
+#define TRI_ERROR_SERVICE_UPLOAD_FAILED                               (1753)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY
@@ -3196,14 +3196,14 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_MALFORMED_MANIFEST_FILE                                 (3000)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3001: ERROR_INVALID_APPLICATION_MANIFEST
+/// @brief 3001: ERROR_INVALID_SERVICE_MANIFEST
 ///
 /// manifest file is invalid
 ///
 /// The manifest file of this application is invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_INVALID_APPLICATION_MANIFEST                            (3001)
+#define TRI_ERROR_INVALID_SERVICE_MANIFEST                            (3001)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3004: ERROR_INVALID_FOXX_OPTIONS
@@ -3226,34 +3226,34 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_INVALID_MOUNTPOINT                                      (3007)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3009: ERROR_APP_NOT_FOUND
+/// @brief 3009: ERROR_SERVICE_NOT_FOUND
 ///
 /// Service not found
 ///
 /// No service found at this mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APP_NOT_FOUND                                           (3009)
+#define TRI_ERROR_SERVICE_NOT_FOUND                                           (3009)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3010: ERROR_APP_NEEDS_CONFIGURATION
+/// @brief 3010: ERROR_SERVICE_NEEDS_CONFIGURATION
 ///
 /// Service not configured
 ///
 /// The service has to be configured before it can be used
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APP_NEEDS_CONFIGURATION                                 (3010)
+#define TRI_ERROR_SERVICE_NEEDS_CONFIGURATION                                 (3010)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3011: ERROR_APP_MOUNTPOINT_CONFLICT
+/// @brief 3011: ERROR_SERVICE_MOUNTPOINT_CONFLICT
 ///
 /// mountpoint already in use
 ///
 /// A service has already been installed at this mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_APP_MOUNTPOINT_CONFLICT                                 (3011)
+#define TRI_ERROR_SERVICE_MOUNTPOINT_CONFLICT                                 (3011)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3100: ERROR_MODULE_NOT_FOUND

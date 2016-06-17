@@ -98,19 +98,19 @@ installer.use(function (req, res, next) {
     if (e.isArangoError && [
       errors.ERROR_MODULE_FAILURE.code,
       errors.ERROR_MALFORMED_MANIFEST_FILE.code,
-      errors.ERROR_INVALID_APPLICATION_MANIFEST.code
+      errors.ERROR_INVALID_SERVICE_MANIFEST.code
     ].indexOf(e.errorNum) !== -1) {
       res.throw('bad request', e);
     }
     if (
       e.isArangoError &&
-      e.errorNum === errors.ERROR_APP_NOT_FOUND.code
+      e.errorNum === errors.ERROR_SERVICE_NOT_FOUND.code
     ) {
       res.throw('not found', e);
     }
     if (
       e.isArangoError &&
-      e.errorNum === errors.ERROR_APP_MOUNTPOINT_CONFLICT.code
+      e.errorNum === errors.ERROR_SERVICE_MOUNTPOINT_CONFLICT.code
     ) {
       res.throw('conflict', e);
     }
