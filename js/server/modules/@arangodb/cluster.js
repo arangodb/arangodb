@@ -1057,8 +1057,8 @@ function synchronizeOneShard(database, shard, planId, leader) {
                   .shards[shard];
     } catch (e) { }
     if (!Array.isArray(planned) ||
-       planned.shards[shard].indexOf(ourselves) <= 0 ||
-       planned.shards[shard][0] !== leader) {
+       planned.indexOf(ourselves) <= 0 ||
+       planned[0] !== leader) {
       // Things have changed again, simply terminate:
       terminateAndStartOther();
       console.debug("synchronizeOneShard: cancelled, %s/%s, %s/%s",
