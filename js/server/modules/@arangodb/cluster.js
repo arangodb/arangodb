@@ -1010,7 +1010,7 @@ function tryLaunchJob() {
           return;
         }
         global.KEY_SET("shardSynchronization", "running", jobInfo);
-        console.debug("scheduleOneShardSynchronization: have launched job", jobInfo);
+        console.info("scheduleOneShardSynchronization: have launched job", jobInfo);
         delete jobs.scheduled[shards[0]];
         global.KEY_SET("shardSynchronization", "scheduled", jobs.scheduled);
       }
@@ -1061,8 +1061,8 @@ function synchronizeOneShard(database, shard, planId, leader) {
        planned[0] !== leader) {
       // Things have changed again, simply terminate:
       terminateAndStartOther();
-      console.debug("synchronizeOneShard: cancelled, %s/%s, %s/%s",
-                    database, shard, database, planId);
+      console.info("synchronizeOneShard: cancelled, %s/%s, %s/%s",
+                   database, shard, database, planId);
       return;
     }
     var current = [];
@@ -1076,12 +1076,12 @@ function synchronizeOneShard(database, shard, planId, leader) {
       }
       // We are already there, this is rather strange, but never mind:
       terminateAndStartOther();
-      console.debug("synchronizeOneShard: already done, %s/%s, %s/%s",
-                    database, shard, database, planId);
+      console.info("synchronizeOneShard: already done, %s/%s, %s/%s",
+                   database, shard, database, planId);
       return;
     }
-    console.debug("synchronizeOneShard: waiting for leader, %s/%s, %s/%s",
-                  database, shard, database, planId);
+    console.info("synchronizeOneShard: waiting for leader, %s/%s, %s/%s",
+                 database, shard, database, planId);
     wait(1.0);
   }
 
@@ -1090,9 +1090,9 @@ function synchronizeOneShard(database, shard, planId, leader) {
   var ok = false;
   const rep = require("@arangodb/replication");
 
-  console.debug("synchronizeOneShard: trying to synchronize local shard",
-                "'%s/%s' for central '%s/%s'",
-                database, shard, database, planId);
+  console.info("synchronizeOneShard: trying to synchronize local shard",
+               "'%s/%s' for central '%s/%s'",
+               database, shard, database, planId);
   try {
     var ep = ArangoClusterInfo.getServerEndpoint(leader);
     // First once without a read transaction:
@@ -1172,8 +1172,8 @@ function synchronizeOneShard(database, shard, planId, leader) {
   }
   // Tell others that we are done:
   terminateAndStartOther();
-  console.debug("synchronizeOneShard: done, %s/%s, %s/%s",
-                database, shard, database, planId);
+  console.info("synchronizeOneShard: done, %s/%s, %s/%s",
+               database, shard, database, planId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1223,7 +1223,6 @@ function scheduleOneShardSynchronization(database, shard, planId, leader) {
 
 function synchronizeLocalFollowerCollections (plannedCollections,
                                               currentCollections) {
-  var ok = true;
   var ourselves = global.ArangoServerState.id();
 
   var db = require("internal").db;
@@ -1261,23 +1260,18 @@ function synchronizeLocalFollowerCollections (plannedCollections,
                     // current entry in the agency:
                     var inCurrent = lookup4d(currentCollections, database,
                                              collection, shard);
+                    // If inCurrent is not in order in any way, we schedule
+                    // a synchronization job:
                     if (inCurrent === undefined ||
                         ! inCurrent.hasOwnProperty("servers") ||
                         typeof inCurrent.servers !== "object" ||
-                        typeof inCurrent.servers[0] !== "string" ||
-                        inCurrent.servers[0] === "") {
-                      console.debug("Leader has not yet created shard, let's",
-                                    "come back later to this shard...");
-                    } else {
-                      if (inCurrent.servers.indexOf(ourselves) === -1 &&
-                          inCurrent.servers[0].substr(0, 1) !== "_" &&
-                          inCurrent.servers[0] === shards[shard][0]) {
-                        if (!scheduleOneShardSynchronization(
-                                database, shard, collInfo.planId,
-                                inCurrent.servers[0])) {
-                          ok = false;
-                        }
-                      }
+                        !Array.isArray(inCurrent.servers) ||
+                        inCurrent.servers.indexOf(ourselves) === -1 ||
+                        inCurrent.servers[0].substr(0, 1) !== "_" ||
+                        inCurrent.servers[0] === shards[shard][0]) {
+                      scheduleOneShardSynchronization(
+                          database, shard, collInfo.planId,
+                          inCurrent.servers[0]));
                     }
                   }
                 }
@@ -1295,7 +1289,7 @@ function synchronizeLocalFollowerCollections (plannedCollections,
       }
     }
   }
-  return ok;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
