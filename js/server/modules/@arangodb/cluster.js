@@ -1271,7 +1271,7 @@ function synchronizeLocalFollowerCollections (plannedCollections,
                         inCurrent.servers[0] === shards[shard][0]) {
                       scheduleOneShardSynchronization(
                           database, shard, collInfo.planId,
-                          inCurrent.servers[0]));
+                          inCurrent.servers[0]);
                     }
                   }
                 }
