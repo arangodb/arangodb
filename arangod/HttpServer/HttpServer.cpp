@@ -118,7 +118,7 @@ void HttpServer::startListening() {
     } else {
       LOG(FATAL) << "failed to bind to endpoint '" << it.first
                  << "'. Please check whether another instance is already "
-                    "running using this endpint and review your endpoints configuration.";
+                    "running using this endpoint and review your endpoints configuration.";
       FATAL_ERROR_EXIT();
     }
   }
