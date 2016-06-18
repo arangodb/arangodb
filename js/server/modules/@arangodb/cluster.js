@@ -1266,12 +1266,11 @@ function synchronizeLocalFollowerCollections (plannedCollections,
                         ! inCurrent.hasOwnProperty("servers") ||
                         typeof inCurrent.servers !== "object" ||
                         !Array.isArray(inCurrent.servers) ||
-                        inCurrent.servers.indexOf(ourselves) === -1 ||
+                        inCurrent.servers.indexOf(ourselves) <= 0 ||
                         inCurrent.servers[0].substr(0, 1) !== "_" ||
                         inCurrent.servers[0] === shards[shard][0]) {
                       scheduleOneShardSynchronization(
-                          database, shard, collInfo.planId,
-                          inCurrent.servers[0]);
+                          database, shard, collInfo.planId, shards[shard][0]);
                     }
                   }
                 }
