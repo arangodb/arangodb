@@ -289,3 +289,21 @@ const ranges = req.range(100);
 console.log(ranges); // [{start: 40, end: 80}]
 console.log(ranges.type); // "bytes"
 ```
+
+!SECTION reverse
+
+`req.reverse(name, [params]): string`
+
+TODO
+
+**Arguments**
+
+* **name**: `string`
+
+  TODO
+
+* **params**: `object` (optional)
+
+  TODO
+
+TODO
