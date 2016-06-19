@@ -1,12 +1,14 @@
 !CHAPTER Session Transports
 
-TODO
+Session transports are used by the sessions middleware to store and retrieve session identifiers in requests and responses. Session transports must implement the `get` and/or `set` methods and can optionally implement the `clear` method.
 
 !SECTION get
 
-`transport.get(request): string`
+`transport.get(request): string | null`
 
-TODO
+Retrieves a session identifier from a request object.
+
+If present this method will automatically be invoked for each transport until a transport returns a session identifier.
 
 **Arguments**
 
@@ -14,17 +16,23 @@ TODO
 
   [Request object](../../Router/Request.md) to extract a session identifier from.
 
-TODO
+Returns the session identifier or `null` if the transport can not find a session identifier in the request.
 
 **Examples**
 
-TODO
+```js
+get(req) {
+  return req.get('x-session-id') || null;
+}
+```
 
 !SECTION set
 
 `transport.set(response, sid): void`
 
-TODO
+Attaches a session identifier to a response object.
+
+If present this method will automatically be invoked at the end of a request regardless of whether the session was modified or not.
 
 **Arguments**
 
@@ -36,17 +44,24 @@ TODO
 
   Session identifier to attach to the response.
 
-TODO
+Returns nothing.
 
 **Examples**
 
-TODO
+```js
+set(res) {
+  res.set('x-session-id', value);
+}
+```
 
 !SECTION clear
 
 `transport.clear(response): void`
 
-TODO
+Attaches a payload indicating that the session has been cleared to the response object.
+This can be used to clear a session cookie when the session has been destroyed (e.g. during logout).
+
+If present this method will automatically be invoked instead of `set` when the `req.session` attribute was removed by the route handler.
 
 **Arguments**
 
@@ -54,8 +69,4 @@ TODO
 
   Response object to remove the session identifier from.
 
-TODO
-
-**Examples**
-
-TODO
+Returns nothing.
