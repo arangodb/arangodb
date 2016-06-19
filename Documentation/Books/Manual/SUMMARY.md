@@ -142,8 +142,8 @@
       * [Implementation](Administration/Replication/Synchronous/Implementation.md)
       * [Configuration](Administration/Replication/Synchronous/Configuration.md)
   * [Sharding](Administration/Sharding/README.md)
-    * [Authentication](Administration/Sharding/Authentication.md)
-    * [Firewall setup](Administration/Sharding/FirewallSetup.md)
+#    * [Authentication](Administration/Sharding/Authentication.md)
+#    * [Firewall setup](Administration/Sharding/FirewallSetup.md)
 #
 * [Troubleshooting](Troubleshooting/README.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)

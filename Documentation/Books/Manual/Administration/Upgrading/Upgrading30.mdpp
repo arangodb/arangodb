@@ -49,7 +49,7 @@ be told to create it automatically using the option `--create-database true`:
 
 ```
 arangorestore --server.database mydb --create-database true --input-directory dump-mydb
-...
+```
 
 And again it may be required to provide access credentials when invoking 
 `arangorestore`:
