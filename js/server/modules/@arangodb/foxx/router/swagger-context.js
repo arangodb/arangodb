@@ -83,7 +83,7 @@ module.exports = exports = class SwaggerContext {
       ['string', check.validateSchema, 'string'],
       [name, schema, description]
     );
-    this._headers.set(name, {schema, description});
+    this._headers.set(name.toLowerCase(), {schema, description});
     return this;
   }
 
