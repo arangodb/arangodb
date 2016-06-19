@@ -284,7 +284,7 @@ var buildEdgeCollectionRestriction = function(collections) {
     collections = [ collections ];
   }
   return collections.map(collection => "`" + collection + "`").join(",");
-}
+};
 
 var buildVertexCollectionRestriction = function(collections, varname) {
   if (!Array.isArray(collections)) {
@@ -296,7 +296,7 @@ var buildVertexCollectionRestriction = function(collections, varname) {
     }).join(" OR ")}
   )`;
   return `${filter}`;
-}
+};
     
 var buildFilter = function(examples, bindVars, varname) {
   var varcount = 0;
@@ -1210,7 +1210,7 @@ Graph.prototype._edges = function(vertexExample, options) {
     ${Array.isArray(options.edgeCollectionRestriction) && options.edgeCollectionRestriction.length > 0 ? buildEdgeCollectionRestriction(options.edgeCollectionRestriction) : "GRAPH @graphName"} 
     ${buildFilter(options.edgeExamples, bindVars, "e")} 
     RETURN DISTINCT ${options.includeData === true ? "e" : "e._id"}`;
-  if(!Array.isArray(options.edgeCollectionRestriction) || options.edgeCollectionRestriction.length == 0) {
+  if(!Array.isArray(options.edgeCollectionRestriction) || options.edgeCollectionRestriction.length === 0) {
     bindVars.graphName = this.__name;
   }
   return db._query(query, bindVars).toArray();
@@ -1330,7 +1330,7 @@ Graph.prototype._neighbors = function(vertexExample, options) {
     ${buildFilter(options.edgeExamples, bindVars, "e")}
     ${Array.isArray(options.vertexCollectionRestriction) && options.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(options.vertexCollectionRestriction,"v") : ""}
     RETURN DISTINCT ${options.includeData === true ? "v" : "v._id"}`;
-  if(!Array.isArray(options.edgeCollectionRestriction) || options.edgeCollectionRestriction.length == 0) {
+  if(!Array.isArray(options.edgeCollectionRestriction) || options.edgeCollectionRestriction.length === 0) {
     bindVars.graphName = this.__name;
   }
   return db._query(query, bindVars).toArray();

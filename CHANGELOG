@@ -1,4 +1,4 @@
-v3.0.0-rc3 (????-??-??)
+v3.0.0-rc3 (2016-06-19)
 -----------------------
 
 * renamed various Foxx errors to no longer refer to Foxx services as apps
@@ -17,7 +17,7 @@ v3.0.0-rc3 (????-??-??)
 * all bundled NPM modules have been upgraded to their latest versions
 
 
-v3.0.0-rc2 (2015-06-12)
+v3.0.0-rc2 (2016-06-12)
 -----------------------
 
 * added option `--server.max-packet-size` for client tools

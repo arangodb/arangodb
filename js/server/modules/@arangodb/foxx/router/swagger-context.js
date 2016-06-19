@@ -166,7 +166,6 @@ module.exports = exports = class SwaggerContext {
 
 
     if (model.model === null) {
-    console.infoLines(String(this._methods), this.path, status, '->', description, '\nmodel:', require('util').inspect(model, {simpleJoi: true}), '\nmimes:', require('util').inspect(mimes));
       this._responses.set(status, {
         model: null,
         multiple: model.multiple,
@@ -184,8 +183,6 @@ module.exports = exports = class SwaggerContext {
       mimes.push(PARSED_JSON_MIME);
     }
 
-
-    console.infoLines(String(this._methods), this.path, status, '->', description, '\nmodel:', require('util').inspect(model, {simpleJoi: true}), '\nmimes:', require('util').inspect(mimes));
     this._responses.set(status, {
       model: model.model,
       multiple: model.multiple,
