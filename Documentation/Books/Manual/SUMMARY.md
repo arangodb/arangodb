@@ -150,6 +150,7 @@
     * [Collections](Administration/WebInterface/Collections.md)
     * [Cluster](Administration/WebInterface/Cluster.md)
       * [Nodes](Administration/WebInterface/Nodes.md)
+    * [Dashboard](Administration/WebInterface/Dashboard.md)
     * [Graphs](Administration/WebInterface/Graphs.md)
       * [Graph Viewer](Administration/WebInterface/GraphViewer.md)
 #
