@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global CryptoJS, _, arangoHelper, Backbone, window, templateEngine, $ */
+/*global CryptoJS, _, frontendConfig, arangoHelper, Backbone, window, templateEngine, $ */
 
 (function() {
   "use strict";
@@ -57,16 +57,13 @@
       $.ajax({
         type: "PUT",
         url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(user) + "/database/" + encodeURIComponent(db)),
-        contentType: "application/json",
-        data: JSON.stringify({
-          grant: ''
-        })
+        contentType: "application/json"
       });
     },
 
     continueRender: function() {
       var self = this;
-      
+     
       this.currentUser = this.collection.findWhere({
         user: this.username
       });
@@ -75,11 +72,16 @@
 
       arangoHelper.buildUserSubNav(this.currentUser.get("user"), 'Permissions');
 
+
+      var url = arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(self.currentUser.get("user")) + "/database");
+      if (frontendConfig.db === '_system') {
+        url = arangoHelper.databaseUrl("/_api/user/root/database");
+      }
+
       //FETCH COMPLETE DB LIST
       $.ajax({
         type: "GET",
-        //url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(this.currentUser.get("user")) + "/config"),
-        url: arangoHelper.databaseUrl("/_api/database/user"),
+        url: url,
         contentType: "application/json",
         success: function(data) {
           var allDBs = data.result;
@@ -92,6 +94,13 @@
             contentType: "application/json",
             success: function(data) {
               var permissions = data.result;
+              if (allDBs._system) {
+                var arr = [];
+                _.each(allDBs, function(db, name) {
+                  arr.push(name);
+                });
+                allDBs = arr;
+              }
               self.finishRender(allDBs, permissions);
             }
           });
@@ -101,6 +110,11 @@
     },
 
     finishRender: function(allDBs, permissions) {
+      _.each(permissions, function(value, key) {
+        if (value !== 'rw') {
+          delete permissions[key];
+        }
+      });
 
       $(this.el).html(this.template.render({
         allDBs: allDBs, 
