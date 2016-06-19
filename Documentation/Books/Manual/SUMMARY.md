@@ -83,7 +83,7 @@
       * [Cookie transport](Foxx/Sessions/Transports/Cookie.md)
       * [Header transport](Foxx/Sessions/Transports/Header.md)
   * [Serving files](Foxx/Assets.md)
-  * [Writing tests](Foxx/Testing.md)
+  # * [Writing tests](Foxx/Testing.md)
   * [Scripts and queued jobs](Foxx/Scripts.md)
   * [Migrating 2.x services](Foxx/Migrating2x.md)
   * [Legacy compatibility mode](Foxx/LegacyMode.md)
