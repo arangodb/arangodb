@@ -24,7 +24,7 @@ Development mode allows you making changes to deployed services in-place directl
 
 You can toggle development mode from the web interface in the service's settings tab. Once activated the service's file system path will be shown in the info tab.
 
-TODO (Add link to relevant aardvark docs)
+<!-- TODO (Add link to relevant aardvark docs) -->
 
 Once enabled the service's source files and manifest will be re-evaluated every time a route of the service is accessed, effectively re-deploying the service on every request. As the name indicates this is intended to be used strictly during development and is most definitely a bad idea on production servers.
 
@@ -36,7 +36,7 @@ The Foxx store provides access to a number of ready-to-use official and communit
 
 You can find the Foxx store in the web interface by using the "Add Service" button in the service list.
 
-TODO (Add link to relevant aardvark docs)
+<!-- TODO (Add link to relevant aardvark docs) -->
 
 !SECTION Cluster-Foxx
 
