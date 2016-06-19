@@ -1,4 +1,6 @@
-!CHAPTER Module "fs"
+!CHAPTER Filesystem Module
+
+`require('@arangodb/fs')`
 
 The implementation tries to follow the CommonJS specification where possible.
 [Filesystem/A/0](http://wiki.commonjs.org/wiki/Filesystem/A/0).
