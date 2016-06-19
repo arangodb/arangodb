@@ -18,8 +18,9 @@
   # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
 #
 * [Scalability](Scalability/README.md)
-  * [Cluster](Scalability/Cluster.md)
-#  * [Joins](Scalability/Joins.md)
+  * [Architecture](Scalability/Architecture.md)
+  * [Data models](Scalability/DataModels.md)
+  * [Limitations](Scalability/Limitations.md)
 #
 * [Data model & modeling](DataModeling/README.md)
 # * [Collections](FirstSteps/CollectionsAndDocuments.md) #TODO
@@ -142,8 +143,8 @@
       * [Implementation](Administration/Replication/Synchronous/Implementation.md)
       * [Configuration](Administration/Replication/Synchronous/Configuration.md)
   * [Sharding](Administration/Sharding/README.md)
-    * [Authentication](Administration/Sharding/Authentication.md)
-    * [Firewall setup](Administration/Sharding/FirewallSetup.md)
+#    * [Authentication](Administration/Sharding/Authentication.md)
+#    * [Firewall setup](Administration/Sharding/FirewallSetup.md)
   * [Web Interface](Administration/WebInterface/README.md)
     * [Queries](Administration/WebInterface/AqlEditor.md)
     * [Collections](Administration/WebInterface/Collections.md)
