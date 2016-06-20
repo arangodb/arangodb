@@ -55,11 +55,11 @@ The service context specifies the following properties:
 
 * **configuration**: `Object`
 
-  Configuration options for the service. See the [chapter on configuration](Configuration.md) for how to enable configuration in your service.
+  [Configuration options](Configuration.md) for the service.
 
 * **dependencies**: `Object`
 
-  Configured dependencies for the service. See the [chapter on dependencies](Dependencies.md) for how to enable dependencies between Foxx services.
+  Configured [dependencies](Dependencies.md) for the service.
 
 * **isDevelopment**: `boolean`
 
