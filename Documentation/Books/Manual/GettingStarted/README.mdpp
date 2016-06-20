@@ -74,16 +74,16 @@ By default, authentication is enabled. The default user is
 process either prompted for the root password or the default root
 password is empty (see [above](#securing-the-installation)).
 
-![Aardvark Login Form](AardvarkLoginAuthentication.png)
+![Aardvark Login Form](../Administration/WebInterface/images/loginView.png)
 
 Next you will be asked which database to use. Every server instance comes with
 a `_system` database. Select this database to continue.
 
 You should then be presented the dashboard with server statistics like this:
 
-![Aardvark Dashboard Request Statistics](AardvarkDashboardRequestStatistics.png)
+![Aardvark Dashboard Request Statistics](../Administration/WebInterface/images/dashboardView.png)
 
-For a more detailed description of the interface, see [Web Interface](WebInterface/README.md).
+For a more detailed description of the interface, see [Web Interface](../Administration/WebInterface/README.md).
 
 !SUBSECTION Databases, collections and documents
 

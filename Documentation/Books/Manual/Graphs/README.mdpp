@@ -17,10 +17,11 @@ graph databases can handle an arbitrary number of these hops over edge collectio
 Also edges in one edge collection may point to several vertex collections.
 Its common to have attributes attached to edges, i.e. a *label* naming this interconnection.
 Edges have a direction, with their relations `_from` and `_to` pointing *from* one document *to* another document stored in vertex collections.
-In queries you can define in which directions the edge relations may be followed (`OUTBOUND`: `_from` -> `_to`, `INBOUND`: `_to` -> `_from`, `ANY`: `_from` <-> `_to`).
+In queries you can define in which directions the edge relations may be followed (`OUTBOUND`: `_from` → `_to`, `INBOUND`: `_to` → `_from`, `ANY`: `_from` ↔ `_to`).
 
 !SUBSECTION Named Graphs
-Named graphs are completely managed by arangodb, and thus also [visible in the webinterface](../Administration/WebInterface/GraphViewer.md).
+
+Named graphs are completely managed by arangodb, and thus also [visible in the webinterface](../Administration/WebInterface/Graphs.md).
 They use the full spectrum of ArangoDBs graph features. You may access them via several interfaces.
 
  - [AQL Graph Operations](../../AQL/Graphs/index.html) with several flavors:
@@ -69,7 +70,7 @@ We offer [blueprints support via an api compatible java driver](https://github.c
 !SUBSECTION Example Graphs
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrate the APIs.
 You can use the `add samples` tab in the `create graph` window in the webinterface, or load the module `@arangodb/graph-examples/example-graph` in arangosh and use it to create instances of these graphs in your ArangoDB.
-Once you've created them, you can [inspect them in the webinterface](../Administration/WebInterface/GraphViewer.md) - which was used to create the pictures below.
+Once you've created them, you can [inspect them in the webinterface](../Administration/WebInterface/Graphs.md) - which was used to create the pictures below.
 
 !SUBSUBSECTION The Knows\_Graph
 A set of persons knowing each other:
