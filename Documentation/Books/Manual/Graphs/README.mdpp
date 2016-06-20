@@ -63,10 +63,6 @@ and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into
 - you need the system collection `_graphs` if you backup named graphs.
 - you need to backup the complete set of all edge and vertex collections your graph consists of. Partial dump/restore may not work.
 
-!SUBSECTION Blueprint Graphs
-*Blueprint 2 graphs* are a subset of *named graphs*. It only supports one edge and one vertex collection per graph. Both vertices and edges have to contain a label attribute; the Blueprints API defines a special `LABEL` attribute for this.
-We offer [blueprints support via an api compatible java driver](https://github.com/arangodb/blueprints-arangodb-graph).
-
 !SUBSECTION Example Graphs
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrate the APIs.
 You can use the `add samples` tab in the `create graph` window in the webinterface, or load the module `@arangodb/graph-examples/example-graph` in arangosh and use it to create instances of these graphs in your ArangoDB.
