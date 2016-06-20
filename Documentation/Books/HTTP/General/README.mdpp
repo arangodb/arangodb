@@ -40,7 +40,7 @@ ArangoDB will close connections automatically for clients that send requests
 using HTTP 1.0, except if they send an *Connection: Keep-Alive* header.
 
 The default Keep-Alive timeout can be specified at server start using the
-*--server.keep-alive-timeout* parameter.
+*--http.keep-alive-timeout* parameter.
 
 Establishing TCP connections is expensive, since it takes several ping pongs
 between the communication parties. Therefore you can use connection keepalive
@@ -107,25 +107,26 @@ For details on the subsequent processing
 Client authentication can be achieved by using the *Authorization* HTTP header in
 client requests. ArangoDB supports HTTP Basic authentication.
 
-Authentication is optional. To enforce authentication for incoming requested,
-the server must be started with the option [--server.disable-authentication](../../Manual/Administration/Configuration/Arangod.html).
+Authentication is turned on by default, but can be turned off. To enforce
+authentication for incoming requested, the server must be started with the option
+[--server.authentication](../../Manual/Administration/Configuration/Arangod.html).
 Please note that requests using the HTTP OPTIONS method will be answered by
 ArangoDB in any case, even if no authentication data is sent by the client or if
 the authentication data is wrong. This is required for handling CORS preflight
-requests (see [Cross Origin Resource Sharing requests](#cross-origin-resource-sharing-cors-requests)). The response to an HTTP OPTIONS request
-will be generic and not expose any private data.
+requests (see [Cross Origin Resource Sharing requests](#cross-origin-resource-sharing-cors-requests)).
+The response to an HTTP OPTIONS request will be generic and not expose any private data.
 
 Please note that when authentication is turned on in ArangoDB, it will by
 default affect all incoming requests. 
 
-There is an additional option [--server.authenticate-system-only](../../Manual/Administration/Configuration/Arangod.html)
+There is an additional option [--server.authentication-system-only](../../Manual/Administration/Configuration/Arangod.html)
 to restrict authentication to requests to the ArangoDB internal APIs and the admin interface. 
 This option can be used to expose a public API built with ArangoDB to the outside
 world without the need for HTTP authentication, but to still protect the usage of the
 ArangoDB API (i.e. */_api/*) and the admin interface (i.e. */_admin/*) with
 HTTP authentication.
 
-If the server is started with the *--server.authenticate-system-only* parameter set 
+If the server is started with the *--server.authentication-system-only* parameter set 
 to *false* (which is the default), all incoming requests need HTTP authentication if the
 server is configured to require HTTP authentication. Setting the option to *false* will
 make the server require authentication only for requests to the internal functionality at
@@ -216,8 +217,15 @@ ArangoDB will automatically handle CORS requests as follows:
   * *access-control-max-age*: will return a cache lifetime for the preflight
     response as determined by ArangoDB.
 * any *access-control-allow-credentials* header sent by the client is ignored by
-  ArangoDB its value is not *true*. If a client sends a header value of *true*,
-  ArangoDB will return the header *access-control-allow-credentials: true*, too.
+  ArangoDB if its value is not *true*. If a client sends a header value of *true*,
+  ArangoDB will return the header *access-control-allow-credentials: true* too,
+  but only if the value of the sent `Origin` header matches a trusted origin
+  in the `--http.trusted-origin` startup option. To make ArangoDB trust a certain
+  origin, specify the origin at server start like this: 
+  `--http.trusted-origin "http://localhost:8529"`
+  To specify multiple trusted origins, the option can be specified multiple times.
+  To trust any origin, the special value `*` can be specified as a trusted origin:
+  `--http.trusted-origin "*"`
 
 Note that CORS preflight requests will probably not send any authentication data
 with them. One of the purposes of the preflight request is to check whether the
@@ -233,7 +241,7 @@ credentials.
 
 !SECTION HTTP method overriding
 
-ArangoDB provides a startup option *--server.allow-method-override*.
+ArangoDB provides a startup option *--http.allow-method-override*.
 This option can be set to allow overriding the HTTP request method (e.g. GET, POST,
 PUT, DELETE, PATCH) of a request using one of the following custom HTTP headers:
 

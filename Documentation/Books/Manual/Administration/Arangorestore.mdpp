@@ -24,7 +24,7 @@ or use authentication, you can use the following command-line options:
 * *--server.username <string>*: username
 * *--server.password <string>*: password to use (omit this and you'll be prompted for the
   password)
-* *--server.disable-authentication <bool>*: whether or not to use authentication
+* *--server.authentication <bool>*: whether or not to use authentication
   
 Since version 2.6 _arangorestore_ provides the option *--create-database*. Setting this 
 option to *true* will create the target database if it does not exist. When creating the

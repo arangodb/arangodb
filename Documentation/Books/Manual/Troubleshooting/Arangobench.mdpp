@@ -47,8 +47,8 @@ Related blog posts:
 - *--server.password*: Password to use when connecting. Don't specify this
   option to get a password prompt.
 
-- *--server.disable-authentication*: Disable the password prompt and
-  authentication when connecting to the server.
+- *--server.authentication*: Wether or not to show the password prompt and
+  use authentication when connecting to the server (default: true).
 
 - *--test-case*: Name of test case to perform (default: "version").
   Possible values:

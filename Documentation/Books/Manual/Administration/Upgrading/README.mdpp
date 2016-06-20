@@ -16,7 +16,7 @@ To upgrade an existing ArangoDB database to a newer version of ArangoDB
 * Stop the "old" arangod service or binary
 * Copy the entire "old" data directory to a safe place (that is, a backup)
 * Install the new version of ArangoDB and start the server with
-  the *--database.upgrade* option once. This might write to the logfile of ArangoDB,
+  the *--database.auto-upgrade* option once. This might write to the logfile of ArangoDB,
   so you may want to check the logs for any issues before going on.
 * Start the "new" arangod service or binary regularly and check the logs for any
   issues. When you're confident everything went well, you may want to check the

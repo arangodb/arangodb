@@ -21,7 +21,7 @@ times.
 ```
 unix> ./arangod --server.endpoint tcp://127.0.0.1:8529
                 --server.endpoint ssl://127.0.0.1:8530
-                --server.keyfile server.pem /tmp/vocbase
+                --ssl.keyfile server.pem /tmp/vocbase
 2012-07-26T07:07:47Z [8161] INFO using SSL protocol version 'TLSv1'
 2012-07-26T07:07:48Z [8161] INFO using endpoint 'ssl://127.0.0.1:8530' for
 http ssl requests
@@ -33,7 +33,7 @@ business
 ```
 
 **Note**: If you are using SSL-encrypted endpoints, you must also supply
-the path to a server certificate using the \-\-server.keyfile option.
+the path to a server certificate using the `--ssl.keyfile` option.
 
 Endpoints can also be changed at runtime.
 Please refer to [HTTP Interface for Endpoints](../../../HTTP/Endpoints/index.html)

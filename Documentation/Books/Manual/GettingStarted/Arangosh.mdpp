@@ -30,7 +30,7 @@ STANDARD options:
   --pager <string>              output pager (default: "less -X -R -F -L")
   --pretty-print                pretty print values
   --quiet                       no banner
-  --temp-path <string>          path for temporary files (default: "/tmp/arangodb")
+  --temp.path <string>          path for temporary files (default: "/tmp/arangodb")
   --use-pager                   use pager
   
 JAVASCRIPT options:
@@ -46,7 +46,7 @@ LOGGING options:
   
 CLIENT options:
   --server.connect-timeout <double>         connect timeout in seconds (default: 3)
-  --server.disable-authentication <bool>    disable authentication (default: false)
+  --server.authentication <bool>            whether or not to use authentication (default: true)
   --server.endpoint <string>                endpoint to connect to, use 'none' to start without a server (default: "tcp://127.0.0.1:8529")
   --server.password <string>                password to use when connecting (leave empty for prompt)
   --server.request-timeout <double>         request timeout in seconds (default: 300)
@@ -72,4 +72,4 @@ for (i = 0; i < 100000; i++) {
 ```
 
 Since the *arangosh* version will be doing around 100k HTTP requests, and the
-*arangod* version [will directly write to the database](../Architecture/ServerInternals.md).
+*arangod* version will directly write to the database.

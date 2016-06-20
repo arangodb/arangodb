@@ -24,7 +24,7 @@ or use authentication, you can use the following command-line options:
 * *--server.username <string>*: username
 * *--server.password <string>*: password to use (omit this and you'll be prompted for the
   password)
-* *--server.disable-authentication <bool>*: whether or not to use authentication
+* *--server.authentication <bool>*: whether or not to use authentication
 
 Here's an example of dumping data from a non-standard endpoint, using a dedicated
 [database name](../Appendix/Glossary.md#database-name):
