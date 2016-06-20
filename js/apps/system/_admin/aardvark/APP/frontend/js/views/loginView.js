@@ -135,7 +135,7 @@
           });
 
           $('#loginForm').hide();
-          $('#databases').show();
+          $('.login-window #databases').show();
 
           //enable db select and login button
           $('#loginDatabase').html('');
@@ -159,7 +159,7 @@
 
       if ($('#loginDatabase').children().length === 0) {
         $('#dbForm').remove();
-        $('#databases').prepend(
+        $('.login-window #databases').prepend(
           '<div class="no-database">You do not have permission to a database.</div>'
         );
       }
