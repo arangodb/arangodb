@@ -231,11 +231,11 @@ struct TraverserOptions {
 
   size_t collectionCount() const;
 
-  bool getCollection(size_t const, std::string&, TRI_edge_direction_e&) const;
+  bool getCollection(size_t, std::string&, TRI_edge_direction_e&) const;
 
   bool getCollectionAndSearchValue(size_t, std::string const&, std::string&,
                                    arangodb::Transaction::IndexHandle&,
-                                   arangodb::velocypack::Builder&);
+                                   arangodb::velocypack::Builder&) const;
 };
 
 class Traverser {
@@ -322,6 +322,8 @@ class Traverser {
     _readDocuments = 0;
     return tmp;
   }
+  
+  TraverserOptions const* options() { return &_opts; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Prune the current path prefix. Do not evaluate it any further.

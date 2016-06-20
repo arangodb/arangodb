@@ -26,6 +26,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/TraversalNode.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/Traverser.h"
 
 namespace arangodb {
@@ -146,6 +147,17 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief Executes the path-local filter expressions
   ///        Also determines the context
   void executeFilterExpressions();
+
+  /// @brief optimized version of neighbors search, must properly implement this
+  void neighbors(std::string const& startVertex);
+
+  /// @brief worker for neighbors() function
+  void runNeighbors(std::vector<VPackSlice> const& startVertices,
+                    std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackStringHash, basics::VelocyPackHelper::VPackStringEqual>& visited,
+                    std::vector<VPackSlice>& distinct,
+                    TRI_edge_direction_e direction,
+                    uint64_t depth);
+
 };
 }  // namespace arangodb::aql
 }  // namespace arangodb

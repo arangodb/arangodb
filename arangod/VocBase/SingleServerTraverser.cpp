@@ -465,7 +465,7 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
         if (!_traverser->edgeMatchesConditions(edge, depth)) {
           if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
             // Insert a dummy to please the uniqueness
-            _traverser->_edges.emplace(id, nullptr);
+            _traverser->_edges.emplace(std::move(id), nullptr);
           }
           continue;
         }
@@ -489,3 +489,4 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
     }
   }
 }
+
