@@ -162,7 +162,7 @@
 #
 * [Architecture](Architecture/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)
-  * [Server Internals](Architecture/ServerInternals.md)
+#  * [Server Internals](Architecture/ServerInternals.md)
 #
 * [Release notes](ReleaseNotes/README.md)
   * [Whats New in 3.0](ReleaseNotes/NewFeatures30.md)
