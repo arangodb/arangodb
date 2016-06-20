@@ -48,7 +48,7 @@ if (Array.isArray(trustedProxies)) {
 }
 
 function shouldTrustProxy(address) {
-  if (trustedProxies === null) {
+  if (!trustedProxies) {
     return true;
   }
   return trustedProxyBlocks
