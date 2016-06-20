@@ -575,6 +575,10 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING ||
              getStatus() == TRI_TRANSACTION_CREATED);
 
+  if (_ditchCache.cid == cid) {
+    return _ditchCache.ditch;
+  }
+
   TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
 
   if (trxCollection == nullptr) {
@@ -592,6 +596,10 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
   if (ditch == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+
+  _ditchCache.cid = cid;
+  _ditchCache.ditch = ditch;
+
   return ditch;
 }
   

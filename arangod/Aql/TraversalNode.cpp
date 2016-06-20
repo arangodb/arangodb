@@ -135,7 +135,8 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _inVariable(nullptr),
       _graphObj(nullptr),
       _condition(nullptr),
-      _options(options) {
+      _options(options),
+      _specializedNeighborsSearch(false) {
 
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(direction != nullptr);
@@ -268,7 +269,8 @@ TraversalNode::TraversalNode(
       _directions(directions),
       _graphObj(nullptr),
       _condition(nullptr),
-      _options(options) {
+      _options(options),
+      _specializedNeighborsSearch(false) {
   _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
 
   for (auto& it : edgeColls) {
@@ -286,7 +288,8 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
       _graphObj(nullptr),
-      _condition(nullptr) {
+      _condition(nullptr),
+      _specializedNeighborsSearch(false) {
   _minDepth =
       arangodb::basics::JsonHelper::stringUInt64(base.json(), "minDepth");
   _maxDepth =
@@ -454,6 +457,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
     _options = TraversalOptions(base);
   }
 
+  _specializedNeighborsSearch = arangodb::basics::JsonHelper::getBooleanValue(base.json(), "specializedNeighborsSearch", false);
 }
 
 int TraversalNode::checkIsOutVariable(size_t variableId) const {
@@ -467,6 +471,30 @@ int TraversalNode::checkIsOutVariable(size_t variableId) const {
     return 2;
   }
   return -1;
+}
+
+/// @brief check if all directions are equal
+bool TraversalNode::allDirectionsEqual() const {
+  if (_directions.empty()) {
+    // no directions!
+    return false;
+  }
+  size_t const n = _directions.size();
+  TRI_edge_direction_e const expected = _directions[0];
+
+  for (size_t i = 1; i < n; ++i) {
+    if (_directions[i] != expected) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void TraversalNode::specializeToNeighborsSearch() {
+  TRI_ASSERT(allDirectionsEqual());
+  TRI_ASSERT(!_directions.empty());
+
+  _specializedNeighborsSearch = true;
 }
 
 /// @brief toVelocyPack, for TraversalNode
@@ -539,6 +567,8 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
       }
     }
   }
+    
+  nodes.add("specializedNeighborsSearch", VPackValue(_specializedNeighborsSearch));
 
   nodes.add(VPackValue("traversalFlags"));
   _options.toVelocyPack(nodes);
@@ -582,6 +612,10 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
     }
     TRI_ASSERT(pathOutVariable != nullptr);
     c->setPathOutput(pathOutVariable);
+  }
+
+  if (_specializedNeighborsSearch) {
+    c->specializeToNeighborsSearch();
   }
 
   cloneHelper(c, plan, withDependencies, withProperties);

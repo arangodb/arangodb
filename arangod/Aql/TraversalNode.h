@@ -61,7 +61,7 @@ class SimpleTraverserExpression
 /// @brief class TraversalNode
 class TraversalNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class TraversalCollectionBlock;
+  friend class TraversalBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
@@ -134,6 +134,14 @@ class TraversalNode : public ExecutionNode {
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
     std::vector<Variable const*> vars;
+    
+    size_t const numVars = 
+      (_vertexOutVariable != nullptr ? 1 : 0) + 
+      (_edgeOutVariable != nullptr ? 1 : 0) + 
+      (_pathOutVariable != nullptr ? 1 : 0);
+
+    vars.reserve(numVars);
+    
     if (_vertexOutVariable != nullptr) {
       vars.emplace_back(_vertexOutVariable);
     }
@@ -211,6 +219,10 @@ class TraversalNode : public ExecutionNode {
   void storeSimpleExpression(bool isEdgeAccess, size_t indexAccess,
                              AstNodeType comparisonType,
                              AstNode const* varAccess, AstNode* compareToNode);
+  
+  bool allDirectionsEqual() const;
+
+  void specializeToNeighborsSearch();
 
   /// @brief Returns a regerence to the simple traverser expressions
   std::unordered_map<
@@ -218,6 +230,11 @@ class TraversalNode : public ExecutionNode {
   expressions() const {
     return &_expressions;
   }
+
+  uint64_t minDepth() const { return _minDepth; }
+  uint64_t maxDepth() const { return _maxDepth; }
+
+  TraversalOptions const* options() const { return &_options; }
 
  private:
   /// @brief the database
@@ -238,7 +255,7 @@ class TraversalNode : public ExecutionNode {
   /// @brief input vertexId only used if _inVariable is unused
   std::string _vertexId;
 
-  /// @brief input graphJson only used for serialisation & info
+  /// @brief input graphJson only used for serialization & info
   arangodb::basics::Json _graphJson;
 
   /// @brief The minimal depth included in the result
@@ -270,6 +287,8 @@ class TraversalNode : public ExecutionNode {
 
   /// @brief Options for traversals
   TraversalOptions _options;
+
+  bool _specializedNeighborsSearch;
 };
 
 }  // namespace arangodb::aql

@@ -104,7 +104,7 @@ size_t arangodb::traverser::TraverserOptions::collectionCount () const {
 }
 
 bool arangodb::traverser::TraverserOptions::getCollection(
-    size_t const index, std::string& name, TRI_edge_direction_e& dir) const {
+    size_t index, std::string& name, TRI_edge_direction_e& dir) const {
   if (index >= _collections.size()) {
     // No more collections stop now
     return false;
@@ -121,7 +121,7 @@ bool arangodb::traverser::TraverserOptions::getCollection(
 
 bool arangodb::traverser::TraverserOptions::getCollectionAndSearchValue(
     size_t index, std::string const& vertexId, std::string& name,
-    Transaction::IndexHandle& indexHandle, VPackBuilder& builder) {
+    Transaction::IndexHandle& indexHandle, VPackBuilder& builder) const {
   if (index >= _collections.size()) {
     // No more collections stop now
     return false;
