@@ -518,6 +518,7 @@ bool Node::handle<UNOBSERVE>(VPackSlice const& slice) {
 
 
 /// Check if element is in array
+/// Remove observer for this node
 template <>
 bool Node::handle<IN>(VPackSlice const& slice) {
   return true;
@@ -556,7 +557,7 @@ bool Node::applieOp(VPackSlice const& slice) {
     return handle<OBSERVE>(slice);
   } else if (oper == "unobserve") {  // "op":"unobserve"
     return handle<UNOBSERVE>(slice);
-  } else if (oper == "unobserve") {  // "op":"unobserve"
+  } else if (oper == "in") {  // "op":"unobserve"
     return handle<IN>(slice);
   } else {  // "op" might not be a key word after all
     LOG_TOPIC(WARN, Logger::AGENCY)
