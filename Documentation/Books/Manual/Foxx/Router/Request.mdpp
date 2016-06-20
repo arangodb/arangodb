@@ -1,16 +1,16 @@
 !CHAPTER Request objects
 
-TODO
-
 The request object specifies the following properties:
 
 * **arangoUser**: `string | null`
 
-  TODO
+  The authenticated ArangoDB username used to make the request.
+  This value is only set if authentication is enabled in ArangoDB and the request set an `authorization` header ArangoDB was able to verify.
+  You are strongly encouraged to implement your own authentication logic for your own services but this property can be useful if you need to integrate with ArangoDB's own authentication mechanisms.
 
 * **arangoVersion**: `number`
 
-  TODO
+  The numeric value of the `x-arango-version` header or the numeric version of the ArangoDB server (e.g. `30102` for version 3.1.2) if no valid header was provided.
 
 * **baseUrl**: `string`
 
@@ -20,13 +20,11 @@ The request object specifies the following properties:
 
   The processed and validated request body for the current route.
 
-  TODO
+  For details on how request bodies can be processed and validated by Foxx see the [body method of the endpoint object](Endpoints.md#body).
 
 * **context**: `Context`
 
   The [service context](../Context.md) in which the router was mounted (rather than the context in which the route was defined).
-
-  TODO
 
 * **database**: `string`
 
@@ -36,7 +34,7 @@ The request object specifies the following properties:
 
   The raw headers object.
 
-  TODO
+  For details on how request headers can be validated by Foxx see the [header method of the endpoint object](Endpoints.md#header).
 
 * **hostname**: `string`
 
@@ -58,7 +56,9 @@ The request object specifies the following properties:
 
 * **pathParams**: `object`
 
-  TODO
+  An object mapping the names of path parameters of the current route to their validated values.
+
+  For details on how path parameters can be validated by Foxx see the [pathParam method of the endpoint object](Endpoints.md#pathParam).
 
 * **port**: `number`
 
@@ -66,7 +66,7 @@ The request object specifies the following properties:
 
   Defaults to the port portion (i.e. excluding the hostname) of the `Host` header and falls back to the listening port or the appropriate default port (`443` for HTTPS or `80` for HTTP, depending on *secure*) if the header only indicates a hostname.
 
-  If the service is configured to trust proxy headers,
+  If the request was made using a trusted proxy (see *trustProxy*),
   this is set to the port portion of the `X-Forwarded-Host` header (or approriate default port) if present.
 
 * **protocol**: `string`
@@ -75,22 +75,24 @@ The request object specifies the following properties:
 
   Defaults to `"https"` or `"http"` depending on whether ArangoDB is configured to use SSL or not.
 
-  If the service is configured to trust proxy headers,
+  If the request was made using a trusted proxy (see *trustProxy*),
   this is set to the value of the `X-Forwarded-Proto` header if present.
 
 * **queryParams**: `object`
 
-  TODO
+  An object mapping the names of query parameters of the current route to their validated values.
+
+  For details on how query parameters can be validated by Foxx see the [queryParam method of the endpoint object](Endpoints.md#queryParam).
 
 * **rawBody**: `Buffer`
 
-  TODO
+  The raw, unparsed, unvalidated request body as a buffer.
 
 * **remoteAddress**: `string`
 
   The IP of the client that made the request.
 
-  If the service is configured to trust proxy headers,
+  If the request was made using a trusted proxy (see *trustProxy*),
   this is set to the first IP listed in the `X-Forwarded-For` header if present.
 
 * **remoteAddresses**: `Array<string>`
@@ -99,14 +101,14 @@ The request object specifies the following properties:
 
   Defaults to the value of *remoteAddress* wrapped in an array.
 
-  If the service is configured to trust proxy headers,
+  If the request was made using a trusted proxy (see *trustProxy*),
   this is set to the list of IPs specified in the `X-Forwarded-For` header if present.
 
 * **remotePort**: `number`
 
   The listening port of the client that made the request.
 
-  If the service is configured to trust proxy headers,
+  If the request was made using a trusted proxy (see *trustProxy*),
   this is set to the port specified in the `X-Forwarded-Port` header if present.
 
 * **secure**: `boolean`
@@ -117,15 +119,16 @@ The request object specifies the following properties:
 
 * **suffix**: `string`
 
-  TODO
+  The trailing path relative to the current route if the current route ends in a wildcard.
 
 * **trustProxy**: `boolean`
 
-  TODO
+  Indicates whether the request was made using a trusted proxy.
+  If the origin server's address was specified in the ArangoDB configuration using `--frontend.trusted-proxy` or the service's `trustProxy` setting is enabled, this will be `true`, otherwise it will be `false`.
 
 * **url**: `string`
 
-  TODO
+  The URL of the request.<!-- TODO expand on this -->
 
 * **xhr**: `boolean`
 
@@ -169,15 +172,15 @@ if (req.accepts(['json', 'html']) === 'html') {
 
 !SECTION cookie
 
-`req.cookie(name, options): any`
+`req.cookie(name, options): string | null`
 
-TODO
+Gets the value of a cookie by name.
 
 **Arguments**
 
 * **name**: `string`
 
-  TODO
+  Name of the cookie.
 
 * **options**: `object` (optional)
 
@@ -185,15 +188,17 @@ TODO
 
   * **secret**: `string` (optional)
 
-    TODO
+    Secret that was used to sign the cookie.
+
+    If a secret is specified, the cookie's signature is expected to be present in a second cookie with the same name and the suffix `.sig`. Otherwise the signature (if present) will be ignored.
 
   * **algorithm**: `string` (Default: `"sha256"`)
 
-    TODO
+    Algorithm that was used to sign the cookie.
 
 If a string is passed instead of an options object it will be interpreted as the *secret* option.
 
-TODO
+Returns the value of the cookie or `null` if the cookie is not set or its signature is invalid.
 
 !SECTION get / header
 
@@ -201,15 +206,15 @@ TODO
 
 `req.header(name): string`
 
-TODO
+Gets the value of a header by name. You can validate request headers using the [header method of the endpoint](Endpoints.md#header).
 
 **Arguments**
 
 * **name**: `string`
 
-  TODO
+  Name of the header.
 
-TODO
+Returns the header value.
 
 !SECTION is
 
@@ -219,37 +224,46 @@ TODO
 
 This method wraps the (request body) content type detection method of the [type-is module](https://github.com/jshttp/type-is) for the current request.
 
-**Arguments**
+**Examples**
 
-* **types**: `Array<string>`
-
-  TODO
-
-TODO
+```js
+const type = req.is('html', 'application/xml', 'application/*+xml');
+if (type === false) { // no match
+  handleDefault(req.rawBody);
+} else if (type === 'html') {
+  handleHtml(req.rawBody);
+} else { // is XML
+  handleXml(req.rawBody);
+}
+```
 
 !SECTION json
 
 `req.json(): any`
 
-TODO
+Attempts to parse the raw request body as JSON and returns the result.
+
+It is generally more useful to define a [request body on the endpoint](Endpoints.md#body) and use the `req.body` property instead.
+
+Returns `undefined` if the request body is empty. May throw a `SyntaxError` if the body could not be parsed.
 
 !SECTION makeAbsolute
 
 `req.makeAbsolute(path, [query]): string`
 
-TODO
+Resolves the given path relative to the `req.context.service`'s mount path to a full URL.
 
 **Arguments**
 
 * **path**: `string`
 
-  TODO
+  The path to resovle.
 
 * **query**: `string | object`
 
-  TODO
+  A string or object with query parameters to add to the URL.
 
-TODO
+Returns the formatted absolute URL.
 
 !SECTION params
 
@@ -257,13 +271,15 @@ TODO
 
 **Arguments**
 
-TODO
+Looks up a parameter by name, preferring `pathParams` over `queryParams`.
+
+It's probably better style to use the `req.pathParams` or `req.queryParams` objects directly.
 
 * **name**: `string`
 
-  TODO
+  Name of the parameter.
 
-TODO
+Returns the (validated) value of the parameter.
 
 !SECTION range
 
@@ -294,16 +310,30 @@ console.log(ranges.type); // "bytes"
 
 `req.reverse(name, [params]): string`
 
-TODO
+Looks up the URL of a named route for the given parameters.
 
 **Arguments**
 
 * **name**: `string`
 
-  TODO
+  Name of the route to look up.
 
 * **params**: `object` (optional)
 
-  TODO
+  An object containing values for the (path or query) parameters of the route.
 
-TODO
+Returns the URL of the route for the given parameters.
+
+**Examples**
+
+```js
+router.get('/items/:id', function (req, res) {
+  /* ... */
+}, 'getItemById');
+
+router.post('/items', function (req, res) {
+  // ...
+  const url = req.reverse('getItemById', {id: createdItem._key});
+  res.set('location', req.makeAbsolute(url));
+});
+```

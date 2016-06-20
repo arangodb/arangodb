@@ -192,7 +192,7 @@ module.exports = class SyntheticRequest {
   }
 
   json() {
-    if (!this.rawBody) {
+    if (!this.rawBody || !this.rawBody.length) {
       return undefined;
     }
     return JSON.parse(this.rawBody.toString('utf-8'));
