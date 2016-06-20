@@ -1271,7 +1271,6 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
   }
 }
 
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return one document from a collection, fast path
 ///        If everything went well the result will contain the found document
@@ -1322,7 +1321,40 @@ int Transaction::documentFastPath(std::string const& collectionName,
   TRI_ASSERT(hasDitch(cid));
 
   TRI_ASSERT(mptr.vpack() != nullptr);
-  result.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
+  result.addExternal(mptr.vpack());
+  return TRI_ERROR_NO_ERROR;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return one document from a collection, fast path
+///        If everything went well the result will contain the found document
+///        (as an external on single_server) and this function will return TRI_ERROR_NO_ERROR.
+///        If there was an error the code is returned 
+///        Does not care for revision handling!
+///        Must only be called on a local server, not in cluster case!
+//////////////////////////////////////////////////////////////////////////////
+
+int Transaction::documentFastPathLocal(std::string const& collectionName,
+                                       std::string const& key,
+                                       TRI_doc_mptr_t* result) {
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+
+  orderDitch(cid); // will throw when it fails
+
+  if (key.empty()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+
+  int res = document->read(this, key, result, !isLocked(document, TRI_TRANSACTION_READ));
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+    
+  TRI_ASSERT(hasDitch(cid));
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1441,7 +1473,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     }
   
     if (!options.silent) {
-      resultBuilder.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
+      resultBuilder.addExternal(mptr.vpack());
     } else if (isMultiple) {
       resultBuilder.add(VPackSlice::nullSlice());
     }
@@ -2412,7 +2444,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   while (cursor->hasMore()) {
     cursor->getMoreMptr(result, 1000);
     for (auto const& mptr : result) {
-      resultBuilder.add(VPackValue(mptr->vpack(), VPackValueType::External));
+      resultBuilder.addExternal(mptr->vpack());
     }
   }
 

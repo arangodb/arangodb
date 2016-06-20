@@ -29,17 +29,17 @@ const mocha = require('@arangodb/mocha');
 
 const isNotPattern = (pattern) => pattern.indexOf('*') === -1;
 
-exports.run = function runFoxxTests(app, reporterName) {
-  const run = (file, context) => app.run(file, {context: context});
-  return mocha.run(run, findTestFiles(app), reporterName);
+exports.run = function runFoxxTests(service, reporterName) {
+  const run = (file, context) => service.run(file, {context: context});
+  return mocha.run(run, exports.findTests(service), reporterName);
 };
 
-function findTestFiles(app) {
-  const patterns = app.manifest.tests || [];
+exports.findTests = function findTestFiles(service) {
+  const patterns = service.manifest.tests || [];
   if (patterns.every(isNotPattern)) {
     return patterns.slice();
   }
-  const basePath = fs.join(app.root, app.path);
+  const basePath = fs.join(service.root, service.path);
   const paths = fs.listTree(basePath);
   const matchers = patterns.map((pattern) => {
     if (pattern.charAt(0) === '/') {
@@ -54,4 +54,4 @@ function findTestFiles(app) {
       isWindows ? path.replace(/\\/g, '/') : path
     )) && fs.isFile(fs.join(basePath, path))
   );
-}
+};

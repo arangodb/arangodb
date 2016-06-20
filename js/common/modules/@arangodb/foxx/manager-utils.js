@@ -252,8 +252,8 @@ function validateServiceName (name) {
   }
 
   throw new ArangoError({
-    errorNum: errors.ERROR_APPLICATION_INVALID_NAME.code,
-    errorMessage: errors.ERROR_APPLICATION_INVALID_NAME.message
+    errorNum: errors.ERROR_SERVICE_INVALID_NAME.code,
+    errorMessage: errors.ERROR_SERVICE_INVALID_NAME.message
   });
 }
 

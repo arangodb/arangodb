@@ -1,0 +1,35 @@
+!SECTION Different data models and scalability
+
+In this section we discuss scalability in the context of the different
+data models supported by ArangoDB.
+
+!SUBSECTION Key/value pairs
+
+The key/value store data model is the easiest to scale. In ArangoDB,
+this is implemented in the sense that a document collection always has 
+a primary key `_key` attribute and in the absence of further secondary
+indexes the document collection behaves like a simple key/value store.
+
+The only operations that are possible in this context are single key
+lookups and key/value pair insertions and updates. If `_key` is the
+only sharding attribute then the sharding is done with respect to the
+primary key and all these operations scale linearly. If the sharding is
+done using different shard keys, then a lookup of a single key involves
+asking all shards and thus does not scale linearly.
+
+!SUBSECTION document store
+
+For the document store case even in the presence of secondary indexes
+essentially the same arguments apply, since an index for a sharded
+collection is simply the same as a local index for each shard. Therefore,
+single document operations still scale linearly with the size of the
+cluster, unless a special sharding configuration makes lookups or
+write operations more expensive.
+
+!SUBSECTION complex queries and joins
+
+TODO
+
+!SUBSECTION graph database
+
+TODO

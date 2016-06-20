@@ -1,5 +1,5 @@
 ################################################################################
-## general error messages
+## General errors
 ################################################################################
 
 ERROR_NO_ERROR,0,"no error","No error has occurred."
@@ -32,7 +32,7 @@ ERROR_DEADLOCK,29,"deadlock detected","Will be raised when a deadlock is detecte
 ERROR_SHUTTING_DOWN,30,"shutdown in progress","Will be raised when a call cannot succeed because a server shutdown is already in progress."
 
 ################################################################################
-## HTTP standard errors
+## HTTP error status codes
 ################################################################################
 
 ERROR_HTTP_BAD_PARAMETER,400,"bad parameter","Will be raised when the HTTP request does not fulfill the requirements."
@@ -44,14 +44,14 @@ ERROR_HTTP_PRECONDITION_FAILED,412,"precondition failed","Will be raised when a 
 ERROR_HTTP_SERVER_ERROR,500,"internal server error","Will be raised when an internal server is encountered."
 
 ################################################################################
-## HTTP errors
+## HTTP processing errors
 ################################################################################
 
 ERROR_HTTP_CORRUPTED_JSON,600,"invalid JSON object","Will be raised when a string representation of a JSON object is corrupt."
 ERROR_HTTP_SUPERFLUOUS_SUFFICES,601,"superfluous URL suffices","Will be raised when the URL contains superfluous suffices."
 
 ################################################################################
-## ArangoDB internal storage errors
+## Internal ArangoDB storage errors
 ## For errors that occur because of a programming error.
 ################################################################################
 
@@ -65,7 +65,7 @@ ERROR_ARANGO_DATAFILE_EMPTY,1007,"datafile empty","Internal error that will be r
 ERROR_ARANGO_RECOVERY,1008,"logfile recovery error","Will be raised when an error occurred during WAL log file recovery."
 
 ################################################################################
-## ArangoDB storage errors
+## External ArangoDB storage errors
 ## For errors that occur because of an outside event.
 ################################################################################
 
@@ -83,7 +83,7 @@ ERROR_ARANGO_DATADIR_UNLOCKABLE,1110,"cannot lock database directory","Will be r
 ERROR_ARANGO_SYNC_TIMEOUT,1111,"sync timeout","Will be raised when the server waited too long for a datafile to be synced to disk."
 
 ################################################################################
-## ArangoDB storage errors
+## General ArangoDB storage errors
 ## For errors that occur when fulfilling a user request.
 ################################################################################
 
@@ -126,7 +126,7 @@ ERROR_ARANGO_COLLECTION_NOT_LOADED,1238,"collection not loaded","Will be raised 
 ERROR_ARANGO_DOCUMENT_REV_BAD,1239,"illegal document revision","Will be raised when a document revision is corrupt or is missing where needed."
 
 ################################################################################
-## ArangoDB storage errors
+## Checked ArangoDB storage errors
 ## For errors that occur but are anticipated.
 ################################################################################
 
@@ -228,7 +228,7 @@ ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,1578,"disallowed dynamic call to '%s'","Will
 ERROR_QUERY_ACCESS_AFTER_MODIFICATION,1579,"access after data-modification by %s","Will be raised when collection data are accessed after a data-modification operation."
 
 ################################################################################
-## AQL user functions
+## AQL user function errors
 ################################################################################
 
 ERROR_QUERY_FUNCTION_INVALID_NAME,1580,"invalid user function name","Will be raised when a user function with an invalid name is registered."
@@ -237,7 +237,7 @@ ERROR_QUERY_FUNCTION_NOT_FOUND,1582,"user function '%s()' not found","Will be ra
 ERROR_QUERY_FUNCTION_RUNTIME_ERROR,1583,"user function runtime error: %s","Will be raised when a user function throws a runtime exception."
 
 ################################################################################
-## AQL query registry
+## AQL query registry errors
 ################################################################################
 
 ERROR_QUERY_BAD_JSON_PLAN,1590,"bad execution plan JSON","Will be raised when an HTTP API for a query got an invalid JSON object."
@@ -262,7 +262,7 @@ ERROR_TRANSACTION_DISALLOWED_OPERATION,1653,"disallowed operation inside transac
 ERROR_TRANSACTION_ABORTED,1654,"transaction aborted","Will be raised when a transaction was aborted."
 
 ################################################################################
-## User management
+## User management errors
 ################################################################################
 
 ERROR_USER_INVALID_NAME,1700,"invalid user name","Will be raised when an invalid user name is used."
@@ -272,16 +272,16 @@ ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is u
 ERROR_USER_CHANGE_PASSWORD,1704,"user must change his password","Will be raised when the user must change his password."
 
 ################################################################################
-## Application management
+## Service management errors
 ################################################################################
 
-ERROR_APPLICATION_INVALID_NAME,1750,"invalid application name","Will be raised when an invalid application name is specified."
-ERROR_APPLICATION_INVALID_MOUNT,1751,"invalid mount","Will be raised when an invalid mount is specified."
-ERROR_APPLICATION_DOWNLOAD_FAILED,1752,"application download failed","Will be raised when an application download from the central repository failed."
-ERROR_APPLICATION_UPLOAD_FAILED,1753,"application upload failed","Will be raised when an application upload from the client to the ArangoDB server failed."
+ERROR_SERVICE_INVALID_NAME,1750,"invalid service name","Will be raised when an invalid service name is specified."
+ERROR_SERVICE_INVALID_MOUNT,1751,"invalid mount","Will be raised when an invalid mount is specified."
+ERROR_SERVICE_DOWNLOAD_FAILED,1752,"service download failed","Will be raised when a service download from the central repository failed."
+ERROR_SERVICE_UPLOAD_FAILED,1753,"service upload failed","Will be raised when a service upload from the client to the ArangoDB server failed."
 
 ################################################################################
-## Key value access
+## Key value access errors
 ################################################################################
 
 ERROR_KEYVALUE_INVALID_KEY,1800,"invalid key declaration","Will be raised when an invalid key specification is passed to the server"
@@ -344,7 +344,7 @@ ERROR_SESSION_UNKNOWN,1950,"unknown session","Will be raised when an invalid/unk
 ERROR_SESSION_EXPIRED,1951,"session expired","Will be raised when a session is expired."
 
 ################################################################################
-## Simple Client
+## Simple Client errors
 ################################################################################
 
 SIMPLE_CLIENT_UNKNOWN_ERROR,2000,"unknown client error","This error should not happen."
@@ -353,33 +353,34 @@ SIMPLE_CLIENT_COULD_NOT_WRITE,2002,"could not write to server","Will be raised w
 SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised when the client could not read data."
 
 ################################################################################
-## Foxx Manager
+## Foxx Manager errors
 ################################################################################
 
 ERROR_MALFORMED_MANIFEST_FILE,3000,"malformed manifest file","The manifest file is malformed. It is not in a valid JSON format."
-ERROR_INVALID_APPLICATION_MANIFEST,3001,"manifest file is invalid","The manifest file of this application is invalid."
+ERROR_INVALID_SERVICE_MANIFEST,3001,"manifest file is invalid","The manifest file of this service is invalid."
 ERROR_INVALID_FOXX_OPTIONS,3004,"invalid foxx options","The options used to configure the foxx are invalid."
 ERROR_INVALID_MOUNTPOINT,3007,"mountpoint is invalid","mountpoint is invalid"
-ERROR_APP_NOT_FOUND,3009,"Service not found","No service found at this mountpoint"
-ERROR_APP_NEEDS_CONFIGURATION,3010,"Service not configured","The service has to be configured before it can be used"
-ERROR_APP_MOUNTPOINT_CONFLICT,3011,"mountpoint already in use","A service has already been installed at this mountpoint"
+ERROR_SERVICE_NOT_FOUND,3009,"Service not found","No service found at this mountpoint"
+ERROR_SERVICE_NEEDS_CONFIGURATION,3010,"Service not configured","The service has to be configured before it can be used"
+ERROR_SERVICE_MOUNTPOINT_CONFLICT,3011,"mountpoint already in use","A service has already been installed at this mountpoint"
 
 ################################################################################
-## JavaScript module loader
+## JavaScript module loader errors
 ################################################################################
 
 ERROR_MODULE_NOT_FOUND,3100,"cannot locate module","The module path could not be resolved."
 ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module in its context."
 
 ################################################################################
-## results, which are not errors
+## Results
+## These are technically not errors.
 ################################################################################
 
 RESULT_ELEMENT_EXISTS,10000,"element not inserted into structure, because it already exists","Will be returned if the element was not insert because it already exists."
 RESULT_ELEMENT_NOT_FOUND,10001,"element not found in structure","Will be returned if the element was not found in the structure."
 
 ################################################################################
-## dispatcher errors
+## Dispatcher errors
 ################################################################################
 
 ERROR_QUEUE_ALREADY_EXISTS,21000,"named queue already exists","Will be returned if a queue with this name already exists."

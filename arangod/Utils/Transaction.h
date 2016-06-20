@@ -447,6 +447,19 @@ class Transaction {
   int documentFastPath(std::string const& collectionName,
                        arangodb::velocypack::Slice const value,
                        arangodb::velocypack::Builder& result);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return one  document from a collection, fast path
+  ///        If everything went well the result will contain the found document
+  ///        (as an external on single_server)  and this function will return TRI_ERROR_NO_ERROR.
+  ///        If there was an error the code is returned
+  ///        Does not care for revision handling!
+  ///        Must only be called on a local server, not in cluster case!
+  //////////////////////////////////////////////////////////////////////////////
+  
+  int documentFastPathLocal(std::string const& collectionName,
+                            std::string const& key,
+                            TRI_doc_mptr_t* result);
  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return one or multiple documents from a collection

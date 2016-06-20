@@ -219,10 +219,11 @@ RX = [
     # there should be no RESTHEADER without brief, so we will fail offensively if by not doing
     #(re.compile(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}"), r"###\g<2>\n`\g<1>`"),
 
-    # Error codes replace
-    (re.compile(r"(####)#+"), r""),
+    # Format error codes from errors.dat
+    (re.compile(r"#####+\n"), r""),
+    (re.compile(r"## (.+\n\n)## (.+\n)"), r"## \g<1>\g<2>"),
     #  (re.compile(r"- (\w+):\s*@LIT{(.+)}"), r"\n*\g<1>* - **\g<2>**:"),
-    (re.compile(r"(.+),(\d+),\"(.+)\",\"(.+)\""), r"\n- *\g<2>* - **\g<1>** - **\g<3>**:  \n  \g<4>"),
+    (re.compile(r"(.+),(\d+),\"(.+)\",\"(.+)\""), r'\n* <a name="\g<1>"></a>**\g<2>** - **\g<1>**<br>\n  \g<4>'),
 
     (re.compile(r"TODOSWAGGER.*"),r"")
     ]

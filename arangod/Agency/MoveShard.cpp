@@ -186,14 +186,14 @@ bool MoveShard::start() {
 
   // --- Plan changes
   pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-  if (current[0].copyString() == _from) { // Leader
-    pending.add(current[0]);
+  if (planned[0].copyString() == _from) { // Leader
+    pending.add(planned[0]);
     pending.add(VPackValue(_to));
-    for (size_t i = 1; i < current.length(); ++i) {
-      pending.add(current[i]);
+    for (size_t i = 1; i < planned.length(); ++i) {
+      pending.add(planned[i]);
     }
   } else { // Follower
-    for (auto const& srv : VPackArrayIterator(current)) {
+    for (auto const& srv : VPackArrayIterator(planned)) {
       pending.add(srv);
     }
     pending.add(VPackValue(_to));
@@ -267,8 +267,8 @@ JOB_STATUS MoveShard::status () {
     std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
     
-    Slice current = _snapshot(curPath).slice(),
-      plan = _snapshot(planPath).slice();
+    Slice current = _snapshot(curPath).slice();
+    Slice plan = _snapshot(planPath).slice();
     
     std::vector<std::string> planv, currv;
     for (auto const& srv : VPackArrayIterator(plan)) {
@@ -289,8 +289,8 @@ JOB_STATUS MoveShard::status () {
         remove.openObject();
         // --- Plan changes
         remove.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-        for (size_t i = 1; i < current.length(); ++i) {
-          remove.add(current[i]);
+        for (size_t i = 1; i < plan.length(); ++i) {
+          remove.add(plan[i]);
         }
         remove.close();
         // --- Plan version
@@ -318,7 +318,7 @@ JOB_STATUS MoveShard::status () {
 
         if (foundFrom && foundTo) {
 
-          if (current[0].copyString() == _from) { // Leader
+          if (plan[0].copyString() == _from) { // Leader
             
             Builder underscore;     // serverId -> _serverId 
             underscore.openArray();
@@ -327,9 +327,9 @@ JOB_STATUS MoveShard::status () {
             underscore.add(_agencyPrefix + planPath,
                            VPackValue(VPackValueType::Array));
             underscore.add(
-              VPackValue(std::string("_") + current[0].copyString()));
-            for (size_t i = 1; i < current.length(); ++i) {
-              underscore.add(current[i]);
+              VPackValue(std::string("_") + plan[0].copyString()));
+            for (size_t i = 1; i < plan.length(); ++i) {
+              underscore.add(plan[i]);
             }
             underscore.close();
             
@@ -348,7 +348,7 @@ JOB_STATUS MoveShard::status () {
             remove.openObject();
             // --- Plan changes
             remove.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-            for (auto const& srv : VPackArrayIterator(current)) {
+            for (auto const& srv : VPackArrayIterator(plan)) {
               if (srv.copyString() != _from) {
                 remove.add(srv);
               }

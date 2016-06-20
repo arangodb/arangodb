@@ -257,7 +257,7 @@ function syncCollectionFinalize(database, collname, from, config) {
         console.debug("syncCollectionFinalize: insert2", entry, JSON.stringify(err));
       }
       try {
-        coll.replace(entry.key, entry.data, {isRestore: true});
+        coll.replace(entry.data._key, entry.data, {isRestore: true});
       } catch (errx) {
         console.error("syncCollectionFinalize: replace2", entry, JSON.stringify(errx));
         throw errx;
@@ -267,7 +267,7 @@ function syncCollectionFinalize(database, collname, from, config) {
         return;
       }
       try {
-        coll.remove(entry.key);
+        coll.remove(entry.data._key);
       } catch (errx) {
         console.error("syncCollectionFinalize: remove", entry, JSON.stringify(errx));
         throw errx;

@@ -92,22 +92,22 @@ body {
   margin-top: 48px;
 }
 
-#logo, #logo-small {
+.arangodb-logo, arangodb-logo-small {
   display: inline;
   float: left;
   padding-top: 10px;
   margin-left:5%;
 }
 
-#logo img {
+.arangodb-logo img {
   height: 23px;
 }
 
-#logo-small {
+.arangodb-logo-small {
   display: none;
 }
 
-#version-switcher {
+.arangodb-version-switcher {
   width: 62px;
   height: 44px;
   margin-left: 24px;
@@ -119,37 +119,37 @@ body {
   border: 0;
 }
 
-#version-switcher option {
+.arangodb-version-switcher option {
   background-color: white;
   color: black;
 }
 
 
-#header {
+.arangodb-header {
   position: fixed;
   width: 100%;
   height: 48px;
   z-index: 1;
 }
 
-#header .socialIcons-googlegroups a img {
+.arangodb-header .socialIcons-googlegroups a img {
   position: relative;
   height: 14px;
   top: 3px;
 }
 
-#navmenu {
+.arangodb-navmenu {
   display: block;
   float: right;
   margin: 0px;
 }
 
-#navmenu li {
+.arangodb-navmenu li {
   display: block;
   float: left;
 }
 
-#navmenu li a {
+.arangodb-navmenu li a {
   display: block;
   float: left;
   padding: 0 10px;
@@ -161,14 +161,14 @@ body {
   font-family: Roboto, Helvetica, sans-serif;
 }
 
-#navmenu li.active-tab a, #navmenu li a:hover {
+.arangodb-navmenu li.active-tab a, .arangodb-navmenu li a:hover {
   background-color: #88A049 !important;
 }
 
 /** simple responsive updates **/
 
 @media screen and (max-width: 1100px) {
-  #logo {
+  .arangodb-logo {
     margin-left: 10px;
   }
 
@@ -190,29 +190,29 @@ body {
     width: 130px !important;
   }
 
-  #navmenu {
+  .arangodb-navmenu {
     padding: 0;
   }
 
-  #navmenu li a {
+  .arangodb-navmenu li a {
     font-size: 15px;
     padding: 0 7px;
   }
 
-  #logo {
+  .arangodb-logo {
     display: none;
   }
 
-  #logo-small {
+  .arangodb-logo-small {
     display: inline;
     margin-left: 10px;
   }
 
-  #logo-small img {
+  .arangodb-logo-small img {
     height: 20px;
   }
 
-  #version-switcher {
+  .arangodb-version-switcher {
     margin: 0;
     width: 50px;
   }
@@ -220,7 +220,7 @@ body {
 }
 
 @media screen and (max-width: 480px) {
-  #version-switcher {
+  .arangodb-version-switcher {
     display: none;
   }
 
@@ -244,7 +244,7 @@ body {
 }
 
 @media screen and (max-width: 330px) {
-  #logo-small, .google-search {
+  .arangodb-logo-small, .google-search {
     display: none;
   }
 }

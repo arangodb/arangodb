@@ -1,0 +1,15 @@
+!CHAPTER Cluster
+
+The cluster section displays statistics about the general cluster performance.
+
+![Cluster](images/clusterView.png)
+
+Statistics:
+
+ - Available and missing coordinators
+ - Available and missing database servers
+ - Memory usage (percent)
+ - Current connections
+ - Data (bytes)
+ - HTTP (bytes)
+ - Average request time (seconds)

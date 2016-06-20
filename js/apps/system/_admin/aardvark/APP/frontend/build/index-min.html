@@ -2112,103 +2112,7 @@ if (list.length > 0) {
 
   <div class="queryManagementBottomActions">
     <button id="deleteSlowQueryHistory" class="button-danger query-button">Delete History</button>
-  </div></script><script id="queryView.ejs" type="text/template"><div class="headerBar">
-    <a class="arangoHeader">AQL Editor</a>
-  </div>
-
-  <div id="queryContent" class="innerContent">
-    <ul class="arango-tab">
-      <li><a href="#result" data-toggle="pill" id="result-switch">Result</a></li>
-      <!--<li><a href="#explain" data-toggle="pill" id="explain-switch">Explain</a></li>-->
-      <li><a href="#query" data-toggle="pill" id="query-switch">Query</a></li>
-      <li><a href="#customs" data-toggle="pill" id="customs-switch">My Queries</a></li>
-    </ul>
-    <div class="tab-content" id="tabContentCustoms">
-      <div class="tab-pane" id="customs">
-        <div id="editorToolbar" class="query-toolbar editor-toolbar">
-          <span class="queryTooltips" title="Upload your queries." id="import-query"><i class="fa fa-upload"></i></span>
-          <span class="queryTooltips" title="Download your listed queries." id="export-query"><i class="fa fa-download"></i></span>
-        </div>
-        <div id="customsDiv" class="query-div">
-        </div>
-      </div>
-    </div>
-    <div class="tab-content" id="tabContentQuery">
-      <div class="tab-pane active" id="query">
-        <div id="queryDiv" class="query-div">
-          <div id="editorToolbar" class="query-toolbar editor-toolbar">
-            <span class="queryTooltips" title="Clear" id="clearInput"><i class="fa fa-trash-o"></i></span>
-            <span class="queryTooltips" title="Save current query" id="addAQL"><i class="fa fa-save"></i></span>
-            <span class="queryTooltips" title="Comment" id="commentText"><i class="fa fa-comment"></i></span>
-            <span class="queryTooltips" title="Redo" id="redoText"><i class="fa fa-undo fa-flip-horizontal"></i></span>
-            <span class="queryTooltips" title="Undo" id="undoText"><i class="fa fa-undo"></i></span>
-          </div>
-
-          <div id="aqlEditor" class='aql-editor'></div>
-          <div id="varsEditorHeader" class='vars-editor-header'>Bind parameters:
-            <i title='Example: </br> { </br>"@collection": "mycollection", </br>"key": "testkey"</br> } </br> Use bind parameters with @@collection and @key in your query' class="fa fa-info-circle"></i>
-          </div>
-          <div id="varsEditor" class='vars-editor'></div>
-
-
-          <div id="wideButtonDiv" class="wide-button-div">
-            <div>
-
-              <div id="shortcutDiv" class="shortcuts shortcut-div showHotkeyHelp">
-              </div>
-            </div>
-            <div class="queryBottomActions">
-
-              <button id="submitQueryButton" class="button-success query-button">Execute</button>
-              <button id="explainQueryButton" class="button-success query-button">Explain</button>
-              <button id="clearQueryButton" class="button-close query-button">Clear</button>
-              <div class="styled-select">
-                <select id="querySelect" class="query-select"/>
-              </div>
-              <div class="styled-select querySizeDiv">
-                <select id="querySize" class="query-size"/>
-              </div>
-            </div>
-          </div>
-        </div>
-
-
-      </div>
-    </div>
-<!--
-    <div class="tab-content" id="tabContentExplain">
-
-      <div class="tab-pane" id="explain">
-        <div id="outputToolbar" class="query-toolbar output-toolbar">
-        </div>
-        <div class="explain-warnings"></div>
-        <div class="contentDiv query-output">
-          <svg id="explainOutput" class="explain-tree"></svg>
-        </div>
-      </div>
-
-    </div>
--->
-    <div class="tab-content" id="tabContentResult">
-
-      <div class="tab-pane" id="result">
-        <div id="outputToolbar" class="query-toolbar output-toolbar">
-          <!--
-          <span class="icon_arangodb icon_arangodb_trash queryTooltips " title="Clear" id="clearOutput"></span>
-          <span class="icon_arangodb icon_arangodb_arrow1 queryTooltips" title="Unfold" id="bigOutput"></span>
-          -->
-        </div>
-        <div id="queryOutput" class="contentDiv query-output">
-        </div>
-        <div class="pull-left queryExecutionTime"></div>
-        <div class="queryBottomActions">
-          <button id="downloadQueryResult" style="margin-bottom: 10px; display: none" class="button-success query-button">Download</button>
-        </div>
-      </div>
-
-    </div>
-
-  </div></script><script id="queryView2.ejs" type="text/template"><div id="queryContent" class="queryContent">
+  </div></script><script id="queryView.ejs" type="text/template"><div id="queryContent" class="queryContent">
 
     <div class="arangoToolbar arangoToolbarTop">
       <div class="pull-left">
@@ -2357,19 +2261,19 @@ if (list.length > 0) {
 
     </div>
 
-  </div></script><script id="shardsView.ejs" type="text/template"><div id="shardsContent" class="innerContent"> <% var genClass = 'pure-u-1-3'; %> <% var disabled = ' '; %> <% var collectionName; %> <% var first = 0; %> <% _.each(collections, function(collection, name) { %> <% if (name.substring(0,1) !== '_') { %> <% collectionName = name%> <% if (first === 0) { %> <div class="sectionHeader pure-g" style="margin-top: -20px;"> <% first++; %> <% } else { %> <div class="sectionHeader pure-g"> <% } %> <div class="pure-u-1-1">
+  </div></script><script id="shardsView.ejs" type="text/template"><div id="shardsContent" class="innerContent"> <% var genClass1 = 'pure-u-1-5'; %> <% var genClass2 = 'pure-u-3-5'; %> <% var disabled = ' '; %> <% var collectionName; %> <% var first = 0; %> <% _.each(collections, function(collection, name) { %> <% if (name.substring(0,1) !== '_') { %> <% collectionName = name%> <% if (first === 0) { %> <div class="sectionHeader pure-g" style="margin-top: -20px;"> <% first++; %> <% } else { %> <div class="sectionHeader pure-g"> <% } %> <div class="pure-u-1-1">
               <div class="title" style="position: relative; top: -4px;"> <%= name %> </div>
             </div>
           </div>
 
           <div class="pure-g pure-table pure-table-header pure-title" style="clear: both">
             <div class="pure-table-row">
-              <div class="<%= genClass %> left">Shard</div>
-              <div class="<%= genClass %> left ">Leader</div>
-              <div class="<%= genClass %> left">Followers</div>
+              <div class="<%= genClass1 %> left">Shard</div>
+              <div class="<%= genClass1 %> left">Leader</div>
+              <div class="<%= genClass2 %> left">Followers</div>
             </div>
           </div> <% var counter = 0; %> <% _.each(collection.Plan, function(shard, name) { %> <div class="pure-g pure-table pure-table-body">
-              <div class="pure-table-row" collection="<%= collectionName %>" shard="<%= name %>" leader="<%= shard.leader%>"> <% if (name.substring(0,1) === '_') { %> <%   name = name.slice(1) %> <% } %> <div class="<%= genClass %> left"><%= name %></div> <% if (name === Object.keys(collection.Current)[counter]) { %> <div class="<%= genClass %> positive left"><%= shard.leader %></div> <% } else { %> <div class="<%= genClass %> negative left"><%= shard.leader %></div> <% } %> <% var found = null;  %> <% _.each(shard.followers, function(db) {  %> <% if (db === shard.leader) { %> <% found = true; %> <% } %> <% }); %> <% if (found) { %> <div class="<%= genClass %> mid"><i class="fa fa-circle-o-notch fa-spin"></i></div> <% } else { %> <% if (shard.followers.length === 0) { %> <div class="<%= genClass %> left"> no followers </div> <% } else { %> <% var string = ''; %> <% _.each(shard.followers, function(db) {  %> <% if (shard.followers.length === 1) { %> <% string += db + " "; %> <% } else { %> <% string += db + ", "; %> <% } %> <% });  %> <div class="<%= genClass %> left"><%= string %></div> <% } %> <% } %> </div>
+              <div class="pure-table-row" collection="<%= collectionName %>" shard="<%= name %>" leader="<%= shard.leader%>"> <% if (name.substring(0,1) === '_') { %> <%   name = name.slice(1) %> <% } %> <div class="<%= genClass1 %> left"><%= name %></div> <% if (name === Object.keys(collection.Current)[counter]) { %> <div class="<%= genClass1 %> positive left"><%= shard.leader %></div> <% } else { %> <div class="<%= genClass1 %> negative left"><%= shard.leader %></div> <% } %> <% var found = null;  %> <% _.each(shard.followers, function(db) {  %> <% if (db === shard.leader) { %> <% found = true; %> <% } %> <% }); %> <% if (found) { %> <div class="<%= genClass2 %> mid"><i class="fa fa-circle-o-notch fa-spin"></i></div> <% } else { %> <% if (shard.followers.length === 0) { %> <div class="<%= genClass2 %> left"> no followers </div> <% } else { %> <% var string = ''; %> <% var counter2 = 0; %> <% _.each(shard.followers, function(db) {  %> <% if (shard.followers.length === 1) { %> <% string += db + " "; %> <% } else { %> <% if (counter2 === 0) { %> <% string += db; counter2++; %> <% } else { %> <% string += ", " + db; %> <% } %> <% } %> <% });  %> <div class="<%= genClass2 %> left"><%= string %></div> <% } %> <% } %> </div>
             </div> <% counter++; %> <% }); %> <% } %> <% }); %> <button id="rebalanceShards" style="margin-top: 20px;" class="button-success pull-right">Rebalance Shards</button>
   </div></script><script id="shellView.ejs" type="text/template"><div class="headerBar">
     <a class="arangoHeader">JS Shell</a>
@@ -2510,7 +2414,7 @@ if (list.length > 0) {
               <li><a target="_blank" href="https://docs.arangodb.com/3.0/Manual/Foxx/index.html">What is Foxx?</a></li>
               <li><a target="_blank" href="https://docs.arangodb.com/3.0/Manual/Foxx/AtAGlance.html">Foxx at a glance</a></li>
               <li><a target="_blank" href="https://docs.arangodb.com/3.0/Manual/Foxx/GettingStarted.html">Writing Your First Microservice</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/3.0/Manual/Foxx/LegacyMode.html">Legacy mode for 2.8 services </a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/3.0/Manual/Foxx/LegacyMode.html">Legacy Compatibility Mode</a></li>
               <li><a target="_blank" href="https://docs.arangodb.com/3.0/Manual/Foxx/index.html">Go to Foxx startpage</a></li>
             </ul>
           </div>
@@ -2579,13 +2483,7 @@ var cutByResolution = function (str) {
   </div> <% 
     odd = !odd;
     });
-  %> </div></script><script id="testView.ejs" type="text/template"><div class="headerBar">
-    <a class="arangoHeader">Test</a>
-  </div>
-
-  <div id="testContent" class="test-content-id innerContent">
-    <div id="graph-container"></div>
-  </div></script><script id="userBarView.ejs" type="text/template"><a class="info default-icon">User: 
+  %> </div></script><script id="userBarView.ejs" type="text/template"><a class="info default-icon">User: 
     <span class="toggle"> <%=_.escape(username)%> </span>
     <i id="userLogoutIcon" class="fa fa-power-off" aria-hidden="true"></i>
   </a>
@@ -2739,4 +2637,4 @@ var cutByResolution = function (str) {
   </div>
 
   <div id="workMonitorContent" class="innerContent">
-  </div></script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span>VERSION: </span><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1465955368224"></script><script src="app.js?version=1465955368224"></script></body></html>
+  </div></script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span>VERSION: </span><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1466356579724"></script><script src="app.js?version=1466356579724"></script></body></html>

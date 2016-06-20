@@ -263,6 +263,10 @@ function MovingShardsSuite () {
           break;
         }
         console.info("Need to recreate collection to avoid system collection servers.");
+        c.push(coll);
+        waitForSynchronousReplication("_system");
+        c.pop();
+        console.info("Synchronous replication has settled, now dropping again.");
       }
     }
   }

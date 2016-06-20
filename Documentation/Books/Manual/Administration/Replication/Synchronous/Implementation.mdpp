@@ -4,7 +4,7 @@
 
 Synchronous replication can be configured per collection via the property *replicationFactor*. Synchronous replication requires a cluster to operate.
 
-Whenever you specify a *replicationFactor* greater than 1 when creating a collection synchronous replication is activated. The cluster will determine suitable *leaders* and *followers* for every requested shard (*numberOfShards*) within the cluster. For every shard in a collection only the leader will be asked. Using *synchronous replication* alone will guarantee consistent high availabilty at the cost of reduced performance (due to every request having to be executed on the followers). Combining it with [Sharding.md](sharding) will counteract that issue.
+Whenever you specify a *replicationFactor* greater than 1 when creating a collection, synchronous replication will be activated for this collection. The cluster will determine suitable *leaders* and *followers* for every requested shard (*numberOfShards*) within the cluster. When requesting data of a shard only the current leader will be asked whereas followers will only keep their copy in sync. Using *synchronous replication* alone will guarantee consistency and high availabilty at the cost of reduced performance (due to every write-request having to be executed on the followers). Combining it with [Sharding.md](sharding) will counteract that issue.
 
 In a cluster synchronous replication will be managed by the *coordinators* for the client. The data will always be stored on *primaries*.
 
@@ -31,7 +31,7 @@ The following example will give you an idea of how synchronous operation has bee
 
 !SUBSECTION Automatic failover
 
-Whenever the leader of a shard is failing and there is a query trying to access data of that shard the coordinator will continue retrying to contact the leader until it timeouts. Every 15 seconds the internal cluster supervision will validate cluster health. If the leader didn't come back in time the supervision will reorganize the cluster. The coordinator will then contact the new leader.
+Whenever the leader of a shard is failing and there is a query trying to access data of that shard the coordinator will continue trying to contact the leader until it timeouts. Every 15 seconds the internal cluster supervision will validate cluster health. If the leader didn't come back in time the supervision will reorganize the cluster. The coordinator will then contact the new leader.
 
 The process is best outlined using an example:
 

@@ -908,9 +908,11 @@ typedef unsigned char bool;
 
 // system error string macro requires ERRORBUF to instantiate its buffer before.
 
-#define TRI_SYSTEM_ERROR()                                           \
-  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0, \
-                windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
+#define TRI_SYSTEM_ERROR()                                                      \
+  if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,        \
+                windowsErrorBuf, sizeof(windowsErrorBuf), NULL) == 0) {         \
+    memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0"));  \
+  }                                                                             \
   errno = TRI_MapSystemError(GetLastError())
 
 #define STDERR_FILENO 2
