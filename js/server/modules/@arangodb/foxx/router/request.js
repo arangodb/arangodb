@@ -48,8 +48,8 @@ if (Array.isArray(trustedProxies)) {
 }
 
 function shouldTrustProxy(address) {
-  if (trustedProxies === null) {
-    return null;
+  if (!trustedProxies) {
+    return true;
   }
   return trustedProxyBlocks
   .some((block) => block.contains(address));
