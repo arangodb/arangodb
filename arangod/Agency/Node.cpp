@@ -60,37 +60,43 @@ inline std::vector<std::string> split(const std::string& value,
   return result;
 }
 
-// Construct with node name
+
+
+/// Construct with node name
 Node::Node(std::string const& name)
     : _node_name(name), _parent(nullptr), _store(nullptr) {
-  _value.clear();
 }
 
-// Construct with node name in tree structure
+
+/// Construct with node name in tree structure
 Node::Node(std::string const& name, Node* parent)
     : _node_name(name), _parent(parent), _store(nullptr) {
-  _value.clear();
 }
 
-// Construct for store
+
+/// Construct for store
 Node::Node(std::string const& name, Store* store)
     : _node_name(name), _parent(nullptr), _store(store) {
-  _value.clear();
 }
 
-// Default dtor
+
+/// Default dtor
 Node::~Node() {}
 
+
+/// Get slice to value buffer
 Slice Node::slice() const {
   return (_value.size() == 0)
              ? arangodb::basics::VelocyPackHelper::EmptyObjectValue()
              : Slice(_value.data());
 }
 
-// Get name of this node
+
+/// Get name of this node
 std::string const& Node::name() const { return _node_name; }
 
-// Get full path of this node
+
+/// Get full path of this node
 std::string Node::uri() const {
   Node* par = _parent;
   std::stringstream path;
@@ -106,11 +112,15 @@ std::string Node::uri() const {
   return path.str();
 }
 
+
+/// Move constructor
 Node::Node(Node&& other) :
   _node_name(std::move(other._node_name)),
   _children(std::move(other._children)), 
   _value(std::move(other._value)) {}
 
+
+/// Copy constructor
 Node::Node(Node const& other) :
   _node_name(other._node_name),
   _parent(nullptr),
@@ -123,12 +133,12 @@ Node::Node(Node const& other) :
   }
 }
 
-// Assignment of rhs slice
+
+/// Assignment operator (slice)
 Node& Node::operator=(VPackSlice const& slice) {
   // 1. remove any existing time to live entry
   // 2. clear children map
-  // 3. copy from rhs to buffer pointer
-  // 4. inform all observers here and above
+  // 3. copy from rhs buffer to my buffer
   // Must not copy _parent, _ttl, _observers
   removeTimeToLive();
   _children.clear();
@@ -137,12 +147,12 @@ Node& Node::operator=(VPackSlice const& slice) {
   return *this;
 }
 
-// Assignment of rhs node
+/// Move operator
 Node& Node::operator=(Node&& rhs) {
   // 1. remove any existing time to live entry
-  // 2. copy children map
-  // 3. copy from rhs to buffer pointer
-  // Must not copy rhs's _parent, _ttl, _observers
+  // 2. move children map over
+  // 3. move value over
+  // Must not move ober rhs's _parent, _ttl, _observers
   removeTimeToLive();
   _node_name = std::move(rhs._node_name);
   _children = std::move(rhs._children);
@@ -150,7 +160,8 @@ Node& Node::operator=(Node&& rhs) {
   return *this;
 }
 
-// Assignment of rhs node
+
+/// Assignment operator
 Node& Node::operator=(Node const& rhs) {
   // 1. remove any existing time to live entry
   // 2. clear children map
@@ -167,7 +178,8 @@ Node& Node::operator=(Node const& rhs) {
   return *this;
 }
 
-// Comparison with slice
+
+/// Comparison with slice
 bool Node::operator==(VPackSlice const& rhs) const {
   if (rhs.isObject()) {
     return rhs.toJson() == toJson();
@@ -176,16 +188,21 @@ bool Node::operator==(VPackSlice const& rhs) const {
   }
 }
 
-// Comparison with slice
-bool Node::operator!=(VPackSlice const& rhs) const { return !(*this == rhs); }
 
-// Remove this node from store
+// Comparison with slice
+bool Node::operator!=(VPackSlice const& rhs) const {
+  return !(*this == rhs);
+}
+
+
+/// Remove this node from store
 bool Node::remove() {
   Node& parent = *_parent;
   return parent.removeChild(_node_name);
 }
 
-// Remove child by name
+
+/// Remove child by name
 bool Node::removeChild(std::string const& key) {
   auto found = _children.find(key);
   if (found == _children.end()) {
@@ -196,10 +213,14 @@ bool Node::removeChild(std::string const& key) {
   return true;
 }
 
-// Node type
-NodeType Node::type() const { return _children.size() ? NODE : LEAF; }
 
-// lh-value at path vector
+/// Node type
+NodeType Node::type() const {
+  return _children.size() ? NODE : LEAF;
+}
+
+
+/// lh-value at path vector
 Node& Node::operator()(std::vector<std::string> const& pv) {
   if (pv.size()) {
     std::string const& key = pv.at(0);
