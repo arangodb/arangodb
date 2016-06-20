@@ -120,7 +120,7 @@ then the cache will not provide much benefit.
 !SECTION Global configuration
 
 The query cache can be configured at server start using the configuration parameter
-`--database.query-cache-mode`. This will set the cache mode according to the descriptions
+`--query.cache-mode`. This will set the cache mode according to the descriptions
 above. 
 
 After the server is started, the cache mode can be changed at runtime as follows:
@@ -130,7 +130,7 @@ require("@arangodb/aql/cache").properties({ mode: "on" });
 ```
 
 The maximum number of cached results in the cache for each database can be configured
-at server start using the configuration parameter `--database.query-cache-max-results`.
+at server start using the configuration parameter `--query.cache-entries`.
 This parameter can be used to put an upper bound on the number of query results in 
 each database's query cache and thus restrict the cache's memory consumption.
 

@@ -1,7 +1,7 @@
 
 
 @brief whether or not to enable the AQL query cache
-`--database.query-cache-mode`
+`--query.cache-mode`
 
 Toggles the AQL query cache behavior. Possible values are:
 

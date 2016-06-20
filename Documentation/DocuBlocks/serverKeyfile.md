@@ -51,6 +51,6 @@ following commands should create a valid keyfile:
 For further information please check the manuals of the tools you use to
 create the certificate.
 
-**Note**: the \-\-ssl.keyfile option must be set if the server is
+**Note**: the `--ssl.keyfile` option must be set if the server is
 started with at least one SSL endpoint.
 

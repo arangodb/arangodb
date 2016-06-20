@@ -210,8 +210,7 @@ used.
 !SUBSECTION SSL protocol
 
 
-SSL protocol type to use
-`--server.ssl-protocolvalue`
+SSL protocol type to use `--ssl.protocol value`
 
 Use this option to specify the default encryption protocol to be used.
 The following variants are available:
