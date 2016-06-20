@@ -34,7 +34,7 @@ These methods let you specify routes on the router. The `all` method defines a r
 
 * **path**: `string` (Default: `"/"`)
 
-  The path of the request handler relative to the base path the Router is mounted at. If omitted, the request handler will handle requests to the base path of the Router. For information on defining dynamic routes see the section on path parameters in the [chapter on router endpoints](Endpoints.md).
+  The path of the request handler relative to the base path the Router is mounted at. If omitted, the request handler will handle requests to the base path of the Router. For information on defining dynamic routes see the section on [path parameters in the chapter on router endpoints](Endpoints.md#pathParam).
 
 * **handler**: `Function`
 
@@ -64,7 +64,7 @@ The `use` method lets you mount a child router or middleware at a given path.
 
 * **path**: `string` (optional)
 
-  The path of the request handler relative to the base path the Router is mounted at. If omitted, the request handler will handle requests to the base path of the Router. For information on defining dynamic routes see the section on path parameters in the [chapter on router endpoints](Endpoints.md).
+  The path of the request handler relative to the base path the Router is mounted at. If omitted, the request handler will handle requests to the base path of the Router. For information on defining dynamic routes see the section on [path parameters in the chapter on router endpoints](Endpoints.md#pathParam).
 
 * **handler**: `Router | Middleware`
 
