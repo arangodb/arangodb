@@ -92,7 +92,7 @@ body {
   margin-top: 48px;
 }
 
-.arangodb-logo, arangodb-logo-small {
+.arangodb-logo, .arangodb-logo-small {
   display: inline;
   float: left;
   padding-top: 10px;
