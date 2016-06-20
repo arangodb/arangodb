@@ -699,6 +699,7 @@ uint8_t* Builder::set(ValuePair const& pair) {
 
   if (pair.valueType() == ValueType::Binary) {
     uint64_t v = pair.getSize();
+    reserveSpace(9 + v);
     appendUInt(v, 0xbf);
     memcpy(_start + _pos, pair.getStart(), checkOverflow(v));
     _pos += v;
