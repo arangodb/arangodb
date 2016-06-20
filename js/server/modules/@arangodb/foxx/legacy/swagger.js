@@ -115,20 +115,21 @@ function resolveFoxx(req, res, appPath) {
 }
 
 function swaggerJson(req, res, opts) {
-  let foxx = opts.foxx || resolveFoxx(req, res, opts.appPath);
+  let mount = mount || opts.mount;
+  let foxx = opts.foxx || resolveFoxx(req, res, mount);
   let docs = foxx.docs;
   if (!docs) {
-    const app = foxx.routes.foxxContext && foxx.routes.foxxContext.service;
-    const swagger = parseRoutes(opts.appPath, foxx.routes.routes, foxx.routes.models);
+    const service = foxx.routes.foxxContext && foxx.routes.foxxContext.service;
+    const swagger = parseRoutes(mount, foxx.routes.routes, foxx.routes.models);
     docs = {
       swagger: '2.0',
       info: {
-        description: app && app.manifest.description,
-        version: app && app.manifest.version,
-        title: app && app.manifest.name,
-        license: app && app.manifest.license && {name: app.manifest.license}
+        description: service && service.manifest.description,
+        version: service && service.manifest.version,
+        title: service && service.manifest.name,
+        license: service && service.manifest.license && {name: service.manifest.license}
       },
-      basePath: '/_db/' + encodeURIComponent(req.database) + (app ? app.mount : opts.appPath),
+      basePath: '/_db/' + encodeURIComponent(req.database) + (service ? service.mount : mount),
       schemes: [req.protocol],
       paths: swagger.paths,
       // securityDefinitions: {},
