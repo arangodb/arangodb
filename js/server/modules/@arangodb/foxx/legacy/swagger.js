@@ -115,7 +115,7 @@ function resolveFoxx(req, res, appPath) {
 }
 
 function swaggerJson(req, res, opts) {
-  let mount = mount || opts.mount;
+  let mount = opts.mount;
   let foxx = opts.foxx || resolveFoxx(req, res, mount);
   let docs = foxx.docs;
   if (!docs) {
