@@ -41,14 +41,17 @@ module.exports = function createSwaggerRouteHandler(foxxMount, opts) {
   if (typeof opts === 'function') {
     opts = {before: opts};
   }
+  if (typeof opts === 'string') {
+    opts = {swaggerJson: opts};
+  }
 
-  const defaultAppPath = opts.appPath || foxxMount;
+  const defaultMount = opts.mount || foxxMount;
   const defaultIndexFile = opts.indexFile || 'index.html';
   const defaultSwaggerRoot = opts.swaggerRoot || SWAGGER_ROOT;
   const defaultSwaggerJsonHandler = opts.swaggerJson || swaggerJson;
 
   return function (req, res) {
-    let appPath = defaultAppPath;
+    let mount = defaultMount;
     let indexFile = defaultIndexFile;
     let swaggerRoot = defaultSwaggerRoot;
     if (typeof opts.before === 'function') {
@@ -60,8 +63,8 @@ module.exports = function createSwaggerRouteHandler(foxxMount, opts) {
       if (result.indexFile) {
         indexFile = result.indexFile;
       }
-      if (result.appPath) {
-        appPath = result.appPath;
+      if (result.mount) {
+        mount = result.mount;
       }
       if (result.swaggerRoot) {
         swaggerRoot = result.swaggerRoot;
@@ -83,14 +86,14 @@ module.exports = function createSwaggerRouteHandler(foxxMount, opts) {
       } else if (typeof swaggerJsonHandler === 'function') {
         let foxx;
         try {
-          foxx = FoxxManager.ensureRouted(appPath);
+          foxx = FoxxManager.ensureRouted(mount);
         } catch (e) {
           if (e.isArangoError && e.errorNum === NOT_FOUND) {
             throw new NotFound(e.message);
           }
           throw e;
         }
-        swaggerJsonHandler(req, res, {appPath, foxx});
+        swaggerJsonHandler(req, res, {mount, foxx});
         return;
       } else if (swaggerJsonHandler && typeof swaggerJsonHandler === 'object') {
         res.json(swaggerJsonHandler);

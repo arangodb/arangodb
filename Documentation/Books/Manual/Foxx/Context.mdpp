@@ -55,11 +55,11 @@ The service context specifies the following properties:
 
 * **configuration**: `Object`
 
-  TODO
+  Configuration options for the service. See the [chapter on configuration](Configuration.md) for how to enable configuration in your service.
 
 * **dependencies**: `Object`
 
-  TODO
+  Configured dependencies for the service. See the [chapter on dependencies](Dependencies.md) for how to enable dependencies between Foxx services.
 
 * **isDevelopment**: `boolean`
 
@@ -81,15 +81,67 @@ The service context specifies the following properties:
 
 `module.context.apiDocumentation([options]): Function`
 
-TODO
+Creates a route handler that serves the API documentation.
+
+**Note**: The route handler must be mounted at a wildcard route (see examples below).
 
 **Arguments**
 
 * **options**: `Object` (optional)
 
-  TODO
+  An object with any of the following properties:
 
-TODO
+  * **mount**: `string` (Default: `module.context.mount`)
+
+    The mount path of the service to serve the documentation of.
+
+  * **indexFile**: `string` (Default: `"index.html"`)
+
+    File name of the HTML file serving the API documentation.
+
+  * **swaggerRoot**: `string` (optional)
+
+    Full path of the folder containing the Swagger assets and the *indexFile*.
+    Defaults to the Swagger assets used by the web interface.
+
+  * **before**: `Function` (optional)
+
+    Request handler to be executed before a request is handled.
+
+    If the function returns `false` the request will not be processed any further.
+
+    If the function returns an object, its attributes will be used to override the *options* for the current request.
+
+    Any other return value will be ignored.
+
+If *options* is a function it will be used as the *before* option.
+
+If *options* is a string it will be used as the *swaggerRoot* option.
+
+Returns a request handler function.
+
+**Examples**
+
+```js
+// Serve the API docs for the current service
+router.get('/docs/*', module.context.apiDocumentation());
+
+// -- or --
+
+// Serve the API docs for the service the router is mounted in
+router.get('/docs/*', module.context.apiDocumentation(function (req) {
+  return {mount: req.context.mount};
+}));
+
+// -- or --
+
+// Serve the API docs only for users authenticated with ArangoDB
+router.get('/docs/*', module.context.apiDocumentation(function (req, res) {
+  if (req.suffix === 'swagger.json' && !req.arangoUser) {
+    res.throw(401, 'Not authenticated');
+  }
+}));
+```
 
 !SECTION collection
 
@@ -158,7 +210,7 @@ Resolves the given file name relative to the current service.
 
 Returns the absolute file path.
 
-!SECTION registerType
+<!-- SECTION registerType
 
 `module.context.registerType(type, def): void`
 
@@ -175,6 +227,8 @@ TODO
   TODO
 
 TODO
+
+-->
 
 !SECTION use
 

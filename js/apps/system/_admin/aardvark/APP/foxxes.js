@@ -337,7 +337,7 @@ anonymousRouter.get('/docs/standalone/*', module.context.apiDocumentation(
       res.throw('unauthorized');
     }
     return {
-      appPath: decodeURIComponent(req.queryParams.mount)
+      mount: decodeURIComponent(req.queryParams.mount)
     };
   }
 ));
@@ -349,7 +349,7 @@ anonymousRouter.get('/docs/*', module.context.apiDocumentation(
       res.throw('unauthorized');
     }
     return {
-      appPath: decodeURIComponent(req.queryParams.mount),
+      mount: decodeURIComponent(req.queryParams.mount),
       indexFile: 'index-alt.html'
     };
   }
