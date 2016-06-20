@@ -17,7 +17,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   fetch: function(options) {
-    if (window.App.currentUser) {
+    if (window.App.currentUser && window.App.currentDB.get("name") !== '_system') {
       this.url = frontendConfig.basePath + "/_api/user/" + encodeURIComponent(window.App.currentUser);
     }
     return Backbone.Collection.prototype.fetch.call(this, options);

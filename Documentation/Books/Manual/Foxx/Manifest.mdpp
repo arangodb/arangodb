@@ -75,7 +75,7 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
 * **tests**: `string` or `Array<string>` (optional)
 
-  A path or list of paths of JavaScript [tests](Testing.md) provided for this service.
+  A path or list of paths of JavaScript tests provided for this service. <!-- TODO link to Testing.md -->
 
 Additionally manifests can provide the following metadata:
 

@@ -1,5 +1,7 @@
 !CHAPTER Console Module
 
+`require('console')`
+
 The implementation follows the CommonJS specification
 [Console](http://wiki.commonjs.org/wiki/Console).
 
