@@ -842,7 +842,7 @@ test or development setup:
 ```
 
 Setting this option will lead to the ArangoDB server responding with an 
-`Access-Control-Allow-Origin: true` HTTP header to all incoming CORS requests.
+`Access-Control-Allow-Credentials: true` HTTP header to all incoming CORS requests.
 
 !SECTION Command-line options
 
