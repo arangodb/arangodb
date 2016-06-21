@@ -1705,15 +1705,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
   if (phase == PHASE_DROP_CREATE) {
     if (!incremental) {
       // first look up the collection by the cid
-      TRI_vocbase_col_t* col = nullptr;
-      if (_useCollectionId) {
-        col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
-      }
-
-      if (col == nullptr && !masterName.empty()) {
-        // not found, try name next
-        col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName);
-      }
+      TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, masterName);
 
       if (col != nullptr) {
         bool truncate = false;
@@ -1777,14 +1769,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
     TRI_vocbase_col_t* col = nullptr;
 
     if (incremental) {
-      if (_useCollectionId) {
-        col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
-      }
-
-      if (col == nullptr && !masterName.empty()) {
-        // not found, try name next
-        col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName);
-      }
+      col = getCollectionByIdOrName(cid, masterName);
 
       if (col != nullptr) {
         // collection is already present
@@ -1817,15 +1802,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string const progress = "dumping data for " + collectionMsg;
     setProgress(progress.c_str());
 
-    TRI_vocbase_col_t* col = nullptr;
-    if (_useCollectionId) {
-      col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
-    }
-
-    if (col == nullptr && !masterName.empty()) {
-      // not found, try name next
-      col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName);
-    }
+    TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, masterName);
 
     if (col == nullptr) {
       errorMsg = "cannot dump: " + collectionMsg + " not found";
