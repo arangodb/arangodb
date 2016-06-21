@@ -275,11 +275,10 @@ void RestServerFeature::prepare() {
   }
 
   HttpHandlerFactory::setMaintenance(true);
+  RESTSERVER = this;
 }
 
 void RestServerFeature::start() {
-  RESTSERVER = this;
-
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
   _httpOptions._vocbase = DatabaseFeature::DATABASE->vocbase();
