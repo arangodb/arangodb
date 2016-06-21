@@ -195,12 +195,12 @@ describe('Foxx Swagger', function () {
     });
 
     describe('"responses"', function () {
-      it('provides a default response', function () {
+      it('provides a 500 response by default', function () {
         service.router.get('/hello', noop());
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('get.responses.default')
-        .that.has.a.property('description', 'Unexpected error.');
+        .with.a.deep.property('get.responses.500')
+        .that.has.a.property('description', 'Default error response.');
       });
 
       it('does not provide any other default responses', function () {
@@ -208,7 +208,7 @@ describe('Foxx Swagger', function () {
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
         .with.a.deep.property('get.responses')
-        .that.has.all.keys('default');
+        .that.has.all.keys('500');
       });
 
       it('includes explicit responses', function () {
