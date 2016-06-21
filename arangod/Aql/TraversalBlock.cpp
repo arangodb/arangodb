@@ -35,6 +35,9 @@
 #include "VocBase/SingleServerTraverser.h"
 #include "V8/v8-globals.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 
 TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
@@ -542,7 +545,7 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
 
 /// @brief optimized version of neighbors search, must properly implement this
 void TraversalBlock::neighbors(std::string const& startVertex) {
-  std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackStringHash, basics::VelocyPackHelper::VPackStringEqual> visited;
+  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual> visited;
 
   std::vector<VPackSlice> result;
   result.reserve(1000);
@@ -587,7 +590,7 @@ void TraversalBlock::neighbors(std::string const& startVertex) {
 
 /// @brief worker for neighbors() function
 void TraversalBlock::runNeighbors(std::vector<VPackSlice> const& startVertices,
-                                  std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackStringHash, basics::VelocyPackHelper::VPackStringEqual>& visited,
+                                  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual>& visited,
                                   std::vector<VPackSlice>& distinct,
                                   TRI_edge_direction_e direction,
                                   uint64_t depth) {

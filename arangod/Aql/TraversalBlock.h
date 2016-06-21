@@ -29,6 +29,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "VocBase/Traverser.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 namespace aql {
 
@@ -153,7 +156,7 @@ class TraversalBlock : public ExecutionBlock {
 
   /// @brief worker for neighbors() function
   void runNeighbors(std::vector<VPackSlice> const& startVertices,
-                    std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackStringHash, basics::VelocyPackHelper::VPackStringEqual>& visited,
+                    std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual>& visited,
                     std::vector<VPackSlice>& distinct,
                     TRI_edge_direction_e direction,
                     uint64_t depth);

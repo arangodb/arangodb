@@ -69,8 +69,6 @@ class StoreException : public std::exception {
 
 enum NODE_EXCEPTION { PATH_NOT_FOUND };
 
-class Node;
-
 typedef std::chrono::system_clock::time_point TimePoint;
 
 class Store;
