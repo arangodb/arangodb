@@ -45,6 +45,15 @@ echo arangodb3 arangodb/password_again password NEWPASSWORD | debconf-set-select
 
 The commands should be executed prior to the installation.
 
+Red-Hat based packages will set a random password during installation.
+If you want to force a password, execute
+
+```
+ARANGODB_DEFAULT_ROOT_PASSWORD=NEWPASSWORD arango-secure-installation
+```
+
+The command should be executed after the installation.
+
 !SECTION Non-Standard Installation
 
 If you compiled ArangoDB from source and did not use any installation
