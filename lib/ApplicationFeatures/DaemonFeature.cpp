@@ -63,7 +63,7 @@ void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_daemon) {
-    return
+    return;
   }
   
   if (_pidFile.empty()) {
