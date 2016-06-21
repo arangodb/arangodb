@@ -186,7 +186,7 @@ Sets the response body to the given data with respect to the response definition
 
 * **data**: `any`
 
-  The data to be used as the response body. Will be converted according the [response definition](Endpoint.md#response) for the response's current status code (or `200`) in the following way:
+  The data to be used as the response body. Will be converted according the [response definition](Endpoints.md#response) for the response's current status code (or `200`) in the following way:
 
   If the data is an ArangoDB result set, it will be converted to an array first.
 
@@ -198,7 +198,7 @@ Sets the response body to the given data with respect to the response definition
 
   Content-type of the response body.
 
-  If set to `"auto"` the first MIME type specified in the [response definition](Endpoint.md#response) for the response's current status code (or `200`) will be used instead.
+  If set to `"auto"` the first MIME type specified in the [response definition](Endpoints.md#response) for the response's current status code (or `200`) will be used instead.
 
   If set to `"auto"` and no response definition exists, the MIME type will be determined the following way:
 
