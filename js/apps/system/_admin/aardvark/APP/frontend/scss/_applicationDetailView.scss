@@ -356,9 +356,11 @@ main {
     font-weight: 500;
     opacity: .5;
     position: absolute;
-    right: 20px;
+    right: 33px;
+    z-index: 99;
 
     &:hover {
+      cursor: pointer;
       opacity: 1;
     }
   }
