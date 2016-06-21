@@ -104,6 +104,8 @@ Examples:
 ["foo", "bar"] ANY == "foo"      // true
 ```
 
+Note that these operators are not optimized yet. Indexes will not be utilized.
+
 !SUBSUBSECTION Logical operators
 
 The following logical operators are supported in AQL:
