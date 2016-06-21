@@ -8,8 +8,12 @@ resilience by means of replication and automatic failover. Furthermore,
 one can build systems that scale their capacity dynamically up and down 
 automatically according to demand.
 
-Obviously, one can also scale ArangoDB vertically, that is, by using
-ever larger servers. However, this has the disadvantage that the
+One can also scale ArangoDB vertically, that is, by using
+ever larger servers. There is no builtin limitation in ArangoDB,
+for example, the server will automatically use more threads if
+more CPUs are present. 
+
+However, scaling vertically has the disadvantage that the
 costs grow faster than linear with the size of the server, and
 none of the resilience and dynamical capabilities can be achieved 
 in this way.
