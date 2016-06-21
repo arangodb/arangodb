@@ -149,6 +149,14 @@ class AqlItemBlock {
     _valueCount.clear();
   }
 
+  void copyValuesFromFirstRow(size_t currentRow, RegisterId curRegs) {
+    TRI_ASSERT(currentRow > 0);
+
+    for (RegisterId i = 0; i < curRegs; i++) {
+      setValue(currentRow, i, _data[i]);
+    }
+  }
+
   /// @brief valueCount
   /// this is used if the value is stolen and later released from elsewhere
   uint32_t valueCount(AqlValue const& v) const {
