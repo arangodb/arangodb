@@ -351,7 +351,7 @@
             checkButton();
           }
         }
-      }, 80);
+      }, 200);
     });
     $('.select2-search-field input').focusin(function() {
       if ($('.select2-drop').is(':visible')) {
