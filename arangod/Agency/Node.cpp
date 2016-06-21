@@ -520,7 +520,7 @@ bool Node::handle<UNOBSERVE>(VPackSlice const& slice) {
 /// Check if element is in array
 /// Remove observer for this node
 template <>
-bool Node::handle<Operation::IN>(VPackSlice const& slice) {
+bool Node::handle<IN_OP>(VPackSlice const& slice) {
   return true;
 }
 
@@ -558,7 +558,7 @@ bool Node::applieOp(VPackSlice const& slice) {
   } else if (oper == "unobserve") {  // "op":"unobserve"
     return handle<UNOBSERVE>(slice);
   } else if (oper == "in") {  // "op":"unobserve"
-    return handle<Operation::IN>(slice);
+    return handle<IN_OP>(slice);
   } else {  // "op" might not be a key word after all
     LOG_TOPIC(WARN, Logger::AGENCY)
         << "Keyword 'op' without known operation. Handling as regular key.";

@@ -51,7 +51,7 @@ enum Operation {
   SHIFT,
   OBSERVE,
   UNOBSERVE,
-  IN
+  IN_OP // thanks to windows.h
 };
 
 using namespace arangodb::velocypack;
