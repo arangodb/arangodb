@@ -1,5 +1,5 @@
 /*jshint browser: true */
-/*global Backbone, $, window, arangoHelper, templateEngine, Joi, _*/
+/*global Backbone, $, window, ace, arangoHelper, templateEngine, Joi, _*/
 (function() {
   'use strict';
 
@@ -21,6 +21,7 @@
       'click #app-replace': 'replaceApp',
       'click #download-app': 'downloadApp',
       'click .subMenuEntries li': 'changeSubview',
+      'click #jsonLink': 'toggleSwagger',
       'mouseenter #app-scripts': 'showDropdown',
       'mouseleave #app-scripts': 'hideDropdown'
     },
@@ -32,7 +33,30 @@
       else {
         $('.innerContent').height($('.centralRow').height() - 150);
         $('#swagger iframe').height($('.centralRow').height() - 150);
+        $('#swagger #swaggerJsonContent').height($('.centralRow').height() - 150);
       }
+    },
+
+    toggleSwagger: function() {
+
+      var callbackFunction = function(json) {
+        console.log(json);
+        $('#jsonLink').html('JSON');
+        this.jsonEditor.setValue(JSON.stringify(json, null, "\t"), 1);
+        $('#swaggerJsonContent').show();
+        $('#swagger iframe').hide();
+      }.bind(this);
+
+      if ($('#jsonLink').html() === 'Swagger') {
+        var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/docs/swagger.json?mount=' + encodeURIComponent(this.model.get('mount')));
+        arangoHelper.download(url, callbackFunction);
+      }
+      else {
+        $('#swaggerJsonContent').hide();
+        $('#swagger iframe').show();
+        $('#jsonLink').html('Swagger');
+      }
+
     },
 
     changeSubview: function(e) {
@@ -243,6 +267,8 @@
               db: db,
               mode: mode
             }));
+
+            self.jsonEditor = ace.edit("swaggerJsonEditor");
 
             $.get(this.appUrl(db)).success(function () {
               $(".open", this.el).prop('disabled', false);
