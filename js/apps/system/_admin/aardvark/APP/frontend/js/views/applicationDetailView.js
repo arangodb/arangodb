@@ -268,7 +268,10 @@
               mode: mode
             }));
 
+            //init ace
             self.jsonEditor = ace.edit("swaggerJsonEditor");
+            self.jsonEditor.setReadOnly(true);
+            self.jsonEditor.getSession().setMode("ace/mode/json");
 
             $.get(this.appUrl(db)).success(function () {
               $(".open", this.el).prop('disabled', false);
