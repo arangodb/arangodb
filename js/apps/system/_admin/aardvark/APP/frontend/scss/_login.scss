@@ -55,6 +55,7 @@
     @extend %flat-select;
     margin-bottom: 30px;
     padding-left: 35px;
+    -moz-appearance: none;
   }
 
   .login-logo-round {
