@@ -595,32 +595,43 @@ uint8_t* Builder::set(Value const& item) {
       break;
     }
     case ValueType::String: {
-      std::string const* s;
-      std::string value;
       if (ctype == Value::CType::String) {
-        s = item.getString();
+        std::string const* s = item.getString();
+        size_t const size = s->size();
+        if (size <= 126) {
+          // short string
+          reserveSpace(1 + size);
+          _start[_pos++] = static_cast<uint8_t>(0x40 + size);
+          memcpy(_start + _pos, s->c_str(), size);
+        } else {
+          // long string
+          reserveSpace(1 + 8 + size);
+          _start[_pos++] = 0xbf;
+          appendLength(size, 8);
+          memcpy(_start + _pos, s->c_str(), size);
+        }
+        _pos += size;
       } else if (ctype == Value::CType::CharPtr) {
-        value = item.getCharPtr();
-        s = &value;
+        char const* p = item.getCharPtr();
+        size_t const size = strlen(p);
+        if (size <= 126) {
+          // short string
+          reserveSpace(1 + size);
+          _start[_pos++] = static_cast<uint8_t>(0x40 + size);
+          memcpy(_start + _pos, p, size);
+        } else {
+          // long string
+          reserveSpace(1 + 8 + size);
+          _start[_pos++] = 0xbf;
+          appendLength(size, 8);
+          memcpy(_start + _pos, p, size);
+        }
+        _pos += size;
       } else {
         throw Exception(
             Exception::BuilderUnexpectedValue,
             "Must give a string or char const* for ValueType::String");
       }
-      size_t const size = s->size();
-      if (size <= 126) {
-        // short string
-        reserveSpace(1 + size);
-        _start[_pos++] = static_cast<uint8_t>(0x40 + size);
-        memcpy(_start + _pos, s->c_str(), size);
-      } else {
-        // long string
-        reserveSpace(1 + 8 + size);
-        _start[_pos++] = 0xbf;
-        appendLength(size, 8);
-        memcpy(_start + _pos, s->c_str(), size);
-      }
-      _pos += size;
       break;
     }
     case ValueType::Array: {

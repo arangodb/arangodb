@@ -351,7 +351,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
   if (!_useRegister) {
     if (!_usedConstant) {
       _usedConstant = true;
-      auto pos = _vertexId.find("/");
+      auto pos = _vertexId.find('/');
       if (pos == std::string::npos) {
         _engine->getQuery()->registerWarning(
             TRI_ERROR_BAD_PARAMETER, "Invalid input for traversal: "
@@ -458,11 +458,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {
       // re-use already copied aqlvalues
-      for (RegisterId i = 0; i < curRegs; i++) {
-        res->setValue(j, i, res->getValueReference(0, i));
-        // Note: if this throws, then all values will be deleted
-        // properly since the first one is.
-      }
+      res->copyValuesFromFirstRow(j, curRegs);
     }
     if (usesVertexOutput()) {
       res->setValue(j, _vertexReg, _vertices[_posInPaths].clone());
@@ -636,7 +632,7 @@ void TraversalBlock::runNeighbors(std::vector<VPackSlice> const& startVertices,
             v = Transaction::extractToFromDocument(edge);
           }
 
-          if (visited.find(v) == visited.end()) {
+          if (visited.emplace(v).second) {
             // we have not yet visited this vertex
             if (depth >= node->minDepth()) {
               distinct.emplace_back(v);
@@ -648,11 +644,10 @@ void TraversalBlock::runNeighbors(std::vector<VPackSlice> const& startVertices,
               }
               nextDepth.emplace_back(v);
             }
-            visited.emplace(v);
             continue;
           } else if (direction == TRI_EDGE_ANY) {
             v = Transaction::extractToFromDocument(edge);
-            if (visited.find(v) == visited.end()) {
+            if (visited.emplace(v).second) {
               // we have not yet visited this vertex
               if (depth >= node->minDepth()) {
                 distinct.emplace_back(v);
@@ -664,7 +659,6 @@ void TraversalBlock::runNeighbors(std::vector<VPackSlice> const& startVertices,
                 }
                 nextDepth.emplace_back(v);
               }
-              visited.emplace(v);
             }
           }
         }
