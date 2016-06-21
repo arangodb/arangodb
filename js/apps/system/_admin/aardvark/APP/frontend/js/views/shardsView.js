@@ -12,8 +12,9 @@
     knownServers: [],
 
     events: {
-      "click #shardsContent .pure-table-row" : "moveShard",
-      "click #rebalanceShards"               : "rebalanceShards"
+      "click #shardsContent .shardLeader span"    : "moveShard",
+      "click #shardsContent .shardFollowers span" : "moveShardFollowers",
+      "click #rebalanceShards"                    : "rebalanceShards"
     },
 
     initialize: function (options) {
@@ -75,12 +76,25 @@
       }
     },
 
-    moveShard: function(e) {
+    moveShardFollowers: function(e) {
+      var from = $(e.currentTarget).html();
+      this.moveShard(e, from);
+    },
+
+    moveShard: function(e, from) {
       var self = this;
+      var fromServer, collectionName, shardName, leader;
       var dbName = window.App.currentDB.get("name");
-      var collectionName = $(e.currentTarget).attr("collection");
-      var shardName = $(e.currentTarget).attr("shard");
-      var fromServer = $(e.currentTarget).attr("leader");
+      collectionName = $(e.currentTarget).parent().parent().attr("collection");
+      shardName = $(e.currentTarget).parent().parent().attr("shard");
+
+      if (!from) {
+        fromServer = $(e.currentTarget).parent().parent().attr("leader");
+      }
+      else {
+        leader = $(e.currentTarget).parent().parent().attr("leader");
+        fromServer = from;
+      }
 
       var buttons = [],
         tableContent = [];
@@ -99,6 +113,10 @@
       _.each(self.shardDistribution[collectionName].Plan[shardName].followers, function(follower) {
         delete obj[follower];
       });
+
+      if (from) {
+        delete obj[leader];
+      }
 
       _.each(obj, function(value) {
         array.push(value);
