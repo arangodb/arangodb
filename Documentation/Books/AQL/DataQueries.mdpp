@@ -37,12 +37,12 @@ FOR doc IN users
 ```
 
 For every user document, an object with two attributes is returned. The value
-of *user* is set to the content of the user document, and *newAttribute* is a
-static attribute with the boolean value *true*.
+of the attribute *user* is set to the content of the user document, and
+*newAttribute* is a static attribute with the boolean value *true*.
 
-Operations like **FILTER**, **SORT** and **LIMIT** can be added to loop bodies
+Operations like **FILTER**, **SORT** and **LIMIT** can be added to the loop body
 to narrow and order the result. Instead of above shown call to `DOCUMENT()`,
-one can also retrieve the document of user *phil* like so:
+one can also retrieve the document that describes user *phil* like so:
 
 ```js
 FOR doc IN users
@@ -67,7 +67,8 @@ Note that operations do not have to occur in a fixed order and that their order
 can influence the result significantly. Limiting the number of documents
 before a filter is usually not what you want, because it easily misses a lot
 of documents that would fulfill the filter criterion, but are ignored because
-of a premature *LIMIT* clause.
+of a premature *LIMIT* clause. Because of the aforementioned reasons, *LIMIT*
+is usually put at the very end, after *FILTER*, *SORT* and other operations.
 
 See the [High Level Operations](Operations/README.md) chapter for more details.
 
@@ -271,7 +272,7 @@ the operation type:
 UPSERT { name: "test" }
     INSERT { name: "test" }
     UPDATE { } IN users
-LET opType = IS_NULL(old) ? "insert" : "update"
+LET opType = IS_NULL(OLD) ? "insert" : "update"
 RETURN { _key: NEW._key, type: opType }
 ```
 
