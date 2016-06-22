@@ -964,7 +964,11 @@ bool ClusterComm::moveFromSendToReceived(OperationID operationID) {
   CONDITION_LOCKER(sendLocker, somethingToSend);
 
   IndexIterator i = toSendByOpID.find(operationID);  // cannot fail
-  TRI_ASSERT(i != toSendByOpID.end());
+  //#warning MAX: It can and has :(
+  // TRI_ASSERT(i != toSendByOpID.end());
+  if (i == toSendByOpID.end()) {
+    return false;
+  }
 
   QueueIterator q = i->second;
   ClusterCommOperation* op = *q;
