@@ -417,35 +417,27 @@ void ClusterFeature::start() {
   AgencyCommResult result;
 
   while (true) {
-    AgencyCommLocker locker("Current", "WRITE");
-    bool success = locker.successful();
 
-    if (success) {
-      VPackBuilder builder;
-      try {
-        VPackObjectBuilder b(&builder);
-        builder.add("endpoint", VPackValue(_myAddress));
-      } catch (...) {
-        locker.unlock();
-        LOG(FATAL) << "out of memory";
-        FATAL_ERROR_EXIT();
-      }
-
-      result = comm.setValue("Current/ServersRegistered/" + _myId,
-                             builder.slice(), 0.0);
-    }
-
-    if (!result.successful()) {
-      locker.unlock();
-      LOG(FATAL) << "unable to register server in agency: http code: "
-                 << result.httpCode() << ", body: " << result.body();
+    VPackBuilder builder;
+    try {
+      VPackObjectBuilder b(&builder);
+      builder.add("endpoint", VPackValue(_myAddress));
+    } catch (...) {
+      LOG(FATAL) << "out of memory";
       FATAL_ERROR_EXIT();
     }
 
-    if (success) {
+    result = comm.setValue("Current/ServersRegistered/" + _myId,
+                           builder.slice(), 0.0);
+    
+    if (!result.successful()) {
+      LOG(FATAL) << "unable to register server in agency: http code: "
+                 << result.httpCode() << ", body: " << result.body();
+      FATAL_ERROR_EXIT();
+    } else {
       break;
     }
-
+    
     sleep(1);
   }
 
@@ -471,10 +463,10 @@ void ClusterFeature::unprepare() {
     
     // change into shutdown state
     ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
-
+    
     AgencyComm comm;
     comm.sendServerState(0.0);
-
+    
     if (_heartbeatThread != nullptr) {
       int counter = 0;
       while (_heartbeatThread->isRunning()) {
@@ -501,27 +493,32 @@ void ClusterFeature::unprepare() {
 
   AgencyComm comm;
   comm.sendServerState(0.0);
+  
+  // Try only once to unregister because maybe the agencycomm
+  // is shutting down as well...
+  
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  
+  AgencyWriteTransaction unreg;
 
-  {
-    // Try only once to unregister because maybe the agencycomm
-    // is shutting down as well...
-    AgencyCommLocker locker("Current", "WRITE", 120.0, 1.000);
-
-    if (locker.successful()) {
-      // unregister ourselves
-      ServerState::RoleEnum role = ServerState::instance()->getRole();
-
-      if (role == ServerState::ROLE_PRIMARY) {
-        comm.removeValues("Current/DBServers/" + _myId, false);
-      } else if (role == ServerState::ROLE_COORDINATOR) {
-        comm.removeValues("Current/Coordinators/" + _myId, false);
-      }
-
-      // unregister ourselves
-      comm.removeValues("Current/ServersRegistered/" + _myId, false);
-    }
+  // Remove from role
+  if (role == ServerState::ROLE_PRIMARY) {
+    unreg.operations.push_back(
+      AgencyOperation("Current/DBServers/" + _myId,
+                      AgencySimpleOperationType::DELETE_OP));
+  } else if (role == ServerState::ROLE_COORDINATOR) {
+    unreg.operations.push_back(
+      AgencyOperation("Current/Coordinators/" + _myId,
+                      AgencySimpleOperationType::DELETE_OP));
   }
-
+  
+  // Unregister 
+  unreg.operations.push_back(
+    AgencyOperation("Current/ServersRegistered/" + _myId,
+                    AgencySimpleOperationType::DELETE_OP));
+  
+  comm.sendTransactionWithFailover(unreg, 120.0);
+  
   while (_heartbeatThread->isRunning()) {
     usleep(50000);
   }
