@@ -346,7 +346,7 @@ Builder& Builder::close() {
     } else {  // offsetSize == 8
       _start[tos] += 3;
       if (needNrSubs) {
-        appendLength(index.size(), 8);
+        appendLength<8>(index.size());
       }
     }
   }
@@ -478,7 +478,7 @@ uint8_t* Builder::set(Value const& item) {
       reserveSpace(1 + sizeof(double));
       _start[_pos++] = 0x1b;
       memcpy(&x, &v, sizeof(double));
-      appendLength(x, 8);
+      appendLength<8>(x);
       break;
     }
     case ValueType::External: {
@@ -607,7 +607,7 @@ uint8_t* Builder::set(Value const& item) {
           // long string
           reserveSpace(1 + 8 + size);
           _start[_pos++] = 0xbf;
-          appendLength(size, 8);
+          appendLength<8>(size);
           memcpy(_start + _pos, s->c_str(), size);
         }
         _pos += size;
@@ -623,7 +623,7 @@ uint8_t* Builder::set(Value const& item) {
           // long string
           reserveSpace(1 + 8 + size);
           _start[_pos++] = 0xbf;
-          appendLength(size, 8);
+          appendLength<8>(size);
           memcpy(_start + _pos, p, size);
         }
         _pos += size;
@@ -721,7 +721,7 @@ uint8_t* Builder::set(ValuePair const& pair) {
       // long string
       reserveSpace(1 + 8 + size);
       _start[_pos++] = 0xbf;
-      appendLength(size, 8);
+      appendLength<8>(size);
       memcpy(_start + _pos, pair.getStart(), checkOverflow(size));
       _pos += size;
     } else {

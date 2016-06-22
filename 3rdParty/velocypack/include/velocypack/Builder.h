@@ -502,7 +502,7 @@ private:
     uint64_t x = toUInt64(v);
     reserveSpace(1 + vSize);
     _start[_pos++] = 0x1c;
-    appendLength(x, 8);
+    appendLength<8>(x);
   }
 
   uint8_t* addString(uint64_t strLen) {
@@ -511,7 +511,7 @@ private:
       // long string
       _start[_pos++] = 0xbf;
       // write string length
-      appendLength(strLen, 8);
+      appendLength<8>(strLen);
     } else {
       // short string
       _start[_pos++] = static_cast<uint8_t>(0x40 + strLen);
@@ -727,7 +727,8 @@ private:
     _index[depth].push_back(_pos - _stack[depth]);
   }
 
-  void appendLength(ValueLength v, uint64_t n) {
+  template <uint64_t n>
+  void appendLength(ValueLength v) {
     reserveSpace(n);
     for (uint64_t i = 0; i < n; ++i) {
       _start[_pos++] = v & 0xff;
