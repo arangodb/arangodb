@@ -753,7 +753,7 @@
         $('#graphTab').hide(); 
         $('#modal-dialog .modal-delete-confirmation').append(
           '<fieldset><input type="checkbox" id="dropGraphCollections" name="" value="">' + 
-            '<label for="mc">also drop collections?</label>' +
+            '<label for="dropGraphCollections">also drop collections?</label>' +
           '</fieldset>'
         );
       }

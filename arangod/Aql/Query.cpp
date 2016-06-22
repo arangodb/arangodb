@@ -611,6 +611,8 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
     TRI_ASSERT(_engine != nullptr);
     auto resultBuilder = std::make_shared<VPackBuilder>(&options);
+    resultBuilder->buffer()->reserve(16 * 1024); // reserve some space in Builder to avoid frequent reallocs
+
     try {
       resultBuilder->openArray();
       // this is the RegisterId our results can be found in

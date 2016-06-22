@@ -155,6 +155,17 @@ book-check-dangling-anchors:
 	fi
 	rm -rf /tmp/anchorlist.txt /tmp/tags
 
+book-check-images-referenced:
+	exitcode=0; \
+	for image in `find $(NAME) -name \*.png `; do \
+		baseimage=`basename $$image`; \
+		if ! grep -Rq $$baseimage $(NAME); then \
+			echo "$$image is not used!";\
+			exitcode=1;\
+		fi; \
+	done; \
+	exit $${exitcode}
+
 build-book-symlinks:
 	echo "##### generate backwards compatibility symlinks for $(NAME)"
 	cd books/$(NAME); pwd; \
@@ -203,6 +214,7 @@ build-book:
 	make book-check-restheader-leftovers
 	make book-check-mdpp-leftovers
 	make ppbook-check-directory-link
+	make book-check-images-referenced
 
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
