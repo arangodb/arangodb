@@ -425,14 +425,7 @@ void ClusterInfo::loadPlan() {
   }
 
   // Now contact the agency:
-  AgencyCommResult result;
-  {
-    AgencyCommLocker locker("Plan", "READ");
-
-    if (locker.successful()) {
-      result = _agency.getValues(prefixPlan);
-    }
-  }
+  AgencyCommResult result = _agency.getValues(prefixPlan);
 
   if (result.successful()) {
     VPackSlice slice = result.slice()[0].get(
@@ -866,25 +859,17 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
-  {
-    AgencyCommLocker locker("Plan", "WRITE");
-
-    if (!locker.successful()) {
-      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
+  res = ac.casValue("Plan/Databases/" + name, slice, false, 0.0, realTimeout);
+  if (!res.successful()) {
+    if (res._statusCode ==
+        (int)arangodb::GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
+      return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
     }
-
-    res = ac.casValue("Plan/Databases/" + name, slice, false, 0.0, realTimeout);
-    if (!res.successful()) {
-      if (res._statusCode ==
-          (int)arangodb::GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
-        return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
-      }
-
-      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,
-                         errorMsg);
-    }
+    
+    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,
+                       errorMsg);
   }
-
+  
   // Now update our own cache of planned databases:
   loadPlan();
   
@@ -954,35 +939,19 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
-  {
-    AgencyCommLocker locker("Plan", "WRITE");
-
-    if (!locker.successful()) {
-      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
-    }
-
-    if (!ac.exists("Plan/Databases/" + name)) {
-      return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    }
-
-    res = ac.removeValues("Plan/Databases/" + name, false);
-    if (!res.successful()) {
-      if (res.httpCode() == (int)GeneralResponse::ResponseCode::NOT_FOUND) {
-        return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-      }
-
-      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
-                         errorMsg);
-    }
-
-    res = ac.removeValues("Plan/Collections/" + name, true);
-
-    if (!res.successful() &&
-        res.httpCode() != (int)GeneralResponse::ResponseCode::NOT_FOUND) {
-      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
-                         errorMsg);
-    }
-  }
+  // Transact to agency
+  AgencyOperation delPlanDatabases("Plan/Databases/" + name,
+                                   AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delPlanCollections("Plan/Collections/" + name,
+                                     AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation incrementVersion("Plan/Version",
+                                   AgencySimpleOperationType::INCREMENT_OP);
+  AgencyPrecondition databaseExists("Plan/Databases/" + name,
+                                    AgencyPrecondition::EMPTY, false);
+  AgencyWriteTransaction trans(
+    {delPlanDatabases, delPlanCollections, incrementVersion}, databaseExists);
+  
+  res = ac.sendTransactionWithFailover(trans);
 
   // Load our own caches:
   loadPlan();
