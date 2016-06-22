@@ -15,7 +15,7 @@ To register your script, just add a `scripts` section to your [service manifest]
 }
 ```
 
-The scripts you define in your service manifest can be invoked from the web interface in the service's settings page with the "Scripts" dropdown.
+The scripts you define in your service manifest can be invoked from the web interface in the service's settings page with the *Scripts* dropdown.
 
 <!-- TODO (Link to admin docs) -->
 
@@ -61,7 +61,7 @@ module.exports = argv[0] * argv[1];
 
 Foxx recognizes lifecycle scripts if they are defined and will invoke them during the installation, update and removal process of the service if you want.
 
-The following scripts are currently recognized as lifecycle scripts:
+The following scripts are currently recognized as lifecycle scripts by their name: `"setup"` and `"teardown"`.
 
 !SUBSECTION Setup Script
 

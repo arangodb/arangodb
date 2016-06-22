@@ -28,9 +28,15 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringRef.h"
 #include "Cluster/ClusterTraverser.h"
+#include "Utils/OperationCursor.h"
+#include "Utils/Transaction.h"
 #include "VocBase/SingleServerTraverser.h"
 #include "V8/v8-globals.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -261,6 +267,12 @@ int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 /// @brief read more paths
 bool TraversalBlock::morePaths(size_t hint) {
   DEBUG_BEGIN_BLOCK();
+  
+  TraversalNode const* planNode = static_cast<TraversalNode const*>(getPlanNode());
+  if (planNode->_specializedNeighborsSearch) {
+    return false;
+  }
+  
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
@@ -268,7 +280,7 @@ bool TraversalBlock::morePaths(size_t hint) {
     _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
     return false;
   }
-
+  
   if (usesVertexOutput()) {
     _vertices.reserve(hint);
   }
@@ -315,6 +327,8 @@ bool TraversalBlock::morePaths(size_t hint) {
 /// @brief skip the next paths
 size_t TraversalBlock::skipPaths(size_t hint) {
   DEBUG_BEGIN_BLOCK();
+  TRI_ASSERT(!static_cast<TraversalNode const*>(getPlanNode())->_specializedNeighborsSearch);
+
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
@@ -331,32 +345,49 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
     // No Initialization required.
     return;
   }
+        
+  TraversalNode const* planNode = static_cast<TraversalNode const*>(getPlanNode());
+
   if (!_useRegister) {
     if (!_usedConstant) {
       _usedConstant = true;
-      auto pos = _vertexId.find("/");
+      auto pos = _vertexId.find('/');
       if (pos == std::string::npos) {
         _engine->getQuery()->registerWarning(
             TRI_ERROR_BAD_PARAMETER, "Invalid input for traversal: "
                                          "Only id strings or objects with "
                                          "_id are allowed");
       } else {
-        _traverser->setStartVertex(_vertexId);
+        if (planNode->_specializedNeighborsSearch) {
+          // fetch neighbor nodes
+          neighbors(_vertexId);
+        } else {
+          _traverser->setStartVertex(_vertexId);
+        }
       }
     }
   } else {
     AqlValue const& in = items->getValueReference(_pos, _reg);
     if (in.isObject()) {
       try {
-        std::string idString = _trx->extractIdString(in.slice());
-        _traverser->setStartVertex(idString);
+        if (planNode->_specializedNeighborsSearch) {
+          // fetch neighbor nodes
+          neighbors(_trx->extractIdString(in.slice()));
+        } else {
+          _traverser->setStartVertex(_trx->extractIdString(in.slice()));
+        }
       }
       catch (...) {
         // _id or _key not present... ignore this error and fall through
       }
     } else if (in.isString()) {
       _vertexId = in.slice().copyString();
-      _traverser->setStartVertex(_vertexId);
+      if (planNode->_specializedNeighborsSearch) {
+        // fetch neighbor nodes
+        neighbors(_vertexId);
+      } else {
+        _traverser->setStartVertex(_vertexId);
+      }
     } else {
       _engine->getQuery()->registerWarning(
           TRI_ERROR_BAD_PARAMETER, "Invalid input for traversal: Only "
@@ -427,11 +458,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {
       // re-use already copied aqlvalues
-      for (RegisterId i = 0; i < curRegs; i++) {
-        res->setValue(j, i, res->getValueReference(0, i));
-        // Note: if this throws, then all values will be deleted
-        // properly since the first one is.
-      }
+      res->copyValuesFromFirstRow(j, curRegs);
     }
     if (usesVertexOutput()) {
       res->setValue(j, _vertexReg, _vertices[_posInPaths].clone());
@@ -510,4 +537,136 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
   // Skip the next atMost many paths.
   return atMost;
   DEBUG_END_BLOCK();
+}
+
+/// @brief optimized version of neighbors search, must properly implement this
+void TraversalBlock::neighbors(std::string const& startVertex) {
+  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual> visited;
+
+  std::vector<VPackSlice> result;
+  result.reserve(1000);
+
+  TransactionBuilderLeaser builder(_trx);
+  builder->add(VPackValue(startVertex));
+
+  std::vector<VPackSlice> startVertices;
+  startVertices.emplace_back(builder->slice());
+  visited.emplace(builder->slice());
+
+  TRI_edge_direction_e direction = TRI_EDGE_ANY;
+  std::string collectionName;
+  traverser::TraverserOptions const* options = _traverser->options();
+  if (options->getCollection(0, collectionName, direction)) {
+    runNeighbors(startVertices, visited, result, direction, 1);
+  }
+
+  TRI_doc_mptr_t mptr;
+  _vertices.clear();
+  _vertices.reserve(result.size());
+  for (auto const& it : result) {
+    VPackValueLength l;
+    char const* p = it.getString(l);
+    StringRef ref(p, l);
+
+    size_t pos = ref.find('/');
+    if (pos == std::string::npos) {
+      // invalid id
+      continue;
+    }
+ 
+    int res = _trx->documentFastPathLocal(ref.substr(0, pos).toString(), ref.substr(pos + 1).toString(), &mptr);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      continue;
+    }
+
+    _vertices.emplace_back(AqlValue(mptr.vpack()));
+  }
+}
+
+/// @brief worker for neighbors() function
+void TraversalBlock::runNeighbors(std::vector<VPackSlice> const& startVertices,
+                                  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual>& visited,
+                                  std::vector<VPackSlice>& distinct,
+                                  TRI_edge_direction_e direction,
+                                  uint64_t depth) {
+  std::vector<VPackSlice> nextDepth;
+  bool initialized = false;
+  TraversalNode const* node = static_cast<TraversalNode const*>(getPlanNode());
+  traverser::TraverserOptions const* options = _traverser->options();
+
+  TransactionBuilderLeaser builder(_trx);
+
+  size_t const n = options->collectionCount();
+  std::string collectionName;
+  Transaction::IndexHandle indexHandle;
+
+  std::vector<TRI_doc_mptr_t*> edges;
+
+  for (auto const& startVertex : startVertices) {
+    for (size_t i = 0; i < n; ++i) {
+      builder->clear();
+
+      if (!options->getCollectionAndSearchValue(i, startVertex.copyString(), collectionName, indexHandle, *builder.builder())) {
+        TRI_ASSERT(false);
+      }
+
+      std::shared_ptr<OperationCursor> cursor = _trx->indexScan(collectionName,
+                         arangodb::Transaction::CursorType::INDEX, indexHandle,
+                         builder->slice(), 0, UINT64_MAX, 1000, false);
+    
+      if (cursor->failed()) {
+        continue;
+      }
+
+      edges.clear();
+      while (cursor->hasMore()) {
+        cursor->getMoreMptr(edges, 1000);
+
+        for (auto const& it : edges) {
+          VPackSlice edge(it->vpack());
+          VPackSlice v;
+          if (direction == TRI_EDGE_IN) {
+            v = Transaction::extractFromFromDocument(edge);
+          } else {
+            v = Transaction::extractToFromDocument(edge);
+          }
+
+          if (visited.emplace(v).second) {
+            // we have not yet visited this vertex
+            if (depth >= node->minDepth()) {
+              distinct.emplace_back(v);
+            }
+            if (depth < node->maxDepth()) {
+              if (!initialized) {
+                nextDepth.reserve(64);
+                initialized = true;
+              }
+              nextDepth.emplace_back(v);
+            }
+            continue;
+          } else if (direction == TRI_EDGE_ANY) {
+            v = Transaction::extractToFromDocument(edge);
+            if (visited.emplace(v).second) {
+              // we have not yet visited this vertex
+              if (depth >= node->minDepth()) {
+                distinct.emplace_back(v);
+              }
+              if (depth < node->maxDepth()) {
+                if (!initialized) {
+                  nextDepth.reserve(64);
+                  initialized = true;
+                }
+                nextDepth.emplace_back(v);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!nextDepth.empty()) {
+    runNeighbors(nextDepth, visited, distinct, direction, depth + 1);
+  }
 }

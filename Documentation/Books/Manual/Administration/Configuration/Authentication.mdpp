@@ -32,8 +32,8 @@ ArangoDB provides basic functionality to add, modify and remove database users
 programmatically. The following functionality is provided by the *users* module
 and can be used from inside arangosh and arangod.
 
-**Note**: This functionality is not available from within the web
-interface.
+Users can also be managed from within the web interface while logged in to the
+*_system* database.
 
 !SUBSECTION Save
 

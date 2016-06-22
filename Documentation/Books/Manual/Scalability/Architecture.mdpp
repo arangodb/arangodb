@@ -18,18 +18,13 @@ An ArangoDB cluster consists of a number of ArangoDB instances
 which talk to each other over the network. They play different roles,
 which will be explained in detail below. The current configuration 
 of the cluster is held in the "Agency", which is a highly-available
-resilient key/value store based on an odd number of ArangoDB instances.
-
-!SUBSUBSECTION Cluster ID
-
-Every non-Agency ArangoDB instance in a cluster is assigned a unique
-ID during its startup. Using its ID a node is identifiable
-throughout the cluster. All cluster operations will communicate
-via this ID.
+resilient key/value store based on an odd number of ArangoDB instances
+running [Raft Consensus Protocol](https://raft.github.io/).
 
 For the various instances in an ArangoDB cluster there are 4 distinct
 roles: Agents, Coordinators, Primary and Secondary DBservers. In the
-following sections we will shed light on each of them.
+following sections we will shed light on each of them. Note that the
+tasks for all roles run the same binary from the same Docker image.
 
 !SUBSUBSECTION Agents
 
@@ -70,13 +65,21 @@ asked by a coordinator.
 
 !SUBSUBSECTION Secondaries
 
-Secondary DBservers are asynchronous replicas of primaries. For each
-primary, there can be one ore more secondaries. Since the replication
-works asynchronously (eventual consistency), the replication does not
-impede the performance of the primaries. On the other hand, their
-replica of the data can be slightly out of date. The secondaries are
-perfectly suitable for backups as they don't interfere with the normal
-cluster operation.
+Secondary DBservers are asynchronous replicas of primaries. If one is
+using only synchronous replication, one does not need secondaries at all.
+For each primary, there can be one or more secondaries. Since the
+replication works asynchronously (eventual consistency), the replication
+does not impede the performance of the primaries. On the other hand,
+their replica of the data can be slightly out of date. The secondaries
+are perfectly suitable for backups as they don't interfere with the
+normal cluster operation.
+
+!SUBSUBSECTION Cluster ID
+
+Every non-Agency ArangoDB instance in a cluster is assigned a unique
+ID during its startup. Using its ID a node is identifiable
+throughout the cluster. All cluster operations will communicate
+via this ID.
 
 !SUBSECTION Sharding
 
@@ -205,7 +208,7 @@ modern microservice architectures of applications. With the
 [Foxx services](../Foxx/README.md) it is very easy to deploy a data
 centric microservice within an ArangoDB cluster.
 
-Alternatively, one can deploy multiple instances of ArangoDB within the
+In addition, one can deploy multiple instances of ArangoDB within the
 same project. One part of the project might need a scalable document
 store, another might need a graph database, and yet another might need
 the full power of a multi-model database actually mixing the various
@@ -221,7 +224,7 @@ capabilities in this direction.
 !SUBSECTION Apache Mesos integration
 
 For the distributed setup, we use the Apache Mesos infrastructure by default.
-ArangoDB is a fully certified package for the Mesosphere DC/OS and can thus
+ArangoDB is a fully certified package for DC/OS and can thus
 be deployed essentially with a few mouse clicks or a single command, once
 you have an existing DC/OS cluster. But even on a plain Apache Mesos cluster
 one can deploy ArangoDB via Marathon with a single API call and some JSON 
@@ -268,3 +271,5 @@ even further you can install a reverse proxy like haproxy or nginx in
 front of the coordinators (that will also allow easy access from the
 application).
 
+Authentication in the cluster will be added soon after the initial 3.0
+release.

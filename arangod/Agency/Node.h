@@ -50,8 +50,7 @@ enum Operation {
   PREPEND,
   SHIFT,
   OBSERVE,
-  UNOBSERVE,
-  IN
+  UNOBSERVE
 };
 
 using namespace arangodb::velocypack;
@@ -68,8 +67,6 @@ class StoreException : public std::exception {
 };
 
 enum NODE_EXCEPTION { PATH_NOT_FOUND };
-
-class Node;
 
 typedef std::chrono::system_clock::time_point TimePoint;
 

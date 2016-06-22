@@ -35,11 +35,11 @@ using namespace arangodb::basics;
 namespace {
 Mutex MutexNonce;
 
-size_t SizeNonces = 16777216;
+static size_t SizeNonces = 16777216;
 
-uint32_t* TimestampNonces = 0;
+static uint32_t* TimestampNonces = nullptr;
 
-uint32_t StatisticsNonces[32][5] = {
+static uint32_t StatisticsNonces[32][5] = {
     {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
@@ -57,12 +57,13 @@ namespace Nonce {
 void create(size_t size) {
   if (SizeNonces < 64) {
     SizeNonces = 64;
+  } else {
+    SizeNonces = size;
   }
 
-  if (TimestampNonces != 0) {
-    delete[] TimestampNonces;
-  }
+  destroy();
 
+  LOG(TRACE) << "creating nonces with size: " << size;
   TimestampNonces = new uint32_t[size];
 
   memset(TimestampNonces, 0, sizeof(uint32_t) * size);
@@ -75,8 +76,10 @@ void create(size_t size) {
 }
 
 void destroy() {
-  if (TimestampNonces != 0) {
+  if (TimestampNonces != nullptr) {
+    LOG(TRACE) << "destroying nonces";
     delete[] TimestampNonces;
+    TimestampNonces = nullptr;
   }
 }
 
@@ -120,12 +123,12 @@ bool checkAndMark(std::string const& nonce) {
 bool checkAndMark(uint32_t timestamp, uint64_t random) {
   MUTEX_LOCKER(mutexLocker, MutexNonce);
 
-  if (TimestampNonces == 0) {
-    LOG(TRACE) << "setting nonce hash size to " << SizeNonces;
+  if (TimestampNonces == nullptr) {
     create(SizeNonces);
+
   }
 
-  TRI_ASSERT(TimestampNonces != 0);
+  TRI_ASSERT(TimestampNonces != nullptr);
 
   int proofs = 0;
 

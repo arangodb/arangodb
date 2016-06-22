@@ -67,7 +67,7 @@ A `dependencies` definition maps the local alias of a given dependency against i
 }
 ```
 
-Dependencies can be configured from the web interface in a service's settings tab using the "Dependencies" button.
+Dependencies can be configured from the web interface in a service's settings tab using the *Dependencies* button.
 
 <!-- TODO (Add link to relevant aardvark docs) -->
 

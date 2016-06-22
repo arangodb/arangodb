@@ -146,7 +146,13 @@
     },
 
     download: function () {
-      arangoHelper.download(arangoHelper.databaseUrl("/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount()));
+      sendRequest(this, function (err, data) {
+        if (err) {
+          console.error(err.responseJSON);
+          return;
+        }
+        window.location.href = arangoHelper.databaseUrl("/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount() + "&nonce=" + data.nonce);
+      }.bind(this), "POST", "download/nonce");
     },
 
     fetchThumbnail: function(cb) {

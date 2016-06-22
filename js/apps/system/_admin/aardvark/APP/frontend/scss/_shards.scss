@@ -1,0 +1,12 @@
+.shardFollowers,
+.shardLeader {
+
+  span {
+    @extend %animated;
+
+    &:hover {
+      color: $c-black;
+      cursor: pointer;
+    }
+  }
+}

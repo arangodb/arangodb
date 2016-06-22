@@ -30,28 +30,34 @@ const accepts = require('accepts');
 const parseRange = require('range-parser');
 const querystring = require('querystring');
 const getRawBodyBuffer = require('internal').rawRequestBody;
+const getTrustedProxies = require('internal').trustedProxies;
 const crypto = require('@arangodb/crypto');
 const Netmask = require('netmask').Netmask;
-const trustedProxies = require('internal').trustedProxies();
-const trustedProxyBlocks = [];
+let trustedProxyBlocks;
 
-if (Array.isArray(trustedProxies)) {
+function generateTrustedProxyBlocks() {
+  const trustedProxies = getTrustedProxies();
+  if (!Array.isArray(trustedProxies)) {
+    return false;
+  }
+  const blocks = [];
   for (const trustedProxy of trustedProxies) {
     try {
-      trustedProxyBlocks.push(new Netmask(trustedProxy));
+      blocks.push(new Netmask(trustedProxy));
     } catch (e) {
       console.warnLines(
         `Error parsing trusted proxy "${trustedProxy}":\n${e.stack}`
       );
     }
   }
+  return blocks;
 }
 
 function shouldTrustProxy(address) {
-  if (trustedProxies === null) {
-    return true;
+  if (trustedProxyBlocks === undefined) {
+    trustedProxyBlocks = generateTrustedProxyBlocks();
   }
-  return trustedProxyBlocks
+  return !trustedProxyBlocks || trustedProxyBlocks
   .some((block) => block.contains(address));
 }
 
@@ -192,7 +198,7 @@ module.exports = class SyntheticRequest {
   }
 
   json() {
-    if (!this.rawBody) {
+    if (!this.rawBody || !this.rawBody.length) {
       return undefined;
     }
     return JSON.parse(this.rawBody.toString('utf-8'));

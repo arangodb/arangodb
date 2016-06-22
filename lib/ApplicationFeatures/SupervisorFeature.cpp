@@ -146,82 +146,82 @@ void SupervisorFeature::daemonize() {
       bool horrible = true;
 
       if (!DONE) {
-	done = true;
-	horrible = false;
+        done = true;
+        horrible = false;
       }
       else {
-	LOG_TOPIC(DEBUG, Logger::STARTUP) << "waitpid woke up with return value "
-					  << res << " and status " << status;
+        LOG_TOPIC(DEBUG, Logger::STARTUP) << "waitpid woke up with return value "
+                                          << res << " and status " << status;
 
-	if (WIFEXITED(status)) {
-	  // give information about cause of death
-	  if (WEXITSTATUS(status) == 0) {
-	    LOG_TOPIC(INFO, Logger::STARTUP) << "child " << _clientPid
-					     << " died of natural causes";
-	    done = true;
-	    horrible = false;
-	  } else {
-	    t = time(0) - startTime;
+        if (WIFEXITED(status)) {
+          // give information about cause of death
+          if (WEXITSTATUS(status) == 0) {
+            LOG_TOPIC(INFO, Logger::STARTUP) << "child " << _clientPid
+                                             << " died of natural causes";
+            done = true;
+            horrible = false;
+          } else {
+            t = time(0) - startTime;
 
-	    LOG_TOPIC(ERR, Logger::STARTUP)
-		<< "child " << _clientPid
-		<< " died a horrible death, exit status " << WEXITSTATUS(status);
+            LOG_TOPIC(ERR, Logger::STARTUP)
+                << "child " << _clientPid
+                << " died a horrible death, exit status " << WEXITSTATUS(status);
 
-	    if (t < MIN_TIME_ALIVE_IN_SEC) {
-	      LOG_TOPIC(ERR, Logger::STARTUP)
-		  << "child only survived for " << t
-		  << " seconds, this will not work - please fix the error "
-		     "first";
-	      done = true;
-	    } else {
-	      done = false;
-	    }
-	  }
-	} else if (WIFSIGNALED(status)) {
-	  switch (WTERMSIG(status)) {
-	    case 2:
-	    case 9:
-	    case 15:
-	      LOG_TOPIC(INFO, Logger::STARTUP)
-		  << "child " << _clientPid
-		  << " died of natural causes, exit status " << WTERMSIG(status);
-	      done = true;
-	      horrible = false;
-	      break;
+            if (t < MIN_TIME_ALIVE_IN_SEC) {
+              LOG_TOPIC(ERR, Logger::STARTUP)
+                  << "child only survived for " << t
+                  << " seconds, this will not work - please fix the error "
+                     "first";
+              done = true;
+            } else {
+              done = false;
+            }
+          }
+        } else if (WIFSIGNALED(status)) {
+          switch (WTERMSIG(status)) {
+            case 2:
+            case 9:
+            case 15:
+              LOG_TOPIC(INFO, Logger::STARTUP)
+                  << "child " << _clientPid
+                  << " died of natural causes, exit status " << WTERMSIG(status);
+              done = true;
+              horrible = false;
+              break;
 
-	    default:
-	      t = time(0) - startTime;
+            default:
+              t = time(0) - startTime;
 
-	      LOG_TOPIC(ERR, Logger::STARTUP) << "child " << _clientPid
-					      << " died a horrible death, signal "
-					      << WTERMSIG(status);
+              LOG_TOPIC(ERR, Logger::STARTUP) << "child " << _clientPid
+                                              << " died a horrible death, signal "
+                                              << WTERMSIG(status);
 
-	      if (t < MIN_TIME_ALIVE_IN_SEC) {
-		LOG_TOPIC(ERR, Logger::STARTUP)
-		    << "child only survived for " << t
-		    << " seconds, this will not work - please fix the "
-		       "error first";
-		done = true;
+              if (t < MIN_TIME_ALIVE_IN_SEC) {
+                LOG_TOPIC(ERR, Logger::STARTUP)
+                    << "child only survived for " << t
+                    << " seconds, this will not work - please fix the "
+                       "error first";
+                done = true;
 
 #ifdef WCOREDUMP
-		if (WCOREDUMP(status)) {
-		  LOG_TOPIC(WARN, Logger::STARTUP) << "child process "
-						   << _clientPid
-						   << " produced a core dump";
-		}
+                if (WCOREDUMP(status)) {
+                  LOG_TOPIC(WARN, Logger::STARTUP) << "child process "
+                                                   << _clientPid
+                                                   << " produced a core dump";
+                }
 #endif
-	      } else {
-		done = false;
-	      }
+              } else {
+                done = false;
+              }
 
-	      break;
-	  }
-	} else {
-	  LOG_TOPIC(ERR, Logger::STARTUP)
-	      << "child " << _clientPid
-	      << " died a horrible death, unknown cause";
-	  done = false;
-	}
+              break;
+          }
+        } else {
+          LOG_TOPIC(ERR, Logger::STARTUP)
+              << "child " << _clientPid
+              << " died a horrible death, unknown cause";
+          done = false;
+        }
       }
 
       if (horrible) {
@@ -238,6 +238,14 @@ void SupervisorFeature::daemonize() {
       // force child to stop if supervisor dies
       prctl(PR_SET_PDEATHSIG, SIGTERM, 0, 0, 0);
 #endif
+
+      try {
+        DaemonFeature* daemon = ApplicationServer::getFeature<DaemonFeature>("Daemon");
+
+        // disable daemon mode
+        daemon->setDaemon(false);
+      } catch (...) {
+      }
 
       return;
     }

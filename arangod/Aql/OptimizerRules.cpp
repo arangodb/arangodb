@@ -3630,7 +3630,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     auto outVariable = traversal->edgeOutVariable();
     if (outVariable != nullptr &&
         varsUsedLater.find(outVariable) == varsUsedLater.end()) {
-      // traversal vertex outVariable not used later
+      // traversal edge outVariable not used later
       traversal->setEdgeOutput(nullptr);
       modified = true;
     }
@@ -3638,7 +3638,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     outVariable = traversal->pathOutVariable();
     if (outVariable != nullptr &&
         varsUsedLater.find(outVariable) == varsUsedLater.end()) {
-      // traversal vertex outVariable not used later
+      // traversal path outVariable not used later
       traversal->setPathOutput(nullptr);
       modified = true;
     }
@@ -3653,6 +3653,52 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     for (auto const& n : nodes) {
       TraversalConditionFinder finder(plan, &modified);
       n->walk(&finder);
+    }
+  }
+  
+    
+  // now check if we can use an optimized version of the neighbors search...
+  if (!arangodb::ServerState::instance()->isRunningInCluster()) {
+    for (auto const& n : tNodes) {
+      TraversalNode* traversal = static_cast<TraversalNode*>(n);
+
+      if (traversal->edgeOutVariable() != nullptr ||
+          traversal->pathOutVariable() != nullptr) {
+        // traversal produces edges or paths
+        continue;
+      }
+      
+      if (traversal->maxDepth() > 100) {
+        // neighbors search is recursive... do not use recursive version if
+        // depth is potentially high
+        continue;
+      }
+
+      if (!traversal->expressions()->empty()) {
+        // traversal has filter expressions
+        continue;
+      }
+      
+      if (!traversal->allDirectionsEqual()) {
+        // not all directions are equal
+        continue;
+      }
+      
+      TraversalOptions const* options = traversal->options();
+      TRI_ASSERT(options != nullptr);
+
+      if (options->uniqueVertices != traverser::TraverserOptions::GLOBAL ||
+          options->uniqueEdges != traverser::TraverserOptions::NONE) {
+        // neighbors search is hard-coded to global vertex uniqueness
+        continue;
+      }
+
+      if (!options->useBreadthFirst) {
+        continue;
+      }
+
+      traversal->specializeToNeighborsSearch();
+      modified = true;
     }
   }
 

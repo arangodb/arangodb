@@ -492,7 +492,8 @@ Transaction::Transaction(std::shared_ptr<TransactionContext> transactionContext)
       _trx(nullptr),
       _vocbase(transactionContext->vocbase()),
       _resolver(nullptr),
-      _transactionContext(transactionContext) {
+      _transactionContext(transactionContext),
+      _transactionContextPtr(transactionContext.get()) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_transactionContext != nullptr);
 
@@ -575,6 +576,10 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING ||
              getStatus() == TRI_TRANSACTION_CREATED);
 
+  if (_ditchCache.cid == cid) {
+    return _ditchCache.ditch;
+  }
+
   TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
 
   if (trxCollection == nullptr) {
@@ -592,6 +597,10 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
   if (ditch == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+
+  _ditchCache.cid = cid;
+  _ditchCache.ditch = ditch;
+
   return ditch;
 }
   
@@ -729,7 +738,7 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
   if (slice.isObject()) {
     key = slice.get(StaticStrings::KeyString);
   } else if (base.isObject()) {
-    key = base.get(StaticStrings::KeyString);
+    key = extractKeyFromDocument(base);
   } else if (base.isExternal()) {
     key = base.resolveExternal().get(StaticStrings::KeyString);
   }
@@ -1163,7 +1172,7 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   }
 
   return OperationResult(resultBuilder.steal(),
-                         transactionContext()->orderCustomTypeHandler(), "",
+                         _transactionContextPtr->orderCustomTypeHandler(), "",
                          TRI_ERROR_NO_ERROR, false);
 }
 
@@ -1172,9 +1181,16 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
 //////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t Transaction::addCollectionAtRuntime(std::string const& collectionName) {
+  if (collectionName == _collectionCache.name && !collectionName.empty()) {
+    return _collectionCache.cid;
+  }
+
   auto t = dynamic_cast<SingleCollectionTransaction*>(this);
   if (t != nullptr) {
-    return t->cid();
+    TRI_voc_cid_t cid = t->cid();
+    _collectionCache.cid = cid;
+    _collectionCache.name = collectionName;
+    return cid;
   } 
   
   auto cid = resolver()->getCollectionIdLocal(collectionName);
@@ -1183,7 +1199,10 @@ TRI_voc_cid_t Transaction::addCollectionAtRuntime(std::string const& collectionN
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
                                   collectionName.c_str());
   }
-  return addCollectionAtRuntime(cid, collectionName);
+  addCollectionAtRuntime(cid, collectionName);
+  _collectionCache.cid = cid;
+  _collectionCache.name = collectionName;
+  return cid;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1503,7 +1522,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   TIMER_STOP(TRANSACTION_DOCUMENT_LOCAL);
 
   return OperationResult(resultBuilder.steal(), 
-                         transactionContext()->orderCustomTypeHandler(), "",
+                         _transactionContextPtr->orderCustomTypeHandler(), "",
                          res, options.waitForSync, countErrorCodes); 
 }
 
@@ -2457,7 +2476,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   }
 
   return OperationResult(resultBuilder.steal(),
-                         transactionContext()->orderCustomTypeHandler(), "",
+                         _transactionContextPtr->orderCustomTypeHandler(), "",
                          TRI_ERROR_NO_ERROR, false);
 }
 
@@ -2852,7 +2871,7 @@ OperationCursor* Transaction::indexScanForCondition(
   }
 
   return new OperationCursor(
-      transactionContext()->orderCustomTypeHandler(), iterator.release(), limit,
+      _transactionContextPtr->orderCustomTypeHandler(), iterator.release(), limit,
       batchSize);
 }
 
@@ -2944,7 +2963,7 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
   iterator->skip(skip, unused);
 
   return std::make_shared<OperationCursor>(
-      transactionContext()->orderCustomTypeHandler(), iterator.release(), limit,
+      _transactionContextPtr->orderCustomTypeHandler(), iterator.release(), limit,
       batchSize);
 }
   
@@ -3415,7 +3434,7 @@ void Transaction::freeTransaction() {
 //////////////////////////////////////////////////////////////////////////////
 
 StringBufferLeaser::StringBufferLeaser(arangodb::Transaction* trx) 
-      : _transactionContext(trx->transactionContext().get()), 
+      : _transactionContext(trx->transactionContextPtr()),
         _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
 }
 
@@ -3441,7 +3460,7 @@ StringBufferLeaser::~StringBufferLeaser() {
 //////////////////////////////////////////////////////////////////////////////
 
 TransactionBuilderLeaser::TransactionBuilderLeaser(arangodb::Transaction* trx) 
-      : _transactionContext(trx->transactionContext().get()), 
+      : _transactionContext(trx->transactionContextPtr()), 
         _builder(_transactionContext->leaseBuilder()) {
 }
 

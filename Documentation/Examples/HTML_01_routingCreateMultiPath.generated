@@ -1,0 +1,32 @@
+arangosh&gt; db._routing.save({ 
+........&gt;  url: { match: <span class="hljs-string">"/hello/world"</span> },
+........&gt; content: { contentType: <span class="hljs-string">"text/plain"</span>, body: <span class="hljs-string">"Match No 1"</span>} });
+{ 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/102"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"102"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"102"</span> 
+}
+arangosh&gt; db._routing.save({ 
+........&gt;  url: { match: <span class="hljs-string">"/hello/:name"</span>, constraint: { name: <span class="hljs-string">"/[a-z]+/"</span> } },
+........&gt; content: { contentType: <span class="hljs-string">"text/plain"</span>, body: <span class="hljs-string">"Match No 2"</span>} });
+{ 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/105"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"105"</span> 
+}
+arangosh&gt; db._routing.save({ 
+........&gt;  url: { match: <span class="hljs-string">"/:something/world"</span> },
+........&gt; content: { contentType: <span class="hljs-string">"text/plain"</span>, body: <span class="hljs-string">"Match No 3"</span>} });
+{ 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/108"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"108"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"108"</span> 
+}
+arangosh&gt; db._routing.save({ 
+........&gt;  url: { match: <span class="hljs-string">"/hi/*"</span> },
+........&gt; content: { contentType: <span class="hljs-string">"text/plain"</span>, body: <span class="hljs-string">"Match No 4"</span>} });
+{ 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/111"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"111"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"111"</span> 
+}

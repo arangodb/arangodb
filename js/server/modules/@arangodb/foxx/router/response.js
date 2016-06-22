@@ -234,20 +234,23 @@ module.exports = class SyntheticResponse {
     return this;
   }
 
-  status(statusCode) {
-    if (typeof statusCode === 'string') {
-      statusCode = statuses(statusCode);
+  status(status) {
+    if (typeof status === 'string') {
+      status = statuses(status);
     }
-    this.statusCode = statusCode;
+    this.statusCode = status;
     return this;
   }
 
-  vary(value) {
-    const header = this.getHeader('vary');
-    if (header) {
-      value = vary.append(header, value);
+  vary(values) {
+    let header = this.getHeader('vary') || '';
+    if (!Array.isArray(values)) {
+      values = Array.prototype.slice.call(arguments);
     }
-    this.setHeader('vary', value);
+    for (const value of values) {
+      header = vary.append(header, value);
+    }
+    this.setHeader('vary', header);
     return this;
   }
 
@@ -292,26 +295,26 @@ module.exports = class SyntheticResponse {
     return this;
   }
 
-  throw(status, reason, args) {
+  throw(status, reason, options) {
     if (typeof status === 'string') {
       status = statuses(status);
     }
     if (reason instanceof Error) {
       const err = reason;
       reason = err.message;
-      args = Object.assign({
+      options = Object.assign({
         cause: err,
         errorNum: err.errorNum
-      }, args);
+      }, options);
     }
     if (reason && typeof reason === 'object') {
-      args = reason;
+      options = reason;
       reason = undefined;
     }
     throw Object.assign(
       httperr(status, reason),
       {statusCode: status, status},
-      args
+      options
     );
   }
 

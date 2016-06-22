@@ -239,6 +239,11 @@ struct AqlValue final {
     return arangodb::velocypack::Slice(_data.internal).isNone();
   }
   
+  /// @brief whether or not the value is a pointer
+  inline bool isPointer() const noexcept {
+    return type() == VPACK_SLICE_POINTER;
+  }
+  
   /// @brief whether or not the value is a range
   inline bool isRange() const noexcept {
     return type() == RANGE;

@@ -794,9 +794,15 @@
       );
     },
     
-    download: function(url) {
+    download: function(url, callback) {
       $.ajax(url)
       .success(function(result, dummy, request) {
+
+        if (callback) {
+          callback(result);
+          return;
+        }
+
         var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader("Content-Type") || "application/octet-stream"});
         var blobUrl = window.URL.createObjectURL(blob);
         var a = document.createElement("a");

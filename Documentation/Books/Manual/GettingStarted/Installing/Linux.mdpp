@@ -6,6 +6,11 @@
 - Follow the instructions to use your favorite package manager for the
   major distributions. After setting up the ArangoDB repository you can
   easily install ArangoDB using yum, aptitude, urpmi or zypper.
+- Debian based packages will ask for a password during installation. For an
+  unattended installation for Debian, see [below](#unattended-installation).
+  Red-Hat based packages will set a random password during installation.
+  For other distributions or to change the password, run
+  `arango-secure-installation` to set a root password. 
 - Alternatively, see [Compiling](Compiling.md) if you want to build ArangoDB
   yourself.
 - Start up the database server.
@@ -26,6 +31,28 @@ You may require root privileges to execute these commands.
 !SECTION Linux Mint
 
 Please use the corresponding Ubuntu or Debian packages.
+
+!SECTION Unattended Installation
+
+Debian based package will ask for a password during installation.
+For unattended installation, you can set the password using the
+[debconf helpers](http://www.microhowto.info/howto/perform_an_unattended_installation_of_a_debian_package.html).
+
+```
+echo arangodb3 arangodb/password password NEWPASSWORD | debconf-set-selections
+echo arangodb3 arangodb/password_again password NEWPASSWORD | debconf-set-selections
+```
+
+The commands should be executed prior to the installation.
+
+Red-Hat based packages will set a random password during installation.
+If you want to force a password, execute
+
+```
+ARANGODB_DEFAULT_ROOT_PASSWORD=NEWPASSWORD arango-secure-installation
+```
+
+The command should be executed after the installation.
 
 !SECTION Non-Standard Installation
 

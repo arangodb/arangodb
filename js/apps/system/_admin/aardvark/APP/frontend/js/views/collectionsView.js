@@ -546,7 +546,7 @@
               if (!$('#select2-search-field input').is(':focus')) {
                 window.setTimeout(function() {
                   $(e.currentTarget).parent().parent().parent().select2('close');
-                }, 80);
+                }, 200);
               }
             }
           });

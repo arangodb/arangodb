@@ -395,8 +395,8 @@ module.exports = exports = class SwaggerContext {
     }
 
     operation.responses = {
-      default: {
-        description: 'Unexpected error.',
+      500: {
+        description: 'Default error response.',
         schema: joi2schema(DEFAULT_ERROR_SCHEMA)
       }
     };

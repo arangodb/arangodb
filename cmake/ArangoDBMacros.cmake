@@ -2,6 +2,7 @@ include(GNUInstallDirs)
 
 # install the visual studio runtime:
 if (MSVC)
+  set(CMAKE_INSTALL_UCRT_LIBRARIES 1)
   include(InstallRequiredSystemLibraries)
   INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION bin COMPONENT Libraries)
   INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT} DESTINATION bin COMPONENT Libraries)

@@ -28,6 +28,7 @@ const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
 const internal = require('internal');
+const crypto = require('@arangodb/crypto');
 const marked = require('marked');
 const highlightAuto = require('highlight.js').highlightAuto;
 const errors = require('@arangodb').errors;
@@ -50,7 +51,8 @@ router.use((req, res, next) => {
     }
   }
   next();
-});
+})
+.header('authorization', joi.string().required(), 'ArangoDB credentials.');
 
 
 const foxxRouter = createRouter();
@@ -303,20 +305,6 @@ foxxRouter.patch('/devel', function (req, res) {
 `);
 
 
-foxxRouter.get('/download/zip', function (req, res) {
-  const mount = decodeURIComponent(req.queryParams.mount);
-  const service = FoxxManager.lookupService(mount);
-  const dir = fs.join(fs.makeAbsolute(service.root), service.path);
-  const zipPath = fmUtils.zipDirectory(dir);
-  const name = mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
-  res.download(zipPath, `${name}_${service.manifest.version}.zip`);
-})
-.summary('Download a service as zip archive')
-.description(dd`
-  Download a foxx service packed in a zip archive.
-`);
-
-
 router.get('/fishbowl', function (req, res) {
   try {
     FoxxManager.update();
@@ -331,13 +319,45 @@ router.get('/fishbowl', function (req, res) {
 `);
 
 
+router.post('/download/nonce', function (req, res) {
+  const nonce = crypto.createNonce();
+  res.status('created');
+  res.json({nonce});
+})
+.response('created', joi.object({nonce: joi.string().required()}).required(), 'The created nonce.')
+.summary('Creates a nonce for downloading the service')
+.description(dd`
+  Creates a cryptographic nonce that can be used to download the service without authentication.
+`);
+
+
+anonymousRouter.get('/download/zip', function (req, res) {
+  const nonce = decodeURIComponent(req.queryParams.nonce);
+  const checked = nonce && crypto.checkAndMarkNonce(nonce);
+  if (!checked) {
+    res.throw(403, 'Nonce missing or invalid');
+  }
+  const mount = decodeURIComponent(req.queryParams.mount);
+  const service = FoxxManager.lookupService(mount);
+  const dir = fs.join(fs.makeAbsolute(service.root), service.path);
+  const zipPath = fmUtils.zipDirectory(dir);
+  const name = mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
+  res.download(zipPath, `${name}_${service.manifest.version}.zip`);
+})
+.queryParam('nonce', joi.string().required(), 'Cryptographic nonce that authorizes the download.')
+.summary('Download a service as zip archive')
+.description(dd`
+  Download a foxx service packed in a zip archive.
+`);
+
+
 anonymousRouter.get('/docs/standalone/*', module.context.apiDocumentation(
   (req, res) => {
     if (req.suffix === 'swagger.json' && !req.arangoUser) {
       res.throw('unauthorized');
     }
     return {
-      appPath: decodeURIComponent(req.queryParams.mount)
+      mount: decodeURIComponent(req.queryParams.mount)
     };
   }
 ));
@@ -349,7 +369,7 @@ anonymousRouter.get('/docs/*', module.context.apiDocumentation(
       res.throw('unauthorized');
     }
     return {
-      appPath: decodeURIComponent(req.queryParams.mount),
+      mount: decodeURIComponent(req.queryParams.mount),
       indexFile: 'index-alt.html'
     };
   }

@@ -2,9 +2,28 @@
 
 Welcome to the ArangoDB documentation!
 
-The documentation introduces ArangoDB for you as a user, developer and administrator and describes all of its functions in detail. 
+New and eager to try out ArangoDB? Start right away with our beginner's guide:
+[Getting Started](GettingStarted/README.md)
 
-New and eager to try it out? Start right away with our beginner's guide: [Getting Started](GettingStarted/README.md)
+The documentation is organized in four handbooks:
+
+- This manual describes ArangoDB and its features in detail for you as a user,
+  developer and administrator.
+- The [AQL handbook](../AQL/index.html) explains ArangoDB's query language AQL.
+- The [HTTP handbook](../HTTP/index.html) describes the internal API of ArangoDB
+  that is used to communicate with clients. In general, the HTTP handbook will be
+  of interest to driver developers. If you use any of the existing drivers for
+  the language of your choice, you can skip this handbook.
+- Our [cookbook](../cookbook/index.html) with recipes for specific problems and
+  solutions.
+
+Features are illustrated with interactive usage examples; you can cut'n'paste them
+into [arangosh](Administration/Arangosh/README.md) to try them out. The HTTP
+[REST-API](../HTTP/index.html) for driver developers is demonstrated with cut'n'paste
+recepies intended to be used with the [cURL](http://curl.haxx.se). Drivers may provide
+their own examples based on these .js based examples to improve understandeability
+for their respective users, i.e. for the [java driver](https://github.com/arangodb/arangodb-java-driver#learn-more)
+some of the samples are re-implemented.
 
 !SUBSECTION Overview
 
@@ -23,12 +42,6 @@ Key features include:
 * JavaScript for all: **no language zoo**, you can use one language from your browser to your back-end
 * It is **open source** (Apache License 2.0)
 
-!SUBSECTION Structure of the Documentation
-
-In this documentation you can inform yourself about all the functions, features and programs ArangoDB provides for you.  There are four handbooks: this manual which describes ArangoDB and its features in detail. The [AQL handbook](../AQL/index.html) explains the query language AQL of ArangoDB. The [HTTP handbook](../HTTP/index.html) which describes the internal API of ArangoDB that is used to communicate with clients. In general, the HTTP handbook will be of interest to driver developers. If you use any of the existing drivers for the language of your choice, you can skip this handbook. You can also go to our [cookbook](https://docs.arangodb.com/cookbook) and look through some recipes to learn more about ArangoDB specific problems and solutions.
-
-Features are illustrated with interactive usage examples; you can cut'n'paste them into [arangosh](Administration/Arangosh/README.md) to try them out. The http [REST-API](../HTTP/index.html) for driver developers is demonstrated with cut'n'paste recepies intended to be used with the [cURL](http://curl.haxx.se). Drivers may provide their own examples based on these .js based examples to improve understandeability for their respective users. I.e. for the [java driver](https://github.com/arangodb/arangodb-java-driver#learn-more) some of the samples are re-implemented.
-
 !SUBSECTION Community
 
 If you have questions regarding ArangoDB, Foxx, drivers, or this documentation don't hesitate to contact us on:
@@ -38,16 +51,14 @@ If you have questions regarding ArangoDB, Foxx, drivers, or this documentation d
 - [StackOverflow](http://stackoverflow.com/questions/tagged/arangodb) for questions about AQL, usage scenarios etc.
 - [Slack](http://slack.arangodb.com), our community chat
 
-Please describe:
+When reporting issues, please describe:
 
 - the environment you run ArangoDB in
 - the ArangoDB version you use
 - whether you're using Foxx
 - the client you're using
-- which parts of the Documentation you're working with (link)
+- which parts of the documentation you're working with (link)
 - what you expect to happen
-- whats actually happening
+- what is actually happening
 
 We will respond as soon as possible.
-
-

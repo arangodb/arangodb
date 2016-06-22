@@ -1,7 +1,7 @@
 !CHAPTER Managing Users
 
 The user management in ArangoDB 3 is similar to the one found in
-MYSQL, Postgres, or other database systems.
+MySQL, Postgres, or other database systems.
 
 An ArangoDB server contains a list of users. Each user can have access
 to one or more databases (or none for that matter).
