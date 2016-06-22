@@ -40,7 +40,6 @@
     toggleSwagger: function() {
 
       var callbackFunction = function(json) {
-        console.log(json);
         $('#jsonLink').html('JSON');
         this.jsonEditor.setValue(JSON.stringify(json, null, "\t"), 1);
         $('#swaggerJsonContent').show();
