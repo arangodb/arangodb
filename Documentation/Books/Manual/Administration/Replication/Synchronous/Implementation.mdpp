@@ -20,14 +20,21 @@ The following example will give you an idea of how synchronous operation has bee
 
     127.0.0.1:8530@_system> db.test.insert({"replication": "😎"})
 
-4. The coordinator will write the data to the leader and the follower
-5. Only if both were successful the result will be successful
+4. The coordinator will write the data to the leader, which in turn will
+replicate it to the follower
+5. Only when both were successful the result is reported to be successful
 
     { 
         "_id" : "test/7987", 
         "_key" : "7987", 
         "_rev" : "7987" 
     }
+
+   When a follower fails, the leader will give up on it after 3 seconds
+   and proceed with the operation. As soon as the follower (or the network
+   connection to the leader) is back up, the two will resynchronize and
+   synchronous replication is resumed. This happens all transparently
+   to the client.
 
 !SUBSECTION Automatic failover
 
