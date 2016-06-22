@@ -2395,7 +2395,7 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("write(<filename>, <content>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("append(<filename>, <content>)");
   }
 
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
@@ -2435,7 +2435,7 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
     file.open(*name, std::ios::out | std::ios::binary | std::ios::app);
 
     if (file.is_open()) {
-      file << *content;
+      file.write(*content, content.length());
       file.close();
       TRI_V8_RETURN_TRUE();
     }
