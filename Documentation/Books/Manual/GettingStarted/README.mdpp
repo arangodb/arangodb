@@ -80,6 +80,8 @@ password is empty (see [above](#securing-the-installation)).
 Next you will be asked which database to use. Every server instance comes with
 a `_system` database. Select this database to continue.
 
+![select database](../Administration/WebInterface/images/selectDBView.png)
+
 You should then be presented the dashboard with server statistics like this:
 
 ![Aardvark Dashboard Request Statistics](../Administration/WebInterface/images/dashboardView.png)
