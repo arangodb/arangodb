@@ -173,8 +173,9 @@ HttpHandler::status_t RestAgencyHandler::handleWrite() {
           } catch (std::exception const& e) {
             LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
           }
-          std::this_thread::sleep_for(duration_t(2));
+
           if (max_index > 0) {
+            std::this_thread::sleep_for(duration_t(5));
             _agent->waitFor(max_index);
           }
         }

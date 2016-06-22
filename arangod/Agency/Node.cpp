@@ -521,7 +521,15 @@ bool Node::handle<UNOBSERVE>(VPackSlice const& slice) {
 /// Remove observer for this node
 template <>
 bool Node::handle<IN>(VPackSlice const& slice) {
-  return true;
+  if (this->slice().isArray()) {
+    for (auto const& elem : VPackArrayIterator(this->slice())) {
+      if (elem == this->slice()) {
+        return true;
+      }
+    }
+    return false;
+  }
+  return (slice == this->slice());
 }
 
 
