@@ -1,6 +1,4 @@
-
 @startDocuBlock server_authentication
-@brief disable authentication for ALL client requests
 `--server.authentication`
 
 Setting this option to *false* will turn off authentication on the server side
