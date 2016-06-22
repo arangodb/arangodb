@@ -11,7 +11,7 @@ here. For a list of bugfixes, please consult the
 
 AQL offers a new feature to traverse over a graph without writing JavaScript functions
 but with all the other features you know from AQL. For this purpose, a special version of 
-`FOR variable-name IN expression` has been introduced.
+`FOR variableName IN expression` has been introduced.
 
 This special version has the following format: `FOR vertex-variable, edge-variable, path-variable IN traversal-expression`,
 where `traversal-expression` has the following format:
@@ -31,7 +31,7 @@ The three output variables have the following semantics:
 * edge-variable: The last visited edge (optional).
 * path-variable: The complete path from start-vertex to vertex-variable (optional).
 
-The traversal statement can be used in the same way as the original `FOR variable-name IN expression`,
+The traversal statement can be used in the same way as the original `FOR variableName IN expression`,
 and can be combined with filters and other AQL constructs.
 
 As an example one can now find the friends of a friend for a certain user with this AQL statement:

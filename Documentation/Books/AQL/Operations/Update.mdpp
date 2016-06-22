@@ -15,7 +15,7 @@ The two syntaxes for an update operation are:
 
 ```
 UPDATE document IN collection options
-UPDATE key-expression WITH document IN collection options
+UPDATE keyExpression WITH document IN collection options
 ```
 
 *collection* must contain the name of the collection in which the documents should
@@ -36,7 +36,7 @@ FOR u IN users
   UPDATE { name: CONCAT(u.firstName, u.lastName) } IN users
 ```
 
-When using the second syntax, *key-expression* provides the document identification.
+When using the second syntax, *keyExpression* provides the document identification.
 This can either be a string (which must then contain the document key) or a
 document, which must contain a *_key* attribute.
 
@@ -142,8 +142,8 @@ in the update expression.
 ```
 UPDATE document IN collection options RETURN OLD
 UPDATE document IN collection options RETURN NEW
-UPDATE key-expression WITH document IN collection options RETURN OLD
-UPDATE key-expression WITH document IN collection options RETURN NEW
+UPDATE keyExpression WITH document IN collection options RETURN OLD
+UPDATE keyExpression WITH document IN collection options RETURN NEW
 ```
 
 Following is an example using a variable named `previous` to capture the original

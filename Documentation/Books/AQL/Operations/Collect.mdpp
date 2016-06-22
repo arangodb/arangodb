@@ -10,21 +10,23 @@ available.
 The general syntaxes for *COLLECT* are:
 
 ```
-COLLECT variable-name = expression options
-COLLECT variable-name = expression INTO groups-variable options
-COLLECT variable-name = expression INTO groups-variable = projection-expression options
-COLLECT variable-name = expression INTO groups-variable KEEP keep-variable options
-COLLECT variable-name = expression WITH COUNT INTO count-variable options
-COLLECT variable-name = expression AGGREGATE variable-name = aggregate-expression options
-COLLECT AGGREGATE variable-name = aggregate-expression options
-COLLECT WITH COUNT INTO count-variable options
+COLLECT variableName = expression options
+COLLECT variableName = expression INTO groupsVariable options
+COLLECT variableName = expression INTO groupsVariable = projectionExpression options
+COLLECT variableName = expression INTO groupsVariable KEEP keepVariable options
+COLLECT variableName = expression WITH COUNT INTO countVariable options
+COLLECT variableName = expression AGGREGATE variableName = aggregateExpression options
+COLLECT AGGREGATE variableName = aggregateExpression options
+COLLECT WITH COUNT INTO countVariable options
 ```
+
+`options` is optional in all variants.
 
 !SUBSECTION Grouping syntaxes
 
 The first syntax form of *COLLECT* only groups the result by the defined group 
 criteria specified in *expression*. In order to further process the results 
-produced by *COLLECT*, a new variable (specified by *variable-name*) is introduced. 
+produced by *COLLECT*, a new variable (specified by *variableName*) is introduced. 
 This variable contains the group value.
 
 Here's an example query that find the distinct values in *u.city* and makes
@@ -39,8 +41,8 @@ FOR u IN users
 ```
 
 The second form does the same as the first form, but additionally introduces a
-variable (specified by *groups-variable*) that contains all elements that fell into the
-group. This works as follows: The *groups-variable* variable is an array containing 
+variable (specified by *groupsVariable*) that contains all elements that fell into the
+group. This works as follows: The *groupsVariable* variable is an array containing 
 as many elements as there are in the group. Each member of that array is
 a JSON object in which the value of every variable that is defined in the 
 AQL query is bound to the corresponding attribute. Note that this considers
@@ -84,8 +86,8 @@ will be returned.
 
 !SUBSECTION Discarding obsolete variables
 
-The third form of *COLLECT* allows rewriting the contents of the *groups-variable* 
-using an arbitrary *projection-expression*:
+The third form of *COLLECT* allows rewriting the contents of the *groupsVariable* 
+using an arbitrary *projectionExpression*:
 
 ```
 FOR u IN users
@@ -97,10 +99,10 @@ FOR u IN users
   }
 ```
 
-In the above example, only the *projection-expression* is *u.name*. Therefore,
-only this attribute is copied into the *groups-variable* for each document. 
+In the above example, only the *projectionExpression* is *u.name*. Therefore,
+only this attribute is copied into the *groupsVariable* for each document. 
 This is probably much more efficient than copying all variables from the scope into 
-the *groups-variable* as it would happen without a *projection-expression*.
+the *groupsVariable* as it would happen without a *projectionExpression*.
 
 The expression following *INTO* can also be used for arbitrary computations:
 
@@ -120,13 +122,13 @@ FOR u IN users
 *COLLECT* also provides an optional *KEEP* clause that can be used to control
 which variables will be copied into the variable created by `INTO`. If no 
 *KEEP* clause is specified, all variables from the scope will be copied as 
-sub-attributes into the *groups-variable*. 
+sub-attributes into the *groupsVariable*. 
 This is safe but can have a negative impact on performance if there 
 are many variables in scope or the variables contain massive amounts of data. 
 
-The following example limits the variables that are copied into the *groups-variable*
+The following example limits the variables that are copied into the *groupsVariable*
 to just *name*. The variables *u* and *someCalculation* also present in the scope
-will not be copied into *groups-variable* because they are not listed in the *KEEP* clause:
+will not be copied into *groupsVariable* because they are not listed in the *KEEP* clause:
 
 ```
 FOR u IN users

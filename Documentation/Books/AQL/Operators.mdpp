@@ -144,7 +144,7 @@ Some examples for logical operations in AQL:
     ! u.isInvalid
     1 || ! 0
 
-Passing non-boolean values to a logical operator is allowed. Any-non boolean operands 
+Passing non-boolean values to a logical operator is allowed. Any non-boolean operands 
 will be casted to boolean implicitly by the operator, without making the query abort.
 
 The *conversion to a boolean value* works as follows:
