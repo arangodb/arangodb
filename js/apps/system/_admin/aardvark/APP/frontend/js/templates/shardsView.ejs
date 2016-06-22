@@ -36,16 +36,16 @@
           <% var counter = 0; %>
           <% _.each(collection.Plan, function(shard, name) { %>
             <div class="pure-g pure-table pure-table-body">
-              <div class="pure-table-row" collection="<%= collectionName %>" shard="<%= name %>" leader="<%= shard.leader%>">
+              <div class="pure-table-row noHover" collection="<%= collectionName %>" shard="<%= name %>" leader="<%= shard.leader%>">
 
-                <% if (name.substring(0,1) === '_') { %>
-                <%   name = name.slice(1) %>
+                <% if (shard.leader.substring(0,1) === '_') { %>
+                <%   shard.leader = shard.leader.slice(1) %>
                 <% } %>
 
                 <div class="<%= genClass1 %> left"><%= name %></div>
 
                 <% if (name === Object.keys(collection.Current)[counter]) { %>
-                  <div class="<%= genClass1 %> positive left"><%= shard.leader %></div>
+                  <div class="shardLeader <%= genClass1 %> positive left"><span><%= shard.leader %></span></div>
                 <% } else { %>
                   <div class="<%= genClass1 %> negative left"><%= shard.leader %></div>
                 <% } %>
@@ -68,18 +68,18 @@
                     <% var counter2 = 0; %>
                     <% _.each(shard.followers, function(db) {  %>
                       <% if (shard.followers.length === 1) { %>
-                        <% string += db + " "; %>
+                        <% string += '<span>' + db + '</span> '; %>
                       <% } else { %>
 
                         <% if (counter2 === 0) { %>
-                          <% string += db; counter2++; %>
+                          <% string += '<span>' + db + '</span>'; counter2++; %>
                         <% } else { %>
-                          <% string += ", " + db; %>
+                          <% string += ", " + '<span>' + db + '</span>'; %>
                         <% } %>
                       <% } %>
                     <% });  %>
                     
-                    <div class="<%= genClass2 %> left"><%= string %></div>
+                    <div class="shardFollowers <%= genClass2 %> left"><%= string %></div>
                   <% } %>
                 <% } %>
 

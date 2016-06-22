@@ -50,8 +50,7 @@ enum Operation {
   PREPEND,
   SHIFT,
   OBSERVE,
-  UNOBSERVE,
-  IN_OP // thanks to windows.h
+  UNOBSERVE
 };
 
 using namespace arangodb::velocypack;

@@ -353,7 +353,7 @@ anonymousRouter.get('/download/zip', function (req, res) {
 
 anonymousRouter.get('/docs/standalone/*', module.context.apiDocumentation(
   (req, res) => {
-    if (req.suffix === 'swagger.json' && !req.arangoUser) {
+    if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
       res.throw('unauthorized');
     }
     return {
@@ -365,7 +365,7 @@ anonymousRouter.get('/docs/standalone/*', module.context.apiDocumentation(
 
 anonymousRouter.get('/docs/*', module.context.apiDocumentation(
   (req, res) => {
-    if (req.suffix === 'swagger.json' && !req.arangoUser) {
+    if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
       res.throw('unauthorized');
     }
     return {
