@@ -2221,7 +2221,17 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
       auto it = _shardIds.find(shardID);
 
       if (it != _shardIds.end()) {
-        return (*it).second;
+        auto serverList = (*it).second;
+        if (serverList != nullptr && serverList->size() > 0 &&
+            (*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
+          // This is a temporary situation in which the leader has already
+          // resigned, let's wait half a second and try again.
+          --tries;
+          LOG(INFO) << "getResponsibleServer: found resigned leader, waiting for half a second...";
+          usleep(500000);
+        } else {
+          return (*it).second;
+        }
       }
     }
 
