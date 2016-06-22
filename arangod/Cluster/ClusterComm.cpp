@@ -963,8 +963,9 @@ bool ClusterComm::moveFromSendToReceived(OperationID operationID) {
   CONDITION_LOCKER(locker, somethingReceived);
   CONDITION_LOCKER(sendLocker, somethingToSend);
 
-  IndexIterator i = toSendByOpID.find(operationID);  // cannot fail
-  TRI_ASSERT(i != toSendByOpID.end());
+  IndexIterator i = toSendByOpID.find(operationID);  // cannot fail 
+  // TRI_ASSERT(i != toSendByOpID.end());
+  //KV: Except the operation has been dropped in the meantime
 
   QueueIterator q = i->second;
   ClusterCommOperation* op = *q;

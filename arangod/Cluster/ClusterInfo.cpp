@@ -961,16 +961,12 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
     CONDITION_LOCKER(locker, agencyCallback->_cv);
     while (true) {
       if (dbServerResult >= 0) {
-        AgencyCommLocker locker("Current", "WRITE");
-        if (locker.successful()) {
-          res = ac.removeValues(where, true);
-          if (res.successful()) {
-            return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-          }
-          return setErrormsg(
-              TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT, errorMsg);
+        res = ac.removeValues(where, true);
+        if (res.successful()) {
+          return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
-        return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+        return setErrormsg(
+          TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT, errorMsg);
       }
 
       if (TRI_microtime() > endTime) {
@@ -1148,20 +1144,18 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   std::function<bool(VPackSlice const& result)> dbServerChanged = [&](VPackSlice const& result) {
     if (result.isObject() && result.length() == 0) {
       // ...remove the entire directory for the collection
-      AgencyCommLocker locker("Current", "WRITE");
-      if (locker.successful()) {
-        AgencyCommResult res;
-        res = ac.removeValues(
-            "Current/Collections/" + databaseName + "/" + collectionID, true);
-        if (res.successful()) {
-          dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-          return true;
-        }
-        dbServerResult = setErrormsg(
-            TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT,
-            errorMsg);
+      AgencyCommResult res;
+      res = ac.removeValues(
+        "Current/Collections/" + databaseName + "/" + collectionID, true);
+      if (res.successful()) {
+        dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         return true;
       }
+      dbServerResult = setErrormsg(
+        TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT,
+        errorMsg);
+      return true;
+      
       loadCurrent();
       dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       return true;
@@ -1182,29 +1176,19 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
       ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
+
+  // Transact to agency
+  AgencyOperation delPlanCollection(
+    "Plan/Collections/" + databaseName + "/" + collectionID,
+    AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation incrementVersion(
+    "Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
+  AgencyPrecondition precondition = AgencyPrecondition(
+    "Plan/Databases/" + databaseName, AgencyPrecondition::EMPTY, false);
+  AgencyWriteTransaction trans(
+    {delPlanCollection, incrementVersion},precondition);
+  res = ac.sendTransactionWithFailover(trans);
   
-  {
-    AgencyCommLocker locker("Plan", "WRITE");
-
-    if (!locker.successful()) {
-      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
-    }
-
-    if (!ac.exists("Plan/Databases/" + databaseName)) {
-      return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    }
-
-    res = ac.removeValues(
-        "Plan/Collections/" + databaseName + "/" + collectionID, false);
-    if (!res.successful()) {
-      if (res._statusCode == (int) GeneralResponse::ResponseCode::NOT_FOUND) {
-        return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
-      }
-      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,
-                         errorMsg);
-    }
-  }
-
   // Update our own cache:
   loadPlan();
 
