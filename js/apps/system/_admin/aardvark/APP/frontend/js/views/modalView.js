@@ -295,7 +295,6 @@
         }
 
       }
-        console.log(divID);
       _.each(buttons, function(b, i) {
         if (b.disabled || !b.callback) {
           return;
