@@ -86,7 +86,7 @@ term_t Agent::term() const {
 
 
 /// Agency size
-inline size_t Agent::size() const {
+size_t Agent::size() const {
   return _config.size();
 }
 

@@ -1222,6 +1222,8 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
 
   AgencyPrecondition databaseExists(
     "Plan/Databases/" + databaseName, AgencyPrecondition::EMPTY, false);
+  AgencyOperation incrementVersion(
+    "Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
   
   res = ac.getValues("Plan/Collections/" + databaseName+"/" + collectionID);
   
@@ -1264,7 +1266,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
     "Plan/Collections/" + databaseName + "/" + collectionID,
     AgencyValueOperationType::SET, copy.slice());
   
-  AgencyWriteTransaction trans (setColl, databaseExists);
+  AgencyWriteTransaction trans ({setColl, incrementVersion}, databaseExists);
 
   res = ac.sendTransactionWithFailover(trans);
   

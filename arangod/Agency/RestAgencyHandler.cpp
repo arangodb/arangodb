@@ -175,7 +175,7 @@ HttpHandler::status_t RestAgencyHandler::handleWrite() {
           }
 
           if (max_index > 0) {
-            std::this_thread::sleep_for(duration_t(5));
+            std::this_thread::sleep_for(duration_t((_agent->size()-1)*5));
             _agent->waitFor(max_index);
           }
         }
