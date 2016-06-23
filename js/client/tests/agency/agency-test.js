@@ -54,7 +54,7 @@ function agencyTestSuite () {
       var res = request({url: agencyServers[whoseTurn] + "/_api/agency/config",
                          method: "GET", followRedirects: true, body: "",
                          headers: {"Content-Type": "application/json"}});
-      wait(.25);
+      wait(0.25);
       res.bodyParsed = JSON.parse(res.body);
       if (res.bodyParsed.leaderId >= 0 && res.bodyParsed.leaderId < nagents) {
         whoseTurn = res.bodyParsed.leaderId;
