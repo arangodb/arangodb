@@ -470,14 +470,7 @@ void HeartbeatThread::removeDispatchedJob(DBServerAgencySyncResult result) {
 static std::string const prefixPlanChangeCoordinator = "Plan/Databases";
 bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "found a plan update";
-  AgencyCommResult result;
-
-  {
-    AgencyCommLocker locker("Plan", "READ");
-    if (locker.successful()) {
-      result = _agency.getValues(prefixPlanChangeCoordinator);
-    }
-  }
+  AgencyCommResult result = _agency.getValues(prefixPlanChangeCoordinator);
 
   if (result.successful()) {
     std::vector<TRI_voc_tick_t> ids;

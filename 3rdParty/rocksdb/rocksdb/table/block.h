@@ -14,10 +14,6 @@
 #include <malloc.h>
 #endif
 
-#ifndef malloc_usable_size
- extern "C" size_t malloc_usable_size(const void *ptr);
-#endif
-
 #include "db/dbformat.h"
 #include "db/pinned_iterators_manager.h"
 #include "rocksdb/iterator.h"
