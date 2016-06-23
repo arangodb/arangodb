@@ -33,6 +33,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
@@ -2322,12 +2323,12 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice);
   while (it.valid()) {
-    std::string key(it.key().copyString());
+    StringRef key(it.key());
     if (key.empty() || key[0] != '_' ||
          (key != StaticStrings::KeyString &&
           key != StaticStrings::IdString &&
           key != StaticStrings::RevString)) {
-      builder.add(std::move(key), it.value());
+      builder.add(key.data(), key.size(), it.value());
     }
     it.next();
   }
@@ -2342,14 +2343,14 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice);
   while (it.valid()) {
-    std::string key(it.key().copyString());
+    StringRef key(it.key());
     if (key.empty() || key[0] != '_' ||
          (key != StaticStrings::KeyString &&
           key != StaticStrings::IdString &&
           key != StaticStrings::RevString &&
           key != StaticStrings::FromString &&
           key != StaticStrings::ToString)) {
-      builder.add(std::move(key), it.value());
+      builder.add(key.data(), key.length(), it.value());
     }
     it.next();
   }

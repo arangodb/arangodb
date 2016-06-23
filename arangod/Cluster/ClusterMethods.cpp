@@ -24,6 +24,7 @@
 #include "ClusterMethods.h"
 #include "Basics/conversions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -878,7 +879,7 @@ int deleteDocumentOnCoordinator(
         VPackSlice const node, VPackValueLength const index) -> int {
       // Sort out the _key attribute and identify the shard responsible for it.
 
-      std::string _key(Transaction::extractKeyPart(node));
+      StringRef _key(Transaction::extractKeyPart(node));
       ShardID shardID;
       if (_key.empty()) {
         // We have invalid input at this point.
@@ -892,7 +893,7 @@ int deleteDocumentOnCoordinator(
         bool usesDefaultShardingAttributes;
         int error = ci->getResponsibleShard(
             collid, arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
-            shardID, usesDefaultShardingAttributes, _key);
+            shardID, usesDefaultShardingAttributes, _key.toString());
 
         if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
           return TRI_ERROR_CLUSTER_SHARD_GONE;

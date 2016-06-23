@@ -630,24 +630,24 @@ rocksdb::Transaction* Transaction::rocksTransaction() {
 /// @brief extract the _key attribute from a slice
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Transaction::extractKeyPart(VPackSlice const slice) {
+StringRef Transaction::extractKeyPart(VPackSlice const slice) {
   // extract _key
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
     if (!k.isString()) {
-      return StaticStrings::Empty; // fail
+      return StringRef(); // fail
     }
-    return k.copyString();
+    return StringRef(k);
   } 
   if (slice.isString()) {
-    std::string key = slice.copyString();
+    StringRef key(slice);
     size_t pos = key.find('/');
     if (pos == std::string::npos) {
       return key;
     }
     return key.substr(pos + 1);
   } 
-  return StaticStrings::Empty;
+  return StringRef();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -975,18 +975,18 @@ void Transaction::extractKeyAndRevFromDocument(VPackSlice slice,
 void Transaction::buildDocumentIdentity(TRI_document_collection_t* document,
                                         VPackBuilder& builder,
                                         TRI_voc_cid_t cid,
-                                        std::string const& key,
+                                        StringRef const& key,
                                         VPackSlice const rid,
                                         VPackSlice const oldRid,
                                         TRI_doc_mptr_t const* oldMptr,
                                         TRI_doc_mptr_t const* newMptr) {
   builder.openObject();
   if (ServerState::isRunningInCluster(_serverRole)) {
-    builder.add(StaticStrings::IdString, VPackValue(resolver()->getCollectionName(cid) + "/" + key));
+    builder.add(StaticStrings::IdString, VPackValue(resolver()->getCollectionName(cid) + "/" + key.toString()));
   } else {
-    builder.add(StaticStrings::IdString, VPackValue(document->_info.name() + "/" + key));
+    builder.add(StaticStrings::IdString, VPackValue(document->_info.name() + "/" + key.toString()));
   }
-  builder.add(StaticStrings::KeyString, VPackValue(key));
+  builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.length(), VPackValueType::String));
   TRI_ASSERT(!rid.isNone());
   builder.add(StaticStrings::RevString, rid);
   if (!oldRid.isNone()) {
@@ -1325,7 +1325,7 @@ int Transaction::documentFastPath(std::string const& collectionName,
 
   orderDitch(cid); // will throw when it fails
 
-  std::string key(Transaction::extractKeyPart(value));
+  StringRef key(Transaction::extractKeyPart(value));
   if (key.empty()) {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
@@ -1411,7 +1411,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
   auto resultBody = std::make_shared<VPackBuilder>();
 
   if (!value.isArray()) {
-    std::string key(Transaction::extractKeyPart(value));
+    StringRef key(Transaction::extractKeyPart(value));
     if (key.empty()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
@@ -1455,7 +1455,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   auto workOnOneDocument = [&](VPackSlice const value, bool isMultiple) -> int {
     TIMER_START(TRANSACTION_DOCUMENT_EXTRACT);
 
-    std::string key(Transaction::extractKeyPart(value));
+    StringRef key(Transaction::extractKeyPart(value));
     if (key.empty()) {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }
@@ -1652,8 +1652,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
 
     TRI_ASSERT(mptr.vpack() != nullptr);
     
-    std::string keyString 
-        = VPackSlice(mptr.vpack()).get(StaticStrings::KeyString).copyString();
+    StringRef keyString(VPackSlice(mptr.vpack()).get(StaticStrings::KeyString));
 
     TIMER_START(TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY);
 
@@ -2001,7 +2000,7 @@ OperationResult Transaction::modifyLocal(
     if (res == TRI_ERROR_ARANGO_CONFLICT) {
       // still return 
       if ((!options.silent || doingSynchronousReplication) && !isBabies) {
-        std::string key = newVal.get(StaticStrings::KeyString).copyString();
+        StringRef key(newVal.get(StaticStrings::KeyString));
         buildDocumentIdentity(document, resultBuilder, cid, key, actualRevision,
                               VPackSlice(), 
                               options.returnOld ? &previous : nullptr, nullptr);
@@ -2014,7 +2013,7 @@ OperationResult Transaction::modifyLocal(
     TRI_ASSERT(mptr.vpack() != nullptr);
 
     if (!options.silent || doingSynchronousReplication) {
-      std::string key = newVal.get(StaticStrings::KeyString).copyString();
+      StringRef key(newVal.get(StaticStrings::KeyString));
       buildDocumentIdentity(document, resultBuilder, cid, key, 
           mptr.revisionIdAsSlice(), actualRevision, 
           options.returnOld ? &previous : nullptr , 
@@ -2238,15 +2237,14 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   auto workOnOneDocument = [&](VPackSlice value, bool isBabies) -> int {
     VPackSlice actualRevision;
     TRI_doc_mptr_t previous;
-    std::string key;
-    std::shared_ptr<VPackBuilder> builder;
+    TransactionBuilderLeaser builder(this);
+    StringRef key;
     if (value.isString()) {
-      key = value.copyString();
+      key = value;
       size_t pos = key.find('/');
       if (pos != std::string::npos) {
         key = key.substr(pos + 1);
-        builder = std::make_shared<VPackBuilder>();
-        builder->add(VPackValue(key));
+        builder->add(VPackValuePair(key.data(), key.length(), VPackValueType::String));
         value = builder->slice();
       }
     } else if (value.isObject()) {
@@ -2254,7 +2252,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
       if (!keySlice.isString()) {
         return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
       }
-      key = value.get(StaticStrings::KeyString).copyString();
+      key = keySlice;
     } else {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }

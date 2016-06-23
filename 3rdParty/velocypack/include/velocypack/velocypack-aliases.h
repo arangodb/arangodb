@@ -55,6 +55,8 @@ using VPackObjectIterator = arangodb::velocypack::ObjectIterator;
 using VPackBuilder = arangodb::velocypack::Builder;
 using VPackObjectBuilder = arangodb::velocypack::ObjectBuilder;
 using VPackArrayBuilder = arangodb::velocypack::ArrayBuilder;
+using VPackBuilderNonDeleter = arangodb::velocypack::BuilderNonDeleter;
+using VPackBuilderContainer = arangodb::velocypack::BuilderContainer;
 #endif
 #endif
 
@@ -146,6 +148,13 @@ using VPackSlice = arangodb::velocypack::Slice;
 #ifndef VELOCYPACK_ALIAS_SLICE_CONTAINER
 #define VELOCYPACK_ALIAS_SLICE_CONTAINER
 using VPackSlimBuffer = arangodb::velocypack::SliceContainer;
+#endif
+#endif
+
+#ifdef VELOCYPACK_VALIDATOR_H
+#ifndef VELOCYPACK_ALIAS_VALIDATOR
+#define VELOCYPACK_ALIAS_VALIDATOR
+using VPackValidator = arangodb::velocypack::Validator;
 #endif
 #endif
 

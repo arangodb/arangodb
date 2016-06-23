@@ -423,7 +423,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       }
 
       // now find end of line
-      char const* pos = strchr(ptr, '\n');
+      char const* pos = static_cast<char const*>(memchr(ptr, '\n', end - ptr));
       char const* oldPtr = nullptr;
 
       std::shared_ptr<VPackBuilder> builder;
@@ -580,7 +580,7 @@ bool RestImportHandler::createFromKeyValueList() {
   char const* bodyEnd = current + bodyStr.size();
 
   // process header
-  char const* next = strchr(current, '\n');
+  char const* next = static_cast<char const*>(memchr(current, '\n', bodyEnd - current));
 
   if (next == nullptr) {
     generateError(GeneralResponse::ResponseCode::BAD,

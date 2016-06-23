@@ -57,9 +57,10 @@ bool IndexIteratorContext::isCluster() const {
   return arangodb::ServerState::instance()->isRunningInCluster();
 }
 
-int IndexIteratorContext::resolveId(char const* handle, TRI_voc_cid_t& cid,
+int IndexIteratorContext::resolveId(char const* handle, size_t length,
+                                    TRI_voc_cid_t& cid,
                                     char const*& key) const {
-  char const* p = strchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
+  char const* p = static_cast<char const*>(memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
 
   if (p == nullptr || *p == '\0') {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;

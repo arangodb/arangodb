@@ -30,6 +30,7 @@
 
 #include "Aql/Function.h"
 #include "Aql/Query.h"
+#include "Basics/ConditionalDeleter.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
@@ -618,19 +619,18 @@ static AqlValue MergeParameters(arangodb::aql::Query* query,
                                  VPackFunctionParameters const& parameters,
                                  char const* funcName,
                                  bool recursive) {
-  VPackBuilder builder;
-
   size_t const n = parameters.size();
+
   if (n == 0) {
-    builder.openObject();
-    builder.close();
-    return AqlValue(builder);
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyObjectValue());
   }
 
   // use the first argument as the preliminary result
   AqlValue initial = ExtractFunctionParameterValue(trx, parameters, 0);
   AqlValueMaterializer materializer(trx);
   VPackSlice initialSlice = materializer.slice(initial, false);
+  
+  VPackBuilder builder;
 
   if (initial.isArray() && n == 1) {
     // special case: a single array parameter
@@ -645,9 +645,7 @@ static AqlValue MergeParameters(arangodb::aql::Query* query,
     for (auto const& it : VPackArrayIterator(initialSlice)) {
       if (!it.isObject()) {
         RegisterInvalidArgumentWarning(query, funcName);
-        builder.clear();
-        builder.add(VPackValue(VPackValueType::Null));
-        return AqlValue(builder);
+        return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
       }
       try {
         builder = arangodb::basics::VelocyPackHelper::merge(builder.slice(), it, false,
@@ -1000,11 +998,13 @@ AqlValue Functions::Length(arangodb::aql::Query* query,
       length = static_cast<size_t>(fpconv_dtoa(tmp, buffer));
     }
   } else if (value.isString()) {
-    length = TRI_CharLengthUtf8String(value.slice().copyString().c_str());
+    VPackValueLength l;
+    char const* p = value.slice().getString(l);
+    length = TRI_CharLengthUtf8String(p, l);
   } else if (value.isObject()) {
     length = static_cast<size_t>(value.length());
   }
-  builder->add(VPackValue(static_cast<double>(length)));
+  builder->add(VPackValue(static_cast<uint64_t>(length)));
   return AqlValue(builder.get());
 }
 
@@ -1801,7 +1801,7 @@ AqlValue Functions::Md5(arangodb::aql::Query* query,
 
   arangodb::rest::SslInterface::sslHEX(hash, 16, p, length);
 
-  return AqlValue(std::string(hex, 32));
+  return AqlValue(&hex[0], 32);
 }
 
 /// @brief function SHA1
@@ -1828,7 +1828,7 @@ AqlValue Functions::Sha1(arangodb::aql::Query* query,
 
   arangodb::rest::SslInterface::sslHEX(hash, 20, p, length);
 
-  return AqlValue(std::string(hex, 40));
+  return AqlValue(&hex[0], 40);
 }
 
 /// @brief function HASH

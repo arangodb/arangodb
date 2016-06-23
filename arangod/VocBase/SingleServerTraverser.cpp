@@ -134,10 +134,10 @@ aql::AqlValue SingleServerTraverser::fetchVertexData(std::string const& id) {
 
     uint8_t const* p = mptr.vpack();
     _vertices.emplace(id, p);
-    return aql::AqlValue(p);
+    return aql::AqlValue(p, aql::AqlValueFromMasterPointer());
   }
 
-  return aql::AqlValue((*it).second);
+  return aql::AqlValue((*it).second, aql::AqlValueFromMasterPointer());
 }
 
 bool SingleServerTraverser::VertexGetter::getVertex(std::string const& edge,

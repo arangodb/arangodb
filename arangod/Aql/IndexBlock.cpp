@@ -534,7 +534,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         auto doc = _documents[_posInDocs++];
         TRI_ASSERT(doc.isExternal());
         res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
-                      AqlValue(doc.resolveExternal().begin()));
+                      AqlValue(doc.resolveExternal().begin(), AqlValueFromMasterPointer()));
         // No harm done, if the setValue throws!
       }
     }
