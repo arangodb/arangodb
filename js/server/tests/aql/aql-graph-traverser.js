@@ -2113,8 +2113,40 @@ function multiEdgeDirectionSuite () {
         result = db._query(item.q2, bindVars2).toArray();
         assertEqual(result, item.res);
       });
-    }
+    },
 
+    testDuplicationCollections: function () {
+      var queries = [
+        [ "FOR x IN ANY @start @@ec, INBOUND @@ec RETURN x", false ],
+        [ "FOR x IN ANY @start @@ec, OUTBOUND @@ec RETURN x", false ],
+        [ "FOR x IN ANY @start @@ec, ANY @@ec RETURN x", true ],
+        [ "FOR x IN INBOUND @start @@ec, INBOUND @@ec RETURN x", true ],
+        [ "FOR x IN INBOUND @start @@ec, OUTBOUND @@ec RETURN x", false ],
+        [ "FOR x IN INBOUND @start @@ec, ANY @@ec RETURN x", false ],
+        [ "FOR x IN OUTBOUND @start @@ec, INBOUND @@ec RETURN x", false ],
+        [ "FOR x IN OUTBOUND @start @@ec, OUTBOUND @@ec RETURN x", true ],
+        [ "FOR x IN OUTBOUND @start @@ec, ANY @@ec RETURN x", false ]
+      ];
+
+      var bindVars = {
+        "@ec": en,
+        start: vertex.A
+      };
+      queries.forEach(function (query) {
+        if (query[1]) {
+          // should work
+          db._query(query[0], bindVars).toArray();
+        } else {
+          // should fail
+          try {
+            db._query(query[0], bindVars).toArray();
+            fail();
+          } catch (e) {
+            assertEqual(e.errorNum, errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code);
+          }
+        }
+      });
+    }
 
   };
 }

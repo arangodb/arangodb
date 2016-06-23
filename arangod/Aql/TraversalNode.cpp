@@ -171,6 +171,8 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                                    "invalid traversal depth");
   }
 
+  std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
+
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
     _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array,
@@ -180,16 +182,32 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
     // List of edge collection names
     for (size_t i = 0; i < edgeCollectionCount; ++i) {
       auto col = graph->getMember(i);
+      TRI_edge_direction_e dir = TRI_EDGE_ANY;
+      
       if (col->type == NODE_TYPE_DIRECTION) {
         // We have a collection with special direction.
-        TRI_edge_direction_e dir = parseDirection(col->getMember(0));
-        _directions.emplace_back(dir);
+        dir = parseDirection(col->getMember(0));
         col = col->getMember(1);
       } else {
-        _directions.emplace_back(baseDirection);
+        dir = baseDirection;
       }
-
+        
       std::string eColName = col->getString();
+      
+      // now do some uniqueness checks for the specified collections
+      auto it = seenCollections.find(eColName);
+      if (it != seenCollections.end()) {
+        if ((*it).second != dir) {
+          std::string msg("conflicting directions specified for collection '" +
+                          std::string(eColName));
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                                         msg);
+        }
+        // do not re-add the same collection!
+        continue;
+      }
+      seenCollections.emplace(eColName, dir);
+      
       auto eColType = resolver->getCollectionTypeCluster(eColName);
       if (eColType != TRI_COL_TYPE_EDGE) {
         std::string msg("collection type invalid for collection '" +
@@ -198,8 +216,10 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
                                        msg);
       }
+      
+      _directions.emplace_back(dir);
       _graphJson.add(arangodb::basics::Json(eColName));
-      _edgeColls.push_back(eColName);
+      _edgeColls.emplace_back(eColName);
     }
   } else {
     if (_edgeColls.empty()) {
@@ -252,6 +272,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
   // Parse options node
 }
 
+/// @brief Internal constructor to clone the node.
 TraversalNode::TraversalNode(
     ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     std::vector<std::string> const& edgeColls, Variable const* inVariable,
