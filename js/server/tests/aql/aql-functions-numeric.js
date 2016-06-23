@@ -804,6 +804,9 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testAsin : function () {
+      if (require("internal").platform === "solaris") {
+        return;
+      }
       var values = [
 	[-999999999,null],
 	[-1000,null],
@@ -877,6 +880,9 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testAcos : function () {
+      if (require("internal").platform === "solaris") {
+        return;
+      }
       var values = [
 	[-999999999,null],
 	[-1000,null],
