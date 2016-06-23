@@ -35,8 +35,29 @@ function appendHeader() {
   };
   addGoogleSrc();
 
+  $(".arangodb-navmenu a:lt(4)").on("click", function(e) {
+    e.preventDefault();
+    var urlSplit = gitbook.state.root.split("/");
+    urlSplit.pop(); // ""
+    urlSplit.pop(); // e.g. "Manual"
+    window.location.href = urlSplit.join("/") + "/" + e.target.getAttribute("data-book") + "/index.html";
+  });
+
+  var bookVersion = gitbook.state.root.match(/\/(\d\.\d|devel)\//);
+  if (bookVersion) {
+    $(".arangodb-version-switcher").val(bookVersion[1]);
+  }
+  
   $(".arangodb-version-switcher").on("change", function(e) {
-    window.location.href = "https://docs.arangodb.com/" + e.target.value;
+    var urlSplit = gitbook.state.root.split("/");
+    if (urlSplit.length == 6) {
+      urlSplit.pop(); // ""
+      var currentBook = urlSplit.pop(); // e.g. "Manual"
+      urlSplit.pop() // e.g. "3.0"
+      window.location.href = urlSplit.join("/") + "/" + e.target.value + "/" + currentBook + "/";
+    } else {
+      window.location.href = "https://docs.arangodb.com/" + e.target.value;
+    }
   });
 
 });

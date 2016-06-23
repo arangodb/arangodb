@@ -40,7 +40,7 @@
     * [Collection Names](DataModeling/NamingConventions/CollectionNames.md)
     * [Document Keys](DataModeling/NamingConventions/DocumentKeys.md)
     * [Attribute Names](DataModeling/NamingConventions/AttributeNames.md)
-  * [Modeling Relationships](DataModeling/ModelingRelationships.md)
+#  * [Modeling Relationships](DataModeling/ModelingRelationships.md)
 #
 * [Indexing](Indexing/README.md)
   * [Index Basics](Indexing/IndexBasics.md)
