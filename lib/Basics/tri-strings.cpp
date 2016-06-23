@@ -1240,8 +1240,8 @@ char* TRI_UnescapeUtf8String(TRI_memory_zone_t* zone, char const* in,
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_CharLengthUtf8String(char const* in) {
-  unsigned char* p = (unsigned char*)in;
-  size_t length = 0;
+  unsigned char const* p = reinterpret_cast<unsigned char const*>(in);
+  size_t chars = 0;
 
   while (*p) {
     unsigned char c = *p;
@@ -1256,15 +1256,46 @@ size_t TRI_CharLengthUtf8String(char const* in) {
     } else if (c < 248) {
       p += 4;
     } else {
-      printf("invalid utf\n");
       // invalid UTF-8 sequence
       break;
     }
 
-    ++length;
+    ++chars;
   }
 
-  return length;
+  return chars;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the number of characters in a UTF-8 string
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_CharLengthUtf8String(char const* in, size_t length) {
+  unsigned char const* p = reinterpret_cast<unsigned char const*>(in);
+  unsigned char const* e = p + length;
+  size_t chars = 0;
+
+  while (p < e) {
+    unsigned char c = *p;
+
+    if (c < 128) {
+      // single byte
+      p++;
+    } else if (c < 224) {
+      p += 2;
+    } else if (c < 240) {
+      p += 3;
+    } else if (c < 248) {
+      p += 4;
+    } else {
+      // invalid UTF-8 sequence
+      break;
+    }
+
+    ++chars;
+  }
+
+  return chars;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

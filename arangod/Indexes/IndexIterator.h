@@ -48,7 +48,7 @@ struct IndexIteratorContext {
 
   bool isCluster() const;
 
-  int resolveId(char const*, TRI_voc_cid_t&, char const*&) const;
+  int resolveId(char const*, size_t, TRI_voc_cid_t&, char const*&) const;
 
   TRI_vocbase_t* vocbase;
   mutable CollectionNameResolver const* resolver;

@@ -11,6 +11,7 @@ ArangoDB
 2.6: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=2.6)](http://travis-ci.org/arangodb/arangodb)
 2.7: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=2.7)](http://travis-ci.org/arangodb/arangodb)
 2.8: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=2.8)](http://travis-ci.org/arangodb/arangodb)
+3.0: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=3.0)](http://travis-ci.org/arangodb/arangodb)
 
 Master: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=master)](http://travis-ci.org/arangodb/arangodb)
 
@@ -44,7 +45,7 @@ Microservice Example
 
 By extending the HTTP API with user code written in JavaScript, ArangoDB can be turned into a strict schema-enforcing persistence engine.
 
-Next step, bundle your Foxx application as a [docker container](https://docs.arangodb.com/cookbook/UsingArangoDBNodeJSDocker.html) and get it running in the cloud.
+Next step, bundle your Foxx application as a [docker container](https://docs.arangodb.com/cookbook/Cloud/NodeJsDocker.html) and get it running in the cloud.
 
 Other features of ArangoDB include:
 
@@ -60,36 +61,34 @@ Other features of ArangoDB include:
 * **Replication** and **Sharding**: set up the database in a master-slave configuration or spread bigger datasets across multiple servers
 * It is **open source** (Apache License 2.0)
 
-For more in-depth information read the [design goals of ArangoDB](http://www.arangodb.com/2012/03/07/avocadodbs-design-objectives)
+For more in-depth information read the [design goals of ArangoDB](https://www.arangodb.com/2012/03/07/avocadodbs-design-objectives)
 
 
-Latest Release - ArangoDB 2.8
------------------
+Latest Release - ArangoDB 3.0
+-----------------------------
 
-The [What's new in ArangoDB 2.8](https://docs.arangodb.com/NewFeatures/NewFeatures28.html) can be found in the documentation.
+The [What's new in ArangoDB 3.0](https://docs.arangodb.com/3.0/Manual/ReleaseNotes/NewFeatures30.html) can be found in the documentation.
 
-**AQL Graph Traversals / Pattern Matching**: AQL offers a new feature to traverse over a graph without writing JavaScript functions but with all the other features you know from AQL. For this purpose, a special version of `FOR variable-name IN expression` has been introduced.
+Key features of the 3.0 release are:
 
-The added **Array Indexes** are a major improvement to ArangoDB that you will love and never want to miss again. Hash indexes and skiplist indexes can now be defined for array values as well, so it’s freaking fast to access documents by individual array values.
-
-Additional, there is a cool new **aggregation feature** that was added after the beta releases. AQL introduces the keyword `AGGREGATE` for use in `AQL COLLECT` statements. Using `AGGREGATE` allows more efficient aggregation (incrementally while building the groups) than previous versions of AQL, which built group aggregates afterwards from the total of all group values
-
-**Optimizer improvements**: The AQL query optimizer can now use indexes if multiple filter conditions on attributes of the same collection are combined with logical ORs, and if the usage of indexes would completely cover these conditions.
-
-ArangoDB 2.8 now has an automatic **deadlock detection** for transactions. A deadlock is a situation in which two or more concurrent operations (user transactions or AQL queries) try to access the same resources (collections, documents) and need to wait for the others to finish, but none of them can make any progress.
-
-
-**Foxx Improvements**
-
-The module resolution used by `require` now behaves more like in node.js. The `org/arangodb/request` module now returns response bodies for error responses by default. The old behavior of not returning bodies for error responses can be re-enabled by explicitly setting the option `returnBodyOnError` to `false`.
-
+- use of VelocyPack as internal storage format
+- AQL improvements
+- much better cluster state management
+- Synchronous replication (master/master)
+- unified APIs for CRUD operations
+- persistent indexes
+- upgraded version of V8
+- new web admin interface
+- Foxx improvements
+- Logging improvements
+- improved documentation
 
 More Information
 ----------------
 
-Please check the [Installation Manual](https://docs.arangodb.com/Installing/) for installation and compilation instructions.
+Please check the [Installation Manual](https://docs.arangodb.com/latest/Manual/GettingStarted/Installing/) for installation and compilation instructions.
 
-The [User Manual](https://docs.arangodb.com/FirstSteps/) has an introductory chapter showing the basic operations of ArangoDB.
+The [User Manual](https://docs.arangodb.com/latest/Manual/GettingStarted/) has an introductory chapter showing the basic operations of ArangoDB.
 
 
 Stay in Contact

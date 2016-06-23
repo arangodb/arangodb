@@ -628,6 +628,10 @@ AqlValue Expression::executeSimpleExpressionArray(
 
   size_t const n = node->numMembers();
 
+  if (n == 0) {
+    return AqlValue(VelocyPackHelper::EmptyArrayValue());
+  }
+
   TransactionBuilderLeaser builder(trx);
   builder->openArray();
 
@@ -659,6 +663,12 @@ AqlValue Expression::executeSimpleExpressionObject(
     // this will not create a copy
     return AqlValue(node->computeValue().begin()); 
   }
+  
+  size_t const n = node->numMembers();
+
+  if (n == 0) {
+    return AqlValue(VelocyPackHelper::EmptyObjectValue());
+  }
 
   // unordered map to make object keys unique afterwards
   std::unordered_map<std::string, size_t> uniqueKeyValues;
@@ -668,7 +678,6 @@ AqlValue Expression::executeSimpleExpressionObject(
   TransactionBuilderLeaser builder(trx);
   builder->openObject();
 
-  size_t const n = node->numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
 
@@ -805,12 +814,14 @@ AqlValue Expression::executeSimpleExpressionReference(
 
   mustDestroy = false;
   auto v = static_cast<Variable const*>(node->getData());
+  TRI_ASSERT(v != nullptr);
 
   {
     auto it = _variables.find(v);
 
     if (it != _variables.end()) {
-      return AqlValue((*it).second.begin()); // use only pointer to data
+      mustDestroy = true;
+      return AqlValue(VPackSlice((*it).second.begin())); 
     }
   }
 

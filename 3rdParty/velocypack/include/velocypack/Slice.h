@@ -42,6 +42,12 @@
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
 
+#ifndef VELOCYPACK_XXHASH
+#ifndef VELOCYPACK_FASTHASH
+#define VELOCYPACK_XXHASH
+#endif
+#endif
+
 #ifdef VELOCYPACK_XXHASH
 // forward for XXH64 function declared elsewhere
 extern "C" unsigned long long XXH64(void const*, size_t, unsigned long long);

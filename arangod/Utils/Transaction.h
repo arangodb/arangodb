@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -301,7 +302,7 @@ class Transaction {
   /// @brief extract the _key attribute from a slice
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::string extractKeyPart(VPackSlice const);
+  static StringRef extractKeyPart(VPackSlice const);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the _id attribute from a slice, and convert it into a 
@@ -649,7 +650,7 @@ class Transaction {
   void buildDocumentIdentity(TRI_document_collection_t* document,
                              VPackBuilder& builder,
                              TRI_voc_cid_t cid,
-                             std::string const& key,
+                             StringRef const& key,
                              VPackSlice const rid,
                              VPackSlice const oldRid,
                              TRI_doc_mptr_t const* oldMptr,

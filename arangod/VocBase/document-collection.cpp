@@ -3175,11 +3175,16 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
 
 int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
                                     TRI_doc_mptr_t* mptr, bool lock) {
+  return read(trx, StringRef(key.c_str(), key.size()), mptr, lock);
+}
+
+int TRI_document_collection_t::read(Transaction* trx, StringRef const& key,
+                                    TRI_doc_mptr_t* mptr, bool lock) {
   TRI_ASSERT(mptr != nullptr);
   mptr->setVPack(nullptr);  
 
   TransactionBuilderLeaser builder(trx);
-  builder->add(VPackValue(key));
+  builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
   VPackSlice slice = builder->slice();
 
   {
@@ -4115,7 +4120,7 @@ int TRI_document_collection_t::newObjectForInsert(
       return TRI_ERROR_ARANGO_OUT_OF_KEYS;
     }
     uint8_t* where = builder.add(StaticStrings::KeyString,
-                                  VPackValue(keyString));
+                                 VPackValue(keyString));
     s = VPackSlice(where);  // point to newly built value, the string
   } else if (!s.isString()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
@@ -4266,7 +4271,7 @@ void TRI_document_collection_t::mergeObjectsForUpdate(
           fromSlice = it.value();
         } else if (key == StaticStrings::ToString) {
           toSlice = it.value();
-        }
+        } // else do nothing
       } else {
         // regular attribute
         newValues.emplace(std::move(key), it.value());
