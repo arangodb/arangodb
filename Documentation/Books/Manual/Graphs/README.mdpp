@@ -17,19 +17,19 @@ graph databases can handle an arbitrary number of these hops over edge collectio
 Also edges in one edge collection may point to several vertex collections.
 Its common to have attributes attached to edges, i.e. a *label* naming this interconnection.
 Edges have a direction, with their relations `_from` and `_to` pointing *from* one document *to* another document stored in vertex collections.
-In queries you can define in which directions the edge relations may be followed (`OUTBOUND`: `_from` → `_to`, `INBOUND`: `_to` → `_from`, `ANY`: `_from` ↔ `_to`).
+In queries you can define in which directions the edge relations may be followed (`OUTBOUND`: `_from` → `_to`, `INBOUND`: `_from` ← `_to`, `ANY`: `_from` ↔ `_to`).
 
 !SUBSECTION Named Graphs
 
 Named graphs are completely managed by arangodb, and thus also [visible in the webinterface](../Administration/WebInterface/Graphs.md).
 They use the full spectrum of ArangoDBs graph features. You may access them via several interfaces.
 
- - [AQL Graph Operations](../../AQL/Graphs/index.html) with several flavors:
+- [AQL Graph Operations](../../AQL/Graphs/index.html) with several flavors:
    - [AQL Traversals](../../AQL/Graphs/Traversals.html) on both named and anonymous graphs
    - [AQL Shortest Path](../../AQL/Graphs/ShortestPath.html) on both named and anonymous graph
  - [The javascript General Graph implementation, as you may use it in Foxx Services](GeneralGraphs/README.md)
-    * [Graph Management](GeneralGraphs/Management.md); creating & manipualating graph definitions; inserting, updating and deleting vertices and edges into graphs
-    * [Graph Functions](GeneralGraphs/Functions.md) for working with edges and vertices, to analyze them and their relations
+   - [Graph Management](GeneralGraphs/Management.md); creating & manipualating graph definitions; inserting, updating and deleting vertices and edges into graphs
+   - [Graph Functions](GeneralGraphs/Functions.md) for working with edges and vertices, to analyze them and their relations
  - [the RESTful General Graph interface](../../HTTP/Gharial/index.html) used to implement graph management in client drivers
 
 !SUBSUBSECTION Manipulating collections of named graphs with regular document functions
@@ -75,6 +75,7 @@ A set of persons knowing each other:
 The *knows* graph consists of one *vertex collection* `persons` connected via one *edge collection* `knows`.
 It will contain five persons *Alice*, *Bob*, *Charlie*, *Dave* and *Eve*.
 We will have the following directed relations:
+
   - *Alice* knows *Bob*
   - *Bob* knows *Charlie*
   - *Bob* knows *Dave*
