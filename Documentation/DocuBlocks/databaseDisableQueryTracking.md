@@ -1,10 +1,9 @@
 
 
-@brief disable the query tracking feature
-`--database.disable-query-tracking flag`
+@brief enable the query tracking feature
+`--query.tracking flag`
 
-If *true*, the server's query tracking feature will be disabled by
-default.
+If *false*, the server's query tracking feature will be disabled.
 
-The default is *false*.
+The default is *true*.
 

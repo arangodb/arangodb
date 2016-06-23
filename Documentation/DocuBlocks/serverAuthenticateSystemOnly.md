@@ -1,6 +1,4 @@
-
 @startDocuBlock serverAuthenticateSystemOnly
-@brief whether or not only requests to internal URLs need authentication
 `--server.authentication-system-only boolean`
 
 Controls whether incoming requests need authentication only if they are

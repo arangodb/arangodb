@@ -64,8 +64,8 @@ CONCAT_SEPARATOR(", ", [ "foo", "bar", "baz" ])
 CONCAT_SEPARATOR(", ", [ "foo", [ "b", "a", "r" ], "baz" ])
 // [ "foo, b,a,r, baz" ]
 
-/* "1-2-3-4-5" */
 CONCAT_SEPARATOR("-", [1, 2, 3, null], [4, null, 5])
+// "1-2-3-4-5"
 ```
 
 !SUBSECTION CONTAINS()

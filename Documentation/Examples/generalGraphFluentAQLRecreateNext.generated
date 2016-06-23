@@ -1,11 +1,23 @@
 arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> query = graph._vertices();
-[ArangoError <span class="hljs-number">1551</span>: no value specified <span class="hljs-keyword">for</span> declared bind parameter <span class="hljs-string">'startExVar0'</span> (<span class="hljs-keyword">while</span> parsing)]
 arangosh&gt; query.next();
-<span class="hljs-built_in">TypeError</span>: query.next is not a <span class="hljs-function"><span class="hljs-keyword">function</span>
-<span class="hljs-title">arangosh</span>&gt; <span class="hljs-title">query</span>.<span class="hljs-title">edges</span>(<span class="hljs-params"></span>);
-<span class="hljs-title">TypeError</span>: <span class="hljs-title">query</span>.<span class="hljs-title">edges</span> <span class="hljs-title">is</span> <span class="hljs-title">not</span> <span class="hljs-title">a</span> <span class="hljs-title">function</span>
-<span class="hljs-title">arangosh</span>&gt; <span class="hljs-title">query</span>.<span class="hljs-title">next</span>(<span class="hljs-params"></span>);
-<span class="hljs-title">TypeError</span>: <span class="hljs-title">query</span>.<span class="hljs-title">next</span> <span class="hljs-title">is</span> <span class="hljs-title">not</span> <span class="hljs-title">a</span> <span class="hljs-title">function</span>
-</span>
+{ 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20605"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
+}
+arangosh&gt; query.edges();
+[ GraphAQL social
+.vertices()
+.edges() ] 
+arangosh&gt; query.next();
+{ 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlyAndDiana"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/charlyAndDiana"</span>, 
+  <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
+  <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20616"</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
+}

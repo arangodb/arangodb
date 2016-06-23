@@ -30,6 +30,7 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 * **dependencies**: `Object` (optional) and **provides**: `Object` (optional)
 
   Objects specifying other services this service has as [dependencies](Dependencies.md) and what dependencies it can provide to other services.
+  <!-- TODO: examples -->
 
 * **engines**: `Object` (optional)
 

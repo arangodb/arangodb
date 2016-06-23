@@ -14,7 +14,7 @@ path you will get a result in form of a set with two items:
 Let's take a look at a simple example to explain how it works.
 This is the graph that we are going to find a shortest path on:
 
-![traversal graph](../../Manual/Graphs/traversal_graph.png)
+![traversal graph](traversal_graph.png)
 
 Now we use the following parameters for our query:
 
@@ -116,7 +116,7 @@ combination with `LIMIT 1`.
 !SECTION Examples
 We will create a simple symmetric traversal demonstration graph:
 
-![traversal graph](../../Manual/Graphs/traversal_graph.png)
+![traversal graph](traversal_graph.png)
 
     @startDocuBlockInline GRAPHSP_01_create_graph
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHSP_01_create_graph}

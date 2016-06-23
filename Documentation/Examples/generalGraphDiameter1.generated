@@ -1,5 +1,6 @@
 arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
 arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_DIAMETER('routeplanner')"</span>).toArray();
-[ArangoError <span class="hljs-number">1540</span>: usage <span class="hljs-keyword">of</span> unknown <span class="hljs-function"><span class="hljs-keyword">function</span> '<span class="hljs-title">GRAPH_DIAMETER</span>(<span class="hljs-params"></span>)' (<span class="hljs-params">while parsing</span>)]
-</span>
+[ 
+  <span class="hljs-number">1</span> 
+]

@@ -62,6 +62,7 @@ You should see the *Hello World* in our browser:
     assert(response.code === 200);
     logRawResponse(response);
     db._query("FOR route IN _routing FILTER route.url.match == '/hello/world' REMOVE route in _routing")
+    require("internal").reloadRouting()
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock HTML_03_routingCurlHtml
 
@@ -244,8 +245,8 @@ Remember that the more specific match wins.
 
 Consider the following definitions
 
-    @startDocuBlockInline HTML_01_routingCreateMultiPath
-    @EXAMPLE_ARANGOSH_OUTPUT{HTML_01_routingCreateMultiPath}
+    @startDocuBlockInline HTML_04_routingCreateMultiPath
+    @EXAMPLE_ARANGOSH_OUTPUT{HTML_04_routingCreateMultiPath}
     |db._routing.save({ 
     |  url: { match: "/hello/world" },
        content: { contentType: "text/plain", body: "Match No 1"} });
@@ -258,13 +259,14 @@ Consider the following definitions
     |db._routing.save({ 
     |  url: { match: "/hi/*" },
        content: { contentType: "text/plain", body: "Match No 4"} });
+    require("internal").reloadRouting()
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock HTML_01_routingCreateMultiPath
+    @endDocuBlock HTML_04_routingCreateMultiPath
 
 Then
 
-    @startDocuBlockInline HTML_02_routingGetMultiPath
-    @EXAMPLE_ARANGOSH_RUN{HTML_02_routingGetMultiPath}
+    @startDocuBlockInline HTML_05_routingGetMultiPath
+    @EXAMPLE_ARANGOSH_RUN{HTML_05_routingGetMultiPath}
     | var url = ["/hello/world",
     | "/hello/emil",
     | "/your/world",
@@ -276,8 +278,9 @@ Then
     |   logRawResponse(response);
     }
     db._query("FOR route IN _routing FILTER route.content.contentType == 'text/plain' REMOVE route in _routing")
+    require("internal").reloadRouting()
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock HTML_02_routingGetMultiPath
+    @endDocuBlock HTML_05_routingGetMultiPath
 
 
 You can write the following document into the *_routing* collection

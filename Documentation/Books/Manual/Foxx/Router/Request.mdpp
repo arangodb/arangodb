@@ -58,7 +58,7 @@ The request object specifies the following properties:
 
   An object mapping the names of path parameters of the current route to their validated values.
 
-  For details on how path parameters can be validated by Foxx see the [pathParam method of the endpoint object](Endpoints.md#pathParam).
+  For details on how path parameters can be validated by Foxx see the [pathParam method of the endpoint object](Endpoints.md#pathparam).
 
 * **port**: `number`
 
@@ -82,7 +82,7 @@ The request object specifies the following properties:
 
   An object mapping the names of query parameters of the current route to their validated values.
 
-  For details on how query parameters can be validated by Foxx see the [queryParam method of the endpoint object](Endpoints.md#queryParam).
+  For details on how query parameters can be validated by Foxx see the [queryParam method of the endpoint object](Endpoints.md#queryparam).
 
 * **rawBody**: `Buffer`
 

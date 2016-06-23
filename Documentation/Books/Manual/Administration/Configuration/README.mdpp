@@ -33,7 +33,7 @@ Prints the version of the server and exits.
 
  
 !SUBSECTION Database Upgrade 
-`--database.upgrade`
+`--database.auto-upgrade`
 
 Specifying this option will make the server perform a database upgrade at start. A database upgrade will first compare the version number stored in the file VERSION in the database directory with the current server version.
 

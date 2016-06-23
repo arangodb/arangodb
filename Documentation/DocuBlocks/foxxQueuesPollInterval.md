@@ -1,7 +1,7 @@
 
 @startDocuBlock foxxQueuesPollInterval
 @brief poll interval for Foxx queues
-`--foxx-queues-poll-interval value`
+`--foxx.queues-poll-interval value`
 
 The poll interval for the Foxx queues manager. The value is specified in
 seconds. Lower values will mean more immediate and more frequent Foxx

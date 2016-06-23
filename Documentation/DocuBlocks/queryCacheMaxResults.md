@@ -1,7 +1,7 @@
 
 
 @brief maximum number of elements in the query cache per database
-`--database.query-cache-max-results`
+`--query.cache-entries`
 
 Maximum number of query results that can be stored per database-specific
 query cache. If a query is eligible for caching and the number of items in

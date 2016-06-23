@@ -1,22 +1,22 @@
 !SECTION Launching a local ArangoDB cluster for testing
 
-An ArangoDB cluster consists of several running tasks which form the cluster. ArangoDB itself won't start or monitor any of these tasks. So it will need some kind of supervisor which is monitoring and starting these tasks. For production usage we recommend using Mesos as the cluster supervisor.
+An ArangoDB cluster consists of several running tasks which form the cluster. ArangoDB itself won't start or monitor any of these tasks. So it will need some kind of supervisor which is monitoring and starting these tasks. For production usage we recommend using Apache Mesos as the cluster supervisor.
 
 However starting a cluster locally is possible and a very easy method to get a first impression of what an ArangoDB cluster looks like.
 
-The easiest way to start a local cluster for testing purposes is to run `scripts/startLocalCluster.sh`. This will start 1 Agency, 2 DBServers and 1 Coordinator. To stop the cluster issue `scripts/stopLocalCluster.sh`.
+The easiest way to start a local cluster for testing purposes is to run `scripts/startLocalCluster.sh` from a clone of the [source repository](https://github.com/ArangoDB/ArangoDB) after compiling ArangoDB from source (see instructions in the file `README_maintainers.md` in the repository. This will start 1 Agency, 2 DBServers and 1 Coordinator. To stop the cluster issue `scripts/stopLocalCluster.sh`.
 
-This section will now discuss the required parameters for every role in an ArangoDB cluster. Be sure to read the [Architecture](../Scalability/README.md) documentation to get a basic understanding of the underlying architecture and the involved roles in an ArangoDB cluster.
+This section will discuss the required parameters for every role in an ArangoDB cluster. Be sure to read the [Architecture](../Scalability/README.md) documentation to get a basic understanding of the underlying architecture and the involved roles in an ArangoDB cluster.
 
 In the following sections we will go through the relevant options per role.
 
 !SUBSECTION Agency
 
-The bare minimum to start an agency is to provide the id. The id has to be `0` for a single instance.
+The bare minimum to start an agent is to provide the id. The id has to be `0` for a single instance.
 
-To start up the agency in its fault tolerant mode set the `--agency.size` to `3` and start the agents with increasing ids starting from `0`. Furthermore you should provide different `--server.endpoint` to every agent. One of the agents must also have `--agency.notify true` to bootstrap the agency. This agent must also provide a list of all endpoints via `--agency.endpoint`.
+To start up the agency in its fault tolerant mode set the `--agency.size` to `3` and start the agents with increasing ids starting from `0`. Furthermore you should provide different `--server.endpoint` values to every agent. One of the agents must also have `--agency.notify true` to bootstrap the agency. This agent must also get a list of all endpoints via `--agency.endpoint`.
 
-So in summary this might be what your startup might look like:
+So in summary this is what your startup might look like:
 
 ```
 build/bin/arangod --server.endpoint tcp://127.0.0.1:5001 --server.authentication false --agency.id 0 --agency.size 3 agency1 &
@@ -26,7 +26,7 @@ build/bin/arangod --server.endpoint tcp://127.0.0.1:5003 --server.authentication
 
 !SUBSECTION Coordinators and DBServers
 
-These two roles share a common set of relevant options. First you should specify the role using `--cluster.my-role`. This can either be `PRIMARY` (a database server) or `COORDINATOR`. Both also need some unique information with which they will register in the agency. This could for example be some combination of `"$HOSTNAME_$PORT"` or whatever you have at hand. However it must be unique and provided as `--cluster.my-local-info`. Furthermore provide the external address of the task via `--cluster.my-address`.
+These two roles share a common set of relevant options. First you should specify the role using `--cluster.my-role`. This can either be `PRIMARY` (a database server) or `COORDINATOR`. Both also need some unique information with which they will register in the agency. This could for example be some combination of host name and port or whatever you have at hand. However it must be unique for each instance and be provided as value for `--cluster.my-local-info`. Furthermore provide the external endpoint (IP and port) of the task via `--cluster.my-address`.
 
 The following is a full-example of what it might look like:
 
@@ -42,13 +42,11 @@ Upon registering with the agency during startup the cluster will assign an ID to
 
 Secondaries need a bit more work. Secondaries need to have some primary assigned. To do that there is a special route. To register a Secondary you must first find out the Server-ID of the primary server. Then generate your own ID for the secondary (put it into "newSecondary") you are about to start and call one of the coordinators like this:
 
-`curl -f -X PUT --data "{\"primary\": \"DBServer1\", \"oldSecondary\": \"none\", \"newSecondary\": \"Secondary1\"}" -H "Content-Type: application/json" :8530/_admin/cluster/replaceSecondary`
+    curl -f -X PUT --data '{"primary": "DBServer1", "oldSecondary": "none", "newSecondary": "Secondary1"}' -H "Content-Type: application/json" http://localhost:8530/_admin/cluster/replaceSecondary
 
 If that call was successful you can start the secondary. Instead of providing `--cluster.my-local-info` you should now provide the Id in the curl call above via `--cluster.my-id`. You can omit the `--cluster.my-role` in this case. The secondary will find out from the agency about its role.
 
 To sum it up:
 
-```
-curl -f -X PUT --data "{\"primary\": \"DBServer1\", \"oldSecondary\": \"none\", \"newSecondary\": \"Secondary1\"}" -H "Content-Type: application/json" :8530/_admin/cluster/replaceSecondary && arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8629 --cluster.my-id Secondary1 --cluster.agency-endpoint tcp://127.0.0.1:5001 secondary1 &
-curl -f -X PUT --data "{\"primary\": \"DBServer2\", \"oldSecondary\": \"none\", \"newSecondary\": \"Secondary2\"}" -H "Content-Type: application/json" :8530/_admin/cluster/replaceSecondary && arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8630 --cluster.my-id Secondary2 --cluster.agency-endpoint tcp://127.0.0.1:5001 secondary2 &
-```
+    curl -f -X PUT --data '{"primary": "DBServer1", "oldSecondary": "none", "newSecondary": "Secondary1"}' -H "Content-Type: application/json" http://localhost:8530/_admin/cluster/replaceSecondary && arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8629 --cluster.my-id Secondary1 --cluster.agency-endpoint tcp://127.0.0.1:5001 secondary1 &
+    curl -f -X PUT --data '{"primary": "DBServer2", "oldSecondary": "none", "newSecondary": "Secondary2"}' -H "Content-Type: application/json" http://localhost:8530/_admin/cluster/replaceSecondary && arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8630 --cluster.my-id Secondary2 --cluster.agency-endpoint tcp://127.0.0.1:5001 secondary2 &

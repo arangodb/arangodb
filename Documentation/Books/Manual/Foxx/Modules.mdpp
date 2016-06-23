@@ -28,7 +28,7 @@ The `aql` function is a JavaScript template string handler. It can be used to wr
 
 To use it just prefix a JavaScript template string (the ones with backticks instead of quotes) with its import name (e.g. `aql`) and pass in variables like you would with a regular template string. The string will automatically be converted into an object with `query` and `bindVars` attributes which you can pass directly to `db._query` to execute. If you pass in a collection it will be automatically recognized as a collection reference and handled accordingly.
 
-To find out more about AQL see the [AQL documentation](../../AQL/README.md).
+To find out more about AQL see the [AQL documentation](../../AQL/index.html).
 
 **Examples**
 

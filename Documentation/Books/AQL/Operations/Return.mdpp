@@ -18,8 +18,8 @@ the currently iterated array without modification, the following simple form can
 be used:
 
 ```
-FOR variable-name IN expression
-  RETURN variable-name
+FOR variableName IN expression
+  RETURN variableName
 ```
 
 As *RETURN* allows specifying an expression, arbitrary computations can be
@@ -36,7 +36,7 @@ The *DISTINCT* keyword will ensure uniqueness of the values returned by the
 *RETURN* statement:
 
 ```
-FOR variable-name IN expression
+FOR variableName IN expression
   RETURN DISTINCT expression
 ```
 

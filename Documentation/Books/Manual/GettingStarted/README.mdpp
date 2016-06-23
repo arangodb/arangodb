@@ -24,9 +24,12 @@ If you installed ArangoDB using homebrew under MacOS X, start the
 server by running `/usr/local/sbin/arangod`.
 
 If you installed ArangoDB under Windows as a service, the server is
-automatically started.
+automatically started. Otherwise, run the `arangod.exe` located in the
+installation folder's `bin` directory. You may have to run it as administrator
+to grant it write permissions to `C:\Program Files`.
 
-For startup parameters, installation in a cluster and so on, see
+For more in-depth information on how to install ArangoDB, as well as available
+startup parameters, installation in a cluster and so on, see
 [Installing](Installing/README.md).
 
 !SUBSECTION Securing the installation
@@ -35,8 +38,9 @@ The default installation contains one database *_system* and a user
 named *root*.
 
 Debian based packages and the Windows installer will ask for a
-password during the installation process. For all other installation
-packages you need to execute
+password during the installation process. Red-Hat based packages will
+set a random password. For all other installation packages you need to
+execute
 
 ```
 shell> arango-secure-installation
@@ -46,24 +50,43 @@ This will asked for a root password and sets this password.
 
 !SUBSECTION Web interface
 
-The server itself speaks REST and VelocyStream, but you can use the
+The server itself (*arangod*) speaks HTTP / REST, but you can use the
 graphical web interface to keep it simple. There's also
 [arangosh](../Administration/Arangosh/README.md), a synchronous shell
 for interaction with the server. If you're a developer, you might
 prefer the shell over the GUI. It does not provide features like
 syntax highlighting however.
 
+When you start using ArangoDB in your project, you will likely use an official
+or community-made driver written in the same language as your project. Drivers
+implement a programming interface that should feel natural for that programming
+language, and do all the talking to the server. Therefore, you can most certainly
+ignore the HTTP API unless you want to write a driver yourself or explicitly
+want to use the raw interface.
+
+To get familiar with the database system you can even put drivers aside and
+use the web interface (code name *Aardvark*) for basic interaction.
 The web interface will become available shortly after you started `arangod`.
 You can access it in your browser at http://localhost:8529 - if not, please
 see [Troubleshooting](../Troubleshooting/README.md).
 
-By default, authentication is enabled. There default user is
+By default, authentication is enabled. The default user is
 `root`. Depending on the installation method used, the installation
-processed either prompted for the root password or the default root
-password is empty (see [above](#securing-the-installation).
+process either prompted for the root password or the default root
+password is empty (see [above](#securing-the-installation)).
 
-It should look like this:
-TODO MISSING
+![Aardvark Login Form](../Administration/WebInterface/images/loginView.png)
+
+Next you will be asked which database to use. Every server instance comes with
+a `_system` database. Select this database to continue.
+
+![select database](../Administration/WebInterface/images/selectDBView.png)
+
+You should then be presented the dashboard with server statistics like this:
+
+![Aardvark Dashboard Request Statistics](../Administration/WebInterface/images/dashboardView.png)
+
+For a more detailed description of the interface, see [Web Interface](../Administration/WebInterface/README.md).
 
 !SUBSECTION Databases, collections and documents
 
@@ -75,8 +98,6 @@ document in any collection can have arbitrary attribute keys and
 values. Documents in a single collection will likely have a similar structure in
 practice however, but the database system itself does not require it and will
 operate stable and fast no matter how your data looks like.
-
-Every server instance comes with a `_system` database.
 
 !SECTION ArangoDB programs 
 

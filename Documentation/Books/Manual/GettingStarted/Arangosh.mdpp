@@ -30,7 +30,7 @@ STANDARD options:
   --pager <string>              output pager (default: "less -X -R -F -L")
   --pretty-print                pretty print values
   --quiet                       no banner
-  --temp-path <string>          path for temporary files (default: "/tmp/arangodb")
+  --temp.path <string>          path for temporary files (default: "/tmp/arangodb")
   --use-pager                   use pager
   
 JAVASCRIPT options:
@@ -46,7 +46,7 @@ LOGGING options:
   
 CLIENT options:
   --server.connect-timeout <double>         connect timeout in seconds (default: 3)
-  --server.disable-authentication <bool>    disable authentication (default: false)
+  --server.authentication <bool>            whether or not to use authentication (default: true)
   --server.endpoint <string>                endpoint to connect to, use 'none' to start without a server (default: "tcp://127.0.0.1:8529")
   --server.password <string>                password to use when connecting (leave empty for prompt)
   --server.request-timeout <double>         request timeout in seconds (default: 300)
@@ -54,9 +54,16 @@ CLIENT options:
 ```
 
 !SECTION Database Wrappers
-The *db*-Object is available in *arangosh* as well as on *arangod* i.e. if you're using [Foxx](../Foxx/README.md). While its Interface is persistant bewteen the *arangosh* and the *arangod* implementations, its underpinning are not. The *arangod* implementation is JavaScript wrappers around ArangoDBs native C++ implementation, the *arangosh* implementation wraps HTTP-Accesses to [ArangoDBs RESTfull API](../../HTTP/index.html).
 
-So while this code may produce similar results when executed in *arangosh* and *arangod*, the cpu-usage and time required will be really different:
+The [`db` object](../Appendix/References/DBObject.md) is available in *arangosh*
+as well as on *arangod* i.e. if you're using [Foxx](../Foxx/README.md). While its
+interface is persistant between the *arangosh* and the *arangod* implementations,
+its underpinning is not. The *arangod* implementation are JavaScript wrappers
+around ArangoDB's native C++ implementation, whereas the *arangosh* implementation
+wraps HTTP accesses to ArangoDB's [RESTfull API](../../HTTP/index.html).
+
+So while this code may produce similar results when executed in *arangosh* and
+*arangod*, the cpu usage and time required will be really different:
 
 ```js
 for (i = 0; i < 100000; i++) {
@@ -64,4 +71,5 @@ for (i = 0; i < 100000; i++) {
 }
 ```
 
-Since the *arangosh* version will be doing around 100k HTTP-Requests, and the *arangod* version [will directly write to the database](../Architecture/ServerInternals.md).
+Since the *arangosh* version will be doing around 100k HTTP requests, and the
+*arangod* version will directly write to the database.

@@ -1,2 +1,0 @@
-shell> curl --dump - http://localhost:8529/hello/world
-
