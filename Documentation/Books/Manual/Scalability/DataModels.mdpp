@@ -38,7 +38,7 @@ The AQL query language allows complex queries, using multiple
 collections, secondary indexes as well as joins. In particular with
 the latter, scaling can be a challenge, since if the data to be
 joined resides on different machines, a lot of communication
-has to happen. The AQL query execution engine organises a data
+has to happen. The AQL query execution engine organizes a data
 pipeline across the cluster to put together the results in the
 most efficient way. The query optimizer is aware of the cluster
 structure and knows what data is where and how it is indexed.

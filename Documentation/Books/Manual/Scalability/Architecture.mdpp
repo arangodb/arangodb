@@ -30,7 +30,7 @@ tasks for all roles run the same binary from the same Docker image.
 
 One or multiple Agents form the Agency in an ArangoDB cluster. The
 Agency is the central place to store the configuration in a cluster. It
-performs leader elections and provies other synchronisation services for
+performs leader elections and provides other synchronization services for
 the whole cluster. Without the Agency none of the other components can
 operate.
 
@@ -97,11 +97,11 @@ coordinators using the Agency.
 This architecture is very flexible and thus allows many configurations,
 which are suitable for different usage scenarios:
 
- 1. The default configuration is to run exactly one coorddinator and
+ 1. The default configuration is to run exactly one coordinator and
     one primary DBserver on each machine. This achieves the classical
     master/master setup, since there is a perfect symmetry between the
     different nodes, clients can equally well talk to any one of the
-    coordinators and all expose the same view to the datastore.
+    coordinators and all expose the same view to the data store.
  2. One can deploy more coordinators than DBservers. This is a sensible
     approach if one needs a lot of CPU power for the Foxx services, 
     because they run on the coordinators.
@@ -124,7 +124,7 @@ ArangoDB offers two ways of data replication within a cluster, synchronous
 and asynchronous. In this section we explain some details and highlight
 the advantages and disadvantages respectively.
 
-!SUBSUBSECTION Synchronous replication with automatic failover
+!SUBSUBSECTION Synchronous replication with automatic fail-over
 
 Synchronous replication works on a per-shard basis. One configures for
 each collection, how many copies of each shard are kept in the cluster.
@@ -134,7 +134,7 @@ are always sent to the DBserver which happens to hold the leader copy,
 which in turn replicates the changes to all followers before the operation
 is considered to be done and reported back to the coordinator.
 Read operations are all served by the server holding the leader copy,
-this allows to provide snapshot semantices for complex transactions.
+this allows to provide snapshot semantics for complex transactions.
 
 If a DBserver fails that holds a follower copy of a shard, then the leader
 can no longer synchronize its changes to that follower. After a short timeout
@@ -162,24 +162,24 @@ resynchronizations are quick. This technology allows to move shards
 Therefore, an ArangoDB cluster can move all the data on a specific DBserver
 to other DBservers and then shut down that server in a controlled way. 
 This allows to scale down an ArangoDB cluster without service interruption,
-loss of fault tolerance or data loss. Furthermore, one can rebalance the
+loss of fault tolerance or data loss. Furthermore, one can re-balance the
 distribution of the shards, either manually or automatically.
 
 All these operations can be triggered via a REST/JSON API or via the
-graphical web UI. All failover operations are completely handled within
+graphical web UI. All fail-over operations are completely handled within
 the ArangoDB cluster.
 
 Obviously, synchronous replication involves a certain increased latency for
 write operations, simply because there is one more network hop within the 
 cluster for every request. Therefore the user can set the replication factor
-to 1, which means that only one copy of each shard ist kept, thereby
+to 1, which means that only one copy of each shard is kept, thereby
 switching off synchronous replication. This is a suitable setting for
 less important or easily recoverable data for which low latency write 
 operations matter.
 
-!SUBSUBSECTION Asynchronous replication with automatic failover
+!SUBSUBSECTION Asynchronous replication with automatic fail-over
 
-Asynchronous replication works differently, in that it is organised
+Asynchronous replication works differently, in that it is organized
 using primary and secondary DBservers. Each secondary server replicates
 all the data held on a primary by polling in an asynchronous way. This
 process has very little impact on the performance of the primary. The
@@ -188,8 +188,8 @@ write operation that is sent to the client and the actual replication of
 the data. If the master server fails during this delay, then committed
 and confirmed data can be lost.
 
-Nevertheless, we also offer automatic failover with this setup. Contrary 
-to the synchronous case, here the failover management is done from outside
+Nevertheless, we also offer automatic fail-over with this setup. Contrary 
+to the synchronous case, here the fail-over management is done from outside
 the ArangoDB cluster. In a future version we might move this management
 into the supervision process in the Agency, but as of now, the management
 is done via the Mesos framework scheduler for ArangoDB (see below).
@@ -235,12 +235,12 @@ initial deployment, but also the later management of automatic
 replacement of failed instances and the scaling of the ArangoDB cluster
 (triggered manually or even automatically). Since all manipulations are
 either via the graphical web UI or via JSON/REST calls, one can even
-implement autoscaling very easily.
+implement auto-scaling very easily.
 
 A DC/OS cluster is a very natural environment to deploy microservice
 architectures, since it is so convenient to deploy various services,
 including potentially multiple ArangoDB cluster instances within the
-same DC/OS cluster. The builtin service discovery makes it extremely
+same DC/OS cluster. The built-in service discovery makes it extremely
 simple to connect the various microservices and Mesos automatically
 takes care of the distribution and deployment of the various tasks.
 
@@ -253,7 +253,7 @@ It is possible to deploy an ArangoDB cluster by simply launching a bunch of
 Docker containers with the right command line options to link them up, 
 or even on a single machine starting multiple ArangoDB processes. In that 
 case, synchronous replication will work within the deployed ArangoDB cluster,
-and automatic failover in the sense that the duties of a failed server will
+and automatic fail-over in the sense that the duties of a failed server will
 automatically be assigned to another, surviving one. However, since the
 ArangoDB cluster cannot within itself launch additional instances, replacement
 of failed nodes is not automatic and scaling up and down has to be managed
