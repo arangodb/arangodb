@@ -283,12 +283,6 @@ The operations for storing and retrieving cluster state information are now much
 expensive from an ArangoDB cluster node perspective, which in turn allows for faster
 cluster operations that need to fetch or update the overall cluster state.
 
-TODO
-
-!SECTION Synchronous replication
-
-TODO
-
 !SECTION `_from` and `_to` attributes of edges are updatable and usable in indexes
 
 In ArangoDB prior to 3.0 the attributes `_from` and `_to` of edges were treated
