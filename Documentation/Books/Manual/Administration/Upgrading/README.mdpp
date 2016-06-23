@@ -2,7 +2,8 @@
 
 !SUBSECTION Recommended major upgrade procedure
 
-*TODO*
+To upgrade an existing ArangoDB 2.x to 3.0 please use the procedure described
+[here](../../Administration/Upgrading/Upgrading30.md).
 
 !SUBSECTION Recommended minor upgrade procedure
 
