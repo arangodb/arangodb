@@ -245,6 +245,10 @@ function main(argv) {
     }
   }
 
+  if (res.exit != 0) {
+    throw("generating examples failed!");
+  }
+
   return 0;
 }
 
