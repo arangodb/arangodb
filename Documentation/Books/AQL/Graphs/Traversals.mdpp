@@ -160,6 +160,9 @@ FOR vertex[, edge[, path]]
 Instead of `GRAPH graphName` you may specify a list of edge collections. Vertex
 collections are determined by the edges in the edge collections. The rest of the
 behavior is similar to the named version.
+If the same edge collection is specified multiple times, it will behave as if it
+were specified only once. Specifying the same edge collection is only allowed when
+the collections do not have conflicting traversal directions. 
 
 !SUBSECTION Traversing in mixed directions
 
