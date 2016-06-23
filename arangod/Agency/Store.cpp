@@ -364,6 +364,7 @@ bool Store::check(VPackSlice const& slice) const {
             }
             return false;
           }
+          return false;
         } else {
           return false;
         }
