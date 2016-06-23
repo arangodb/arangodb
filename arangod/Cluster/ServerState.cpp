@@ -789,15 +789,7 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList(
   std::string const key = "Plan/Coordinators";
 
   AgencyComm comm;
-  AgencyCommResult result;
-
-  {
-    AgencyCommLocker locker("Plan", "READ");
-
-    if (locker.successful()) {
-      result = comm.getValues(key);
-    }
-  }
+  AgencyCommResult result = comm.getValues(key);
 
   if (!result.successful()) {
     std::string const endpoints = AgencyComm::getEndpointsString();
@@ -838,15 +830,7 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
   int count = 0;
   while (++count <= 600) {
     AgencyComm comm;
-    AgencyCommResult result;
-
-    {
-      AgencyCommLocker locker("Target", "READ");
-
-      if (locker.successful()) {
-        result = comm.getValues(key);
-      }
-    }
+    AgencyCommResult result = comm.getValues(key);
 
     if (!result.successful()) {
       std::string const endpoints = AgencyComm::getEndpointsString();
@@ -897,15 +881,7 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
   std::string const key = "Plan/DBServers";
 
   AgencyComm comm;
-  AgencyCommResult result;
-
-  {
-    AgencyCommLocker locker("Plan", "READ");
-
-    if (locker.successful()) {
-      result = comm.getValues(key);
-    }
-  }
+  AgencyCommResult result = comm.getValues(key);
 
   if (!result.successful()) {
     std::string const endpoints = AgencyComm::getEndpointsString();

@@ -41,11 +41,29 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the agency servers
 ////////////////////////////////////////////////////////////////////////////////
-  
+
   var agencyServers = ARGUMENTS[0].split(" ");
   var whoseTurn = 0;
-
+  var nagents = agencyServers.length;
   var request = require("@arangodb/request");
+
+  // Wait for multi-host agency to have elected a leader
+  if (agencyServers.length > 1) {
+    while (true) {
+      var res = request({url: agencyServers[whoseTurn] + "/_api/agency/config",
+                         method: "GET", followRedirects: true, body: "",
+                         headers: {"Content-Type": "application/json"}});
+      wait(1);
+      res.bodyParsed = JSON.parse(res.body);
+      require("internal").print("Leadership election going on ... ");
+      if (res.bodyParsed.leaderId >= 0 && res.bodyParsed.leaderId < nagents) {
+        whoseTurn = res.bodyParsed.leaderId;
+        require("internal").print("Agents elected " + res.bodyParsed.leaderId +
+                                  " leader in term " + res.bodyParsed.term + ".");
+        break;
+      }
+    }
+  }
 
   function readAgency(list) {
     // We simply try all agency servers in turn until one gives us an HTTP
@@ -100,7 +118,6 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingleTopLevel : function () {
-      wait(2);
       assertEqual(readAndCheck([["/x"]]), [{}]);
       writeAndCheck([[{x:12}]]);
       assertEqual(readAndCheck([["/x"]]), [{x:12}]);

@@ -1168,57 +1168,50 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   AgencyComm _agency;
   AgencyCommResult result;
-
-  {
-    std::string prefix("Plan/Collections/");
-    prefix.append(dbName);
-
-    AgencyCommLocker locker("Plan", "READ");
-    if (!locker.successful()) {
+  
+  std::string prefix("Plan/Collections/");
+  prefix.append(dbName);
+  
+  result = _agency.getValues(prefix);
+  if (!result.successful()) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
+  } else {
+    VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
+      {_agency.prefix(), "Plan", "Collections", dbName}));
+    if (!colls.isObject()) {
       generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                    TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN);
+                    TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
     } else {
-      result = _agency.getValues(prefix);
-      if (!result.successful()) {
-        generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                      TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
-      } else {
-        VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
-              {_agency.prefix(), "Plan", "Collections", dbName}));
-        if (!colls.isObject()) {
-          generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                        TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
-        } else {
-          VPackBuilder resultBuilder;
-          {
-            VPackObjectBuilder b1(&resultBuilder);
-            resultBuilder.add(VPackValue("collections"));
-            {
-              VPackArrayBuilder b2(&resultBuilder);
-              for (auto const& p : VPackObjectIterator(colls)) {
-                VPackSlice const subResultSlice = p.value;
-                if (subResultSlice.isObject()) {
-                  if (includeSystem ||
-                      !arangodb::basics::VelocyPackHelper::getBooleanValue(
-                          subResultSlice, "isSystem", true)) {
-                    VPackObjectBuilder b3(&resultBuilder);
-                    resultBuilder.add("indexes", subResultSlice.get("indexes"));
-                    resultBuilder.add("parameters", subResultSlice);
-                  }
-                }
+      VPackBuilder resultBuilder;
+      {
+        VPackObjectBuilder b1(&resultBuilder);
+        resultBuilder.add(VPackValue("collections"));
+        {
+          VPackArrayBuilder b2(&resultBuilder);
+          for (auto const& p : VPackObjectIterator(colls)) {
+            VPackSlice const subResultSlice = p.value;
+            if (subResultSlice.isObject()) {
+              if (includeSystem ||
+                  !arangodb::basics::VelocyPackHelper::getBooleanValue(
+                    subResultSlice, "isSystem", true)) {
+                VPackObjectBuilder b3(&resultBuilder);
+                resultBuilder.add("indexes", subResultSlice.get("indexes"));
+                resultBuilder.add("parameters", subResultSlice);
               }
             }
-            TRI_voc_tick_t tick = TRI_CurrentTickServer();
-            auto tickString = std::to_string(tick);
-            resultBuilder.add("tick", VPackValue(tickString));
-            resultBuilder.add("state", VPackValue("unused"));
           }
-          generateResult(GeneralResponse::ResponseCode::OK,
-                         resultBuilder.slice());
         }
+        TRI_voc_tick_t tick = TRI_CurrentTickServer();
+        auto tickString = std::to_string(tick);
+        resultBuilder.add("tick", VPackValue(tickString));
+        resultBuilder.add("state", VPackValue("unused"));
       }
+      generateResult(GeneralResponse::ResponseCode::OK,
+                     resultBuilder.slice());
     }
   }
+  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
