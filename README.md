@@ -45,7 +45,7 @@ Microservice Example
 
 By extending the HTTP API with user code written in JavaScript, ArangoDB can be turned into a strict schema-enforcing persistence engine.
 
-Next step, bundle your Foxx application as a [docker container](https://docs.arangodb.com/cookbook/UsingArangoDBNodeJSDocker.html) and get it running in the cloud.
+Next step, bundle your Foxx application as a [docker container](https://docs.arangodb.com/cookbook/Cloud/NodeJsDocker.html) and get it running in the cloud.
 
 Other features of ArangoDB include:
 
@@ -86,9 +86,9 @@ Key features of the 3.0 release are:
 More Information
 ----------------
 
-Please check the [Installation Manual](https://docs.arangodb.com/3.0/Manual/GettingStarted/Installing/) for installation and compilation instructions.
+Please check the [Installation Manual](https://docs.arangodb.com/latest/Manual/GettingStarted/Installing/) for installation and compilation instructions.
 
-The [User Manual](https://docs.arangodb.com/devel/Manual/GettingStarted/) has an introductory chapter showing the basic operations of ArangoDB.
+The [User Manual](https://docs.arangodb.com/latest/Manual/GettingStarted/) has an introductory chapter showing the basic operations of ArangoDB.
 
 
 Stay in Contact
