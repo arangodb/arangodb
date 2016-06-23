@@ -88,7 +88,7 @@ More Information
 
 Please check the [Installation Manual](https://docs.arangodb.com/3.0/Manual/GettingStarted/Installing/) for installation and compilation instructions.
 
-The [User Manual](https://docs.arangodb.com/devel/Manual/GettingStarted/) has an introductory chapter showing the basic operations of ArangoDB.
+The [User Manual](https://docs.arangodb.com/3.0/Manual/GettingStarted/) has an introductory chapter showing the basic operations of ArangoDB.
 
 
 Stay in Contact
@@ -100,4 +100,4 @@ We really appreciate feature requests and bug reports. Please use our Github iss
 
 You can use the Google group for improvements, feature requests, comments 
 
-[http://www.arangodb.com/community](https://www.arangodb.com/community)
+[https://www.arangodb.com/community](https://www.arangodb.com/community)
