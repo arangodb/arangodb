@@ -1610,7 +1610,7 @@
               if (error.code === 409) {
                 return;
               }
-              if (error.code !== 400) {
+              if (error.code !== 400 && error.code !== 404) {
                 arangoHelper.arangoNotification("Query", "Successfully aborted.");
               }
             }
