@@ -299,7 +299,6 @@
         return;
       }
       var user = this.collection.findWhere({"user": username});
-      console.log(user);
       user.save({"extra": {"name":name}, "active":status}, {
         type: "PATCH",
         success: function() {

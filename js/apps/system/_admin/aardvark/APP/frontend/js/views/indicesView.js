@@ -201,30 +201,30 @@
       //window.modalView.hide();
 
       //delete modal
-      $("#modal-dialog .modal-footer").after(
+      $("#content #modal-dialog .modal-footer").after(
         '<div id="indexDeleteModal" style="display:block;" class="alert alert-error modal-delete-confirmation">' +
         '<strong>Really delete?</strong>' +
         '<button id="indexConfirmDelete" class="button-danger pull-right modal-confirm-delete">Yes</button>' +
         '<button id="indexAbortDelete" class="button-neutral pull-right">No</button>' +
         '</div>'
       );
-      $('#indexConfirmDelete').unbind('click');
-      $('#indexConfirmDelete').bind('click', function() {
-        $('#indexDeleteModal').remove();
+      $('#indexHeaderContent #indexConfirmDelete').unbind('click');
+      $('#indexHeaderContent #indexConfirmDelete').bind('click', function() {
+        $('#indexHeaderContent #indexDeleteModal').remove();
         self.deleteIndex();
       });
 
-      $('#indexAbortDelete').unbind('click');
-      $('#indexAbortDelete').bind('click', function() {
-        $('#indexDeleteModal').remove();
+      $('#indexHeaderContent #indexAbortDelete').unbind('click');
+      $('#indexHeaderContent #indexAbortDelete').bind('click', function() {
+        $('#indexHeaderContent #indexDeleteModal').remove();
       });
     },
 
     unbindIndexEvents: function() {
-      $('#indexEditView #addIndex').unbind('click');
-      $('#newIndexType').unbind('change');
-      $('#infoTab a').unbind('click');
-      $('.deleteIndex').unbind('click');
+      $('#indexHeaderContent #indexEditView #addIndex').unbind('click');
+      $('#indexHeaderContent #newIndexType').unbind('change');
+      $('#indexHeaderContent #infoTab a').unbind('click');
+      $('#indexHeaderContent .deleteIndex').unbind('click');
     },
 
     deleteIndex: function () {

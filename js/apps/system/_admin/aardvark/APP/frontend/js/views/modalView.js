@@ -300,19 +300,42 @@
           return;
         }
         if (b.type === self.buttons.DELETE && !noConfirm) {
-          $("#modalButton" + i).bind("click", function() {
-            $(self.confirm.yes).unbind("click");
-            $(self.confirm.yes).bind("click", b.callback);
-            $(self.confirm.list).css("display", "block");
+          var string = "#modalButton" + i;
+          if (divID) {
+            string = "#" + divID + " #modalButton" + i;
+          }
+          $(string).bind("click", function() {
+            if (divID) {
+              $('#' + divID + " " + self.confirm.yes).unbind("click");
+              $('#' + divID + " " + self.confirm.yes).bind("click", b.callback);
+              $('#' + divID + " " + self.confirm.list).css("display", "block");
+            }
+            else {
+              $(self.confirm.yes).unbind("click");
+              $(self.confirm.yes).bind("click", b.callback);
+              $(self.confirm.list).css("display", "block");
+            }
           });
           return;
         }
-        $("#modalButton" + i).bind("click", b.callback);
+        if (divID) {
+          $('#' + divID + " " + "#modalButton" + i).bind("click", b.callback);
+        }
+        else {
+          $("#modalButton" + i).bind("click", b.callback);
+        }
       });
 
-      $(this.confirm.no).bind("click", function() {
-        $(self.confirm.list).css("display", "none");
-      });
+      if (divID) {
+        $('#' + divID + " " + this.confirm.no).bind("click", function() {
+          $('#' + divID + " " + self.confirm.list).css("display", "none");
+        });
+      }
+      else {
+        $(this.confirm.no).bind("click", function() {
+          $(self.confirm.list).css("display", "none");
+        });
+      }
 
       var template;
       if (typeof templateName === 'string') {
@@ -362,7 +385,7 @@
         self.modalBindValidation(row);
         if (row.type === self.tables.SELECT2) {
           //handle select2
-          $('#'+row.id).select2({
+          $('#' + row.id).select2({
             tags: row.tags || [],
             showSearchBox: false,
             minimumResultsForSearch: -1,
@@ -412,10 +435,21 @@
       }
 
       //if input-field is available -> autofocus first one
-      var focus = $('#modal-dialog').find('input');
+      var focus;
+      if (divID) {
+        focus = $('#' + divID + " " + '#modal-dialog').find('input');
+      }
+      else {
+        focus = $('#modal-dialog').find('input');
+      }
       if (focus) {
         setTimeout(function() {
-          var focus = $('#modal-dialog');
+          if (divID) {
+            focus = $('#' + divID + " " + '#modal-dialog');
+          }
+          else {
+            focus = $('#modal-dialog');
+          }
           if (focus.length > 0) {
             focus = focus.find('input'); 
               if (focus.length > 0) {

@@ -42,7 +42,10 @@ The shard section displays all available sharded collections.
 
 Functions:
 
-- Move Shard: Click on a shard will open a move shard dialog. Shards can be
+- Move Shard Leader: Click on a leader database of a shard server will open a move shard dialog. Shards can be
+  transferred to all available databas servers, except the leading database
+  server or an available follower.
+- Move Shard Follower: Click on a follower database of a shard will open a move shard dialog. Shards can be
   transferred to all available databas servers, except the leading database
   server or an available follower.
 - Rebalance Shards: A new database server will not have any shards. With the

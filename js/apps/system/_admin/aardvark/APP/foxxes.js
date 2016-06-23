@@ -52,7 +52,7 @@ router.use((req, res, next) => {
   }
   next();
 })
-.header('authorization', joi.string().required(), 'ArangoDB credentials.');
+.header('authorization', joi.string().optional(), 'ArangoDB credentials.');
 
 
 const foxxRouter = createRouter();

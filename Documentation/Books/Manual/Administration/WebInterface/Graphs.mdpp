@@ -13,3 +13,20 @@ support this.
 <!-- Graph Viewer -->
 
 ![display graphs](images/graphViewer.png)
+
+Left Toolbar Functions:
+
+- Fold/Unfold a node / drag graph
+- Drag a node
+- Edit a node or edge
+- Drag and drop a new edge between two nodes
+- Add a node
+- Remove a node
+
+Top Toolbar Functions:
+
+- Filter graph by attribute
+- Add node by attribute 
+- Configure labels of nodes or edges
+- Group nodes by attribute
+- Limit count of rendered nodes
