@@ -87,9 +87,9 @@ The module resolution used by `require` now behaves more like in node.js. The `o
 More Information
 ----------------
 
-Please check the [Installation Manual](https://docs.arangodb.com/Installing/) for installation and compilation instructions.
+Please check the [Installation Manual](https://docs.arangodb.com/latest/Manual/GettingStarted/Installing/index.html) for installation and compilation instructions.
 
-The [User Manual](https://docs.arangodb.com/FirstSteps/) has an introductory chapter showing the basic operations of ArangoDB.
+The [User Manual](https://docs.arangodb.com/latest/Manual/FirstSteps/) has an introductory chapter showing the basic operations of ArangoDB.
 
 
 Stay in Contact
