@@ -3186,8 +3186,10 @@ AqlValue Functions::Shift(arangodb::aql::Query* query,
 
     auto iterator = VPackArrayIterator(l);
     // This jumps over the first element
-    while (iterator.next()) {
+    iterator.next();
+    while (iterator.valid()) {
       builder->add(iterator.value());
+      iterator.next();
     }
   }
   builder->close();
