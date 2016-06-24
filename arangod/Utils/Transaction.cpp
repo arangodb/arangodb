@@ -2853,7 +2853,7 @@ OperationCursor* Transaction::indexScanForCondition(
   }
 
   // Now collect the Iterator
-  IndexIteratorContext ctxt(_vocbase, resolver());
+  IndexIteratorContext ctxt(_vocbase, resolver(), _serverRole);
  
   auto idx = indexId.getIndex();
   if (nullptr == idx) {
@@ -2948,7 +2948,7 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
       // idx->expandInSearchValues(search, expander);
 
       // Now collect the Iterator
-      IndexIteratorContext ctxt(_vocbase, resolver());
+      IndexIteratorContext ctxt(_vocbase, resolver(), _serverRole);
       iterator.reset(idx->iteratorForSlice(this, &ctxt, search, reverse));
     }
   }
