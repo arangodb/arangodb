@@ -1,6 +1,11 @@
 devel
 -----
 
+* improved performance of primary index lookups
+
+* optimizations for AQL `[*]` operator in case no filter, no projection and
+  no offset/limit are used
+
 * added AQL function `OUTERSECTION` to return the symmetric difference of its
   input arguments
 
