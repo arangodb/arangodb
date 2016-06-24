@@ -3720,6 +3720,49 @@ function AQL_INTERSECTION () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create the difference of all arguments, i.e. all unique elements
+/// in the arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DIFFERENCE () {
+  'use strict';
+
+  var i, keys = { };
+
+  var func = function (value) {
+    var normalized = NORMALIZE(value);
+    var k = JSON.stringify(normalized);
+    if (keys.hasOwnProperty(k)) {
+      ++keys[k][1];
+    } else {
+      keys[k] = [value, 1];
+    }
+  };
+
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
+
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
+        WARN("DIFFERENCE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
+      }
+
+      element.forEach(func);
+    }
+  }
+
+  var result = [];
+  Object.keys(keys).forEach(function(k) {
+    if (keys[k][1] === 1) {
+      result.push(keys[k][0]);
+    }
+  });
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief flatten a list of lists
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5657,6 +5700,7 @@ exports.AQL_UNSHIFT = AQL_UNSHIFT;
 exports.AQL_SLICE = AQL_SLICE;
 exports.AQL_MINUS = AQL_MINUS;
 exports.AQL_INTERSECTION = AQL_INTERSECTION;
+exports.AQL_DIFFERENCE = AQL_DIFFERENCE;
 exports.AQL_FLATTEN = AQL_FLATTEN;
 exports.AQL_MAX = AQL_MAX;
 exports.AQL_MIN = AQL_MIN;

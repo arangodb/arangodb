@@ -39,6 +39,18 @@ APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
 
 This is an alias for [LENGTH()](#length).
 
+!SUBSECTION DIFFERENCE()
+
+`DIFFERENCE(array1, array2, ... arrayN) → newArray`
+
+Return the symmetric difference of all arrays specified. The result is an array of values that
+occur just once across all arguments.
+
+- **arrays** (array, *repeatable*): an arbitrary number of arrays as multiple arguments
+  (at least 2)
+- returns **newArray** (array): a single array with only the elements, which exist only once
+  across all provided arrays. The element order is random.
+
 !SUBSECTION FIRST()
 
 `FIRST(anyArray) → firstElement`

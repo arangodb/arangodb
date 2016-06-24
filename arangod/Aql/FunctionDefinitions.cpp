@@ -258,6 +258,8 @@ struct FunctionDefiner {
               false, true, true, &Functions::UnionDistinct});
     add({"MINUS", "AQL_MINUS", "l,l|+", true, true, false, true,
                        true, &Functions::Minus});
+    add({"DIFFERENCE", "AQL_DIFFERENCE", "l,l|+", true, true, false,
+              true, true, &Functions::Difference});
     add({"INTERSECTION", "AQL_INTERSECTION", "l,l|+", true, true, false,
               true, true, &Functions::Intersection});
     add({"FLATTEN", "AQL_FLATTEN", "l|n", true, true, false,
