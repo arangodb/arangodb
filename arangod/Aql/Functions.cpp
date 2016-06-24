@@ -2111,11 +2111,11 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
   return AqlValue(builder.get());
 }
 
-/// @brief function DIFFERENCE
-AqlValue Functions::Difference(arangodb::aql::Query* query,
-                               arangodb::AqlTransaction* trx,
-                               VPackFunctionParameters const& parameters) {
-  ValidateParameters(parameters, "DIFFERENCE", 2);
+/// @brief function OUTERSECTION
+AqlValue Functions::Outersection(arangodb::aql::Query* query,
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "OUTERSECTION", 2);
 
   VPackOptions options;
   options.customTypeHandler =
@@ -2135,7 +2135,7 @@ AqlValue Functions::Difference(arangodb::aql::Query* query,
 
     if (!value.isArray()) {
       // not an array
-      RegisterWarning(query, "DIFFERENCE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      RegisterWarning(query, "OUTERSECTION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
       return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
     }
     

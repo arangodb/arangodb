@@ -2572,10 +2572,10 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test difference function
+/// @brief test outersection function
 ////////////////////////////////////////////////////////////////////////////////
     
-    testDifference : function () {
+    testOutersection : function () {
       var queries = [
         [ [ [ ], [ ], [ ], [ ] ], [ ] ],
         [ [ [ 1 ], [ ] ], [ 1 ] ],
@@ -2597,13 +2597,13 @@ function ahuacatlFunctionsTestSuite () {
       var sorter = require("@arangodb/aql").RELATIONAL_CMP;
 
       queries.forEach(function(query) {
-        var actual = getQueryResults("RETURN DIFFERENCE(" + JSON.stringify(query[0]).replace(/^\[(.*)\]$/, "$1") + ")");
+        var actual = getQueryResults("RETURN OUTERSECTION(" + JSON.stringify(query[0]).replace(/^\[(.*)\]$/, "$1") + ")");
         assertEqual(query[1].sort(sorter), actual[0].sort(sorter));
         
-        actual = getQueryResults("RETURN V8(DIFFERENCE(" + JSON.stringify(query[0]).replace(/^\[(.*)\]$/, "$1") + "))");
+        actual = getQueryResults("RETURN V8(OUTERSECTION(" + JSON.stringify(query[0]).replace(/^\[(.*)\]$/, "$1") + "))");
         assertEqual(query[1].sort(sorter), actual[0].sort(sorter));
         
-        actual = getQueryResults("RETURN NOOPT(DIFFERENCE(" + JSON.stringify(query[0]).replace(/^\[(.*)\]$/, "$1") + "))");
+        actual = getQueryResults("RETURN NOOPT(OUTERSECTION(" + JSON.stringify(query[0]).replace(/^\[(.*)\]$/, "$1") + "))");
         assertEqual(query[1].sort(sorter), actual[0].sort(sorter));
       });
     },

@@ -3724,7 +3724,7 @@ function AQL_INTERSECTION () {
 /// in the arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_DIFFERENCE () {
+function AQL_OUTERSECTION () {
   'use strict';
 
   var i, keys = { };
@@ -3744,7 +3744,7 @@ function AQL_DIFFERENCE () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
-        WARN("DIFFERENCE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN("OUTERSECTION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
@@ -5700,7 +5700,7 @@ exports.AQL_UNSHIFT = AQL_UNSHIFT;
 exports.AQL_SLICE = AQL_SLICE;
 exports.AQL_MINUS = AQL_MINUS;
 exports.AQL_INTERSECTION = AQL_INTERSECTION;
-exports.AQL_DIFFERENCE = AQL_DIFFERENCE;
+exports.AQL_OUTERSECTION = AQL_OUTERSECTION;
 exports.AQL_FLATTEN = AQL_FLATTEN;
 exports.AQL_MAX = AQL_MAX;
 exports.AQL_MIN = AQL_MIN;

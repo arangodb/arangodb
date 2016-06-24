@@ -355,10 +355,15 @@ bool Store::check(VPackSlice const& slice) const {
         } else if (oper == "in") {  // in
           if (found) {
             if (node.slice().isArray()) {
+              bool found = false;
               for (auto const& i : VPackArrayIterator(node.slice())) {
                 if (i == op.value) {
-                  return true;
+                  found = true;
+                  continue;
                 }
+              }
+              if (found) {
+                continue;
               }
             }
           }

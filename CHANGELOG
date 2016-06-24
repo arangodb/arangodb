@@ -1,7 +1,7 @@
 devel
 -----
 
-* added AQL function `DIFFERENCE` to return the symmetric difference of its
+* added AQL function `OUTERSECTION` to return the symmetric difference of its
   input arguments
 
 
