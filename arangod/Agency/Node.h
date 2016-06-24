@@ -277,14 +277,18 @@ public:
   /// @brief Remove time to live entry
   virtual bool removeTimeToLive();
 
+  void rebuildVecBuf() const;
+
   
   std::string _node_name; ///< @brief my name 
   Node* _parent;          ///< @brief parent 
   Store* _store;          ///< @brief Store 
   Children _children;     ///< @brief child nodes 
   TimePoint _ttl;         ///< @brief my expiry 
-  Buffer<uint8_t> _value; ///< @brief my value
-  
+  //Buffer<uint8_t> _value; ///< @brief my value
+  std::vector<Buffer<uint8_t>> _value; ///< @brief my value
+  mutable Buffer<uint8_t> _vec_buf;
+  mutable bool _vec_buf_dirty;
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {

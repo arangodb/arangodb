@@ -44,6 +44,7 @@ struct Empty {
   bool operator()(const std::string& s) { return s.empty(); }
 };
 
+
 /// @brief Split strings by separator
 inline std::vector<std::string> split(const std::string& value,
                                       char separator) {
@@ -61,22 +62,21 @@ inline std::vector<std::string> split(const std::string& value,
 }
 
 
-
 /// Construct with node name
-Node::Node(std::string const& name)
-    : _node_name(name), _parent(nullptr), _store(nullptr) {
+Node::Node(std::string const& name) :
+  _node_name(name), _parent(nullptr), _store(nullptr), _vec_buf_dirty(true) {
 }
 
 
 /// Construct with node name in tree structure
-Node::Node(std::string const& name, Node* parent)
-    : _node_name(name), _parent(parent), _store(nullptr) {
+Node::Node(std::string const& name, Node* parent) :
+  _node_name(name), _parent(parent), _store(nullptr), _vec_buf_dirty(true) {
 }
 
 
 /// Construct for store
-Node::Node(std::string const& name, Store* store)
-    : _node_name(name), _parent(nullptr), _store(store) {
+Node::Node(std::string const& name, Store* store) :
+  _node_name(name), _parent(nullptr), _store(store), _vec_buf_dirty(true) {
 }
 
 
@@ -86,11 +86,35 @@ Node::~Node() {}
 
 /// Get slice to value buffer
 Slice Node::slice() const {
-  return (_value.size() == 0)
-             ? arangodb::basics::VelocyPackHelper::EmptyObjectValue()
-             : Slice(_value.data());
+
+  // Some value
+  if (!_value.empty()) {
+    if (_value.size() == 1) {            // Scalar
+      return Slice(_value.at(0).data());
+    } else {                             // Vector
+      rebuildVecBuf();
+      return Slice(_vec_buf.data());
+    }
+  }
+
+  // Empty object
+  return arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+  
 }
 
+
+void Node::rebuildVecBuf() const {
+  if (_vec_buf_dirty) {              // Dirty vector buffer
+    Builder tmp;
+    tmp.openArray();
+    for (auto const& i : _value) {
+      tmp.add(Slice(i.data()));
+    }
+    tmp.close();
+    _vec_buf = *tmp.steal();
+    _vec_buf_dirty = false;
+  }
+}
 
 /// Get name of this node
 std::string const& Node::name() const { return _node_name; }
@@ -117,7 +141,9 @@ std::string Node::uri() const {
 Node::Node(Node&& other) :
   _node_name(std::move(other._node_name)),
   _children(std::move(other._children)), 
-  _value(std::move(other._value)) {}
+  _value(std::move(other._value)),
+  _vec_buf(std::move(other._vec_buf)),
+  _vec_buf_dirty(std::move(other._vec_buf_dirty)) {}
 
 
 /// Copy constructor
@@ -125,8 +151,9 @@ Node::Node(Node const& other) :
   _node_name(other._node_name),
   _parent(nullptr),
   _store(nullptr),
-  _value(other._value) {
-
+  _value(other._value),
+  _vec_buf(other._vec_buf),
+  _vec_buf_dirty(other._vec_buf_dirty) {
   for (auto const& p : other._children) {
     auto copy = std::make_shared<Node>(*p.second);
     _children.insert(std::make_pair(p.first, copy));
@@ -142,8 +169,19 @@ Node& Node::operator=(VPackSlice const& slice) {
   // Must not copy _parent, _ttl, _observers
   removeTimeToLive();
   _children.clear();
-  _value.reset();
-  _value.append(reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
+  _value.clear();
+  if (slice.isArray()) {
+    _value.resize(slice.length());
+    for (size_t i = 0; i < slice.length(); ++i) {
+      _value.at(i).append(reinterpret_cast<char const*>(
+                            slice.begin()), slice.byteSize());
+    }
+  } else {
+    _value.resize(1);
+    _value.at(0).append(
+      reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
+  }
+  _vec_buf_dirty = true;
   return *this;
 }
 
@@ -157,6 +195,8 @@ Node& Node::operator=(Node&& rhs) {
   _node_name = std::move(rhs._node_name);
   _children = std::move(rhs._children);
   _value = std::move(rhs._value);
+  _vec_buf = std::move(rhs._vec_buf);
+  _vec_buf_dirty = std::move(rhs._vec_buf_dirty);
   return *this;
 }
 
@@ -175,6 +215,8 @@ Node& Node::operator=(Node const& rhs) {
     _children.insert(std::make_pair(p.first, copy));
   }
   _value = rhs._value;
+  _vec_buf = rhs._vec_buf;
+  _vec_buf_dirty = rhs._vec_buf_dirty;
   return *this;
 }
 
