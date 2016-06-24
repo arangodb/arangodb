@@ -624,6 +624,11 @@ struct AstNode {
     }
     return (strncmp(getStringValue(), other, getStringLength()) == 0);
   }
+  
+  /// @brief whether or not a string is equal to another
+  inline bool stringEquals(std::string const& other) const {
+    return (other.size() == getStringLength() && memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
+  }
 
   /// @brief return the data value of a node
   inline void* getData() const { return value.value._data; }

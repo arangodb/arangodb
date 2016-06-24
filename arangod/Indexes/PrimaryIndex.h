@@ -260,13 +260,31 @@ class PrimaryIndex final : public Index {
 
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create the iterator
+  /// @brief create the iterator, for a single attribute, IN operator
   //////////////////////////////////////////////////////////////////////////////
 
-  IndexIterator* createIterator(
+  IndexIterator* createInIterator(
       arangodb::Transaction*, IndexIteratorContext*,
       arangodb::aql::AstNode const*,
-      std::vector<arangodb::aql::AstNode const*> const&) const;
+      arangodb::aql::AstNode const*) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create the iterator, for a single attribute, EQ operator
+  //////////////////////////////////////////////////////////////////////////////
+  
+  IndexIterator* createEqIterator(
+      arangodb::Transaction*, IndexIteratorContext*,
+      arangodb::aql::AstNode const*,
+      arangodb::aql::AstNode const*) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a single value node to the iterator's keys
+  ////////////////////////////////////////////////////////////////////////////////
+   
+  void handleValNode(IndexIteratorContext* context,
+                     VPackBuilder* keys,
+                     arangodb::aql::AstNode const* valNode,
+                     bool isId) const; 
 
  private:
   //////////////////////////////////////////////////////////////////////////////

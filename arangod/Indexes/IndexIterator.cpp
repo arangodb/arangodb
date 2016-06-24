@@ -33,12 +33,14 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIteratorContext::IndexIteratorContext(TRI_vocbase_t* vocbase,
-                                           CollectionNameResolver const* resolver)
-    : vocbase(vocbase), resolver(resolver), ownsResolver(resolver == nullptr) {}
+                                           CollectionNameResolver const* resolver,
+                                           ServerState::RoleEnum serverRole)
+    : vocbase(vocbase), resolver(resolver), serverRole(serverRole), ownsResolver(resolver == nullptr) {}
 
+/*
 IndexIteratorContext::IndexIteratorContext(TRI_vocbase_t* vocbase)
     : IndexIteratorContext(vocbase, nullptr) {}
-
+*/
 IndexIteratorContext::~IndexIteratorContext() {
   if (ownsResolver) {
     delete resolver;
@@ -54,7 +56,7 @@ CollectionNameResolver const* IndexIteratorContext::getResolver() const {
 }
 
 bool IndexIteratorContext::isCluster() const {
-  return arangodb::ServerState::instance()->isRunningInCluster();
+  return arangodb::ServerState::instance()->isRunningInCluster(serverRole);
 }
 
 int IndexIteratorContext::resolveId(char const* handle, size_t length,
