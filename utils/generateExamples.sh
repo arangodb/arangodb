@@ -39,7 +39,9 @@ ${ARANGOSH} \
     -- \
     "$@"
 
-if test $? -eq 0; then
+rc=$?
+
+if test $rc -eq 0; then
   echo "removing ${LOGFILE} ${DBDIR}"
   rm -rf ${LOGFILE} ${DBDIR} arangosh.examples.js
 else
@@ -47,4 +49,4 @@ else
   cat ${LOGFILE}
 fi
 
-echo Server has terminated.
+exit $rc

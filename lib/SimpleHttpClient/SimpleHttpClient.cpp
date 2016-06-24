@@ -438,7 +438,7 @@ void SimpleHttpClient::setUserNamePassword(std::string const& prefix,
   std::string value =
       arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
 
-  _pathToBasicAuth.push_back(make_pair(prefix, value));
+  _pathToBasicAuth.push_back(std::make_pair(prefix, value));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -501,12 +501,15 @@ void SimpleHttpClient::setRequest(
   HttpRequest::appendMethod(method, &_writeBuffer);
 
   // append location
-  std::string l(location);
+  std::string const* l = &location;
+
+  std::string appended;
   if (location.empty() || location[0] != '/') {
-    l = "/" + location;
+    appended = "/" + location;
+    l = &appended;
   }
 
-  _writeBuffer.appendText(l);
+  _writeBuffer.appendText(*l);
 
   // append protocol
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(" HTTP/1.1\r\n"));
@@ -538,13 +541,12 @@ void SimpleHttpClient::setRequest(
   if (!_pathToBasicAuth.empty()) {
     std::string foundPrefix;
     std::string foundValue;
-    std::vector<std::pair<std::string, std::string>>::iterator i =
-        _pathToBasicAuth.begin();
+    auto i = _pathToBasicAuth.begin();
 
     for (; i != _pathToBasicAuth.end(); ++i) {
       std::string& f = i->first;
 
-      if (l.find(f) == 0) {
+      if (l->find(f) == 0) {
         // f is prefix of l
         if (f.length() > foundPrefix.length()) {
           foundPrefix = f;

@@ -742,6 +742,10 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
                             bool resolveExternals) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
+      if (!resolveExternals && isMasterPointer()) {
+        builder.addExternal(_data.pointer);
+        break;
+      } // fallthrough intentional
     case VPACK_INLINE: 
     case VPACK_MANAGED: {
       if (resolveExternals) {
@@ -785,10 +789,13 @@ AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied, bool resolv
     }
     case DOCVEC: 
     case RANGE: {
-      VPackBuilder builder;
+      bool shouldDelete = true;
+      ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
+      std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
+      VPackBuilder builder(buffer);
       toVelocyPack(trx, builder, resolveExternals);
       hasCopied = true;
-      return AqlValue(builder);
+      return AqlValue(buffer.get(), shouldDelete);
     }
   }
 
@@ -801,6 +808,11 @@ AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied, bool resolv
 AqlValue AqlValue::clone() const {
   switch (type()) {
     case VPACK_SLICE_POINTER: {
+      if (isMasterPointer()) {
+        // copy from master pointer. this will not copy the data
+        return AqlValue(_data.pointer, AqlValueFromMasterPointer());
+      }
+      // copy from regular pointer. this may copy the data
       return AqlValue(_data.pointer);
     }
     case VPACK_INLINE: {
@@ -871,7 +883,6 @@ void AqlValue::destroy() {
 VPackSlice AqlValue::slice() const {
   switch (type()) {
     case VPACK_SLICE_POINTER: {
-
       return VPackSlice(_data.pointer);
     }
     case VPACK_INLINE: {
@@ -901,7 +912,10 @@ AqlValue AqlValue::CreateFromBlocks(
     arangodb::AqlTransaction* trx, std::vector<AqlItemBlock*> const& src,
     std::vector<std::string> const& variableNames) {
 
-  VPackBuilder builder;
+  bool shouldDelete = true;
+  ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
+  std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
+  VPackBuilder builder(buffer);
   builder.openArray();
 
   for (auto const& current : src) {
@@ -929,7 +943,7 @@ AqlValue AqlValue::CreateFromBlocks(
   }
 
   builder.close();
-  return AqlValue(builder);
+  return AqlValue(buffer.get(), shouldDelete);
 }
 
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
@@ -937,7 +951,11 @@ AqlValue AqlValue::CreateFromBlocks(
     arangodb::AqlTransaction* trx, std::vector<AqlItemBlock*> const& src,
     arangodb::aql::RegisterId expressionRegister) {
 
-  VPackBuilder builder;
+  bool shouldDelete = true;
+  ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
+  std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
+  VPackBuilder builder(buffer);
+
   builder.openArray();
 
   for (auto const& current : src) {
@@ -947,7 +965,7 @@ AqlValue AqlValue::CreateFromBlocks(
   }
 
   builder.close();
-  return AqlValue(builder);
+  return AqlValue(buffer.get(), shouldDelete);
 }
 
 /// @brief 3-way comparison for AqlValue objects

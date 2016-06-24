@@ -79,11 +79,7 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
                             char const* right, size_t rightLength) const {
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
-
-  if (!_coll) {
-    LOG(ERR) << "no Collator in Utf8Helper::compareUtf8()!";
-    return (strcmp(left, right));
-  }
+  TRI_ASSERT(_coll);
 
   UErrorCode status = U_ZERO_ERROR;
   int result =
@@ -91,7 +87,7 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
                          StringPiece(right, (int32_t)rightLength), status);
   if (U_FAILURE(status)) {
     LOG(ERR) << "error in Collator::compareUTF8(...): " << u_errorName(status);
-    return (strcmp(left, right));
+    return (strncmp(left, right, leftLength < rightLength ? leftLength : rightLength));
   }
 
   return result;
@@ -548,28 +544,6 @@ bool Utf8Helper::matches(RegexMatcher* matcher, char const* value,
   }
 
   return (result ? true : false);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two utf8 strings
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_compare_utf8(char const* left, char const* right) {
-  TRI_ASSERT(left != nullptr);
-  TRI_ASSERT(right != nullptr);
-  return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, right);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two utf8 strings
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_compare_utf8(char const* left, size_t leftLength, char const* right,
-                     size_t rightLength) {
-  TRI_ASSERT(left != nullptr);
-  TRI_ASSERT(right != nullptr);
-  return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength, right,
-                                                   rightLength);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

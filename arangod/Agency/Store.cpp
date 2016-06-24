@@ -352,6 +352,17 @@ bool Store::check(VPackSlice const& slice) const {
           if (op.value.getBool() ? found : !found) {
             return false;
           }
+        } else if (oper == "in") {  // in
+          if (found) {
+            if (node.slice().isArray()) {
+              for (auto const& i : VPackArrayIterator(node.slice())) {
+                if (i == op.value) {
+                  return true;
+                }
+              }
+            }
+          }
+          return false;
         }
       }
     } else {

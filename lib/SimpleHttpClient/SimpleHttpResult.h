@@ -98,7 +98,11 @@ class SimpleHttpResult {
   //////////////////////////////////////////////////////////////////////////////
 
   void setHttpReturnMessage(std::string const& message) {
-    this->_returnMessage = message;
+    _returnMessage = message;
+  }
+  
+  void setHttpReturnMessage(std::string&& message) {
+    _returnMessage = std::move(message);
   }
 
   //////////////////////////////////////////////////////////////////////////////

@@ -33,7 +33,7 @@
 #include "velocypack/Sink.h"
 
 using namespace arangodb::velocypack;
-
+  
 std::string Builder::toString() const {
   Options options;
   options.prettyPrint = true;
@@ -799,6 +799,10 @@ uint8_t* Builder::add(char const* attrName, Value const& sub) {
   return addInternal<Value>(attrName, sub);
 }
 
+uint8_t* Builder::add(char const* attrName, size_t attrLength, Value const& sub) {
+  return addInternal<Value>(attrName, attrLength, sub);
+}
+
 uint8_t* Builder::add(std::string const& attrName, ValuePair const& sub) {
   return addInternal<ValuePair>(attrName, sub);
 }
@@ -807,12 +811,20 @@ uint8_t* Builder::add(char const* attrName, ValuePair const& sub) {
   return addInternal<ValuePair>(attrName, sub);
 }
 
+uint8_t* Builder::add(char const* attrName, size_t attrLength, ValuePair const& sub) {
+  return addInternal<ValuePair>(attrName, attrLength, sub);
+}
+
 uint8_t* Builder::add(std::string const& attrName, Slice const& sub) {
   return addInternal<Slice>(attrName, sub);
 }
 
 uint8_t* Builder::add(char const* attrName, Slice const& sub) {
   return addInternal<Slice>(attrName, sub);
+}
+
+uint8_t* Builder::add(char const* attrName, size_t attrLength, Slice const& sub) {
+  return addInternal<Slice>(attrName, attrLength, sub);
 }
   
 // Add all subkeys and subvalues into an object from an ObjectIterator

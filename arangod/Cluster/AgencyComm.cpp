@@ -367,64 +367,6 @@ AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs an agency comm locker
-////////////////////////////////////////////////////////////////////////////////
-
-AgencyCommLocker::AgencyCommLocker(std::string const& key,
-                                   std::string const& type,
-                                   double ttl, double timeout)
-    : _key(key), _type(type), _isLocked(false) {
-  AgencyComm comm;
-
-  _vpack = std::make_shared<VPackBuilder>();
-  try {
-    _vpack->add(VPackValue(type));
-  } catch (...) {
-    return;
-  }
-  
-  if (comm.lock(key, ttl, timeout, _vpack->slice())) {
-    _isLocked = true;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an agency comm locker
-////////////////////////////////////////////////////////////////////////////////
-
-AgencyCommLocker::~AgencyCommLocker() {
-  unlock();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlocks the lock
-////////////////////////////////////////////////////////////////////////////////
-
-void AgencyCommLocker::unlock() {
-  if (_isLocked) {
-    AgencyComm comm;
-
-    updateVersion(comm);
-    if (comm.unlock(_key, _vpack->slice(), 0.0)) {
-      _isLocked = false;
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a lock version in the agency
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyCommLocker::updateVersion(AgencyComm& comm) {
-  if (_type != "WRITE") {
-    return true;
-  }
-  AgencyCommResult result = comm.increment(_key  + "/Version");
-
-  return result.successful();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up all connections
 ////////////////////////////////////////////////////////////////////////////////
 

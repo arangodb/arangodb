@@ -54,39 +54,11 @@ FOR u IN users
 
 ```json
 [
-  {
-    "age": 37,
-    "users": [
-      "John",
-      "Sophia"
-    ]
-  },
-  {
-    "age": 36,
-    "users": [
-      "Fred",
-      "Emma"
-    ]
-  },
-  {
-    "age": 34,
-    "users": [
-      "Madison"
-    ]
-  },
-  {
-    "age": 33,
-    "users": [
-      "Chloe",
-      "Michael"
-    ]
-  },
-  {
-    "age": 32,
-    "users": [
-      "Alexander"
-    ]
-  }
+  { "age": 37, "users": [ "John", "Sophia" ] },
+  { "age": 36, "users": [ "Fred", "Emma" ] },
+  { "age": 34, "users": [ "Madison" ] },
+  { "age": 33, "users": [ "Chloe", "Michael" ] },
+  { "age": 32, "users": [ "Alexander" ] }
 ]
 ```
 
@@ -132,30 +104,12 @@ FOR u IN users
 
 ```json
 [
-  {
-    "ageGroup": 35,
-    "gender": "f"
-  },
-  {
-    "ageGroup": 35,
-    "gender": "m"
-  },
-  {
-    "ageGroup": 30,
-    "gender": "f"
-  },
-  {
-    "ageGroup": 30,
-    "gender": "m"
-  },
-  {
-    "ageGroup": 25,
-    "gender": "f"
-  },
-  {
-    "ageGroup": 25,
-    "gender": "m"
-  }
+  { "ageGroup": 35, "gender": "f" },
+  { "ageGroup": 35, "gender": "m" },
+  { "ageGroup": 30, "gender": "f" },
+  { "ageGroup": 30, "gender": "m" },
+  { "ageGroup": 25, "gender": "f" },
+  { "ageGroup": 25, "gender": "m" }
 ]
 ```
 
@@ -180,36 +134,12 @@ FOR u IN users
 
 ```json
 [
-  {
-    "ageGroup": 35,
-    "gender": "f",
-    "numUsers": 2
-  },
-  {
-    "ageGroup": 35,
-    "gender": "m",
-    "numUsers": 2
-  },
-  {
-    "ageGroup": 30,
-    "gender": "f",
-    "numUsers": 4
-  },
-  {
-    "ageGroup": 30,
-    "gender": "m",
-    "numUsers": 4
-  },
-  {
-    "ageGroup": 25,
-    "gender": "f",
-    "numUsers": 2
-  },
-  {
-    "ageGroup": 25,
-    "gender": "m",
-    "numUsers": 2
-  }
+  { "ageGroup": 35, "gender": "f", "numUsers": 2 },
+  { "ageGroup": 35, "gender": "m", "numUsers": 2 },
+  { "ageGroup": 30, "gender": "f", "numUsers": 4 },
+  { "ageGroup": 30, "gender": "m", "numUsers": 4 },
+  { "ageGroup": 25, "gender": "f", "numUsers": 2 },
+  { "ageGroup": 25, "gender": "m", "numUsers": 2 }
 ]
 ```
 

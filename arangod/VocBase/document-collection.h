@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/StringRef.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/collection.h"
 #include "VocBase/DatafileHelper.h"
@@ -184,8 +185,8 @@ struct TRI_document_collection_t : public TRI_collection_t {
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_t*);
 
-  int read(arangodb::Transaction*, std::string const&,
-           TRI_doc_mptr_t*, bool);
+  int read(arangodb::Transaction*, std::string const&, TRI_doc_mptr_t*, bool);
+  int read(arangodb::Transaction*, arangodb::StringRef const&, TRI_doc_mptr_t*, bool);
   int insert(arangodb::Transaction*, arangodb::velocypack::Slice const,
              TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool);
   int update(arangodb::Transaction*, arangodb::velocypack::Slice const,

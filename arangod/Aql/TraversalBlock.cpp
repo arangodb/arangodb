@@ -580,7 +580,7 @@ void TraversalBlock::neighbors(std::string const& startVertex) {
       continue;
     }
 
-    _vertices.emplace_back(AqlValue(mptr.vpack()));
+    _vertices.emplace_back(AqlValue(mptr.vpack(), AqlValueFromMasterPointer()));
   }
 }
 

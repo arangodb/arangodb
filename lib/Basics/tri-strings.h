@@ -261,6 +261,12 @@ char* TRI_UnescapeUtf8String(TRI_memory_zone_t*, char const* in,
 size_t TRI_CharLengthUtf8String(char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the number of characters in a UTF-8 string
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_CharLengthUtf8String(char const*, size_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string end position for a leftmost prefix of a UTF-8 string
 /// eg. when specifying (müller, 2), the return value will be a pointer to the
 /// first "l".

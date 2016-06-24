@@ -39,7 +39,7 @@
 
 using namespace arangodb;
 
-static inline uint64_t HashKey(void* userData, uint8_t const* key) {
+static inline uint64_t HashKey(void*, uint8_t const* key) {
   // can use fast hash-function here, as index values are restricted to strings
   return VPackSlice(key).hashString();
 }
@@ -466,8 +466,7 @@ IndexIterator* PrimaryIndex::createIterator(
     arangodb::aql::AstNode const* attrNode,
     std::vector<arangodb::aql::AstNode const*> const& valNodes) const {
   // _key or _id?
-  bool const isId =
-      (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_ID) == 0);
+  bool const isId = (attrNode->getString() == StaticStrings::IdString);
 
   // only leave the valid elements in the vector
   auto keys = std::make_unique<VPackBuilder>();
@@ -486,7 +485,7 @@ IndexIterator* PrimaryIndex::createIterator(
       // correct collection (i.e. _collection)
       TRI_voc_cid_t cid;
       char const* key;
-      int res = context->resolveId(valNode->getStringValue(), cid, key);
+      int res = context->resolveId(valNode->getStringValue(), valNode->getStringLength(), cid, key);
 
       if (res != TRI_ERROR_NO_ERROR) {
         continue;
@@ -516,7 +515,7 @@ IndexIterator* PrimaryIndex::createIterator(
     } else {
       keys->openArray();
       keys->openObject();
-      keys->add(TRI_SLICE_KEY_EQUAL, VPackValue(valNode->getStringValue()));
+      keys->add(TRI_SLICE_KEY_EQUAL, VPackValuePair(valNode->getStringValue(), valNode->getStringLength(), VPackValueType::String));
       keys->close();
       keys->close();
     }
