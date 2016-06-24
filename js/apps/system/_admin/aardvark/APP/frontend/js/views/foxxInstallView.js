@@ -22,6 +22,8 @@
         success: function() {
           window.modalView.hide();
           self.reload();
+          console.log(result);
+          arangoHelper.arangoNotification("Services", "Service " + result.name + " installed.");
         }
       });
                            
@@ -194,6 +196,8 @@
       } else {
         this.collection.installFromStore({name: toInstall, version: version}, mount, installCallback.bind(this));
       }
+      window.modalView.hide();
+      arangoHelper.arangoNotification("Services", "Installing " + toInstall + "."); 
     }
   };
 
