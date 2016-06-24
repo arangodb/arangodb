@@ -98,12 +98,17 @@ book-check-markdown-leftovers:
 	fi
 	@if test "`find books/$(NAME) -name '*.html' -exec grep '\`\`\`' {} \; -print | wc -l`" -gt 0; then \
 		echo "found dangling markdown code sections: "; \
-		find books/$(NAME) -name '*.html' -exec grep '```' {} \; -print; sed "s;^books/$(NAME)/\(.*\).html;\n   In file: $(NAME)/\1.mdpp\n\n;"\
+		find books/$(NAME) -name '*.html' -exec grep '```' {} \; -print| sed "s;^books/$(NAME)/\(.*\).html;\n   In file: $(NAME)/\1.mdpp\n\n;"; \
 		exit 1; \
 	fi
 	@if test "`find books/$(NAME) -name '*.html' -exec grep '\]<a href' {} \; -print | wc -l`" -gt 0; then \
 		echo "found unconverted markdown links: "; \
-		find books/$(NAME) -name '*.html' -exec grep '\]<a href' {} \; -print; sed "s;^books/$(NAME)/\(.*\).html;\n   In file: $(NAME)/\1.mdpp\n\n;"\
+		find books/$(NAME) -name '*.html' -exec grep '\]<a href' {} \; -print| sed "s;^books/$(NAME)/\(.*\).html;\n   In file: $(NAME)/\1.mdpp\n\n;"; \
+		exit 1; \
+	fi
+	@if test "`find books/$(NAME) -name '*.html' -exec grep '\[.*\](.*[\.html|\.md|http|#.*])' {} \; -print | wc -l`" -gt 0; then \
+		echo "found unconverted markdown links: "; \
+		find books/$(NAME) -name '*.html' -exec grep '\[.*\](.*[\.html|\.md|http.*|#.*])' {} \; -print| sed "s;^books/$(NAME)/\(.*\).html;\n   In file: $(NAME)/\1.mdpp\n\n;"; \
 		exit 1; \
 	fi
 

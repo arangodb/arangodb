@@ -97,9 +97,9 @@ The following [NPM modules](https://www.npmjs.com) are preinstalled:
 * [error-stack-parser](http://www.stacktracejs.com)
   parses stacktraces into a more useful format.
 
-<!-- * [expect.js](https://github.com/Automattic/expect.js) (only for legacy tests) -->
+<!-- * [expect.js] (https://github.com/Automattic/expect.js) (only for legacy tests) -->
 
-<!-- * [extendible](https://github.com/3rd-Eden/extendible) (only for legacy mode) -->
+<!-- * [extendible] (https://github.com/3rd-Eden/extendible) (only for legacy mode) -->
 
 * [graphql-sync](https://github.com/arangodb/graphql-sync)
   is an ArangoDB-compatible GraphQL server/schema implementation.
