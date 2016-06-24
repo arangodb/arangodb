@@ -182,6 +182,7 @@ build-book-symlinks:
 build-book:
 	@echo "##### Generating book $(NAME)"
 	make ppbook-precheck-bad-code-sections $(NAME)
+
 	if test ! -d ppbooks/$(NAME); then \
 	  mkdir -p ppbooks/$(NAME); \
 	  WD=`pwd`; \
@@ -190,6 +191,18 @@ build-book:
 		test -d $${dir} || mkdir -p $${dir}; \
 	  done; \
 	fi
+	if ditaa --help > /dev/null; then \
+	   echo "generating ditaa images"; \
+	   for image in `find $(NAME) -name \*.ditaa`; do \
+		ditaa $${image} ppbooks/`echo $${image}|sed "s;ditaa;png;"` ; \
+	   done; \
+	else \
+	   echo "generating FAKE ditaa images - no ditaa installed"; \
+	   for image in `find $(NAME) -name \*.ditaa`; do \
+		cp ../../js/node/node_modules/mocha/images/error.png ppbooks/`echo $${image}|sed "s;ditaa;png;"` ; \
+	   done; \
+	fi
+
 	cd ppbooks/$(NAME); if ! test -L SUMMARY.md; then ln -s ../../$(NAME)/SUMMARY.md . ; fi
 	cd ppbooks/$(NAME); if ! test -f HEADER.html ; then cp ../../$(NAME)/HEADER.html . ; fi
 	if test -z "${RELEASE_DIRECTORY}"; then \
