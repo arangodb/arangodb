@@ -1009,9 +1009,14 @@ class TransactionBuilderLeaser {
   explicit TransactionBuilderLeaser(arangodb::Transaction*); 
   explicit TransactionBuilderLeaser(arangodb::TransactionContext*); 
   ~TransactionBuilderLeaser();
-  arangodb::velocypack::Builder* builder() const { return _builder; }
-  arangodb::velocypack::Builder* operator->() const { return _builder; }
-  arangodb::velocypack::Builder* get() const { return _builder; }
+  inline arangodb::velocypack::Builder* builder() const { return _builder; }
+  inline arangodb::velocypack::Builder* operator->() const { return _builder; }
+  inline arangodb::velocypack::Builder* get() const { return _builder; }
+  inline arangodb::velocypack::Builder* steal() { 
+    arangodb::velocypack::Builder* res = _builder;
+    _builder = nullptr;
+    return res;
+  }
  private:
   arangodb::TransactionContext* _transactionContext;
   arangodb::velocypack::Builder* _builder;

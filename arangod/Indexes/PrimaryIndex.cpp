@@ -29,6 +29,7 @@
 #include "Basics/tri-strings.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Utils/Transaction.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
@@ -75,6 +76,13 @@ static bool IsEqualElementElement(void*, TRI_doc_mptr_t const* left,
   VPackSlice l = Transaction::extractKeyFromDocument(VPackSlice(left->vpack()));
   VPackSlice r = Transaction::extractKeyFromDocument(VPackSlice(right->vpack()));
   return l.equals(r);
+}
+
+PrimaryIndexIterator::~PrimaryIndexIterator() {
+  if (_keys != nullptr) {
+    // return the VPackBuilder to the transaction context 
+    _trx->transactionContextPtr()->returnBuilder(_keys.release());
+  }
 }
 
 TRI_doc_mptr_t* PrimaryIndexIterator::next() {
@@ -457,13 +465,15 @@ IndexIterator* PrimaryIndex::createInIterator(
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
     
   TRI_ASSERT(valNode->isArray());
-    
-  // only leave the valid elements in the vector
-  auto keys = std::make_unique<VPackBuilder>();
+  
+  // lease builder, but immediately pass it to the unique_ptr so we don't leak  
+  TransactionBuilderLeaser builder(trx);
+  std::unique_ptr<VPackBuilder> keys(builder.steal());
   keys->openArray();
   
   size_t const n = valNode->numMembers();
 
+  // only leave the valid elements
   for (size_t i = 0; i < n; ++i) {
     handleValNode(context, keys.get(), valNode->getMemberUnchecked(i), isId);
   }
@@ -486,10 +496,12 @@ IndexIterator* PrimaryIndex::createEqIterator(
   // _key or _id?
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
 
-  // only leave the valid elements in the vector
-  auto keys = std::make_unique<VPackBuilder>();
+  // lease builder, but immediately pass it to the unique_ptr so we don't leak  
+  TransactionBuilderLeaser builder(trx);
+  std::unique_ptr<VPackBuilder> keys(builder.steal());
   keys->openArray();
 
+  // handle the sole element
   handleValNode(context, keys.get(), valNode, isId);
 
   TRI_IF_FAILURE("PrimaryIndex::noIterator") {

@@ -53,7 +53,7 @@ class PrimaryIndexIterator final : public IndexIterator {
         TRI_ASSERT(_keys->slice().isArray());
       }
 
-  ~PrimaryIndexIterator() {}
+  ~PrimaryIndexIterator();
 
   TRI_doc_mptr_t* next() override;
 

@@ -3460,6 +3460,7 @@ StringBufferLeaser::~StringBufferLeaser() {
 TransactionBuilderLeaser::TransactionBuilderLeaser(arangodb::Transaction* trx) 
       : _transactionContext(trx->transactionContextPtr()), 
         _builder(_transactionContext->leaseBuilder()) {
+  TRI_ASSERT(_builder != nullptr);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -3469,6 +3470,7 @@ TransactionBuilderLeaser::TransactionBuilderLeaser(arangodb::Transaction* trx)
 TransactionBuilderLeaser::TransactionBuilderLeaser(arangodb::TransactionContext* transactionContext) 
       : _transactionContext(transactionContext), 
         _builder(_transactionContext->leaseBuilder()) {
+  TRI_ASSERT(_builder != nullptr);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -3476,6 +3478,8 @@ TransactionBuilderLeaser::TransactionBuilderLeaser(arangodb::TransactionContext*
 //////////////////////////////////////////////////////////////////////////////
 
 TransactionBuilderLeaser::~TransactionBuilderLeaser() { 
-  _transactionContext->returnBuilder(_builder); 
+  if (_builder != nullptr) {
+    _transactionContext->returnBuilder(_builder); 
+  }
 }
 
