@@ -1,6 +1,8 @@
 v2.8.10 (XXXX-XX-XX)
 --------------------
 
+* fixed "collection is a nullptr" issue when starting a traversal from a transaction
+
 * honor the value of startup option `--database.wait-for-sync` (that is used to control
   whether new collections are created with `waitForSync` set to `true` by default) also
   when creating collections via the HTTP API (and thus the ArangoShell). When creating
