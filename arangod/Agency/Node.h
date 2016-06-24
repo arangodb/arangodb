@@ -287,8 +287,9 @@ public:
   TimePoint _ttl;         ///< @brief my expiry 
   //Buffer<uint8_t> _value; ///< @brief my value
   std::vector<Buffer<uint8_t>> _value; ///< @brief my value
-  mutable Buffer<uint8_t> _vec_buf;
-  mutable bool _vec_buf_dirty;
+  mutable Buffer<uint8_t> _vecBuf;
+  mutable bool _vecBufDirty;
+  bool _isArray;
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {

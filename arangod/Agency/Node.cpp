@@ -64,19 +64,22 @@ inline std::vector<std::string> split(const std::string& value,
 
 /// Construct with node name
 Node::Node(std::string const& name) :
-  _node_name(name), _parent(nullptr), _store(nullptr), _vec_buf_dirty(true) {
+  _node_name(name), _parent(nullptr), _store(nullptr), _vecBufDirty(true),
+  _isArray(false) {
 }
 
 
 /// Construct with node name in tree structure
 Node::Node(std::string const& name, Node* parent) :
-  _node_name(name), _parent(parent), _store(nullptr), _vec_buf_dirty(true) {
+  _node_name(name), _parent(parent), _store(nullptr), _vecBufDirty(true),
+  _isArray(false) {
 }
 
 
 /// Construct for store
 Node::Node(std::string const& name, Store* store) :
-  _node_name(name), _parent(nullptr), _store(store), _vec_buf_dirty(true) {
+  _node_name(name), _parent(nullptr), _store(store), _vecBufDirty(true),
+  _isArray(false) {
 }
 
 
@@ -89,11 +92,11 @@ Slice Node::slice() const {
 
   // Some value
   if (!_value.empty()) {
-    if (_value.size() == 1) {            // Scalar
-      return Slice(_value.at(0).data());
+    if (!_isArray) {            // Scalar
+      return Slice(_value.front().data());
     } else {                             // Vector
       rebuildVecBuf();
-      return Slice(_vec_buf.data());
+      return Slice(_vecBuf.data());
     }
   }
 
@@ -104,15 +107,15 @@ Slice Node::slice() const {
 
 
 void Node::rebuildVecBuf() const {
-  if (_vec_buf_dirty) {              // Dirty vector buffer
+  if (_vecBufDirty) {              // Dirty vector buffer
     Builder tmp;
     tmp.openArray();
     for (auto const& i : _value) {
       tmp.add(Slice(i.data()));
     }
     tmp.close();
-    _vec_buf = *tmp.steal();
-    _vec_buf_dirty = false;
+    _vecBuf = *tmp.steal();
+    _vecBufDirty = false;
   }
 }
 
@@ -142,8 +145,9 @@ Node::Node(Node&& other) :
   _node_name(std::move(other._node_name)),
   _children(std::move(other._children)), 
   _value(std::move(other._value)),
-  _vec_buf(std::move(other._vec_buf)),
-  _vec_buf_dirty(std::move(other._vec_buf_dirty)) {}
+  _vecBuf(std::move(other._vecBuf)),
+  _vecBufDirty(std::move(other._vecBufDirty)),
+  _isArray(std::move(other._isArray)) {}
 
 
 /// Copy constructor
@@ -152,8 +156,9 @@ Node::Node(Node const& other) :
   _parent(nullptr),
   _store(nullptr),
   _value(other._value),
-  _vec_buf(other._vec_buf),
-  _vec_buf_dirty(other._vec_buf_dirty) {
+  _vecBuf(other._vecBuf),
+  _vecBufDirty(other._vecBufDirty),
+  _isArray(other._isArray) {
   for (auto const& p : other._children) {
     auto copy = std::make_shared<Node>(*p.second);
     _children.insert(std::make_pair(p.first, copy));
@@ -171,17 +176,19 @@ Node& Node::operator=(VPackSlice const& slice) {
   _children.clear();
   _value.clear();
   if (slice.isArray()) {
+    _isArray = true;
     _value.resize(slice.length());
     for (size_t i = 0; i < slice.length(); ++i) {
       _value.at(i).append(reinterpret_cast<char const*>(
-                            slice.begin()), slice.byteSize());
+                            slice[i].begin()), slice[i].byteSize());
     }
   } else {
+    _isArray = false;
     _value.resize(1);
-    _value.at(0).append(
+    _value.front().append(
       reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
   }
-  _vec_buf_dirty = true;
+  _vecBufDirty = true;
   return *this;
 }
 
@@ -195,8 +202,9 @@ Node& Node::operator=(Node&& rhs) {
   _node_name = std::move(rhs._node_name);
   _children = std::move(rhs._children);
   _value = std::move(rhs._value);
-  _vec_buf = std::move(rhs._vec_buf);
-  _vec_buf_dirty = std::move(rhs._vec_buf_dirty);
+  _vecBuf = std::move(rhs._vecBuf);
+  _vecBufDirty = std::move(rhs._vecBufDirty);
+  _isArray = std::move(rhs._isArray);
   return *this;
 }
 
@@ -215,8 +223,9 @@ Node& Node::operator=(Node const& rhs) {
     _children.insert(std::make_pair(p.first, copy));
   }
   _value = rhs._value;
-  _vec_buf = rhs._vec_buf;
-  _vec_buf_dirty = rhs._vec_buf_dirty;
+  _vecBuf = rhs._vecBuf;
+  _vecBufDirty = rhs._vecBufDirty;
+  _isArray = rhs._isArray;
   return *this;
 }
 
@@ -264,8 +273,8 @@ NodeType Node::type() const {
 
 /// lh-value at path vector
 Node& Node::operator()(std::vector<std::string> const& pv) {
-  if (pv.size()) {
-    std::string const& key = pv.at(0);
+  if (!pv.empty()) {
+    std::string const& key = pv.front();
     if (_children.find(key) == _children.end()) {
       _children[key] = std::make_shared<Node>(key, this);
     }
@@ -279,8 +288,8 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
 
 // rh-value at path vector
 Node const& Node::operator()(std::vector<std::string> const& pv) const {
-  if (pv.size()) {
-    std::string const& key = pv.at(0);
+  if (!pv.empty()) {
+    std::string const& key = pv.front();
     if (_children.find(key) == _children.end()) {
       throw StoreException(std::string("Node ") + key +
                            std::string(" not found"));
