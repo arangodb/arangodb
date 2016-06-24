@@ -1,6 +1,8 @@
 v3.0.1 (XXXX-XX-XX)
 -------------------
 
+* fixed "collection is a nullptr" issue when starting a traversal from a transaction
+
 * enable /_api/import on coordinator servers
 
 

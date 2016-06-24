@@ -394,7 +394,7 @@ class Transaction {
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
-      TRI_EnsureCollectionsTransaction(this->getInternals());
+      TRI_EnsureCollectionsTransaction(this->getInternals(), this->nestingLevel());
       collection = this->trxCollection(cid);
 
       if (collection == nullptr) {
