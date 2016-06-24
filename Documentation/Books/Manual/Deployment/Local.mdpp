@@ -10,6 +10,8 @@ This section will discuss the required parameters for every role in an ArangoDB 
 
 In the following sections we will go through the relevant options per role.
 
+![single node cluster](simple_cluster.png)
+
 !SUBSECTION Agency
 
 The bare minimum to start an agent is to provide the id. The id has to be `0` for a single instance.

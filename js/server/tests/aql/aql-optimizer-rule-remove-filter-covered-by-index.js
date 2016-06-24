@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -58,6 +58,10 @@ function optimizerRuleTestSuite() {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, "has no filter node");
   };
   
+  var hasFilterNode = function (plan) {
+    assertNotEqual(findExecutionNodes(plan, "FilterNode").length, 0, "has no filter node");
+  };
+  
   var hasIndexNodeWithRanges = function (plan) {
     var rn = findExecutionNodes(plan, "IndexNode");
     assertTrue(rn.length >= 1, "has IndexNode");
@@ -92,6 +96,7 @@ function optimizerRuleTestSuite() {
 
       skiplist.ensureSkiplist("a", "b");
       skiplist.ensureSkiplist("d");
+      skiplist.ensureSkiplist("z[*]");
       skiplist.ensureIndex({ type: "hash", fields: [ "c" ], unique: false });
 
       internal.db._drop(colNameOther);
@@ -203,6 +208,49 @@ function optimizerRuleTestSuite() {
         }
       });
 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that rule has an effect for multiple conditions
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultipleConditions : function () {
+      var query = "FOR v IN " + colName + " FILTER v.d == 'foo' || v.d == 'bar' RETURN v";
+      var result = AQL_EXPLAIN(query);
+      assertEqual([ "remove-filter-covered-by-index", "use-indexes", "replace-or-with-in" ].sort(),  
+        removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
+      hasNoFilterNode(result);
+      hasIndexNodeWithRanges(result);
+      
+      query = "FOR v IN " + colName + " FILTER 'foo' IN v.z && 'bar' IN v.z RETURN v";
+      result = AQL_EXPLAIN(query);
+      // should optimize away one part of the filter
+      assertEqual([ "remove-filter-covered-by-index", "use-indexes" ].sort(),  
+        removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
+      hasFilterNode(result);
+      hasIndexNodeWithRanges(result);
+      
+      query = "FOR v IN " + colName + " FILTER 'foo' IN v.z[*] && 'bar' IN v.z[*] RETURN v";
+      result = AQL_EXPLAIN(query);
+      // should optimize away one part of the filter
+      assertEqual([ "remove-filter-covered-by-index", "use-indexes" ].sort(),  
+        removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
+      hasFilterNode(result);
+      hasIndexNodeWithRanges(result);
+      
+      query = "FOR v IN " + colName + " FILTER 'foo' IN v.z || 'bar' IN v.z RETURN v";
+      result = AQL_EXPLAIN(query);
+      assertEqual([ "use-indexes" ].sort(),  
+        removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
+      hasFilterNode(result);
+      hasIndexNodeWithRanges(result);
+      
+      query = "FOR v IN " + colName + " FILTER 'foo' IN v.z[*] || 'bar' IN v.z[*] RETURN v";
+      result = AQL_EXPLAIN(query);
+      assertEqual([ "use-indexes" ].sort(),  
+        removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
+      hasFilterNode(result);
+      hasIndexNodeWithRanges(result);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

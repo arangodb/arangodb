@@ -147,7 +147,7 @@ struct ConditionPart {
   }
 
   /// @brief true if the condition is completely covered by the other condition
-  bool isCoveredBy(ConditionPart const&) const;
+  bool isCoveredBy(ConditionPart const&, bool) const;
 
   Variable const* variable;
   std::string attributeName;

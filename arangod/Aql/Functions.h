@@ -148,6 +148,9 @@ struct Functions {
   static AqlValue Intersection(arangodb::aql::Query*,
                                arangodb::AqlTransaction*,
                                VPackFunctionParameters const&);
+  static AqlValue Outersection(arangodb::aql::Query*,
+                               arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
   static AqlValue Near(arangodb::aql::Query*, arangodb::AqlTransaction*,
                        VPackFunctionParameters const&);
   static AqlValue Within(arangodb::aql::Query*, arangodb::AqlTransaction*,

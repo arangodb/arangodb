@@ -1331,6 +1331,22 @@ AqlValue Expression::executeSimpleExpressionExpansion(
     projectionNode = node->getMember(4);
   }
 
+  if (filterNode == nullptr && 
+      projectionNode->type == NODE_TYPE_REFERENCE &&
+      value.isArray() && 
+      offset == 0 &&
+      count == INT64_MAX) {
+    // no filter and no projection... we can return the array as it is
+    auto other = static_cast<Variable const*>(projectionNode->getData());
+
+    if (other->id == variable->id) {
+      // simplify `v[*]` to just `v` if it's already an array
+      mustDestroy = true;
+      guard.steal();
+      return value; 
+    }
+  }
+
   VPackBuilder builder;
   builder.openArray();
 

@@ -2111,6 +2111,69 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
   return AqlValue(builder.get());
 }
 
+/// @brief function OUTERSECTION
+AqlValue Functions::Outersection(arangodb::aql::Query* query,
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "OUTERSECTION", 2);
+
+  VPackOptions options;
+  options.customTypeHandler =
+      trx->transactionContext()->orderCustomTypeHandler().get();
+
+  std::unordered_map<VPackSlice, size_t,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
+             arangodb::basics::VelocyPackHelper::VPackEqual(&options));
+
+  size_t const n = parameters.size();
+  std::vector<AqlValueMaterializer> materializers;
+  materializers.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    AqlValue value = ExtractFunctionParameterValue(trx, parameters, i);
+
+    if (!value.isArray()) {
+      // not an array
+      RegisterWarning(query, "OUTERSECTION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
+    
+    materializers.emplace_back(trx);
+    VPackSlice slice = materializers.back().slice(value, false);
+
+    for (auto const& it : VPackArrayIterator(slice)) {
+      // check if we have seen the same element before
+      auto found = values.find(it);
+      if (found != values.end()) {
+        // already seen
+        TRI_ASSERT((*found).second > 0);
+        ++(found->second);
+      } else {
+        values.emplace(it, 1);
+      }
+    }
+  }
+
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  TransactionBuilderLeaser builder(trx);
+  builder->openArray();
+  for (auto const& it : values) {
+    if (it.second == 1) {
+      builder->add(it.first);
+    }
+  }
+  builder->close();
+
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  return AqlValue(builder.get());
+}
+
 /// @brief function NEAR
 AqlValue Functions::Near(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,

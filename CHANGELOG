@@ -1,4 +1,25 @@
-v3.0.0-rc3 (????-??-??)
+devel
+-----
+
+* added AQL function `OUTERSECTION` to return the symmetric difference of its
+  input arguments
+
+
+v3.0.1 (XXXX-XX-XX)
+-------------------
+
+* enable /_api/import on coordinator servers
+
+
+v3.0.0 (2016-06-22)
+-------------------
+
+* minor GUI fixxes
+
+* fix for replication and nonces
+
+
+v3.0.0-rc3 (2016-06-19)
 -----------------------
 
 * renamed various Foxx errors to no longer refer to Foxx services as apps
