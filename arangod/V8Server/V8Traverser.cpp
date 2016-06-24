@@ -792,7 +792,7 @@ Json* SingleServerTraversalPath::vertexToJson (Transaction* trx,
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    TRI_EnsureCollectionsTransaction(trx->getInternals(), trx->nestingLevel());
     collection = trx->trxCollection(v.cid);
 
     if (collection == nullptr) {
