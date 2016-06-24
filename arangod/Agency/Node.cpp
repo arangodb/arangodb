@@ -647,7 +647,7 @@ void Node::toBuilder(Builder& builder) const {
     }
 
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
   }
 }
 

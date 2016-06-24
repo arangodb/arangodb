@@ -95,8 +95,7 @@ bool State::persist(arangodb::consensus::index_t index, term_t term,
   try {
     result = trx.insert("log", body.slice(), _options);
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) <<
-      "Failed to persist log entry:" << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
   }
   res = trx.finish(result.code);
 
@@ -148,7 +147,7 @@ bool State::log(query_t const& queries, term_t term,
       _log.push_back(log_t(idx, term, lid, buf));
       persist(idx, term, lid, i.get("query"));  // to disk
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     }
   }
   return true;
@@ -308,7 +307,7 @@ bool State::loadCompacted() {
       try {
         _cur = std::stoul(i.get("_key").copyString());
       } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+        LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
       }
     }
   }

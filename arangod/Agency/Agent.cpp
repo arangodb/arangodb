@@ -527,7 +527,7 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   try {
     _lastCommitIndex = std::stoul(compaction.get("_key").copyString());
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " <<__FILE__ << __LINE__;
   }
 
   // Schedule next compaction

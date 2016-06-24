@@ -46,8 +46,8 @@ fi
 
 SECONDARIES="$5"
 
-MINP=1.0
-MAXP=5.0
+MINP=0.25
+MAXP=2.5
 SFRE=2.5
 COMP=1000
 BASE=4001
@@ -108,7 +108,6 @@ build/bin/arangod \
     --server.threads $NATH \
     --log.force-direct true \
     > cluster/$(( $BASE + $aid )).stdout 2>&1 &
-sleep 2
 
 start() {
     if [ "$1" == "dbserver" ]; then
