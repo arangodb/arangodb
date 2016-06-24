@@ -58,6 +58,8 @@
             "frontend/js/lib/typeahead.bundle.min.js",
             "frontend/js/lib/numeral.min.js",
             "frontend/js/lib/sigma.min.js",
+            "frontend/js/lib/sigma.plugins.animate.js",
+            "frontend/js/lib/sigma.layout.noverlap.js",
             "frontend/js/lib/jsoneditor-min.js",
             "frontend/js/lib/strftime-min.js",
             "frontend/js/lib/d3.fisheye.min.js",

@@ -294,3 +294,73 @@ authRouter.get('/job', function(req, res) {
 .description(dd`
   This function returns the job ids of all currently running jobs.
 `);
+
+
+authRouter.get('/graph/:name', function(req, res) {
+  var _ = require("lodash");
+  var name = req.pathParams.name;
+  var gm = require("@arangodb/general-graph");
+  //var traversal = require("@arangodb/graph/traversal");
+
+  var graph = gm._graph(name);
+  var vertexName = graph._vertexCollections()[0].name();
+  var startVertex = db[vertexName].any();
+
+  var aqlQuery = 
+   'FOR v, e, p IN 1..2 ANY "' + startVertex._id + '" GRAPH "' + name + '"' + 
+   'RETURN p'
+  ;
+
+  var cursor = AQL_EXECUTE(aqlQuery);
+
+  var nodesObj = {}, nodesArr = [], edgesObj = {}, edgesArr = [];
+
+  _.each(cursor.json, function(obj) {
+    _.each(obj.edges, function(edge) {
+      if (edge._to && edge._from) {
+        edgesObj[edge._from + edge._to] = {
+          id: edge._id,
+          source: edge._from,
+          target: edge._to
+        };
+      }
+    });
+    var label;
+    _.each(obj.vertices, function(node) {
+      if (node.label) {
+        label = node.label;
+      }
+      else {
+        label = node._id;
+      }
+
+      nodesObj[node._id] = {
+        id: node._id,
+        label: label,
+        size: Math.random(),
+        color: '#2ecc71',
+        x: Math.random(),
+        y: Math.random()
+      };
+    });
+  });
+
+  //array format for sigma.js
+  _.each(edgesObj, function(node) {
+    edgesArr.push(node);
+  });
+  _.each(nodesObj, function(node) {
+    nodesArr.push(node);
+  });
+
+  res.json({
+    nodes: nodesArr,
+    edges: edgesArr
+  });
+
+})
+.summary('Return vertices and edges of a graph.')
+.description(dd`
+  This function returns vertices and edges for a specific graph.
+`);
+

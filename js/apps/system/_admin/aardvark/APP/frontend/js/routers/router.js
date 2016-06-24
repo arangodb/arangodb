@@ -41,6 +41,7 @@
       "node/:name": "node",
       "logs": "logs",
       "helpus": "helpUs",
+      "graph2/:name": "graph2",
       "support": "support"
     },
 
@@ -682,6 +683,20 @@
         });
       }
       this.queryView.render();
+    },
+
+    graph2: function (name, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.graph2.bind(this), name);
+        return;
+      }
+      if (!this.graphViewer2) {
+        this.graphViewer2 = new window.GraphViewer2({
+          name: name
+        });
+      }
+      this.graphViewer2.render();
     },
    
     helpUs: function (initialized) {
