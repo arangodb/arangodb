@@ -181,9 +181,17 @@ ConditionPart::ConditionPart(
 ConditionPart::~ConditionPart() {}
 
 /// @brief true if the condition is completely covered by the other condition
-bool ConditionPart::isCoveredBy(ConditionPart const& other) const {
+bool ConditionPart::isCoveredBy(ConditionPart const& other, bool isReversed) const {
   if (variable != other.variable || attributeName != other.attributeName) {
     return false;
+  }
+  
+  if (!isExpanded && !other.isExpanded &&
+      other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+      other.valueNode->isConstant() && isReversed) {
+    if (CompareAstNodes(other.valueNode, valueNode, false) == 0) {
+      return true;
+    }
   }
 
   // special cases for IN...
@@ -487,6 +495,7 @@ AstNode* Condition::removeIndexCondition(Variable const* variable,
     if (operand->isComparisonOperator() &&
         operand->type != NODE_TYPE_OPERATOR_BINARY_NE &&
         operand->type != NODE_TYPE_OPERATOR_BINARY_NIN) {
+
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
 
@@ -943,7 +952,7 @@ bool Condition::canRemove(ConditionPart const& me,
             ConditionPart indexCondition(result.first, result.second, operand,
                                          ATTRIBUTE_LEFT, nullptr);
 
-            if (me.isCoveredBy(indexCondition)) {
+            if (me.isCoveredBy(indexCondition, false)) {
               return true;
             }
           }
@@ -964,7 +973,7 @@ bool Condition::canRemove(ConditionPart const& me,
             ConditionPart indexCondition(result.first, result.second, operand,
                                          ATTRIBUTE_RIGHT, nullptr);
 
-            if (me.isCoveredBy(indexCondition)) {
+            if (me.isCoveredBy(indexCondition, true)) {
               return true;
             }
           }
