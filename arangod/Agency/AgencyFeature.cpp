@@ -150,7 +150,8 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_maxElectionTimeout <= 2 * _minElectionTimeout) {
     LOG_TOPIC(WARN, Logger::AGENCY)
-        << "agency.election-timeout-max should probably be chosen longer!";
+      << "agency.election-timeout-max should probably be chosen longer!"
+      << " " << __FILE__ << __LINE__;
   }
 }
 
@@ -205,7 +206,7 @@ void AgencyFeature::unprepare() {
       usleep(100000);
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
-        LOG(WARN) << "waiting for agent thread to finish";
+        LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for agent thread to finish";
       }
     }
   }
