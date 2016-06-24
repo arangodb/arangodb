@@ -50,13 +50,13 @@ RestImportHandler::RestImportHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request), _onDuplicateAction(DUPLICATE_ERROR) {}
 
 HttpHandler::status_t RestImportHandler::execute() {
-  if (ServerState::instance()->isCoordinator()) {
+/*  if (ServerState::instance()->isCoordinator()) {
     generateError(GeneralResponse::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/import' is not yet supported in a cluster");
     return status_t(HANDLER_DONE);
   }
-
+*/
   // set default value for onDuplicate
   _onDuplicateAction = DUPLICATE_ERROR;
 
