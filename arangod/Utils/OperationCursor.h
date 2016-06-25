@@ -44,7 +44,6 @@ struct OperationCursor {
 
  public:
   int                                     code;
-  std::shared_ptr<VPackCustomTypeHandler> customTypeHandler;
 
  private:
 
@@ -57,16 +56,13 @@ struct OperationCursor {
  public:
   explicit OperationCursor(int code)
       : code(code),
-        customTypeHandler(),
         _hasMore(false),
         _limit(0),
         _originalLimit(0),
         _batchSize(1000) {}
 
-  OperationCursor(std::shared_ptr<VPackCustomTypeHandler> handler,
-                  IndexIterator* iterator, uint64_t limit, uint64_t batchSize)
+  OperationCursor(IndexIterator* iterator, uint64_t limit, uint64_t batchSize)
       : code(TRI_ERROR_NO_ERROR), 
-        customTypeHandler(handler),
         _indexIterator(iterator),
         _hasMore(true),
         _limit(limit),  // _limit is modified later on

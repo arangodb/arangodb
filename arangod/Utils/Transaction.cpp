@@ -2868,9 +2868,7 @@ OperationCursor* Transaction::indexScanForCondition(
     return new OperationCursor(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  return new OperationCursor(
-      _transactionContextPtr->orderCustomTypeHandler(), iterator.release(), limit,
-      batchSize);
+  return new OperationCursor(iterator.release(), limit, batchSize);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2960,9 +2958,7 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
   uint64_t unused = 0;
   iterator->skip(skip, unused);
 
-  return std::make_shared<OperationCursor>(
-      _transactionContextPtr->orderCustomTypeHandler(), iterator.release(), limit,
-      batchSize);
+  return std::make_shared<OperationCursor>(iterator.release(), limit, batchSize);
 }
   
 ////////////////////////////////////////////////////////////////////////////////
