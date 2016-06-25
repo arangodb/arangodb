@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
@@ -41,8 +42,8 @@ LookupBuilder::LookupBuilder(
     arangodb::aql::Variable const* reference,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields)
     : _builder(trx), _usesIn(false), _isEmpty(false), _inStorage(trx) {
+
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-  SimpleAttributeEqualityMatcher matcher(fields);
   _coveredFields = fields.size();
   TRI_ASSERT(node->numMembers() == _coveredFields);
 
@@ -282,8 +283,7 @@ HashIndexIterator::HashIndexIterator(arangodb::Transaction* trx,
       _buffer(),
       _posInBuffer(0) {
     _index->lookup(_trx, _lookups.lookup(), _buffer);
-  }
-
+}
 
 TRI_doc_mptr_t* HashIndexIterator::next() {
   while (true) {
@@ -312,6 +312,13 @@ void HashIndexIterator::reset() {
   _posInBuffer = 0;
   _lookups.reset();
   _index->lookup(_trx, _lookups.lookup(), _buffer);
+}
+
+HashIndexIteratorVPack::~HashIndexIteratorVPack() {
+  if (_searchValues != nullptr) {
+    // return the VPackBuilder to the transaction context 
+    _trx->transactionContextPtr()->returnBuilder(_searchValues.release());
+  }
 }
 
 TRI_doc_mptr_t* HashIndexIteratorVPack::next() {
@@ -892,7 +899,8 @@ bool HashIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  SimpleAttributeEqualityMatcher matcher(fields());
+
+  SimpleAttributeEqualityMatcher matcher(_fields);
   return matcher.matchAll(this, node, reference, itemsInIndex, estimatedItems,
                           estimatedCost);
 }
@@ -923,9 +931,11 @@ IndexIterator* HashIndex::iteratorForSlice(arangodb::Transaction* trx,
     // Invalid searchValue
     return nullptr;
   }
-  auto builder = std::make_unique<VPackBuilder>();
-  builder->add(searchValues);
-  return new HashIndexIteratorVPack(trx, this, builder);
+  
+  TransactionBuilderLeaser builder(trx);
+  std::unique_ptr<VPackBuilder> keys(builder.steal());
+  keys->add(searchValues);
+  return new HashIndexIteratorVPack(trx, this, keys);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -935,6 +945,7 @@ IndexIterator* HashIndex::iteratorForSlice(arangodb::Transaction* trx,
 arangodb::aql::AstNode* HashIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
+
   SimpleAttributeEqualityMatcher matcher(fields());
   return matcher.specializeAll(this, node, reference);
 }

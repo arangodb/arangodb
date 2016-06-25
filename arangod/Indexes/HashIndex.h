@@ -129,7 +129,7 @@ class HashIndexIteratorVPack final : public IndexIterator {
     searchValues.release(); // now we have ownership for searchValues
   }
 
-  ~HashIndexIteratorVPack() = default;
+  ~HashIndexIteratorVPack();
 
   TRI_doc_mptr_t* next() override;
 

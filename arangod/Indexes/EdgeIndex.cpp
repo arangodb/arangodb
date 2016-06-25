@@ -39,6 +39,16 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hard-coded vector of the index attributes
+/// note that the attribute names must be hard-coded here to avoid an init-order
+/// fiasco with StaticStrings::FromString etc.
+////////////////////////////////////////////////////////////////////////////////
+
+static std::vector<std::vector<arangodb::basics::AttributeName>> const IndexAttributes
+    {{arangodb::basics::AttributeName("_from", false)},
+     {arangodb::basics::AttributeName("_to", false)}};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an edge key
@@ -581,9 +591,8 @@ bool EdgeIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(StaticStrings::FromString, false)},
-       {arangodb::basics::AttributeName(StaticStrings::ToString, false)}});
+
+  SimpleAttributeEqualityMatcher matcher(IndexAttributes);
   return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems,
                           estimatedCost);
 }
@@ -597,10 +606,6 @@ IndexIterator* EdgeIndex::iteratorForCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
-  SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(StaticStrings::FromString, false)},
-       {arangodb::basics::AttributeName(StaticStrings::ToString, false)}});
 
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -642,10 +647,8 @@ IndexIterator* EdgeIndex::iteratorForCondition(
 arangodb::aql::AstNode* EdgeIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
-  SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(StaticStrings::FromString, false)},
-       {arangodb::basics::AttributeName(StaticStrings::ToString, false)}});
-
+  
+  SimpleAttributeEqualityMatcher matcher(IndexAttributes);
   return matcher.specializeOne(this, node, reference);
 }
 

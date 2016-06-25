@@ -40,6 +40,16 @@
 
 using namespace arangodb;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hard-coded vector of the index attributes
+/// note that the attribute names must be hard-coded here to avoid an init-order
+/// fiasco with StaticStrings::FromString etc.
+////////////////////////////////////////////////////////////////////////////////
+
+static std::vector<std::vector<arangodb::basics::AttributeName>> const IndexAttributes
+    {{arangodb::basics::AttributeName("_id", false)},
+     {arangodb::basics::AttributeName("_key", false)}};
+
 static inline uint64_t HashKey(void*, uint8_t const* key) {
   // can use fast hash-function here, as index values are restricted to strings
   return VPackSlice(key).hashString();
@@ -370,10 +380,8 @@ bool PrimaryIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(StaticStrings::IdString, false)},
-       {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}});
 
+  SimpleAttributeEqualityMatcher matcher(IndexAttributes);
   return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems,
                           estimatedCost);
 }
@@ -387,10 +395,6 @@ IndexIterator* PrimaryIndex::iteratorForCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
-  SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(StaticStrings::IdString, false)},
-       {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}});
 
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -434,9 +438,11 @@ IndexIterator* PrimaryIndex::iteratorForSlice(
     // Invalid searchValue
     return nullptr;
   }
-  auto builder = std::make_unique<VPackBuilder>();
+  // lease builder, but immediately pass it to the unique_ptr so we don't leak  
+  TransactionBuilderLeaser builder(trx);
+  std::unique_ptr<VPackBuilder> keys(builder.steal());
   builder->add(searchValues);
-  return new PrimaryIndexIterator(trx, this, builder);
+  return new PrimaryIndexIterator(trx, this, keys);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -446,10 +452,8 @@ IndexIterator* PrimaryIndex::iteratorForSlice(
 arangodb::aql::AstNode* PrimaryIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
-  SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(StaticStrings::IdString, false)},
-       {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}});
 
+  SimpleAttributeEqualityMatcher matcher(IndexAttributes);
   return matcher.specializeOne(this, node, reference);
 }
 
