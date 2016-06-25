@@ -235,7 +235,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   bool isSingleOperationTransaction() const {
-    return TRI_IsSingleOperationTransaction(this->getInternals());
+    return TRI_IsSingleOperationTransaction(_trx);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -389,13 +389,13 @@ class Transaction {
     auto collection = this->trxCollection(cid);
 
     if (collection == nullptr) {
-      int res = TRI_AddCollectionTransaction(this->getInternals(), cid,
+      int res = TRI_AddCollectionTransaction(_trx, cid,
                                              type,
-                                             this->nestingLevel(), true, true);
+                                             _nestingLevel, true, true);
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
-      TRI_EnsureCollectionsTransaction(this->getInternals());
+      TRI_EnsureCollectionsTransaction(_trx, _nestingLevel);
       collection = this->trxCollection(cid);
 
       if (collection == nullptr) {
