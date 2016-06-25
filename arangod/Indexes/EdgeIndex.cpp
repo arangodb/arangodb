@@ -31,6 +31,7 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
@@ -182,6 +183,13 @@ static bool IsEqualElementEdgeToByKey(void*,
   TRI_ASSERT(rSlice.isString());
 
   return lSlice.equals(rSlice);
+}
+    
+EdgeIndexIterator::~EdgeIndexIterator() {
+  if (_keys != nullptr) {
+    // return the VPackBuilder to the transaction context 
+    _trx->transactionContextPtr()->returnBuilder(_keys.release());
+  }
 }
 
 TRI_doc_mptr_t* EdgeIndexIterator::next() {
@@ -611,9 +619,7 @@ IndexIterator* EdgeIndex::iteratorForCondition(
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createIterator(
-        trx, context, attrNode,
-        std::vector<arangodb::aql::AstNode const*>({valNode}));
+    return createEqIterator(trx, context, attrNode, valNode);
   }
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -622,17 +628,7 @@ IndexIterator* EdgeIndex::iteratorForCondition(
       return nullptr;
     }
 
-    std::vector<arangodb::aql::AstNode const*> valNodes;
-    size_t const n = valNode->numMembers();
-    valNodes.reserve(n);
-    for (size_t i = 0; i < n; ++i) {
-      valNodes.emplace_back(valNode->getMemberUnchecked(i));
-      TRI_IF_FAILURE("EdgeIndex::iteratorValNodes") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-    }
-
-    return createIterator(trx, context, attrNode, valNodes);
+    return createInIterator(trx, context, attrNode, valNode);
   }
 
   // operator type unsupported
@@ -722,17 +718,30 @@ IndexIterator* EdgeIndex::iteratorForSlice(
     if (!to.isNull()) {
       // ANY search
       TRI_ASSERT(to.isArray());
-      auto left = std::make_unique<EdgeIndexIterator>(trx, _edgesFrom, from);
-      auto right = std::make_unique<EdgeIndexIterator>(trx, _edgesTo, to);
+      TransactionBuilderLeaser fromBuilder(trx);
+      std::unique_ptr<VPackBuilder> fromKeys(fromBuilder.steal());
+      fromKeys->add(from);
+      auto left = std::make_unique<EdgeIndexIterator>(trx, _edgesFrom, fromKeys);
+
+      TransactionBuilderLeaser toBuilder(trx);
+      std::unique_ptr<VPackBuilder> toKeys(toBuilder.steal());
+      toKeys->add(to);
+      auto right = std::make_unique<EdgeIndexIterator>(trx, _edgesTo, toKeys);
       return new AnyDirectionEdgeIndexIterator(left.release(), right.release());
     }
     // OUTBOUND search
     TRI_ASSERT(to.isNull());
-    return new EdgeIndexIterator(trx, _edgesFrom, from);
+    TransactionBuilderLeaser builder(trx);
+    std::unique_ptr<VPackBuilder> keys(builder.steal());
+    keys->add(from);
+    return new EdgeIndexIterator(trx, _edgesFrom, keys);
   } else {
     // INBOUND search
     TRI_ASSERT(to.isArray());
-    return new EdgeIndexIterator(trx, _edgesTo, to);
+    TransactionBuilderLeaser builder(trx);
+    std::unique_ptr<VPackBuilder> keys(builder.steal());
+    keys->add(to);
+    return new EdgeIndexIterator(trx, _edgesTo, keys);
   }
 }
 
@@ -740,26 +749,46 @@ IndexIterator* EdgeIndex::iteratorForSlice(
 /// @brief create the iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* EdgeIndex::createIterator(
+IndexIterator* EdgeIndex::createEqIterator(
     arangodb::Transaction* trx, IndexIteratorContext* context,
     arangodb::aql::AstNode const* attrNode,
-    std::vector<arangodb::aql::AstNode const*> const& valNodes) const {
-  // only leave the valid elements in the vector
-  VPackBuilder keys;
-  keys.openArray();
+    arangodb::aql::AstNode const* valNode) const {
+  
+  // lease builder, but immediately pass it to the unique_ptr so we don't leak  
+  TransactionBuilderLeaser builder(trx);
+  std::unique_ptr<VPackBuilder> keys(builder.steal());
+  keys->openArray();
 
-  for (auto const& valNode : valNodes) {
-    if (!valNode->isStringValue()) {
-      continue;
-    }
-    if (valNode->getStringLength() == 0) {
-      continue;
-    }
+  handleValNode(keys.get(), valNode);
+  TRI_IF_FAILURE("EdgeIndex::noIterator") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  keys->close();
 
-    keys.openObject();
-    keys.add(TRI_SLICE_KEY_EQUAL, VPackValue(valNode->getStringValue()));
-    keys.close();
-    TRI_IF_FAILURE("EdgeIndex::collectKeys") {
+  // _from or _to?
+  bool const isFrom = (attrNode->stringEquals(StaticStrings::FromString));
+
+  return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, keys);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the iterator
+////////////////////////////////////////////////////////////////////////////////
+
+IndexIterator* EdgeIndex::createInIterator(
+    arangodb::Transaction* trx, IndexIteratorContext* context,
+    arangodb::aql::AstNode const* attrNode,
+    arangodb::aql::AstNode const* valNode) const {
+  
+  // lease builder, but immediately pass it to the unique_ptr so we don't leak  
+  TransactionBuilderLeaser builder(trx);
+  std::unique_ptr<VPackBuilder> keys(builder.steal());
+  keys->openArray();
+    
+  size_t const n = valNode->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    handleValNode(keys.get(), valNode->getMemberUnchecked(i));
+    TRI_IF_FAILURE("EdgeIndex::iteratorValNodes") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
@@ -767,11 +796,29 @@ IndexIterator* EdgeIndex::createIterator(
   TRI_IF_FAILURE("EdgeIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  keys.close();
+  keys->close();
 
   // _from or _to?
-  bool const isFrom =
-      (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0);
+  bool const isFrom = (attrNode->stringEquals(StaticStrings::FromString));
 
-  return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, std::move(keys));
+  return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, keys);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a single value node to the iterator's keys
+////////////////////////////////////////////////////////////////////////////////
+    
+void EdgeIndex::handleValNode(VPackBuilder* keys,
+                              arangodb::aql::AstNode const* valNode) const {
+  if (!valNode->isStringValue() || valNode->getStringLength() == 0) {
+    return;
+  }
+
+  keys->openObject();
+  keys->add(TRI_SLICE_KEY_EQUAL, VPackValuePair(valNode->getStringValue(), valNode->getStringLength(), VPackValueType::String));
+  keys->close();
+  
+  TRI_IF_FAILURE("EdgeIndex::collectKeys") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 }

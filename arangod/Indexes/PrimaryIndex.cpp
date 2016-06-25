@@ -476,6 +476,9 @@ IndexIterator* PrimaryIndex::createInIterator(
   // only leave the valid elements
   for (size_t i = 0; i < n; ++i) {
     handleValNode(context, keys.get(), valNode->getMemberUnchecked(i), isId);
+    TRI_IF_FAILURE("PrimaryIndex::iteratorValNodes") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
   }
   
   TRI_IF_FAILURE("PrimaryIndex::noIterator") {

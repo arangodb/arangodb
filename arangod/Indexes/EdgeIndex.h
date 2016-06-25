@@ -50,31 +50,23 @@ class EdgeIndexIterator final : public IndexIterator {
 
   EdgeIndexIterator(arangodb::Transaction* trx,
                     TRI_EdgeIndexHash_t const* index,
-                    arangodb::velocypack::Builder&& searchValues)
+                    std::unique_ptr<VPackBuilder>& keys)
       : _trx(trx),
         _index(index),
-        _searchValues(searchValues),
-        _keys(_searchValues.slice()),
-        _iterator(_keys),
+        _keys(keys.get()),
+        _iterator(_keys->slice()),
         _posInBuffer(0),
-        _batchSize(1000) {}
+        _batchSize(1000) {
+        
+    keys.release(); // now we have ownership for _keys
+  }
 
-  EdgeIndexIterator(arangodb::Transaction* trx,
-                    TRI_EdgeIndexHash_t const* index,
-                    arangodb::velocypack::Slice searchValues)
-      : _trx(trx),
-        _index(index),
-        _searchValues(arangodb::velocypack::Builder::clone(searchValues)),
-        _keys(_searchValues.slice()),
-        _iterator(_keys),
-        _posInBuffer(0),
-        _batchSize(1000) {}
+  ~EdgeIndexIterator();
 
  private:
   arangodb::Transaction* _trx;
   TRI_EdgeIndexHash_t const* _index;
-  arangodb::velocypack::Builder const _searchValues;
-  arangodb::velocypack::Slice const _keys;
+  std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _iterator;
   std::vector<TRI_doc_mptr_t*> _buffer;
   size_t _posInBuffer;
@@ -222,10 +214,21 @@ class EdgeIndex final : public Index {
   /// @brief create the iterator
   //////////////////////////////////////////////////////////////////////////////
 
-  IndexIterator* createIterator(
+  IndexIterator* createEqIterator(
       arangodb::Transaction*, IndexIteratorContext*,
       arangodb::aql::AstNode const*,
-      std::vector<arangodb::aql::AstNode const*> const&) const;
+      arangodb::aql::AstNode const*) const;
+  
+  IndexIterator* createInIterator(
+      arangodb::Transaction*, IndexIteratorContext*,
+      arangodb::aql::AstNode const*,
+      arangodb::aql::AstNode const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a single value node to the iterator's keys
+////////////////////////////////////////////////////////////////////////////////
+    
+  void handleValNode(VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

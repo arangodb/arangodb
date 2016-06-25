@@ -1,7 +1,7 @@
 devel
 -----
 
-* improved performance of primary index lookups
+* improved performance of primary index and edge index lookups
 
 * optimizations for AQL `[*]` operator in case no filter, no projection and
   no offset/limit are used
