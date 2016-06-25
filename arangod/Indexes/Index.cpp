@@ -643,7 +643,7 @@ void Index::expandInSearchValues(VPackSlice const base,
 
     bool usesIn = false;
     for (auto const& it : VPackArrayIterator(oneLookup)) {
-      if (it.hasKey(TRI_SLICE_KEY_IN)) {
+      if (it.hasKey(StaticStrings::IndexIn)) {
         usesIn = true;
         break;
       }
@@ -660,8 +660,8 @@ void Index::expandInSearchValues(VPackSlice const base,
     size_t n = static_cast<size_t>(oneLookup.length());
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice current = oneLookup.at(i);
-      if (current.hasKey(TRI_SLICE_KEY_IN)) {
-        VPackSlice inList = current.get(TRI_SLICE_KEY_IN);
+      if (current.hasKey(StaticStrings::IndexIn)) {
+        VPackSlice inList = current.get(StaticStrings::IndexIn);
 
         std::unordered_set<VPackSlice, 
                            arangodb::basics::VelocyPackHelper::VPackHash, 
@@ -703,7 +703,7 @@ void Index::expandInSearchValues(VPackSlice const base,
           result.add(oneLookup.at(i));
         } else {
           VPackObjectBuilder objGuard(&result);
-          result.add(TRI_SLICE_KEY_EQUAL, list->second.at(positions[i]));
+          result.add(StaticStrings::IndexEq, list->second.at(positions[i]));
         }
       }
       while (true) {

@@ -505,7 +505,7 @@ RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
   leftSearch.openArray();
   for (auto const& it : VPackArrayIterator(searchValues)) {
     TRI_ASSERT(it.isObject());
-    VPackSlice eq = it.get(TRI_SLICE_KEY_EQUAL);
+    VPackSlice eq = it.get(StaticStrings::IndexEq);
     if (eq.isNone()) {
       lastNonEq = it;
       break;
@@ -533,16 +533,16 @@ RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
     rightSearch = leftSearch;
 
     // Define Lower-Bound 
-    VPackSlice lastLeft = lastNonEq.get(TRI_SLICE_KEY_GE);
+    VPackSlice lastLeft = lastNonEq.get(StaticStrings::IndexGe);
     if (!lastLeft.isNone()) {
-      TRI_ASSERT(!lastNonEq.hasKey(TRI_SLICE_KEY_GT));
+      TRI_ASSERT(!lastNonEq.hasKey(StaticStrings::IndexGt));
       leftSearch.add(lastLeft);
       leftSearch.add(VPackSlice::minKeySlice());
       leftSearch.close();
       VPackSlice search = leftSearch.slice();
       leftBorder = search;
     } else {
-      lastLeft = lastNonEq.get(TRI_SLICE_KEY_GT);
+      lastLeft = lastNonEq.get(StaticStrings::IndexGt);
       if (!lastLeft.isNone()) {
         leftSearch.add(lastLeft);
         leftSearch.add(VPackSlice::maxKeySlice());
@@ -559,16 +559,16 @@ RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
     }
 
     // Define upper-bound
-    VPackSlice lastRight = lastNonEq.get(TRI_SLICE_KEY_LE);
+    VPackSlice lastRight = lastNonEq.get(StaticStrings::IndexLe);
     if (!lastRight.isNone()) {
-      TRI_ASSERT(!lastNonEq.hasKey(TRI_SLICE_KEY_LT));
+      TRI_ASSERT(!lastNonEq.hasKey(StaticStrings::IndexLt));
       rightSearch.add(lastRight);
       rightSearch.add(VPackSlice::maxKeySlice());
       rightSearch.close();
       VPackSlice search = rightSearch.slice();
       rightBorder = search;
     } else {
-      lastRight = lastNonEq.get(TRI_SLICE_KEY_LT);
+      lastRight = lastNonEq.get(StaticStrings::IndexLt);
       if (!lastRight.isNone()) {
         rightSearch.add(lastRight);
         rightSearch.add(VPackSlice::minKeySlice());
@@ -930,21 +930,21 @@ IndexIterator* RocksDBIndex::iteratorForCondition(
       
       if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
         searchValues.openObject();
-        searchValues.add(VPackValue(TRI_SLICE_KEY_EQUAL));
+        searchValues.add(VPackValue(StaticStrings::IndexEq));
         TRI_IF_FAILURE("RocksDBIndex::permutationEQ") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
       } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
         if (isAttributeExpanded(usedFields)) {
           searchValues.openObject();
-          searchValues.add(VPackValue(TRI_SLICE_KEY_EQUAL));
+          searchValues.add(VPackValue(StaticStrings::IndexEq));
           TRI_IF_FAILURE("RocksDBIndex::permutationArrayIN") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
         } else {
           needNormalize = true;
           searchValues.openObject();
-          searchValues.add(VPackValue(TRI_SLICE_KEY_IN));
+          searchValues.add(VPackValue(StaticStrings::IndexIn));
         }
       } else {
         // This is a one-sided range
@@ -971,30 +971,30 @@ IndexIterator* RocksDBIndex::iteratorForCondition(
           switch (comp->type) {
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
               if (isReverseOrder) {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_GT));
+                searchValues.add(VPackValue(StaticStrings::IndexGt));
               } else {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_LT));
+                searchValues.add(VPackValue(StaticStrings::IndexLt));
               }
               break;
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
               if (isReverseOrder) {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_GE));
+                searchValues.add(VPackValue(StaticStrings::IndexGe));
               } else {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_LE));
+                searchValues.add(VPackValue(StaticStrings::IndexLe));
               }
               break;
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
               if (isReverseOrder) {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_LT));
+                searchValues.add(VPackValue(StaticStrings::IndexLt));
               } else {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_GT));
+                searchValues.add(VPackValue(StaticStrings::IndexGt));
               }
               break;
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
               if (isReverseOrder) {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_LE));
+                searchValues.add(VPackValue(StaticStrings::IndexLe));
               } else {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_GE));
+                searchValues.add(VPackValue(StaticStrings::IndexGe));
               }
               break;
           default:

@@ -36,6 +36,14 @@ class StaticStrings {
   static std::string const Empty;
   static std::string const N1800;
 
+  // index lookup strings
+  static std::string const IndexEq;
+  static std::string const IndexIn;
+  static std::string const IndexLe;
+  static std::string const IndexLt;
+  static std::string const IndexGe;
+  static std::string const IndexGt;
+
   // system attribute names
   static std::string const IdString;
   static std::string const KeyString;

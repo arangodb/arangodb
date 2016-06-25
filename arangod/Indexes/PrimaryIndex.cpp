@@ -228,8 +228,8 @@ TRI_doc_mptr_t* PrimaryIndex::lookup(arangodb::Transaction* trx,
   TRI_ASSERT(slice.isArray() && slice.length() == 1);
   
   VPackSlice tmp = slice.at(0);
-  TRI_ASSERT(tmp.isObject() && tmp.hasKey(TRI_SLICE_KEY_EQUAL));
-  tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
+  TRI_ASSERT(tmp.isObject() && tmp.hasKey(StaticStrings::IndexEq));
+  tmp = tmp.get(StaticStrings::IndexEq);
   return _primaryIndex->findByKey(trx, tmp.begin());
 }
 
@@ -559,13 +559,13 @@ void PrimaryIndex::handleValNode(IndexIteratorContext* context,
     // use _key value from _id
     keys->openArray();
     keys->openObject();
-    keys->add(TRI_SLICE_KEY_EQUAL, VPackValue(key));
+    keys->add(StaticStrings::IndexEq, VPackValue(key));
     keys->close();
     keys->close();
   } else {
     keys->openArray();
     keys->openObject();
-    keys->add(TRI_SLICE_KEY_EQUAL, VPackValuePair(valNode->getStringValue(), valNode->getStringLength(), VPackValueType::String));
+    keys->add(StaticStrings::IndexEq, VPackValuePair(valNode->getStringValue(), valNode->getStringLength(), VPackValueType::String));
     keys->close();
     keys->close();
   }

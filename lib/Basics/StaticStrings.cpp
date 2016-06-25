@@ -30,6 +30,14 @@ std::string const StaticStrings::Binary("binary");
 std::string const StaticStrings::Empty("");
 std::string const StaticStrings::N1800("1800");
 
+// index lookup strings
+std::string const StaticStrings::IndexEq("eq");
+std::string const StaticStrings::IndexIn("in");
+std::string const StaticStrings::IndexLe("le");
+std::string const StaticStrings::IndexLt("lt");
+std::string const StaticStrings::IndexGe("ge");
+std::string const StaticStrings::IndexGt("gt");
+
 // system attribute names
 std::string const StaticStrings::IdString("_id");
 std::string const StaticStrings::KeyString("_key");

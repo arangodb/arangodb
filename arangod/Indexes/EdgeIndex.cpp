@@ -210,7 +210,7 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
 
       VPackSlice tmp = _iterator.value();
       if (tmp.isObject()) {
-        tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
+        tmp = tmp.get(StaticStrings::IndexEq);
       }
       _index->lookupByKey(_trx, &tmp, _buffer, _batchSize);
       // fallthrough intentional
@@ -242,7 +242,7 @@ void EdgeIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& buffer, size_t 
     if (buffer.empty()) {
       VPackSlice tmp = _iterator.value();
       if (tmp.isObject()) {
-        tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
+        tmp = tmp.get(StaticStrings::IndexEq);
       }
       _index->lookupByKey(_trx, &tmp, buffer, atMost);
       // fallthrough intentional
@@ -356,7 +356,7 @@ void EdgeIndex::buildSearchValue(TRI_edge_direction_e dir,
     case TRI_EDGE_OUT:
       builder.openArray();
       builder.openObject();
-      builder.add(TRI_SLICE_KEY_EQUAL, VPackValue(id));
+      builder.add(StaticStrings::IndexEq, VPackValue(id));
       builder.close();
       builder.close();
       builder.add(VPackValue(VPackValueType::Null));
@@ -365,19 +365,19 @@ void EdgeIndex::buildSearchValue(TRI_edge_direction_e dir,
       builder.add(VPackValue(VPackValueType::Null));
       builder.openArray();
       builder.openObject();
-      builder.add(TRI_SLICE_KEY_EQUAL, VPackValue(id));
+      builder.add(StaticStrings::IndexEq, VPackValue(id));
       builder.close();
       builder.close();
       break;
     case TRI_EDGE_ANY:
       builder.openArray();
       builder.openObject();
-      builder.add(TRI_SLICE_KEY_EQUAL, VPackValue(id));
+      builder.add(StaticStrings::IndexEq, VPackValue(id));
       builder.close();
       builder.close();
       builder.openArray();
       builder.openObject();
-      builder.add(TRI_SLICE_KEY_EQUAL, VPackValue(id));
+      builder.add(StaticStrings::IndexEq, VPackValue(id));
       builder.close();
       builder.close();
   }
@@ -392,7 +392,7 @@ void EdgeIndex::buildSearchValue(TRI_edge_direction_e dir,
     case TRI_EDGE_OUT:
       builder.openArray();
       builder.openObject();
-      builder.add(TRI_SLICE_KEY_EQUAL, id);
+      builder.add(StaticStrings::IndexEq, id);
       builder.close();
       builder.close();
       builder.add(VPackValue(VPackValueType::Null));
@@ -401,19 +401,19 @@ void EdgeIndex::buildSearchValue(TRI_edge_direction_e dir,
       builder.add(VPackValue(VPackValueType::Null));
       builder.openArray();
       builder.openObject();
-      builder.add(TRI_SLICE_KEY_EQUAL, id);
+      builder.add(StaticStrings::IndexEq, id);
       builder.close();
       builder.close();
       break;
     case TRI_EDGE_ANY:
       builder.openArray();
       builder.openObject();
-      builder.add(TRI_SLICE_KEY_EQUAL, id);
+      builder.add(StaticStrings::IndexEq, id);
       builder.close();
       builder.close();
       builder.openArray();
       builder.openObject();
-      builder.add(TRI_SLICE_KEY_EQUAL, id);
+      builder.add(StaticStrings::IndexEq, id);
       builder.close();
       builder.close();
   }
@@ -431,7 +431,7 @@ void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
       for (auto const& id : VPackArrayIterator(ids)) {
         if (id.isString()) {
           builder.openObject();
-          builder.add(TRI_SLICE_KEY_EQUAL, id);
+          builder.add(StaticStrings::IndexEq, id);
           builder.close();
         }
       }
@@ -444,7 +444,7 @@ void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
       for (auto const& id : VPackArrayIterator(ids)) {
         if (id.isString()) {
           builder.openObject();
-          builder.add(TRI_SLICE_KEY_EQUAL, id);
+          builder.add(StaticStrings::IndexEq, id);
           builder.close();
         }
       }
@@ -455,7 +455,7 @@ void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
       for (auto const& id : VPackArrayIterator(ids)) {
         if (id.isString()) {
           builder.openObject();
-          builder.add(TRI_SLICE_KEY_EQUAL, id);
+          builder.add(StaticStrings::IndexEq, id);
           builder.close();
         }
       }
@@ -464,7 +464,7 @@ void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
       for (auto const& id : VPackArrayIterator(ids)) {
         if (id.isString()) {
           builder.openObject();
-          builder.add(TRI_SLICE_KEY_EQUAL, id);
+          builder.add(StaticStrings::IndexEq, id);
           builder.close();
         }
       }
@@ -670,16 +670,16 @@ void EdgeIndex::expandInSearchValues(VPackSlice const slice,
       builder.openArray();
       for (auto const& item : VPackArrayIterator(side)) {
         TRI_ASSERT(item.isObject());
-        if (item.hasKey(TRI_SLICE_KEY_EQUAL)) {
-          TRI_ASSERT(!item.hasKey(TRI_SLICE_KEY_IN));
+        if (item.hasKey(StaticStrings::IndexEq)) {
+          TRI_ASSERT(!item.hasKey(StaticStrings::IndexIn));
           builder.add(item);
         } else {
-          TRI_ASSERT(item.hasKey(TRI_SLICE_KEY_IN));
-          VPackSlice list = item.get(TRI_SLICE_KEY_IN);
+          TRI_ASSERT(item.hasKey(StaticStrings::IndexIn));
+          VPackSlice list = item.get(StaticStrings::IndexIn);
           TRI_ASSERT(list.isArray());
           for (auto const& it : VPackArrayIterator(list)) {
             builder.openObject();
-            builder.add(TRI_SLICE_KEY_EQUAL, it);
+            builder.add(StaticStrings::IndexEq, it);
             builder.close();
           }
         }
@@ -818,7 +818,7 @@ void EdgeIndex::handleValNode(VPackBuilder* keys,
   }
 
   keys->openObject();
-  keys->add(TRI_SLICE_KEY_EQUAL, VPackValuePair(valNode->getStringValue(), valNode->getStringLength(), VPackValueType::String));
+  keys->add(StaticStrings::IndexEq, VPackValuePair(valNode->getStringValue(), valNode->getStringLength(), VPackValueType::String));
   keys->close();
   
   TRI_IF_FAILURE("EdgeIndex::collectKeys") {
