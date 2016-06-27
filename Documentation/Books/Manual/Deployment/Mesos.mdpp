@@ -8,15 +8,17 @@ DC/OS is the recommended way to install a cluster as it eases much of the proces
 
 !SUBSUBSECTION Installing
 
+First prepare a DC/OS cluster by going to https://dcos.io and following 
+the instructions there.
+
 DC/OS comes with its own package management. Packages can be installed from the so called "Universe". As an official DC/OS partner ArangoDB can be installed from there straight away.
 
 1. Installing via DC/OS UI
 
-   1. Go to https://dcos.io and prepare a cluster
-   2. Open your browser and go to the DC/OS admin interface
-   3. Open the "Universe" tab
-   4. Locate arangodb and hit "Install Package"
-   5. Press "Install Package"
+   1. Open your browser and go to the DC/OS admin interface
+   2. Open the "Universe" tab
+   3. Locate arangodb and hit "Install Package"
+   4. Press "Install Package"
 
 2. Installing via the DC/OS command line
 
@@ -142,7 +144,7 @@ Carefully review the settings (especially the IPs and the resources). Then you c
 
     curl -X POST -H "Content-Type: application/json" http://url-of-marathon/v2/apps -d @arangodb3.json
 
-Alternatively use the web interface of Marathon to deploy ArangoDB.
+Alternatively use the web interface of Marathon to deploy ArangoDB. It has a JSON mode and you can use the above configuration file.
 
 !SUBSUBSECTION Deinstallation via Marathon
 
