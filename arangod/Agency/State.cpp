@@ -180,6 +180,8 @@ std::vector<VPackSlice> State::slices(
   std::vector<VPackSlice> slices;
   MUTEX_LOCKER(mutexLocker, _logLock);
 
+  
+
   if (start < _log.front().index) { // no start specified
     start = _log.front().index;
   }
@@ -260,12 +262,26 @@ bool State::createCollection(std::string const& name) {
 }
 
 bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
-  _vocbase = vocbase;
 
+  _vocbase = vocbase;
   _options.waitForSync = waitForSync;
   _options.silent = true;
 
-  return loadPersisted();
+  if (loadPersisted()) {
+    if (_log.empty()) {
+      std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
+      VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+      buf->append(value.startAs<char const>(), value.byteSize());
+      _log.push_back(log_t(arangodb::consensus::index_t(0), term_t(0),
+                           arangodb::consensus::id_t(0), buf));
+      persist(
+        0, 0, (std::numeric_limits<arangodb::consensus::id_t>::max)(), value);
+    }
+    return true;
+  }
+
+  return false;
+  
 }
 
 bool State::loadPersisted() {
