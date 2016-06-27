@@ -681,6 +681,7 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
       }
       if (!s->_done && s->weight() > newWeight) {
         s->_predecessor = step->_predecessor;
+        s->_edge = step->_edge;
         _myInfo._pq.lowerWeight(s->_vertex, newWeight);
       }
       delete step;
