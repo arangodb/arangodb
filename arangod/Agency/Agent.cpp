@@ -239,9 +239,9 @@ bool Agent::recvAppendEntriesRPC(term_t term,
   // 2. Reply false if log does not contain an entry at prevLogIndex
   //    whose term matches prevLogTerm ($5.3)
   if (!_state.find(prevIndex, prevTerm)) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    /*LOG_TOPIC(WARN, Logger::AGENCY)
         << "Unable to find matching entry to previous entry (index,term) = ("
-        << prevIndex << "," << prevTerm << ")";
+        << prevIndex << "," << prevTerm << ")";*/
     // return false;
   }
 
@@ -256,7 +256,7 @@ bool Agent::recvAppendEntriesRPC(term_t term,
     /* bool success = */
     _state.log(queries, term, leaderId, prevIndex, prevTerm);
   } 
-  
+
   // appendEntries 5. If leaderCommit > commitIndex, set commitIndex =
   // min(leaderCommit, index of last new entry)
   if (leaderCommitIndex > lastCommitIndex) {
@@ -278,6 +278,10 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
   {
     MUTEX_LOCKER(mutexLocker, _ioLock);
     t = this->term();
+  }
+
+  if (unconfirmed.empty()) {
+    return priv_rpc_ret_t(false, t);
   }
 
   // RPC path
