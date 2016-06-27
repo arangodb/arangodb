@@ -46,6 +46,8 @@ Agent::Agent(config_t const& config)
     : Thread("Agent"),
       _config(config),
       _lastCommitIndex(0),
+      _spearhead(this),
+      _readDB(this),
       _nextCompationAfter(_config.compactionStepSize) {
   _state.configure(this);
   _constituent.configure(this);
@@ -349,8 +351,8 @@ bool Agent::load() {
   reportIn(id(), _state.lastLog().index);
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
-  _spearhead.start(this);
-  _readDB.start(this);
+  _spearhead.start();
+  _readDB.start();
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting constituent personality.";
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
