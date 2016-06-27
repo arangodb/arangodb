@@ -240,12 +240,12 @@ bool Agent::recvAppendEntriesRPC(term_t term,
 
   // 2. Reply false if log does not contain an entry at prevLogIndex
   //    whose term matches prevLogTerm ($5.3)
-  if (!_state.find(prevIndex, prevTerm)) {
+  /*if (!_state.find(prevIndex, prevTerm)) {
     LOG_TOPIC(WARN, Logger::AGENCY)
         << "Unable to find matching entry to previous entry (index,term) = ("
         << prevIndex << "," << prevTerm << ")";
     // return false;
-  }
+    }*/
 
   // 3. If an existing entry conflicts with a new one (same index
   //    but different terms), delete the existing entry and all that
