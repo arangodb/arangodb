@@ -50,52 +50,6 @@ typedef arangodb::basics::ConstDistanceFinder<arangodb::velocypack::Slice,
 using namespace arangodb::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Define edge weight by the number of hops.
-///        Respectively 1 for any edge.
-////////////////////////////////////////////////////////////////////////////////
-
-class HopWeightCalculator {
- public:
-  HopWeightCalculator(){};
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Callable weight calculator for edge
-  //////////////////////////////////////////////////////////////////////////////
-
-  double operator()(VPackSlice const edge) { return 1; }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Define edge weight by ony special attribute.
-///        Respectively 1 for any edge.
-////////////////////////////////////////////////////////////////////////////////
-
-class AttributeWeightCalculator {
-  std::string const _attribute;
-  double const _defaultWeight;
-
- public:
-  AttributeWeightCalculator(std::string const& attribute, double defaultWeight)
-      : _attribute(attribute), _defaultWeight(defaultWeight) {}
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Callable weight calculator for edge
-  //////////////////////////////////////////////////////////////////////////////
-
-  double operator()(VPackSlice const edge) {
-    if (_attribute.empty()) {
-      return _defaultWeight;
-    }
-
-    VPackSlice attr = edge.get(_attribute);
-    if (!attr.isNumber()) {
-      return _defaultWeight;
-    }
-    return attr.getNumericValue<double>();
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Local class to expand edges.
 ///        Will be handed over to the path finder
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,10 +179,34 @@ struct EdgeWeightExpanderLocal {
       ShortestPathBlock const* block, bool reverse)
       : _block(block), _reverse(reverse) {}
 
+  void inserter(std::unordered_map<VPackSlice, size_t>& candidates,
+                std::vector<ArangoDBPathFinder::Step*>& result,
+                VPackSlice const& s, VPackSlice const& t, double currentWeight,
+                VPackSlice edge) {
+    auto cand = candidates.find(t);
+    if (cand == candidates.end()) {
+      // Add weight
+      auto step = std::make_unique<ArangoDBPathFinder::Step>(
+          t, s, currentWeight, edge);
+      result.emplace_back(step.release());
+      candidates.emplace(t, result.size() - 1);
+    } else {
+      // Compare weight
+      auto old = result[cand->second];
+      auto oldWeight = old->weight();
+      if (currentWeight < oldWeight) {
+        old->setWeight(currentWeight);
+        old->_predecessor = s;
+        old->_edge = edge;
+      }
+    }
+  }
+
   void operator()(VPackSlice const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
     std::vector<TRI_doc_mptr_t*> cursor;
     std::shared_ptr<arangodb::OperationCursor> edgeCursor;
+    std::unordered_map<VPackSlice, size_t> candidates;
     for (auto const& edgeCollection : _block->_collectionInfos) {
       TRI_ASSERT(edgeCollection != nullptr);
       if (_reverse) {
@@ -236,27 +214,10 @@ struct EdgeWeightExpanderLocal {
       } else {
         edgeCursor = edgeCollection->getEdges(source);
       }
-      std::unordered_map<VPackSlice, size_t> candidates;
 
-      auto inserter = [&](VPackSlice const& s, VPackSlice const& t,
-                          double currentWeight, VPackSlice edge) {
-        auto cand = candidates.find(t);
-        if (cand == candidates.end()) {
-          // Add weight
-          auto step = std::make_unique<ArangoDBPathFinder::Step>(
-              t, s, currentWeight, std::move(edge));
-          result.emplace_back(step.release());
-          candidates.emplace(t, result.size() - 1);
-        } else {
-          // Compare weight
-          auto oldWeight = result[cand->second]->weight();
-          if (currentWeight < oldWeight) {
-            result[cand->second]->setWeight(currentWeight);
-          }
-        }
-      };
-
+      candidates.clear();
       cursor.clear();
+
       while (edgeCursor->hasMore()) {
         edgeCursor->getMoreMptr(cursor, UINT64_MAX);
         for (auto const& mptr : cursor) {
@@ -266,9 +227,9 @@ struct EdgeWeightExpanderLocal {
           VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
           double currentWeight = edgeCollection->weightEdge(edge);
           if (from == source) {
-            inserter(from, to, currentWeight, edge);
+            inserter(candidates, result, from, to, currentWeight, edge);
           } else {
-            inserter(to, from, currentWeight, edge);
+            inserter(candidates, result, to, from, currentWeight, edge);
           }
         }
       }
@@ -323,9 +284,12 @@ struct EdgeWeightExpanderCluster {
           candidates.emplace(t, result.size() - 1);
         } else {
           // Compare weight
-          auto oldWeight = result[cand->second]->weight();
+          auto old = result[cand->second];
+          auto oldWeight = old->weight();
           if (currentWeight < oldWeight) {
-            result[cand->second]->setWeight(currentWeight);
+            old->setWeight(currentWeight);
+            old->_predecessor = s;
+            old->_edge = edge;
           }
         }
       };

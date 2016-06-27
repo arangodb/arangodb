@@ -2253,7 +2253,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
         distance: 1
       });
   },
-/*
+
   testGRAPH_CLOSENESS: function () {
 
     var actual;
@@ -2287,7 +2287,6 @@ function ahuacatlQueryGeneralCyclesSuite() {
     assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 0);
     assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
   },
-*/
 
   testGRAPH_CLOSENESS_OUTBOUND: function () {
     var actual;
