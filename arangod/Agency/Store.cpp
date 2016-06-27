@@ -106,7 +106,8 @@ inline static bool endpointPathFromUrl(
 
 
 /// Ctor with name
-Store::Store(std::string const& name) : Thread(name), _node(name, this) {}
+Store::Store(Agent* agent, std::string const& name)
+    : Thread(name), _agent(agent), _node(name, this) {}
 
 
 /// Copy ctor
@@ -511,13 +512,6 @@ void Store::dumpToBuilder(Builder& builder) const {
 bool Store::start() {
   Thread::start();
   return true;
-}
-
-
-// Start thread with agent
-bool Store::start(Agent* agent) {
-  _agent = agent;
-  return start();
 }
 
 

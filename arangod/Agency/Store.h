@@ -37,7 +37,7 @@ class Agent;
 class Store : public arangodb::Thread {
  public:
   /// @brief Construct with name
-  explicit Store(std::string const& name = "root");
+  explicit Store(Agent* agent, std::string const& name = "root");
 
   /// @brief Destruct
   virtual ~Store();
@@ -68,9 +68,6 @@ class Store : public arangodb::Thread {
 
   /// @brief Start thread
   bool start();
-
-  /// @brief Start thread with access to agent
-  bool start(Agent*);
 
   /// @brief Set name
   void name(std::string const& name);

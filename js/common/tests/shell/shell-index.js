@@ -199,6 +199,9 @@ function indexSuite() {
 
       collection.drop();
 
+      if (internal.coverage || internal.valgrind) {
+        internal.wait(2, false);
+      }
       try {
         collection.index(idx.id);
         fail();

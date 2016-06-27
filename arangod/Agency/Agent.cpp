@@ -46,6 +46,8 @@ Agent::Agent(config_t const& config)
     : Thread("Agent"),
       _config(config),
       _lastCommitIndex(0),
+      _spearhead(this),
+      _readDB(this),
       _nextCompationAfter(_config.compactionStepSize) {
   _state.configure(this);
   _constituent.configure(this);
@@ -238,12 +240,12 @@ bool Agent::recvAppendEntriesRPC(term_t term,
 
   // 2. Reply false if log does not contain an entry at prevLogIndex
   //    whose term matches prevLogTerm ($5.3)
-  if (!_state.find(prevIndex, prevTerm)) {
+  /*if (!_state.find(prevIndex, prevTerm)) {
     LOG_TOPIC(WARN, Logger::AGENCY)
         << "Unable to find matching entry to previous entry (index,term) = ("
         << prevIndex << "," << prevTerm << ")";
     // return false;
-  }
+    }*/
 
   // 3. If an existing entry conflicts with a new one (same index
   //    but different terms), delete the existing entry and all that
@@ -349,8 +351,8 @@ bool Agent::load() {
   reportIn(id(), _state.lastLog().index);
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
-  _spearhead.start(this);
-  _readDB.start(this);
+  _spearhead.start();
+  _readDB.start();
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting constituent personality.";
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
