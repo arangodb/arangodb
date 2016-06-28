@@ -39,6 +39,16 @@
 
 using namespace arangodb;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hard-coded vector of the index attributes
+/// note that the attribute names must be hard-coded here to avoid an init-order
+/// fiasco with StaticStrings::FromString etc.
+////////////////////////////////////////////////////////////////////////////////
+
+static std::vector<std::vector<arangodb::basics::AttributeName>> const IndexAttributes
+    {{arangodb::basics::AttributeName("_id", false)},
+     {arangodb::basics::AttributeName("_key", false)}};
+
 static inline uint64_t HashKey(void* userData, uint8_t const* key) {
   // can use fast hash-function here, as index values are restricted to strings
   return VPackSlice(key).hashString();
@@ -362,10 +372,8 @@ bool PrimaryIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(StaticStrings::IdString, false)},
-       {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}});
 
+  SimpleAttributeEqualityMatcher matcher(IndexAttributes);
   return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems,
                           estimatedCost);
 }
@@ -445,10 +453,8 @@ IndexIterator* PrimaryIndex::iteratorForSlice(
 arangodb::aql::AstNode* PrimaryIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
-  SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(StaticStrings::IdString, false)},
-       {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}});
 
+  SimpleAttributeEqualityMatcher matcher(IndexAttributes);
   return matcher.specializeOne(this, node, reference);
 }
 
