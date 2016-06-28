@@ -1887,7 +1887,7 @@ var bindEdgeCollections = function(self, edgeCollections) {
     var wrap = wrapCollection(obj);
     // save
     var old_save = wrap.save;
-    wrap.save = function(from, to, data) {
+    wrap.save = wrap.insert = function(from, to, data) {
       if (typeof from !== 'string' || 
           from.indexOf('/') === -1 ||
           typeof to !== 'string' ||
