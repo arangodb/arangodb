@@ -266,7 +266,7 @@ bool State::createCollection(std::string const& name) {
 bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
 
   _vocbase = vocbase;
-  _options.waitForSync = waitForSync;
+  _options.waitForSync = false;
   _options.silent = true;
 
   if (loadPersisted()) {
