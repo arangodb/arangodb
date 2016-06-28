@@ -59,6 +59,8 @@ class VelocyPackDumper {
   }
 
  private:
+  void appendUnicodeCharacter(uint16_t);
+
   void appendUInt(uint64_t);
 
   void appendDouble(double);
