@@ -3663,6 +3663,39 @@ function transactionTraversalSuite () {
       });
 
       assertEqual(1, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: use of undeclared traversal collection in transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testTestCount : function () {
+      for (var i = 0; i < 100; ++i) {
+        db[cn + "Edge"].insert(cn + "Edge/test" + (i % 21), cn + "Edge/test" + (i % 7), { });
+      }
+
+      var result = db._executeTransaction({
+        collections: {
+          read: [ cn + "Edge" ],
+          write: [ cn + "Edge" ]
+        },
+        action: function() {
+          var db = require("internal").db;
+          var from = cn + "Edge/test1";
+          var to = cn + "Edge/test8";
+    
+          var newDoc = db[cn + "Edge"].insert(from, to, { request: true });
+          var fromCount1 = db[cn + "Edge"].byExample({ _from: from, request: false }).count();
+
+          newDoc.request = false;
+          db[cn + "Edge"].update({ _id: newDoc._id }, newDoc);
+
+          var fromCount2 = db[cn + "Edge"].byExample({ _from: from, request: false }).count();
+          return [ fromCount1, fromCount2 ];
+        }
+      });
+
+      assertEqual(result[0] + 1, result[1]);
     }
 
   };
