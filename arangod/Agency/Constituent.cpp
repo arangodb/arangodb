@@ -156,7 +156,7 @@ void Constituent::term(term_t t) {
     }
 
     OperationOptions options;
-    options.waitForSync = waitForSync();
+    options.waitForSync = false;
     options.silent = true;
 
     OperationResult result = trx.insert("election", body.slice(), options);
@@ -193,22 +193,26 @@ void Constituent::follow(term_t t) {
 /// Become leader
 void Constituent::lead(std::vector<bool> const& votes) {
 
-  MUTEX_LOCKER(guard, _castLock);
+  {
+    MUTEX_LOCKER(guard, _castLock);
 
-  if (_role != LEADER) {
-    std::stringstream ss;
-    ss << _id << ": Converted to leader in term " << _term << " with votes (";
-    for (auto const& vote : votes) {
-      ss << vote;
+    if (_role == LEADER) {
+      return;
     }
-    ss << ")";
-    
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
-    _agent->lead();  // We need to rebuild spear_head and read_db;
+
+    _role     = LEADER;
+    _leaderID = _id;
   }
+
+  std::stringstream ss;
+  ss << _id << ": Converted to leader in term " << _term << " with votes (";
+  for (auto const& vote : votes) {
+    ss << vote;
+  }
+  ss << ")";
   
-  _role     = LEADER;
-  _leaderID = _id;
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
+  _agent->lead();  // We need to rebuild spear_head and read_db;
   
 }
 

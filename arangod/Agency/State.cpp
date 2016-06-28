@@ -56,7 +56,15 @@ State::State(std::string const& endpoint)
       _endpoint(endpoint),
       _collectionsChecked(false),
       _collectionsLoaded(false),
-      _cur(0) {}
+      _cur(0) {
+  std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
+  VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+  buf->append(value.startAs<char const>(), value.byteSize());
+  if (!_log.size()) {
+    _log.push_back(log_t(arangodb::consensus::index_t(0), term_t(0),
+                         arangodb::consensus::id_t(0), buf));
+  }
+}
 
 State::~State() {}
 
@@ -87,8 +95,7 @@ bool State::persist(arangodb::consensus::index_t index, term_t term,
   try {
     result = trx.insert("log", body.slice(), _options);
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) <<
-      "Failed to persist log entry:" << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
   }
   res = trx.finish(result.code);
 
@@ -140,7 +147,7 @@ bool State::log(query_t const& queries, term_t term,
       _log.push_back(log_t(idx, term, lid, buf));
       persist(idx, term, lid, i.get("query"));  // to disk
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     }
   }
   return true;
@@ -259,7 +266,7 @@ bool State::createCollection(std::string const& name) {
 bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
 
   _vocbase = vocbase;
-  _options.waitForSync = waitForSync;
+  _options.waitForSync = false;
   _options.silent = true;
 
   if (loadPersisted()) {
@@ -318,7 +325,7 @@ bool State::loadCompacted() {
       try {
         _cur = std::stoul(i.get("_key").copyString());
       } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+        LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
       }
     }
   }

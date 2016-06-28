@@ -25,10 +25,9 @@
 #define ARANGOD_CONSENSUS_SUPERVISION_H 1
 
 #include "AgencyCommon.h"
-#include "Node.h"
-
-#include "Basics/Thread.h"
+#include "Agency/Node.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Thread.h"
 
 namespace arangodb {
 namespace consensus {

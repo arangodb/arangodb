@@ -25,6 +25,8 @@
 #define ARANGOD_CONSENSUS_STORE_H 1
 
 #include "Node.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Thread.h"
 
 namespace arangodb {
 namespace consensus {
@@ -35,7 +37,7 @@ class Agent;
 class Store : public arangodb::Thread {
  public:
   /// @brief Construct with name
-  explicit Store(std::string const& name = "root");
+  explicit Store(Agent* agent, std::string const& name = "root");
 
   /// @brief Destruct
   virtual ~Store();
@@ -53,7 +55,7 @@ class Store : public arangodb::Thread {
   Store& operator= (Store&& rhs);
 
   /// @brief Apply entry in query
-  std::vector<bool> apply(query_t const& query);
+  std::vector<bool> apply(query_t const& query, bool verbose = false);
 
   /// @brief Apply entry in query
   std::vector<bool> apply(std::vector<Slice> const& query, bool inform = true);
@@ -66,9 +68,6 @@ class Store : public arangodb::Thread {
 
   /// @brief Start thread
   bool start();
-
-  /// @brief Start thread with access to agent
-  bool start(Agent*);
 
   /// @brief Set name
   void name(std::string const& name);

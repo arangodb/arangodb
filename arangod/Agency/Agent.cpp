@@ -46,6 +46,8 @@ Agent::Agent(config_t const& config)
     : Thread("Agent"),
       _config(config),
       _lastCommitIndex(0),
+      _spearhead(this),
+      _readDB(this),
       _nextCompationAfter(_config.compactionStepSize) {
   _state.configure(this);
   _constituent.configure(this);
@@ -86,7 +88,7 @@ term_t Agent::term() const {
 
 
 /// Agency size
-inline size_t Agent::size() const {
+size_t Agent::size() const {
   return _config.size();
 }
 
@@ -176,6 +178,8 @@ void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
+  TRI_ASSERT(id<_confirmed.size());
+
   if (index > _confirmed[id]) {  // progress this follower?
     _confirmed[id] = index;
   }
@@ -238,12 +242,12 @@ bool Agent::recvAppendEntriesRPC(term_t term,
 
   // 2. Reply false if log does not contain an entry at prevLogIndex
   //    whose term matches prevLogTerm ($5.3)
-  if (!_state.find(prevIndex, prevTerm)) {
-    /*LOG_TOPIC(WARN, Logger::AGENCY)
+  /*if (!_state.find(prevIndex, prevTerm)) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
         << "Unable to find matching entry to previous entry (index,term) = ("
-        << prevIndex << "," << prevTerm << ")";*/
+        << prevIndex << "," << prevTerm << ")";
     // return false;
-  }
+    }*/
 
   // 3. If an existing entry conflicts with a new one (same index
   //    but different terms), delete the existing entry and all that
@@ -256,7 +260,7 @@ bool Agent::recvAppendEntriesRPC(term_t term,
     /* bool success = */
     _state.log(queries, term, leaderId, prevIndex, prevTerm);
   } 
-
+  
   // appendEntries 5. If leaderCommit > commitIndex, set commitIndex =
   // min(leaderCommit, index of last new entry)
   if (leaderCommitIndex > lastCommitIndex) {
@@ -283,7 +287,7 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
   if (unconfirmed.empty()) {
     return priv_rpc_ret_t(false, t);
   }
-
+  
   // RPC path
   std::stringstream path;
   path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId=" << id()
@@ -353,8 +357,8 @@ bool Agent::load() {
   reportIn(id(), _state.lastLog().index);
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
-  _spearhead.start(this);
-  _readDB.start(this);
+  _spearhead.start();
+  _readDB.start();
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting constituent personality.";
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
@@ -531,7 +535,7 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   try {
     _lastCommitIndex = std::stoul(compaction.get("_key").copyString());
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " <<__FILE__ << __LINE__;
   }
 
   // Schedule next compaction
