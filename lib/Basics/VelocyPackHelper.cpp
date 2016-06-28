@@ -96,6 +96,7 @@ void VelocyPackHelper::initialize() {
   // set the attribute translator in the global options
   VPackOptions::Defaults.attributeTranslator = Translator.get();
   VPackOptions::Defaults.unsupportedTypeBehavior = VPackOptions::ConvertUnsupportedType;
+  VPackOptions::Defaults.escapeUnicode = false; 
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::KeyString)).getUInt() == KeyAttribute - AttributeBase);
