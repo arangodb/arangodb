@@ -469,7 +469,7 @@ function byExample (data) {
   }
     
   if (postFilter) {
-    var result = [ ];
+    var result = [ ], matches = 0, done = false;
 
     for (k = 0; k < candidates.documents.length; ++k) {
       var doc = candidates.documents[k];
@@ -477,18 +477,22 @@ function byExample (data) {
         continue;
       }
 
+      ++matches;
+
       if (skip > 0) {
         --skip;
         continue;
       }
 
-      result.push(doc);
+      if  (!done) {
+        result.push(doc);
+      }
       if (limit > 0 && result.length >= limit) {
-        break;
+        done = true;
       }
     }
     
-    candidates.total = candidates.documents.length;
+    candidates.total = matches;
     candidates.count = result.length;
     candidates.documents = result;
   }
