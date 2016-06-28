@@ -90,7 +90,7 @@ static constexpr std::size_t checkOverflow(ValueLength length) {
 // calculate the length of a variable length integer in unsigned LEB128 format
 static inline ValueLength getVariableValueLength(ValueLength value) noexcept {
   ValueLength len = 1;
-  while (value >= 0x80) {
+  while (value >= 0x80U) {
     value >>= 7;
     ++len;
   }
@@ -105,14 +105,14 @@ static inline ValueLength readVariableValueLength(uint8_t const* source) {
   ValueLength p = 0;
   do {
     v = *source;
-    len += (v & 0x7f) << p;
+    len += static_cast<ValueLength>(v & 0x7fU) << p;
     p += 7;
     if (reverse) {
       --source;
     } else {
       ++source;
     }
-  } while (v & 0x80);
+  } while (v & 0x80U);
   return len;
 }
 
@@ -122,17 +122,17 @@ static inline void storeVariableValueLength(uint8_t* dst, ValueLength value) {
   VELOCYPACK_ASSERT(value > 0);
 
   if (reverse) {
-    while (value >= 0x80) {
-      *dst-- = static_cast<uint8_t>(value | 0x80);
+    while (value >= 0x80U) {
+      *dst-- = static_cast<uint8_t>(value | 0x80U);
       value >>= 7;
     }
-    *dst-- = static_cast<uint8_t>(value & 0x7f);
+    *dst-- = static_cast<uint8_t>(value & 0x7fU);
   } else {
-    while (value >= 0x80) {
-      *dst++ = static_cast<uint8_t>(value | 0x80);
+    while (value >= 0x80U) {
+      *dst++ = static_cast<uint8_t>(value | 0x80U);
       value >>= 7;
     }
-    *dst++ = static_cast<uint8_t>(value & 0x7f);
+    *dst++ = static_cast<uint8_t>(value & 0x7fU);
   }
 }
 
@@ -179,7 +179,7 @@ static inline uint64_t readUInt64(uint8_t const* start) noexcept {
 static inline void storeUInt64(uint8_t* start, uint64_t value) noexcept {
   uint8_t const* end = start + 8;
   do {
-    *start++ = static_cast<uint8_t>(value & 0xff);
+    *start++ = static_cast<uint8_t>(value & 0xffU);
     value >>= 8;
   } while (start < end);
 }
