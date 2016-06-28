@@ -180,7 +180,9 @@ std::vector<VPackSlice> State::slices(
   std::vector<VPackSlice> slices;
   MUTEX_LOCKER(mutexLocker, _logLock);
 
-  
+  if (_log.empty()) {
+    return slices;
+  }
 
   if (start < _log.front().index) { // no start specified
     start = _log.front().index;
