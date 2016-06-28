@@ -379,11 +379,6 @@ IndexIterator* PrimaryIndex::iteratorForCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
-  SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(StaticStrings::IdString, false)},
-       {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}});
-
   TRI_ASSERT(node->numMembers() == 1);
 
   auto comp = node->getMember(0);
