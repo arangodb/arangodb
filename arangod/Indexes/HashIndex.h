@@ -248,15 +248,6 @@ class HashIndex final : public PathBasedIndex {
                        arangodb::aql::Variable const* reference,
                        std::unordered_set<size_t>& found) const;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Transforms search definition [{eq: v1},{eq: v2},...] to
-  ///        Index key [v1, v2, ...]
-  ///        Throws if input is invalid or there is an operator other than eq.
-  ////////////////////////////////////////////////////////////////////////////////
-
-  void transformSearchValues(arangodb::velocypack::Slice const,
-                             arangodb::velocypack::Builder&) const;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief given an element generates a hash integer
   //////////////////////////////////////////////////////////////////////////////
