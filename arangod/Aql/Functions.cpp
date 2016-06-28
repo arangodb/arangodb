@@ -30,7 +30,6 @@
 
 #include "Aql/Function.h"
 #include "Aql/Query.h"
-#include "Basics/ConditionalDeleter.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
@@ -42,18 +41,12 @@
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-query.h"
 #include "FulltextIndex/fulltext-result.h"
-#include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
 #include "Indexes/Index.h"
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/OperationCursor.h"
-#include "Utils/OperationOptions.h"
-#include "Utils/OperationResult.h"
-#include "Utils/Transaction.h"
-#include "VocBase/KeyGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
