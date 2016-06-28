@@ -156,7 +156,7 @@ void Constituent::term(term_t t) {
     }
 
     OperationOptions options;
-    options.waitForSync = waitForSync();
+    options.waitForSync = false;
     options.silent = true;
 
     OperationResult result = trx.insert("election", body.slice(), options);
