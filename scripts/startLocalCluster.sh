@@ -46,9 +46,8 @@ fi
 
 SECONDARIES="$5"
 
-MINP=0.25
+MINP=0.5
 MAXP=2.5
-SFRE=2.5
 COMP=1000
 BASE=4001
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
@@ -67,7 +66,6 @@ if [ $NRAGENTS -gt 1 ]; then
            --agency.election-timeout-max $MAXP \
            --agency.size $NRAGENTS \
            --agency.supervision true \
-           --agency.supervision-frequency $SFRE \
            --agency.wait-for-sync false \
            --database.directory cluster/data$port \
            --javascript.app-path ./js/apps \
@@ -95,7 +93,6 @@ build/bin/arangod \
     --agency.notify true \
     --agency.size $NRAGENTS \
     --agency.supervision true \
-    --agency.supervision-frequency $SFRE \
     --agency.wait-for-sync false \
     --database.directory cluster/data$(( $BASE + $aid )) \
     --javascript.app-path ./js/apps \
