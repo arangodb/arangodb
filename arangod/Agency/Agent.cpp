@@ -178,6 +178,8 @@ void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
+  TRI_ASSERT(id<_confirmed.size());
+
   if (index > _confirmed[id]) {  // progress this follower?
     _confirmed[id] = index;
   }
@@ -282,6 +284,10 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
     t = this->term();
   }
 
+  if (unconfirmed.empty()) {
+    return priv_rpc_ret_t(false, t);
+  }
+  
   // RPC path
   std::stringstream path;
   path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId=" << id()

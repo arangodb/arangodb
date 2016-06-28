@@ -39,8 +39,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Agency"),
       _size(1),
       _agentId(0),
-      _minElectionTimeout(0.15),
-      _maxElectionTimeout(2.0),
+      _minElectionTimeout(0.5),
+      _maxElectionTimeout(2.5),
       _notify(false),
       _supervision(false),
       _waitForSync(true),
@@ -174,10 +174,11 @@ void AgencyFeature::start() {
   auto endpoints = endpointFeature->httpEndpoints();
   
   if (!endpoints.empty()) {
-    size_t pos = endpoints[0].find(':',10);
+    std::string const& tmp = endpoints.front();
+    size_t pos = tmp.find(':',10);
     
     if (pos != std::string::npos) {
-      port = endpoints[0].substr(pos + 1, endpoints[0].size() - pos);
+      port = tmp.substr(pos + 1, tmp.size() - pos);
     }
   }
   
