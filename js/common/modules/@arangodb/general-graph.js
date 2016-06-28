@@ -636,8 +636,8 @@ var bindEdgeCollections = function(self, edgeCollections) {
     var obj = db._collection(key);
     var wrap = wrapCollection(obj);
     // save
-    var old_save = wrap.save;
-    wrap.save = function(from, to, data) {
+    var old_save = wrap.insert;
+    wrap.save = wrap.insert = function(from, to, data) {
       if (typeof from === 'object' && to === undefined) {
         data = from;
         from = data._from;

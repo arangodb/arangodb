@@ -1114,6 +1114,10 @@ function EdgesAndVerticesSuite() {
       var vId2 = vertex2._id;
       var edge = g[ec1].save(vertexId1, vId2, {});
       assertFalse(edge.error);
+
+      edge = g[ec1].insert(vertexId1, vId2, {});
+      assertFalse(edge.error);
+
       g[vc1].remove(vId1);
       g[vc1].remove(vId2);
     },
@@ -1123,8 +1127,13 @@ function EdgesAndVerticesSuite() {
       vertexId1 = vertex1._id;
       var vertex2 = g[vc4].save({first_name: "Tim"});
       vertexId2 = vertex2._id;
+
       var edge = g[ec2].save(vertexId1, vertexId2, {});
       assertFalse(edge.error);
+
+      edge = g[ec2].insert(vertexId1, vertexId2, {});
+      assertFalse(edge.error);
+
       g[vc2].remove(vertexId1);
       g[vc4].remove(vertexId2);
     },
@@ -1140,6 +1149,14 @@ function EdgesAndVerticesSuite() {
       } catch (e) {
         assertEqual(e.errorNum, 1906);
       }
+
+      try {
+        g[ec1].insert(vertexId1, vertexId2, {});
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, 1906);
+      }
+
       g[vc1].remove(vertexId1);
       g[vc2].remove(vertexId2);
     },
