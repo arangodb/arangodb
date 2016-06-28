@@ -22,7 +22,7 @@ So in summary this is what your startup might look like:
 
 ```
 build/bin/arangod --server.endpoint tcp://0.0.0.0:5001 --server.authentication false --agency.id 0 --agency.size 3 --agency.supervision true agency1 &
-build/bin/arangod --server.endpoint tcp://0.0.0.0:5002 --server.authentication false --agency.id 1 --agency.size 3 --agency.supervision true agency2  &
+build/bin/arangod --server.endpoint tcp://0.0.0.0:5002 --server.authentication false --agency.id 1 --agency.size 3 --agency.supervision true agency2 &
 build/bin/arangod --server.endpoint tcp://0.0.0.0:5003 --server.authentication false --agency.id 2 --agency.size 3 --agency.endpoint tcp://127.0.0.1:5001 --agency.endpoint tcp://127.0.0.1:5002 --agency.endpoint tcp://127.0.0.1:5003 --agency.notify true --agency.supervision true agency3 &
 ```
 
