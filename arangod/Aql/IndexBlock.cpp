@@ -520,7 +520,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       for (size_t j = 0; j < toSend; j++) {
         if (j > 0) {
           // re-use already copied AqlValues
-          res->copyValuesFromFirstRow(j, curRegs);
+          res->copyValuesFromFirstRow(static_cast<RegisterId>(j), curRegs);
         }
 
         // The result is in the first variable of this depth,

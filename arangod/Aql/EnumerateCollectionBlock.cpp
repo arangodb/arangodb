@@ -200,7 +200,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {
       // re-use already copied AQLValues
-      res->copyValuesFromFirstRow(j, curRegs);
+      res->copyValuesFromFirstRow(static_cast<RegisterId>(j), curRegs);
     }
 
     if (_mustStoreResult) {
