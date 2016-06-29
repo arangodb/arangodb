@@ -152,12 +152,14 @@ bool Agent::waitFor(index_t index, double timeout) {
 
   // Wait until woken up through AgentCallback
   while (true) {
+
     /// success?
     if (_lastCommitIndex >= index) {
       return true;
     }
+
     // timeout
-    if (_waitForCV.wait(static_cast<uint64_t>(1.0e6 * timeout))) {
+    if (!_waitForCV.wait(static_cast<uint64_t>(1.0e6 * timeout))) {
       return false;
     }
 
@@ -211,9 +213,11 @@ void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
     
   }
 
-  CONDITION_LOCKER(guard, _waitForCV);
-  _waitForCV.broadcast();  // wake up REST handlers
-  
+  {
+    CONDITION_LOCKER(guard, _waitForCV);
+    guard.broadcast();
+  }
+
 }
 
 
@@ -237,6 +241,10 @@ bool Agent::recvAppendEntriesRPC(term_t term,
   // 1. Reply false if term < currentTerm ($5.1)
   if (this->term() > term) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
+    return false;
+  }
+
+  if (!_constituent.vote(term, leaderId, prevIndex, prevTerm)) {
     return false;
   }
 
@@ -342,7 +350,7 @@ bool Agent::load() {
 
   auto vocbase = database->vocbase();
   if (vocbase == nullptr) {
-    LOG(FATAL) << "could not determine _system database";
+    LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
     FATAL_ERROR_EXIT();
   }
 
@@ -407,8 +415,8 @@ write_ret_t Agent::write(query_t const& query) {
 
 
 /// Read from store
-read_ret_t Agent::read(query_t const& query) const {
-  
+read_ret_t Agent::read(query_t const& query) {
+
   // Only leader else redirect
   if (!_constituent.leading()) {
     return read_ret_t(false, _constituent.leaderID());
@@ -432,7 +440,7 @@ void Agent::run() {
   while (!this->isStopping() && size() > 1) {
 
     if (leading()) {             // Only if leading
-      _appendCV.wait(25000);
+      _appendCV.wait(10000);
     } else {
       _appendCV.wait();         // Else wait for our moment in the sun
     }

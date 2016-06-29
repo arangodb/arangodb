@@ -47,25 +47,6 @@ function agencyTestSuite () {
   var nagents = agencyServers.length;
   var request = require("@arangodb/request");
 
-  // Wait for multi-host agency to have elected a leader
-  if (agencyServers.length > 1) {
-    require("internal").print("Waiting for the agency to get ready ... ");
-    while (true) {
-      var res = request({url: agencyServers[whoseTurn] + "/_api/agency/config",
-                         method: "GET", followRedirects: true, body: "",
-                         headers: {"Content-Type": "application/json"}});
-      wait(0.25);
-      res.bodyParsed = JSON.parse(res.body);
-      if (res.bodyParsed.leaderId >= 0 && res.bodyParsed.leaderId < nagents) {
-        whoseTurn = res.bodyParsed.leaderId;
-        require("internal").print(
-          "Agent " + res.bodyParsed.leaderId + " was elected leader in term "
-            + res.bodyParsed.term + ".");
-        break;
-      }
-    }
-  }
-
   function readAgency(list) {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:

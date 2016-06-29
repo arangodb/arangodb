@@ -19,8 +19,8 @@ if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
     exit 1
 fi
 
-MINP=1.0
-MAXP=5.0
+MINP=0.15
+MAXP=1.5
 SFRE=2.5
 COMP=1000
 BASE=4001
@@ -37,7 +37,7 @@ if [ $NRAGENTS -gt 1 ]; then
            --agency.size $NRAGENTS \
            --agency.supervision true \
            --agency.supervision-frequency $SFRE \
-           --agency.wait-for-sync false \
+           --agency.wait-for-sync true \
            --agency.election-timeout-min $MINP \
            --agency.election-timeout-max $MAXP \
            --database.directory agency/data$port \
@@ -51,6 +51,7 @@ if [ $NRAGENTS -gt 1 ]; then
            --agency.compaction-step-size $COMP \
            --log.force-direct true \
            > agency/$port.stdout 2>&1 &
+       sleep 0
    done
 fi
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
@@ -64,7 +65,7 @@ build/bin/arangod \
     --agency.size $NRAGENTS \
     --agency.supervision true \
     --agency.supervision-frequency $SFRE \
-    --agency.wait-for-sync false \
+    --agency.wait-for-sync true \
     --agency.election-timeout-min $MINP \
     --agency.election-timeout-max $MAXP \
     --database.directory agency/data$(( $BASE + $aid )) \
