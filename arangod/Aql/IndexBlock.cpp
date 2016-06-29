@@ -45,7 +45,6 @@ using Json = arangodb::basics::Json;
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
       _collection(en->collection()),
-      _result(std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR)),
       _posInDocs(0),
       _currentIndex(0),
       _indexes(en->getIndexes()),
@@ -322,12 +321,14 @@ void IndexBlock::createCursor() {
 
     conditionNode = _condition->getMember(_currentIndex);
   }
-  
+
   TRI_ASSERT(_indexes.size() > _currentIndex);
 
-   _cursor.reset(ast->query()->trx()->indexScanForCondition(
+  _cursor.reset(ast->query()->trx()->indexScanForCondition(
       _collection->getName(), _indexes[_currentIndex], conditionNode,
-      outVariable, UINT64_MAX, Transaction::defaultBatchSize(), node->_reverse));
+      outVariable, UINT64_MAX, Transaction::defaultBatchSize(),
+      node->_reverse));
+  _result.clear();
   DEBUG_END_BLOCK();
 }
 
@@ -387,13 +388,10 @@ bool IndexBlock::readIndex(size_t atMost) {
       startNextCursor();
       continue;
     }
-    _cursor->getMore(_result, atMost, true);
-    if (_result->failed()) {
-      THROW_ARANGO_EXCEPTION(_result->code);
-    }
-    VPackSlice slice = _result->slice();
-    TRI_ASSERT(slice.isArray());
-    size_t length = static_cast<size_t>(slice.length());
+
+    _cursor->getMoreMptr(_result, atMost);
+
+    size_t length = _result.size();
 
     if (length == 0) {
       startNextCursor();
@@ -406,17 +404,18 @@ bool IndexBlock::readIndex(size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     
-    for (auto const& doc : VPackArrayIterator(slice)) {
+    for (auto const& mptr : _result) {
       if (!hasMultipleIndexes) {
-        _documents.emplace_back(doc);
+        _documents.emplace_back(mptr->vpack());
       } else {
+        VPackSlice doc(mptr->vpack());
         VPackSlice keySlice = Transaction::extractKeyFromDocument(doc);
         std::string key = keySlice.copyString();
         if (_alreadyReturned.find(key) == _alreadyReturned.end()) {
           if (!isLastIndex) {
             _alreadyReturned.emplace(std::move(key));
           }
-          _documents.emplace_back(doc);
+          _documents.emplace_back(mptr->vpack());
         }
       } 
     }
@@ -528,9 +527,10 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
         auto doc = _documents[_posInDocs++];
-        TRI_ASSERT(doc.isExternal());
+        TRI_ASSERT(!doc.isExternal());
+        // doc points directly in the data files
         res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
-                      AqlValue(doc.resolveExternal().begin(), AqlValueFromMasterPointer()));
+                      AqlValue(doc.begin(), AqlValueFromMasterPointer()));
         // No harm done, if the setValue throws!
       }
     }

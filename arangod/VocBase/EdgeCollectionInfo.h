@@ -87,9 +87,9 @@ class EdgeCollectionInfo {
 /// @brief Get edges for the given direction and start vertex.
 ////////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::OperationCursor> getEdges(std::string const&);
+  std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&);
 
-  std::shared_ptr<arangodb::OperationCursor> getEdges(arangodb::velocypack::Slice const&);
+  std::unique_ptr<arangodb::OperationCursor> getEdges(arangodb::velocypack::Slice const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get edges for the given direction and start vertex. On Coordinator.
@@ -102,9 +102,9 @@ class EdgeCollectionInfo {
 /// @brief Get edges for the given direction and start vertex. Reverse version
 ////////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::OperationCursor> getReverseEdges(std::string const&);
+  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(std::string const&);
 
-  std::shared_ptr<arangodb::OperationCursor> getReverseEdges(arangodb::velocypack::Slice const&);
+  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(arangodb::velocypack::Slice const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get edges for the given direction and start vertex. Reverse version on Coordinator.
