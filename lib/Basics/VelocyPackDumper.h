@@ -44,7 +44,7 @@ class VelocyPackDumper {
   VelocyPackDumper& operator=(VelocyPackDumper const&) = delete;
 
  public:
-  VelocyPackDumper(StringBuffer* buffer, velocypack::Options const* options)
+  explicit VelocyPackDumper(StringBuffer* buffer, velocypack::Options const* options = &velocypack::Options::Defaults)
       : options(options), _buffer(buffer) {
     TRI_ASSERT(buffer != nullptr);
     TRI_ASSERT(options != nullptr);
