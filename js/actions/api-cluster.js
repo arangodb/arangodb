@@ -1,5 +1,5 @@
-/*jshint strict: false, unused: false */
-/*global AQL_EXECUTE, SYS_CLUSTER_TEST, UPGRADE_ARGS: true,
+/* jshint strict: false, unused: false */
+/* global AQL_EXECUTE, SYS_CLUSTER_TEST
   ArangoServerState, ArangoClusterComm, ArangoClusterInfo, ArangoAgency */
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -68,7 +68,7 @@ actions.defineHttp({
     var path;
     if (req.hasOwnProperty('suffix') && req.suffix.length !== 0) {
       path = '/' + req.suffix.join('/');
-    }else {
+    } else {
       path = '/_admin/version';
     }
     var params = '';
@@ -79,7 +79,7 @@ actions.defineHttp({
       if (req.parameters.hasOwnProperty(p)) {
         if (params === '') {
           params = '?';
-        }else {
+        } else {
           params += '&';
         }
         params += p + '=' + encodeURIComponent(String(req.parameters[p]));
@@ -97,19 +97,16 @@ actions.defineHttp({
       if (req.headers.hasOwnProperty(p)) {
         if (p === 'x-client-transaction-id') {
           transID = req.headers[p];
-        }
-        else if (p === 'x-timeout') {
+        } else if (p === 'x-timeout') {
           timeout = parseFloat(req.headers[p]);
           if (isNaN(timeout)) {
             timeout = 24 * 3600.0;
           }
-        }
-        else if (p === 'x-synchronous-mode') {
+        } else if (p === 'x-synchronous-mode') {
           asyncMode = false;
-        }
-        else if (p === 'x-shard-id') {
+        } else if (p === 'x-shard-id') {
           shard = req.headers[p];
-        }else {
+        } else {
           headers[p] = req.headers[p];
         }
       }
@@ -118,7 +115,7 @@ actions.defineHttp({
     var body;
     if (req.requestBody === undefined || typeof req.requestBody !== 'string') {
       body = '';
-    }else {
+    } else {
       body = req.requestBody;
     }
 
@@ -126,7 +123,7 @@ actions.defineHttp({
     if (typeof SYS_CLUSTER_TEST === 'undefined') {
       actions.resultError(req, res, actions.HTTP_NOT_FOUND,
         'Not compiled for cluster operation');
-    }else {
+    } else {
       try {
         r = SYS_CLUSTER_TEST(req, res, shard, path, transID,
           headers, body, timeout, asyncMode);
@@ -135,32 +132,18 @@ actions.defineHttp({
           res.contentType = 'application/json; charset=utf-8';
           var s = JSON.stringify(r);
           res.body = s;
-        }else {
+        } else {
           res.responseCode = actions.HTTP_OK;
           res.contentType = r.headers.contentType;
           res.headers = r.headers;
           res.body = r.body;
         }
-      } catch(err) {
+      } catch (err) {
         actions.resultError(req, res, actions.HTTP_FORBIDDEN, String(err));
       }
     }
   }
 });
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief function to parse an authorization header
-// //////////////////////////////////////////////////////////////////////////////
-
-function parseAuthorization (authorization) {
-  var auth = require('internal').base64Decode(authorization.substr(6));
-  var pos = auth.indexOf(':');
-  if (pos === -1) {
-    return {username: 'root', passwd: ''};
-  }
-  return { username: auth.substr(0, pos),
-  passwd: auth.substr(pos + 1) || '' };
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_cluster_statistics_GET
@@ -195,12 +178,11 @@ actions.defineHttp({
     if (r.status === 'RECEIVED') {
       res.responseCode = actions.HTTP_OK;
       res.body = r.body;
-    }
-    else if (r.status === 'TIMEOUT') {
+    } else if (r.status === 'TIMEOUT') {
       res.responseCode = actions.HTTP_BAD;
       res.body = JSON.stringify({'error': true,
       'errorMessage': 'operation timed out'});
-    }else {
+    } else {
       res.responseCode = actions.HTTP_BAD;
       var bodyobj;
       try {
@@ -240,7 +222,7 @@ actions.defineHttp({
 
     // Now get to work, first get the write lock on the Plan in the Agency:
     var success = ArangoAgency.lockRead('Supervision', timeout);
-    if (! success) {
+    if (!success) {
       actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
         'could not get a read lock on Plan in Agency');
       return;
@@ -315,7 +297,7 @@ actions.defineHttp({
     // allow at most ((60 / 10) * 20) * 2 documents to prevent total chaos
     var myQueryVal = 'FOR u in _statistics ' + filterString + ' LIMIT 240 SORT u.time' + returnValue;
 
-    if (! req.parameters.hasOwnProperty('DBserver')) {
+    if (!req.parameters.hasOwnProperty('DBserver')) {
       // query the local statistics collection
       var cursor = AQL_EXECUTE(myQueryVal, bind);
       res.contentType = 'application/json; charset=utf-8';
@@ -326,7 +308,7 @@ actions.defineHttp({
       }
       res.responseCode = actions.HTTP_OK;
       res.body = JSON.stringify({result: cursor.docs});
-    }else {
+    } else {
       // query a remote statistics collection
       var options = { timeout: 10 };
       var op = ArangoClusterComm.asyncRequest('POST', 'server:' + DBserver, '_system',
@@ -336,12 +318,11 @@ actions.defineHttp({
       if (r.status === 'RECEIVED') {
         res.responseCode = actions.HTTP_OK;
         res.body = r.body;
-      }
-      else if (r.status === 'TIMEOUT') {
+      } else if (r.status === 'TIMEOUT') {
         res.responseCode = actions.HTTP_BAD;
         res.body = JSON.stringify({'error': true,
         'errorMessage': 'operation timed out'});
-      }else {
+      } else {
         res.responseCode = actions.HTTP_BAD;
         var bodyobj;
         try {
@@ -381,10 +362,10 @@ actions.defineHttp({
 
       if (result) {
         actions.resultOk(req, res, actions.HTTP_OK);
-      }else {
+      } else {
         actions.resultBad(req, res);
       }
-    } catch(err) {
+    } catch (err) {
       actions.resultException(req, res, err);
     }
   }
@@ -401,7 +382,7 @@ actions.defineHttp({
   callback: function (req, res) {
     var body = actions.getJsonBody(req, res);
 
-    UPGRADE_ARGS = {
+    global.UPGRADE_ARGS = {
       isCluster: true,
       isDbServer: true,
       isRelaunch: body.isRelaunch
@@ -413,10 +394,10 @@ actions.defineHttp({
 
       if (result) {
         actions.resultOk(req, res, actions.HTTP_OK);
-      }else {
+      } else {
         actions.resultBad(req, res);
       }
-    } catch(err) {
+    } catch (err) {
       actions.resultException(req, res, err);
     }
   }
@@ -433,7 +414,7 @@ actions.defineHttp({
   callback: function (req, res) {
     var body = actions.getJsonBody(req, res);
 
-    UPGRADE_ARGS = {
+    global.UPGRADE_ARGS = {
       isCluster: true,
       isCoordinator: true,
       isRelaunch: body.isRelaunch || false,
@@ -445,10 +426,10 @@ actions.defineHttp({
 
       if (result) {
         actions.resultOk(req, res, actions.HTTP_OK);
-      }else {
+      } else {
         actions.resultBad(req, res);
       }
-    } catch(err) {
+    } catch (err) {
       actions.resultException(req, res, err);
     }
   }
@@ -470,10 +451,10 @@ actions.defineHttp({
 
       if (result) {
         actions.resultOk(req, res, actions.HTTP_OK);
-      }else {
+      } else {
         actions.resultBad(req, res);
       }
-    } catch(err) {
+    } catch (err) {
       actions.resultException(req, res, err);
     }
   }
@@ -528,7 +509,7 @@ actions.defineHttp({
         'only GET requests are allowed and only to coordinators');
       return;
     }
-    if (! req.parameters.hasOwnProperty('primary')) {
+    if (!req.parameters.hasOwnProperty('primary')) {
       actions.resultError(req, res, actions.HTTP_BAD, 0,
         '"primary" is not given as parameter');
       return;
@@ -545,7 +526,7 @@ actions.defineHttp({
 
     // Now get to work, first get the write lock on the Plan in the Agency:
     var success = ArangoAgency.lockRead('Plan', timeout);
-    if (! success) {
+    if (!success) {
       actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
         'could not get a read lock on Plan in Agency');
       return;
@@ -566,8 +547,7 @@ actions.defineHttp({
 
       actions.resultOk(req, res, actions.HTTP_OK, { primary: primary,
       secondary: oldValue });
-    }
-    finally {
+    } finally {
       ArangoAgency.unlockRead('Plan', timeout);
     }
   }
@@ -637,11 +617,11 @@ actions.defineHttp({
     if (body === undefined) {
       return;
     }
-    if (! body.hasOwnProperty('primary') ||
+    if (!body.hasOwnProperty('primary') ||
       typeof (body.primary) !== 'string' ||
-      ! body.hasOwnProperty('oldSecondary') ||
+      !body.hasOwnProperty('oldSecondary') ||
       typeof (body.oldSecondary) !== 'string' ||
-      ! body.hasOwnProperty('newSecondary') ||
+      !body.hasOwnProperty('newSecondary') ||
       typeof (body.newSecondary) !== 'string') {
       actions.resultError(req, res, actions.HTTP_BAD, 0,
         'not all three of "primary", "oldSecondary" and ' +
@@ -661,7 +641,7 @@ actions.defineHttp({
 
     // Now get to work, first get the write lock on the Plan in the Agency:
     var success = ArangoAgency.lockWrite('Plan', ttl, timeout);
-    if (! success) {
+    if (!success) {
       actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
         'could not get a write lock on Plan in Agency');
       return;
@@ -702,8 +682,7 @@ actions.defineHttp({
       }
 
       actions.resultOk(req, res, actions.HTTP_OK, body);
-    }
-    finally {
+    } finally {
       ArangoAgency.unlockWrite('Plan', timeout);
     }
   }
@@ -758,10 +737,10 @@ function changeAllShardReponsibilities (oldServer, newServer) {
 // /
 // / @ RESTHEADER{PUT /_admin/cluster/swapPrimaryAndSecondary, Swaps the roles of a primary and secondary pair.}
 // /
-// / @RESTDESCRIPTION Swaps the roles of a primary and replicating secondary 
-// / pair. This includes changing the entry for all shards for which the 
+// / @RESTDESCRIPTION Swaps the roles of a primary and replicating secondary
+// / pair. This includes changing the entry for all shards for which the
 // / primary was responsible to the name of the secondary. All changes happen
-// / in a single write transaction (using a write lock) and the Plan/Version 
+// / in a single write transaction (using a write lock) and the Plan/Version
 // / is increased. Use with care, because currently replication in the cluster
 // / is asynchronous and the old secondary might not yet have all the data.
 // / For security reasons and to avoid races, the ID of the old secondary
@@ -816,9 +795,9 @@ actions.defineHttp({
     if (body === undefined) {
       return;
     }
-    if (! body.hasOwnProperty('primary') ||
+    if (!body.hasOwnProperty('primary') ||
       typeof (body.primary) !== 'string' ||
-      ! body.hasOwnProperty('secondary') ||
+      !body.hasOwnProperty('secondary') ||
       typeof (body.secondary) !== 'string') {
       actions.resultError(req, res, actions.HTTP_BAD, 0,
         'not both "primary" and "secondary" ' +
@@ -838,7 +817,7 @@ actions.defineHttp({
 
     // Now get to work, first get the write lock on the Plan in the Agency:
     var success = ArangoAgency.lockWrite('Plan', ttl, timeout);
-    if (! success) {
+    if (!success) {
       actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
         'could not get a write lock on Plan in Agency');
       return;
@@ -917,8 +896,7 @@ actions.defineHttp({
 
       actions.resultOk(req, res, actions.HTTP_OK, {primary: body.secondary,
       secondary: body.primary});
-    }
-    finally {
+    } finally {
       ArangoAgency.unlockWrite('Plan', timeout);
     }
   }
@@ -934,7 +912,7 @@ actions.defineHttp({
 // /
 // / @ RESTQUERYPARAMETERS
 // /
-// / @ RESTDESCRIPTION gets the number of coordinators and DBServers desired, 
+// / @ RESTDESCRIPTION gets the number of coordinators and DBServers desired,
 // / which are stored in `/Target` in the agency. A body of the form
 // /     { "numberOfCoordinators": 12, "numberOfDBServers": 12 }
 // / is returned. Note that both value can be `null` indicating that the
@@ -955,19 +933,19 @@ actions.defineHttp({
 // //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_putNumberOfServers
 // / (intentionally not in manual)
-// / @brief sets the number of coordinators and or DBServers desired, which 
+// / @brief sets the number of coordinators and or DBServers desired, which
 // / are stored in /Target in the agency.
 // /
 // / @ RESTHEADER{PUT /_admin/cluster/numberOfServers, Set desired number of coordinators and or DBServers.}
 // /
 // / @ RESTQUERYPARAMETERS
 // /
-// / @ RESTDESCRIPTION sets the number of coordinators and DBServers desired, 
+// / @ RESTDESCRIPTION sets the number of coordinators and DBServers desired,
 // / which are stored in `/Target` in the agency. A body of the form
 // /     { "numberOfCoordinators": 12, "numberOfDBServers": 12,
 // /       "cleanedServers": [] }
-// / must be supplied. Either one of the values can be left out and will 
-// / then not be changed. Either numeric value can be `null` to indicate 
+// / must be supplied. Either one of the values can be left out and will
+// / then not be changed. Either numeric value can be `null` to indicate
 // / that the cluster cannot be scaled.
 // /
 // / @ RESTRETURNCODES
@@ -1001,8 +979,6 @@ actions.defineHttp({
         'only GET and PUT methods are allowed');
       return;
     }
-
-    var timeout = 60.0;
 
     // Now get to work:
     if (req.requestType === actions.GET) {
@@ -1086,7 +1062,7 @@ actions.defineHttp({
 // / @ RESTQUERYPARAMETERS
 // /
 // / @ RESTDESCRIPTION Triggers activities to clean out a DBServer.
-// / The body must be a JSON object with attribute "server" that is a string 
+// / The body must be a JSON object with attribute "server" that is a string
 // / with the ID of the server to be cleaned out.
 // /
 // / @ RESTRETURNCODES
@@ -1120,15 +1096,13 @@ actions.defineHttp({
       return;
     }
 
-    var timeout = 60.0;
-
     // Now get to work:
     var body = actions.getJsonBody(req, res);
     if (body === undefined) {
       return;
     }
     if (typeof body !== 'object' ||
-      ! body.hasOwnProperty('server') ||
+      !body.hasOwnProperty('server') ||
       typeof body.server !== 'string') {
       actions.resultError(req, res, actions.HTTP_BAD,
         "body must be an object with a string attribute 'server'");
@@ -1170,7 +1144,7 @@ actions.defineHttp({
 // /   - `"database"`: a string with the name of the database
 // /   - `"collection"`: a string with the name of the collection
 // /   - `"shard"`: a string with the name of the shard to move
-// /   - `"fromServer"`: a string with the ID of a server that is currently 
+// /   - `"fromServer"`: a string with the ID of a server that is currently
 // /     the leader or a follower for this shard
 // /   - `"toServer"`: a string with the ID of a server that is currently
 // /     not the leader and not a follower for this shard
@@ -1206,23 +1180,21 @@ actions.defineHttp({
       return;
     }
 
-    var timeout = 60.0;
-
     // Now get to work:
     var body = actions.getJsonBody(req, res);
     if (body === undefined) {
       return;
     }
     if (typeof body !== 'object' ||
-      ! body.hasOwnProperty('database') ||
+      !body.hasOwnProperty('database') ||
       typeof body.database !== 'string' ||
-      ! body.hasOwnProperty('collection') ||
+      !body.hasOwnProperty('collection') ||
       typeof body.collection !== 'string' ||
-      ! body.hasOwnProperty('shard') ||
+      !body.hasOwnProperty('shard') ||
       typeof body.shard !== 'string' ||
-      ! body.hasOwnProperty('fromServer') ||
+      !body.hasOwnProperty('fromServer') ||
       typeof body.fromServer !== 'string' ||
-      ! body.hasOwnProperty('toServer') ||
+      !body.hasOwnProperty('toServer') ||
       typeof body.toServer !== 'string') {
       actions.resultError(req, res, actions.HTTP_BAD,
         "body must be an object with string attributes 'database', 'collection', 'shard', 'fromServer' and 'toServer'");
@@ -1240,7 +1212,7 @@ actions.defineHttp({
 // //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_getShardDistribution
 // / (intentionally not in manual)
-// / @brief returns information about all collections and their shard 
+// / @brief returns information about all collections and their shard
 // / distribution
 // /
 // / @ RESTHEADER{GET /_admin/cluster/shardDistribution, Get shard distribution for all collections.}
@@ -1248,7 +1220,7 @@ actions.defineHttp({
 // / @ RESTDESCRIPTION Returns an object with an attribute for each collection.
 // / The attribute name is the collection name. Each value is an object
 // / of the following form:
-// / 
+// /
 // /     { "collection1": { "Plan": { "s100001": ["DBServer001", "DBServer002"],
 // /                                  "s100002": ["DBServer003", "DBServer004"] },
 // /                        "Current": { "s100001": ["DBServer001", "DBServer002"],
