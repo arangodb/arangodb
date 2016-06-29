@@ -64,7 +64,7 @@ This will produce:
 
 This is a shortcut for the longer, semantically equivalent query:
 
-```
+```js
 FOR u IN users
   RETURN { name: u.name, friends: (FOR f IN u.friends RETURN f.name) }
 ```
@@ -83,7 +83,7 @@ so on.
 Let's compare the array expansion operator with an array contraction operator.
 For example, the following query produces an array of friend names per user:
 
-```
+```js
 FOR u IN users
   RETURN u.friends[*].name
 ```
@@ -115,7 +115,7 @@ the <i>[\*\*]</i> can be used if it has access to a multi-dimensional nested res
 
 We can extend above query as follows and still create the same nested result:
 
-```
+```js
 RETURN (
   FOR u IN users RETURN u.friends[*].name
 )
@@ -123,7 +123,7 @@ RETURN (
 
 By now appending the <i>[\*\*]</i> operator at the end of the query...
 
-```
+```js
 RETURN (
   FOR u IN users RETURN u.friends[*].name
 )[**]
@@ -163,7 +163,7 @@ must occur in this order if they are used in combination, and can only occur onc
 
 Example with nested numbers and array contraction:
 
-```
+```js
 LET arr = [ [ 1, 2 ], 3, [ 4, 5 ], 6 ]
 RETURN arr[** FILTER CURRENT % 2 == 0]
 ```
@@ -178,7 +178,7 @@ All even numbers are returned in a flat array:
 
 Complex example with multiple conditions, limit and projection:
 
-```
+```js
 FOR u IN users
     RETURN {
         name: u.name,
@@ -219,7 +219,7 @@ older than 40 years are returned per user:
 To return only the names of friends that have an *age* value
 higher than the user herself, an inline *FILTER* can be used:
 
-```
+```js
 FOR u IN users
   RETURN { name: u.name, friends: u.friends[* FILTER CURRENT.age > u.age].name }
 ```
@@ -234,7 +234,7 @@ The number of elements returned can be restricted with *LIMIT*. It works the sam
 as the [limit operation](../Operations/Limit.md). *LIMIT* must come after *FILTER*
 and before *RETURN*, if they are present.
 
-```
+```js
 FOR u IN users
   RETURN { name: u.name, friends: u.friends[* LIMIT 1].name }
 ```
@@ -251,7 +251,7 @@ Above example returns one friend each:
 
 A number of elements can also be skipped and up to *n* returned:
 
-```
+```js
 FOR u IN users
   RETURN { name: u.name, friends: u.friends[* LIMIT 1,2].name }
 ```
@@ -272,7 +272,7 @@ per user:
 To return a projection of the current element, use *RETURN*. If a *FILTER* is
 also present, *RETURN* must come later.
 
-```
+```js
 FOR u IN users
   RETURN u.friends[* RETURN CONCAT(CURRENT.name, " is a friend of ", u.name)]
 ```
