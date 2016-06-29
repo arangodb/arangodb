@@ -263,10 +263,7 @@ struct AqlValue final {
 
   /// @brief whether or not the value is empty / none
   inline bool isEmpty() const noexcept { 
-    if (type() != VPACK_INLINE) {
-      return false;
-    }
-    return arangodb::velocypack::Slice(_data.internal).isNone();
+    return (_data.internal[0] == '\x00' && _data.internal[sizeof(_data.internal) - 1] == VPACK_INLINE);
   }
   
   /// @brief whether or not the value is a pointer

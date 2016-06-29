@@ -73,7 +73,7 @@ class AqlItemBlock {
   }
 
   /// @brief getValue, get the value of a register by reference
-  AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
+  inline AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
@@ -200,7 +200,7 @@ class AqlItemBlock {
 
   /// @brief slice/clone chosen rows for a subset, this does a deep copy
   /// of all entries
-  AqlItemBlock* slice(std::vector<size_t>& chosen, size_t from,
+  AqlItemBlock* slice(std::vector<size_t> const& chosen, size_t from,
                       size_t to) const;
 
   /// @brief steal for a subset, this does not copy the entries, rather,
@@ -208,7 +208,7 @@ class AqlItemBlock {
   /// this AqlItemBlock. It is highly recommended to delete it right
   /// after this operation, because it is unclear, when the values
   /// to which our AqlValues point will vanish.
-  AqlItemBlock* steal(std::vector<size_t>& chosen, size_t from, size_t to);
+  AqlItemBlock* steal(std::vector<size_t> const& chosen, size_t from, size_t to);
 
   /// @brief concatenate multiple blocks, note that the new block now owns all
   /// AqlValue pointers in the old blocks, therefore, the latter are all

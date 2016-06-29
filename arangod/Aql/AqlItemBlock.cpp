@@ -33,7 +33,7 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 /// @brief create the block
 AqlItemBlock::AqlItemBlock(size_t nrItems, RegisterId nrRegs)
     : _nrItems(nrItems), _nrRegs(nrRegs) {
-  TRI_ASSERT(nrItems > 0);  // no, empty AqlItemBlocks are not allowed!
+  TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
 
   if (nrRegs > 0) {
     // check that the nrRegs value is somewhat sensible
@@ -259,20 +259,25 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
       AqlValue const& a(_data[row * _nrRegs + col]);
 
       if (!a.isEmpty()) {
-        auto it = cache.find(a);
+        if (a.requiresDestruction()) {
+          auto it = cache.find(a);
 
-        if (it == cache.end()) {
-          AqlValue b = a.clone();
-          try {
-            res->setValue(row - from, col, b);
-          } catch (...) {
-            b.destroy();
-            throw;
+          if (it == cache.end()) {
+            AqlValue b = a.clone();
+            try {
+              res->setValue(row - from, col, b);
+            } catch (...) {
+              b.destroy();
+              throw;
+            }
+            cache.emplace(a, b);
+          } else {
+            res->setValue(row - from, col, it->second);
           }
-          cache.emplace(a, b);
         } else {
-          res->setValue(row - from, col, it->second);
-        }
+          // simple copying of values
+          res->setValue(row - from, col, a);
+        } 
       }
     }
   }
@@ -295,19 +300,23 @@ AqlItemBlock* AqlItemBlock::slice(
     AqlValue const& a(_data[row * _nrRegs + col]);
 
     if (!a.isEmpty()) {
-      auto it = cache.find(a);
+      if (a.requiresDestruction()) {
+        auto it = cache.find(a);
 
-      if (it == cache.end()) {
-        AqlValue b = a.clone();
-        try {
-          res->setValue(0, col, b);
-        } catch (...) {
-          b.destroy();
-          throw;
+        if (it == cache.end()) {
+          AqlValue b = a.clone();
+          try {
+            res->setValue(0, col, b);
+          } catch (...) {
+            b.destroy();
+            throw;
+          }
+          cache.emplace(a, b);
+        } else {
+          res->setValue(0, col, it->second);
         }
-        cache.emplace(a, b);
       } else {
-        res->setValue(0, col, it->second);
+        res->setValue(0, col, a);
       }
     }
   }
@@ -317,7 +326,7 @@ AqlItemBlock* AqlItemBlock::slice(
 
 /// @brief slice/clone chosen rows for a subset, this does a deep copy
 /// of all entries
-AqlItemBlock* AqlItemBlock::slice(std::vector<size_t>& chosen, size_t from,
+AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen, size_t from,
                                   size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
@@ -331,18 +340,22 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t>& chosen, size_t from,
       AqlValue const& a(_data[chosen[row] * _nrRegs + col]);
 
       if (!a.isEmpty()) {
-        auto it = cache.find(a);
+        if (a.requiresDestruction()) {
+          auto it = cache.find(a);
 
-        if (it == cache.end()) {
-          AqlValue b = a.clone();
-          try {
-            res->setValue(row - from, col, b);
-          } catch (...) {
-            b.destroy();
+          if (it == cache.end()) {
+            AqlValue b = a.clone();
+            try {
+              res->setValue(row - from, col, b);
+            } catch (...) {
+              b.destroy();
+            }
+            cache.emplace(a, b);
+          } else {
+            res->setValue(row - from, col, it->second);
           }
-          cache.emplace(a, b);
         } else {
-          res->setValue(row - from, col, it->second);
+          res->setValue(row - from, col, a);
         }
       }
     }
@@ -358,7 +371,7 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t>& chosen, size_t from,
 /// operation, because it is unclear, when the values to which our
 /// AqlValues point will vanish! In particular, do not use setValue
 /// any more.
-AqlItemBlock* AqlItemBlock::steal(std::vector<size_t>& chosen, size_t from,
+AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from,
                                   size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
