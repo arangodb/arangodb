@@ -307,6 +307,40 @@ TRI_doc_mptr_t* HashIndexIterator::next() {
   }
 }
 
+void HashIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& result, size_t atMost) {
+  result.clear();
+  while (true) {
+    if (_posInBuffer >= _buffer.size()) {
+      if (!_lookups.hasAndGetNext()) {
+        // we're at the end of the lookup values
+        return;
+      }
+
+      // TODO maybe we can hand in result directly and remove the buffer
+
+      // We have to refill the buffer
+      _buffer.clear();
+      _posInBuffer = 0;
+
+      _index->lookup(_trx, _lookups.lookup(), _buffer);
+    }
+
+    if (!_buffer.empty()) {
+      // found something
+      // TODO OPTIMIZE THIS
+      if (_buffer.size() - _posInBuffer < atMost) {
+        atMost = _buffer.size() - _posInBuffer;
+      }
+
+      for (size_t i = _posInBuffer; i < atMost + _posInBuffer; ++i) {
+        result.emplace_back(_buffer.at(i));
+      }
+      _posInBuffer += atMost;
+      return;
+    }
+  }
+}
+
 void HashIndexIterator::reset() {
   _buffer.clear();
   _posInBuffer = 0;

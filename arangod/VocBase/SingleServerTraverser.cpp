@@ -232,13 +232,13 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
 
   _vertexGetter->reset(v);
   if (_opts.useBreadthFirst) {
-    _enumerator.reset(new basics::BreadthFirstEnumerator<std::string, std::string,
-                                                       VPackValueLength>(
-        _edgeGetter.get(), _vertexGetter.get(), v, _opts.maxDepth));
+    _enumerator.reset(
+        new basics::BreadthFirstEnumerator<std::string, std::string, size_t>(
+            _edgeGetter.get(), _vertexGetter.get(), v, _opts.maxDepth));
   } else {
-    _enumerator.reset(new basics::DepthFirstEnumerator<std::string, std::string,
-                                                       VPackValueLength>(
-        _edgeGetter.get(), _vertexGetter.get(), v, _opts.maxDepth));
+    _enumerator.reset(
+        new basics::DepthFirstEnumerator<std::string, std::string, size_t>(
+            _edgeGetter.get(), _vertexGetter.get(), v, _opts.maxDepth));
   }
   _done = false;
 }
@@ -300,7 +300,7 @@ TraversalPath* SingleServerTraverser::next() {
 
 bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
                                                    size_t& eColIdx,
-                                                   VPackValueLength*& last) {
+                                                   size_t*& last) {
   std::string eColName;
 
   while (true) {
@@ -321,7 +321,7 @@ bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVerte
       return false;
     }
     
-    std::shared_ptr<OperationCursor> cursor = _trx->indexScan(
+    std::unique_ptr<OperationCursor> cursor = _trx->indexScan(
         eColName, arangodb::Transaction::CursorType::INDEX, indexHandle,
         _builder.slice(), 0, UINT64_MAX, Transaction::defaultBatchSize(), false);
     if (cursor->failed()) {
@@ -330,14 +330,14 @@ bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVerte
       continue;
     }
     TRI_ASSERT(_posInCursor.size() == _cursors.size());
-    _cursors.push(cursor);
-    _results.emplace(std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR));
+    _cursors.push(std::move(cursor));
+    _results.emplace();
     return true;
   }
 }
 
 void SingleServerTraverser::EdgeGetter::nextEdge(
-    std::string const& startVertex, size_t& eColIdx, VPackValueLength*& last,
+    std::string const& startVertex, size_t& eColIdx, size_t*& last,
     std::vector<std::string>& edges) {
 
   if (last == nullptr) {
@@ -349,23 +349,18 @@ void SingleServerTraverser::EdgeGetter::nextEdge(
 
   while (true) {
     TRI_ASSERT(!_cursors.empty());
-    auto cursor = _cursors.top();
+    auto& cursor = _cursors.top();
     TRI_ASSERT(!_results.empty());
-    auto opRes = _results.top();
-    TRI_ASSERT(opRes != nullptr);
-    // note: we need to check *first* that there is actually something in the buffer
-    // before we access its internals. otherwise, the buffer contents are uninitialized
-    // and non-deterministic behavior will be the consequence
-    VPackSlice edge = opRes->slice();
-    if (opRes->buffer->empty() || !edge.isArray() || edge.length() <= *last) {
+    auto& mptrs = _results.top();
+
+    // note: we need to check *first* that there is actually something in the mptrs list
+    if (mptrs.empty() || mptrs.size() <= *last) {
       if (cursor->hasMore()) {
         // Fetch next and try again
-        cursor->getMore(opRes);
+        cursor->getMoreMptr(mptrs);
         TRI_ASSERT(last != nullptr);
         *last = 0;
-        edge = opRes->slice();
-        TRI_ASSERT(edge.isArray());
-        _traverser->_readDocuments += static_cast<size_t>(edge.length());
+        _traverser->_readDocuments += static_cast<size_t>(mptrs.size());
         continue;
       }
       eColIdx++;
@@ -382,7 +377,7 @@ void SingleServerTraverser::EdgeGetter::nextEdge(
       continue;
     }
 
-    edge = edge.at(*last).resolveExternal();
+    VPackSlice edge(mptrs[*last]->vpack());
     std::string id = _trx->extractIdString(edge);
     if (!_traverser->edgeMatchesConditions(edge, edges.size())) {
       if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
@@ -420,7 +415,7 @@ void SingleServerTraverser::EdgeGetter::nextEdge(
 
 void SingleServerTraverser::EdgeGetter::getEdge(std::string const& startVertex,
                                                 std::vector<std::string>& edges,
-                                                VPackValueLength*& last,
+                                                size_t*& last,
                                                 size_t& eColIdx) {
   if (last == nullptr) {
     eColIdx = 0;
@@ -444,7 +439,7 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
   // We iterate over all index ids. note idxId++
   while (_opts.getCollectionAndSearchValue(idxId++, startVertex, eColName,
                                            indexHandle, _builder)) {
-    std::shared_ptr<OperationCursor> cursor = _trx->indexScan(
+    std::unique_ptr<OperationCursor> cursor = _trx->indexScan(
         eColName, arangodb::Transaction::CursorType::INDEX, indexHandle,
         _builder.slice(), 0, UINT64_MAX, Transaction::defaultBatchSize(), false);
     if (cursor->failed()) {

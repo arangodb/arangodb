@@ -97,8 +97,20 @@ TRI_doc_mptr_t* IndexIterator::next() { return nullptr; }
 /// @brief default implementation for nextBabies
 ////////////////////////////////////////////////////////////////////////////////
 
-void IndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+void IndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& result, size_t batchSize) {
+  result.clear();
+
+  while (true) {
+    TRI_doc_mptr_t* mptr = next();
+    if (mptr == nullptr) {
+      return;
+    }
+    result.emplace_back(mptr);
+    batchSize--;
+    if (batchSize == 0) {
+      return;
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

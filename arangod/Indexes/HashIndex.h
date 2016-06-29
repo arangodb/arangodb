@@ -98,6 +98,8 @@ class HashIndexIterator final : public IndexIterator {
 
   TRI_doc_mptr_t* next() override;
 
+  void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override;
+
   void reset() override;
 
  private:

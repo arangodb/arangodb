@@ -76,13 +76,17 @@ struct ConstDistanceExpanderLocal {
                   std::vector<VPackSlice>& neighbors) {
     std::shared_ptr<arangodb::OperationCursor> edgeCursor;
     for (auto const& edgeCollection : _block->_collectionInfos) {
-      _cursor.clear();
       TRI_ASSERT(edgeCollection != nullptr);
       if (_isReverse) {
         edgeCursor = edgeCollection->getReverseEdges(v);
       } else {
         edgeCursor = edgeCollection->getEdges(v);
       }
+      // Clear the local cursor before using the
+      // next edge cursor.
+      // While iterating over the edge cursor, _cursor
+      // has to stay intact.
+      _cursor.clear();
       while (edgeCursor->hasMore()) {
         edgeCursor->getMoreMptr(_cursor, UINT64_MAX);
         for (auto const& mptr : _cursor) {
@@ -205,7 +209,7 @@ struct EdgeWeightExpanderLocal {
   void operator()(VPackSlice const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
     std::vector<TRI_doc_mptr_t*> cursor;
-    std::shared_ptr<arangodb::OperationCursor> edgeCursor;
+    std::unique_ptr<arangodb::OperationCursor> edgeCursor;
     std::unordered_map<VPackSlice, size_t> candidates;
     for (auto const& edgeCollection : _block->_collectionInfos) {
       TRI_ASSERT(edgeCollection != nullptr);
@@ -216,8 +220,12 @@ struct EdgeWeightExpanderLocal {
       }
 
       candidates.clear();
-      cursor.clear();
 
+      // Clear the local cursor before using the
+      // next edge cursor.
+      // While iterating over the edge cursor, _cursor
+      // has to stay intact.
+      cursor.clear();
       while (edgeCursor->hasMore()) {
         edgeCursor->getMoreMptr(cursor, UINT64_MAX);
         for (auto const& mptr : cursor) {

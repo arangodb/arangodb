@@ -611,7 +611,7 @@ void TraversalBlock::runNeighbors(std::vector<VPackSlice> const& startVertices,
         TRI_ASSERT(false);
       }
 
-      std::shared_ptr<OperationCursor> cursor = _trx->indexScan(collectionName,
+      std::unique_ptr<OperationCursor> cursor = _trx->indexScan(collectionName,
                          arangodb::Transaction::CursorType::INDEX, indexHandle,
                          builder->slice(), 0, UINT64_MAX, 1000, false);
     
