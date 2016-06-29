@@ -416,7 +416,6 @@ void Supervision::shrinkCluster () {
         return;
       }
     } catch (std::exception const& e) {
-      LOG(WARN) << job.second->slice().toJson();
       LOG_TOPIC(WARN, Logger::AGENCY)
         << "Failed to get job type of job " << job.first << ": " << e.what();
       return;
@@ -465,7 +464,7 @@ void Supervision::shrinkCluster () {
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
-        } catch (std::exception const& e) {
+        } catch (std::exception const&) {
           LOG_TOPIC(DEBUG, Logger::AGENCY) << "Cannot retrieve replication " <<
             "factor for collection " << collptr.first;
           return;

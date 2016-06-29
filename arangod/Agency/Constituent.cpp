@@ -106,7 +106,7 @@ bool Constituent::waitForSync() const {
 
 /// Random sleep times in election process
 duration_t Constituent::sleepFor(double min_t, double max_t) {
-  int32_t left = 1000*min_t, right = 1000*max_t;
+  int32_t left = static_cast<int32_t>(1000.0 * min_t), right = static_cast<int32_t>(1000.0 * max_t);
   return duration_t(
     static_cast<long>(RandomGenerator::interval(left, right)));
 }
@@ -325,12 +325,12 @@ bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
   }
   
   if (term > t || (t == term && lid == id && !cast)) {
-    this->term(term);
     {
       MUTEX_LOCKER(guard, _castLock);
       _votedFor = id;  // The guy I voted for I assume leader.
       _leaderID = id;
     }
+    this->term(term);
     if (_role > FOLLOWER) {
       follow(_term);
     }
@@ -352,6 +352,7 @@ void Constituent::callElection() {
   votes.at(_id) = true;  // vote for myself
   _cast = true;
   if (_role == CANDIDATE) {
+    _votedFor = _id;
     this->term(_term + 1);  // raise my term
   }
 
@@ -498,7 +499,7 @@ void Constituent::run() {
         _cast = false;  // New round set not cast vote
       }
 
-      int32_t left = 1000000*config().minPing, right = 1000000*config().maxPing;
+      int32_t left = static_cast<int32_t>(1000000.0 * config().minPing), right = static_cast<int32_t>(1000000.0 * config().maxPing);
       long rand_wait = static_cast<long>(RandomGenerator::interval(left, right));
 
       {
@@ -515,8 +516,15 @@ void Constituent::run() {
         candidate();  // Next round, we are running
       }
       
-    } else {
+    } else if (_role == CANDIDATE) {
       callElection();  // Run for office
+    } else {
+      int32_t left = 100000.0 * config().minPing;
+      long rand_wait = static_cast<long>(left);
+      {
+        CONDITION_LOCKER(guardv, _cv);
+        _cv.wait(rand_wait);
+      }
     }
     
   }

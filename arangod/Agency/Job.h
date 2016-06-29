@@ -64,7 +64,7 @@ inline arangodb::consensus::write_ret_t transact (
     envelope->close();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Supervision failed to build transaction.";
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
   }
   
   LOG_TOPIC(DEBUG, Logger::AGENCY) << envelope->toJson();
