@@ -414,10 +414,16 @@ else ()
     set(V8_LDFLAGS  "${V8_LDFLAGS} -stdlib=libc++")
   endif ()
 
+  if (USE_DEBUG_V8)
+    set(V8_BUILDTYPE Debug)
+  else ()
+    set(V8_BUILDTYPE Release)
+  endif ()
+
   set(V8_COMPILE_ARGS
     -C ${V8_TARGET_DIR}
     -f Makefile.${V8_TARGET_ARCH}
-    BUILDTYPE=Release
+    BUILDTYPE=${V8_BUILDTYPE}
     builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH}
     CC=${CMAKE_C_COMPILER}
     CXX=${CMAKE_CXX_COMPILER}

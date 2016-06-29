@@ -112,6 +112,10 @@ struct Options {
   // JSON with a Dumper
   bool escapeForwardSlashes = false;
 
+  // escape multi-byte Unicode characters when dumping them to JSON 
+  // with a Dumper (creates \uxxxx sequences)
+  bool escapeUnicode = false;
+
   // disallow using type External (to prevent injection of arbitrary pointer
   // values as a security precaution)
   bool disallowExternals = false;

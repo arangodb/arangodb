@@ -50,6 +50,8 @@ using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
+
+/// Construct with endpoint
 State::State(std::string const& endpoint)
     : _agent(nullptr),
       _vocbase(nullptr),
@@ -66,8 +68,12 @@ State::State(std::string const& endpoint)
   }
 }
 
+
+/// Default dtor
 State::~State() {}
 
+
+/// Persist one entry
 bool State::persist(arangodb::consensus::index_t index, term_t term,
                     arangodb::consensus::id_t lid,
                     arangodb::velocypack::Slice const& entry) {
@@ -102,23 +108,30 @@ bool State::persist(arangodb::consensus::index_t index, term_t term,
   return (res == TRI_ERROR_NO_ERROR);
 }
 
-// Leader
+
+/// Log transaction (leader)
 std::vector<arangodb::consensus::index_t> State::log(
-    query_t const& query, std::vector<bool> const& appl, term_t term,
+    query_t const& transaction, std::vector<bool> const& appl, term_t term,
     arangodb::consensus::id_t lid) {
+  
   std::vector<arangodb::consensus::index_t> idx(appl.size());
   std::vector<bool> good = appl;
   size_t j = 0;
+  auto const& slice = transaction->slice();
 
+  TRI_ASSERT(slice.isArray());
+  TRI_ASSERT(slice.length() == good.size());
+    
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
-  for (auto const& i : VPackArrayIterator(query->slice())) {
+  for (auto const& i : VPackArrayIterator(slice)) {
+    TRI_ASSERT(i.isArray());
     if (good[j]) {
       std::shared_ptr<Buffer<uint8_t>> buf =
           std::make_shared<Buffer<uint8_t>>();
       buf->append((char const*)i[0].begin(), i[0].byteSize());
       idx[j] = _log.back().index + 1;
-      _log.push_back(log_t(idx[j], term, lid, buf));  // log to RAM
-      persist(idx[j], term, lid, i[0]);             // log to disk
+      _log.push_back(log_t(idx[j], term, lid, buf)); // log to RAM
+      persist(idx[j], term, lid, i[0]);              // log to disk
       ++j;
     }
   }
@@ -126,43 +139,50 @@ std::vector<arangodb::consensus::index_t> State::log(
   return idx;
 }
 
-// Follower
-bool State::log(query_t const& queries, term_t term,
+
+/// Log transactions (follower)
+bool State::log(query_t const& transactions, term_t term,
                 arangodb::consensus::id_t lid,
                 arangodb::consensus::index_t prevLogIndex,
                 term_t prevLogTerm) {  // TODO: Throw exc
 
-  if (queries->slice().type() != VPackValueType::Array) {
+  if (transactions->slice().type() != VPackValueType::Array) {
     return false;
   }
 
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
-  for (auto const& i : VPackArrayIterator(queries->slice())) {
+  for (auto const& i : VPackArrayIterator(transactions->slice())) {
     try {
       auto idx = i.get("index").getUInt();
-      std::shared_ptr<Buffer<uint8_t>> buf =
-          std::make_shared<Buffer<uint8_t>>();
-      buf->append((char const*)i.get("query").begin(),
-                  i.get("query").byteSize());
+      std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
+      buf->append((char const*)i.get("query").begin(),i.get("query").byteSize());
       _log.push_back(log_t(idx, term, lid, buf));
       persist(idx, term, lid, i.get("query"));  // to disk
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     }
   }
+  
   return true;
+  
 }
 
-// Get log entries from indices "start" to "end"
+
+/// Get log entries from indices "start" to "end"
 std::vector<log_t> State::get(arangodb::consensus::index_t start,
                               arangodb::consensus::index_t end) const {
+
   std::vector<log_t> entries;
   MUTEX_LOCKER(mutexLocker, _logLock);
-
-  if (end == (std::numeric_limits<uint64_t>::max)()) {
+  
+  if (_log.empty()) {
+    return entries;
+  }
+  
+  if (end == (std::numeric_limits<uint64_t>::max)() || end > _log.size() - 1) {
     end = _log.size() - 1;
   }
-
+  
   if (start < _log[0].index) {
     start = _log[0].index;
   }
@@ -172,8 +192,11 @@ std::vector<log_t> State::get(arangodb::consensus::index_t start,
   }
 
   return entries;
+  
 }
 
+
+/// Get vector of past transaction from 'start' to 'end'
 std::vector<VPackSlice> State::slices(
   arangodb::consensus::index_t start, arangodb::consensus::index_t end) const {
   
@@ -192,7 +215,7 @@ std::vector<VPackSlice> State::slices(
     return slices;
   }
 
-  if (end == (std::numeric_limits<uint64_t>::max)()) {
+  if (end == (std::numeric_limits<uint64_t>::max)() || end > _log.back().index) {
     end = _log.back().index;
   }
 
@@ -203,27 +226,37 @@ std::vector<VPackSlice> State::slices(
       break;
     } 
   }
-
+  
   return slices;
 }
 
+
+/// Get log entry by log index
 log_t const& State::operator[](arangodb::consensus::index_t index) const {
   MUTEX_LOCKER(mutexLocker, _logLock);
-  return _log[index - _cur];
+  TRI_ASSERT(index - _cur < _log.size());
+  return _log.at(index - _cur);
 }
 
+
+/// Get last log entry
 log_t const& State::lastLog() const {
   MUTEX_LOCKER(mutexLocker, _logLock);
+  TRI_ASSERT(!_log.empty());
   return _log.back();
 }
 
+
+/// Configure with agent
 bool State::configure(Agent* agent) {
   _agent = agent;
   _endpoint = agent->endpoint();
   _collectionsChecked = false;
   return true;
-};
+}
 
+
+/// Check if collections exist otherwise create them
 bool State::checkCollections() {
   if (!_collectionsChecked) {
     _collectionsChecked = checkCollection("log") && checkCollection("election");
@@ -231,6 +264,8 @@ bool State::checkCollections() {
   return _collectionsChecked;
 }
 
+
+/// Create agency collections
 bool State::createCollections() {
   if (!_collectionsChecked) {
     return (createCollection("log") && createCollection("election") &&
@@ -239,6 +274,8 @@ bool State::createCollections() {
   return _collectionsChecked;
 }
 
+
+/// Check collection by name
 bool State::checkCollection(std::string const& name) {
   if (!_collectionsChecked) {
     return (TRI_LookupCollectionByNameVocBase(_vocbase, name) != nullptr);
@@ -246,6 +283,8 @@ bool State::checkCollection(std::string const& name) {
   return true;
 }
 
+
+/// Create collection by name
 bool State::createCollection(std::string const& name) {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
@@ -263,10 +302,12 @@ bool State::createCollection(std::string const& name) {
   return true;
 }
 
+
+/// Load collections
 bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
 
   _vocbase = vocbase;
-  _options.waitForSync = waitForSync;
+  _options.waitForSync = false;
   _options.silent = true;
 
   if (loadPersisted()) {
@@ -286,6 +327,8 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
   
 }
 
+
+/// Load actually persisted collections
 bool State::loadPersisted() {
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -299,7 +342,10 @@ bool State::loadPersisted() {
   return true;
 }
 
+
+/// Load compaction collection
 bool State::loadCompacted() {
+
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
@@ -331,8 +377,11 @@ bool State::loadCompacted() {
   }
 
   return true;
+  
 }
 
+
+/// Load beyond last compaction
 bool State::loadRemaining() {
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
@@ -372,8 +421,11 @@ bool State::loadRemaining() {
   }
 
   return true;
+  
 }
 
+
+/// Find entry by index and term
 bool State::find(arangodb::consensus::index_t prevIndex, term_t prevTerm) {
   MUTEX_LOCKER(mutexLocker, _logLock);
   if (prevIndex > _log.size()) {
@@ -382,7 +434,8 @@ bool State::find(arangodb::consensus::index_t prevIndex, term_t prevTerm) {
   return _log.at(prevIndex).term == prevTerm;
 }
 
-#include <iostream>
+
+/// Log compaction
 bool State::compact(arangodb::consensus::index_t cind) {
   bool saved = persistReadDB(cind);
 
@@ -402,6 +455,8 @@ bool State::compact(arangodb::consensus::index_t cind) {
   }
 }
 
+
+/// Compact volatile state
 bool State::compactVolatile(arangodb::consensus::index_t cind) {
   if (!_log.empty() && cind > _cur && cind - _cur < _log.size()) {
     MUTEX_LOCKER(mutexLocker, _logLock);
@@ -411,6 +466,8 @@ bool State::compactVolatile(arangodb::consensus::index_t cind) {
   return true;
 }
 
+
+/// Compact persisted state
 bool State::compactPersisted(arangodb::consensus::index_t cind) {
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
@@ -436,8 +493,11 @@ bool State::compactPersisted(arangodb::consensus::index_t cind) {
   }
 
   return true;
+  
 }
 
+
+/// Remove outdate compactions
 bool State::removeObsolete(arangodb::consensus::index_t cind) {
   if (cind > 3 * _agent->config().compactionStepSize) {
     auto bindVars = std::make_shared<VPackBuilder>();
@@ -467,7 +527,10 @@ bool State::removeObsolete(arangodb::consensus::index_t cind) {
   return true;
 }
 
+
+/// Persist the globally commited truth
 bool State::persistReadDB(arangodb::consensus::index_t cind) {
+  
   if (checkCollection("compact")) {
     Builder store;
     store.openObject();

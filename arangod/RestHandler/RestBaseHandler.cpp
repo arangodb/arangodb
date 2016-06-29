@@ -51,7 +51,9 @@ void RestBaseHandler::handleError(Exception const& ex) {
 void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
                                      VPackSlice const& slice) {
   createResponse(code);
-  writeResult(slice, VPackOptions::Defaults);
+  VPackOptions options(VPackOptions::Defaults);
+  options.escapeUnicode = true;
+  writeResult(slice, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,7 +64,7 @@ void RestBaseHandler::generateResult(
     GeneralResponse::ResponseCode code, VPackSlice const& slice,
     std::shared_ptr<TransactionContext> context) {
   createResponse(code);
-  writeResult(slice, *(context->getVPackOptions()));
+  writeResult(slice, *(context->getVPackOptionsForDump()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +104,9 @@ void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
     builder.add("errorNum", VPackValue(errorCode));
     builder.close();
 
-    writeResult(builder.slice(), VPackOptions::Defaults);
+    VPackOptions options(VPackOptions::Defaults);
+    options.escapeUnicode = true;
+    writeResult(builder.slice(), options);
   } catch (...) {
     // Building the error response failed
   }
@@ -133,6 +137,7 @@ void RestBaseHandler::generateCanceled() {
 void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice,
                                   VPackOptions const& options) {
   try {
+    TRI_ASSERT(options.escapeUnicode);
     _response->fillBody(_request, slice, true, options);
   } catch (std::exception const& ex) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,

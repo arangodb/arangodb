@@ -282,7 +282,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   }
 
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
-  writeResult(builder.slice(), *(transactionContext->getVPackOptions()));
+  writeResult(builder.slice(), *(transactionContext->getVPackOptionsForDump()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

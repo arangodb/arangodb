@@ -3599,6 +3599,107 @@ function transactionConstraintsSuite () {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function transactionTraversalSuite () {
+  'use strict';
+  var cn = "UnitTestsTransaction";
+  
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn + "Vertex");
+      db._drop(cn + "Edge");
+      db._create(cn + "Vertex");
+      db._createEdgeCollection(cn + "Edge");
+
+      var i;
+      for (i = 0; i < 100; ++i) {
+        db.UnitTestsTransactionVertex.insert({ _key: String(i) });
+      }
+
+      for (i = 1; i < 100; ++i) {
+        db.UnitTestsTransactionEdge.insert(cn + "Vertex/" + i, cn + "Vertex/" + (i + 1), { });
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(cn + "Vertex");
+      db._drop(cn + "Edge");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: use of undeclared traversal collection in transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testUndeclaredTraversalCollection : function () {
+      var result = db._executeTransaction({
+        collections: {
+          read: [ cn + "Edge" ],
+          write: [ cn + "Edge" ]
+        },
+        action: function() {
+          var db = require("internal").db;
+
+          var results = db._query("FOR v, e IN ANY '" + cn + "Vertex/20' " + cn + "Edge FILTER v._id == '" + cn + "Vertex/21' LIMIT 1 RETURN e").toArray();
+
+          if (results.length > 0) {
+            var result = results[0];
+            db[cn + "Edge"].remove(result);
+            return 1;
+          }
+          return 0;
+        }
+      });
+
+      assertEqual(1, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: use of undeclared traversal collection in transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testTestCount : function () {
+      for (var i = 0; i < 100; ++i) {
+        db[cn + "Edge"].insert(cn + "Edge/test" + (i % 21), cn + "Edge/test" + (i % 7), { });
+      }
+
+      var result = db._executeTransaction({
+        collections: {
+          read: [ cn + "Edge" ],
+          write: [ cn + "Edge" ]
+        },
+        action: function() {
+          var db = require("internal").db;
+          var from = cn + "Edge/test1";
+          var to = cn + "Edge/test8";
+    
+          var newDoc = db[cn + "Edge"].insert(from, to, { request: true });
+          var fromCount1 = db[cn + "Edge"].byExample({ _from: from, request: false }).count();
+
+          newDoc.request = false;
+          db[cn + "Edge"].update({ _id: newDoc._id }, newDoc);
+
+          var fromCount2 = db[cn + "Edge"].byExample({ _from: from, request: false }).count();
+          return [ fromCount1, fromCount2 ];
+        }
+      });
+
+      assertEqual(result[0] + 1, result[1]);
+    }
+
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -4941,6 +5042,7 @@ jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionCountSuite);
 jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionConstraintsSuite);
+jsunity.run(transactionTraversalSuite);
 
 return jsunity.done();
 
