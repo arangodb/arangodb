@@ -79,12 +79,12 @@ namespace triagens {
 
           this->setAllowImplicitCollections(allowImplicitCollections);
           
-          for (auto const& it : readCollections) {
-            this->addCollection(it, TRI_TRANSACTION_READ);
-          }
-
           for (auto const& it : writeCollections) {
             this->addCollection(it, TRI_TRANSACTION_WRITE);
+          }
+          
+          for (auto const& it : readCollections) {
+            this->addCollection(it, TRI_TRANSACTION_READ);
           }
         }
 
@@ -109,13 +109,13 @@ namespace triagens {
           if (waitForSync) {
             this->setWaitForSync();
           }
-
-          for (auto const& it : readCollections) {
-            this->addCollection(it, TRI_TRANSACTION_READ);
-          }
-
+          
           for (auto const& it : writeCollections) {
             this->addCollection(it, TRI_TRANSACTION_WRITE);
+          }
+          
+          for (auto const& it : readCollections) {
+            this->addCollection(it, TRI_TRANSACTION_READ);
           }
         }
 
