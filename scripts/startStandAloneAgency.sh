@@ -51,7 +51,7 @@ if [ $NRAGENTS -gt 1 ]; then
            --agency.compaction-step-size $COMP \
            --log.force-direct true \
            > agency/$port.stdout 2>&1 &
-       sleep 0
+       sleep 1
    done
 fi
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
