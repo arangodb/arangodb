@@ -223,6 +223,8 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testArrays : function () {
+      writeAndCheck([[{"/":[]}]]);
+      assertEqual(readAndCheck([["/"]]),[[]]);
       writeAndCheck([[{"/":[1,2,3]}]]);
       assertEqual(readAndCheck([["/"]]),[[1,2,3]]);
       writeAndCheck([[{"/a":[1,2,3]}]]);
