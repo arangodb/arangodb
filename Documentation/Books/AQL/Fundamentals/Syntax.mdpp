@@ -157,6 +157,8 @@ The example can alternatively written as:
 Collection names can be used in queries as they are. If a collection happens to
 have the same name as a keyword, the name must be enclosed in backticks.
 
+AQL currently has a limit of up to 32 collections used in one AQL-query.
+
 Please refer to the [Naming Conventions in ArangoDB](../../Manual/DataModeling/NamingConventions/CollectionNames.html)
 about collection naming conventions.
 
