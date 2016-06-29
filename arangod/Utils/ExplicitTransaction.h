@@ -58,13 +58,13 @@ class ExplicitTransaction : public Transaction {
     }
 
     this->setAllowImplicitCollections(allowImplicitCollections);
+    
+    for (auto const& it : writeCollections) {
+      this->addCollection(it, TRI_TRANSACTION_WRITE);
+    }
 
     for (auto const& it : readCollections) {
       this->addCollection(it, TRI_TRANSACTION_READ);
-    }
-
-    for (auto const& it : writeCollections) {
-      this->addCollection(it, TRI_TRANSACTION_WRITE);
     }
   }
 
@@ -86,13 +86,13 @@ class ExplicitTransaction : public Transaction {
     if (waitForSync) {
       this->setWaitForSync();
     }
+    
+    for (auto const& it : writeCollections) {
+      this->addCollection(it, TRI_TRANSACTION_WRITE);
+    }
 
     for (auto const& it : readCollections) {
       this->addCollection(it, TRI_TRANSACTION_READ);
-    }
-
-    for (auto const& it : writeCollections) {
-      this->addCollection(it, TRI_TRANSACTION_WRITE);
     }
   }
 
