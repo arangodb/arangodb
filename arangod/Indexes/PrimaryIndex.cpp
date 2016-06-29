@@ -97,7 +97,7 @@ PrimaryIndexIterator::~PrimaryIndexIterator() {
 
 TRI_doc_mptr_t* PrimaryIndexIterator::next() {
   while (_iterator.valid()) {
-    auto result = _index->lookup(_trx, _iterator.value());
+    auto result = _index->lookupKey(_trx, _iterator.value());
     _iterator.next();
 
     if (result != nullptr) {
@@ -518,7 +518,8 @@ void PrimaryIndex::handleValNode(IndexIteratorContext* context,
     // correct collection (i.e. _collection)
     TRI_voc_cid_t cid;
     char const* key;
-    int res = context->resolveId(valNode->getStringValue(), valNode->getStringLength(), cid, key);
+    size_t outLength;
+    int res = context->resolveId(valNode->getStringValue(), valNode->getStringLength(), cid, key, outLength);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return;
@@ -540,16 +541,8 @@ void PrimaryIndex::handleValNode(IndexIteratorContext* context,
     }
 
     // use _key value from _id
-    keys->openArray();
-    keys->openObject();
-    keys->add(StaticStrings::IndexEq, VPackValue(key));
-    keys->close();
-    keys->close();
+    keys->add(VPackValuePair(key, outLength, VPackValueType::String));
   } else {
-    keys->openArray();
-    keys->openObject();
-    keys->add(StaticStrings::IndexEq, VPackValuePair(valNode->getStringValue(), valNode->getStringLength(), VPackValueType::String));
-    keys->close();
-    keys->close();
+    keys->add(VPackValuePair(valNode->getStringValue(), valNode->getStringLength(), VPackValueType::String));
   }
 }

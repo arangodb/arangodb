@@ -61,7 +61,8 @@ bool IndexIteratorContext::isCluster() const {
 
 int IndexIteratorContext::resolveId(char const* handle, size_t length,
                                     TRI_voc_cid_t& cid,
-                                    char const*& key) const {
+                                    char const*& key,
+                                    size_t& outLength) const {
   char const* p = static_cast<char const*>(memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
 
   if (p == nullptr || *p == '\0') {
@@ -80,6 +81,7 @@ int IndexIteratorContext::resolveId(char const* handle, size_t length,
   }
 
   key = p + 1;
+  outLength = length - (key - handle);
 
   return TRI_ERROR_NO_ERROR;
 }
