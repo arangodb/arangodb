@@ -298,7 +298,7 @@ void VelocyPackDumper::appendString(char const* src, VPackValueLength len) {
   }
         
   TRI_AppendCharUnsafeStringBuffer(buffer, '"');
-
+        
   uint8_t const* p = reinterpret_cast<uint8_t const*>(src);
   uint8_t const* e = p + len;
   while (p < e) {

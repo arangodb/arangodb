@@ -226,7 +226,6 @@ int PrimaryIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
 TRI_doc_mptr_t* PrimaryIndex::lookup(arangodb::Transaction* trx,
                                      VPackSlice const& slice) const {
   TRI_ASSERT(slice.isArray() && slice.length() == 1);
-  
   VPackSlice tmp = slice.at(0);
   TRI_ASSERT(tmp.isObject() && tmp.hasKey(StaticStrings::IndexEq));
   tmp = tmp.get(StaticStrings::IndexEq);
@@ -241,22 +240,6 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::Transaction* trx,
                                         VPackSlice const& key) const {
   TRI_ASSERT(key.isString());
   return _primaryIndex->findByKey(trx, key.begin());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a method to iterate over all elements in the index in
-///        a random order.
-///        Returns nullptr if all documents have been returned.
-///        Convention: step === 0 indicates a new start.
-///        DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_doc_mptr_t* PrimaryIndex::lookupRandom(
-    arangodb::Transaction* trx,
-    arangodb::basics::BucketPosition& initialPosition,
-    arangodb::basics::BucketPosition& position, uint64_t& step,
-    uint64_t& total) {
-  return _primaryIndex->findRandom(trx, initialPosition, position, step, total);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

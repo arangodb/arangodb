@@ -124,8 +124,8 @@ struct OperationCursor {
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<TRI_doc_mptr_t*> getMoreMptr(uint64_t batchSize);
+ public:
+  std::vector<TRI_doc_mptr_t*> getMoreMptr(uint64_t batchSize = UINT64_MAX);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Get next batchSize many elements. mptr variant
@@ -135,7 +135,7 @@ struct OperationCursor {
 ///        NOTE: The result vector handed in will be cleared.
 //////////////////////////////////////////////////////////////////////////////
 
-  void getMoreMptr(std::vector<TRI_doc_mptr_t*>& result, uint64_t batchSize);
+  void getMoreMptr(std::vector<TRI_doc_mptr_t*>& result, uint64_t batchSize = UINT64_MAX);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Skip the next toSkip many elements.

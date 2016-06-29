@@ -194,7 +194,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      arangodb::basics::VelocyPackDumper dumper(&(_response->body()), queryResult.context->getVPackOptions());
+      arangodb::basics::VelocyPackDumper dumper(&(_response->body()), queryResult.context->getVPackOptionsForDump());
       dumper.dumpValue(result.slice());
       return;
     }

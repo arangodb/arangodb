@@ -43,6 +43,7 @@ std::shared_ptr<VPackCustomTypeHandler> StandaloneTransactionContext::orderCusto
   if (_customTypeHandler == nullptr) {
     _customTypeHandler.reset(TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
     _options.customTypeHandler = _customTypeHandler.get();
+    _dumpOptions.customTypeHandler = _customTypeHandler.get();
   }
 
   TRI_ASSERT(_customTypeHandler != nullptr);
