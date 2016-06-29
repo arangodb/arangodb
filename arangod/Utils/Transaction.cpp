@@ -2845,7 +2845,7 @@ OperationCursor* Transaction::indexScanForCondition(
     return new OperationCursor(TRI_ERROR_NO_ERROR);
   }
 
-  // Now collect the Iterator
+  // data that we pass to the iterator
   IndexIteratorContext ctxt(_vocbase, resolver(), _serverRole);
  
   auto idx = indexId.getIndex();
@@ -2854,6 +2854,7 @@ OperationCursor* Transaction::indexScanForCondition(
                                    "The index id cannot be empty.");
   }
 
+  // Now create the Iterator
   std::unique_ptr<IndexIterator> iterator(idx->iteratorForCondition(this, &ctxt, condition, var, reverse));
 
   if (iterator == nullptr) {

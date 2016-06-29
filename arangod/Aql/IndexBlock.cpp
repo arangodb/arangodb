@@ -45,9 +45,9 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _posInDocs(0),
       _currentIndex(0),
       _indexes(en->getIndexes()),
+      _cursors(_indexes.size()),
       _condition(en->_condition->root()),
-      _hasV8Expression(false) {
-}
+      _hasV8Expression(false) {}
 
 IndexBlock::~IndexBlock() {
   cleanupNonConstExpressions();
@@ -83,6 +83,7 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
 void IndexBlock::executeExpressions() {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(_condition != nullptr);
+  TRI_ASSERT(!_nonConstExpressions.empty());
 
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
@@ -307,24 +308,7 @@ bool IndexBlock::initIndexes() {
 /// @brief create an OperationCursor object
 void IndexBlock::createCursor() {
   DEBUG_BEGIN_BLOCK();
-  IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
-  auto outVariable = node->outVariable();
-  auto ast = node->_plan->getAst();
-  
-  AstNode const* conditionNode = nullptr;
-  if (_condition != nullptr) {
-    TRI_ASSERT(_indexes.size() == _condition->numMembers());
-    TRI_ASSERT(_condition->numMembers() > _currentIndex);
-
-    conditionNode = _condition->getMember(_currentIndex);
-  }
-
-  TRI_ASSERT(_indexes.size() > _currentIndex);
-
-  _cursor.reset(ast->query()->trx()->indexScanForCondition(
-      _collection->getName(), _indexes[_currentIndex], conditionNode,
-      outVariable, UINT64_MAX, Transaction::defaultBatchSize(),
-      node->_reverse));
+  _cursor = orderCursor(_currentIndex);
   _result.clear();
   DEBUG_END_BLOCK();
 }
@@ -343,7 +327,7 @@ void IndexBlock::startNextCursor() {
     // This check will work as long as _indexes.size() < MAX_SIZE_T
     createCursor();
   } else {
-    _cursor.reset(nullptr);
+    _cursor = nullptr;
   }
   DEBUG_END_BLOCK();
 }
@@ -606,4 +590,39 @@ void IndexBlock::cleanupNonConstExpressions() {
     delete it;
   }
   _nonConstExpressions.clear();
+}
+  
+/// @brief order a cursor for the index at the specified position
+arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
+  AstNode const* conditionNode = nullptr;
+  if (_condition != nullptr) {
+    TRI_ASSERT(_indexes.size() == _condition->numMembers());
+    TRI_ASSERT(_condition->numMembers() > currentIndex);
+
+    conditionNode = _condition->getMember(currentIndex);
+  }
+
+  TRI_ASSERT(_indexes.size() > currentIndex);
+
+  // TODO: if we have _nonConstExpressions, we should also reuse the
+  // cursors, but in this case we have to adjust the iterator's search condition
+  // from _condition
+  if (!_nonConstExpressions.empty() || _cursors[currentIndex] == nullptr) {
+    // yet no cursor for index, so create it
+    IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
+    _cursors[currentIndex].reset(_trx->indexScanForCondition(
+      _collection->getName(), 
+      _indexes[currentIndex], 
+      conditionNode,
+      node->outVariable(), 
+      UINT64_MAX, 
+      Transaction::defaultBatchSize(),
+      node->_reverse
+    ));
+  } else {
+    // cursor for index already exists, reset and reuse it
+    _cursors[currentIndex]->reset();
+  }
+
+  return _cursors[currentIndex].get();
 }

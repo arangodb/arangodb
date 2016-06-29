@@ -30,6 +30,8 @@
 using namespace arangodb;
 
 void OperationCursor::reset() {
+  code = TRI_ERROR_NO_ERROR;
+
   if (_indexIterator != nullptr) {
     _indexIterator->reset();
     _hasMore = true;

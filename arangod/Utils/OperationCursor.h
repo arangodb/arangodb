@@ -43,7 +43,7 @@ struct OperationResult;
 struct OperationCursor {
 
  public:
-  int                                     code;
+  int                            code;
 
  private:
 
@@ -73,16 +73,13 @@ struct OperationCursor {
     }
   }
 
-  ~OperationCursor() {
-  }
+  ~OperationCursor() {}
   
   IndexIterator* indexIterator() const {
     return _indexIterator.get();
   }
 
-  bool hasMore() const {
-    return _hasMore;
-  }
+  inline bool hasMore() const { return _hasMore; }
 
   bool successful() const {
     return code == TRI_ERROR_NO_ERROR;
