@@ -230,7 +230,6 @@ bool CleanOutServer::start() {
     // Check if we can get things done in the first place
     if (!checkFeasibility()) {
       finish("DBServers/" + _server, false);
-      LOG(WARN) << __FILE__<<__LINE__ ;
       return false;
     }
 

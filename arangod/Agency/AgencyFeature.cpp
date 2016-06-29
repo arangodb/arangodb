@@ -39,8 +39,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Agency"),
       _size(1),
       _agentId(0),
-      _minElectionTimeout(0.15),
-      _maxElectionTimeout(2.0),
+      _minElectionTimeout(0.5),
+      _maxElectionTimeout(2.5),
       _notify(false),
       _supervision(false),
       _waitForSync(true),
@@ -150,7 +150,8 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_maxElectionTimeout <= 2 * _minElectionTimeout) {
     LOG_TOPIC(WARN, Logger::AGENCY)
-        << "agency.election-timeout-max should probably be chosen longer!";
+      << "agency.election-timeout-max should probably be chosen longer!"
+      << " " << __FILE__ << __LINE__;
   }
 }
 
@@ -173,10 +174,11 @@ void AgencyFeature::start() {
   auto endpoints = endpointFeature->httpEndpoints();
   
   if (!endpoints.empty()) {
-    size_t pos = endpoints[0].find(':',10);
+    std::string const& tmp = endpoints.front();
+    size_t pos = tmp.find(':',10);
     
     if (pos != std::string::npos) {
-      port = endpoints[0].substr(pos + 1, endpoints[0].size() - pos);
+      port = tmp.substr(pos + 1, tmp.size() - pos);
     }
   }
   
@@ -205,7 +207,7 @@ void AgencyFeature::unprepare() {
       usleep(100000);
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
-        LOG(WARN) << "waiting for agent thread to finish";
+        LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for agent thread to finish";
       }
     }
   }

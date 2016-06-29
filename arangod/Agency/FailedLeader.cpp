@@ -47,7 +47,7 @@ FailedLeader::FailedLeader(
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     finish("Shards/" + _shard, false, e.what());
   }
   
