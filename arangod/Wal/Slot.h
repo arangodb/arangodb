@@ -33,7 +33,7 @@ namespace wal {
 class Marker;
 class Slots;
 
-class alignas(32) Slot {
+class Slot {
   friend class Slots;
 
  public:
