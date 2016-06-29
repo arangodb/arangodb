@@ -253,7 +253,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
       size_t m = l + ((r - l) / 2);
 
       bool localMustDestroy;
-      AqlValue a = right.at(m, localMustDestroy, false);
+      AqlValue a = right.at(trx, m, localMustDestroy, false);
       AqlValueGuard guard(a, localMustDestroy);
 
       int compareResult = AqlValue::Compare(trx, left, a, true);
@@ -287,8 +287,8 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
     }
 
     // check if conversion to int64 would be lossy
-    int64_t value = left.toInt64();
-    if (left.toDouble() == static_cast<double>(value)) {
+    int64_t value = left.toInt64(trx);
+    if (left.toDouble(trx) == static_cast<double>(value)) {
       // no loss
       Range const* r = right.range();
       TRI_ASSERT(r != nullptr);
@@ -301,7 +301,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
   // use linear search
   for (size_t i = 0; i < n; ++i) {
     bool mustDestroy;
-    AqlValue a = right.at(i, mustDestroy, false);
+    AqlValue a = right.at(trx, i, mustDestroy, false);
     AqlValueGuard guard(a, mustDestroy);
 
     int compareResult = AqlValue::Compare(trx, left, a, false);
@@ -575,7 +575,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
     AqlValueGuard guard(indexResult, mustDestroy);
 
     if (indexResult.isNumber()) {
-      return result.at(indexResult.toInt64(), mustDestroy, true);
+      return result.at(trx, indexResult.toInt64(trx), mustDestroy, true);
     }
      
     if (indexResult.isString()) {
@@ -584,7 +584,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
       try {
         // stoll() might throw an exception if the string is not a number
         int64_t position = static_cast<int64_t>(std::stoll(value));
-        return result.at(position, mustDestroy, true);
+        return result.at(trx, position, mustDestroy, true);
       } catch (...) {
         // no number found.
       }
@@ -598,7 +598,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
     AqlValueGuard guard(indexResult, mustDestroy);
 
     if (indexResult.isNumber()) {
-      std::string const indexString = std::to_string(indexResult.toInt64());
+      std::string const indexString = std::to_string(indexResult.toInt64(trx));
       return result.get(trx, indexString, mustDestroy, true);
     }
      
@@ -864,7 +864,7 @@ AqlValue Expression::executeSimpleExpressionRange(
   AqlValueGuard guardHigh(resultHigh, mustDestroy);
  
   mustDestroy = true; // as we're creating a new range object
-  return AqlValue(resultLow.toInt64(), resultHigh.toInt64());
+  return AqlValue(resultLow.toInt64(trx), resultHigh.toInt64(trx));
 }
 
 /// @brief execute an expression of type SIMPLE with FCALL
@@ -1103,7 +1103,7 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
 
   for (size_t i = 0; i < n; ++i) {
     bool localMustDestroy;
-    AqlValue leftItemValue = left.at(i, localMustDestroy, false);
+    AqlValue leftItemValue = left.at(trx, i, localMustDestroy, false);
     AqlValueGuard guard(leftItemValue, localMustDestroy);
 
     bool result;
@@ -1222,12 +1222,12 @@ AqlValue Expression::executeSimpleExpressionExpansion(
     AqlValue subOffset =
         executeSimpleExpression(limitNode->getMember(0), trx,
                                 argv, startPos, vars, regs, mustDestroy, false);
-    offset = subOffset.toInt64();
+    offset = subOffset.toInt64(trx);
     if (mustDestroy) { subOffset.destroy(); }
 
     AqlValue subCount = executeSimpleExpression(limitNode->getMember(1), trx,
                                                 argv, startPos, vars, regs, mustDestroy, false);
-    count = subCount.toInt64();
+    count = subCount.toInt64(trx);
     if (mustDestroy) { subCount.destroy(); }
   }
     
@@ -1285,7 +1285,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
           size_t const n = v.length();
           for (size_t i = 0; i < n; ++i) {
             bool localMustDestroy;
-            AqlValue item = v.at(i, localMustDestroy, false);
+            AqlValue item = v.at(trx, i, localMustDestroy, false);
             AqlValueGuard guard(item, localMustDestroy);
 
             bool const isArray = item.isArray();
@@ -1353,7 +1353,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
   size_t const n = value.length();
   for (size_t i = 0; i < n; ++i) {
     bool localMustDestroy;
-    AqlValue item = value.at(i, localMustDestroy, false);
+    AqlValue item = value.at(trx, i, localMustDestroy, false);
     AqlValueGuard guard(item, localMustDestroy);
 
     AqlValueMaterializer materializer(trx);
@@ -1433,14 +1433,14 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
   mustDestroy = false;
 
   bool failed = false;
-  double l = lhs.toDouble(failed);
+  double l = lhs.toDouble(trx, failed);
 
   if (failed) {
     TRI_ASSERT(!mustDestroy);
     l = 0.0;
   }
 
-  double r = rhs.toDouble(failed);
+  double r = rhs.toDouble(trx, failed);
 
   if (failed) {
     TRI_ASSERT(!mustDestroy);

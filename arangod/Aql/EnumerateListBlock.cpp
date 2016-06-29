@@ -244,7 +244,7 @@ AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDes
     return out;
   }
 
-  return inVarReg.at(_index++, mustDestroy, true);
+  return inVarReg.at(_trx, _index++, mustDestroy, true);
   DEBUG_END_BLOCK();  
 }
 

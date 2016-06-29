@@ -147,7 +147,8 @@ size_t AqlValue::length() const {
 }
   
 /// @brief get the (array) element at position 
-AqlValue AqlValue::at(int64_t position, bool& mustDestroy, 
+AqlValue AqlValue::at(arangodb::AqlTransaction* trx,
+                      int64_t position, bool& mustDestroy, 
                       bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -208,10 +209,10 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy,
 
       if (position >= 0 && position < static_cast<int64_t>(n)) {
         // only look up the value if it is within array bounds
-        VPackBuilder builder;
-        builder.add(VPackValue(_data.range->at(static_cast<size_t>(position))));
+        TransactionBuilderLeaser builder(trx);
+        builder->add(VPackValue(_data.range->at(static_cast<size_t>(position))));
         mustDestroy = true;
-        return AqlValue(builder);
+        return AqlValue(builder->slice());
       }
       // fall-through intentional
       break;
@@ -476,12 +477,12 @@ bool AqlValue::hasKey(arangodb::AqlTransaction* trx,
 }
 
 /// @brief get the numeric value of an AqlValue
-double AqlValue::toDouble() const {
+double AqlValue::toDouble(arangodb::AqlTransaction* trx) const {
   bool failed; // will be ignored
-  return toDouble(failed);
+  return toDouble(trx, failed);
 }
 
-double AqlValue::toDouble(bool& failed) const {
+double AqlValue::toDouble(arangodb::AqlTransaction* trx, bool& failed) const {
   failed = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
@@ -527,7 +528,7 @@ double AqlValue::toDouble(bool& failed) const {
         }
         if (length == 1) {
           bool mustDestroy; // we can ignore destruction here
-          return at(0, mustDestroy, false).toDouble(failed);
+          return at(trx, 0, mustDestroy, false).toDouble(trx, failed);
         }
       }
       // fall-through intentional
@@ -537,7 +538,7 @@ double AqlValue::toDouble(bool& failed) const {
     case RANGE: {
       if (length() == 1) {
         bool mustDestroy; // we can ignore destruction here
-        return at(0, mustDestroy, false).toDouble(failed);
+        return at(trx, 0, mustDestroy, false).toDouble(trx, failed);
       }
       // will return 0
       return 0.0;
@@ -549,7 +550,7 @@ double AqlValue::toDouble(bool& failed) const {
 }
 
 /// @brief get the numeric value of an AqlValue
-int64_t AqlValue::toInt64() const {
+int64_t AqlValue::toInt64(arangodb::AqlTransaction* trx) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
@@ -580,7 +581,7 @@ int64_t AqlValue::toInt64() const {
         if (length == 1) {
           // we can ignore destruction here
           bool mustDestroy;
-          return at(0, mustDestroy, false).toInt64();
+          return at(trx, 0, mustDestroy, false).toInt64(trx);
         }
       }
       // fall-through intentional
@@ -590,7 +591,7 @@ int64_t AqlValue::toInt64() const {
     case RANGE: {
       if (length() == 1) {
         bool mustDestroy;
-        return at(0, mustDestroy, false).toInt64();
+        return at(trx, 0, mustDestroy, false).toInt64(trx);
       }
       // will return 0
       break;

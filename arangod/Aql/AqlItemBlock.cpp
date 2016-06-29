@@ -389,18 +389,16 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t>& chosen, size_t from,
 AqlItemBlock* AqlItemBlock::concatenate(
     std::vector<AqlItemBlock*> const& blocks) {
   TRI_ASSERT(!blocks.empty());
-
-  auto it = blocks.begin();
-  TRI_ASSERT(it != blocks.end());
-  size_t totalSize = (*it)->size();
-  RegisterId nrRegs = (*it)->getNrRegs();
-
-  while (true) {
-    if (++it == blocks.end()) {
-      break;
+  
+  size_t totalSize = 0;
+  RegisterId nrRegs = 0;
+  for (auto& it : blocks) {
+    totalSize += it->size();
+    if (nrRegs == 0) {
+      nrRegs = it->getNrRegs();
+    } else {
+      TRI_ASSERT(it->getNrRegs() == nrRegs);
     }
-    totalSize += (*it)->size();
-    TRI_ASSERT((*it)->getNrRegs() == nrRegs);
   }
 
   TRI_ASSERT(totalSize > 0);
@@ -409,19 +407,20 @@ AqlItemBlock* AqlItemBlock::concatenate(
   auto res = std::make_unique<AqlItemBlock>(totalSize, nrRegs);
 
   size_t pos = 0;
-  for (it = blocks.begin(); it != blocks.end(); ++it) {
-    TRI_ASSERT((*it) != res.get());
-    size_t const n = (*it)->size();
+  for (auto& it : blocks) {
+    TRI_ASSERT(it != res.get());
+    size_t const n = it->size();
     for (size_t row = 0; row < n; ++row) {
       for (RegisterId col = 0; col < nrRegs; ++col) {
         // copy over value
-        if (!(*it)->getValueReference(row, col).isEmpty()) {
-          res->setValue(pos + row, col, (*it)->getValue(row, col));
+        AqlValue const& a = it->getValueReference(row, col);
+        if (!a.isEmpty()) {
+          res->setValue(pos + row, col, a);
         }
       }
     }
-    (*it)->eraseAll();
-    pos += (*it)->size();
+    it->eraseAll();
+    pos += it->size();
   }
 
   return res.release();

@@ -368,7 +368,7 @@ static void ExtractKeys(std::unordered_set<std::string>& names,
     if (param.isString()) {
       names.emplace(param.slice().copyString());
     } else if (param.isNumber()) {
-      double number = param.toDouble();
+      double number = param.toDouble(trx);
 
       if (std::isnan(number) || number == HUGE_VAL || number == -HUGE_VAL) {
         names.emplace("null");
@@ -887,7 +887,7 @@ AqlValue Functions::ToNumber(arangodb::aql::Query* query,
                              VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   bool failed;
-  double value = a.toDouble(failed);
+  double value = a.toDouble(trx, failed);
 
   if (failed) {
     return AqlValue(arangodb::basics::VelocyPackHelper::ZeroValue());
@@ -983,7 +983,7 @@ AqlValue Functions::Length(arangodb::aql::Query* query,
       length = 0;
     }
   } else if (value.isNumber()) {
-    double tmp = value.toDouble();
+    double tmp = value.toDouble(trx);
     if (std::isnan(tmp) || !std::isfinite(tmp)) {
       length = 0;
     } else {
@@ -1019,7 +1019,7 @@ AqlValue Functions::First(arangodb::aql::Query* query,
   }
 
   bool mustDestroy;
-  return value.at(0, mustDestroy, true);
+  return value.at(trx, 0, mustDestroy, true);
 }
 
 /// @brief function LAST
@@ -1042,7 +1042,7 @@ AqlValue Functions::Last(arangodb::aql::Query* query,
   }
 
   bool mustDestroy;
-  return value.at(n - 1, mustDestroy, true);
+  return value.at(trx, n - 1, mustDestroy, true);
 }
 
 /// @brief function NTH
@@ -1065,14 +1065,14 @@ AqlValue Functions::Nth(arangodb::aql::Query* query,
   }
 
   AqlValue position = ExtractFunctionParameterValue(trx, parameters, 1);
-  int64_t index = position.toInt64();
+  int64_t index = position.toInt64(trx);
 
   if (index < 0 || index >= static_cast<int64_t>(n)) {
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
   bool mustDestroy;
-  return value.at(index, mustDestroy, true);
+  return value.at(trx, index, mustDestroy, true);
 }
 
 /// @brief function CONTAINS
@@ -1760,7 +1760,7 @@ AqlValue Functions::RandomToken(arangodb::aql::Query* query,
                                 VPackFunctionParameters const& parameters) {
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  int64_t const length = value.toInt64();
+  int64_t const length = value.toInt64(trx);
   if (length <= 0 || length > 65536) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANDOM_TOKEN");
@@ -2186,7 +2186,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
     AqlValue limit = ExtractFunctionParameterValue(trx, parameters, 3);
 
     if (limit.isNumber()) {
-      limitValue = limit.toInt64();
+      limitValue = limit.toInt64(trx);
     } else if (!limit.isNull(true)) {
       THROW_ARANGO_EXCEPTION_PARAMS(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
@@ -2215,7 +2215,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
   TRI_ASSERT(trx->hasDitch(cid));
 
   GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->nearQuery(
-      trx, latitude.toDouble(), longitude.toDouble(), static_cast<size_t>(limitValue));
+      trx, latitude.toDouble(trx), longitude.toDouble(trx), static_cast<size_t>(limitValue));
 
   return buildGeoResult(trx, query, cors, cid, attributeName);
 }
@@ -2266,7 +2266,7 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
   TRI_ASSERT(trx->hasDitch(cid));
 
   GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->withinQuery(
-      trx, latitudeValue.toDouble(), longitudeValue.toDouble(), radiusValue.toDouble());
+      trx, latitudeValue.toDouble(trx), longitudeValue.toDouble(trx), radiusValue.toDouble(trx));
 
   return buildGeoResult(trx, query, cors, cid, attributeName);
 }
@@ -2287,7 +2287,7 @@ AqlValue Functions::Flatten(arangodb::aql::Query* query,
   if (parameters.size() == 2) {
     AqlValue maxDepthValue = ExtractFunctionParameterValue(trx, parameters, 1);
     bool failed;
-    double tmpMaxDepth = maxDepthValue.toDouble(failed);
+    double tmpMaxDepth = maxDepthValue.toDouble(trx, failed);
     if (failed || tmpMaxDepth < 1) {
       maxDepth = 1;
     } else {
@@ -2415,7 +2415,7 @@ AqlValue Functions::Slice(arangodb::aql::Query* query,
  
   // determine lower bound 
   AqlValue fromValue = ExtractFunctionParameterValue(trx, parameters, 1);
-  int64_t from = fromValue.toInt64();
+  int64_t from = fromValue.toInt64(trx);
   if (from < 0) {
     from = baseArray.length() + from;
     if (from < 0) {
@@ -2429,7 +2429,7 @@ AqlValue Functions::Slice(arangodb::aql::Query* query,
   if (toValue.isNull(true)) {
     to = baseArray.length();
   } else {
-    to = toValue.toInt64();
+    to = toValue.toInt64(trx);
     if (to >= 0) {
       to += from;
     } else {
@@ -2614,8 +2614,7 @@ AqlValue Functions::Round(arangodb::aql::Query* query,
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  bool failed = false; // we're intentionally ignoring this variable
-  double input = value.toDouble(failed);
+  double input = value.toDouble(trx);
 
   // Rounds down for < x.4999 and up for > x.50000
   return NumberValue(trx, std::floor(input + 0.5), true);  
@@ -2629,9 +2628,7 @@ AqlValue Functions::Abs(arangodb::aql::Query* query,
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  bool failed = false; // we're intentionally ignoring this variable
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::abs(input), true);  
 }
 
@@ -2643,9 +2640,7 @@ AqlValue Functions::Ceil(arangodb::aql::Query* query,
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  bool failed = false; // we're intentionally ignoring this variable
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::ceil(input), true);  
 }
 
@@ -2657,9 +2652,7 @@ AqlValue Functions::Floor(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  bool failed = false; // we're intentionally ignoring this variable
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::floor(input), true);  
 }
 
@@ -2671,9 +2664,7 @@ AqlValue Functions::Sqrt(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::sqrt(input), true);  
 }
 
@@ -2686,9 +2677,8 @@ AqlValue Functions::Pow(arangodb::aql::Query* query,
   AqlValue baseValue = ExtractFunctionParameterValue(trx, parameters, 0);
   AqlValue expValue = ExtractFunctionParameterValue(trx, parameters, 1);
 
-  bool failed = false; // we're ignoring this variable intentionally
-  double base = baseValue.toDouble(failed);
-  double exp = expValue.toDouble(failed);
+  double base = baseValue.toDouble(trx);
+  double exp = expValue.toDouble(trx);
 
   return NumberValue(trx, std::pow(base, exp), true);
 }
@@ -2701,9 +2691,7 @@ AqlValue Functions::Log(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::log(input), true);  
 }
 
@@ -2715,9 +2703,7 @@ AqlValue Functions::Log2(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::log2(input), true);  
 }
 
@@ -2729,9 +2715,7 @@ AqlValue Functions::Log10(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::log10(input), true);  
 }
 
@@ -2743,9 +2727,7 @@ AqlValue Functions::Exp(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::exp(input), true);  
 }
 
@@ -2757,9 +2739,7 @@ AqlValue Functions::Exp2(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::exp2(input), true);  
 }
 
@@ -2771,9 +2751,7 @@ AqlValue Functions::Sin(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::sin(input), true);  
 }
 
@@ -2785,9 +2763,7 @@ AqlValue Functions::Cos(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::cos(input), true);  
 }
 
@@ -2799,9 +2775,7 @@ AqlValue Functions::Tan(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::tan(input), true);  
 }
 
@@ -2813,9 +2787,7 @@ AqlValue Functions::Asin(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::asin(input), true);  
 }
 
@@ -2827,9 +2799,7 @@ AqlValue Functions::Acos(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::acos(input), true);  
 }
 
@@ -2841,9 +2811,7 @@ AqlValue Functions::Atan(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input = value.toDouble(failed);
-
+  double input = value.toDouble(trx);
   return NumberValue(trx, std::atan(input), true);  
 }
 
@@ -2856,10 +2824,8 @@ AqlValue Functions::Atan2(arangodb::aql::Query* query,
   AqlValue value1 = ExtractFunctionParameterValue(trx, parameters, 0);
   AqlValue value2 = ExtractFunctionParameterValue(trx, parameters, 1);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double input1 = value1.toDouble(failed);
-  double input2 = value2.toDouble(failed);
-
+  double input1 = value1.toDouble(trx);
+  double input2 = value2.toDouble(trx);
   return NumberValue(trx, std::atan2(input1, input2), true);  
 }
 
@@ -2871,9 +2837,7 @@ AqlValue Functions::Radians(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double degrees = value.toDouble(failed);
-
+  double degrees = value.toDouble(trx);
   // acos(-1) == PI
   return NumberValue(trx, degrees * (std::acos(-1.0) / 180.0), true);
 }
@@ -2886,9 +2850,7 @@ AqlValue Functions::Degrees(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false; // we're intentionally ignoring this variable here
-  double radians = value.toDouble(failed);
-
+  double radians = value.toDouble(trx);
   // acos(-1) == PI
   return NumberValue(trx, radians * (180.0 / std::acos(-1.0)), true);
 }
@@ -3199,7 +3161,7 @@ AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
     if (parameters.size() == 3) {
       AqlValue limitValue = ExtractFunctionParameterValue(trx, parameters, 2);
       if (!limitValue.isNull(true)) {
-        limit = limitValue.toInt64();
+        limit = limitValue.toInt64(trx);
         useLimit = true;
       }
     }
@@ -3293,7 +3255,7 @@ AqlValue Functions::RemoveNth(arangodb::aql::Query* query,
 
   double const count = static_cast<double>(list.length());
   AqlValue position = ExtractFunctionParameterValue(trx, parameters, 1);
-  double p = position.toDouble();
+  double p = position.toDouble(trx);
   if (p >= count || p < -count) {
     // out of bounds
     return list.clone();
@@ -3548,7 +3510,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
   }
 
   bool unused = false;
-  double p = border.toDouble(unused);
+  double p = border.toDouble(trx, unused);
   if (p <= 0.0 || p > 100.0) {
     RegisterWarning(query, "PERCENTILE",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -3632,21 +3594,20 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
   AqlValue left = ExtractFunctionParameterValue(trx, parameters, 0);
   AqlValue right = ExtractFunctionParameterValue(trx, parameters, 1);
 
-  bool unused = true;
-  double from = left.toDouble(unused);
-  double to = right.toDouble(unused);
+  double from = left.toDouble(trx);
+  double to = right.toDouble(trx);
 
   if (parameters.size() < 3) {
-    return AqlValue(left.toInt64(), right.toInt64());
+    return AqlValue(left.toInt64(trx), right.toInt64(trx));
   }
 
   AqlValue stepValue = ExtractFunctionParameterValue(trx, parameters, 2);
   if (stepValue.isNull(true)) {
     // no step specified. return a real range object
-    return AqlValue(left.toInt64(), right.toInt64());
+    return AqlValue(left.toInt64(trx), right.toInt64(trx));
   } 
   
-  double step = stepValue.toDouble(unused);
+  double step = stepValue.toDouble(trx);
 
   if (step == 0.0 || (from < to && step < 0.0) || (from > to && step > 0.0)) {
     RegisterWarning(query, "RANGE",
@@ -3762,7 +3723,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
     } 
     if (limit.isNumber()) {
-      int64_t value = limit.toInt64();
+      int64_t value = limit.toInt64(trx);
       if (value > 0) {
         maxResults = static_cast<size_t>(value);
       }

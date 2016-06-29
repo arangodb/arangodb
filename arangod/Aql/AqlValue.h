@@ -318,7 +318,7 @@ struct AqlValue final {
   size_t length() const;
   
   /// @brief get the (array) element at position 
-  AqlValue at(int64_t position, bool& mustDestroy, bool copy) const;
+  AqlValue at(arangodb::AqlTransaction* trx, int64_t position, bool& mustDestroy, bool copy) const;
   
   /// @brief get the _key attribute from an object/document
   AqlValue getKeyAttribute(arangodb::AqlTransaction* trx,
@@ -342,9 +342,9 @@ struct AqlValue final {
   bool hasKey(arangodb::AqlTransaction* trx, std::string const& name) const;
 
   /// @brief get the numeric value of an AqlValue
-  double toDouble() const;
-  double toDouble(bool& failed) const;
-  int64_t toInt64() const;
+  double toDouble(arangodb::AqlTransaction* trx) const;
+  double toDouble(arangodb::AqlTransaction* trx, bool& failed) const;
+  int64_t toInt64(arangodb::AqlTransaction* trx) const;
   
   /// @brief whether or not an AqlValue evaluates to true/false
   bool toBoolean() const;

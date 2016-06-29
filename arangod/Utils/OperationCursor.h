@@ -47,7 +47,7 @@ struct OperationCursor {
 
  private:
 
-  std::shared_ptr<IndexIterator> _indexIterator;
+  std::unique_ptr<IndexIterator> _indexIterator;
   bool                           _hasMore;
   uint64_t                       _limit;
   uint64_t const                 _originalLimit;
@@ -68,10 +68,10 @@ struct OperationCursor {
         _limit(limit),  // _limit is modified later on
         _originalLimit(limit),
         _batchSize(batchSize) {
-          if (_indexIterator == nullptr) {
-            _hasMore = false;
-          }
-        }
+    if (_indexIterator == nullptr) {
+      _hasMore = false;
+    }
+  }
 
   ~OperationCursor() {
   }
