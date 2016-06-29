@@ -487,25 +487,23 @@ void Constituent::run() {
       }
     }
   }
-
+  
   // Always start off as follower
   while (!this->isStopping() && size() > 1) {
+
+    long t = 0;
     
     if (_role == FOLLOWER) {
       bool cast = false;
-
+      
       {
         MUTEX_LOCKER(guard, _castLock);
         _cast = false;  // New round set not cast vote
       }
-
-      int32_t left = static_cast<int32_t>(1000000.0 * config().minPing), right = static_cast<int32_t>(1000000.0 * config().maxPing);
-      long rand_wait = static_cast<long>(RandomGenerator::interval(left, right));
-
-      {
-        CONDITION_LOCKER(guardv, _cv);
-        _cv.wait(rand_wait);
-      }
+      
+      int32_t left = static_cast<int32_t>(1000000.0 * config().minPing),
+        right = static_cast<int32_t>(1000000.0 * config().maxPing);
+      t = static_cast<long>(RandomGenerator::interval(left, right));
       
       {
         MUTEX_LOCKER(guard, _castLock);
@@ -517,14 +515,19 @@ void Constituent::run() {
       }
       
     } else if (_role == CANDIDATE) {
+
       callElection();  // Run for office
+      continue;
+
     } else {
-      int32_t left = 100000.0 * config().minPing;
-      long rand_wait = static_cast<long>(left);
-      {
-        CONDITION_LOCKER(guardv, _cv);
-        _cv.wait(rand_wait);
-      }
+
+      t = 100000.0 * config().minPing;
+
+    }
+
+    {
+      CONDITION_LOCKER(guardv, _cv);
+      _cv.wait(t);
     }
     
   }

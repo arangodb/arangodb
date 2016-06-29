@@ -97,7 +97,7 @@ Slice Node::slice() const {
   } 
 
   // Some value
-  if (!_value.empty() && !_value.empty()) {
+  if (!_value.empty()) {
     return Slice(_value.front().data());
   }
 

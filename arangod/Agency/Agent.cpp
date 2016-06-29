@@ -440,7 +440,7 @@ void Agent::run() {
   while (!this->isStopping() && size() > 1) {
 
     if (leading()) {             // Only if leading
-      _appendCV.wait(20000);
+      _appendCV.wait(25000);
     } else {
       _appendCV.wait();         // Else wait for our moment in the sun
     }
