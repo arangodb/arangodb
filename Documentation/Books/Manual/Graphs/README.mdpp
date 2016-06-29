@@ -57,6 +57,20 @@ This involves more operations inside the database which don't come for free.
 Therefore anonymous graphs may be faster in many operations.
 So this question boils down to 'Can I afford the additional effort or do I need the warranty for integrity?'. 
 
+!SUBSECTION Multiple edge collections VS. `FILTER`s on edge document attributes
+If you want to only traverse edges of a specific classes, there are two ways to achieve this. The first would be an attribute on the edge object - i.e. `type`, where you specify a differenciator for the edge -
+i.e. one of `["friends", "family", "maried", "workmates"]`, so you later can `FILTER e.type="friends"`.
+
+Another in some cases more efficient way may be to use different edge collections for the different types of edges, so you have `friend_eges, family_edges, maried_edges workmate_edges` as collection names.
+You then can configure several named graphs including a subset of the available edge and vertex collections - or you use an anonymous graph queries, where you specify a list of the edge collections to take into account in that query.
+
+Both approaches have advantages and disadvantages. `FILTER`-operations on ede attributes will do comparisons on each traversed edge, which may become CPU intense.
+When not *finding* the edges in first place because of the collection containing them is not traversed at all, there will never be a reason to actualy check for their `type` with `FILTER`.
+
+The multiple edge collections approach [is limited by the number of collections that can be used similarily in one query](../../AQL/Fundamentals/Syntax.html#collection-names); working with many collections at once also uses resources inside of ArangoDB, therefore this limit is in place. You also may have constraints on other edge attributes, which doesn't work if they're not in one collection.
+
+So, if your edges classify in about a dozend different types, its ok to choose the collection approach, otherwise the `FILTER` aproach is to be prefered. For sure `FILTERS` can also be used on edges from selected collections.
+
 !SUBSECTION Backup and restore
 For sure you want to have backups of your graph data, you can use [Arangodump](../Administration/Arangodump.md) to create the backup,
 and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into a new ArangoDB. You should however note that:
