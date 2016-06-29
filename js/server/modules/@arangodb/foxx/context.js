@@ -142,4 +142,19 @@ module.exports = class FoxxContext {
   get dependencies() {
     return this.service.dependencies;
   }
+
+  toJSON() {
+    return {
+      argv: this.argv,
+      basePath: this.basePath,
+      baseUrl: this.baseUrl,
+      collectionPrefix: this.collectionPrefix,
+      configuration: this.configuration,
+      dependencies: this.dependencies,
+      isDevelopment: this.isDevelopment,
+      isProduction: this.isProduction,
+      manifest: this.manifest,
+      mount: this.mount
+    };
+  }
 };

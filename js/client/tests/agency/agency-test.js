@@ -44,7 +44,6 @@ function agencyTestSuite () {
 
   var agencyServers = ARGUMENTS[0].split(" ");
   var whoseTurn = 0;
-  var nagents = agencyServers.length;
   var request = require("@arangodb/request");
 
   function readAgency(list) {
