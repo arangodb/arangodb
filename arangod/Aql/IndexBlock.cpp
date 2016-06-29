@@ -28,7 +28,6 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Utils/OperationCursor.h"
@@ -39,8 +38,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-
-using Json = arangodb::basics::Json;
 
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
