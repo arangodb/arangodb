@@ -418,7 +418,7 @@ void Functions::Stringify(arangodb::AqlTransaction* trx,
   }
    
   if (slice.isObject() || slice.isArray()) {
-    VPackDumper dumper(&buffer, trx->transactionContext()->getVPackOptions());
+    VPackDumper dumper(&buffer, trx->transactionContextPtr()->getVPackOptions());
     dumper.dump(slice);
     return;
   } 
@@ -1863,13 +1863,11 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(value, false);
 
-  VPackOptions options;
-  options.customTypeHandler =
-      trx->transactionContext()->orderCustomTypeHandler().get();
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
-             arangodb::basics::VelocyPackHelper::VPackEqual(&options));
+             arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
   for (auto const& s : VPackArrayIterator(slice)) {
     if (!s.isNone()) {
@@ -1983,13 +1981,11 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
   ValidateParameters(parameters, "UNION_DISTINCT", 2);
   size_t const n = parameters.size();
 
-  VPackOptions options;
-  options.customTypeHandler =
-      trx->transactionContext()->orderCustomTypeHandler().get();
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
-             arangodb::basics::VelocyPackHelper::VPackEqual(&options));
+             arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
   std::vector<AqlValueMaterializer> materializers;
   materializers.reserve(n);
@@ -2046,15 +2042,12 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
                                  VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "INTERSECTION", 2);
 
-  VPackOptions options;
-  options.customTypeHandler =
-      trx->transactionContext()->orderCustomTypeHandler().get();
-
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   std::unordered_map<VPackSlice, size_t,
                      arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
-             arangodb::basics::VelocyPackHelper::VPackEqual(&options));
+             arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
   size_t const n = parameters.size();
   std::vector<AqlValueMaterializer> materializers;
@@ -2117,15 +2110,12 @@ AqlValue Functions::Outersection(arangodb::aql::Query* query,
                                  VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "OUTERSECTION", 2);
 
-  VPackOptions options;
-  options.customTypeHandler =
-      trx->transactionContext()->orderCustomTypeHandler().get();
-
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   std::unordered_map<VPackSlice, size_t,
                      arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
-             arangodb::basics::VelocyPackHelper::VPackEqual(&options));
+             arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
   size_t const n = parameters.size();
   std::vector<AqlValueMaterializer> materializers;
@@ -2496,14 +2486,12 @@ AqlValue Functions::Minus(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  VPackOptions options;
-  options.customTypeHandler =
-      trx->transactionContext()->orderCustomTypeHandler().get();
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   std::unordered_map<VPackSlice, size_t,
                      arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       contains(512, arangodb::basics::VelocyPackHelper::VPackHash(),
-               arangodb::basics::VelocyPackHelper::VPackEqual(&options));
+               arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
   // Fill the original map
   AqlValueMaterializer materializer(trx);
@@ -2996,12 +2984,10 @@ AqlValue Functions::Push(arangodb::aql::Query* query,
   for (auto const& it : VPackArrayIterator(l)) {
     builder->add(it);
   }
-  VPackOptions options;
-  options.customTypeHandler =
-      trx->transactionContext()->orderCustomTypeHandler().get();
   if (parameters.size() == 3) {
+    auto options = trx->transactionContextPtr()->getVPackOptions();
     AqlValue unique = ExtractFunctionParameterValue(trx, parameters, 2);
-    if (!unique.toBoolean() || !ListContainsElement(&options, l, p)) {
+    if (!unique.toBoolean() || !ListContainsElement(options, l, p)) {
       builder->add(p);
     }
   } else {
@@ -3077,9 +3063,6 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
   TransactionBuilderLeaser builder(trx);
   builder->openArray();
 
-  VPackOptions options;
-  options.customTypeHandler =
-      trx->transactionContext()->orderCustomTypeHandler().get();
   if (!list.isNull(true)) {
     if (list.isArray()) {
       for (auto const& it : VPackArrayIterator(l)) {
@@ -3087,8 +3070,10 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
       }
     }
   }
+  
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   if (!toAppend.isArray()) {
-    if (!unique || !ListContainsElement(&options, l, t)) {
+    if (!unique || !ListContainsElement(options, l, t)) {
       builder->add(t);
     }
   } else {
@@ -3099,7 +3084,7 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
       added.reserve(static_cast<size_t>(slice.length()));
       for (auto const& it : VPackArrayIterator(slice)) {
         if (added.find(it) == added.end() &&
-            !ListContainsElement(&options, l, it)) {
+            !ListContainsElement(options, l, it)) {
           builder->add(it);
           added.emplace(it);
         }
@@ -3133,12 +3118,10 @@ AqlValue Functions::Unshift(arangodb::aql::Query* query,
     unique = a.toBoolean();
   }
 
-  VPackOptions options;
-  options.customTypeHandler =
-      trx->transactionContext()->orderCustomTypeHandler().get();
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   size_t unused;
   if (unique && list.isArray() &&
-      ListContainsElement(trx, &options, list, toAppend, unused)) {
+      ListContainsElement(trx, options, list, toAppend, unused)) {
     // Short circuit, nothing to do return list
     return list.clone();
   }
@@ -3276,9 +3259,7 @@ AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
   
-  VPackOptions options;
-  options.customTypeHandler =
-      trx->transactionContext()->orderCustomTypeHandler().get();
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   try {
     AqlValueMaterializer valuesMaterializer(trx);
     VPackSlice v = valuesMaterializer.slice(values, false);
@@ -3289,7 +3270,7 @@ AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
     TransactionBuilderLeaser builder(trx);
     builder->openArray();
     for (auto const& it : VPackArrayIterator(l)) {
-      if (!ListContainsElement(&options, v, it)) {
+      if (!ListContainsElement(options, v, it)) {
         builder->add(it);
       }
     }
@@ -3720,12 +3701,10 @@ AqlValue Functions::Position(arangodb::aql::Query* query,
 
   if (list.length() > 0) {
     AqlValue searchValue = ExtractFunctionParameterValue(trx, parameters, 1);
-    VPackOptions options;
-    options.customTypeHandler =
-        trx->transactionContext()->orderCustomTypeHandler().get();
+    auto options = trx->transactionContextPtr()->getVPackOptions();
 
     size_t index;
-    if (ListContainsElement(trx, &options, list, searchValue, index)) {
+    if (ListContainsElement(trx, options, list, searchValue, index)) {
       if (!returnIndex) {
         // return true
         return AqlValue(arangodb::basics::VelocyPackHelper::TrueValue());

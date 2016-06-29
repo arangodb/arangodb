@@ -70,9 +70,12 @@ TransactionContext::TransactionContext(TRI_vocbase_t* vocbase)
       _ditches(),
       _builders{_arena},
       _stringBuffer(),
-      _options(),
+      _options(arangodb::velocypack::Options::Defaults),
+      _dumpOptions(arangodb::velocypack::Options::Defaults),
       _transaction{ 0, false }, 
-      _ownsResolver(false) {}
+      _ownsResolver(false) {
+  _dumpOptions.escapeUnicode = true;        
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the context
@@ -224,6 +227,18 @@ VPackOptions* TransactionContext::getVPackOptions() {
     orderCustomTypeHandler();
   }
   return &_options;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get velocypack options with a custom type handler for dumping
+//////////////////////////////////////////////////////////////////////////////
+  
+VPackOptions* TransactionContext::getVPackOptionsForDump() {
+  if (_customTypeHandler == nullptr) {
+    // this modifies options!
+    orderCustomTypeHandler();
+  }
+  return &_dumpOptions;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
