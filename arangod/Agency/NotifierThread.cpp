@@ -39,12 +39,11 @@ NotifierThread::NotifierThread(const std::string& path,
       _endpoints(endpoints) {}
 
 void NotifierThread::scheduleNotification(const std::string& endpoint) {
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
-    << "Scheduling " << endpoint << _path << " " << _body->toJson()
-    << " " << endpoint;
+  LOG(DEBUG) << "Scheduling " << endpoint << _path << " " << _body->toJson()
+             << " " << endpoint;
 
   auto cb = [this, endpoint](bool result) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agencynotification for " << endpoint
+    LOG(DEBUG) << "Agencynotification for " << endpoint
                << ". Result: " << result;
 
     CONDITION_LOCKER(guard, _cv);
@@ -66,7 +65,7 @@ bool NotifierThread::start() { return Thread::start(); }
 
 void NotifierThread::run() {
   try {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting Agencynotifications";
+    LOG(DEBUG) << "Starting Agencynotifications";
     // mop: locker necessary because if scheduledNotifications may return
     // earlier than this thread reaching the while
     CONDITION_LOCKER(locker, _cv);
@@ -76,10 +75,10 @@ void NotifierThread::run() {
     }
 
     while (numEndpoints > 0) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "WAITING " << numEndpoints;
+      LOG(DEBUG) << "WAITING " << numEndpoints;
       locker.wait();
       if (isStopping()) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agencynotifications stopping";
+        LOG(DEBUG) << "Agencynotifications stopping";
         break;
       }
 
@@ -95,11 +94,11 @@ void NotifierThread::run() {
       }
       _openResults.clear();
     }
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agencynotifications done";
+    LOG(DEBUG) << "Agencynotifications done";
   } catch (std::exception& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Couldn't notify agents: " << e.what();
+    LOG(ERR) << "Couldn't notify agents: " << e.what();
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Couldn't notify agents!";
+    LOG(ERR) << "Couldn't notify agents!";
   }
 
 }

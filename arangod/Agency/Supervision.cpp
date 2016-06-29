@@ -555,14 +555,6 @@ void Supervision::getUniqueIds() {
     uniq.close();
 
     auto result = transact(_agent, uniq);
-
-    if (!result.accepted || result.indices.empty()) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "We have lost agency leadership. Stopping any supervision processing "
-        << __FILE__ << __LINE__;
-      return;
-    }
-    
     if (result.indices[0]) {
       _agent->waitFor(result.indices[0]);
       _jobId = latestId;

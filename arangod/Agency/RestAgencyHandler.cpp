@@ -78,7 +78,7 @@ void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
     createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, e.what());
   }
@@ -110,7 +110,7 @@ HttpHandler::status_t RestAgencyHandler::handleWrite() {
     try {
       query = _request->toVelocyPack(&options);
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
       Builder body;
       body.openObject();
       body.add("message", VPackValue(e.what()));
@@ -137,10 +137,6 @@ HttpHandler::status_t RestAgencyHandler::handleWrite() {
       body.close();
       generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
       return HttpHandler::status_t(HANDLER_DONE);
-    }
-
-    while(_agent->size() > 1 && _agent->leaderID() > 100) {
-      std::this_thread::sleep_for(duration_t(100));
     }
 
     write_ret_t ret = _agent->write(query);
@@ -175,8 +171,7 @@ HttpHandler::status_t RestAgencyHandler::handleWrite() {
             max_index =
               *std::max_element(ret.indices.begin(), ret.indices.end());
           } catch (std::exception const& e) {
-            LOG_TOPIC(WARN, Logger::AGENCY)
-              << e.what() << " " << __FILE__ << __LINE__;
+            LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
           }
 
           if (max_index > 0) {
@@ -210,15 +205,10 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead() {
     try {
       query = _request->toVelocyPack(&options);
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+      LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
       generateError(GeneralResponse::ResponseCode::BAD, 400);
       return HttpHandler::status_t(HANDLER_DONE);
     }
-
-    while(_agent->size() > 1 && _agent->leaderID() > 100) {
-      std::this_thread::sleep_for(duration_t(100));
-    }
-        
     read_ret_t ret = _agent->read(query);
 
     if (ret.accepted) {  // I am leading

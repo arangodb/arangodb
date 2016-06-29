@@ -106,8 +106,7 @@ inline static bool endpointPathFromUrl(
 
 
 /// Ctor with name
-Store::Store(Agent* agent, std::string const& name)
-    : Thread(name), _agent(agent), _node(name, this) {}
+Store::Store(std::string const& name) : Thread(name), _node(name, this) {}
 
 
 /// Copy ctor
@@ -353,22 +352,6 @@ bool Store::check(VPackSlice const& slice) const {
           if (op.value.getBool() ? found : !found) {
             return false;
           }
-        } else if (oper == "in") {  // in
-          if (found) {
-            if (node.slice().isArray()) {
-              bool found = false;
-              for (auto const& i : VPackArrayIterator(node.slice())) {
-                if (i == op.value) {
-                  found = true;
-                  continue;
-                }
-              }
-              if (found) {
-                continue;
-              }
-            }
-          }
-          return false;
         }
       }
     } else {
@@ -512,6 +495,13 @@ void Store::dumpToBuilder(Builder& builder) const {
 bool Store::start() {
   Thread::start();
   return true;
+}
+
+
+// Start thread with agent
+bool Store::start(Agent* agent) {
+  _agent = agent;
+  return start();
 }
 
 
