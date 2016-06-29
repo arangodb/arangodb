@@ -28,17 +28,21 @@
 
 var internal = require("internal");
 var fs = require("fs");
+fs.readdirSync = function() { return fs.listTree(arguments[0]).filter(file => file != ""); };
+fs.existsSync = function() { return false; };
+fs.ReadStream = {};
+fs.ReadStream.prototype = {};
+fs.WriteStream = {};
+fs.WriteStream.prototype = {};
+var os = require("os");
+os.type = function() { return 'Linux'; };
+var process = require("process");
+process.version = 'v0.1';
 var console = require("console");
 
-var JSHINT = require("jshint").JSHINT;
-var jshintrc = {};
-
-try {
-  jshintrc = JSON.parse(fs.read('./js/.jshintrc'));
-} catch (err) {
-  // ignore any errors
-}
-
+var linter = require("eslint").linter;
+var ConfigFile = require("eslint/lib/config/config-file.js");
+var config = ConfigFile.load('./js/.eslintrc');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs a JSLint test on a file
@@ -53,14 +57,15 @@ function RunTest(path, options) {
     console.error("cannot load test file '%s'", path);
     return false;
   }
-
   var result = {};
-  result["passed"] = JSHINT(content, Object.assign({}, jshintrc, options));
-
-  if (JSHINT.errors) {
-    result["errors"] = JSHINT.errors;
+  try {
+    var messages = linter.verify(content, config);
+    result.passed = !messages.some(message => message.severity == 2);
+    result.messages = messages;
+  } catch (e) {
+    result.passed = false;
+    console.error(e);
   }
-
   return result;
 }
 
@@ -78,19 +83,29 @@ function RunCommandLineTests(options) {
     try {
       var testResult = RunTest(file, options);
       result = result && testResult && testResult.passed;
+      
+      for (var j = 0; j < testResult.messages.length; ++j) {
+        var err = testResult.messages[j];
 
-      if (testResult && (!testResult.passed && testResult.errors)) {
-        for (var j = 0; j < testResult.errors.length; ++j) {
-          var err = testResult.errors[j];
-
-          if (!err) {
-            continue;
-          }
-
-          console.error(`jslint: ${file}:${err.line},${err.character} ${err.reason} (${err.code})`);
+        if (!err) {
+          continue;
         }
-      } else {
+        var level = "UNKNOWN";
+        var outFn = console.error.bind(console);
+        if (err.severity == 1) {
+          level = "WARN";
+          outFn = console.warn.bind(console);
+        } else if (err.severity == 2) {
+          level = "ERROR";
+          outFn = console.error.bind(console);
+        }
+        outFn(`jslint(${level}): ${file}:${err.line},${err.column} (Rule: ${err.ruleId}, Severity: ${err.severity}) ${err.message}`);
+      }
+
+      if (result) {
         console.log(`jslint: ${file} passed`);
+      } else {
+        console.log(`jslint: ${file} failed`);
       }
     } catch (err) {
       console.error(`cannot run test file "${file}": ${err}`);
