@@ -1090,9 +1090,7 @@ function synchronizeOneShard(database, shard, planId, leader) {
   var ok = false;
   const rep = require("@arangodb/replication");
 
-  console.info("synchronizeOneShard: trying to synchronize local shard",
-               "'%s/%s' for central '%s/%s'",
-               database, shard, database, planId);
+  console.info("synchronizeOneShard: trying to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);
   try {
     var ep = ArangoClusterInfo.getServerEndpoint(leader);
     // First once without a read transaction:
@@ -1267,8 +1265,8 @@ function synchronizeLocalFollowerCollections (plannedCollections,
                         typeof inCurrent.servers !== "object" ||
                         !Array.isArray(inCurrent.servers) ||
                         inCurrent.servers.indexOf(ourselves) <= 0 ||
-                        inCurrent.servers[0].substr(0, 1) !== "_" ||
-                        inCurrent.servers[0] === shards[shard][0]) {
+                        inCurrent.servers[0].substr(0, 1) === "_" ||
+                        inCurrent.servers[0] !== shards[shard][0]) {
                       scheduleOneShardSynchronization(
                           database, shard, collInfo.planId, shards[shard][0]);
                     }
