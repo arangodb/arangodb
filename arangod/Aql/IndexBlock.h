@@ -105,7 +105,7 @@ class IndexBlock : public ExecutionBlock {
   Collection const* _collection;
 
   /// @brief document result
-  std::shared_ptr<OperationResult> _result;
+  std::vector<TRI_doc_mptr_t*> _result;
   
   /// @brief document buffer
   std::vector<arangodb::velocypack::Slice> _documents;

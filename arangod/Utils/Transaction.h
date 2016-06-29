@@ -595,7 +595,7 @@ class Transaction {
   /// calling this method
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<OperationCursor> indexScan(std::string const& collectionName,
+  std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
                                              CursorType cursorType,
                                              IndexHandle const& indexId,
                                              VPackSlice const search,

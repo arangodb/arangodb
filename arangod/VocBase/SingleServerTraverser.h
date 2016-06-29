@@ -26,6 +26,7 @@
 
 #include "VocBase/Traverser.h"
 #include "Aql/AqlValue.h"
+#include "Utils/OperationCursor.h"
 
 namespace arangodb {
 
@@ -75,8 +76,7 @@ class SingleServerTraverser final : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   class EdgeGetter
-      : public arangodb::basics::EdgeGetter<std::string, std::string,
-                                            arangodb::velocypack::ValueLength> {
+      : public arangodb::basics::EdgeGetter<std::string, std::string, size_t> {
    public:
     EdgeGetter(SingleServerTraverser* traverser,
                TraverserOptions const& opts,
@@ -88,7 +88,7 @@ class SingleServerTraverser final : public Traverser {
     //////////////////////////////////////////////////////////////////////////////
 
     void getEdge(std::string const&, std::vector<std::string>&,
-                 arangodb::velocypack::ValueLength*&, size_t&) override;
+                 size_t*&, size_t&) override;
 
     void getAllEdges(std::string const&, std::unordered_set<std::string>&, size_t) override;
 
@@ -98,15 +98,13 @@ class SingleServerTraverser final : public Traverser {
     /// @brief Get the next valid cursor
     //////////////////////////////////////////////////////////////////////////////
 
-    bool nextCursor(std::string const&, size_t&,
-                    arangodb::velocypack::ValueLength*&);
+    bool nextCursor(std::string const&, size_t&, size_t*&);
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief Get the next edge
     //////////////////////////////////////////////////////////////////////////////
 
-    void nextEdge(std::string const&, size_t&,
-                  arangodb::velocypack::ValueLength*&,
+    void nextEdge(std::string const&, size_t&, size_t*&,
                   std::vector<std::string>&);
 
     SingleServerTraverser* _traverser;
@@ -128,19 +126,19 @@ class SingleServerTraverser final : public Traverser {
     /// @brief Stack of all active cursors
     //////////////////////////////////////////////////////////////////////////////
 
-    std::stack<std::shared_ptr<OperationCursor>> _cursors;
+    std::stack<std::unique_ptr<OperationCursor>> _cursors;
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief Stack of all active cursor batches
     //////////////////////////////////////////////////////////////////////////////
 
-    std::stack<std::shared_ptr<OperationResult>> _results;
+    std::stack<std::vector<TRI_doc_mptr_t*>> _results;
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief Stack of positions in the cursors
     //////////////////////////////////////////////////////////////////////////////
 
-    std::stack<arangodb::velocypack::ValueLength> _posInCursor;
+    std::stack<size_t> _posInCursor;
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief velocyPack builder to create temporary search values
@@ -153,8 +151,8 @@ class SingleServerTraverser final : public Traverser {
   /// @brief internal cursor to enumerate the paths of a graph
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::basics::PathEnumerator<
-      std::string, std::string, arangodb::velocypack::ValueLength>> _enumerator;
+  std::unique_ptr<arangodb::basics::PathEnumerator<std::string, std::string,
+                                                   size_t>> _enumerator;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal getter to extract an edge
