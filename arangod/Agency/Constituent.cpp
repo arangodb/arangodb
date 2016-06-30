@@ -318,7 +318,6 @@ bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
 
   term_t t = 0;
   arangodb::consensus::id_t lid = 0;
-  bool cast = false;
 
   {
     MUTEX_LOCKER(guard, _castLock);
