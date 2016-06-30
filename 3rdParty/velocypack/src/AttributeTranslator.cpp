@@ -59,8 +59,8 @@ void AttributeTranslator::seal() {
   ObjectIterator it(s);
 
   while (it.valid()) {
-    _keyToId.emplace(it.key().copyString(), it.value().begin());
-    _idToKey.emplace(it.value().getUInt(), it.key().begin());
+    _keyToId.emplace(it.key(false).copyString(), it.value().begin());
+    _idToKey.emplace(it.value().getUInt(), it.key(false).begin());
     it.next();
   }
 }

@@ -39,7 +39,7 @@
 using namespace arangodb::velocypack;
 using VT = arangodb::velocypack::ValueType;
 
-ValueLength const Slice::FixedTypeLengths[256] = {
+ValueLength const SliceStaticData::FixedTypeLengths[256] = {
     /* 0x00 */ 1,                    /* 0x01 */ 1,
     /* 0x02 */ 0,                    /* 0x03 */ 0,
     /* 0x04 */ 0,                    /* 0x05 */ 0,
@@ -169,7 +169,7 @@ ValueLength const Slice::FixedTypeLengths[256] = {
     /* 0xfc */ 0,                    /* 0xfd */ 0,
     /* 0xfe */ 0,                    /* 0xff */ 0};
  
-VT const Slice::TypeMap[256] = {
+VT const SliceStaticData::TypeMap[256] = {
     /* 0x00 */ VT::None,     /* 0x01 */ VT::Array,
     /* 0x02 */ VT::Array,    /* 0x03 */ VT::Array,
     /* 0x04 */ VT::Array,    /* 0x05 */ VT::Array,
@@ -299,7 +299,7 @@ VT const Slice::TypeMap[256] = {
     /* 0xfc */ VT::Custom,   /* 0xfd */ VT::Custom,
     /* 0xfe */ VT::Custom,   /* 0xff */ VT::Custom};
 
-unsigned int const Slice::WidthMap[32] = {
+unsigned int const SliceStaticData::WidthMap[32] = {
     0,  // 0x00, None
     1,  // 0x01, empty array
     1,  // 0x02, array without index table
@@ -321,7 +321,7 @@ unsigned int const Slice::WidthMap[32] = {
     8,  // 0x12, object with unsorted index table
     0};
 
-unsigned int const Slice::FirstSubMap[32] = {
+unsigned int const SliceStaticData::FirstSubMap[32] = {
     0,  // 0x00, None
     1,  // 0x01, empty array
     2,  // 0x02, array without index table
@@ -628,7 +628,7 @@ bool Slice::isEqualString(std::string const& attribute) const {
 Slice Slice::getFromCompactObject(std::string const& attribute) const {
   ObjectIterator it(*this);
   while (it.valid()) {
-    Slice key = it.key();
+    Slice key = it.key(false);
     if (key.makeKey().isEqualString(attribute)) {
       return Slice(key.start() + key.byteSize());
     }

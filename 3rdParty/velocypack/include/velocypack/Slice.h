@@ -67,6 +67,14 @@ namespace velocypack {
 
 class SliceScope;
 
+class SliceStaticData {
+  friend class Slice;
+  static ValueLength const FixedTypeLengths[256];
+  static ValueType const TypeMap[256];
+  static unsigned int const WidthMap[32];
+  static unsigned int const FirstSubMap[32];
+};
+
 class Slice {
   // This class provides read only access to a VPack value, it is
   // intentionally light-weight (only one pointer value), such that
@@ -136,7 +144,9 @@ class Slice {
   // No destructor, does not take part in memory management,
 
   // get the type for the slice
-  inline ValueType type() const noexcept { return TypeMap[head()]; }
+  inline ValueType type() const noexcept {
+    return SliceStaticData::TypeMap[head()];
+  }
 
   char const* typeName() const { return valueTypeName(type()); }
 
@@ -172,7 +182,9 @@ class Slice {
   }
 
   // check if slice is of the specified type
-  inline bool isType(ValueType t) const noexcept { return TypeMap[*_start] == t; }
+  inline bool isType(ValueType t) const noexcept {
+    return SliceStaticData::TypeMap[*_start] == t;
+  }
 
   // check if slice is a None object
   bool isNone() const noexcept { return isType(ValueType::None); }
@@ -365,9 +377,6 @@ class Slice {
     Slice key = getNthKey(index, false);
     return Slice(key.start() + key.byteSize());
   }
-  
-  // extract the nth key from an Object
-  Slice getNthKey(ValueLength index, bool translate) const;
   
   // extract the nth value from an Object
   Slice getNthValue(ValueLength index) const {
@@ -663,7 +672,7 @@ class Slice {
   // get the total byte size for the slice, including the head byte
   ValueLength byteSize() const {
     // check if the type has a fixed length first
-    ValueLength l = FixedTypeLengths[head()];
+    ValueLength l = SliceStaticData::FixedTypeLengths[head()];
     if (l != 0) {
       // return fixed length
       return l;
@@ -688,12 +697,21 @@ class Slice {
           return 1;
         }
 
-        VELOCYPACK_ASSERT(h <= 0x12);
-        if (h <= 0x12) {
-          return readInteger<ValueLength>(_start + 1, WidthMap[h]);
-        }
-        // fallthrough to exception
-        break;
+        VELOCYPACK_ASSERT(h <= 0x0e);
+        return readInteger<ValueLength>(_start + 1,
+                                        SliceStaticData::WidthMap[h]);
+      }
+
+      case ValueType::External: {
+        return 1 + sizeof(char*);
+      }
+
+      case ValueType::UTCDate: {
+        return 1 + sizeof(int64_t);
+      }
+
+      case ValueType::Int: {
+        return static_cast<ValueLength>(1 + (head() - 0x1f));
       }
 
       case ValueType::String: {
@@ -774,7 +792,7 @@ class Slice {
   ValueLength findDataOffset(uint8_t head) const noexcept {
     // Must be called for a nonempty array or object at start():
     VELOCYPACK_ASSERT(head <= 0x12);
-    unsigned int fsm = FirstSubMap[head];
+    unsigned int fsm = SliceStaticData::FirstSubMap[head];
     if (fsm <= 2 && _start[2] != 0) {
       return 2;
     }
@@ -848,12 +866,16 @@ class Slice {
   // extract the nth member from an Array
   Slice getNth(ValueLength index) const;
 
+  // extract the nth member from an Object, note that this is the nth
+  // entry in the hash table for types 0x0b to 0x0e
+  Slice getNthKey(ValueLength index, bool translate) const;
+
   // get the offset for the nth member from a compact Array or Object type
   ValueLength getNthOffsetFromCompact(ValueLength index) const;
 
   inline ValueLength indexEntrySize(uint8_t head) const noexcept {
     VELOCYPACK_ASSERT(head <= 0x12);
-    return static_cast<ValueLength>(WidthMap[head]);
+    return static_cast<ValueLength>(SliceStaticData::WidthMap[head]);
   }
 
   // perform a linear search for the specified attribute inside an Object
@@ -885,12 +907,6 @@ class Slice {
     memcpy(&binary[0], _start + 1, sizeof(T));
     return value;
   }
-
- private:
-  static ValueLength const FixedTypeLengths[256];
-  static ValueType const TypeMap[256];
-  static unsigned int const WidthMap[32];
-  static unsigned int const FirstSubMap[32];
 };
 
 // a class for keeping Slice allocations in scope

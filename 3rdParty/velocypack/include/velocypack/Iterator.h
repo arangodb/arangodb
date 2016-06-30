@@ -119,9 +119,8 @@ class ArrayIterator {
     return operator*();
   }
 
-  inline bool next() noexcept {
+  inline void next() noexcept {
     operator++();
-    return valid();
   }
 
   inline ValueLength index() const noexcept { return _position; }
@@ -196,6 +195,7 @@ class ObjectIterator {
         _current = slice.begin() + slice.findDataOffset(h);
       }
     }
+
   }
 
   ObjectIterator(ObjectIterator const& other)
@@ -242,7 +242,7 @@ class ObjectIterator {
   ObjectPair operator*() const {
     if (_current != nullptr) {
       Slice key = Slice(_current);
-      return ObjectPair(key, Slice(_current + key.byteSize()));
+      return ObjectPair(key.makeKey(), Slice(_current + key.byteSize()));
     }
     return ObjectPair(_slice.getNthKey(_position, true), _slice.getNthValue(_position));
   }
@@ -270,7 +270,8 @@ class ObjectIterator {
       throw Exception(Exception::IndexOutOfBounds);
     }
     if (_current != nullptr) {
-      return Slice(_current);
+      Slice s(_current);
+      return translate ? s.makeKey() : s;
     }
     return _slice.getNthKey(_position, translate);
   }
@@ -286,9 +287,8 @@ class ObjectIterator {
     return _slice.getNthValue(_position);
   }
 
-  inline bool next() noexcept {
+  inline void next() noexcept {
     operator++();
-    return valid();
   }
 
   inline ValueLength index() const noexcept { return _position; }
