@@ -3,6 +3,9 @@ v3.0.1 (XXXX-XX-XX)
 
 * increase max. number of collections in AQL queries from 32 to 256
 
+* fixed issue #1916: header "authorization" is required" when opening
+  services page
+
 * fixed issue #1915: Explain: member out of range
 
 * fixed issue #1914: fix unterminated buffer
