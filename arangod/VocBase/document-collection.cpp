@@ -1060,6 +1060,9 @@ static int PostInsertIndexes (TRI_transaction_collection_t* trxCollection,
 
 static inline TRI_voc_rid_t GetRevisionId (TRI_voc_rid_t previous) {
   if (previous != 0) {
+    // make sure our local tick is at least as high as the provided revision id
+    TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(previous));
+
     return previous;
   }
 
@@ -2329,6 +2332,11 @@ static int IterateMarkersCollection (TRI_collection_t* collection) {
   OpenIteratorAbortTransaction(&openState);
 
   TRI_DestroyVector(&openState._operations);
+ 
+  // make sure our local tick is now at least as high as the highest revision id used in this collection
+  if (document->_info._revision > 0) {
+    TRI_UpdateTickServer(document->_info._revision);
+  }
 
   // update the real statistics for the collection
   try {
