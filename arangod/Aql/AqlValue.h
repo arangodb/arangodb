@@ -145,47 +145,26 @@ struct AqlValue final {
       setType(AqlValueType::VPACK_INLINE);
     } else if (length <= 126) {
       // short string... cannot store inline, but we don't need to
-      // create a full-features Builder object here
+      // create a full-featured Builder object here
       _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
       _data.buffer->push_back(static_cast<char>(0x40 + length));
       _data.buffer->append(value, length);
       setType(AqlValueType::VPACK_MANAGED);
     } else {
       // long string
-      VPackBuilder builder;
-      builder.add(VPackValue(value));
-      initFromSlice(builder.slice());
+      // create a big enough Buffer object
+      auto buffer = std::make_unique<VPackBuffer<uint8_t>>(8 + length);
+      // add string to Builder
+      VPackBuilder builder(*buffer.get());
+      builder.add(VPackValuePair(value, length, VPackValueType::String));
+      // steal Buffer. now we have ownership
+      _data.buffer = buffer.release();
+      setType(AqlValueType::VPACK_MANAGED);
     }
   }
   
   // construct from std::string
-  explicit AqlValue(std::string const& value) {
-    if (value.empty()) {
-      // empty string
-      _data.internal[0] = 0x40;
-      setType(AqlValueType::VPACK_INLINE);
-      return;
-    }
-    size_t const length = value.size();
-    if (length < sizeof(_data.internal) - 1) {
-      // short string... can store it inline
-      _data.internal[0] = static_cast<uint8_t>(0x40 + length);
-      memcpy(_data.internal + 1, value.c_str(), value.size());
-      setType(AqlValueType::VPACK_INLINE);
-    } else if (length <= 126) {
-      // short string... cannot store inline, but we don't need to
-      // create a full-features Builder object here
-      _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
-      _data.buffer->push_back(static_cast<char>(0x40 + length));
-      _data.buffer->append(value.c_str(), length);
-      setType(AqlValueType::VPACK_MANAGED);
-    } else {
-      // long string
-      VPackBuilder builder;
-      builder.add(VPackValue(value));
-      initFromSlice(builder.slice());
-    }
-  }
+  explicit AqlValue(std::string const& value) : AqlValue(value.c_str(), value.size()) {}
   
   // construct from Buffer, taking over its ownership
   explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer) {
