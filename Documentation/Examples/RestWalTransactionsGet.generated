@@ -5,8 +5,8 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"runningTransactions"</span> : <span class="hljs-number">1</span>, 
-  <span class="hljs-string">"minLastCollected"</span> : <span class="hljs-string">"9925"</span>, 
-  <span class="hljs-string">"minLastSealed"</span> : <span class="hljs-string">"9925"</span>, 
+  <span class="hljs-string">"minLastCollected"</span> : <span class="hljs-string">"9904"</span>, 
+  <span class="hljs-string">"minLastSealed"</span> : <span class="hljs-string">"9904"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

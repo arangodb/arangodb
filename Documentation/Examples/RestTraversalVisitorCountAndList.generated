@@ -18,25 +18,25 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
       { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"12791"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"12756"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       }, 
       { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"12795"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"12760"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
       }, 
       { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlie"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/charlie"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"12798"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"12763"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charlie"</span> 
       }, 
       { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"dave"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/dave"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"12801"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"12766"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Dave"</span> 
       } 
     ] 

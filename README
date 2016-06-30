@@ -53,35 +53,20 @@ Other features of ArangoDB include:
       configuration or spread bigger datasets across multiple servers
     * It is open source (Apache License 2.0)
 For more in-depth information read the design_goals_of_ArangoDB
-***** Latest Release - ArangoDB 2.8 *****
-The What's_new_in_ArangoDB_2.8 can be found in the documentation.
-AQL Graph Traversals / Pattern Matching: AQL offers a new feature to traverse
-over a graph without writing JavaScript functions but with all the other
-features you know from AQL. For this purpose, a special version of FOR
-variable-name IN expression has been introduced.
-The added Array Indexes are a major improvement to ArangoDB that you will love
-and never want to miss again. Hash indexes and skiplist indexes can now be
-defined for array values as well, so it’s freaking fast to access documents
-by individual array values.
-Additional, there is a cool new aggregation feature that was added after the
-beta releases. AQL introduces the keyword AGGREGATE for use in AQL COLLECT
-statements. Using AGGREGATE allows more efficient aggregation (incrementally
-while building the groups) than previous versions of AQL, which built group
-aggregates afterwards from the total of all group values
-Optimizer improvements: The AQL query optimizer can now use indexes if multiple
-filter conditions on attributes of the same collection are combined with
-logical ORs, and if the usage of indexes would completely cover these
-conditions.
-ArangoDB 2.8 now has an automatic deadlock detection for transactions. A
-deadlock is a situation in which two or more concurrent operations (user
-transactions or AQL queries) try to access the same resources (collections,
-documents) and need to wait for the others to finish, but none of them can make
-any progress.
-Foxx Improvements
-The module resolution used by require now behaves more like in node.js. The
-org/arangodb/request module now returns response bodies for error responses by
-default. The old behavior of not returning bodies for error responses can be
-re-enabled by explicitly setting the option returnBodyOnError to false.
+***** Latest Release - ArangoDB 3.0 *****
+The What's_new_in_ArangoDB_3.0 can be found in the documentation.
+Key features of the 3.0 release are:
+    * use of VelocyPack as internal storage format
+    * AQL improvements
+    * much better cluster state management
+    * Synchronous replication (master/master)
+    * unified APIs for CRUD operations
+    * persistent indexes
+    * upgraded version of V8
+    * new web admin interface
+    * Foxx improvements
+    * Logging improvements
+    * improved documentation
 ***** More Information *****
 Please check the Installation_Manual for installation and compilation
 instructions.
@@ -92,4 +77,4 @@ We really appreciate feature requests and bug reports. Please use our Github
 issue tracker for reporting them:
 https://github.com/arangodb/arangodb/issues
 You can use the Google group for improvements, feature requests, comments
-http://www.arangodb.com/community
+https://www.arangodb.com/community

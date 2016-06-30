@@ -6,7 +6,7 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: text/plain; charset=utf-8
-x-arango-async-id: 146641305616398
+x-arango-async-id: 146729587253901
 
 shell> curl --dump - http://localhost:8529/_api/job/pending
 
@@ -14,9 +14,9 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> O
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 [ 
-  <span class="hljs-string">"146641305616398"</span> 
+  <span class="hljs-string">"146729587253901"</span> 
 ]
-shell> curl -X PUT --dump - http://localhost:8529/_api/job/146641305616398/cancel
+shell> curl -X PUT --dump - http://localhost:8529/_api/job/146729587253901/cancel
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
@@ -30,5 +30,5 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> O
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 [ 
-  <span class="hljs-string">"146641305616398"</span> 
+  <span class="hljs-string">"146729587253901"</span> 
 ]

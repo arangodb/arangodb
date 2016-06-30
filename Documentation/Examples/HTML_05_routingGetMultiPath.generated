@@ -1,0 +1,24 @@
+shell> curl --dump - http://localhost:8529/hello/world
+
+HTTP/1.1 200 OK
+content-type: text/plain
+
+"Match No 1"
+shell> curl --dump - http://localhost:8529/hello/emil
+
+HTTP/1.1 200 OK
+content-type: text/plain
+
+"Match No 2"
+shell> curl --dump - http://localhost:8529/your/world
+
+HTTP/1.1 200 OK
+content-type: text/plain
+
+"Match No 3"
+shell> curl --dump - http://localhost:8529/hi/you
+
+HTTP/1.1 200 OK
+content-type: text/plain
+
+"Match No 4"

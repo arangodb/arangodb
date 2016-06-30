@@ -1,6 +1,6 @@
 arangosh&gt; db.test.ensureIndex({ type: <span class="hljs-string">"hash"</span>, fields: [ <span class="hljs-string">"a"</span>, <span class="hljs-string">"b.c"</span> ], unique: <span class="hljs-literal">true</span> });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/16049"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/16011"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"a"</span>, 
@@ -14,17 +14,17 @@ arangosh&gt; db.test.ensureIndex({ type: <span class="hljs-string">"hash"</span>
 }
 arangosh&gt; db.test.save({ a : <span class="hljs-number">1</span>, b : { c : <span class="hljs-number">1</span> } });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/16052"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16052"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"16052"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/16014"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16014"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"16014"</span> 
 }
 arangosh&gt; db.test.save({ a : <span class="hljs-number">1</span>, b : { c : <span class="hljs-number">1</span> } });
 [ArangoError <span class="hljs-number">1210</span>: cannot create <span class="hljs-built_in">document</span>, unique constraint violated]
 arangosh&gt; db.test.save({ a : <span class="hljs-number">1</span>, b : { c : <span class="hljs-literal">null</span> } });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/16058"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16058"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"16058"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/16020"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16020"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"16020"</span> 
 }
 arangosh&gt; db.test.save({ a : <span class="hljs-number">1</span> });
 [ArangoError <span class="hljs-number">1210</span>: cannot create <span class="hljs-built_in">document</span>, unique constraint violated]

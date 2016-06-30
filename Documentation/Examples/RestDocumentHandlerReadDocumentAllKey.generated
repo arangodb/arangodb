@@ -10,9 +10,9 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"result"</span> : [ 
-    <span class="hljs-string">"products/10442"</span>, 
-    <span class="hljs-string">"products/10449"</span>, 
-    <span class="hljs-string">"products/10446"</span> 
+    <span class="hljs-string">"products/10412"</span>, 
+    <span class="hljs-string">"products/10409"</span>, 
+    <span class="hljs-string">"products/10405"</span> 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"cached"</span> : <span class="hljs-literal">false</span>, 
@@ -23,7 +23,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
       <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00027298927307128906</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0001380443572998047</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
