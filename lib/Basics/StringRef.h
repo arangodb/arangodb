@@ -113,7 +113,7 @@ class StringRef {
     if (res != 0) {
       return res;
     }
-    return (_length - other.size());
+    return (static_cast<int>(_length) - static_cast<int>(other.size()));
   }
   
   int compare(StringRef const& other) const {
@@ -121,7 +121,7 @@ class StringRef {
     if (res != 0) {
       return res;
     }
-    return (_length - other._length);
+    return (static_cast<int>(_length) - static_cast<int>(other._length));
   }
 
   inline std::string toString() const {

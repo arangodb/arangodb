@@ -458,7 +458,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {
       // re-use already copied aqlvalues
-      res->copyValuesFromFirstRow(j, curRegs);
+      res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
     }
     if (usesVertexOutput()) {
       res->setValue(j, _vertexReg, _vertices[_posInPaths].clone());
