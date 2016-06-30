@@ -72,7 +72,8 @@ class Constituent : public arangodb::Thread {
   bool running() const;
 
   /// @brief Called by REST handler
-  bool vote(term_t, arangodb::consensus::id_t, index_t, term_t);
+  bool vote(term_t, arangodb::consensus::id_t, index_t, term_t,
+            bool appendEntries = false);
 
   /// @brief My daily business
   void run() override final;

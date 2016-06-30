@@ -244,7 +244,7 @@ bool Agent::recvAppendEntriesRPC(term_t term,
     return false;
   }
 
-  if (!_constituent.vote(term, leaderId, prevIndex, prevTerm)) {
+  if (!_constituent.vote(term, leaderId, prevIndex, prevTerm, true)) {
     return false;
   }
 
@@ -440,7 +440,7 @@ void Agent::run() {
   while (!this->isStopping() && size() > 1) {
 
     if (leading()) {             // Only if leading
-      _appendCV.wait(25000);
+      _appendCV.wait(20000);
     } else {
       _appendCV.wait();         // Else wait for our moment in the sun
     }

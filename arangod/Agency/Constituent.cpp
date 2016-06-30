@@ -106,7 +106,8 @@ bool Constituent::waitForSync() const {
 
 /// Random sleep times in election process
 duration_t Constituent::sleepFor(double min_t, double max_t) {
-  int32_t left = static_cast<int32_t>(1000.0 * min_t), right = static_cast<int32_t>(1000.0 * max_t);
+  int32_t left = static_cast<int32_t>(1000.0 * min_t),
+    right = static_cast<int32_t>(1000.0 * max_t);
   return duration_t(
     static_cast<long>(RandomGenerator::interval(left, right)));
 }
@@ -310,7 +311,8 @@ void Constituent::notifyAll() {
 
 /// @brief Vote
 bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
-                       index_t prevLogIndex, term_t prevLogTerm) {
+                       index_t prevLogIndex, term_t prevLogTerm,
+                       bool appendEntries) {
 
   term_t t = 0;
   arangodb::consensus::id_t lid = 0;
@@ -322,9 +324,13 @@ bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
     lid = _leaderID;
     cast = _cast;
     _cast = true;
+    if (appendEntries && t <= term) {
+      _leaderID = id;
+      return true;
+    }
   }
   
-  if (term > t || (t == term && lid == id && !cast)) {
+  if (term > t || (t == term && lid == id)) {
     {
       MUTEX_LOCKER(guard, _castLock);
       _votedFor = id;  // The guy I voted for I assume leader.
@@ -338,6 +344,7 @@ bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
       CONDITION_LOCKER(guard, _cv);
       _cv.signal();
     }
+
     return true;
   } 
 
@@ -487,23 +494,26 @@ void Constituent::run() {
       }
     }
   }
-  
+
   // Always start off as follower
   while (!this->isStopping() && size() > 1) {
-
-    long t = 0;
     
     if (_role == FOLLOWER) {
       bool cast = false;
-      
+
       {
         MUTEX_LOCKER(guard, _castLock);
         _cast = false;  // New round set not cast vote
       }
-      
+
       int32_t left = static_cast<int32_t>(1000000.0 * config().minPing),
         right = static_cast<int32_t>(1000000.0 * config().maxPing);
-      t = static_cast<long>(RandomGenerator::interval(left, right));
+      long rand_wait = static_cast<long>(RandomGenerator::interval(left, right));
+
+      {
+        CONDITION_LOCKER(guardv, _cv);
+        _cv.wait(rand_wait);
+      }
       
       {
         MUTEX_LOCKER(guard, _castLock);
@@ -515,19 +525,14 @@ void Constituent::run() {
       }
       
     } else if (_role == CANDIDATE) {
-
       callElection();  // Run for office
-      continue;
-
     } else {
-
-      t = 100000.0 * config().minPing;
-
-    }
-
-    {
-      CONDITION_LOCKER(guardv, _cv);
-      _cv.wait(t);
+      int32_t left = 100000.0 * config().minPing;
+      long rand_wait = static_cast<long>(left);
+      {
+        CONDITION_LOCKER(guardv, _cv);
+        _cv.wait(rand_wait);
+      }
     }
     
   }
