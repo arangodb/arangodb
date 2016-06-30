@@ -19,8 +19,8 @@ if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
     exit 1
 fi
 
-MINP=1.0
-MAXP=5.0
+MINP=0.25
+MAXP=2.5
 SFRE=2.5
 COMP=1000
 BASE=4001
