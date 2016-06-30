@@ -91,11 +91,11 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief process a single VelocyPack document
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleSingleDocument(SingleCollectionTransaction&, RestImportResult&,
-                           arangodb::velocypack::Builder& builder,
-                           char const*, arangodb::velocypack::Slice,
-                           std::string const&,
-                           bool, OperationOptions const&, size_t);
+  int handleSingleDocument(SingleCollectionTransaction& trx, 
+                           RestImportResult& result,
+                           arangodb::velocypack::Builder& babies, 
+                           char const* lineStart, arangodb::velocypack::Slice slice,
+                           bool isEdgeCollection, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates documents by JSON objects
@@ -116,6 +116,17 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool createFromKeyValueList();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief perform the actual import (insert/update/replace) operations
+  //////////////////////////////////////////////////////////////////////////////
+
+  int performImport(SingleCollectionTransaction& trx,
+                    RestImportResult& result, 
+                    std::string const& collectionName,
+                    VPackBuilder const& babies,
+                    bool complete,
+                    OperationOptions const& opOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates the result
