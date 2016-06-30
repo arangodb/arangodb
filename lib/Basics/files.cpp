@@ -1266,6 +1266,11 @@ int TRI_VerifyLockFile(char const* filename) {
   }
 
   TRI_pid_t pid = fc;
+  
+  if (pid == Thread::currentProcessId()) {
+    TRI_CLOSE(fd);
+    return TRI_ERROR_NO_ERROR;
+  }
 
   if (kill(pid, 0) == -1) {
     TRI_CLOSE(fd);
