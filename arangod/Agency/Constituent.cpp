@@ -310,7 +310,8 @@ void Constituent::notifyAll() {
 
 /// @brief Vote
 bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
-                       index_t prevLogIndex, term_t prevLogTerm) {
+                       index_t prevLogIndex, term_t prevLogTerm,
+                       bool appendEntries) {
 
   term_t t = 0;
   arangodb::consensus::id_t lid = 0;
@@ -322,9 +323,13 @@ bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
     lid = _leaderID;
     cast = _cast;
     _cast = true;
+    if (appendEntries && t <= term) {
+      _leaderID = id;
+      return true;
+    }
   }
   
-  if (term > t || (t == term && lid == id && !cast)) {
+  if (term > t || (t == term && lid == id)) {
     {
       MUTEX_LOCKER(guard, _castLock);
       _votedFor = id;  // The guy I voted for I assume leader.
@@ -338,6 +343,7 @@ bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
       CONDITION_LOCKER(guard, _cv);
       _cv.signal();
     }
+
     return true;
   } 
 

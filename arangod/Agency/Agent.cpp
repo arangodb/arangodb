@@ -244,7 +244,7 @@ bool Agent::recvAppendEntriesRPC(term_t term,
     return false;
   }
 
-  if (!_constituent.vote(term, leaderId, prevIndex, prevTerm)) {
+  if (!_constituent.vote(term, leaderId, prevIndex, prevTerm, true)) {
     return false;
   }
 
