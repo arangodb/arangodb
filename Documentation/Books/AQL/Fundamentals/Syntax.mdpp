@@ -166,7 +166,7 @@ have the same name as a keyword, the name must be enclosed in backticks.
 Please refer to the [Naming Conventions in ArangoDB](../../Manual/DataModeling/NamingConventions/CollectionNames.html)
 about collection naming conventions.
 
-AQL currently has a limit of up to 32 collections used in one AQL-query.
+AQL currently has a limit of up to 256 collections used in one AQL query.
 This limit applies to the sum of all involved document and edge collections.
 
 !SUBSUBSECTION Attribute names
