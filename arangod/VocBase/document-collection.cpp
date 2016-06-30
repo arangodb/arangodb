@@ -1157,6 +1157,11 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   TRI_IterateCollection(collection, OpenIterator, &openState);
 
   LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->_info.name() << "'";
+  
+  // make sure our local tick is now at least as high as the highest revision id used in this collection
+  if (document->_info.revision() > 0) {
+    TRI_UpdateTickServer(document->_info.revision());
+  }
 
   // update the real statistics for the collection
   try {
