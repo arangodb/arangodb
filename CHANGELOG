@@ -1,6 +1,31 @@
 v3.0.1 (XXXX-XX-XX)
 -------------------
 
+* increase max. number of collections in AQL queries from 32 to 256
+
+* fixed issue #1915: Explain: member out of range
+
+* fixed issue #1914: fix unterminated buffer
+
+* don't remove lockfile if we are the same (now stale) pid    
+  fixes docker setups (our pid will always be 1)
+
+* do not use revision id comparisons in compaction for determining whether a 
+  revision is obsolete, but marker memory addresses
+  this ensures revision ids don't matter when compacting documents
+
+* escape Unicode characters in JSON HTTP responses
+  this converts UTF-8 characters in HTTP responses of arangod into `\uXXXX`
+  escape sequences. This makes the HTTP responses fit into the 7 bit ASCII
+  character range, which speeds up HTTP response parsing for some clients,
+  namely node.js/v8
+
+* add write before read collections when starting a user transaction
+  this allows specifying the same collection in both read and write mode without
+  unintended side effects
+
+* fixed buffer overrun that occurred when building very large result sets
+
 * index lookup optimizations for primary index and edge index
 
 * fixed "collection is a nullptr" issue when starting a traversal from a transaction
