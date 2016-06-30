@@ -50,6 +50,9 @@ using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 using namespace arangodb;
 
+static const id_t NO_LEADER =
+  (std::numeric_limits<arangodb::consensus::id_t>::max)();
+
 /// Raft role names for display purposes 
 const std::vector<std::string> roleStr ({"Follower", "Candidate", "Leader"});
 
@@ -78,11 +81,11 @@ Constituent::Constituent()
     _queryRegistry(nullptr),
     _term(0),
     _cast(false),
-    _leaderID((std::numeric_limits<arangodb::consensus::id_t>::max)()),
+    _leaderID(NO_LEADER),
     _id(0),
     _role(FOLLOWER),
     _agent(nullptr),
-    _votedFor((std::numeric_limits<arangodb::consensus::id_t>::max)()),
+    _votedFor(NO_LEADER),
     _notifier(nullptr) {}
 
 
@@ -106,8 +109,7 @@ bool Constituent::waitForSync() const {
 
 /// Random sleep times in election process
 duration_t Constituent::sleepFor(double min_t, double max_t) {
-  int32_t left = static_cast<int32_t>(1000.0 * min_t),
-    right = static_cast<int32_t>(1000.0 * max_t);
+  int32_t left = static_cast<int32_t>(1000.0 * min_t), right = static_cast<int32_t>(1000.0 * max_t);
   return duration_t(
     static_cast<long>(RandomGenerator::interval(left, right)));
 }
@@ -322,7 +324,6 @@ bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
     MUTEX_LOCKER(guard, _castLock);
     t = _term;
     lid = _leaderID;
-    cast = _cast;
     _cast = true;
     if (appendEntries && t <= term) {
       _leaderID = id;
@@ -358,10 +359,9 @@ void Constituent::callElection() {
 
   votes.at(_id) = true;  // vote for myself
   _cast = true;
-  if (_role == CANDIDATE) {
-    _votedFor = _id;
-    this->term(_term + 1);  // raise my term
-  }
+  _votedFor = _id;
+  _leaderID = NO_LEADER;
+  this->term(_term + 1);  // raise my term
 
   std::string body;
   std::vector<OperationID> operationIDs(config().endpoints.size());
@@ -506,8 +506,7 @@ void Constituent::run() {
         _cast = false;  // New round set not cast vote
       }
 
-      int32_t left = static_cast<int32_t>(1000000.0 * config().minPing),
-        right = static_cast<int32_t>(1000000.0 * config().maxPing);
+      int32_t left = static_cast<int32_t>(1000000.0 * config().minPing), right = static_cast<int32_t>(1000000.0 * config().maxPing);
       long rand_wait = static_cast<long>(RandomGenerator::interval(left, right));
 
       {
