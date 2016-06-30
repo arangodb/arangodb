@@ -1,6 +1,9 @@
 v3.0.1 (XXXX-XX-XX)
 -------------------
 
+* fixed periodic jobs: there should be only one instance running - even if it
+  runs longer than the period
+
 * increase max. number of collections in AQL queries from 32 to 256
 
 * fixed issue #1916: header "authorization" is required" when opening
@@ -10,10 +13,10 @@ v3.0.1 (XXXX-XX-XX)
 
 * fixed issue #1914: fix unterminated buffer
 
-* don't remove lockfile if we are the same (now stale) pid    
+* don't remove lockfile if we are the same (now stale) pid
   fixes docker setups (our pid will always be 1)
 
-* do not use revision id comparisons in compaction for determining whether a 
+* do not use revision id comparisons in compaction for determining whether a
   revision is obsolete, but marker memory addresses
   this ensures revision ids don't matter when compacting documents
 

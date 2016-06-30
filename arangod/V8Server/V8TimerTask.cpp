@@ -83,7 +83,7 @@ bool V8TimerTask::handleTimeout() {
 
   std::unique_ptr<Job> job(
       new V8Job(_vocbase, "(function (params) { " + _command + " } )(params);",
-                _parameters, _allowUseDatabase));
+                _parameters, _allowUseDatabase, nullptr));
 
   if (DispatcherFeature::DISPATCHER == nullptr) {
     LOG(WARN) << "could not add task " << _command << " to non-existing queue";

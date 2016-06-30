@@ -30,13 +30,17 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace rest {
+class Task;
+}
+
 class V8Job : public rest::Job {
   V8Job(V8Job const&) = delete;
   V8Job& operator=(V8Job const&) = delete;
 
  public:
   V8Job(TRI_vocbase_t*, std::string const&,
-        std::shared_ptr<arangodb::velocypack::Builder> const, bool);
+        std::shared_ptr<arangodb::velocypack::Builder> const, bool, rest::Task*);
   ~V8Job();
 
  public:
@@ -54,6 +58,7 @@ class V8Job : public rest::Job {
   std::shared_ptr<arangodb::velocypack::Builder> _parameters;
   std::atomic<bool> _canceled;
   bool const _allowUseDatabase;
+  rest::Task* _task;
 };
 }
 

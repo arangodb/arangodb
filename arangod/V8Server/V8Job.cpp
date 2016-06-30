@@ -33,6 +33,7 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8PeriodicTask.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -44,13 +45,15 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8Job::V8Job(TRI_vocbase_t* vocbase, std::string const& command,
-             std::shared_ptr<VPackBuilder> parameters, bool allowUseDatabase)
+             std::shared_ptr<VPackBuilder> parameters, bool allowUseDatabase,
+             Task* task)
     : Job("V8 Job"),
       _vocbase(vocbase),
       _command(command),
       _parameters(parameters),
       _canceled(false),
-      _allowUseDatabase(allowUseDatabase) {
+      _allowUseDatabase(allowUseDatabase),
+      _task(task) {
   TRI_UseVocBase(vocbase);
 }
 
@@ -60,6 +63,10 @@ V8Job::V8Job(TRI_vocbase_t* vocbase, std::string const& command,
 
 V8Job::~V8Job() {
   TRI_ReleaseVocBase(_vocbase);
+
+  if (_task != nullptr) {
+    V8PeriodicTask::jobDone(_task);
+  }
 }
 
 void V8Job::work() {
