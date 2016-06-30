@@ -35,11 +35,6 @@ v3.0.1 (XXXX-XX-XX)
 
 * enable /_api/import on coordinator servers
 
-* LOCK will be ignored when process id is the same
-  when using docker the pid of arangodb will always be 1. a once killed container
-  couldn't be restarted because the lock file was present. The LOCK file will now
-  be ignored and the docker task may be restarted.
-
 
 v3.0.0 (2016-06-22)
 -------------------
