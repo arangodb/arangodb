@@ -1,16 +1,16 @@
-/*jshint unused: false */
-/*global EJS, window, _, $*/
-(function() {
-  "use strict";
+/* jshint unused: false */
+/* global EJS, window, _, $*/
+(function () {
+  'use strict';
   // For tests the templates are loaded some where else.
   // We need to use a different engine there.
-  if (!window.hasOwnProperty("TEST_BUILD")) {
-    var TemplateEngine = function() {
+  if (!window.hasOwnProperty('TEST_BUILD')) {
+    var TemplateEngine = function () {
       var exports = {};
-      exports.createTemplate = function(id) {
-        var template = $("#" + id.replace(".", "\\.")).html();
+      exports.createTemplate = function (id) {
+        var template = $('#' + id.replace('.', '\\.')).html();
         return {
-          render: function(params) {
+          render: function (params) {
             var tmp = _.template(template);
             tmp = tmp(params);
 

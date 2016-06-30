@@ -1,17 +1,16 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine, JSONEditor */
-/*global document, _ */
+/* jshint browser: true */
+/* jshint unused: false */
+/* global Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine, JSONEditor */
+/* global document, _ */
 
-(function() {
-  "use strict";
+(function () {
+  'use strict';
 
-  var createDocumentLink = function(id) {
-    var split = id.split("/");
-    return "collection/"
-      + encodeURIComponent(split[0]) + "/"
+  var createDocumentLink = function (id) {
+    var split = id.split('/');
+    return 'collection/'
+      + encodeURIComponent(split[0]) + '/'
       + encodeURIComponent(split[1]);
-
   };
 
   window.DocumentView = Backbone.View.extend({
@@ -22,44 +21,43 @@
     customView: false,
     defaultMode: 'tree',
 
-    template: templateEngine.createTemplate("documentView.ejs"),
+    template: templateEngine.createTemplate('documentView.ejs'),
 
     events: {
-      "click #saveDocumentButton" : "saveDocument",
-      "click #deleteDocumentButton" : "deleteDocumentModal",
-      "click #confirmDeleteDocument" : "deleteDocument",
-      "click #document-from" : "navigateToDocument",
-      "click #document-to" : "navigateToDocument",
-      "keydown #documentEditor .ace_editor" : "keyPress",
-      "keyup .jsoneditor .search input" : "checkSearchBox",
-      "click .jsoneditor .modes" : "storeMode",
-      "click #addDocument": "addDocument"
+      'click #saveDocumentButton': 'saveDocument',
+      'click #deleteDocumentButton': 'deleteDocumentModal',
+      'click #confirmDeleteDocument': 'deleteDocument',
+      'click #document-from': 'navigateToDocument',
+      'click #document-to': 'navigateToDocument',
+      'keydown #documentEditor .ace_editor': 'keyPress',
+      'keyup .jsoneditor .search input': 'checkSearchBox',
+      'click .jsoneditor .modes': 'storeMode',
+      'click #addDocument': 'addDocument'
     },
 
-    checkSearchBox: function(e) {
+    checkSearchBox: function (e) {
       if ($(e.currentTarget).val() === '') {
         this.editor.expandAll();
       }
     },
 
-    addDocument: function() {
+    addDocument: function () {
       window.App.documentsView.addDocumentModal();
     },
 
-    storeMode: function() {
+    storeMode: function () {
       var self = this;
 
-      $('.type-modes').on('click', function(elem) {
+      $('.type-modes').on('click', function (elem) {
         self.defaultMode = $(elem.currentTarget).text().toLowerCase();
       });
     },
 
-    keyPress: function(e) {
+    keyPress: function (e) {
       if (e.ctrlKey && e.keyCode === 13) {
         e.preventDefault();
         this.saveDocument();
-      }
-      else if (e.metaKey && e.keyCode === 13) {
+      } else if (e.metaKey && e.keyCode === 13) {
         e.preventDefault();
         this.saveDocument();
       }
@@ -70,17 +68,15 @@
     setType: function (type) {
       if (type === 2) {
         type = 'document';
-      }
-      else {
+      } else {
         type = 'edge';
       }
 
-      var callback = function(error, type) {
+      var callback = function (error, type) {
         if (error) {
-          arangoHelper.arangoError("Error", "Could not fetch data.");
-        }
-        else {
-          var type2 = type + ': '; 
+          arangoHelper.arangoError('Error', 'Could not fetch data.');
+        } else {
+          var type2 = type + ': ';
           this.type = type;
           this.fillInfo(type2);
           this.fillEditor();
@@ -89,13 +85,12 @@
 
       if (type === 'edge') {
         this.collection.getEdge(this.colid, this.docid, callback);
-      }
-      else if (type === 'document') {
+      } else if (type === 'document') {
         this.collection.getDocument(this.colid, this.docid, callback);
       }
     },
 
-    deleteDocumentModal: function() {
+    deleteDocumentModal: function () {
       var buttons = [], tableContent = [];
       tableContent.push(
         window.modalView.createReadOnlyEntry(
@@ -106,7 +101,7 @@
           undefined,
           false,
           /[<>&'"]/
-      )
+        )
       );
       buttons.push(
         window.modalView.createDeleteButton('Delete', this.deleteDocument.bind(this))
@@ -114,37 +109,31 @@
       window.modalView.show('modalTable.ejs', 'Delete Document', buttons, tableContent);
     },
 
-    deleteDocument: function() {
-
-      var successFunction = function() {
+    deleteDocument: function () {
+      var successFunction = function () {
         if (this.customView) {
           this.customDeleteFunction();
-        }
-        else {
-          var navigateTo = "collection/" + encodeURIComponent(this.colid) + '/documents/1';
+        } else {
+          var navigateTo = 'collection/' + encodeURIComponent(this.colid) + '/documents/1';
           window.modalView.hide();
           window.App.navigate(navigateTo, {trigger: true});
         }
       }.bind(this);
 
-      
       if (this.type._from && this.type._to) {
-        var callbackEdge = function(error) {
+        var callbackEdge = function (error) {
           if (error) {
             arangoHelper.arangoError('Edge error', 'Could not delete edge');
-          }
-          else {
+          } else {
             successFunction();
           }
         }.bind(this);
         this.collection.deleteEdge(this.colid, this.docid, callbackEdge);
-      }
-      else {
-        var callbackDoc = function(error) {
+      } else {
+        var callbackDoc = function (error) {
           if (error) {
             arangoHelper.arangoError('Error', 'Could not delete document');
-          }
-          else {
+          } else {
             successFunction();
           }
         }.bind(this);
@@ -152,58 +141,56 @@
       }
     },
 
-    navigateToDocument: function(e) {
-      var navigateTo = $(e.target).attr("documentLink");
+    navigateToDocument: function (e) {
+      var navigateTo = $(e.target).attr('documentLink');
       if (navigateTo) {
         window.App.navigate(navigateTo, {trigger: true});
       }
     },
 
-    fillInfo: function() {
+    fillInfo: function () {
       var mod = this.collection.first();
-      var _id = mod.get("_id"),
-        _key = mod.get("_key"),
-        _rev = mod.get("_rev"),
-        _from = mod.get("_from"),
-        _to = mod.get("_to");
+      var _id = mod.get('_id'),
+        _key = mod.get('_key'),
+        _rev = mod.get('_rev'),
+        _from = mod.get('_from'),
+        _to = mod.get('_to');
 
-      $('#document-type').css("margin-left", "10px");
-      $('#document-type').text("_id:");
-      $('#document-id').css("margin-left", "0");
+      $('#document-type').css('margin-left', '10px');
+      $('#document-type').text('_id:');
+      $('#document-id').css('margin-left', '0');
       $('#document-id').text(_id);
       $('#document-key').text(_key);
       $('#document-rev').text(_rev);
 
       if (_from && _to) {
-
         var hrefFrom = createDocumentLink(_from);
         var hrefTo = createDocumentLink(_to);
         $('#document-from').text(_from);
-        $('#document-from').attr("documentLink", hrefFrom);
+        $('#document-from').attr('documentLink', hrefFrom);
         $('#document-to').text(_to);
-        $('#document-to').attr("documentLink", hrefTo);
-      }
-      else {
+        $('#document-to').attr('documentLink', hrefTo);
+      } else {
         $('.edge-info-container').hide();
       }
     },
 
-    fillEditor: function() {
+    fillEditor: function () {
       var toFill = this.removeReadonlyKeys(this.collection.first().attributes);
       $('.disabledBread').last().text(this.collection.first().get('_key'));
       this.editor.set(toFill);
-      $('.ace_content').attr('font-size','11pt');
+      $('.ace_content').attr('font-size', '11pt');
     },
 
-    jsonContentChanged: function() {
+    jsonContentChanged: function () {
       this.enableSaveButton();
     },
 
-    resize: function() {
+    resize: function () {
       $('#documentEditor').height($('.centralRow').height() - 300);
     },
 
-    render: function() {
+    render: function () {
       $(this.el).html(this.template.render({}));
 
       $('#documentEditor').height($('.centralRow').height() - 300);
@@ -214,11 +201,11 @@
 
       var container = document.getElementById('documentEditor');
       var options = {
-        change: function(){self.jsonContentChanged();},
+        change: function () {self.jsonContentChanged();},
         search: true,
         mode: 'tree',
         modes: ['tree', 'code'],
-        iconlib: "fontawesome4"
+        iconlib: 'fontawesome4'
       };
       this.editor = new JSONEditor(container, options);
       this.editor.setMode(this.defaultMode);
@@ -227,13 +214,12 @@
     },
 
     removeReadonlyKeys: function (object) {
-      return _.omit(object, ["_key", "_id", "_from", "_to", "_rev"]);
+      return _.omit(object, ['_key', '_id', '_from', '_to', '_rev']);
     },
 
     saveDocument: function () {
       if ($('#saveDocumentButton').attr('disabled') === undefined) {
         if (this.collection.first().attributes._id.substr(0, 1) === '_') {
-
           var buttons = [], tableContent = [];
           tableContent.push(
             window.modalView.createReadOnlyEntry(
@@ -244,29 +230,26 @@
               undefined,
               false,
               /[<>&'"]/
-          )
+            )
           );
           buttons.push(
             window.modalView.createSuccessButton('Save', this.confirmSaveDocument.bind(this))
           );
           window.modalView.show('modalTable.ejs', 'Modify System Collection', buttons, tableContent);
-        }
-        else {
+        } else {
           this.confirmSaveDocument();
         }
       }
     },
 
     confirmSaveDocument: function () {
-
       window.modalView.hide();
 
       var model;
 
       try {
         model = this.editor.get();
-      }
-      catch (e) {
+      } catch (e) {
         this.errorConfirmation(e);
         this.disableSaveButton();
         return;
@@ -275,24 +258,21 @@
       model = JSON.stringify(model);
 
       if (this.type._from && this.type._to) {
-        var callbackE = function(error) {
+        var callbackE = function (error) {
           if (error) {
             arangoHelper.arangoError('Error', 'Could not save edge.');
-          }
-          else {
+          } else {
             this.successConfirmation();
             this.disableSaveButton();
           }
         }.bind(this);
 
         this.collection.saveEdge(this.colid, this.docid, this.type._from, this.type._to, model, callbackE);
-      }
-      else {
-        var callback = function(error) {
+      } else {
+        var callback = function (error) {
           if (error) {
             arangoHelper.arangoError('Error', 'Could not save document.');
-          }
-          else {
+          } else {
             this.successConfirmation();
             this.disableSaveButton();
           }
@@ -307,7 +287,7 @@
     },
 
     errorConfirmation: function (e) {
-      arangoHelper.arangoError("Document editor: ", e);
+      arangoHelper.arangoError('Document editor: ', e);
     },
 
     enableSaveButton: function () {
@@ -323,17 +303,17 @@
     },
 
     breadcrumb: function () {
-      var name = window.location.hash.split("/");
+      var name = window.location.hash.split('/');
       $('#subNavigationBar .breadcrumb').html(
-        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1] + '</a>' + 
+        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1] + '</a>' +
         '<i class="fa fa-chevron-right"></i>' +
         'Document: ' + name[2]
       );
     },
 
     escaped: function (value) {
-      return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
   });
 }());

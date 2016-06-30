@@ -1,17 +1,16 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global CryptoJS, _, frontendConfig, arangoHelper, Backbone, window, templateEngine, $ */
+/* jshint browser: true */
+/* jshint unused: false */
+/* global CryptoJS, _, frontendConfig, arangoHelper, Backbone, window, templateEngine, $ */
 
-(function() {
-  "use strict";
+(function () {
+  'use strict';
 
   window.UserPermissionView = Backbone.View.extend({
+    el: '#content',
 
-    el: "#content",
+    template: templateEngine.createTemplate('userPermissionView.ejs'),
 
-    template: templateEngine.createTemplate("userPermissionView.ejs"),
-
-    initialize: function(options) {
+    initialize: function (options) {
       this.username = options.username;
     },
 
@@ -19,84 +18,81 @@
       'click #userPermissionView [type="checkbox"]': 'setPermission'
     },
 
-    render: function() {
+    render: function () {
       var self = this;
 
       this.collection.fetch({
-        success: function() {
+        success: function () {
           self.continueRender();
         }
       });
-
     },
 
-    setPermission: function(e) {
+    setPermission: function (e) {
       var checked = $(e.currentTarget).is(':checked');
       var db = $(e.currentTarget).attr('name');
-      
+
       if (checked) {
-         this.grantPermission(this.currentUser.get("user"), db);
-      }
-      else {
-        this.revokePermission(this.currentUser.get("user"), db);
+        this.grantPermission(this.currentUser.get('user'), db);
+      } else {
+        this.revokePermission(this.currentUser.get('user'), db);
       }
     },
 
-    grantPermission: function(user, db) {
+    grantPermission: function (user, db) {
       $.ajax({
-        type: "PUT",
-        url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(user) + "/database/" + encodeURIComponent(db)),
-        contentType: "application/json",
+        type: 'PUT',
+        url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db)),
+        contentType: 'application/json',
         data: JSON.stringify({
           grant: 'rw'
         })
       });
     },
 
-    revokePermission: function(user, db) {
+    revokePermission: function (user, db) {
       $.ajax({
-        type: "PUT",
-        url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(user) + "/database/" + encodeURIComponent(db)),
-        contentType: "application/json"
+        type: 'PUT',
+        url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db)),
+        contentType: 'application/json'
       });
     },
 
-    continueRender: function() {
+    continueRender: function () {
       var self = this;
-     
+
       this.currentUser = this.collection.findWhere({
         user: this.username
       });
 
       this.breadcrumb();
 
-      arangoHelper.buildUserSubNav(this.currentUser.get("user"), 'Permissions');
+      arangoHelper.buildUserSubNav(this.currentUser.get('user'), 'Permissions');
 
-
-      var url = arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(self.currentUser.get("user")) + "/database");
+      var url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(self.currentUser.get('user')) + '/database');
       if (frontendConfig.db === '_system') {
-        url = arangoHelper.databaseUrl("/_api/user/root/database");
+        url = arangoHelper.databaseUrl('/_api/user/root/database');
       }
 
-      //FETCH COMPLETE DB LIST
+      // FETCH COMPLETE DB LIST
       $.ajax({
-        type: "GET",
+        type: 'GET',
         url: url,
-        contentType: "application/json",
-        success: function(data) {
+        contentType: 'application/json',
+        success: function (data) {
           var allDBs = data.result;
 
-          //NOW FETCH USER PERMISSIONS
+          // NOW FETCH USER PERMISSIONS
           $.ajax({
-            type: "GET",
-            url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(self.currentUser.get("user")) + "/database"),
-            //url: arangoHelper.databaseUrl("/_api/database/user/" + encodeURIComponent(this.currentUser.get("user"))),
-            contentType: "application/json",
-            success: function(data) {
+            type: 'GET',
+            url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(self.currentUser.get('user')) + '/database'),
+            // url: arangoHelper.databaseUrl("/_api/database/user/" + encodeURIComponent(this.currentUser.get("user"))),
+            contentType: 'application/json',
+            success: function (data) {
               var permissions = data.result;
               if (allDBs._system) {
                 var arr = [];
-                _.each(allDBs, function(db, name) {
+                _.each(allDBs, function (db, name) {
                   arr.push(name);
                 });
                 allDBs = arr;
@@ -104,31 +100,28 @@
               self.finishRender(allDBs, permissions);
             }
           });
-
         }
       });
     },
 
-    finishRender: function(allDBs, permissions) {
-      _.each(permissions, function(value, key) {
+    finishRender: function (allDBs, permissions) {
+      _.each(permissions, function (value, key) {
         if (value !== 'rw') {
           delete permissions[key];
         }
       });
 
       $(this.el).html(this.template.render({
-        allDBs: allDBs, 
+        allDBs: allDBs,
         permissions: permissions
       }));
-
     },
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'User: ' + this.currentUser.get("user")
+        'User: ' + this.currentUser.get('user')
       );
     }
 
   });
-
 }());

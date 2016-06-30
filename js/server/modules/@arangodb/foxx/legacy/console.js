@@ -1,32 +1,32 @@
-/*jshint globalstrict: true */
+/* jshint globalstrict: true */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Foxx logging
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2015 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-/// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Foxx logging
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2015 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// / @author Copyright 2015, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var qb = require('aqb');
 var util = require('util');
@@ -39,7 +39,7 @@ var db = require('@arangodb').db;
 
 const NATIVE_LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
 
-function nativeLogger(level, levelNum, mount) {
+function nativeLogger (level, levelNum, mount) {
   let logLevel = String(level).toLowerCase();
   if (logLevel === 'trace' && levelNum === -200) {
     logLevel = 'info'; // require('console').trace also uses INFO level
@@ -66,7 +66,7 @@ function nativeLogger(level, levelNum, mount) {
   };
 }
 
-function ConsoleLogs(console) {
+function ConsoleLogs (console) {
   this._console = console;
   this.defaultMaxAge = 2 * 60 * 60 * 1000;
 }
@@ -88,8 +88,8 @@ extend(ConsoleLogs.prototype, {
     query = query.filter(qb.gte(
       'entry.time',
       exists(cfg.opts.startTime)
-      ? qb.num(cfg.opts.startTime)
-      : Date.now() - this.defaultMaxAge
+        ? qb.num(cfg.opts.startTime)
+        : Date.now() - this.defaultMaxAge
     ));
 
     if (exists(cfg.opts.endTime)) {
@@ -99,8 +99,8 @@ extend(ConsoleLogs.prototype, {
     if (exists(cfg.opts.level)) {
       query = query.filter(
         typeof cfg.opts.level === 'number'
-        ? qb.eq('entry.levelNum', qb.num(cfg.opts.level))
-        : qb.eq('entry.level', qb.str(cfg.opts.level))
+          ? qb.eq('entry.levelNum', qb.num(cfg.opts.level))
+          : qb.eq('entry.level', qb.str(cfg.opts.level))
       );
     }
 
@@ -157,7 +157,7 @@ extend(ConsoleLogs.prototype, {
   }
 });
 
-function Console(mount, tracing) {
+function Console (mount, tracing) {
   this._mount = mount;
   this._timers = Object.create(null);
   this._tracing = Boolean(tracing);
@@ -288,7 +288,7 @@ extend(Console.prototype, {
     weight = Number(weight);
     weight = weight === weight ? weight : 50;
     this._logLevels[level] = weight;
-    var logWithLevel = function() {
+    var logWithLevel = function () {
       this._log(level, util.format.apply(null, arguments), logWithLevel);
     }.bind(this);
     return logWithLevel;

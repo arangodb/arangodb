@@ -1,39 +1,38 @@
-/*global print */
+/* global print */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB Mocha integration
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2016 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-/// @author Copyright 2016, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ArangoDB Mocha integration
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2016 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// / @author Copyright 2016, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const Module = require('module');
 const runTests = require('@arangodb/mocha').run;
 const colors = require('internal').COLORS;
 
 const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
-
 
 module.exports = function (files, returnJson) {
   const results = runTests(run, files, 'suite');
@@ -47,19 +46,19 @@ module.exports = function (files, returnJson) {
   return results.stats.failures === 0;
 };
 
-function logStats(stats) {
+function logStats (stats) {
   print(
     (
-      stats.failures
+    stats.failures
       ? (
-        colors.COLOR_RED
-        + '[FAIL]'
-        + colors.COLOR_RESET
+      colors.COLOR_RED
+      + '[FAIL]'
+      + colors.COLOR_RESET
       )
       : (
-        colors.COLOR_GREEN
-        + '[PASS]'
-        + colors.COLOR_RESET
+      colors.COLOR_GREEN
+      + '[PASS]'
+      + colors.COLOR_RESET
       )
     )
     + ' Completed '
@@ -86,7 +85,7 @@ function logStats(stats) {
   );
 }
 
-function logSuite(suite, indentLevel) {
+function logSuite (suite, indentLevel) {
   if (!indentLevel) {
     indentLevel = 0;
   }
@@ -141,7 +140,7 @@ function logSuite(suite, indentLevel) {
   }
 }
 
-function indent(level, indentWith) {
+function indent (level, indentWith) {
   if (!indentWith) {
     indentWith = '    ';
   }
@@ -152,7 +151,7 @@ function indent(level, indentWith) {
   return padding;
 }
 
-function buildJson(results) {
+function buildJson (results) {
   const result = {
     duration: results.stats.duration,
     status: results.stats.failures ? false : true,
@@ -178,7 +177,7 @@ function buildJson(results) {
   return result;
 }
 
-function findTests(suite, prefix) {
+function findTests (suite, prefix) {
   prefix = prefix ? prefix + ' ' : '';
   const results = [];
   for (const test of suite.tests) {
@@ -192,7 +191,7 @@ function findTests(suite, prefix) {
   return results;
 }
 
-function run(filename, context) {
+function run (filename, context) {
   const module = new Module(filename);
 
   if (context) {

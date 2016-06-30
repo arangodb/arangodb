@@ -1,18 +1,17 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global window, $, _, databaseUrl, arangoHelper */
+/* jshint browser: true */
+/* jshint unused: false */
+/* global window, $, _, databaseUrl, arangoHelper */
 (function () {
-
-  "use strict";
+  'use strict';
 
   window.ArangoLogs = window.PaginatedCollection.extend({
     upto: false,
     loglevel: 0,
     totalPages: 0,
 
-    parse: function(response) {
+    parse: function (response) {
       var myResponse = [];
-      _.each(response.lid, function(val, i) {
+      _.each(response.lid, function (val, i) {
         myResponse.push({
           level: response.level[i],
           lid: val,
@@ -26,7 +25,7 @@
       return myResponse;
     },
 
-    initialize: function(options) {
+    initialize: function (options) {
       if (options.upto === true) {
         this.upto = true;
       }
@@ -35,30 +34,28 @@
 
     model: window.newArangoLog,
 
-    url: function() {
+    url: function () {
       var type, rtnStr, offset, size;
       offset = this.page * this.pagesize;
       var inverseOffset = this.totalAmount - ((this.page + 1) * this.pagesize);
       if (inverseOffset < 0 && this.page === (this.totalPages - 1)) {
         inverseOffset = 0;
         size = (this.totalAmount % this.pagesize);
-      }
-      else {
+      } else {
         size = this.pagesize;
       }
 
-      //if totalAmount (first fetch) = 0, then set size to 1 (reduce traffic)
+      // if totalAmount (first fetch) = 0, then set size to 1 (reduce traffic)
       if (this.totalAmount === 0) {
         size = 1;
       }
 
       if (this.upto) {
         type = 'upto';
-      }
-      else  {
+      } else {
         type = 'level';
       }
-      rtnStr = '/_admin/log?'+type+'='+this.loglevel+'&size='+size+'&offset='+inverseOffset;
+      rtnStr = '/_admin/log?' + type + '=' + this.loglevel + '&size=' + size + '&offset=' + inverseOffset;
       return arangoHelper.databaseUrl(rtnStr);
     }
 

@@ -1,20 +1,20 @@
-/*global describe, it, beforeEach*/
+/* global describe, it, beforeEach*/
 'use strict';
 
 var sinon = require('sinon');
 var expect = require('expect.js');
-var FoxxRepository = require("@arangodb/foxx/legacy/repository").Repository;
-var Model = require("@arangodb/foxx/legacy/model").Model;
+var FoxxRepository = require('@arangodb/foxx/legacy/repository').Repository;
+var Model = require('@arangodb/foxx/legacy/model').Model;
 
 describe('Model Events', function () {
   var collection, instance, repository;
 
   beforeEach(function () {
     collection = {
-      update: function() {},
-      save: function() {},
+      update: function () {},
+      save: function () {},
       type: sinon.stub().returns(2),
-      remove: function() {}
+      remove: function () {}
     };
     instance = new Model({ random: '', beforeCalled: false, afterCalled: false });
     repository = new FoxxRepository(collection, {model: Model});
@@ -61,10 +61,9 @@ describe('Model Events', function () {
     expect(instance.get('beforeCalled')).to.be(true);
     expect(instance.get('afterCalled')).to.be(true);
   });
-
 });
 
-function addHooks(model, ev, dataToReceive) {
+function addHooks (model, ev, dataToReceive) {
   var random = String(Math.floor(Math.random() * 1000));
 
   model.on('before' + ev, function (data) {

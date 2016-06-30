@@ -1,60 +1,60 @@
-/*jshint strict: false, unused: true, bitwise: false, esnext: true */
-/*global COMPARE_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
-/*global OBJECT_HASH */
+/* jshint strict: false, unused: true, bitwise: false, esnext: true */
+/* global COMPARE_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
+/* global OBJECT_HASH */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, internal query functions
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Aql, internal query functions
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var INTERNAL = require("internal");
-var ArangoError = require("@arangodb").ArangoError;
-var isCoordinator = require("@arangodb/cluster").isCoordinator();
+var INTERNAL = require('internal');
+var ArangoError = require('@arangodb').ArangoError;
+var isCoordinator = require('@arangodb/cluster').isCoordinator();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cache for compiled regexes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cache for compiled regexes
+// //////////////////////////////////////////////////////////////////////////////
 
 var LikeCache = { };
 var RegexCache = { };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief user functions cache
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief user functions cache
+// //////////////////////////////////////////////////////////////////////////////
 
 var UserFunctions = { };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prefab traversal visitors
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief prefab traversal visitors
+// //////////////////////////////////////////////////////////////////////////////
 
 var DefaultVisitors = {
-  "_AQL::HASATTRIBUTESVISITOR" : {
+  '_AQL::HASATTRIBUTESVISITOR': {
     visitorReturnsResults: true,
     func: function (config, result, vertex, path) {
-      if (typeof config.data === "object" && Array.isArray(config.data.attributes)) {
+      if (typeof config.data === 'object' && Array.isArray(config.data.attributes)) {
         if (config.data.attributes.length === 0) {
           return;
         }
@@ -66,25 +66,25 @@ var DefaultVisitors = {
         var i;
         if (config.data.type === 'any') {
           for (i = 0; i < config.data.attributes.length; ++i) {
-            if (! vertex.hasOwnProperty(config.data.attributes[i])) {
+            if (!vertex.hasOwnProperty(config.data.attributes[i])) {
               continue;
             }
-            if (! allowNull && vertex[config.data.attributes[i]] === null) {
+            if (!allowNull && vertex[config.data.attributes[i]] === null) {
               continue;
             }
-          
+
             return CLONE({ vertex: vertex, path: path });
           }
 
           return;
         }
-          
+
         for (i = 0; i < config.data.attributes.length; ++i) {
-          if (! vertex.hasOwnProperty(config.data.attributes[i])) {
+          if (!vertex.hasOwnProperty(config.data.attributes[i])) {
             return;
           }
-          if (! allowNull &&
-              vertex[config.data.attributes[i]] === null) {
+          if (!allowNull &&
+            vertex[config.data.attributes[i]] === null) {
             return;
           }
         }
@@ -93,11 +93,11 @@ var DefaultVisitors = {
       }
     }
   },
-  "_AQL::PROJECTINGVISITOR" : {
+  '_AQL::PROJECTINGVISITOR': {
     visitorReturnsResults: true,
     func: function (config, result, vertex) {
       var values = { };
-      if (typeof config.data === "object" && Array.isArray(config.data.attributes)) {
+      if (typeof config.data === 'object' && Array.isArray(config.data.attributes)) {
         config.data.attributes.forEach(function (attribute) {
           values[attribute] = vertex[attribute];
         });
@@ -105,19 +105,19 @@ var DefaultVisitors = {
       return values;
     }
   },
-  "_AQL::IDVISITOR" : {
+  '_AQL::IDVISITOR': {
     visitorReturnsResults: true,
-    func:  function (config, result, vertex) {
+    func: function (config, result, vertex) {
       return vertex._id;
     }
   },
-  "_AQL::KEYVISITOR" : {
+  '_AQL::KEYVISITOR': {
     visitorReturnsResults: true,
-    func:  function (config, result, vertex) {
+    func: function (config, result, vertex) {
       return vertex._key;
     }
   },
-  "_AQL::COUNTINGVISITOR" : {
+  '_AQL::COUNTINGVISITOR': {
     visitorReturnsResults: false,
     func: function (config, result) {
       if (result.length === 0) {
@@ -128,30 +128,30 @@ var DefaultVisitors = {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type weight used for sorting and comparing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief type weight used for sorting and comparing
+// //////////////////////////////////////////////////////////////////////////////
 
-var TYPEWEIGHT_NULL      = 0;
-var TYPEWEIGHT_BOOL      = 1;
-var TYPEWEIGHT_NUMBER    = 2;
-var TYPEWEIGHT_STRING    = 4;
-var TYPEWEIGHT_ARRAY     = 8;
-var TYPEWEIGHT_OBJECT    = 16;
+var TYPEWEIGHT_NULL = 0;
+var TYPEWEIGHT_BOOL = 1;
+var TYPEWEIGHT_NUMBER = 2;
+var TYPEWEIGHT_STRING = 4;
+var TYPEWEIGHT_ARRAY = 8;
+var TYPEWEIGHT_OBJECT = 16;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief mapping of time unit names to short name, getter and setter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief mapping of time unit names to short name, getter and setter
+// //////////////////////////////////////////////////////////////////////////////
 
 var unitMapping = {
-  y: ["y", "getUTCFullYear", "setUTCFullYear"],
-  m: ["m", "getUTCMonth", "setUTCMonth"],
-  w: ["w", null, null],
-  d: ["d", "getUTCDate", "setUTCDate"],
-  h: ["h", "getUTCHours", "setUTCHours"],
-  i: ["i", "getUTCMinutes", "setUTCMinutes"],
-  s: ["s", "getUTCSeconds", "setUTCSeconds"],
-  f: ["f", "getUTCMilliseconds", "setUTCMilliseconds"]
+  y: ['y', 'getUTCFullYear', 'setUTCFullYear'],
+  m: ['m', 'getUTCMonth', 'setUTCMonth'],
+  w: ['w', null, null],
+  d: ['d', 'getUTCDate', 'setUTCDate'],
+  h: ['h', 'getUTCHours', 'setUTCHours'],
+  i: ['i', 'getUTCMinutes', 'setUTCMinutes'],
+  s: ['s', 'getUTCSeconds', 'setUTCSeconds'],
+  f: ['f', 'getUTCMilliseconds', 'setUTCMilliseconds']
 };
 
 // aliases
@@ -173,11 +173,11 @@ unitMapping.milliseconds = unitMapping.f;
 unitMapping.millisecond = unitMapping.f;
 unitMapping.ms = unitMapping.f;
 
-var unitMappingArray = [null, "y", "m", "w", "d", "h", "i", "s", "f"];
+var unitMappingArray = [null, 'y', 'm', 'w', 'd', 'h', 'i', 's', 'f'];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief RegExp and cache for ISO duration strings
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief RegExp and cache for ISO duration strings
+// //////////////////////////////////////////////////////////////////////////////
 
 // ISODurationRegex.exec("P1Y2M3W4DT5H6M7.890S")
 // -> ["P1Y2M3W4DT5H6M7.890S", "1", "2", "3", "4", "5", "6", "7", "890"]
@@ -186,11 +186,11 @@ var unitMappingArray = [null, "y", "m", "w", "d", "h", "i", "s", "f"];
 var ISODurationRegex = /^P(?:(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d+))?S)?)?$/i;
 /* jshint +W101 */
 
-var ISODurationCache = {}; 
+var ISODurationCache = {};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief substring ranges for DATE_COMPARE()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief substring ranges for DATE_COMPARE()
+// //////////////////////////////////////////////////////////////////////////////
 
 // 0123_56_89_12_45_78_012_
 var unitStrRanges = {
@@ -218,15 +218,15 @@ unitStrRanges.milliseconds = unitStrRanges.f;
 unitStrRanges.millisecond = unitStrRanges.f;
 unitStrRanges.ms = unitStrRanges.f;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief offsets for day of year calculation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief offsets for day of year calculation
+// //////////////////////////////////////////////////////////////////////////////
 
 var dayOfYearOffsets = [
   0,
-  31,  // + 31 Jan
-  59,  // + 28 Feb*
-  90,  // + 31 Mar
+  31, // + 31 Jan
+  59, // + 28 Feb*
+  90, // + 31 Mar
   120, // + 30 Apr
   151, // + 31 May
   181, // + 30 Jun
@@ -234,14 +234,14 @@ var dayOfYearOffsets = [
   243, // + 31 Aug
   273, // + 30 Sep
   304, // + 31 Oct
-  334  // + 30 Nov
+  334 // + 30 Nov
 ];
 
 var dayOfLeapYearOffsets = [
   0,
-  31,  // + 31 Jan
-  59,  // + 29 Feb*
-  91,  // + 31 Mar
+  31, // + 31 Jan
+  59, // + 29 Feb*
+  91, // + 31 Mar
   121, // + 30 Apr
   152, // + 31 May
   182, // + 30 Jun
@@ -249,12 +249,12 @@ var dayOfLeapYearOffsets = [
   244, // + 31 Aug
   274, // + 30 Sep
   305, // + 31 Oct
-  335  // + 30 Nov
+  335 // + 30 Nov
 ];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup array for days in month calculation (leap year aware)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief lookup array for days in month calculation (leap year aware)
+// //////////////////////////////////////////////////////////////////////////////
 
 var daysInMonth = [
   29, // Feb (in leap year)
@@ -269,45 +269,45 @@ var daysInMonth = [
   30, // Sep
   31, // Oct
   30, // Nov
-  31  // Dec
+  31 // Dec
 ];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief English month names (1-based)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief English month names (1-based)
+// //////////////////////////////////////////////////////////////////////////////
 
 var monthNames = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December"
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December'
 ];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief English weekday names
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief English weekday names
+// //////////////////////////////////////////////////////////////////////////////
 
 var weekdayNames = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday"
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday'
 ];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constants for date difference function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief constants for date difference function
+// //////////////////////////////////////////////////////////////////////////////
 
 // milliseconds per month, counting February as 28 days (compensating later)
 var msPerMonth = [
@@ -316,11 +316,11 @@ var msPerMonth = [
 ];
 
 var msPerUnit = {
-  f:      1,
-  s:    1e3, // 1000
-  i:    6e4, // 1000 * 60
-  h:   36e5, // 1000 * 60 * 60
-  d:  864e5, // 1000 * 60 * 60 * 24
+  f: 1,
+  s: 1e3, // 1000
+  i: 6e4, // 1000 * 60
+  h: 36e5, // 1000 * 60 * 60
+  d: 864e5, // 1000 * 60 * 60 * 24
   w: 6048e5, // 1000 * 60 * 60 * 24 * 7
   m: 0, // evaluates to false
   y: -1 // evaluates to true to distinguish it from months
@@ -345,105 +345,101 @@ msPerUnit.month = msPerUnit.m;
 msPerUnit.years = msPerUnit.y;
 msPerUnit.year = msPerUnit.y;
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clear caches
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief clear caches
+// //////////////////////////////////////////////////////////////////////////////
 
 function clearCaches () {
   'use strict';
 
-  RegexCache        = { 'i' : { }, '' : { } };
-  LikeCache         = { 'i' : { }, '' : { } };
+  RegexCache = { 'i': { }, '': { } };
+  LikeCache = { 'i': { }, '': { } };
   ISODurationCache = { };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add zeros for a total length of width chars (left padding by default)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief add zeros for a total length of width chars (left padding by default)
+// //////////////////////////////////////////////////////////////////////////////
 
 function zeropad (n, width, padRight) {
   'use strict';
 
   padRight = padRight || false;
-  n = "" + n;
+  n = '' + n;
   if (padRight) {
-    return n.length >= width ? n : n + new Array(width - n.length + 1).join("0");
+    return n.length >= width ? n : n + new Array(width - n.length + 1).join('0');
   } else {
-    return n.length >= width ? n : new Array(width - n.length + 1).join("0") + n;
+    return n.length >= width ? n : new Array(width - n.length + 1).join('0') + n;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief raise a warning
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief raise a warning
+// //////////////////////////////////////////////////////////////////////////////
 
 function WARN (func, error, data) {
   'use strict';
 
   if (error.code === INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code) {
-    AQL_WARNING(error.code, error.message.replace(/%s/, func)); 
-  }
-  else {
-    var prefix = "";
+    AQL_WARNING(error.code, error.message.replace(/%s/, func));
+  } else {
+    var prefix = '';
     if (func !== null) {
       prefix = "in function '" + func + "()': ";
     }
 
-    if (typeof data === "string") {
+    if (typeof data === 'string') {
       AQL_WARNING(error.code, prefix + error.message.replace(/%s/, data));
-    }
-    else {
+    } else {
       AQL_WARNING(error.code, prefix + error.message);
     }
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief throw a runtime exception
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief throw a runtime exception
+// //////////////////////////////////////////////////////////////////////////////
 
 function THROW (func, error, data, moreMessage) {
   'use strict';
-  
-  var prefix = "";
-  if (func !== null && func !== "") {
+
+  var prefix = '';
+  if (func !== null && func !== '') {
     prefix = "in function '" + func + "()': ";
   }
 
   var err = new ArangoError();
 
   err.errorNum = error.code;
-  if (typeof data === "string") {
+  if (typeof data === 'string') {
     err.errorMessage = prefix + error.message.replace(/%s/, data);
-  }
-  else {
+  } else {
     err.errorMessage = prefix + error.message;
   }
   if (moreMessage !== undefined) {
-    err.errorMessage += "; " + moreMessage;
+    err.errorMessage += '; ' + moreMessage;
   }
 
   throw err;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a database-specific function prefix
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a database-specific function prefix
+// //////////////////////////////////////////////////////////////////////////////
 
 function DB_PREFIX () {
   return INTERNAL.db._name();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reset the user functions and reload them from the database
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief reset the user functions and reload them from the database
+// //////////////////////////////////////////////////////////////////////////////
 
 function reloadUserFunctions () {
   'use strict';
 
   var prefix = DB_PREFIX();
-  var c = INTERNAL.db._collection("_aqlfunctions");
+  var c = INTERNAL.db._collection('_aqlfunctions');
 
   if (c === null) {
     // collection not found. now reset all user functions
@@ -461,14 +457,13 @@ function reloadUserFunctions () {
 
     if (f.code.match(/^\(?function\s+\(/)) {
       code = f.code;
-    }
-    else {
-      code = "(function() { var callback = " + f.code + ";\n return callback; })();";
+    } else {
+      code = '(function() { var callback = ' + f.code + ';\n return callback; })();';
     }
 
     try {
-      var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")");
-      if (typeof res !== "function") {
+      var res = INTERNAL.executeScript(code, undefined, '(user function ' + key + ')');
+      if (typeof res !== 'function') {
         foundError = true;
       }
 
@@ -477,20 +472,18 @@ function reloadUserFunctions () {
         func: res,
         isDeterministic: f.isDeterministic || false
       };
-
-    }
-    catch (err) {
+    } catch (err) {
       // in case a single function is broken, we still continue with the other ones
       // so that at least some functions remain usable
       foundError = true;
     }
   });
-  
+
   // now reset the functions for all databases
   // this ensures that functions of other databases will be reloaded next 
   // time (the reload does not necessarily need to be carried out in the
   // database in which the function is registered)
-  UserFunctions = { }; 
+  UserFunctions = { };
   UserFunctions[prefix] = functions;
 
   if (foundError) {
@@ -498,11 +491,11 @@ function reloadUserFunctions () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a user-function by name
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get a user-function by name
+// //////////////////////////////////////////////////////////////////////////////
 
-function GET_USERFUNCTION (name, config) { 
+function GET_USERFUNCTION (name, config) {
   var prefix = DB_PREFIX(), reloaded = false;
   var key = name.toUpperCase();
 
@@ -512,35 +505,34 @@ function GET_USERFUNCTION (name, config) {
     var visitor = DefaultVisitors[key];
     func = visitor.func;
     config.visitorReturnsResults = visitor.visitorReturnsResults;
-  }
-  else {
-    if (! UserFunctions.hasOwnProperty(prefix)) {
+  } else {
+    if (!UserFunctions.hasOwnProperty(prefix)) {
       reloadUserFunctions();
       reloaded = true;
     }
-  
-    if (! UserFunctions[prefix].hasOwnProperty(key) && ! reloaded) {
+
+    if (!UserFunctions[prefix].hasOwnProperty(key) && !reloaded) {
       // last chance
       reloadUserFunctions();
     }
-   
-    if (! UserFunctions[prefix].hasOwnProperty(key)) {
+
+    if (!UserFunctions[prefix].hasOwnProperty(key)) {
       THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
     }
 
     func = UserFunctions[prefix][key].func;
   }
 
-  if (typeof func !== "function") {
+  if (typeof func !== 'function') {
     THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
   }
 
   return func;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize a function name
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief normalize a function name
+// //////////////////////////////////////////////////////////////////////////////
 
 function NORMALIZE_FNAME (functionName) {
   'use strict';
@@ -554,9 +546,9 @@ function NORMALIZE_FNAME (functionName) {
   return functionName.substr(p + 2);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find a fulltext index for a certain attribute & collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief find a fulltext index for a certain attribute & collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function INDEX_FULLTEXT (collection, attribute) {
   'use strict';
@@ -565,7 +557,7 @@ function INDEX_FULLTEXT (collection, attribute) {
 
   for (i = 0; i < indexes.length; ++i) {
     var index = indexes[i];
-    if (index.type === "fulltext" && index.fields && index.fields[0] === attribute) {
+    if (index.type === 'fulltext' && index.fields && index.fields[0] === attribute) {
       return index.id;
     }
   }
@@ -573,9 +565,9 @@ function INDEX_FULLTEXT (collection, attribute) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find an index of a certain type for a collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief find an index of a certain type for a collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function INDEX (collection, indexTypes) {
   'use strict';
@@ -595,9 +587,9 @@ function INDEX (collection, indexTypes) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get access to a collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get access to a collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function COLLECTION (name, func) {
   'use strict';
@@ -611,8 +603,7 @@ function COLLECTION (name, func) {
     // system collections need to be accessed slightly differently as they
     // are not returned by the propertyGetter of db
     c = INTERNAL.db._collection(name);
-  }
-  else {
+  } else {
     c = INTERNAL.db[name];
   }
 
@@ -622,27 +613,26 @@ function COLLECTION (name, func) {
   return c;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone an object
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief clone an object
+// //////////////////////////////////////////////////////////////////////////////
 
 function CLONE (obj) {
   'use strict';
 
-  if (obj === null || typeof(obj) !== "object") {
+  if (obj === null || typeof (obj) !== 'object') {
     return obj;
   }
 
   var copy;
   if (Array.isArray(obj)) {
-    copy = [ ];
+    copy = [];
     obj.forEach(function (i) {
       copy.push(CLONE(i));
     });
-  }
-  else if (obj instanceof Object) {
+  } else if (obj instanceof Object) {
     copy = { };
-    Object.keys(obj).forEach(function(k) {
+    Object.keys(obj).forEach(function (k) {
       copy[k] = CLONE(obj[k]);
     });
   }
@@ -650,18 +640,18 @@ function CLONE (obj) {
   return copy;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief box a value into the AQL datatype system
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief box a value into the AQL datatype system
+// //////////////////////////////////////////////////////////////////////////////
 
 function FIX_VALUE (value) {
   'use strict';
 
-  var type = typeof(value);
+  var type = typeof (value);
 
   if (value === undefined ||
-      value === null ||
-      (type === 'number' && (isNaN(value) || ! isFinite(value)))) {
+    value === null ||
+    (type === 'number' && (isNaN(value) || !isFinite(value)))) {
     return null;
   }
 
@@ -681,7 +671,7 @@ function FIX_VALUE (value) {
   if (type === 'object') {
     var result = { };
 
-    Object.keys(value).forEach(function(k) {
+    Object.keys(value).forEach(function (k) {
       if (typeof value[k] !== 'function') {
         result[k] = FIX_VALUE(value[k]);
       }
@@ -693,9 +683,9 @@ function FIX_VALUE (value) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the sort type of an operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the sort type of an operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function TYPEWEIGHT (value) {
   'use strict';
@@ -705,11 +695,11 @@ function TYPEWEIGHT (value) {
       return TYPEWEIGHT_ARRAY;
     }
 
-    switch (typeof(value)) {
+    switch (typeof (value)) {
       case 'boolean':
         return TYPEWEIGHT_BOOL;
       case 'number':
-        if (isNaN(value) || ! isFinite(value)) {
+        if (isNaN(value) || !isFinite(value)) {
           // not a number => null
           return TYPEWEIGHT_NULL;
         }
@@ -724,10 +714,10 @@ function TYPEWEIGHT (value) {
   return TYPEWEIGHT_NULL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compile a regex from a string pattern
-////////////////////////////////////////////////////////////////////////////////
-  
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compile a regex from a string pattern
+// //////////////////////////////////////////////////////////////////////////////
+
 function CREATE_REGEX_PATTERN (chars) {
   'use strict';
 
@@ -740,23 +730,17 @@ function CREATE_REGEX_PATTERN (chars) {
     if (c.match(specialChar)) {
       // character with special meaning in a regex
       pattern += '\\' + c;
-    }
-    else if (c === '\t') {
+    } else if (c === '\t') {
       pattern += '\\t';
-    }
-    else if (c === '\r') {
+    } else if (c === '\r') {
       pattern += '\\r';
-    }
-    else if (c === '\n') {
+    } else if (c === '\n') {
       pattern += '\\n';
-    }
-    else if (c === '\b') {
+    } else if (c === '\b') {
       pattern += '\\b';
-    }
-    else if (c === '\f') {
+    } else if (c === '\f') {
       pattern += '\\f';
-    }
-    else {
+    } else {
       pattern += c;
     }
   }
@@ -764,9 +748,9 @@ function CREATE_REGEX_PATTERN (chars) {
   return pattern;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compile a regex from a string pattern
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compile a regex from a string pattern
+// //////////////////////////////////////////////////////////////////////////////
 
 function COMPILE_REGEX (regex, modifiers) {
   'use strict';
@@ -774,9 +758,9 @@ function COMPILE_REGEX (regex, modifiers) {
   return new RegExp(AQL_TO_STRING(regex), modifiers);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compile a regex from a string pattern
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compile a regex from a string pattern
+// //////////////////////////////////////////////////////////////////////////////
 
 function COMPILE_LIKE (regex, modifiers) {
   'use strict';
@@ -795,34 +779,28 @@ function COMPILE_LIKE (regex, modifiers) {
         // literal \
         pattern += '\\\\';
       }
-      escaped = ! escaped;
-    }
-    else {
+      escaped = !escaped;
+    } else {
       if (c === '%') {
         if (escaped) {
           // literal %
           pattern += '%';
-        }
-        else {
+        } else {
           // wildcard
           pattern += '(.|[\r\n])*';
         }
-      }
-      else if (c === '_') {
+      } else if (c === '_') {
         if (escaped) {
           // literal _
           pattern += '_';
-        }
-        else {
+        } else {
           // wildcard character
           pattern += '(.|[\r\n])';
         }
-      }
-      else if (c.match(specialChar)) {
+      } else if (c.match(specialChar)) {
         // character with special meaning in a regex
         pattern += '\\' + c;
-      }
-      else {
+      } else {
         if (escaped) {
           // found a backslash followed by no special character
           pattern += '\\\\';
@@ -839,40 +817,39 @@ function COMPILE_LIKE (regex, modifiers) {
   return new RegExp('^' + pattern + '$', modifiers);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief call a user function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief call a user function
+// //////////////////////////////////////////////////////////////////////////////
 
 function FCALL_USER (name, parameters) {
   'use strict';
 
   var prefix = DB_PREFIX(), reloaded = false;
-  if (! UserFunctions.hasOwnProperty(prefix)) {
+  if (!UserFunctions.hasOwnProperty(prefix)) {
     reloadUserFunctions();
     reloaded = true;
   }
-  
-  if (! UserFunctions[prefix].hasOwnProperty(name) && ! reloaded) {
+
+  if (!UserFunctions[prefix].hasOwnProperty(name) && !reloaded) {
     // last chance
     reloadUserFunctions();
   }
-  
-  if (! UserFunctions[prefix].hasOwnProperty(name)) {
+
+  if (!UserFunctions[prefix].hasOwnProperty(name)) {
     THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
   }
 
   try {
     return FIX_VALUE(UserFunctions[prefix][name].func.apply(null, parameters));
-  }
-  catch (err) {
+  } catch (err) {
     WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err.stack || String(err)));
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dynamically call a function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief dynamically call a function
+// //////////////////////////////////////////////////////////////////////////////
 
 function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
   var toCall;
@@ -881,40 +858,38 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
   if (name.indexOf('::') > 0) {
     // user-defined function
     var prefix = DB_PREFIX(), reloaded = false;
-    if (! UserFunctions.hasOwnProperty(prefix)) {
+    if (!UserFunctions.hasOwnProperty(prefix)) {
       reloadUserFunctions();
       reloaded = true;
     }
 
-    if (! UserFunctions[prefix].hasOwnProperty(name) && ! reloaded) {
+    if (!UserFunctions[prefix].hasOwnProperty(name) && !reloaded) {
       // last chance
       reloadUserFunctions();
     }
 
-    if (! UserFunctions[prefix].hasOwnProperty(name)) {
+    if (!UserFunctions[prefix].hasOwnProperty(name)) {
       THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
     }
 
     toCall = UserFunctions[prefix][name].func;
-  }
-  else {
+  } else {
     // built-in function
-    if (name === "CALL" || name === "APPLY") {
+    if (name === 'CALL' || name === 'APPLY') {
       THROW(func, INTERNAL.errors.ERROR_QUERY_DISALLOWED_DYNAMIC_CALL, NORMALIZE_FNAME(name));
     }
 
-    if (! exports.hasOwnProperty("AQL_" + name)) {
+    if (!exports.hasOwnProperty('AQL_' + name)) {
       THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
     }
 
-    toCall = exports["AQL_" + name];
+    toCall = exports['AQL_' + name];
   }
 
   if (applyDirect) {
     try {
       return FIX_VALUE(toCall.apply(null, args));
-    }
-    catch (err) {
+    } catch (err) {
       WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
       return null;
     }
@@ -931,28 +906,27 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
       }
     }
     return result;
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
-    result = [ ];
+  } else if (type === TYPEWEIGHT_ARRAY) {
+    result = [];
     for (i = 0; i < values.length; ++i) {
       args[0] = values[i];
       result[i] = FIX_VALUE(toCall.apply(null, args));
     }
     return result;
   }
-    
+
   WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the numeric value or undefined if it is out of range
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the numeric value or undefined if it is out of range
+// //////////////////////////////////////////////////////////////////////////////
 
 function NUMERIC_VALUE (value, nullify) {
   'use strict';
 
-  if (value === null || isNaN(value) || ! isFinite(value)) {
+  if (value === null || isNaN(value) || !isFinite(value)) {
     if (nullify) {
       return null;
     }
@@ -962,25 +936,25 @@ function NUMERIC_VALUE (value, nullify) {
   return value;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the values of an object in the order that they are defined
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the values of an object in the order that they are defined
+// //////////////////////////////////////////////////////////////////////////////
 
 function VALUES (value) {
   'use strict';
 
-  var values = [ ];
+  var values = [];
 
-  Object.keys(value).forEach(function(k) {
+  Object.keys(value).forEach(function (k) {
     values.push(value[k]);
   });
 
   return values;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract key names from an argument list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief extract key names from an argument list
+// //////////////////////////////////////////////////////////////////////////////
 
 function EXTRACT_KEYS (args, startArgument, func) {
   'use strict';
@@ -991,17 +965,14 @@ function EXTRACT_KEYS (args, startArgument, func) {
     key = args[i];
     if (typeof key === 'string') {
       keys[key] = true;
-    }
-    else if (typeof key === 'number') {
+    } else if (typeof key === 'number') {
       keys[String(key)] = true;
-    }
-    else if (Array.isArray(key)) {
+    } else if (Array.isArray(key)) {
       for (j = 0; j < key.length; ++j) {
         key2 = key[j];
         if (typeof key2 === 'string') {
           keys[key2] = true;
-        }
-        else {
+        } else {
           WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
           return null;
         }
@@ -1012,9 +983,9 @@ function EXTRACT_KEYS (args, startArgument, func) {
   return keys;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the keys of an array or object in a comparable way
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the keys of an array or object in a comparable way
+// //////////////////////////////////////////////////////////////////////////////
 
 function KEYS (value, doSort) {
   'use strict';
@@ -1023,13 +994,12 @@ function KEYS (value, doSort) {
 
   if (Array.isArray(value)) {
     var n = value.length, i;
-    keys = [ ];
+    keys = [];
 
     for (i = 0; i < n; ++i) {
       keys.push(i);
     }
-  }
-  else {
+  } else {
     keys = Object.keys(value);
 
     if (doSort) {
@@ -1041,9 +1011,9 @@ function KEYS (value, doSort) {
   return keys;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the keys of an array or object in a comparable way
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the keys of an array or object in a comparable way
+// //////////////////////////////////////////////////////////////////////////////
 
 function KEYLIST (lhs, rhs) {
   'use strict';
@@ -1056,7 +1026,7 @@ function KEYLIST (lhs, rhs) {
   // lhs & rhs are arrays
   var a, keys = KEYS(lhs);
   for (a in rhs) {
-    if (rhs.hasOwnProperty(a) && ! lhs.hasOwnProperty(a)) {
+    if (rhs.hasOwnProperty(a) && !lhs.hasOwnProperty(a)) {
       keys.push(a);
     }
   }
@@ -1067,9 +1037,9 @@ function KEYLIST (lhs, rhs) {
   return keys;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an indexed value from an array or document (e.g. users[3])
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get an indexed value from an array or document (e.g. users[3])
+// //////////////////////////////////////////////////////////////////////////////
 
 function GET_INDEX (value, index) {
   'use strict';
@@ -1081,19 +1051,17 @@ function GET_INDEX (value, index) {
   var result = null;
   if (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT) {
     result = value[String(index)];
-  }
-  else if (TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY) {
+  } else if (TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY) {
     var i = parseInt(index, 10);
     if (i < 0) {
-      // negative indexes fetch the element from the end, e.g. -1 => value[value.length - 1];
+      // negative indexes fetch the element from the end, e.g. -1 => value[value.length - 1]
       i = value.length + i;
     }
 
     if (i >= 0 && i <= value.length - 1) {
       result = value[i];
     }
-  }
-  else {
+  } else {
     return null;
   }
 
@@ -1104,9 +1072,9 @@ function GET_INDEX (value, index) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize a value for comparison, sorting etc.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief normalize a value for comparison, sorting etc.
+// //////////////////////////////////////////////////////////////////////////////
 
 function NORMALIZE (value) {
   'use strict';
@@ -1115,19 +1083,18 @@ function NORMALIZE (value) {
     return null;
   }
 
-  if (typeof(value) !== "object") {
+  if (typeof (value) !== 'object') {
     return value;
   }
 
   var result;
 
   if (Array.isArray(value)) {
-    result = [ ];
+    result = [];
     value.forEach(function (v) {
       result.push(NORMALIZE(v));
     });
-  }
-  else {
+  } else {
     result = { };
     KEYS(value, true).forEach(function (a) {
       result[a] = NORMALIZE(value[a]);
@@ -1137,9 +1104,9 @@ function NORMALIZE (value) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an attribute from a document (e.g. users.name)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get an attribute from a document (e.g. users.name)
+// //////////////////////////////////////////////////////////////////////////////
 
 function DOCUMENT_MEMBER (value, attributeName) {
   'use strict';
@@ -1157,36 +1124,33 @@ function DOCUMENT_MEMBER (value, attributeName) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a document by its unique id or their unique ids
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get a document by its unique id or their unique ids
+// //////////////////////////////////////////////////////////////////////////////
 
 function DOCUMENT_HANDLE (id) {
   'use strict';
 
   if (TYPEWEIGHT(id) === TYPEWEIGHT_ARRAY) {
-    var result = [ ], i;
+    var result = [], i;
     for (i = 0; i < id.length; ++i) {
       try {
         result.push(INTERNAL.db._document(id[i]));
-      }
-      catch (e1) {
-      }
+      } catch (e1) {}
     }
     return result;
   }
 
   try {
     return INTERNAL.db._document(id);
-  }
-  catch (e2) {
+  } catch (e2) {
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a document by its unique id or their unique ids
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get a document by its unique id or their unique ids
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DOCUMENT (collection, id) {
   'use strict';
@@ -1202,30 +1166,27 @@ function AQL_DOCUMENT (collection, id) {
   }
 
   if (TYPEWEIGHT(id) === TYPEWEIGHT_ARRAY) {
-    var c = COLLECTION(collection, "DOCUMENT");
+    var c = COLLECTION(collection, 'DOCUMENT');
 
-    var result = [ ], i;
+    var result = [], i;
     for (i = 0; i < id.length; ++i) {
       try {
         result.push(c.document(id[i]));
-      }
-      catch (e1) {
-      }
+      } catch (e1) {}
     }
     return result;
   }
 
   try {
-    return COLLECTION(collection, "DOCUMENT").document(id);
-  }
-  catch (e2) {
+    return COLLECTION(collection, 'DOCUMENT').document(id);
+  } catch (e2) {
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get all documents from the specified collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get all documents from the specified collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS (collection, func) {
   'use strict';
@@ -1239,51 +1200,50 @@ function GET_DOCUMENTS (collection, func) {
   return COLLECTION(collection, func).ALL(0, null).documents;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get names of all collections
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get names of all collections
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_COLLECTIONS () {
   'use strict';
 
-  var result = [ ];
+  var result = [];
 
   INTERNAL.db._collections().forEach(function (c) {
     result.push({
-      _id : c._id,
-      name : c.name()
+      _id: c._id,
+      name: c.name()
     });
   });
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the number of documents in a collection
-/// this is an internal function that is not exposed to end users
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the number of documents in a collection
+// / this is an internal function that is not exposed to end users
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_COLLECTION_COUNT (name) {
   'use strict';
 
   if (typeof name !== 'string') {
-    THROW("COLLECTION_COUNT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "COLLECTION_COUNT");
+    THROW('COLLECTION_COUNT', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, 'COLLECTION_COUNT');
   }
 
   var c = INTERNAL.db._collection(name);
   if (c === null || c === undefined) {
-    THROW("COLLECTION_COUNT", INTERNAL.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND, String(name));
+    THROW('COLLECTION_COUNT', INTERNAL.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND, String(name));
   }
   return c.count();
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute ternary operator
-///
-/// the condition should be a boolean value, returns either the truepart
-/// or the falsepart
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief execute ternary operator
+// /
+// / the condition should be a boolean value, returns either the truepart
+// / or the falsepart
+// //////////////////////////////////////////////////////////////////////////////
 
 function TERNARY_OPERATOR (condition, truePart, falsePart) {
   'use strict';
@@ -1294,31 +1254,31 @@ function TERNARY_OPERATOR (condition, truePart, falsePart) {
   return falsePart();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform logical and
-///
-/// both operands must be boolean values, returns a boolean, uses short-circuit
-/// evaluation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform logical and
+// /
+// / both operands must be boolean values, returns a boolean, uses short-circuit
+// / evaluation
+// //////////////////////////////////////////////////////////////////////////////
 
 function LOGICAL_AND (lhs, rhs) {
   'use strict';
 
   var l = lhs();
 
-  if (! l) {
+  if (!l) {
     return l;
   }
 
   return rhs();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform logical or
-///
-/// both operands must be boolean values, returns a boolean, uses short-circuit
-/// evaluation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform logical or
+// /
+// / both operands must be boolean values, returns a boolean, uses short-circuit
+// / evaluation
+// //////////////////////////////////////////////////////////////////////////////
 
 function LOGICAL_OR (lhs, rhs) {
   'use strict';
@@ -1332,21 +1292,21 @@ function LOGICAL_OR (lhs, rhs) {
   return rhs();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform logical negation
-///
-/// the operand must be a boolean values, returns a boolean
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform logical negation
+// /
+// / the operand must be a boolean values, returns a boolean
+// //////////////////////////////////////////////////////////////////////////////
 
 function LOGICAL_NOT (lhs) {
   'use strict';
 
-  return ! AQL_TO_BOOL(lhs);
+  return !AQL_TO_BOOL(lhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform equality check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform equality check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
   'use strict';
@@ -1359,12 +1319,10 @@ function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
   if (quantifier === 1) {
     // NONE
     min = max = 0;
-  }
-  else if (quantifier === 2) {
+  } else if (quantifier === 2) {
     // ALL
     min = max = n;
-  }
-  else if (quantifier === 3) {
+  } else if (quantifier === 3) {
     // ANY
     min = (n === 0 ? 0 : 1);
     max = n;
@@ -1385,8 +1343,7 @@ function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
         // enough matches
         return true;
       }
-    }
-    else {
+    } else {
       if (matches + left < min) {
         // too few matches
         return false;
@@ -1397,11 +1354,11 @@ function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform equality check
-///
-/// returns true if the operands are equal, false otherwise
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform equality check
+// /
+// / returns true if the operands are equal, false otherwise
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_EQUAL (lhs, rhs) {
   'use strict';
@@ -1439,11 +1396,11 @@ function RELATIONAL_EQUAL (lhs, rhs) {
   return (lhs === rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform inequality check
-///
-/// returns true if the operands are unequal, false otherwise
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform inequality check
+// /
+// / returns true if the operands are unequal, false otherwise
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_UNEQUAL (lhs, rhs) {
   'use strict';
@@ -1482,9 +1439,9 @@ function RELATIONAL_UNEQUAL (lhs, rhs) {
   return (lhs !== rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater than check (inner function)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform greater than check (inner function)
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_GREATER_REC (lhs, rhs) {
   'use strict';
@@ -1530,11 +1487,11 @@ function RELATIONAL_GREATER_REC (lhs, rhs) {
   return (lhs > rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater than check
-///
-/// returns true if the left operand is greater than the right operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform greater than check
+// /
+// / returns true if the left operand is greater than the right operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_GREATER (lhs, rhs) {
   'use strict';
@@ -1548,9 +1505,9 @@ function RELATIONAL_GREATER (lhs, rhs) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater equal check (inner function)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform greater equal check (inner function)
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
   'use strict';
@@ -1596,11 +1553,11 @@ function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
   return (lhs >= rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater equal check
-///
-/// returns true if the left operand is greater or equal to the right operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform greater equal check
+// /
+// / returns true if the left operand is greater or equal to the right operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_GREATEREQUAL (lhs, rhs) {
   'use strict';
@@ -1614,9 +1571,9 @@ function RELATIONAL_GREATEREQUAL (lhs, rhs) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less than check (inner function)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform less than check (inner function)
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_LESS_REC (lhs, rhs) {
   'use strict';
@@ -1662,11 +1619,11 @@ function RELATIONAL_LESS_REC (lhs, rhs) {
   return (lhs < rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less than check
-///
-/// returns true if the left operand is less than the right operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform less than check
+// /
+// / returns true if the left operand is less than the right operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_LESS (lhs, rhs) {
   'use strict';
@@ -1680,9 +1637,9 @@ function RELATIONAL_LESS (lhs, rhs) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less equal check (inner function)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform less equal check (inner function)
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
   'use strict';
@@ -1728,11 +1685,11 @@ function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
   return (lhs <= rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less equal check
-///
-/// returns true if the left operand is less or equal to the right operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform less equal check
+// /
+// / returns true if the left operand is less or equal to the right operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_LESSEQUAL (lhs, rhs) {
   'use strict';
@@ -1746,12 +1703,12 @@ function RELATIONAL_LESSEQUAL (lhs, rhs) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform comparison
-///
-/// returns -1 if the left operand is less than the right operand, 1 if it is
-/// greater, 0 if both operands are equal
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform comparison
+// /
+// / returns -1 if the left operand is less than the right operand, 1 if it is
+// / greater, 0 if both operands are equal
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_CMP (lhs, rhs) {
   'use strict';
@@ -1801,11 +1758,11 @@ function RELATIONAL_CMP (lhs, rhs) {
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform in list check
-///
-/// returns true if the left operand is contained in the right operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform in list check
+// /
+// / returns true if the left operand is contained in the right operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_IN (lhs, rhs) {
   'use strict';
@@ -1827,21 +1784,21 @@ function RELATIONAL_IN (lhs, rhs) {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform not-in list check
-///
-/// returns true if the left operand is not contained in the right operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform not-in list check
+// /
+// / returns true if the left operand is not contained in the right operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_NOT_IN (lhs, rhs) {
   'use strict';
 
-  return ! RELATIONAL_IN(lhs, rhs);
+  return !RELATIONAL_IN(lhs, rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform equality check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform equality check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_EQUAL (lhs, rhs, quantifier) {
   'use strict';
@@ -1849,9 +1806,9 @@ function RELATIONAL_ARRAY_EQUAL (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_EQUAL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform unequality check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform unequality check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_UNEQUAL (lhs, rhs, quantifier) {
   'use strict';
@@ -1859,9 +1816,9 @@ function RELATIONAL_ARRAY_UNEQUAL (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_UNEQUAL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform greater check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_GREATER (lhs, rhs, quantifier) {
   'use strict';
@@ -1869,9 +1826,9 @@ function RELATIONAL_ARRAY_GREATER (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_GREATER);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater equal check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform greater equal check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_GREATEREQUAL (lhs, rhs, quantifier) {
   'use strict';
@@ -1879,9 +1836,9 @@ function RELATIONAL_ARRAY_GREATEREQUAL (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_GREATEREQUAL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform less check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_LESS (lhs, rhs, quantifier) {
   'use strict';
@@ -1889,9 +1846,9 @@ function RELATIONAL_ARRAY_LESS (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_LESS);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less equal check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform less equal check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_LESSEQUAL (lhs, rhs, quantifier) {
   'use strict';
@@ -1899,9 +1856,9 @@ function RELATIONAL_ARRAY_LESSEQUAL (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_LESSEQUAL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform in check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform in check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_IN (lhs, rhs, quantifier) {
   'use strict';
@@ -1909,9 +1866,9 @@ function RELATIONAL_ARRAY_IN (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_IN);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform in check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform in check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_NOT_IN (lhs, rhs, quantifier) {
   'use strict';
@@ -1919,9 +1876,9 @@ function RELATIONAL_ARRAY_NOT_IN (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_NOT_IN);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform unary plus operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform unary plus operation
+// //////////////////////////////////////////////////////////////////////////////
 
 function UNARY_PLUS (value) {
   'use strict';
@@ -1930,9 +1887,9 @@ function UNARY_PLUS (value) {
   return AQL_TO_NUMBER(+ value);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform unary minus operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform unary minus operation
+// //////////////////////////////////////////////////////////////////////////////
 
 function UNARY_MINUS (value) {
   'use strict';
@@ -1941,9 +1898,9 @@ function UNARY_MINUS (value) {
   return AQL_TO_NUMBER(- value);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform arithmetic plus or string concatenation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform arithmetic plus or string concatenation
+// //////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_PLUS (lhs, rhs) {
   'use strict';
@@ -1953,33 +1910,33 @@ function ARITHMETIC_PLUS (lhs, rhs) {
   return AQL_TO_NUMBER(lhs + rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform arithmetic minus
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform arithmetic minus
+// //////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_MINUS (lhs, rhs) {
   'use strict';
-  
+
   lhs = AQL_TO_NUMBER(lhs);
   rhs = AQL_TO_NUMBER(rhs);
   return AQL_TO_NUMBER(lhs - rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform arithmetic multiplication
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform arithmetic multiplication
+// //////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_TIMES (lhs, rhs) {
   'use strict';
-  
+
   lhs = AQL_TO_NUMBER(lhs);
   rhs = AQL_TO_NUMBER(rhs);
   return AQL_TO_NUMBER(lhs * rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform arithmetic division
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform arithmetic division
+// //////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_DIVIDE (lhs, rhs) {
   'use strict';
@@ -1994,9 +1951,9 @@ function ARITHMETIC_DIVIDE (lhs, rhs) {
   return AQL_TO_NUMBER(lhs / rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform arithmetic modulus
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform arithmetic modulus
+// //////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_MODULUS (lhs, rhs) {
   'use strict';
@@ -2011,9 +1968,9 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
   return AQL_TO_NUMBER(lhs % rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform string concatenation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform string concatenation
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CONCAT () {
   'use strict';
@@ -2022,7 +1979,7 @@ function AQL_CONCAT () {
   if (what.length === 1 && Array.isArray(what[0])) {
     what = arguments[0];
   }
-  
+
   var i, n = what.length;
 
   for (i = 0; i < n; ++i) {
@@ -2037,9 +1994,9 @@ function AQL_CONCAT () {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform string concatenation using a separator character
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform string concatenation using a separator character
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CONCAT_SEPARATOR () {
   'use strict';
@@ -2064,14 +2021,13 @@ function AQL_CONCAT_SEPARATOR () {
 
   for (i = 0; i < arguments.length; ++i) {
     element = arguments[i];
- 
+
     if (i > 0 && TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
       continue;
     }
     if (i === 0) {
       separator = AQL_TO_STRING(element);
-    }
-    else {
+    } else {
       if (found) {
         result += separator;
       }
@@ -2083,9 +2039,9 @@ function AQL_CONCAT_SEPARATOR () {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the length of a string in characters (not bytes)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the length of a string in characters (not bytes)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CHAR_LENGTH (value) {
   'use strict';
@@ -2093,9 +2049,9 @@ function AQL_CHAR_LENGTH (value) {
   return AQL_TO_STRING(value).length;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a string to lower case
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief convert a string to lower case
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LOWER (value) {
   'use strict';
@@ -2103,9 +2059,9 @@ function AQL_LOWER (value) {
   return AQL_TO_STRING(value).toLowerCase();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a string to upper case
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief convert a string to upper case
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UPPER (value) {
   'use strict';
@@ -2113,9 +2069,9 @@ function AQL_UPPER (value) {
   return AQL_TO_STRING(value).toUpperCase();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a substring of the string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a substring of the string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SUBSTRING (value, offset, count) {
   'use strict';
@@ -2127,9 +2083,9 @@ function AQL_SUBSTRING (value, offset, count) {
   return AQL_TO_STRING(value).substr(AQL_TO_NUMBER(offset), count);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief searches a substring in a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief searches a substring in a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CONTAINS (value, search, returnIndex) {
   'use strict';
@@ -2139,8 +2095,7 @@ function AQL_CONTAINS (value, search, returnIndex) {
   var result;
   if (search.length === 0) {
     result = -1;
-  }
-  else {
+  } else {
     result = AQL_TO_STRING(value).indexOf(search);
   }
 
@@ -2151,9 +2106,9 @@ function AQL_CONTAINS (value, search, returnIndex) {
   return (result !== -1);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief searches a substring in a string, using a regex
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief searches a substring in a string, using a regex
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LIKE (value, regex, caseInsensitive) {
   'use strict';
@@ -2171,16 +2126,15 @@ function AQL_LIKE (value, regex, caseInsensitive) {
 
   try {
     return LikeCache[modifiers][regex].test(AQL_TO_STRING(value));
-  }
-  catch (err) {
-    WARN("LIKE", INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
+  } catch (err) {
+    WARN('LIKE', INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
     return false;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief searches a substring in a string, using a regex
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief searches a substring in a string, using a regex
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_REGEX_TEST (value, regex, caseInsensitive) {
   'use strict';
@@ -2198,16 +2152,15 @@ function AQL_REGEX_TEST (value, regex, caseInsensitive) {
     }
 
     return RegexCache[modifiers][regex].test(AQL_TO_STRING(value));
-  }
-  catch (err) {
-    WARN("REGEX", INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
+  } catch (err) {
+    WARN('REGEX', INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
     return false;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the leftmost parts of a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the leftmost parts of a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LEFT (value, length) {
   'use strict';
@@ -2215,9 +2168,9 @@ function AQL_LEFT (value, length) {
   return AQL_TO_STRING(value).substr(0, AQL_TO_NUMBER(length));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the rightmost parts of a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the rightmost parts of a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_RIGHT (value, length) {
   'use strict';
@@ -2233,64 +2186,60 @@ function AQL_RIGHT (value, length) {
   return value.substr(left, length);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a trimmed version of a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns a trimmed version of a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TRIM (value, chars) {
   'use strict';
 
   if (chars === 1) {
     return AQL_LTRIM(value);
-  }
-  else if (chars === 2) {
+  } else if (chars === 2) {
     return AQL_RTRIM(value);
-  }
-  else if (chars === null || chars === undefined || chars === 0) {
-    return AQL_TO_STRING(value).replace(new RegExp("(^\\s+|\\s+$)", 'g'), '');
+  } else if (chars === null || chars === undefined || chars === 0) {
+    return AQL_TO_STRING(value).replace(new RegExp('(^\\s+|\\s+$)', 'g'), '');
   }
 
   var pattern = CREATE_REGEX_PATTERN(chars);
-  return AQL_TO_STRING(value).replace(new RegExp("(^[" + pattern + "]+|[" + pattern + "]+$)", 'g'), '');
+  return AQL_TO_STRING(value).replace(new RegExp('(^[' + pattern + ']+|[' + pattern + ']+$)', 'g'), '');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief trim a value from the left
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief trim a value from the left
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LTRIM (value, chars) {
   'use strict';
 
   if (chars === null || chars === undefined) {
-    chars = "^\\s+";
-  }
-  else {
-    chars = "^[" + CREATE_REGEX_PATTERN(chars) + "]+";
+    chars = '^\\s+';
+  } else {
+    chars = '^[' + CREATE_REGEX_PATTERN(chars) + ']+';
   }
 
   return AQL_TO_STRING(value).replace(new RegExp(chars, 'g'), '');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief trim a value from the right
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief trim a value from the right
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_RTRIM (value, chars) {
   'use strict';
 
   if (chars === null || chars === undefined) {
-    chars = "\\s+$";
-  }
-  else {
-    chars = "[" + CREATE_REGEX_PATTERN(chars) + "]+$";
+    chars = '\\s+$';
+  } else {
+    chars = '[' + CREATE_REGEX_PATTERN(chars) + ']+$';
   }
 
   return AQL_TO_STRING(value).replace(new RegExp(chars, 'g'), '');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief split a string using a separator
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief split a string using a separator
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SPLIT (value, separator, limit) {
   'use strict';
@@ -2301,87 +2250,80 @@ function AQL_SPLIT (value, separator, limit) {
 
   if (TYPEWEIGHT(limit) === TYPEWEIGHT_NULL) {
     limit = undefined;
-  }
-  else {
+  } else {
     limit = AQL_TO_NUMBER(limit);
   }
 
   if (limit < 0) {
-    WARN("SPLIT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('SPLIT', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
   if (TYPEWEIGHT(separator) === TYPEWEIGHT_ARRAY) {
     var patterns = [];
-    separator.forEach(function(s) {
+    separator.forEach(function (s) {
       patterns.push(CREATE_REGEX_PATTERN(AQL_TO_STRING(s)));
     });
 
-    return AQL_TO_STRING(value).split(new RegExp(patterns.join("|"), "g"), limit);
+    return AQL_TO_STRING(value).split(new RegExp(patterns.join('|'), 'g'), limit);
   }
 
   return AQL_TO_STRING(value).split(AQL_TO_STRING(separator), limit);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a search value inside a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief replace a search value inside a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SUBSTITUTE (value, search, replace, limit) {
   'use strict';
 
-  var pattern = "", patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
+  var pattern = '', patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
   value = AQL_TO_STRING(value);
 
   if (sWeight === TYPEWEIGHT_OBJECT) {
-    patterns = [ ];
-    KEYS(search, false).forEach(function(k) {
+    patterns = [];
+    KEYS(search, false).forEach(function (k) {
       patterns.push(CREATE_REGEX_PATTERN(k));
       replacements[k] = AQL_TO_STRING(search[k]);
     });
     pattern = patterns.join('|');
     limit = replace;
-  }
-  else if (sWeight === TYPEWEIGHT_STRING) {
+  } else if (sWeight === TYPEWEIGHT_STRING) {
     pattern = CREATE_REGEX_PATTERN(search);
     if (TYPEWEIGHT(replace) === TYPEWEIGHT_NULL) {
-      replacements[search] = "";
-    }
-    else {
+      replacements[search] = '';
+    } else {
       replacements[search] = AQL_TO_STRING(replace);
     }
-  }
-  else if (sWeight === TYPEWEIGHT_ARRAY) {
+  } else if (sWeight === TYPEWEIGHT_ARRAY) {
     if (search.length === 0) {
       // empty list
-      WARN("SUBSTITUTE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      WARN('SUBSTITUTE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return value;
     }
 
-    patterns = [ ];
+    patterns = [];
 
     if (TYPEWEIGHT(replace) === TYPEWEIGHT_ARRAY) {
       // replace each occurrence with a member from the second list
-      search.forEach(function(k, i) {
+      search.forEach(function (k, i) {
         k = AQL_TO_STRING(k);
         patterns.push(CREATE_REGEX_PATTERN(k));
         if (i < replace.length) {
           replacements[k] = AQL_TO_STRING(replace[i]);
-        }
-        else {
-          replacements[k] = "";
+        } else {
+          replacements[k] = '';
         }
       });
-    }
-    else {
+    } else {
       // replace all occurrences with a constant string
       if (TYPEWEIGHT(replace) === TYPEWEIGHT_NULL) {
-        replace = "";
-      }
-      else {
+        replace = '';
+      } else {
         replace = AQL_TO_STRING(replace);
       }
-      search.forEach(function(k) {
+      search.forEach(function (k) {
         k = AQL_TO_STRING(k);
         patterns.push(CREATE_REGEX_PATTERN(k));
         replacements[k] = replace;
@@ -2390,26 +2332,25 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
     pattern = patterns.join('|');
   }
 
-  if (pattern === "") {
+  if (pattern === '') {
     return value;
   }
-  
+
   if (TYPEWEIGHT(limit) === TYPEWEIGHT_NULL) {
     limit = undefined;
-  }
-  else {
+  } else {
     limit = AQL_TO_NUMBER(limit);
   }
 
   if (limit < 0) {
-    WARN("SUBSTITUTE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('SUBSTITUTE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  return AQL_TO_STRING(value).replace(new RegExp(pattern, 'g'), function(match) {
+  return AQL_TO_STRING(value).replace(new RegExp(pattern, 'g'), function (match) {
     if (limit === undefined) {
       return replacements[match];
-    } 
+    }
     if (limit > 0) {
       --limit;
       return replacements[match];
@@ -2418,9 +2359,9 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
   });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates the MD5 value for a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generates the MD5 value for a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MD5 (value) {
   'use strict';
@@ -2428,9 +2369,9 @@ function AQL_MD5 (value) {
   return INTERNAL.md5(AQL_TO_STRING(value));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates the SHA1 value for a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generates the SHA1 value for a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SHA1 (value) {
   'use strict';
@@ -2438,9 +2379,9 @@ function AQL_SHA1 (value) {
   return INTERNAL.sha1(AQL_TO_STRING(value));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a hash value for an object
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generates a hash value for an object
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_HASH (value) {
   'use strict';
@@ -2448,32 +2389,32 @@ function AQL_HASH (value) {
   return OBJECT_HASH(value);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the typename for an object
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the typename for an object
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TYPENAME (value) {
   'use strict';
 
   switch (TYPEWEIGHT(value)) {
     case TYPEWEIGHT_BOOL:
-      return "bool";
+      return 'bool';
     case TYPEWEIGHT_NUMBER:
-      return "number";
+      return 'number';
     case TYPEWEIGHT_STRING:
-      return "string";
+      return 'string';
     case TYPEWEIGHT_ARRAY:
-      return "array";
+      return 'array';
     case TYPEWEIGHT_OBJECT:
-      return "object";
+      return 'object';
   }
-    
-  return "null";
+
+  return 'null';
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a random token of the specified length
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generates a random token of the specified length
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_RANDOM_TOKEN (length) {
   'use strict';
@@ -2481,15 +2422,15 @@ function AQL_RANDOM_TOKEN (length) {
   length = AQL_TO_NUMBER(length);
 
   if (length <= 0 || length > 65536) {
-    THROW("RANDOM_TOKEN", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANDOM_TOKEN");
+    THROW('RANDOM_TOKEN', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, 'RANDOM_TOKEN');
   }
 
   return INTERNAL.genRandomAlphaNumbers(length);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds search in value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief finds search in value
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FIND_FIRST (value, search, start, end) {
   'use strict';
@@ -2499,8 +2440,7 @@ function AQL_FIND_FIRST (value, search, start, end) {
     if (start < 0) {
       return -1;
     }
-  }
-  else {
+  } else {
     start = 0;
   }
 
@@ -2509,8 +2449,7 @@ function AQL_FIND_FIRST (value, search, start, end) {
     if (end < start || end < 0) {
       return -1;
     }
-  }
-  else {
+  } else {
     end = undefined;
   }
 
@@ -2521,17 +2460,16 @@ function AQL_FIND_FIRST (value, search, start, end) {
   return AQL_TO_STRING(value).indexOf(AQL_TO_STRING(search), start);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds search in value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief finds search in value
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FIND_LAST (value, search, start, end) {
   'use strict';
 
   if (TYPEWEIGHT(start) !== TYPEWEIGHT_NULL) {
     start = AQL_TO_NUMBER(start);
-  }
-  else {
+  } else {
     start = undefined;
   }
 
@@ -2540,8 +2478,7 @@ function AQL_FIND_LAST (value, search, start, end) {
     if (end < start || end < 0) {
       return -1;
     }
-  }
-  else {
+  } else {
     end = undefined;
   }
 
@@ -2549,26 +2486,23 @@ function AQL_FIND_LAST (value, search, start, end) {
   if (start > 0 || end !== undefined) {
     if (end === undefined) {
       result = AQL_TO_STRING(value).substr(start).lastIndexOf(AQL_TO_STRING(search));
-    }
-    else {
+    } else {
       result = AQL_TO_STRING(value).substr(start, end - start + 1).lastIndexOf(AQL_TO_STRING(search));
     }
     if (result !== -1) {
       result += start;
     }
-  }
-  else {
+  } else {
     result = AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search));
   }
   return result;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to a bool
-///
-/// the operand can have any type, always returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cast to a bool
+// /
+// / the operand can have any type, always returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TO_BOOL (value) {
   'use strict';
@@ -2588,11 +2522,11 @@ function AQL_TO_BOOL (value) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to a number
-///
-/// the operand can have any type, returns a number or null
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cast to a number
+// /
+// / the operand can have any type, returns a number or null
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TO_NUMBER (value) {
   'use strict';
@@ -2615,16 +2549,16 @@ function AQL_TO_NUMBER (value) {
       if (value.length === 1) {
         return AQL_TO_NUMBER(value[0]);
       }
-      // fallthrough intentional
+  // fallthrough intentional
   }
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to a string
-///
-/// the operand can have any type, always returns a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cast to a string
+// /
+// / the operand can have any type, always returns a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TO_STRING (value) {
   'use strict';
@@ -2644,18 +2578,18 @@ function AQL_TO_STRING (value) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to an array
-///
-/// the operand can have any type, always returns a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cast to an array
+// /
+// / the operand can have any type, always returns a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TO_ARRAY (value) {
   'use strict';
 
   switch (TYPEWEIGHT(value)) {
     case TYPEWEIGHT_NULL:
-      return [ ];
+      return [];
     case TYPEWEIGHT_BOOL:
     case TYPEWEIGHT_NUMBER:
     case TYPEWEIGHT_STRING:
@@ -2667,25 +2601,24 @@ function AQL_TO_ARRAY (value) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the array as is, or an empty array
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the array as is, or an empty array
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ARRAYIZE (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    return [ ];
+    return [];
   }
   return value;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type null
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of type null
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_NULL (value) {
   'use strict';
@@ -2693,11 +2626,11 @@ function AQL_IS_NULL (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_NULL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type bool
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of type bool
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_BOOL (value) {
   'use strict';
@@ -2705,11 +2638,11 @@ function AQL_IS_BOOL (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_BOOL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type number
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of type number
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_NUMBER (value) {
   'use strict';
@@ -2717,11 +2650,11 @@ function AQL_IS_NUMBER (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_NUMBER);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type string
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of type string
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_STRING (value) {
   'use strict';
@@ -2729,11 +2662,11 @@ function AQL_IS_STRING (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_STRING);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type array
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of type array
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_ARRAY (value) {
   'use strict';
@@ -2741,11 +2674,11 @@ function AQL_IS_ARRAY (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type object
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of type object
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_OBJECT (value) {
   'use strict';
@@ -2753,15 +2686,15 @@ function AQL_IS_OBJECT (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of a valid datestring
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of a valid datestring
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_DATESTRING (value) {
   'use strict';
-    
+
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_STRING) {
     return false;
   }
@@ -2776,9 +2709,9 @@ function AQL_IS_DATESTRING (value) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief integer closest to value, not greater than value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief integer closest to value, not greater than value
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FLOOR (value) {
   'use strict';
@@ -2786,9 +2719,9 @@ function AQL_FLOOR (value) {
   return NUMERIC_VALUE(Math.floor(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief integer closest to value and not less than value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief integer closest to value and not less than value
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CEIL (value) {
   'use strict';
@@ -2796,9 +2729,9 @@ function AQL_CEIL (value) {
   return NUMERIC_VALUE(Math.ceil(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief integer closest to value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief integer closest to value
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ROUND (value) {
   'use strict';
@@ -2806,9 +2739,9 @@ function AQL_ROUND (value) {
   return NUMERIC_VALUE(Math.round(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief absolute value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief absolute value
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ABS (value) {
   'use strict';
@@ -2816,9 +2749,9 @@ function AQL_ABS (value) {
   return NUMERIC_VALUE(Math.abs(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a random value between 0 and 1
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief a random value between 0 and 1
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_RAND () {
   'use strict';
@@ -2826,9 +2759,9 @@ function AQL_RAND () {
   return Math.random();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief square root
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief square root
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SQRT (value) {
   'use strict';
@@ -2836,9 +2769,9 @@ function AQL_SQRT (value) {
   return NUMERIC_VALUE(Math.sqrt(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exponentation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief exponentation
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_POW (base, exp) {
   'use strict';
@@ -2846,9 +2779,9 @@ function AQL_POW (base, exp) {
   return NUMERIC_VALUE(Math.pow(AQL_TO_NUMBER(base), AQL_TO_NUMBER(exp)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log(n)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief log(n)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LOG (value) {
   'use strict';
@@ -2856,9 +2789,9 @@ function AQL_LOG (value) {
   return NUMERIC_VALUE(Math.log(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log(2)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief log(2)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LOG2 (value) {
   'use strict';
@@ -2866,9 +2799,9 @@ function AQL_LOG2 (value) {
   return NUMERIC_VALUE(Math.log2(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log(10)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief log(10)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LOG10 (value) {
   'use strict';
@@ -2876,9 +2809,9 @@ function AQL_LOG10 (value) {
   return NUMERIC_VALUE(Math.log10(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exp(n)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief exp(n)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_EXP (value) {
   'use strict';
@@ -2886,9 +2819,9 @@ function AQL_EXP (value) {
   return NUMERIC_VALUE(Math.exp(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exp(2)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief exp(2)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_EXP2 (value) {
   'use strict';
@@ -2896,9 +2829,9 @@ function AQL_EXP2 (value) {
   return NUMERIC_VALUE(Math.pow(2, AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sin
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sin
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SIN (value) {
   'use strict';
@@ -2906,9 +2839,9 @@ function AQL_SIN (value) {
   return NUMERIC_VALUE(Math.sin(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cos
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cos
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_COS (value) {
   'use strict';
@@ -2916,9 +2849,9 @@ function AQL_COS (value) {
   return NUMERIC_VALUE(Math.cos(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tan
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tan
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TAN (value) {
   'use strict';
@@ -2926,9 +2859,9 @@ function AQL_TAN (value) {
   return NUMERIC_VALUE(Math.tan(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief asin
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief asin
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ASIN (value) {
   'use strict';
@@ -2936,9 +2869,9 @@ function AQL_ASIN (value) {
   return NUMERIC_VALUE(Math.asin(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief acos
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief acos
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ACOS (value) {
   'use strict';
@@ -2946,9 +2879,9 @@ function AQL_ACOS (value) {
   return NUMERIC_VALUE(Math.acos(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief atan
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief atan
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ATAN (value) {
   'use strict';
@@ -2956,9 +2889,9 @@ function AQL_ATAN (value) {
   return NUMERIC_VALUE(Math.atan(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief atan2
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief atan2
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ATAN2 (value1, value2) {
   'use strict';
@@ -2966,9 +2899,9 @@ function AQL_ATAN2 (value1, value2) {
   return NUMERIC_VALUE(Math.atan2(AQL_TO_NUMBER(value1), AQL_TO_NUMBER(value2)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief radians
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief radians
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_RADIANS (value) {
   'use strict';
@@ -2976,9 +2909,9 @@ function AQL_RADIANS (value) {
   return NUMERIC_VALUE(value * (Math.PI / 180));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief degrees
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief degrees
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DEGREES (value) {
   'use strict';
@@ -2986,9 +2919,9 @@ function AQL_DEGREES (value) {
   return NUMERIC_VALUE(value * (180 / Math.PI));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pi
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief pi
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_PI () {
   'use strict';
@@ -2996,9 +2929,9 @@ function AQL_PI () {
   return Math.PI;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the length of a list, document or string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the length of a list, document or string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LENGTH (value) {
   'use strict';
@@ -3007,29 +2940,26 @@ function AQL_LENGTH (value) {
 
   if (typeWeight === TYPEWEIGHT_ARRAY) {
     return value.length;
-  }
-  else if (typeWeight === TYPEWEIGHT_OBJECT) {
+  } else if (typeWeight === TYPEWEIGHT_OBJECT) {
     return KEYS(value, false).length;
-  }
-  else if (typeWeight === TYPEWEIGHT_NULL) {
+  } else if (typeWeight === TYPEWEIGHT_NULL) {
     return 0;
-  }
-  else if (typeWeight === TYPEWEIGHT_BOOL) {
+  } else if (typeWeight === TYPEWEIGHT_BOOL) {
     return value ? 1 : 0;
   }
 
   return AQL_TO_STRING(value).length;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the first element of a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the first element of a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FIRST (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    WARN("FIRST", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('FIRST', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3040,15 +2970,15 @@ function AQL_FIRST (value) {
   return value[0];
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the last element of a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the last element of a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LAST (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    WARN("LAST", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('LAST', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3059,15 +2989,15 @@ function AQL_LAST (value) {
   return value[value.length - 1];
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the position of an element in a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the position of an element in a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_POSITION (value, search, returnIndex) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    WARN("POSITION", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('POSITION', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3086,15 +3016,15 @@ function AQL_POSITION (value, search, returnIndex) {
   return returnIndex ? -1 : false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the nth element in a list, or null if the item does not exist
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the nth element in a list, or null if the item does not exist
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_NTH (value, position) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    WARN("NTH", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('NTH', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3106,67 +3036,65 @@ function AQL_NTH (value, position) {
   return value[position];
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reverse the elements in a list or in a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief reverse the elements in a list or in a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_REVERSE (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
-    return value.split("").reverse().join("");
+    return value.split('').reverse().join('');
   }
 
   if (TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY) {
     return CLONE(value).reverse();
   }
-    
-  WARN("REVERSE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+
+  WARN('REVERSE', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a range of values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a range of values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_RANGE (from, to, step) {
   'use strict';
 
   from = AQL_TO_NUMBER(from) || 0;
   to = AQL_TO_NUMBER(to) || 0;
-  
+
   if (step === undefined || step === null) {
     if (from <= to) {
       step = 1;
-    }
-    else {
+    } else {
       step = -1;
     }
   }
-  
+
   step = AQL_TO_NUMBER(step);
 
   // check if we would run into an endless loop
   if (step === 0 || step === null) {
-    WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('RANGE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
   if (from < to && step < 0) {
-    WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('RANGE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
   if (from > to && step > 0) {
-    WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('RANGE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  var result = [ ], i;
+  var result = [], i;
   if (step < 0 && to <= from) {
     for (i = from; i >= to; i += step) {
       result.push(i);
     }
-  }
-  else {
+  } else {
     for (i = from; i <= to; i += step) {
       result.push(i);
     }
@@ -3175,39 +3103,39 @@ function AQL_RANGE (from, to, step) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a list of unique elements from the array
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a list of unique elements from the array
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNIQUE (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("UNIQUE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('UNIQUE', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
-  var keys = { }, result = [ ];
+  var keys = { }, result = [];
 
   values.forEach(function (value) {
     var normalized = NORMALIZE(value);
     var key = JSON.stringify(normalized);
 
-    if (! keys.hasOwnProperty(key)) {
+    if (!keys.hasOwnProperty(key)) {
       keys[key] = normalized;
     }
   });
 
-  Object.keys(keys).forEach(function(k) {
+  Object.keys(keys).forEach(function (k) {
     result.push(keys[k]);
   });
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a list of unique elements from the array
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a list of unique elements from the array
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SORTED_UNIQUE (values) {
   'use strict';
@@ -3222,21 +3150,21 @@ function AQL_SORTED_UNIQUE (values) {
   return unique;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the union (all) of all arguments
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create the union (all) of all arguments
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNION () {
   'use strict';
 
-  var result = [ ], i;
+  var result = [], i;
 
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
-        WARN("UNION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('UNION', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
@@ -3251,9 +3179,9 @@ function AQL_UNION () {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the union (distinct) of all arguments
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create the union (distinct) of all arguments
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNION_DISTINCT () {
   'use strict';
@@ -3265,7 +3193,7 @@ function AQL_UNION_DISTINCT () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
-        WARN("UNION_DISTINCT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('UNION_DISTINCT', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
@@ -3275,54 +3203,54 @@ function AQL_UNION_DISTINCT () {
         var normalized = NORMALIZE(element[j]);
         var key = JSON.stringify(normalized);
 
-        if (! keys.hasOwnProperty(key)) {
+        if (!keys.hasOwnProperty(key)) {
           keys[key] = normalized;
         }
       }
     }
   }
 
-  var result = [ ];
-  Object.keys(keys).forEach(function(k) {
+  var result = [];
+  Object.keys(keys).forEach(function (k) {
     result.push(keys[k]);
   });
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief call a function for each element in the input list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief call a function for each element in the input list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CALL (name) {
   'use strict';
 
-  var args = [ ], i;
+  var args = [], i;
   for (i = 1; i < arguments.length; ++i) {
     args.push(arguments[i]);
   }
 
-  return FCALL_DYNAMIC("CALL", true, null, name, args);
+  return FCALL_DYNAMIC('CALL', true, null, name, args);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief call a function for each element in the input list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief call a function for each element in the input list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_APPLY (name, parameters) {
   'use strict';
 
-  var args = [ ];
+  var args = [];
   if (Array.isArray(parameters)) {
     args = args.concat(parameters);
   }
 
-  return FCALL_DYNAMIC("APPLY", true, null, name, args);
+  return FCALL_DYNAMIC('APPLY', true, null, name, args);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes elements from a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief removes elements from a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_REMOVE_VALUES (list, values) {
   'use strict';
@@ -3330,18 +3258,16 @@ function AQL_REMOVE_VALUES (list, values) {
   var type = TYPEWEIGHT(values);
   if (type === TYPEWEIGHT_NULL) {
     return list;
-  }
-  else if (type !== TYPEWEIGHT_ARRAY) {
-    WARN("REMOVE_VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  } else if (type !== TYPEWEIGHT_ARRAY) {
+    WARN('REMOVE_VALUES', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
   type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
-    return [ ];
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
-    var copy = [ ], i;
+    return [];
+  } else if (type === TYPEWEIGHT_ARRAY) {
+    var copy = [], i;
     for (i = 0; i < list.length; ++i) {
       if (RELATIONAL_IN(list[i], values)) {
         continue;
@@ -3351,32 +3277,30 @@ function AQL_REMOVE_VALUES (list, values) {
     return copy;
   }
 
-  WARN("REMOVE_VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('REMOVE_VALUES', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief removes an element from a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_REMOVE_VALUE (list, value, limit) {
   'use strict';
 
   var type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
-    return [ ];
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+    return [];
+  } else if (type === TYPEWEIGHT_ARRAY) {
     if (TYPEWEIGHT(limit) === TYPEWEIGHT_NULL) {
       limit = -1;
     }
 
-    var copy = [ ], i;
+    var copy = [], i;
     for (i = 0; i < list.length; ++i) {
       if (limit === -1 && RELATIONAL_CMP(list[i], value) === 0) {
         continue;
-      }
-      else if (limit > 0 && RELATIONAL_CMP(list[i], value) === 0) {
+      } else if (limit > 0 && RELATIONAL_CMP(list[i], value) === 0) {
         --limit;
         continue;
       }
@@ -3385,49 +3309,45 @@ function AQL_REMOVE_VALUE (list, value, limit) {
     return copy;
   }
 
-  WARN("REMOVE_VALUE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('REMOVE_VALUE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief removes an element from a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_REMOVE_NTH (list, position) {
   'use strict';
 
   var type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
-    return [ ];
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+    return [];
+  } else if (type === TYPEWEIGHT_ARRAY) {
     position = AQL_TO_NUMBER(position);
     if (position >= list.length || position < - list.length) {
       return list;
     }
     if (position === 0) {
       return list.slice(1);
-    }
-    else if (position === - list.length) {
+    } else if (position === - list.length) {
       return list.slice(position + 1);
-    }
-    else if (position === list.length - 1) {
+    } else if (position === list.length - 1) {
       return list.slice(0, position);
-    }
-    else if (position < 0) {
+    } else if (position < 0) {
       return list.slice(0, list.length + position).concat(list.slice(list.length + position + 1));
     }
 
     return list.slice(0, position).concat(list.slice(position + 1));
   }
 
-  WARN("REMOVE_NTH", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('REMOVE_NTH', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an element to a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief adds an element to a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_PUSH (list, value, unique) {
   'use strict';
@@ -3435,12 +3355,11 @@ function AQL_PUSH (list, value, unique) {
   var type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
     return [ value ];
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+  } else if (type === TYPEWEIGHT_ARRAY) {
     if (AQL_TO_BOOL(unique)) {
       if (RELATIONAL_IN(value, list)) {
         return list;
-      } 
+      }
     }
 
     var copy = CLONE(list);
@@ -3448,13 +3367,13 @@ function AQL_PUSH (list, value, unique) {
     return copy;
   }
 
-  WARN("PUSH", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('PUSH', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds elements to a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief adds elements to a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_APPEND (list, values, unique) {
   'use strict';
@@ -3462,8 +3381,7 @@ function AQL_APPEND (list, values, unique) {
   var type = TYPEWEIGHT(values);
   if (type === TYPEWEIGHT_NULL) {
     return list;
-  }
-  else if (type !== TYPEWEIGHT_ARRAY) {
+  } else if (type !== TYPEWEIGHT_ARRAY) {
     values = [ values ];
   }
 
@@ -3480,8 +3398,7 @@ function AQL_APPEND (list, values, unique) {
   type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
     return values;
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+  } else if (type === TYPEWEIGHT_ARRAY) {
     var copy = CLONE(list);
     if (unique) {
       var i;
@@ -3496,13 +3413,13 @@ function AQL_APPEND (list, values, unique) {
     return copy.concat(values);
   }
 
-  WARN("APPEND", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('APPEND', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pops an element from a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief pops an element from a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_POP (list) {
   'use strict';
@@ -3510,10 +3427,9 @@ function AQL_POP (list) {
   var type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
     return null;
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+  } else if (type === TYPEWEIGHT_ARRAY) {
     if (list.length === 0) {
-      return [ ];
+      return [];
     }
     var copy = CLONE(list);
     copy.pop();
@@ -3521,13 +3437,13 @@ function AQL_POP (list) {
     return copy;
   }
 
-  WARN("POP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('POP', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert an element into a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief insert an element into a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNSHIFT (list, value, unique) {
   'use strict';
@@ -3535,12 +3451,11 @@ function AQL_UNSHIFT (list, value, unique) {
   var type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
     return [ value ];
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+  } else if (type === TYPEWEIGHT_ARRAY) {
     if (unique) {
       if (RELATIONAL_IN(value, list)) {
         return list;
-      } 
+      }
     }
 
     var copy = CLONE(list);
@@ -3548,12 +3463,12 @@ function AQL_UNSHIFT (list, value, unique) {
     return copy;
   }
 
-  WARN("UNSHIFT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('UNSHIFT', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pops an element from a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief pops an element from a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SHIFT (list) {
   'use strict';
@@ -3561,10 +3476,9 @@ function AQL_SHIFT (list) {
   var type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
     return null;
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+  } else if (type === TYPEWEIGHT_ARRAY) {
     if (list.length === 0) {
-      return [ ];
+      return [];
     }
     var copy = CLONE(list);
     copy.shift();
@@ -3572,19 +3486,19 @@ function AQL_SHIFT (list) {
     return copy;
   }
 
-  WARN("SHIFT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('SHIFT', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a slice from an array
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief extract a slice from an array
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SLICE (value, from, to, nonNegative) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    WARN("SLICE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('SLICE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
@@ -3601,13 +3515,12 @@ function AQL_SLICE (value, from, to, nonNegative) {
   }
 
   if (nonNegative && (from < 0 || to < 0)) {
-    return [ ];
+    return [];
   }
 
   if (TYPEWEIGHT(to) === TYPEWEIGHT_NULL) {
     to = undefined;
-  }
-  else {
+  } else {
     if (to >= 0) {
       to += from;
     } else {
@@ -3621,9 +3534,9 @@ function AQL_SLICE (value, from, to, nonNegative) {
   return value.slice(from, to);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief subtract lists from other lists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief subtract lists from other lists
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MINUS () {
   'use strict';
@@ -3635,7 +3548,7 @@ function AQL_MINUS () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
-        WARN("MINUS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('MINUS', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
@@ -3647,11 +3560,10 @@ function AQL_MINUS () {
         var contained = keys.hasOwnProperty(key);
 
         if (first) {
-          if (! contained) {
+          if (!contained) {
             keys[key] = normalized;
           }
-        }
-        else if (contained) {
+        } else if (contained) {
           delete keys[key];
         }
       }
@@ -3660,22 +3572,22 @@ function AQL_MINUS () {
     }
   }
 
-  var result = [ ];
-  Object.keys(keys).forEach(function(k) {
+  var result = [];
+  Object.keys(keys).forEach(function (k) {
     result.push(keys[k]);
   });
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the intersection of all arguments
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create the intersection of all arguments
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_INTERSECTION () {
   'use strict';
 
-  var result = [ ], i, first = true, keys = { };
+  var result = [], i, first = true, keys = { };
 
   var func = function (value) {
     var normalized = NORMALIZE(value);
@@ -3687,15 +3599,14 @@ function AQL_INTERSECTION () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
-        WARN("INTERSECTION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('INTERSECTION', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
       if (first) {
         element.forEach(func);
         first = false;
-      }
-      else {
+      } else {
         var j, newKeys = { };
         for (j = 0; j < element.length; ++j) {
           var normalized = NORMALIZE(element[j]);
@@ -3708,21 +3619,20 @@ function AQL_INTERSECTION () {
         keys = newKeys;
         newKeys = null;
       }
-
     }
   }
 
-  Object.keys(keys).forEach(function(k) {
+  Object.keys(keys).forEach(function (k) {
     result.push(keys[k]);
   });
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the difference of all arguments, i.e. all unique elements
-/// in the arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create the difference of all arguments, i.e. all unique elements
+// / in the arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_OUTERSECTION () {
   'use strict';
@@ -3744,7 +3654,7 @@ function AQL_OUTERSECTION () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
-        WARN("OUTERSECTION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('OUTERSECTION', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
@@ -3753,7 +3663,7 @@ function AQL_OUTERSECTION () {
   }
 
   var result = [];
-  Object.keys(keys).forEach(function(k) {
+  Object.keys(keys).forEach(function (k) {
     if (keys[k][1] === 1) {
       result.push(keys[k][0]);
     }
@@ -3762,15 +3672,15 @@ function AQL_OUTERSECTION () {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief flatten a list of lists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief flatten a list of lists
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FLATTEN (values, maxDepth, depth) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("FLATTEN", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('FLATTEN', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3783,9 +3693,9 @@ function AQL_FLATTEN (values, maxDepth, depth) {
     depth = 0;
   }
 
-  var value, result = [ ];
+  var value, result = [];
   var i, n;
-  var p = function(v) {
+  var p = function (v) {
     result.push(v);
   };
 
@@ -3793,8 +3703,7 @@ function AQL_FLATTEN (values, maxDepth, depth) {
     value = values[i];
     if (depth < maxDepth && TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY) {
       AQL_FLATTEN(value, maxDepth, depth + 1).forEach(p);
-    }
-    else {
+    } else {
       result.push(value);
     }
   }
@@ -3802,15 +3711,15 @@ function AQL_FLATTEN (values, maxDepth, depth) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief maximum of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MAX (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("MAX", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('MAX', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3829,15 +3738,15 @@ function AQL_MAX (values) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief minimum of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MIN (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("MIN", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('MIN', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3856,15 +3765,15 @@ function AQL_MIN (values) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sum of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sum of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SUM (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("SUM", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('SUM', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3877,7 +3786,7 @@ function AQL_SUM (values) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        WARN("SUM", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('SUM', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
       result += value;
@@ -3887,15 +3796,15 @@ function AQL_SUM (values) {
   return NUMERIC_VALUE(result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief average of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief average of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_AVERAGE (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("AVERAGE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('AVERAGE', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3908,7 +3817,7 @@ function AQL_AVERAGE (values) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        WARN("AVERAGE", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        WARN('AVERAGE', INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
         return null;
       }
 
@@ -3924,19 +3833,19 @@ function AQL_AVERAGE (values) {
   return NUMERIC_VALUE(sum / j);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief median of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief median of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MEDIAN (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("MEDIAN", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('MEDIAN', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
-  var copy = [ ], current, typeWeight;
+  var copy = [], current, typeWeight;
   var i, n;
 
   for (i = 0, n = values.length; i < n; ++i) {
@@ -3945,7 +3854,7 @@ function AQL_MEDIAN (values) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        WARN("MEDIAN", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        WARN('MEDIAN', INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
         return null;
       }
 
@@ -3967,38 +3876,38 @@ function AQL_MEDIAN (values) {
   return NUMERIC_VALUE(copy[Math.floor(midpoint)]);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the pth percentile of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the pth percentile of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_PERCENTILE (values, p, method) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('PERCENTILE', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
   if (TYPEWEIGHT(p) !== TYPEWEIGHT_NUMBER) {
-    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('PERCENTILE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
   if (p <= 0 || p > 100) {
-    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return null;
-  }
- 
-  if (method === null || method === undefined) {
-    method = "rank";
-  }
-   
-  if (method !== "interpolation" && method !== "rank") {
-    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('PERCENTILE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  var copy = [ ], current, typeWeight;
+  if (method === null || method === undefined) {
+    method = 'rank';
+  }
+
+  if (method !== 'interpolation' && method !== 'rank') {
+    WARN('PERCENTILE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var copy = [], current, typeWeight;
   var i, n;
 
   for (i = 0, n = values.length; i < n; ++i) {
@@ -4007,7 +3916,7 @@ function AQL_PERCENTILE (values, p, method) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        WARN('PERCENTILE', INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
         return null;
       }
 
@@ -4017,15 +3926,14 @@ function AQL_PERCENTILE (values, p, method) {
 
   if (copy.length === 0) {
     return null;
-  }
-  else if (copy.length === 1) {
+  } else if (copy.length === 1) {
     return copy[0];
   }
 
   copy.sort(RELATIONAL_CMP);
 
   var idx, pos;
-  if (method === "interpolation") {
+  if (method === 'interpolation') {
     // interpolation method
     idx = p * (copy.length + 1) / 100;
     pos = Math.floor(idx);
@@ -4035,8 +3943,7 @@ function AQL_PERCENTILE (values, p, method) {
       return NUMERIC_VALUE(copy[copy.length - 1]);
     }
     return NUMERIC_VALUE(delta * (copy[pos] - copy[pos - 1]) + copy[pos - 1]);
-  }
-  else {
+  } else {
     // rank method
     idx = p * (copy.length) / 100;
     pos = Math.ceil(idx);
@@ -4048,15 +3955,15 @@ function AQL_PERCENTILE (values, p, method) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief variance of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief variance of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function VARIANCE (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("VARIANCE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('VARIANCE', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -4069,7 +3976,7 @@ function VARIANCE (values) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        WARN("VARIANCE", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        WARN('VARIANCE', INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
         return null;
       }
 
@@ -4085,9 +3992,9 @@ function VARIANCE (values) {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sample variance of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sample variance of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_VARIANCE_SAMPLE (values) {
   'use strict';
@@ -4104,9 +4011,9 @@ function AQL_VARIANCE_SAMPLE (values) {
   return NUMERIC_VALUE(result.value / (result.n - 1));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief population variance of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief population variance of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_VARIANCE_POPULATION (values) {
   'use strict';
@@ -4123,9 +4030,9 @@ function AQL_VARIANCE_POPULATION (values) {
   return NUMERIC_VALUE(result.value / result.n);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief standard deviation of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief standard deviation of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_STDDEV_SAMPLE (values) {
   'use strict';
@@ -4142,9 +4049,9 @@ function AQL_STDDEV_SAMPLE (values) {
   return NUMERIC_VALUE(Math.sqrt(result.value / (result.n - 1)));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief standard deviation of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief standard deviation of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_STDDEV_POPULATION (values) {
   'use strict';
@@ -4161,10 +4068,9 @@ function AQL_STDDEV_POPULATION (values) {
   return NUMERIC_VALUE(Math.sqrt(result.value / result.n));
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return at most <limit> documents near a certain point
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return at most <limit> documents near a certain point
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
   'use strict';
@@ -4172,99 +4078,98 @@ function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
   if (TYPEWEIGHT(limit) === TYPEWEIGHT_NULL) {
     // use default value
     limit = 100;
-  }
-  else {
+  } else {
     if (TYPEWEIGHT(limit) !== TYPEWEIGHT_NUMBER) {
-      THROW("NEAR", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      THROW('NEAR', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     }
     limit = AQL_TO_NUMBER(limit);
   }
 
   var weight = TYPEWEIGHT(distanceAttribute);
   if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_STRING) {
-    THROW("NEAR", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    THROW('NEAR', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
 
   if (isCoordinator) {
-    var query = COLLECTION(collection, "NEAR").near(latitude, longitude);
+    var query = COLLECTION(collection, 'NEAR').near(latitude, longitude);
     query._distance = distanceAttribute;
     return query.limit(limit).toArray();
   }
 
-  var idx = INDEX(COLLECTION(collection, "NEAR"), [ "geo1", "geo2" ]);
+  var idx = INDEX(COLLECTION(collection, 'NEAR'), [ 'geo1', 'geo2' ]);
 
   if (idx === null) {
-    THROW("NEAR", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+    THROW('NEAR', INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  return COLLECTION(collection, "NEAR").NEAR(idx.id, latitude, longitude, limit, distanceAttribute);
+  return COLLECTION(collection, 'NEAR').NEAR(idx.id, latitude, longitude, limit, distanceAttribute);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return documents within <radius> around a certain point
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return documents within <radius> around a certain point
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute) {
   'use strict';
 
   var weight = TYPEWEIGHT(distanceAttribute);
   if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_STRING) {
-    THROW("WITHIN", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    THROW('WITHIN', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
 
   weight = TYPEWEIGHT(radius);
   if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_NUMBER) {
-    THROW("WITHIN", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    THROW('WITHIN', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
   radius = AQL_TO_NUMBER(radius);
-  
+
   if (isCoordinator) {
-    var query = COLLECTION(collection, "WITHIN").within(latitude, longitude, radius);
+    var query = COLLECTION(collection, 'WITHIN').within(latitude, longitude, radius);
     query._distance = distanceAttribute;
     return query.toArray();
   }
-  
-  var idx = INDEX(COLLECTION(collection, "WITHIN"), [ "geo1", "geo2" ]);
+
+  var idx = INDEX(COLLECTION(collection, 'WITHIN'), [ 'geo1', 'geo2' ]);
 
   if (idx === null) {
-    THROW("WITHIN", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+    THROW('WITHIN', INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  return COLLECTION(collection, "WITHIN").WITHIN(idx.id, latitude, longitude, radius, distanceAttribute);
+  return COLLECTION(collection, 'WITHIN').WITHIN(idx.id, latitude, longitude, radius, distanceAttribute);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return documents within a bounding rectangle 
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return documents within a bounding rectangle 
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, longitude2) {
   'use strict';
 
   if (TYPEWEIGHT(latitude1) !== TYPEWEIGHT_NUMBER ||
-      TYPEWEIGHT(longitude1) !== TYPEWEIGHT_NUMBER ||
-      TYPEWEIGHT(latitude2) !== TYPEWEIGHT_NUMBER ||
-      TYPEWEIGHT(longitude2) !== TYPEWEIGHT_NUMBER) {
-    WARN("WITHIN_RECTANGLE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    TYPEWEIGHT(longitude1) !== TYPEWEIGHT_NUMBER ||
+    TYPEWEIGHT(latitude2) !== TYPEWEIGHT_NUMBER ||
+    TYPEWEIGHT(longitude2) !== TYPEWEIGHT_NUMBER) {
+    WARN('WITHIN_RECTANGLE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
-  
-  return COLLECTION(collection, "WITHIN_RECTANGLE").withinRectangle(
-    latitude1, 
-    longitude1, 
-    latitude2, 
+
+  return COLLECTION(collection, 'WITHIN_RECTANGLE').withinRectangle(
+    latitude1,
+    longitude1,
+    latitude2,
     longitude2
   ).toArray();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return true if a point is contained inside a polygon
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return true if a point is contained inside a polygon
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_IN_POLYGON (points, latitude, longitude) {
   'use strict';
-  
+
   if (TYPEWEIGHT(points) !== TYPEWEIGHT_ARRAY) {
-    WARN("POINT_IN_POLYGON", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('POINT_IN_POLYGON', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return false;
   }
 
@@ -4277,27 +4182,24 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
       searchLon = latitude[0];
       pointLat = 1;
       pointLon = 0;
-    }
-    else {
+    } else {
       // first list value is latitude, then longitude
       searchLat = latitude[0];
       searchLon = latitude[1];
       pointLat = 0;
       pointLon = 1;
     }
-  }
-  else if (TYPEWEIGHT(latitude) === TYPEWEIGHT_NUMBER &&
-           TYPEWEIGHT(longitude) === TYPEWEIGHT_NUMBER) {
+  } else if (TYPEWEIGHT(latitude) === TYPEWEIGHT_NUMBER &&
+    TYPEWEIGHT(longitude) === TYPEWEIGHT_NUMBER) {
     searchLat = latitude;
     searchLon = longitude;
     pointLat = 0;
     pointLon = 1;
-  }
-  else {
-    WARN("POINT_IN_POLYGON", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  } else {
+    WARN('POINT_IN_POLYGON', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return false;
   }
-  
+
   var i, j = points.length - 1;
   var oddNodes = false;
 
@@ -4306,12 +4208,12 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
       continue;
     }
 
-    if (((points[i][pointLat] < searchLat && points[j][pointLat] >= searchLat) || 
-         (points[j][pointLat] < searchLat && points[i][pointLat] >= searchLat)) &&
-        (points[i][pointLon] <= searchLon || points[j][pointLon] <= searchLon)) {
-      oddNodes ^= ((points[i][pointLon] + (searchLat - points[i][pointLat]) / 
-                   (points[j][pointLat] - points[i][pointLat]) * 
-                    (points[j][pointLon] - points[i][pointLon])) < searchLon);
+    if (((points[i][pointLat] < searchLat && points[j][pointLat] >= searchLat) ||
+      (points[j][pointLat] < searchLat && points[i][pointLat] >= searchLat)) &&
+      (points[i][pointLon] <= searchLon || points[j][pointLon] <= searchLon)) {
+      oddNodes ^= ((points[i][pointLon] + (searchLat - points[i][pointLat]) /
+        (points[j][pointLat] - points[i][pointLat]) *
+        (points[j][pointLon] - points[i][pointLon])) < searchLon);
     }
 
     j = i;
@@ -4324,38 +4226,36 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
   return false;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return documents that match a fulltext query
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return documents that match a fulltext query
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FULLTEXT (collection, attribute, query, limit) {
   'use strict';
 
-  var idx = INDEX_FULLTEXT(COLLECTION(collection, "FULLTEXT"), attribute);
+  var idx = INDEX_FULLTEXT(COLLECTION(collection, 'FULLTEXT'), attribute);
 
   if (idx === null) {
-    THROW("FULLTEXT", INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
+    THROW('FULLTEXT', INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
   }
 
   if (isCoordinator) {
     if (limit !== undefined && limit !== null && limit > 0) {
-      return COLLECTION(collection, "FULLTEXT").fulltext(attribute, query, idx).limit(limit).toArray();
+      return COLLECTION(collection, 'FULLTEXT').fulltext(attribute, query, idx).limit(limit).toArray();
     }
-    return COLLECTION(collection, "FULLTEXT").fulltext(attribute, query, idx).toArray();
+    return COLLECTION(collection, 'FULLTEXT').fulltext(attribute, query, idx).toArray();
   }
 
-  return COLLECTION(collection, "FULLTEXT").FULLTEXT(idx, query, limit).documents;
+  return COLLECTION(collection, 'FULLTEXT').FULLTEXT(idx, query, limit).documents;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the first alternative that's not null until there are no more
-/// alternatives. if neither of the alternatives is a value other than null,
-/// then null will be returned
-///
-/// the operands can have any type
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the first alternative that's not null until there are no more
+// / alternatives. if neither of the alternatives is a value other than null,
+// / then null will be returned
+// /
+// / the operands can have any type
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_NOT_NULL () {
   'use strict';
@@ -4374,13 +4274,13 @@ function AQL_NOT_NULL () {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the first alternative that's a list until there are no more
-/// alternatives. if neither of the alternatives is a list, then null will be
-/// returned
-///
-/// the operands can have any type
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the first alternative that's a list until there are no more
+// / alternatives. if neither of the alternatives is a list, then null will be
+// / returned
+// /
+// / the operands can have any type
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FIRST_LIST () {
   'use strict';
@@ -4399,13 +4299,13 @@ function AQL_FIRST_LIST () {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the first alternative that's a document until there are no
-/// more alternatives. if neither of the alternatives is a document, then null
-/// will be returned
-///
-/// the operands can have any type
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the first alternative that's a document until there are no
+// / more alternatives. if neither of the alternatives is a document, then null
+// / will be returned
+// /
+// / the operands can have any type
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FIRST_DOCUMENT () {
   'use strict';
@@ -4424,12 +4324,12 @@ function AQL_FIRST_DOCUMENT () {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the parts of a document identifier separately
-///
-/// returns a document with the attributes `collection` and `key` or fails if
-/// the individual parts cannot be determined.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the parts of a document identifier separately
+// /
+// / returns a document with the attributes `collection` and `key` or fails if
+// / the individual parts cannot be determined.
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_PARSE_IDENTIFIER (value) {
   'use strict';
@@ -4442,22 +4342,21 @@ function AQL_PARSE_IDENTIFIER (value) {
         key: parts[1]
       };
     }
-    // fall through intentional
-  }
-  else if (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT) {
+  // fall through intentional
+  } else if (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT) {
     if (value.hasOwnProperty('_id')) {
       return AQL_PARSE_IDENTIFIER(value._id);
     }
-    // fall through intentional
+  // fall through intentional
   }
 
-  WARN("PARSE_IDENTIFIER", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('PARSE_IDENTIFIER', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
- 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validates if a document or object is from the specified collection
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief validates if a document or object is from the specified collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_SAME_COLLECTION (collection, value) {
   'use strict';
@@ -4473,20 +4372,20 @@ function AQL_IS_SAME_COLLECTION (collection, value) {
     if (pos !== -1) {
       return value.substr(0, pos) === collection;
     }
-    // fall through intentional
+  // fall through intentional
   }
 
-  WARN("AQL_IS_SAME_COLLECTION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('AQL_IS_SAME_COLLECTION', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a document has a specific attribute
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check whether a document has a specific attribute
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_HAS (element, name) {
   'use strict';
- 
+
   if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
     return false;
   }
@@ -4494,22 +4393,22 @@ function AQL_HAS (element, name) {
   return element.hasOwnProperty(AQL_TO_STRING(name));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the attribute names of a document as a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the attribute names of a document as a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ATTRIBUTES (element, removeInternal, sort) {
   'use strict';
 
   if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
-    WARN("ATTRIBUTES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('ATTRIBUTES', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
   if (removeInternal) {
-    var result = [ ];
+    var result = [];
 
-    Object.keys(element).forEach(function(k) {
+    Object.keys(element).forEach(function (k) {
       if (k[0] !== '_') {
         result.push(k);
       }
@@ -4525,42 +4424,42 @@ function AQL_ATTRIBUTES (element, removeInternal, sort) {
   return KEYS(element, sort);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the attribute values of a document as a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the attribute values of a document as a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_VALUES (element, removeInternal) {
   'use strict';
 
   if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
-    WARN("VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('VALUES', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  var result = [ ], a;
+  var result = [], a;
 
   for (a in element) {
     if (element.hasOwnProperty(a)) {
-      if (a[0] !== '_' || ! removeInternal) {
+      if (a[0] !== '_' || !removeInternal) {
         result.push(element[a]);
-      } 
+      }
     }
   }
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document from two lists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief assemble a document from two lists
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ZIP (keys, values) {
   'use strict';
 
   if (TYPEWEIGHT(keys) !== TYPEWEIGHT_ARRAY ||
-      TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY ||
-      keys.length !== values.length) {
-    WARN("ZIP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY ||
+    keys.length !== values.length) {
+    WARN('ZIP', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
@@ -4573,23 +4472,23 @@ function AQL_ZIP (keys, values) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unset specific attributes from a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief unset specific attributes from a document
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNSET (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_OBJECT) {
-    WARN("UNSET", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('UNSET', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  var result = { }, keys = EXTRACT_KEYS(arguments, 1, "UNSET");
+  var result = { }, keys = EXTRACT_KEYS(arguments, 1, 'UNSET');
   // copy over all that is left
 
   for (var k in value) {
-    if (value.hasOwnProperty(k) && ! keys.hasOwnProperty(k)) {
+    if (value.hasOwnProperty(k) && !keys.hasOwnProperty(k)) {
       result[k] = CLONE(value[k]);
     }
   }
@@ -4597,52 +4496,51 @@ function AQL_UNSET (value) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unset specific attributes from a document, recursively
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief unset specific attributes from a document, recursively
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNSET_RECURSIVE (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_OBJECT) {
-    WARN("UNSET", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('UNSET', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  var keys = EXTRACT_KEYS(arguments, 1, "UNSET");
+  var keys = EXTRACT_KEYS(arguments, 1, 'UNSET');
   // copy over all that is left
 
   var func = function (value) {
     var result = { };
     for (var k in value) {
-      if (value.hasOwnProperty(k) && ! keys.hasOwnProperty(k)) {
+      if (value.hasOwnProperty(k) && !keys.hasOwnProperty(k)) {
         if (TYPEWEIGHT(value[k]) === TYPEWEIGHT_OBJECT) {
           result[k] = func(value[k], keys);
-        }
-        else {
+        } else {
           result[k] = CLONE(value[k]);
         }
       }
     }
     return result;
   };
- 
+
   return func(value);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief keep specific attributes from a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief keep specific attributes from a document
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_KEEP (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_OBJECT) {
-    WARN("KEEP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('KEEP', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  var result = { }, keys = EXTRACT_KEYS(arguments, 1, "KEEP");
+  var result = { }, keys = EXTRACT_KEYS(arguments, 1, 'KEEP');
 
   // copy over all that is left
   for (var k in value) {
@@ -4654,9 +4552,9 @@ function AQL_KEEP (value) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge all arguments
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief merge all arguments
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MERGE () {
   'use strict';
@@ -4676,13 +4574,13 @@ function AQL_MERGE () {
   if (arguments.length === 1) {
     element = arguments[0];
     if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
-      WARN("MERGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      WARN('MERGE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return null;
     }
 
     for (i = 0; i < element.length; ++i) {
       if (TYPEWEIGHT(element[i]) !== TYPEWEIGHT_OBJECT) {
-        WARN("MERGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('MERGE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
@@ -4698,14 +4596,13 @@ function AQL_MERGE () {
       element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
-        WARN("MERGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('MERGE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
       if (j === 0) {
         result = element;
-      }
-      else {
+      } else {
         add(element);
       }
       ++j;
@@ -4715,9 +4612,9 @@ function AQL_MERGE () {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge all arguments recursively
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief merge all arguments recursively
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MERGE_RECURSIVE () {
   'use strict';
@@ -4727,11 +4624,10 @@ function AQL_MERGE_RECURSIVE () {
   recurse = function (old, element) {
     var r = CLONE(old);
 
-    Object.keys(element).forEach(function(k) {
+    Object.keys(element).forEach(function (k) {
       if (r.hasOwnProperty(k) && TYPEWEIGHT(element[k]) === TYPEWEIGHT_OBJECT) {
         r[k] = recurse(r[k], element[k]);
-      }
-      else {
+      } else {
         r[k] = element[k];
       }
     });
@@ -4744,7 +4640,7 @@ function AQL_MERGE_RECURSIVE () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
-        WARN("MERGE_RECURSIVE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('MERGE_RECURSIVE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
@@ -4755,18 +4651,18 @@ function AQL_MERGE_RECURSIVE () {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief translate a value, using a lookup document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief translate a value, using a lookup document
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TRANSLATE (value, lookup, defaultValue) {
   'use strict';
 
   if (TYPEWEIGHT(lookup) !== TYPEWEIGHT_OBJECT) {
-    WARN("TRANSLATE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('TRANSLATE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
-  
+
   if (defaultValue === undefined) {
     defaultValue = value;
   }
@@ -4779,11 +4675,11 @@ function AQL_TRANSLATE (value, lookup, defaultValue) {
   return defaultValue;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare an object against a list of examples and return whether the
-/// object matches any of the examples. returns the example index or a bool,
-/// depending on the value of the control flag (3rd) parameter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compare an object against a list of examples and return whether the
+// / object matches any of the examples. returns the example index or a bool,
+// / depending on the value of the control flag (3rd) parameter
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MATCHES (element, examples, returnIndex) {
   'use strict';
@@ -4792,11 +4688,11 @@ function AQL_MATCHES (element, examples, returnIndex) {
     return false;
   }
 
-  if (! Array.isArray(examples)) {
+  if (!Array.isArray(examples)) {
     examples = [ examples ];
   }
   if (examples.length === 0) {
-    WARN("MATCHES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('MATCHES', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return false;
   }
 
@@ -4806,7 +4702,7 @@ function AQL_MATCHES (element, examples, returnIndex) {
     var example = examples[i];
     var result = true;
     if (TYPEWEIGHT(example) !== TYPEWEIGHT_OBJECT) {
-      WARN("MATCHES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      WARN('MATCHES', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       continue;
     }
 
@@ -4814,7 +4710,7 @@ function AQL_MATCHES (element, examples, returnIndex) {
     for (j = 0; j < keys.length; ++j) {
       key = keys[j];
 
-      if (! RELATIONAL_EQUAL(element[key], example[key])) {
+      if (!RELATIONAL_EQUAL(element[key], example[key])) {
         result = false;
         break;
       }
@@ -4829,12 +4725,12 @@ function AQL_MATCHES (element, examples, returnIndex) {
   return (returnIndex ? -1 : false);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief passthru the argument
-///
-/// this function is marked as non-deterministic so its argument withstands
-/// query optimisation. this function can be used for testing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief passthru the argument
+// /
+// / this function is marked as non-deterministic so its argument withstands
+// / query optimisation. this function can be used for testing
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_PASSTHRU (value) {
   'use strict';
@@ -4842,53 +4738,51 @@ function AQL_PASSTHRU (value) {
   return value;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test helper function
-/// this is no actual function the end user should call
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test helper function
+// / this is no actual function the end user should call
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TEST_INTERNAL (test, what) {
   'use strict';
   if (test === 'MODIFY_ARRAY') {
-    what[0] = 1; 
-    what[1] = 42; 
-    what[2] = [ 1, 2 ]; 
-    what[3].push([ 1, 2 ]); 
+    what[0] = 1;
+    what[1] = 42;
+    what[2] = [ 1, 2 ];
+    what[3].push([ 1, 2 ]);
     what[4] = { a: 9, b: 2 };
-    what.push("foo");
-    what.push("bar");
+    what.push('foo');
+    what.push('bar');
     what.pop();
-  }
-  else if (test === 'MODIFY_OBJECT') {
-    what.a = 1; 
-    what.b = 3; 
-    what.c = [ 1, 2 ]; 
-    what.d.push([ 1, 2 ]); 
+  } else if (test === 'MODIFY_OBJECT') {
+    what.a = 1;
+    what.b = 3;
+    what.c = [ 1, 2 ];
+    what.d.push([ 1, 2 ]);
     what.e.f = { a: 1, b: 2 };
-    delete what.f; 
-    what.g = "foo";
-  }
-  else if (test === 'DEADLOCK') {
+    delete what.f;
+    what.g = 'foo';
+  } else if (test === 'DEADLOCK') {
     var err = new ArangoError();
     err.errorNum = INTERNAL.errors.ERROR_DEADLOCK.code;
     err.errorMessage = INTERNAL.errors.ERROR_DEADLOCK.message;
     throw err;
   }
-  return what; 
+  return what;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sleep
-///
-/// sleep for the specified duration
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sleep
+// /
+// / sleep for the specified duration
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SLEEP (duration) {
   'use strict';
 
   duration = AQL_TO_NUMBER(duration);
   if (TYPEWEIGHT(duration) !== TYPEWEIGHT_NUMBER || duration < 0) {
-    WARN("SLEEP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('SLEEP', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
@@ -4896,11 +4790,11 @@ function AQL_SLEEP (duration) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the current user
-/// note: this might be null if the query is not executed in a context that
-/// has a user
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the current user
+// / note: this might be null if the query is not executed in a context that
+// / has a user
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CURRENT_USER () {
   'use strict';
@@ -4916,10 +4810,10 @@ function AQL_CURRENT_USER () {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the current database name
-/// has a user
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the current database name
+// / has a user
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CURRENT_DATABASE () {
   'use strict';
@@ -4927,26 +4821,26 @@ function AQL_CURRENT_DATABASE () {
   return INTERNAL.db._name();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief always fail
-///
-/// this function is non-deterministic so it is not executed at query
-/// optimisation time. this function can be used for testing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief always fail
+// /
+// / this function is non-deterministic so it is not executed at query
+// / optimisation time. this function can be used for testing
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FAIL (message) {
   'use strict';
 
   if (TYPEWEIGHT(message) === TYPEWEIGHT_STRING) {
-    THROW("FAIL", INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, message);
+    THROW('FAIL', INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, message);
   }
 
-  THROW("FAIL", INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, "");
+  THROW('FAIL', INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, '');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function for date creation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief helper function for date creation
+// //////////////////////////////////////////////////////////////////////////////
 
 function MAKE_DATE (args, func) {
   'use strict';
@@ -4967,8 +4861,8 @@ function MAKE_DATE (args, func) {
       // argument is a string
 
       // append zulu time specifier if no other present
-      if (! args[0].match(/([zZ]|[+\-]\d+(:\d+)?)$/) ||
-          (args[0].match(/-\d+(:\d+)?$/) && ! args[0].match(/[tT ]/))) {
+      if (!args[0].match(/([zZ]|[+\-]\d+(:\d+)?)$/) ||
+        (args[0].match(/-\d+(:\d+)?$/) && !args[0].match(/[tT ]/))) {
         args[0] += 'Z';
       }
     }
@@ -4994,12 +4888,10 @@ function MAKE_DATE (args, func) {
 
     if (weight === TYPEWEIGHT_NULL) {
       args[i] = 0;
-    }
-    else {
+    } else {
       if (weight === TYPEWEIGHT_STRING) {
         args[i] = parseInt(args[i], 10);
-      }
-      else if (weight !== TYPEWEIGHT_NUMBER) {
+      } else if (weight !== TYPEWEIGHT_NUMBER) {
         WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
@@ -5027,11 +4919,11 @@ function MAKE_DATE (args, func) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the number of milliseconds since the Unix epoch
-///
-/// this function is evaluated on every call
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the number of milliseconds since the Unix epoch
+// /
+// / this function is evaluated on every call
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_NOW () {
   'use strict';
@@ -5039,266 +4931,251 @@ function AQL_DATE_NOW () {
   return Date.now();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the timestamp of the date passed (in milliseconds)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the timestamp of the date passed (in milliseconds)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_TIMESTAMP () {
   'use strict';
 
   try {
-    return MAKE_DATE(arguments, "DATE_TIMESTAMP").getTime();
-  }
-  catch (err) {
-    WARN("DATE_TIMESTAMP", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE(arguments, 'DATE_TIMESTAMP').getTime();
+  } catch (err) {
+    WARN('DATE_TIMESTAMP', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the ISO string representation of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the ISO string representation of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_ISO8601 () {
   'use strict';
 
   try {
-    var dt = MAKE_DATE(arguments, "DATE_ISO8601");
+    var dt = MAKE_DATE(arguments, 'DATE_ISO8601');
     if (dt === null) {
       return dt;
     }
     return dt.toISOString();
-  }
-  catch (err) {
-    WARN("DATE_ISO8601", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  } catch (err) {
+    WARN('DATE_ISO8601', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the weekday of the date passed (0 = Sunday, 1 = Monday etc.)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the weekday of the date passed (0 = Sunday, 1 = Monday etc.)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_DAYOFWEEK (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_DAYOFWEEK").getUTCDay();
-  }
-  catch (err) {
-    WARN("DATE_DAYOFWEEK", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_DAYOFWEEK').getUTCDay();
+  } catch (err) {
+    WARN('DATE_DAYOFWEEK', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the year of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the year of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_YEAR (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_YEAR").getUTCFullYear();
-  }
-  catch (err) {
-    WARN("DATE_YEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_YEAR').getUTCFullYear();
+  } catch (err) {
+    WARN('DATE_YEAR', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the month of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the month of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_MONTH (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_MONTH").getUTCMonth() + 1;
-  }
-  catch (err) {
-    WARN("DATE_MONTH", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_MONTH').getUTCMonth() + 1;
+  } catch (err) {
+    WARN('DATE_MONTH', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the day of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the day of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_DAY (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_DAY").getUTCDate();
-  }
-  catch (err) {
-    WARN("DATE_DAY", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_DAY').getUTCDate();
+  } catch (err) {
+    WARN('DATE_DAY', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the hours of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the hours of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_HOUR (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_HOUR").getUTCHours();
-  }
-  catch (err) {
-    WARN("DATE_HOUR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_HOUR').getUTCHours();
+  } catch (err) {
+    WARN('DATE_HOUR', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the minutes of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the minutes of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_MINUTE (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_MINUTE").getUTCMinutes();
-  }
-  catch (err) {
-    WARN("DATE_MINUTE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_MINUTE').getUTCMinutes();
+  } catch (err) {
+    WARN('DATE_MINUTE', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the seconds of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the seconds of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_SECOND (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_SECOND").getUTCSeconds();
-  }
-  catch (err) {
-    WARN("DATE_SECOND", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_SECOND').getUTCSeconds();
+  } catch (err) {
+    WARN('DATE_SECOND', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the milliseconds of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the milliseconds of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_MILLISECOND (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_MILLISECOND").getUTCMilliseconds();
-  }
-  catch (err) {
-    WARN("DATE_MILLISECOND", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_MILLISECOND').getUTCMilliseconds();
+  } catch (err) {
+    WARN('DATE_MILLISECOND', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the day of the year of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the day of the year of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_DAYOFYEAR (value) {
   'use strict';
 
   try {
-    var date = MAKE_DATE([ value ], "DATE_DAYOFYEAR");
+    var date = MAKE_DATE([ value ], 'DATE_DAYOFYEAR');
     var m = date.getUTCMonth();
     var d = date.getUTCDate();
     var ly = AQL_DATE_LEAPYEAR(date.getTime());
     // we could duplicate the leap year code here to avoid an extra MAKE_DATE() call...
-    //var yr = date.getUTCFullYear();
-    //var ly = !((yr % 4) || (!(yr % 100) && (yr % 400)));
+    // var yr = date.getUTCFullYear()
+    // var ly = !((yr % 4) || (!(yr % 100) && (yr % 400)))
     return (ly ? (dayOfLeapYearOffsets[m] + d) : (dayOfYearOffsets[m] + d));
-  }
-  catch (err) {
-    WARN("DATE_DAYOFYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  } catch (err) {
+    WARN('DATE_DAYOFYEAR', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the ISO week date of the date passed (1..53)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the ISO week date of the date passed (1..53)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_ISOWEEK (value) {
   'use strict';
 
   try {
-    var date = MAKE_DATE([ value ], "DATE_ISOWEEK");
+    var date = MAKE_DATE([ value ], 'DATE_ISOWEEK');
     date.setUTCHours(0, 0, 0, 0);
     date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
     return Math.ceil((((date - Date.UTC(date.getUTCFullYear(), 0, 1)) / 864e5) + 1) / 7);
-  }
-  catch (err) {
-    WARN("DATE_ISOWEEK", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  } catch (err) {
+    WARN('DATE_ISOWEEK', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return if year of the date passed is a leap year
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return if year of the date passed is a leap year
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_LEAPYEAR (value) {
   'use strict';
 
   try {
-    var yr = MAKE_DATE([ value ], "DATE_LEAPYEAR").getUTCFullYear();
+    var yr = MAKE_DATE([ value ], 'DATE_LEAPYEAR').getUTCFullYear();
     return ((yr % 4 === 0) && (yr % 100 !== 0)) || (yr % 400 === 0);
-  }
-  catch (err) {
-    WARN("DATE_LEAPYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  } catch (err) {
+    WARN('DATE_LEAPYEAR', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the ISO week date of the date passed (1..53)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the ISO week date of the date passed (1..53)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_QUARTER (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_QUARTER").getUTCMonth() / 3 + 1 | 0;
-  }
-  catch (err) {
-    WARN("DATE_QUARTER", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_QUARTER').getUTCMonth() / 3 + 1 | 0;
+  } catch (err) {
+    WARN('DATE_QUARTER', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return number of days in month of date passed (leap year aware)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return number of days in month of date passed (leap year aware)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_DAYS_IN_MONTH (value) {
   'use strict';
 
   try {
-    var date = MAKE_DATE([ value ], "DATE_DAYS_IN_MONTH");
+    var date = MAKE_DATE([ value ], 'DATE_DAYS_IN_MONTH');
     var month = date.getUTCMonth() + 1;
     var ly = AQL_DATE_LEAPYEAR(date.getTime());
     return daysInMonth[month === 2 && ly ? 0 : month];
-  }
-  catch (err) {
-    WARN("DATE_DAYS_IN_MONTH", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  } catch (err) {
+    WARN('DATE_DAYS_IN_MONTH', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal function to add to or subtract from given date
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief internal function to add to or subtract from given date
+// //////////////////////////////////////////////////////////////////////////////
 
 function DATE_CALC (value, amount, unit, func) {
   'use strict';
@@ -5314,9 +5191,9 @@ function DATE_CALC (value, amount, unit, func) {
       return null;
     }
 
-    var sign = (func === "DATE_ADD" || func === undefined) ? 1 : -1;
+    var sign = (func === 'DATE_ADD' || func === undefined) ? 1 : -1;
     var m;
-    
+
     // if amount is not a number, then it must be an ISO duration string
     if (TYPEWEIGHT(unit) === TYPEWEIGHT_NULL) {
       if (TYPEWEIGHT(amount) !== TYPEWEIGHT_STRING) {
@@ -5352,7 +5229,7 @@ function DATE_CALC (value, amount, unit, func) {
           }
         }
       }
-      return date.toISOString(); 
+      return date.toISOString();
     } else {
       if (TYPEWEIGHT(unit) !== TYPEWEIGHT_STRING) {
         WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -5363,10 +5240,10 @@ function DATE_CALC (value, amount, unit, func) {
         return null;
       }
       m = unitMapping[unit.toLowerCase()]; // we're sure unit is a string here
-      if (m === "undefined") {
+      if (m === 'undefined') {
         WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
         return null;
-      } else if (m[0] === "w") {
+      } else if (m[0] === 'w') {
         m = unitMapping.d;
         date[m[2]](date[m[1]]() + amount * 7 * sign);
       } else {
@@ -5374,40 +5251,39 @@ function DATE_CALC (value, amount, unit, func) {
       }
       return date.toISOString();
     }
-  }
-  catch (err) {
+  } catch (err) {
     WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return date passed with added amount of time units
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return date passed with added amount of time units
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_ADD (value, amount, unit) {
   'use strict';
-  return DATE_CALC(value, amount, unit, "DATE_ADD");
+  return DATE_CALC(value, amount, unit, 'DATE_ADD');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return date passed with subtracted amount of time units
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return date passed with subtracted amount of time units
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_SUBTRACT (value, amount, unit) {
   'use strict';
-  return DATE_CALC(value, amount, unit, "DATE_SUBTRACT");
+  return DATE_CALC(value, amount, unit, 'DATE_SUBTRACT');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return date difference in given unit, optionally with fractions
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return date difference in given unit, optionally with fractions
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_DIFF (value1, value2, unit, asFloat) {
   'use strict';
 
-  var date1 = MAKE_DATE([ value1 ], "DATE_DIFF");
-  var date2 = MAKE_DATE([ value2 ], "DATE_DIFF");
+  var date1 = MAKE_DATE([ value1 ], 'DATE_DIFF');
+  var date2 = MAKE_DATE([ value2 ], 'DATE_DIFF');
   // Don't return any number if either or both dates are NaN.
   if (date1 === null || date2 === null) {
     // warning issued by MAKE_DATE() already (duplicate warnings in other date function calls???)
@@ -5422,7 +5298,7 @@ function AQL_DATE_DIFF (value1, value2, unit, asFloat) {
   try {
     var divisor = msPerUnit[unit.toLowerCase()];
     if (divisor === undefined) {
-      WARN("DATE_DIFF", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      WARN('DATE_DIFF', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
       return null;
     }
 
@@ -5456,24 +5332,23 @@ function AQL_DATE_DIFF (value1, value2, unit, asFloat) {
       // round towards zero, regardless of sign
       return divisor ? ~~(diff / 12) : ~~diff;
     }
-  }
-  catch (err) {
-    WARN("DATE_DIFF", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  } catch (err) {
+    WARN('DATE_DIFF', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two partial dates, using a substring of the dates
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compare two partial dates, using a substring of the dates
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
   try {
     // TODO: Should we handle leap years, so leapling birthdays occur every year?
     // It may result in unexpected behavior if it's used for something else but
     // birthday checking however. Probably best to leave compensation up to user query.
-    var date1 = MAKE_DATE([ value1 ], "DATE_COMPARE");
-    var date2 = MAKE_DATE([ value2 ], "DATE_COMPARE");
+    var date1 = MAKE_DATE([ value1 ], 'DATE_COMPARE');
+    var date2 = MAKE_DATE([ value2 ], 'DATE_COMPARE');
     if (TYPEWEIGHT(date1) === TYPEWEIGHT_NULL || TYPEWEIGHT(date2) === TYPEWEIGHT_NULL) {
       return null;
     }
@@ -5483,7 +5358,7 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
     var start = unitStrRanges[unitRangeStart][0];
     var end = unitStrRanges[unitRangeEnd][1];
     if (start === undefined || end === undefined) {
-      WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      WARN('DATE_COMPARE', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
       return null;
     }
     var yr1 = date1.getUTCFullYear();
@@ -5498,83 +5373,83 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
     var substr2 = date2.toISOString().slice(start, end);
     // if unitRangeEnd > unitRangeStart, substrings will be empty
     if (!substr1 || !substr2) {
-      WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      WARN('DATE_COMPARE', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
       return null;
     }
     return substr1 === substr2;
   } catch (err) {
-    WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN('DATE_COMPARE', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief format a date (numerical values only)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief format a date (numerical values only)
+// //////////////////////////////////////////////////////////////////////////////
 
 // special escape sequence first, rest ordered by length
 var dateMapRegExp = [
-  "%&", "%yyyyyy", "%yyyy", "%mmmm", "%wwww", "%mmm", "%www", "%fff", "%xxx",
-  "%yy", "%mm", "%dd", "%hh", "%ii", "%ss", "%kk", "%t", "%z", "%w", "%y", "%m",
-  "%d", "%h", "%i", "%s", "%f", "%x", "%k", "%l", "%q", "%a", "%%", "%"
-].join("|");
+  '%&', '%yyyyyy', '%yyyy', '%mmmm', '%wwww', '%mmm', '%www', '%fff', '%xxx',
+  '%yy', '%mm', '%dd', '%hh', '%ii', '%ss', '%kk', '%t', '%z', '%w', '%y', '%m',
+  '%d', '%h', '%i', '%s', '%f', '%x', '%k', '%l', '%q', '%a', '%%', '%'
+].join('|');
 
 function AQL_DATE_FORMAT (value, format) {
   'use strict';
   try {
-    var date = MAKE_DATE([ value ], "DATE_FORMAT");
+    var date = MAKE_DATE([ value ], 'DATE_FORMAT');
     var dateStr = date.toISOString();
     var yr = date.getUTCFullYear();
     var offset = yr < 0 || yr > 9999 ? 3 : 0;
     var dateMap = {
-      "%t": function() { return date.getTime(); },
-      "%z": function() { return dateStr; },
-      "%w": function() { return AQL_DATE_DAYOFWEEK(dateStr); },
-      "%y": function() { return date.getUTCFullYear(); },
+      '%t': function () { return date.getTime(); },
+      '%z': function () { return dateStr; },
+      '%w': function () { return AQL_DATE_DAYOFWEEK(dateStr); },
+      '%y': function () { return date.getUTCFullYear(); },
       // there's no really sensible way to handle negative years, but better not drop the sign
-      "%yy": function() { return (yr < 0 ? "-" : "") + dateStr.slice(2 + offset, 4 + offset); },
+      '%yy': function () { return (yr < 0 ? '-' : '') + dateStr.slice(2 + offset, 4 + offset); },
       // preserves full negative years (-000753 is not reduced to -753 or -0753)
-      "%yyyy": function() { return dateStr.slice(0, 4 + offset); },
+      '%yyyy': function () { return dateStr.slice(0, 4 + offset); },
       // zero-pad 4 digit years to length of 6 and add "+" prefix, keep negative as-is
-      "%yyyyyy": function() { 
+      '%yyyyyy': function () {
         return (yr >= 0 && yr <= 9999)
-          ? "+" + zeropad(dateStr.slice(0, 4 + offset), 6)
+          ? '+' + zeropad(dateStr.slice(0, 4 + offset), 6)
           : dateStr.slice(0, 7);
       },
-      "%m": function() { return date.getUTCMonth() + 1; },
-      "%mm": function() { return dateStr.slice(5 + offset, 7 + offset); },
-      "%d": function() { return date.getUTCDate(); },
-      "%dd": function() { return dateStr.slice(8 + offset, 10 + offset); },
-      "%h": function() { return date.getUTCHours(); },
-      "%hh": function() { return dateStr.slice(11 + offset, 13 + offset); },
-      "%i": function() { return date.getUTCMinutes(); },
-      "%ii": function() { return dateStr.slice(14 + offset, 16 + offset); },
-      "%s": function() { return date.getUTCSeconds(); },
-      "%ss": function() { return dateStr.slice(17 + offset, 19 + offset); },
-      "%f": function() { return date.getUTCMilliseconds(); },
-      "%fff": function() { return dateStr.slice(20 + offset, 23 + offset); },
-      "%x": function() { return AQL_DATE_DAYOFYEAR(dateStr); },
-      "%xxx": function() { return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3); },
-      "%k": function() { return AQL_DATE_ISOWEEK(dateStr); },
-      "%kk": function() { return zeropad(AQL_DATE_ISOWEEK(dateStr), 2); },
-      "%l": function() { return +AQL_DATE_LEAPYEAR(dateStr); },
-      "%q": function() { return AQL_DATE_QUARTER(dateStr); },
-      "%a": function() { return AQL_DATE_DAYS_IN_MONTH(dateStr); },
-      "%mmm": function() { return monthNames[date.getUTCMonth()].substring(0, 3); },
-      "%mmmm": function() { return monthNames[date.getUTCMonth()]; },
-      "%www": function() { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3); },
-      "%wwww": function() { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)]; },
-      "%&": function() { return ""; }, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
-      "%%": function() { return "%"; }, // Allow for literal "%y" using "%%y"
-      "%": function() { return ""; }
+      '%m': function () { return date.getUTCMonth() + 1; },
+      '%mm': function () { return dateStr.slice(5 + offset, 7 + offset); },
+      '%d': function () { return date.getUTCDate(); },
+      '%dd': function () { return dateStr.slice(8 + offset, 10 + offset); },
+      '%h': function () { return date.getUTCHours(); },
+      '%hh': function () { return dateStr.slice(11 + offset, 13 + offset); },
+      '%i': function () { return date.getUTCMinutes(); },
+      '%ii': function () { return dateStr.slice(14 + offset, 16 + offset); },
+      '%s': function () { return date.getUTCSeconds(); },
+      '%ss': function () { return dateStr.slice(17 + offset, 19 + offset); },
+      '%f': function () { return date.getUTCMilliseconds(); },
+      '%fff': function () { return dateStr.slice(20 + offset, 23 + offset); },
+      '%x': function () { return AQL_DATE_DAYOFYEAR(dateStr); },
+      '%xxx': function () { return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3); },
+      '%k': function () { return AQL_DATE_ISOWEEK(dateStr); },
+      '%kk': function () { return zeropad(AQL_DATE_ISOWEEK(dateStr), 2); },
+      '%l': function () { return +AQL_DATE_LEAPYEAR(dateStr); },
+      '%q': function () { return AQL_DATE_QUARTER(dateStr); },
+      '%a': function () { return AQL_DATE_DAYS_IN_MONTH(dateStr); },
+      '%mmm': function () { return monthNames[date.getUTCMonth()].substring(0, 3); },
+      '%mmmm': function () { return monthNames[date.getUTCMonth()]; },
+      '%www': function () { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3); },
+      '%wwww': function () { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)]; },
+      '%&': function () { return ''; }, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
+      '%%': function () { return '%'; }, // Allow for literal "%y" using "%%y"
+      '%': function () { return ''; }
     };
-    var exp = new RegExp(dateMapRegExp, "gi"); 
-    format = format.replace(exp, function(match){
+    var exp = new RegExp(dateMapRegExp, 'gi');
+    format = format.replace(exp, function (match) {
       return dateMap[match.toLowerCase()]();
     });
     return format;
   } catch (err) {
-    WARN("DATE_FORMAT", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN('DATE_FORMAT', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
@@ -5689,9 +5564,9 @@ exports.AQL_UNION = AQL_UNION;
 exports.AQL_UNION_DISTINCT = AQL_UNION_DISTINCT;
 exports.AQL_CALL = AQL_CALL;
 exports.AQL_APPLY = AQL_APPLY;
-exports.AQL_REMOVE_VALUE = AQL_REMOVE_VALUE; 
-exports.AQL_REMOVE_VALUES = AQL_REMOVE_VALUES; 
-exports.AQL_REMOVE_NTH = AQL_REMOVE_NTH; 
+exports.AQL_REMOVE_VALUE = AQL_REMOVE_VALUE;
+exports.AQL_REMOVE_VALUES = AQL_REMOVE_VALUES;
+exports.AQL_REMOVE_NTH = AQL_REMOVE_NTH;
 exports.AQL_PUSH = AQL_PUSH;
 exports.AQL_APPEND = AQL_APPEND;
 exports.AQL_POP = AQL_POP;

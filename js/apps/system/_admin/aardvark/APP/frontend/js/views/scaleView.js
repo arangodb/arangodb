@@ -1,88 +1,85 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+/* jshint browser: true */
+/* jshint unused: false */
+/* global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
 (function () {
-  "use strict";
+  'use strict';
 
   window.ScaleView = Backbone.View.extend({
-
     el: '#content',
-    template: templateEngine.createTemplate("scaleView.ejs"),
+    template: templateEngine.createTemplate('scaleView.ejs'),
     interval: 10000,
     knownServers: [],
 
     events: {
-      "click #addCoord"    : "addCoord",
-      "click #removeCoord" : "removeCoord",
-      "click #addDBs"      : "addDBs",
-      "click #removeDBs"   : "removeDBs"
+      'click #addCoord': 'addCoord',
+      'click #removeCoord': 'removeCoord',
+      'click #addDBs': 'addDBs',
+      'click #removeDBs': 'removeDBs'
     },
 
-    setCoordSize: function(number) {
+    setCoordSize: function (number) {
       var self = this;
       var data = {
         numberOfCoordinators: number
       };
 
       $.ajax({
-        type: "PUT",
-        url: arangoHelper.databaseUrl("/_admin/cluster/numberOfServers"),
-        contentType: "application/json",
+        type: 'PUT',
+        url: arangoHelper.databaseUrl('/_admin/cluster/numberOfServers'),
+        contentType: 'application/json',
         data: JSON.stringify(data),
-        success: function() {
+        success: function () {
           self.updateTable(data);
         },
-        error: function() {
-          arangoHelper.arangoError("Scale", "Could not set coordinator size.");
+        error: function () {
+          arangoHelper.arangoError('Scale', 'Could not set coordinator size.');
         }
       });
     },
 
-    setDBsSize: function(number) {
+    setDBsSize: function (number) {
       var self = this;
       var data = {
         numberOfDBServers: number
       };
 
       $.ajax({
-        type: "PUT",
-        url: arangoHelper.databaseUrl("/_admin/cluster/numberOfServers"),
-        contentType: "application/json",
+        type: 'PUT',
+        url: arangoHelper.databaseUrl('/_admin/cluster/numberOfServers'),
+        contentType: 'application/json',
         data: JSON.stringify(data),
-        success: function() {
+        success: function () {
           self.updateTable(data);
         },
-        error: function() {
-          arangoHelper.arangoError("Scale", "Could not set coordinator size.");
+        error: function () {
+          arangoHelper.arangoError('Scale', 'Could not set coordinator size.');
         }
       });
     },
 
-    addCoord: function() {
+    addCoord: function () {
       this.setCoordSize(this.readNumberFromID('#plannedCoords', true));
     },
 
-    removeCoord: function() {
+    removeCoord: function () {
       this.setCoordSize(this.readNumberFromID('#plannedCoords', false, true));
     },
 
-    addDBs: function() {
+    addDBs: function () {
       this.setDBsSize(this.readNumberFromID('#plannedDBs', true));
     },
 
-    removeDBs: function() {
+    removeDBs: function () {
       this.setDBsSize(this.readNumberFromID('#plannedDBs', false, true));
     },
 
-    readNumberFromID: function(id, increment, decrement) {
+    readNumberFromID: function (id, increment, decrement) {
       var value = $(id).html(),
-      parsed = false;
+        parsed = false;
 
       try {
         parsed = JSON.parse(value);
-      }
-      catch (ignore) {
-      }
+      } catch (ignore) {}
 
       if (increment) {
         parsed++;
@@ -97,7 +94,6 @@
     },
 
     initialize: function (options) {
-
       var self = this;
       clearInterval(this.intervalFunction);
 
@@ -106,19 +102,18 @@
         this.coordinators = options.coordinators;
         this.updateServerTime();
 
-        //start polling with interval
-        this.intervalFunction = window.setInterval(function() {
+        // start polling with interval
+        this.intervalFunction = window.setInterval(function () {
           if (window.location.hash === '#sNodes') {
-
             self.coordinators.fetch({
-              success: function() {
+              success: function () {
                 self.dbServers.fetch({
-                  success: function() {
+                  success: function () {
                     self.continueRender(true);
                   }
-                }); 
+                });
               }
-            }); 
+            });
           }
         }, this.interval);
       }
@@ -127,9 +122,8 @@
     render: function () {
       var self = this;
 
-      var callback = function() {
-
-        var cb2 = function() {
+      var callback = function () {
+        var cb2 = function () {
           self.continueRender();
         }.bind(this);
 
@@ -138,15 +132,14 @@
 
       if (!this.initDoneCoords) {
         this.waitForCoordinators(callback);
-      }
-      else {
+      } else {
         callback();
       }
 
       window.arangoHelper.buildNodesSubNav('scale');
     },
 
-    continueRender: function(rerender) {
+    continueRender: function (rerender) {
       var coords, dbs, self = this;
       coords = this.coordinators.toJSON();
       dbs = this.dbServers.toJSON();
@@ -160,18 +153,18 @@
       }));
 
       $.ajax({
-        type: "GET",
+        type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl("/_admin/cluster/numberOfServers"),
-        contentType: "application/json",
+        url: arangoHelper.databaseUrl('/_admin/cluster/numberOfServers'),
+        contentType: 'application/json',
         processData: false,
-        success: function(data) {
+        success: function (data) {
           self.updateTable(data);
         }
       });
     },
 
-    updateTable: function(data) {
+    updateTable: function (data) {
       var scalingActive = '<span class="warning">scaling in progress <i class="fa fa-circle-o-notch fa-spin"></i></span>';
       var scalingDone = '<span class="positive">no scaling process active</span>';
 
@@ -180,8 +173,7 @@
 
         if (this.coordinators.toJSON().length === data.numberOfCoordinators) {
           $('#statusCoords').html(scalingDone);
-        }
-        else {
+        } else {
           $('#statusCoords').html(scalingActive);
         }
       }
@@ -190,42 +182,38 @@
         $('#plannedDBs').html(data.numberOfDBServers);
         if (this.dbServers.toJSON().length === data.numberOfDBServers) {
           $('#statusDBs').html(scalingDone);
-        }
-        else {
+        } else {
           $('#statusDBs').html(scalingActive);
         }
       }
-
     },
 
-    waitForDBServers: function(callback) {
+    waitForDBServers: function (callback) {
       var self = this;
 
       if (this.dbServers.length === 0) {
-        window.setInterval(function() {
+        window.setInterval(function () {
           self.waitForDBServers(callback);
         }, 300);
-      }
-      else {
+      } else {
         callback();
       }
     },
 
-    waitForCoordinators: function(callback) {
-      var self = this; 
+    waitForCoordinators: function (callback) {
+      var self = this;
 
-      window.setTimeout(function() {
+      window.setTimeout(function () {
         if (self.coordinators.length === 0) {
           self.waitForCoordinators(callback);
-        }
-        else {
+        } else {
           self.initDoneCoords = true;
           callback();
         }
       }, 200);
     },
 
-    updateServerTime: function() {
+    updateServerTime: function () {
       this.serverTime = new Date().getTime();
     }
 

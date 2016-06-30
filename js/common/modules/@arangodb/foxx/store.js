@@ -1,85 +1,80 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Foxx service store
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2015 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler, Michael Hackstein
-/// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-
-
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Foxx service store
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2015 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler, Michael Hackstein
+// / @author Copyright 2015, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var checkedFishBowl = false;
 
-
-const arangodb = require("@arangodb");
+const arangodb = require('@arangodb');
 const plainServerVersion = arangodb.plainServerVersion;
 const db = arangodb.db;
-const download = require("internal").download;
-const fs = require("fs");
+const download = require('internal').download;
+const fs = require('fs');
 const throwDownloadError = arangodb.throwDownloadError;
-const utils = require("@arangodb/foxx/manager-utils");
+const utils = require('@arangodb/foxx/manager-utils');
 const semver = require('semver');
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the fishbowl repository
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the fishbowl repository
+// //////////////////////////////////////////////////////////////////////////////
 
 function getFishbowlUrl () {
-  return "arangodb/foxx-apps";
+  return 'arangodb/foxx-apps';
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the fishbowl collection
-///
-/// this will create the collection if it does not exist. this is better than
-/// needlessly creating the collection for each database in case it is not
-/// used in context of the database.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the fishbowl collection
+// /
+// / this will create the collection if it does not exist. this is better than
+// / needlessly creating the collection for each database in case it is not
+// / used in context of the database.
+// //////////////////////////////////////////////////////////////////////////////
 
-var getFishbowlStorage = function() {
-
+var getFishbowlStorage = function () {
   var c = db._collection('_fishbowl');
-  if (c ===  null) {
-    c = db._create('_fishbowl', { isSystem : true });
+  if (c === null) {
+    c = db._create('_fishbowl', { isSystem: true });
   }
 
-  if (c !== null && ! checkedFishBowl) {
+  if (c !== null && !checkedFishBowl) {
     // ensure indexes
-    c.ensureFulltextIndex("description");
-    c.ensureFulltextIndex("name");
+    c.ensureFulltextIndex('description');
+    c.ensureFulltextIndex('name');
     checkedFishBowl = true;
   }
 
   return c;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief comparator for services
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief comparator for services
+// //////////////////////////////////////////////////////////////////////////////
 
-var compareServices =  function(l, r) {
+var compareServices = function (l, r) {
   var left = l.name.toLowerCase();
   var right = r.name.toLowerCase();
 
@@ -94,33 +89,31 @@ var compareServices =  function(l, r) {
   return 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the fishbowl from a zip archive
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief updates the fishbowl from a zip archive
+// //////////////////////////////////////////////////////////////////////////////
 
-var updateFishbowlFromZip = function(filename) {
+var updateFishbowlFromZip = function (filename) {
   var i;
   var tempPath = fs.getTempPath();
-  var toSave = [ ];
+  var toSave = [];
 
   try {
     fs.makeDirectoryRecursive(tempPath);
-    var root = fs.join(tempPath, "foxx-apps-master/applications");
+    var root = fs.join(tempPath, 'foxx-apps-master/applications');
 
     // remove any previous files in the directory
     fs.listTree(root).forEach(function (file) {
       if (file.match(/\.json$/)) {
         try {
           fs.remove(fs.join(root, file));
-        }
-        catch (ignore) {
-        }
+        } catch (ignore) {}
       }
     });
 
     fs.unzipFile(filename, tempPath, false, true);
 
-    if (! fs.exists(root)) {
+    if (!fs.exists(root)) {
       throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
     }
 
@@ -139,15 +132,14 @@ var updateFishbowlFromZip = function(filename) {
 
       try {
         desc = JSON.parse(fs.read(service));
-      }
-      catch (err1) {
+      } catch (err1) {
         arangodb.printf("Cannot parse description for service '" + f + "': %s\n", String(err1));
         continue;
       }
 
       desc._key = match[1];
 
-      if (! desc.hasOwnProperty("name")) {
+      if (!desc.hasOwnProperty('name')) {
         desc.name = match[1];
       }
 
@@ -162,10 +154,10 @@ var updateFishbowlFromZip = function(filename) {
           write: fishbowl.name()
         },
         action: function (params) {
-          var c = require("internal").db._collection(params.collection);
+          var c = require('internal').db._collection(params.collection);
           c.truncate();
 
-          params.services.forEach(function(service) {
+          params.services.forEach(function (service) {
             c.save(service);
           });
         },
@@ -175,27 +167,23 @@ var updateFishbowlFromZip = function(filename) {
         }
       });
 
-      arangodb.printf("Updated local repository information with %d service(s)\n",
-                      toSave.length);
+      arangodb.printf('Updated local repository information with %d service(s)\n',
+        toSave.length);
     }
-  }
-  catch (err) {
-    if (tempPath !== undefined && tempPath !== "") {
+  } catch (err) {
+    if (tempPath !== undefined && tempPath !== '') {
       try {
         fs.removeDirectoryRecursive(tempPath);
-      }
-      catch (ignore) {
-      }
+      } catch (ignore) {}
     }
 
     throw err;
   }
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the search result for FOXX services
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the search result for FOXX services
+// //////////////////////////////////////////////////////////////////////////////
 
 var searchJson = function (name) {
   var fishbowl = getFishbowlStorage();
@@ -208,14 +196,13 @@ var searchJson = function (name) {
 
   var docs;
 
-  if (name === undefined || (typeof name === "string" && name.length === 0)) {
+  if (name === undefined || (typeof name === 'string' && name.length === 0)) {
     docs = fishbowl.toArray();
-  }
-  else {
+  } else {
     name = name.replace(/[^a-zA-Z0-9]/g, ' ');
 
     // get results by looking in "description" attribute
-    docs = fishbowl.fulltext("description", "prefix:" + name).toArray();
+    docs = fishbowl.fulltext('description', 'prefix:' + name).toArray();
 
     // build a hash of keys
     var i;
@@ -226,49 +213,47 @@ var searchJson = function (name) {
     }
 
     // get results by looking in "name" attribute
-    var docs2= fishbowl.fulltext("name", "prefix:" + name).toArray();
+    var docs2 = fishbowl.fulltext('name', 'prefix:' + name).toArray();
 
     // merge the two result sets, avoiding duplicates
     for (i = 0; i < docs2.length; ++i) {
       if (!keys.hasOwnProperty(docs2[i]._key)) {
         docs.push(docs2[i]);
       }
-
     }
   }
 
   return docs;
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief searchs for an available FOXX services
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief searchs for an available FOXX services
+// //////////////////////////////////////////////////////////////////////////////
 
 var search = function (name) {
   var docs = searchJson(name);
 
   arangodb.printTable(
     docs.sort(compareServices),
-    [ "name", "author", "description" ],
+    [ 'name', 'author', 'description' ],
     {
       prettyStrings: true,
-      totalString: "%s service(s) found",
-      emptyString: "no services found",
+      totalString: '%s service(s) found',
+      emptyString: 'no services found',
       rename: {
-        name : "Name",
-        author : "Author",
-        description : "Description"
+        name: 'Name',
+        author: 'Author',
+        description: 'Description'
       }
     }
   );
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the highest version number from the document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief extracts the highest version number from the document
+// //////////////////////////////////////////////////////////////////////////////
 
-function extractMaxVersion(matchEngine, versionDoc) {
+function extractMaxVersion (matchEngine, versionDoc) {
   let serverVersion = plainServerVersion();
   let versions = Object.keys(versionDoc);
   versions.sort(semver.compare).reverse();
@@ -299,11 +284,11 @@ function extractMaxVersion(matchEngine, versionDoc) {
   return fallback;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all available FOXX services
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns all available FOXX services
+// //////////////////////////////////////////////////////////////////////////////
 
-function availableJson(matchEngine) {
+function availableJson (matchEngine) {
   let fishbowl = getFishbowlStorage();
   let cursor = fishbowl.all();
   let result = [];
@@ -322,11 +307,10 @@ function availableJson(matchEngine) {
       );
       let res = {
         name: doc.name,
-        description: doc.description || "",
-        author: doc.author || "",
+        description: doc.description || '',
+        author: doc.author || '',
         latestVersion,
-        legacy
-      };
+      legacy};
 
       result.push(res);
     }
@@ -335,19 +319,18 @@ function availableJson(matchEngine) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the repository
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief updates the repository
+// //////////////////////////////////////////////////////////////////////////////
 
-
-var update = function() {
+var update = function () {
   var url = utils.buildGithubUrl(getFishbowlUrl());
-  var filename = fs.getTempFile("downloads", false);
-  var path = fs.getTempFile("zip", false);
+  var filename = fs.getTempFile('downloads', false);
+  var path = fs.getTempFile('zip', false);
 
   try {
-    var result = download(url, "", {
-      method: "get",
+    var result = download(url, '', {
+      method: 'get',
       followRedirects: true,
       timeout: 30
     }, filename);
@@ -359,49 +342,46 @@ var update = function() {
     updateFishbowlFromZip(filename);
 
     filename = undefined;
-  }
-  catch (err) {
+  } catch (err) {
     if (filename !== undefined && fs.exists(filename)) {
       fs.remove(filename);
     }
 
     try {
       fs.removeDirectoryRecursive(path);
-    }
-    catch (ignore) {
-    }
+    } catch (ignore) {}
 
     throw err;
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints all available FOXX services
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief prints all available FOXX services
+// //////////////////////////////////////////////////////////////////////////////
 
 var available = function (matchEngine) {
   var list = availableJson(matchEngine);
 
   arangodb.printTable(
     list.sort(compareServices),
-    [ "name", "author", "description", "latestVersion" ],
+    [ 'name', 'author', 'description', 'latestVersion' ],
     {
       prettyStrings: true,
-      totalString: "%s service(s) found",
+      totalString: '%s service(s) found',
       emptyString: "no services found, please use 'update'",
       rename: {
-        "name" : "Name",
-        "author" : "Author",
-        "description" : "Description",
-        "latestVersion" : "Latest Version"
+        'name': 'Name',
+        'author': 'Author',
+        'description': 'Description',
+        'latestVersion': 'Latest Version'
       }
     }
   );
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets json-info for an available FOXX service
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief gets json-info for an available FOXX service
+// //////////////////////////////////////////////////////////////////////////////
 
 var infoJson = function (name) {
   utils.validateServiceName(name);
@@ -414,30 +394,28 @@ var infoJson = function (name) {
   }
 
   var desc = db._query(
-    "FOR u IN @@storage FILTER u.name == @name OR @name in u.aliases RETURN DISTINCT u",
+    'FOR u IN @@storage FILTER u.name == @name OR @name in u.aliases RETURN DISTINCT u',
     { '@storage': fishbowl.name(), 'name': name }).toArray();
 
   if (desc.length === 0) {
     arangodb.print("No service '" + name + "' available, please try 'search'");
     return;
-  }
-  else if (desc.length > 1) {
+  } else if (desc.length > 1) {
     arangodb.print("Multiple services are named '" + name + "', please try 'search'");
     return;
-  }
-  else {
+  } else {
     return desc[0];
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a download URL for the given service information
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a download URL for the given service information
+// //////////////////////////////////////////////////////////////////////////////
 
-var installationInfo = function(serviceInfo) {
+var installationInfo = function (serviceInfo) {
 
   // TODO Validate
-  let infoSplit = serviceInfo.split(":");
+  let infoSplit = serviceInfo.split(':');
   let name = infoSplit[0];
   let version = infoSplit[1];
   let storeInfo = infoJson(name);
@@ -452,17 +430,16 @@ var installationInfo = function(serviceInfo) {
   if (version === undefined) {
     let maxVersion = extractMaxVersion(true, versions);
 
-    if (! maxVersion) {
+    if (!maxVersion) {
       maxVersion = extractMaxVersion(false, versions);
     }
 
-    if (! maxVersion) {
+    if (!maxVersion) {
       throw new Error('No available version');
     }
 
     versionInfo = versions[maxVersion];
-  }
-  else {
+  } else {
     if (!versions.hasOwnProperty(version)) {
       throw new Error('Unknown version');
     }
@@ -502,23 +479,23 @@ var installationInfo = function(serviceInfo) {
   return {url, manifest};
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints info for an available FOXX service
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief prints info for an available FOXX service
+// //////////////////////////////////////////////////////////////////////////////
 
 var info = function (name) {
   var desc = infoJson(name);
-  arangodb.printf("Name:        %s\n", desc.name);
+  arangodb.printf('Name:        %s\n', desc.name);
 
   if (desc.hasOwnProperty('author')) {
-    arangodb.printf("Author:      %s\n", desc.author);
+    arangodb.printf('Author:      %s\n', desc.author);
   }
 
   var isSystem = desc.hasOwnProperty('isSystem') && desc.isSystem;
-  arangodb.printf("System:      %s\n", JSON.stringify(isSystem));
+  arangodb.printf('System:      %s\n', JSON.stringify(isSystem));
 
   if (desc.hasOwnProperty('description')) {
-    arangodb.printf("Description: %s\n\n", desc.description);
+    arangodb.printf('Description: %s\n\n', desc.description);
   }
 
   var header = false;
@@ -528,27 +505,24 @@ var info = function (name) {
   versions.forEach(function (v) {
     var version = desc.versions[v];
 
-    if (! header) {
-      arangodb.print("Versions:");
+    if (!header) {
+      arangodb.print('Versions:');
       header = true;
     }
 
-    if (version.type === "github") {
-      if (version.hasOwnProperty("tag")) {
+    if (version.type === 'github') {
+      if (version.hasOwnProperty('tag')) {
         arangodb.printf('%s: fetch github "%s" "%s"\n', v, version.location, version.tag);
-      }
-      else if (v.hasOwnProperty("branch")) {
+      } else if (v.hasOwnProperty('branch')) {
         arangodb.printf('%s: fetch github "%s" "%s"\n', v, version.location, version.branch);
-      }
-      else {
+      } else {
         arangodb.printf('%s: fetch "github" "%s"\n', v, version.location);
       }
     }
   });
 
-  arangodb.printf("\n");
+  arangodb.printf('\n');
 };
-
 
 exports.available = available;
 exports.availableJson = availableJson;

@@ -1,35 +1,35 @@
-/*jshint browser: true */
-/*jshint strict: false, unused: false */
-/*global window, atob, Backbone, $,_, window, frontendConfig, arangoHelper */
+/* jshint browser: true */
+/* jshint strict: false, unused: false */
+/* global window, atob, Backbone, $,_, window, frontendConfig, arangoHelper */
 
 window.ArangoUsers = Backbone.Collection.extend({
   model: window.Users,
 
   activeUser: null,
   activeUserSettings: {
-    "query" : {},
-    "shell" : {},
-    "testing": true
+    'query': {},
+    'shell': {},
+    'testing': true
   },
 
   sortOptions: {
     desc: false
   },
 
-  fetch: function(options) {
-    if (window.App.currentUser && window.App.currentDB.get("name") !== '_system') {
-      this.url = frontendConfig.basePath + "/_api/user/" + encodeURIComponent(window.App.currentUser);
+  fetch: function (options) {
+    if (window.App.currentUser && window.App.currentDB.get('name') !== '_system') {
+      this.url = frontendConfig.basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser);
     }
     return Backbone.Collection.prototype.fetch.call(this, options);
   },
 
-  url: frontendConfig.basePath + "/_api/user",
+  url: frontendConfig.basePath + '/_api/user',
 
-  //comparator : function(obj) {
-  //  return obj.get("user").toLowerCase();
-  //},
+  // comparator : function(obj) {
+  //  return obj.get("user").toLowerCase()
+  // },
 
-  comparator: function(item, item2) {
+  comparator: function (item, item2) {
     var a = item.get('user').toLowerCase();
     var b = item2.get('user').toLowerCase();
     if (this.sortOptions.desc === true) {
@@ -42,24 +42,24 @@ window.ArangoUsers = Backbone.Collection.extend({
     var self = this;
 
     $.ajax({
-      url: arangoHelper.databaseUrl("/_open/auth"),
-      method: "POST",
+      url: arangoHelper.databaseUrl('/_open/auth'),
+      method: 'POST',
       data: JSON.stringify({
         username: username,
         password: password
       }),
-      dataType: "json"
+      dataType: 'json'
     }).success(
       function (data) {
         arangoHelper.setCurrentJwt(data.jwt);
-        
+
         var jwtParts = data.jwt.split('.');
         if (!jwtParts[1]) {
-          throw new Error("Invalid JWT");
+          throw new Error('Invalid JWT');
         }
-        
+
         if (!window.atob) {
-          throw new Error("base64 support missing in browser");
+          throw new Error('base64 support missing in browser');
         }
         var payload = JSON.parse(atob(jwtParts[1]));
 
@@ -75,7 +75,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     );
   },
 
-  setSortingDesc: function(yesno) {
+  setSortingDesc: function (yesno) {
     this.sortOptions.desc = yesno;
   },
 
@@ -83,7 +83,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     arangoHelper.setCurrentJwt(null);
     this.activeUser = null;
     this.reset();
-    window.App.navigate("");
+    window.App.navigate('');
     window.location.reload();
   },
 
@@ -95,17 +95,17 @@ window.ArangoUsers = Backbone.Collection.extend({
     var self = this;
 
     $.ajax({
-      type: "GET",
+      type: 'GET',
       cache: false,
-      //url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
-      url: arangoHelper.databaseUrl("/_api/user/" + encodeURIComponent(self.activeUser)),
-      contentType: "application/json",
+      // url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
+      url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(self.activeUser)),
+      contentType: 'application/json',
       processData: false,
-      success: function(data) {
+      success: function (data) {
         self.activeUserSettings = data.extra;
         callback(false, data);
       },
-      error: function(data) {
+      error: function (data) {
         callback(true, data);
       }
     });
@@ -115,28 +115,27 @@ window.ArangoUsers = Backbone.Collection.extend({
     var self = this;
     $.ajax({
       cache: false,
-      type: "PUT",
-      url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
+      type: 'PUT',
+      url: frontendConfig.basePath + '/_api/user/' + encodeURIComponent(self.activeUser),
       data: JSON.stringify({ extra: self.activeUserSettings }),
-      contentType: "application/json",
+      contentType: 'application/json',
       processData: false,
-      success: function(data) {
+      success: function (data) {
         callback(false, data);
       },
-      error: function(data) {
+      error: function (data) {
         callback(true, data);
       }
     });
   },
 
-  parse: function(response)  {
+  parse: function (response) {
     var result = [];
     if (response.result) {
-      _.each(response.result, function(object) {
+      _.each(response.result, function (object) {
         result.push(object);
       });
-    }
-    else {
+    } else {
       result.push({
         user: response.user,
         active: response.active,
@@ -147,22 +146,21 @@ window.ArangoUsers = Backbone.Collection.extend({
     return result;
   },
 
-  whoAmI: function(callback) {
+  whoAmI: function (callback) {
     if (this.activeUser) {
       callback(false, this.activeUser);
       return;
     }
-    $.ajax("whoAmI?_=" + Date.now())
-    .success(
-      function(data) {
-        callback(false, data.user);
-      }
+    $.ajax('whoAmI?_=' + Date.now())
+      .success(
+        function (data) {
+          callback(false, data.user);
+        }
     ).error(
-      function() {
+      function () {
         callback(true, null);
       }
     );
   }
-
 
 });

@@ -1,65 +1,62 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief statistics handler
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2014 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler, Lucas Dohmen
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief statistics handler
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2014 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler, Lucas Dohmen
+// / @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var cluster = require("@arangodb/cluster");
+var internal = require('internal');
+var cluster = require('@arangodb/cluster');
 var db = internal.db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialized
-///
-/// Warning: there are many threads, so variable is thread local.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief initialized
+// /
+// / Warning: there are many threads, so variable is thread local.
+// //////////////////////////////////////////////////////////////////////////////
 
 var initialized = false;
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief createCollections
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief createCollections
+// //////////////////////////////////////////////////////////////////////////////
 
 function createStatisticsCollection (name) {
   var collection = db._collection(name);
 
   if (collection === null) {
     var r = null;
-                             
+
     try {
       r = db._create(name, { isSystem: true, waitForSync: false,
-                             replicationFactor: 2,
-                             journalSize: 8 * 1024 * 1024,
-                             distributeShardsLike: "_graphs" });
-    }
-    catch (err) {
-    }
+        replicationFactor: 2,
+        journalSize: 8 * 1024 * 1024,
+      distributeShardsLike: '_graphs' });
+    } catch (err) {}
 
-    if (! r) {
+    if (!r) {
       return false;
     }
 
@@ -67,21 +64,21 @@ function createStatisticsCollection (name) {
   }
 
   if (collection !== null) {
-    collection.ensureIndex({ type: "skiplist", fields: [ "time" ] });
+    collection.ensureIndex({ type: 'skiplist', fields: [ 'time' ] });
   }
 
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collectGarbage
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief collectGarbage
+// //////////////////////////////////////////////////////////////////////////////
 
 function collectGarbage (collection, start) {
   var values = db._query(
-      "FOR s in @@collection "
-    + "  FILTER s.time < @start "
-    + "  RETURN s._id",
+    'FOR s in @@collection '
+    + '  FILTER s.time < @start '
+    + '  RETURN s._id',
     { start: start, '@collection': collection });
 
   while (values.hasNext()) {
@@ -89,34 +86,32 @@ function collectGarbage (collection, start) {
 
     try {
       db._remove(id);
-    }
-    catch (err) {
-    }
+    } catch (err) {}
   }
 
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lastEntry
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief lastEntry
+// //////////////////////////////////////////////////////////////////////////////
 
 function lastEntry (collection, start, clusterId) {
-  var filter = "";
+  var filter = '';
   var bindVars = { start: start, '@collection': collection };
 
   if (clusterId !== undefined && clusterId !== null) {
-    filter = " FILTER s.clusterId == @clusterId ";
+    filter = ' FILTER s.clusterId == @clusterId ';
     bindVars.clusterId = clusterId;
   }
 
   var values = db._query(
-      "FOR s in @@collection "
-    + "FILTER s.time >= @start "
-    +  filter
-    + "SORT s.time desc "
-    + "LIMIT 1 "
-    + "RETURN s", bindVars);
+    'FOR s in @@collection '
+    + 'FILTER s.time >= @start '
+    + filter
+    + 'SORT s.time desc '
+    + 'LIMIT 1 '
+    + 'RETURN s', bindVars);
 
   if (values.hasNext()) {
     return values.next();
@@ -125,9 +120,9 @@ function lastEntry (collection, start, clusterId) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief avgPercentDistributon
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief avgPercentDistributon
+// //////////////////////////////////////////////////////////////////////////////
 
 function avgPercentDistributon (now, last, cuts) {
   var n = cuts.length + 1;
@@ -137,8 +132,7 @@ function avgPercentDistributon (now, last, cuts) {
 
   if (last === null) {
     count = now.count;
-  }
-  else {
+  } else {
     count = now.count - last.count;
   }
 
@@ -147,14 +141,11 @@ function avgPercentDistributon (now, last, cuts) {
       result[i] = 0;
     }
   }
-
   else if (last === null) {
     for (i = 0;  i < n;  ++i) {
       result[i] = now.counts[i] / count;
     }
-  }
-
-  else  {
+  } else {
     for (i = 0;  i < n;  ++i) {
       result[i] = (now.counts[i] - last.counts[i]) / count;
     }
@@ -163,9 +154,9 @@ function avgPercentDistributon (now, last, cuts) {
   return { values: result, cuts: cuts };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes the figures on a per second basis
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief computes the figures on a per second basis
+// //////////////////////////////////////////////////////////////////////////////
 
 function computePerSeconds (current, prev) {
   // sanity check if we have restarted the server
@@ -238,8 +229,7 @@ function computePerSeconds (current, prev) {
 
   if (d1 === 0) {
     result.client.avgTotalTime = 0;
-  }
-  else {
+  } else {
     result.client.avgTotalTime = (current.client.totalTime.sum - prev.client.totalTime.sum) / d1;
   }
 
@@ -253,8 +243,7 @@ function computePerSeconds (current, prev) {
 
   if (d1 === 0) {
     result.client.avgRequestTime = 0;
-  }
-  else {
+  } else {
     result.client.avgRequestTime = (current.client.requestTime.sum - prev.client.requestTime.sum) / d1;
   }
 
@@ -268,8 +257,7 @@ function computePerSeconds (current, prev) {
 
   if (d1 === 0) {
     result.client.avgQueueTime = 0;
-  }
-  else {
+  } else {
     result.client.avgQueueTime = (current.client.queueTime.sum - prev.client.queueTime.sum) / d1;
   }
 
@@ -283,8 +271,7 @@ function computePerSeconds (current, prev) {
 
   if (d1 === 0) {
     result.client.avgIoTime = 0;
-  }
-  else {
+  } else {
     result.client.avgIoTime = (current.client.ioTime.sum - prev.client.ioTime.sum) / d1;
   }
 
@@ -296,25 +283,25 @@ function computePerSeconds (current, prev) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes the 15 minute averages
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief computes the 15 minute averages
+// //////////////////////////////////////////////////////////////////////////////
 
 function compute15Minute (start, clusterId) {
-  var filter = "";
+  var filter = '';
   var bindVars = { start: start };
 
   if (clusterId !== undefined && clusterId !== null) {
-    filter = " FILTER s.clusterId == @clusterId ";
+    filter = ' FILTER s.clusterId == @clusterId ';
     bindVars.clusterId = clusterId;
   }
 
   var values = db._query(
-      "FOR s in _statistics "
-    + "  FILTER s.time >= @start "
-    +    filter
-    + "  SORT s.time "
-    + "  RETURN s", bindVars);
+    'FOR s in _statistics '
+    + '  FILTER s.time >= @start '
+    + filter
+    + '  SORT s.time '
+    + '  RETURN s', bindVars);
 
   var result = {};
   var count = 0;
@@ -413,25 +400,25 @@ function compute15Minute (start, clusterId) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief statistics interval
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief statistics interval
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.STATISTICS_INTERVAL = 10;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief statistics interval for history
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief statistics interval for history
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.STATISTICS_HISTORY_INTERVAL = 15 * 60;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief createCollections
-///
-/// This cannot be called during version check, because the collections are
-/// system wide and the version checks might not yet know, that it is running
-/// on a cluster coordinate.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief createCollections
+// /
+// / This cannot be called during version check, because the collections are
+// / system wide and the version checks might not yet know, that it is running
+// / on a cluster coordinate.
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.createStatisticsCollections = function () {
   if (initialized) {
@@ -440,11 +427,11 @@ exports.createStatisticsCollections = function () {
 
   initialized = true;
 
-  var names = [ "_statisticsRaw", "_statistics", "_statistics15" ];
+  var names = [ '_statisticsRaw', '_statistics', '_statistics15' ];
   var i;
 
   for (i = 0;  i < names.length;  ++i) {
-    if (! createStatisticsCollection(names[i])) {
+    if (!createStatisticsCollection(names[i])) {
       return false;
     }
   }
@@ -452,12 +439,12 @@ exports.createStatisticsCollections = function () {
   return true;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a statistics entry
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief creates a statistics entry
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.historian = function () {
-  if (! exports.createStatisticsCollections()) {
+  if (!exports.createStatisticsCollections()) {
     return;
   }
 
@@ -487,7 +474,7 @@ exports.historian = function () {
       raw.clusterId = clusterId;
     }
 
-    db.__save("_statisticsRaw", raw);
+    db.__save('_statisticsRaw', raw);
 
     // create the per-seconds statistics
     if (prevRaw !== null) {
@@ -498,21 +485,20 @@ exports.historian = function () {
           perSecs.clusterId = clusterId;
         }
 
-        db.__save("_statistics", perSecs);
+        db.__save('_statistics', perSecs);
       }
     }
-  }
-  catch (err) {
-    require("console").warn("catch error in historian: %s", err.stack);
+  } catch (err) {
+    require('console').warn('catch error in historian: %s', err.stack);
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an average entry
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief creates an average entry
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.historianAverage = function () {
-  if (! exports.createStatisticsCollections()) {
+  if (!exports.createStatisticsCollections()) {
     return;
   }
 
@@ -538,8 +524,7 @@ exports.historianAverage = function () {
 
     if (prev15 === null) {
       start = now - exports.STATISTICS_HISTORY_INTERVAL;
-    }
-    else {
+    } else {
       start = prev15.time;
     }
 
@@ -552,64 +537,63 @@ exports.historianAverage = function () {
 
       stats15m.save(stat15);
     }
-  }
-  catch (err) {
+  } catch (err) {
     // we don't want this error to appear every x seconds
-    // require("console").warn("catch error in historianAverage: %s", err);
+    // require("console").warn("catch error in historianAverage: %s", err)
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collects garbage
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief collects garbage
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.garbageCollector = function () {
-  if (! exports.createStatisticsCollections()) {
+  if (!exports.createStatisticsCollections()) {
     return;
   }
 
   var time = internal.time();
 
-  collectGarbage("_statistics", time - 60 * 60);
-  collectGarbage("_statisticsRaw", time - 60 * 60);
-  collectGarbage("_statistics15", time - 30 * 24 * 60 * 60);
+  collectGarbage('_statistics', time - 60 * 60);
+  collectGarbage('_statisticsRaw', time - 60 * 60);
+  collectGarbage('_statistics15', time - 30 * 24 * 60 * 60);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the module, we delay the actual scheduling of the
-/// periodic tasks until the cluster is fully initialized and we actually
-/// can run AQL queries
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief initialize the module, we delay the actual scheduling of the
+// / periodic tasks until the cluster is fully initialized and we actually
+// / can run AQL queries
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.installPeriodicTasks = function () {
-  if (typeof internal.registerTask !== "function") {
+  if (typeof internal.registerTask !== 'function') {
     return;
   }
 
-  console.debug("Statistics: Installing regular tasks...");
+  console.debug('Statistics: Installing regular tasks...');
 
   var interval = exports.STATISTICS_INTERVAL;
   var interval15 = exports.STATISTICS_HISTORY_INTERVAL;
 
   internal.registerTask({
-    id: "statistics-collector",
-    name: "statistics-collector",
+    id: 'statistics-collector',
+    name: 'statistics-collector',
     offset: interval / 10,
     period: interval,
     command: "require('@arangodb/statistics').historian();"
   });
 
   internal.registerTask({
-    id: "statistics-average-collector",
-    name: "statistics-average-collector",
+    id: 'statistics-average-collector',
+    name: 'statistics-average-collector',
     offset: 2 * interval,
     period: interval15,
     command: "require('@arangodb/statistics').historianAverage();"
   });
 
   internal.registerTask({
-    id: "statistics-gc",
-    name: "statistics-gc",
+    id: 'statistics-gc',
+    name: 'statistics-gc',
     offset: Math.random() * interval15 / 2,
     period: interval15 / 2,
     command: "require('@arangodb/statistics').garbageCollector();"
@@ -618,10 +602,9 @@ exports.installPeriodicTasks = function () {
 
 exports.startup = function () {
   internal.registerTask({
-    id: "statistics-periodic-task-installer",
-    name: "statistics-periodic-task-installer",
+    id: 'statistics-periodic-task-installer',
+    name: 'statistics-periodic-task-installer',
     offset: 10,
     command: "require('@arangodb/statistics').installPeriodicTasks();"
   });
 };
-

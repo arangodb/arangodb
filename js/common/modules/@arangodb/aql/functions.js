@@ -1,46 +1,46 @@
-/*jshint strict: false */
+/* jshint strict: false */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief AQL user functions management
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief AQL user functions management
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var arangodb = require("@arangodb");
+var internal = require('internal');
+var arangodb = require('@arangodb');
 
 var db = arangodb.db;
 var ArangoError = arangodb.ArangoError;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the _aqlfunctions collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the _aqlfunctions collection
+// //////////////////////////////////////////////////////////////////////////////
 
 var getStorage = function () {
   'use strict';
 
-  var functions = db._collection("_aqlfunctions");
+  var functions = db._collection('_aqlfunctions');
 
   if (functions === null) {
     var err = new ArangoError();
@@ -53,14 +53,14 @@ var getStorage = function () {
   return functions;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief apply a prefix filter on the functions
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief apply a prefix filter on the functions
+// //////////////////////////////////////////////////////////////////////////////
 
 var getFiltered = function (group) {
   'use strict';
 
-  var result = [ ];
+  var result = [];
 
   if (group !== null && group !== undefined && group.length > 0) {
     var prefix = group.toUpperCase();
@@ -74,24 +74,23 @@ var getFiltered = function (group) {
         result.push(f);
       }
     });
-  }
-  else {
+  } else {
     result = getStorage().toArray();
   }
 
   return result;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validate a function name
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief validate a function name
+// //////////////////////////////////////////////////////////////////////////////
 
 var validateName = function (name) {
   'use strict';
 
   if (typeof name !== 'string' ||
-      ! name.match(/^[a-zA-Z0-9_]+(::[a-zA-Z0-9_]+)+$/) ||
-      name.substr(0, 1) === "_") {
+    !name.match(/^[a-zA-Z0-9_]+(::[a-zA-Z0-9_]+)+$/) ||
+    name.substr(0, 1) === '_') {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.code;
     err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.message;
@@ -100,21 +99,21 @@ var validateName = function (name) {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validate user function code
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief validate user function code
+// //////////////////////////////////////////////////////////////////////////////
 
 var stringifyFunction = function (code, name) {
   'use strict';
 
   if (typeof code === 'function') {
-    code = String(code) + "\n";
+    code = String(code) + '\n';
   }
 
   if (typeof code === 'string') {
-    code = "(" + code + "\n)";
+    code = '(' + code + '\n)';
 
-    if (! internal.parse) {
+    if (!internal.parse) {
       // no parsing possible. assume always valid
       return code;
     }
@@ -124,9 +123,7 @@ var stringifyFunction = function (code, name) {
         // parsing successful
         return code;
       }
-    }
-    catch (e) {
-    }
+    } catch (e) {}
   }
 
   // fall-through intentional
@@ -138,10 +135,9 @@ var stringifyFunction = function (code, name) {
   throw err;
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock aqlFunctionsUnregister
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock aqlFunctionsUnregister
+// //////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunction = function (name) {
   'use strict';
@@ -152,9 +148,7 @@ var unregisterFunction = function (name) {
 
   try {
     func = getStorage().document(name.toUpperCase());
-  }
-  catch (err1) {
-  }
+  } catch (err1) {}
 
   if (func === null) {
     var err = new ArangoError();
@@ -170,9 +164,9 @@ var unregisterFunction = function (name) {
   return true;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock aqlFunctionsUnregisterGroup
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock aqlFunctionsUnregisterGroup
+// //////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunctionsGroup = function (group) {
   'use strict';
@@ -199,9 +193,9 @@ var unregisterFunctionsGroup = function (group) {
   return deleted;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock aqlFunctionsRegister
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock aqlFunctionsRegister
+// //////////////////////////////////////////////////////////////////////////////
 
 var registerFunction = function (name, code, isDeterministic) {
   // validate input
@@ -209,22 +203,21 @@ var registerFunction = function (name, code, isDeterministic) {
 
   code = stringifyFunction(code, name);
 
-  var testCode = "(function() { var callback = " + code + "; return callback; })()";
+  var testCode = '(function() { var callback = ' + code + '; return callback; })()';
   var err;
 
   try {
-    if (internal && internal.hasOwnProperty("executeScript")) {
-      var evalResult = internal.executeScript(testCode, undefined, "(user function " + name + ")");
-      if (typeof evalResult !== "function") {
+    if (internal && internal.hasOwnProperty('executeScript')) {
+      var evalResult = internal.executeScript(testCode, undefined, '(user function ' + name + ')');
+      if (typeof evalResult !== 'function') {
         err = new ArangoError();
         err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
-        err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message + 
-                           ": code must be contained in function";
+        err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message +
+          ': code must be contained in function';
         throw err;
       }
     }
-  }
-  catch (err1) {
+  } catch (err1) {
     err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
     err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
@@ -237,15 +230,13 @@ var registerFunction = function (name, code, isDeterministic) {
     },
     action: function (params) {
       var exists = false;
-      var collection = require("internal").db._collection(params.collection);
+      var collection = require('internal').db._collection(params.collection);
       var name = params.name;
 
       try {
         collection.remove(name.toUpperCase());
         exists = true;
-      }
-      catch (err2) {
-      }
+      } catch (err2) {}
 
       var data = {
         _key: name.toUpperCase(),
@@ -270,14 +261,14 @@ var registerFunction = function (name, code, isDeterministic) {
   return result;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock aqlFunctionsToArray
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock aqlFunctionsToArray
+// //////////////////////////////////////////////////////////////////////////////
 
 var toArrayFunctions = function (group) {
   'use strict';
 
-  var result = [ ];
+  var result = [];
 
   getFiltered(group).forEach(function (f) {
     result.push({ name: f.name, code: f.code.substr(1, f.code.length - 2).trim() });
@@ -286,7 +277,7 @@ var toArrayFunctions = function (group) {
   return result;
 };
 
-exports.unregister      = unregisterFunction;
+exports.unregister = unregisterFunction;
 exports.unregisterGroup = unregisterFunctionsGroup;
-exports.register        = registerFunction;
-exports.toArray         = toArrayFunctions;
+exports.register = registerFunction;
+exports.toArray = toArrayFunctions;

@@ -1,28 +1,28 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2013-2014 triAGENS GmbH, Cologne, Germany
-/// Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2013-2014 triAGENS GmbH, Cologne, Germany
+// / Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const fs = require('fs');
@@ -31,14 +31,13 @@ const arangodb = require('@arangodb');
 const actions = require('@arangodb/actions');
 const routeLegacyService = require('@arangodb/foxx/legacy/routing').routeService;
 
-
-function escapeHtml(raw) {
+function escapeHtml (raw) {
   return String(raw)
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;');
 }
 
-function createErrorRoute(service, body, title) {
+function createErrorRoute (service, body, title) {
   return {
     urlPrefix: '',
     name: `foxx("${service.mount}")`,
@@ -74,11 +73,11 @@ function createErrorRoute(service, body, title) {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief routes a default Configuration Required service
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief routes a default Configuration Required service
+// //////////////////////////////////////////////////////////////////////////////
 
-function createServiceNeedsConfigurationRoute(service) {
+function createServiceNeedsConfigurationRoute (service) {
   return createErrorRoute(service, dd`
       <p>This service is not configured.</p>
       ${service.isDevelopment && `
@@ -88,11 +87,11 @@ function createServiceNeedsConfigurationRoute(service) {
   `);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief routes this service if the original is broken service
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief routes this service if the original is broken service
+// //////////////////////////////////////////////////////////////////////////////
 
-function createBrokenServiceRoute(service, err) {
+function createBrokenServiceRoute (service, err) {
   if (service.isDevelopment) {
     return createErrorRoute(service, dd`
       <h3>Stacktrace</h3>
@@ -111,11 +110,9 @@ function createBrokenServiceRoute(service, err) {
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes the routes and exports of an service
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief computes the routes and exports of an service
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.routeService = function (service, throwOnErrors) {
   if (service.needsConfiguration()) {

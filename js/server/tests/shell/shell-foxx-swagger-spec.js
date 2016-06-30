@@ -1,4 +1,4 @@
-/*global describe, it, beforeEach */
+/* global describe, it, beforeEach */
 'use strict';
 require('chai').config.truncateThreshold = 0;
 const joi = require('joi');
@@ -34,7 +34,7 @@ describe('Foxx Swagger', function () {
       service.router.get('/:x', noop());
       service.buildRoutes();
       expect(service.docs.paths).to.have.a.property('/{x}')
-      .with.a.property('get');
+        .with.a.property('get');
     });
 
     it('disambiguates duplicate path param names', function () {
@@ -43,7 +43,7 @@ describe('Foxx Swagger', function () {
       service.router.use('/:x', child);
       service.buildRoutes();
       expect(service.docs.paths).to.have.a.property('/{x}/{x2}')
-      .with.a.property('get');
+        .with.a.property('get');
     });
 
     it('supports multiple methods on the same path', function () {
@@ -51,9 +51,9 @@ describe('Foxx Swagger', function () {
       service.router.post('/a', noop()).description('y');
       service.buildRoutes();
       expect(service.docs.paths).to.have.a.property('/a')
-      .with.a.deep.property('get.description', 'x');
+        .with.a.deep.property('get.description', 'x');
       expect(service.docs.paths).to.have.a.property('/a')
-      .with.a.deep.property('post.description', 'y');
+        .with.a.deep.property('post.description', 'y');
     });
 
     describe('"deprecated"', function () {
@@ -61,15 +61,15 @@ describe('Foxx Swagger', function () {
         service.router.get('/hello', noop());
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.not.a.deep.property('get.deprecated');
+          .with.not.a.deep.property('get.deprecated');
       });
 
       it('is set to true if the route is marked deprecated', function () {
         service.router.get('/hello', noop()).deprecated();
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('get.deprecated')
-        .that.is.equal(true);
+          .with.a.deep.property('get.deprecated')
+          .that.is.equal(true);
       });
 
       it('is set to true if a parent is marked deprecated', function () {
@@ -78,15 +78,15 @@ describe('Foxx Swagger', function () {
         service.router.use(child).deprecated();
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('get.deprecated')
-        .that.is.equal(true);
+          .with.a.deep.property('get.deprecated')
+          .that.is.equal(true);
       });
 
       it('is omitted if the route is marked un-deprecated', function () {
         service.router.get('/hello', noop()).deprecated(false);
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.not.a.deep.property('get.deprecated');
+          .with.not.a.deep.property('get.deprecated');
       });
     });
 
@@ -96,7 +96,7 @@ describe('Foxx Swagger', function () {
           service.router.get('/hello', noop());
           service.buildRoutes();
           expect(service.docs.paths).to.have.a.property('/hello')
-          .with.not.a.deep.property(`get.${field}`);
+            .with.not.a.deep.property(`get.${field}`);
         });
 
         it(`is set to the ${field} if provided`, function () {
@@ -104,15 +104,15 @@ describe('Foxx Swagger', function () {
           service.router.get('/hello', noop())[field](str);
           service.buildRoutes();
           expect(service.docs.paths).to.have.a.property('/hello')
-          .with.a.deep.property(`get.${field}`)
-          .that.is.equal(str);
+            .with.a.deep.property(`get.${field}`)
+            .that.is.equal(str);
         });
 
         it(`is omitted if the ${field} is empty`, function () {
           service.router.get('/hello', noop())[field]('');
           service.buildRoutes();
           expect(service.docs.paths).to.have.a.property('/hello')
-          .with.not.a.deep.property(`get.${field}`);
+            .with.not.a.deep.property(`get.${field}`);
         });
       });
     });
@@ -123,7 +123,7 @@ describe('Foxx Swagger', function () {
           service.router[method]('/hello', noop());
           service.buildRoutes();
           expect(service.docs.paths).to.have.a.property('/hello')
-          .with.not.a.deep.property(`${method}.consumes`);
+            .with.not.a.deep.property(`${method}.consumes`);
         });
       });
 
@@ -132,8 +132,8 @@ describe('Foxx Swagger', function () {
           service.router[method]('/hello', noop());
           service.buildRoutes();
           expect(service.docs.paths).to.have.a.property('/hello')
-          .with.a.deep.property(`${method}.consumes`)
-          .that.is.eql([]);
+            .with.a.deep.property(`${method}.consumes`)
+            .that.is.eql([]);
         });
       });
 
@@ -141,8 +141,8 @@ describe('Foxx Swagger', function () {
         service.router.post('/hello', noop()).body(['text/plain']);
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('post.consumes')
-        .that.is.eql(['text/plain']);
+          .with.a.deep.property('post.consumes')
+          .that.is.eql(['text/plain']);
       });
 
       ['get', 'head', 'delete'].forEach(function (method) {
@@ -150,8 +150,8 @@ describe('Foxx Swagger', function () {
           service.router[method]('/hello', noop()).body(['text/plain']);
           service.buildRoutes();
           expect(service.docs.paths).to.have.a.property('/hello')
-          .with.a.deep.property(`${method}.consumes`)
-          .that.is.eql(['text/plain']);
+            .with.a.deep.property(`${method}.consumes`)
+            .that.is.eql(['text/plain']);
         });
       });
 
@@ -160,8 +160,8 @@ describe('Foxx Swagger', function () {
           service.router[method]('/hello', noop()).body(null);
           service.buildRoutes();
           expect(service.docs.paths).to.have.a.property('/hello')
-          .with.a.deep.property(`${method}.consumes`)
-          .that.is.eql([]);
+            .with.a.deep.property(`${method}.consumes`)
+            .that.is.eql([]);
         });
       });
     });
@@ -171,26 +171,26 @@ describe('Foxx Swagger', function () {
         service.router.get('/hello', noop());
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('get.produces')
-        .that.is.eql(['application/json']);
+          .with.a.deep.property('get.produces')
+          .that.is.eql(['application/json']);
       });
 
       it('includes explicit response types', function () {
         service.router.get('/hello', noop()).response(['text/plain']);
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('get.produces')
-        .that.is.eql(['text/plain', 'application/json']);
+          .with.a.deep.property('get.produces')
+          .that.is.eql(['text/plain', 'application/json']);
       });
 
       it('includes non-200 response types', function () {
         service.router.get('/hello', noop())
-        .response(['text/plain'])
-        .response(499, ['text/html']);
+          .response(['text/plain'])
+          .response(499, ['text/html']);
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('get.produces')
-        .that.is.eql(['text/plain', 'text/html', 'application/json']);
+          .with.a.deep.property('get.produces')
+          .that.is.eql(['text/plain', 'text/html', 'application/json']);
       });
     });
 
@@ -199,39 +199,39 @@ describe('Foxx Swagger', function () {
         service.router.get('/hello', noop());
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('get.responses.500')
-        .that.has.a.property('description', 'Default error response.');
+          .with.a.deep.property('get.responses.500')
+          .that.has.a.property('description', 'Default error response.');
       });
 
       it('does not provide any other default responses', function () {
         service.router.get('/hello', noop());
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('get.responses')
-        .that.has.all.keys('500');
+          .with.a.deep.property('get.responses')
+          .that.has.all.keys('500');
       });
 
       it('includes explicit responses', function () {
         service.router.get('/hello', noop())
-        .response(200, 'Some response')
-        .response(400, 'Some error');
+          .response(200, 'Some response')
+          .response(400, 'Some error');
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('get.responses.200')
-        .that.has.a.property('description', 'Some response');
+          .with.a.deep.property('get.responses.200')
+          .that.has.a.property('description', 'Some response');
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('get.responses.400')
-        .that.has.a.property('description', 'Some error');
+          .with.a.deep.property('get.responses.400')
+          .that.has.a.property('description', 'Some error');
       });
 
       it('includes explicit schemas', function () {
         service.router.get('/hello', noop())
-        .response(200, joi.object());
+          .response(200, joi.object());
         service.buildRoutes();
         expect(service.docs.paths).to.have.a.property('/hello')
-        .with.a.deep.property('get.responses.200')
-        .that.has.a.property('schema')
-        .that.is.eql({
+          .with.a.deep.property('get.responses.200')
+          .that.has.a.property('schema')
+          .that.is.eql({
           type: 'object',
           properties: {},
           additionalProperties: false
@@ -259,8 +259,7 @@ describe('Foxx Swagger', function () {
   });
 });
 
-
-function createService() {
+function createService () {
   return new Service({
     path: '/tmp/$dummy$',
     mount: '/__dummy__',
@@ -278,7 +277,6 @@ function createService() {
   });
 }
 
-
-function noop() {
+function noop () {
   return noop;
 }

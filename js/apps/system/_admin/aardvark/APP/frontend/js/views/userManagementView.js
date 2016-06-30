@@ -1,81 +1,77 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global frontendConfig, _, window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
+/* jshint browser: true */
+/* jshint unused: false */
+/* global frontendConfig, _, window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
   CryptoJS, Joi */
-(function() {
-
-  "use strict";
+(function () {
+  'use strict';
 
   window.userManagementView = Backbone.View.extend({
     el: '#content',
     el2: '#userManagementThumbnailsIn',
 
-    template: templateEngine.createTemplate("userManagementView.ejs"),
+    template: templateEngine.createTemplate('userManagementView.ejs'),
 
     events: {
-      "click #createUser"                       : "createUser",
-      "click #submitCreateUser"                 : "submitCreateUser",
-//      "click #deleteUser"                   : "removeUser",
-//      "click #submitDeleteUser"             : "submitDeleteUser",
-//      "click .editUser"                     : "editUser",
-//      "click .icon"                         : "editUser",
-      "click #userManagementThumbnailsIn .tile" : "editUser",
-      "click #submitEditUser"                   : "submitEditUser",
-      "click #userManagementToggle"             : "toggleView",
-      "keyup #userManagementSearchInput"        : "search",
-      "click #userManagementSearchSubmit"       : "search",
-      "click #callEditUserPassword"             : "editUserPassword",
-      "click #submitEditUserPassword"           : "submitEditUserPassword",
-      "click #submitEditCurrentUserProfile"     : "submitEditCurrentUserProfile",
-      "click .css-label"                        : "checkBoxes",
-      "change #userSortDesc"                    : "sorting"
+      'click #createUser': 'createUser',
+      'click #submitCreateUser': 'submitCreateUser',
+      //      "click #deleteUser"                   : "removeUser",
+      //      "click #submitDeleteUser"             : "submitDeleteUser",
+      //      "click .editUser"                     : "editUser",
+      //      "click .icon"                         : "editUser",
+      'click #userManagementThumbnailsIn .tile': 'editUser',
+      'click #submitEditUser': 'submitEditUser',
+      'click #userManagementToggle': 'toggleView',
+      'keyup #userManagementSearchInput': 'search',
+      'click #userManagementSearchSubmit': 'search',
+      'click #callEditUserPassword': 'editUserPassword',
+      'click #submitEditUserPassword': 'submitEditUserPassword',
+      'click #submitEditCurrentUserProfile': 'submitEditCurrentUserProfile',
+      'click .css-label': 'checkBoxes',
+      'change #userSortDesc': 'sorting'
 
     },
 
     dropdownVisible: false,
 
-    initialize: function() {
+    initialize: function () {
       var self = this,
-      callback = function(error, user) {
-        if (frontendConfig.authenticationEnabled === true) {
-          if (error || user === null) {
-            arangoHelper.arangoError("User", "Could not fetch user data");
+        callback = function (error, user) {
+          if (frontendConfig.authenticationEnabled === true) {
+            if (error || user === null) {
+              arangoHelper.arangoError('User', 'Could not fetch user data');
+            } else {
+              this.currentUser = this.collection.findWhere({user: user});
+            }
           }
-          else {
-            this.currentUser = this.collection.findWhere({user: user});
-          }
-        }
-      }.bind(this);
+        }.bind(this);
 
-      //fetch collection defined in router
+      // fetch collection defined in router
       this.collection.fetch({
         cache: false,
-        success: function() {
+        success: function () {
           self.collection.whoAmI(callback);
         }
       });
     },
 
     checkBoxes: function (e) {
-      //chrome bugfix
+      // chrome bugfix
       var clicked = e.currentTarget.id;
-      $('#'+clicked).click();
+      $('#' + clicked).click();
     },
 
-    sorting: function() {
-      if ($('#userSortDesc').is(":checked")) {
+    sorting: function () {
+      if ($('#userSortDesc').is(':checked')) {
         this.collection.setSortingDesc(true);
-      }
-      else {
+      } else {
         this.collection.setSortingDesc(false);
       }
 
-      if ($('#userManagementDropdown').is(":visible")) {
+      if ($('#userManagementDropdown').is(':visible')) {
         this.dropdownVisible = true;
       } else {
         this.dropdownVisible = false;
       }
-
 
       this.render();
     },
@@ -86,11 +82,11 @@
         dropdownVisible = true;
       }
 
-      var callbackFunction = function() {
+      var callbackFunction = function () {
         this.collection.sort();
         $(this.el).html(this.template.render({
-          collection   : this.collection,
-          searchString : ''
+          collection: this.collection,
+          searchString: ''
         }));
 
         if (dropdownVisible === true) {
@@ -106,10 +102,10 @@
 
         arangoHelper.setCheckboxStatus('#userManagementDropdown');
       }.bind(this);
-      
+
       this.collection.fetch({
         cache: false,
-        success: function() {
+        success: function () {
           callbackFunction();
         }
       });
@@ -117,43 +113,43 @@
       return this;
     },
 
-    search: function() {
+    search: function () {
       var searchInput,
         searchString,
         strLength,
         reducedCollection;
 
       searchInput = $('#userManagementSearchInput');
-      searchString = $("#userManagementSearchInput").val();
+      searchString = $('#userManagementSearchInput').val();
       reducedCollection = this.collection.filter(
-        function(u) {
-          return u.get("user").indexOf(searchString) !== -1;
+        function (u) {
+          return u.get('user').indexOf(searchString) !== -1;
         }
       );
       $(this.el).html(this.template.render({
-        collection   : reducedCollection,
-        searchString : searchString
+        collection: reducedCollection,
+        searchString: searchString
       }));
 
-      //after rendering, get the "new" element
+      // after rendering, get the "new" element
       searchInput = $('#userManagementSearchInput');
-      //set focus on end of text in input field
-      strLength= searchInput.val().length;
+      // set focus on end of text in input field
+      strLength = searchInput.val().length;
       searchInput.focus();
       searchInput[0].setSelectionRange(strLength, strLength);
     },
 
-    createUser : function(e) {
+    createUser: function (e) {
       e.preventDefault();
       this.createCreateUserModal();
     },
 
-    submitCreateUser: function() {
+    submitCreateUser: function () {
       var self = this;
-      var userName      = $('#newUsername').val();
-      var name          = $('#newName').val();
-      var userPassword  = $('#newPassword').val();
-      var status        = $('#newStatus').is(':checked');
+      var userName = $('#newUsername').val();
+      var name = $('#newName').val();
+      var userPassword = $('#newPassword').val();
+      var status = $('#newStatus').is(':checked');
       if (!this.validateUserInfo(name, userName, userPassword, status)) {
         return;
       }
@@ -161,14 +157,14 @@
         user: userName,
         passwd: userPassword,
         active: status,
-        extra:{name: name}
+        extra: {name: name}
       };
       this.collection.create(options, {
-        wait:true,
-        error: function(data, err) {
-          arangoHelper.parseError("User", err, data);
+        wait: true,
+        error: function (data, err) {
+          arangoHelper.parseError('User', err, data);
         },
-        success: function() {
+        success: function () {
           self.updateUserManagement();
           window.modalView.hide();
         }
@@ -176,33 +172,33 @@
     },
 
     validateUserInfo: function (name, username, pw, status) {
-      if (username === "") {
-        arangoHelper.arangoError("You have to define an username");
-        $('#newUsername').closest("th").css("backgroundColor", "red");
+      if (username === '') {
+        arangoHelper.arangoError('You have to define an username');
+        $('#newUsername').closest('th').css('backgroundColor', 'red');
         return false;
       }
-/*      if (!username.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
-        arangoHelper.arangoError("Name may only contain numbers, letters, _ and -");
-        return false;
-      }
-      if (!user.match(/^[a-zA-Z][a-zA-Z\-]*$/)) {
-        arangoHelper.arangoError("Name may only letters and -");
-        return false;
-      }*/
+      /*      if (!username.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
+              arangoHelper.arangoError("Name may only contain numbers, letters, _ and -")
+              return false
+            }
+            if (!user.match(/^[a-zA-Z][a-zA-Z\-]*$/)) {
+              arangoHelper.arangoError("Name may only letters and -")
+              return false
+            }*/
       return true;
     },
 
-    updateUserManagement: function() {
+    updateUserManagement: function () {
       var self = this;
       this.collection.fetch({
         cache: false,
-        success: function() {
+        success: function () {
           self.render();
         }
       });
     },
 
-    editUser : function(e) {
+    editUser: function (e) {
       if ($(e.currentTarget).find('a').attr('id') === 'createUser') {
         return;
       }
@@ -214,33 +210,33 @@
       this.collection.fetch({
         cache: false
       });
-      var username = this.evaluateUserName($(e.currentTarget).attr("id"), '_edit-user');
+      var username = this.evaluateUserName($(e.currentTarget).attr('id'), '_edit-user');
       if (username === '') {
         username = $(e.currentTarget).attr('id');
       }
 
-      window.App.navigate("user/" + encodeURIComponent(username), {trigger: true});
+      window.App.navigate('user/' + encodeURIComponent(username), {trigger: true});
     },
 
-    toggleView: function() {
-      //apply sorting to checkboxes
+    toggleView: function () {
+      // apply sorting to checkboxes
       $('#userSortDesc').attr('checked', this.collection.sortOptions.desc);
 
-      $('#userManagementToggle').toggleClass("activated");
+      $('#userManagementToggle').toggleClass('activated');
       $('#userManagementDropdown2').slideToggle(200);
     },
 
-    createCreateUserModal: function() {
+    createCreateUserModal: function () {
       var buttons = [],
         tableContent = [];
 
       tableContent.push(
         window.modalView.createTextEntry(
-          "newUsername",
-          "Username",
-          "",
+          'newUsername',
+          'Username',
+          '',
           false,
-          "Username",
+          'Username',
           true,
           [
             {
@@ -249,39 +245,39 @@
             },
             {
               rule: Joi.string().required(),
-              msg: "No username given."
+              msg: 'No username given.'
             }
           ]
         )
       );
       tableContent.push(
-        window.modalView.createTextEntry("newName", "Name", "", false, "Name", false)
+        window.modalView.createTextEntry('newName', 'Name', '', false, 'Name', false)
       );
       tableContent.push(
-        window.modalView.createPasswordEntry("newPassword", "Password", "", false, "", false)
+        window.modalView.createPasswordEntry('newPassword', 'Password', '', false, '', false)
       );
       tableContent.push(
-        window.modalView.createCheckboxEntry("newStatus", "Active", "active", false, true)
+        window.modalView.createCheckboxEntry('newStatus', 'Active', 'active', false, true)
       );
       buttons.push(
-        window.modalView.createSuccessButton("Create", this.submitCreateUser.bind(this))
+        window.modalView.createSuccessButton('Create', this.submitCreateUser.bind(this))
       );
 
-      window.modalView.show("modalTable.ejs", "Create New User", buttons, tableContent);
+      window.modalView.show('modalTable.ejs', 'Create New User', buttons, tableContent);
     },
 
-    evaluateUserName : function(str, substr) {
+    evaluateUserName: function (str, substr) {
       if (str) {
         var index = str.lastIndexOf(substr);
         return str.substring(0, index);
       }
     },
 
-    updateUserProfile: function() {
+    updateUserProfile: function () {
       var self = this;
       this.collection.fetch({
         cache: false,
-        success: function() {
+        success: function () {
           self.render();
         }
       });
