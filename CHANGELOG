@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed periodic jobs: there should be only one instance running - even if it
+  runs longer than the period
+
 * improved performance of primary index and edge index lookups
 
 * optimizations for AQL `[*]` operator in case no filter, no projection and
