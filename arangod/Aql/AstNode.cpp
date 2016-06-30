@@ -2352,14 +2352,14 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
       filterNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
     auto limitNode = getMember(3);
-    if (limitNode != nullptr && filterNode != Ast::getNodeNop()) {
+    if (limitNode != nullptr && limitNode != Ast::getNodeNop()) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" LIMIT "));
       limitNode->getMember(0)->stringify(buffer, verbose, failIfLong);
       buffer->appendChar(',');
       limitNode->getMember(1)->stringify(buffer, verbose, failIfLong);
     }
     auto returnNode = getMember(4);
-    if (returnNode != nullptr && filterNode != Ast::getNodeNop()) {
+    if (returnNode != nullptr && returnNode != Ast::getNodeNop()) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" RETURN "));
       returnNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
