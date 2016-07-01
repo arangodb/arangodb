@@ -1,6 +1,9 @@
 v2.8.10 (XXXX-XX-XX)
 --------------------
 
+* make sure next local _rev value used for a document is at least as high as the
+  _rev value supplied by external sources such as replication
+
 * make adding a collection in both read- and write-mode to a transaction behave as
   expected (write includes read). This prevents the `unregister collection used in
   transaction` error
