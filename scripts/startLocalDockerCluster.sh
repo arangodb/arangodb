@@ -1,4 +1,5 @@
 #!/bin/bash
+DOCKERIMAGE=arangodb/arangodb:3.0.0-p4
 if [ -z "$XTERM" ] ; then
     XTERM=x-terminal-emulator
 fi
@@ -28,7 +29,7 @@ SECONDARIES="$4"
 
 echo Starting agency...
 docker run -d --net=host -e ARANGO_NO_AUTH=1 --name=agency \
-  arangodb/arangodb-preview:3.0.0b1 \
+  ${DOCKERIMAGE} \
   --agency.endpoint tcp://0.0.0.0:4001 \
   --agency.id 0 \
   --agency.size 1 \
@@ -50,7 +51,7 @@ start() {
     PORT=$2
     echo Starting $TYPE on port $PORT
     docker run -d --net=host -e ARANGO_NO_AUTH=1 --name="$TYPE_$PORT" \
-      arangodb/arangodb-preview:3.0.0b1 \
+      ${DOCKERIMAGE} \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
@@ -71,7 +72,7 @@ startTerminal() {
     echo Starting $TYPE on port $PORT
     $XTERM $XTERMOPTIONS -e docker run -it --net=host -e ARANGO_NO_AUTH=1 \
       --name="$TYPE_$PORT" \
-      arangodb/arangodb-preview:3.0.0b1 \
+      ${DOCKERIMAGE} \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
