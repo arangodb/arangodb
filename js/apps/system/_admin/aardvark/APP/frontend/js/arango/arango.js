@@ -279,6 +279,20 @@
       this.buildSubNavBar(menus);
     },
 
+    buildGraphSubNav: function(graph, activeKey) {
+      var menus = {
+        Content: {
+          route: '#graph2/' + encodeURIComponent(graph)
+        },
+        Settings: {
+          route: '#graph2/' + encodeURIComponent(graph) + '/settings'
+        }
+      };
+
+      menus[activeKey].active = true;
+      this.buildSubNavBar(menus);
+    },
+
     buildNodeSubNav: function(node, activeKey, disabled) {
       var menus = {
         Dashboard: {
