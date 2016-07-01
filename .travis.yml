@@ -12,6 +12,7 @@ branches:
     - "3.0"
 
 language: cpp
+cache: ccache
 compiler: g++
 sudo: false
 
@@ -37,10 +38,13 @@ install:
 - rm -f $HOME/bin/gcc && ln -s /usr/bin/gcc-4.9 ~/bin/gcc
 - rm -f $HOME/bin/g++ && ln -s /usr/bin/g++-4.9 ~/bin/g++
 
+- ln -nsf /usr/bin/ccache /usr/lib/ccache/g++-4.9
+- ln -nsf /usr/bin/ccache /usr/lib/ccache/gcc-4.9
+
 # prepare environment
 - export PATH="$HOME/bin:$PATH"
-- export CXX="g++-4.9"
-- export CC="gcc-4.9"
+- export CXX="/usr/lib/ccache/g++-4.9"
+- export CC="/usr/lib/ccache/gcc-4.9"
 - export CFLAGS="-B$HOME/bin/gold $CFLAGS"
 - export CXXFLAGS="-B$HOME/bin/gold $CXXFLAGS"
 
