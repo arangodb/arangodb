@@ -3,6 +3,8 @@ v3.0.2 (XXXX-XX-XX)
 
 * added missing SSL support for arangorestore
 
+* improved cluster import performance
+
 
 v3.0.1 (XXXX-XX-XX)
 -------------------
