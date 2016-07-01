@@ -13,6 +13,12 @@ devel
   input arguments
 
 
+v3.0.2 (XXXX-XX-XX)
+-------------------
+
+* added missing SSL support for arangorestore
+
+
 v3.0.1 (XXXX-XX-XX)
 -------------------
 
