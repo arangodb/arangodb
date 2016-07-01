@@ -1,3 +1,22 @@
 <script id="graphViewer2.ejs" type="text/template">
-  <div id="graph-container"></div>
-</script>
+  <div class="graphContent" id="graphContainer">
+
+    <div class="headerBar">
+      <div class="headerButtonBar" style="margin: 0;">
+        <ul class="headerButtonList">
+          <li class="enabled">
+            <a id="addDocument" class="headerButton">
+              <span title="Add new document">
+                <i class="fa fa-file fa-stack-1x"></i>
+                <i class="fa fa-plus fa-stack-1x fa-top"></i>
+              </span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="graph-fullscreen-btn"><i class="fa fa-television"></i></div>
+    <div id="graph-container" oncontextmenu="return false;"></div>
+  </div>
+  </script>
