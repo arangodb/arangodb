@@ -22,7 +22,7 @@ echo "$0: configuring ArangoDB"
 
 export LDFLAGS="-lrt"
 
-(cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DUSE_MAINTAINER_MODE=On -DUSE_RELATIVE=ON -DUSE_PRECOMPILED_V8=ON)
+(cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DUSE_MAINTAINER_MODE=On -DUSE_PRECOMPILED_V8=ON)
 
 echo
 echo "$0: compiling ArangoDB"
