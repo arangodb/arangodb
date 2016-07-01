@@ -50,7 +50,7 @@ using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 using namespace arangodb;
 
-static const id_t NO_LEADER =
+static const arangodb::consensus::id_t NO_LEADER =
   (std::numeric_limits<arangodb::consensus::id_t>::max)();
 
 /// Raft role names for display purposes 
@@ -525,7 +525,7 @@ void Constituent::run() {
     } else if (_role == CANDIDATE) {
       callElection();  // Run for office
     } else {
-      int32_t left = static_cast<int32_t>(100000.0 * config().minPing);
+      int32_t left = 100000.0 * config().minPing;
       long rand_wait = static_cast<long>(left);
       {
         CONDITION_LOCKER(guardv, _cv);
