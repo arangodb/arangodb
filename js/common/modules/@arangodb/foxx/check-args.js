@@ -1,26 +1,26 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const dd = require('dedent');
@@ -70,8 +70,7 @@ function runValidation (methodName, paramName, type, value) {
       return {
         value,
         error: new Error(`${paramName} must be a ${type}, not ${typeof value}`),
-        warnings
-      };
+      warnings};
     }
     return {value, error: null, warnings};
   } else if (typeof type === 'function') {
@@ -83,7 +82,7 @@ function runValidation (methodName, paramName, type, value) {
     }
     if (result.error) {
       result.error.message = result.error.message
-      .replace(/^"value"/, paramName);
+        .replace(/^"value"/, paramName);
       return {value: result.value, error: result.error, warnings};
     }
     return {value: result.value, error: null, warnings};
@@ -97,9 +96,9 @@ function runValidation (methodName, paramName, type, value) {
 
 module.exports = exports = function (methodName, paramNames, types, values) {
   const optionals = paramNames
-  .map((paramName) => paramName.charAt(paramName.length - 1) === '?');
+    .map((paramName) => paramName.charAt(paramName.length - 1) === '?');
   paramNames = optionals.map((isOptional, i) => (
-    isOptional ? paramNames[i].slice(0, -1) : paramNames[i]
+  isOptional ? paramNames[i].slice(0, -1) : paramNames[i]
   ));
   for (let i = values.length - 1; i >= 0; i--) {
     if (values[i] !== undefined) {
@@ -142,7 +141,7 @@ module.exports = exports = function (methodName, paramNames, types, values) {
   }
   if (warnings.length || error) {
     const signature = optionals.map((isOptional, i) => (
-      isOptional ? `[${paramNames[i]}]` : paramNames[i]
+    isOptional ? `[${paramNames[i]}]` : paramNames[i]
     )).join(', ');
     for (const warning of warnings) {
       console.warnLines(`${methodName}(${signature}): ${warning}`);
@@ -185,8 +184,8 @@ exports.validateStatus = function (value) {
       status = statuses(status);
     } catch (e) {
       return {value, error: Object.assign(
-        new Error('"value" must be a valid status name.'),
-        {cause: e}
+          new Error('"value" must be a valid status name.'),
+          {cause: e}
       )};
     }
   }
@@ -206,8 +205,8 @@ exports.validateSchema = function (value) {
       return {value: joi.object(value).required(), error: null};
     } catch (e) {
       return {value, error: Object.assign(
-        new Error('"value" must be a schema'),
-        {cause: e}
+          new Error('"value" must be a schema'),
+          {cause: e}
       )};
     }
   }
@@ -237,7 +236,7 @@ exports.validateModel = function (value) {
   const index = multiple ? '[0]' : '';
   if (!model || typeof model !== 'object') {
     return {value, error: new Error(
-      `"value"${index} is not an object`
+        `"value"${index} is not an object`
     )};
   }
 
@@ -250,7 +249,7 @@ exports.validateModel = function (value) {
     const result = exports.validateSchema(model.schema);
     if (result.error) {
       result.error.message = result.error.message
-      .replace(/^"value"/, `"value"${index}.schema`);
+        .replace(/^"value"/, `"value"${index}.schema`);
       return {value, error: result.error};
     }
     model.schema = result.value;
@@ -286,8 +285,8 @@ exports.validateMimes = function (value) {
       mimes.push(normalizeMimeType(value[i]));
     } catch (e) {
       return {value, error: Object.assign(
-        new Error(`"value"[${i}] must be a valid MIME type.`),
-        {cause: e}
+          new Error(`"value"[${i}] must be a valid MIME type.`),
+          {cause: e}
       )};
     }
   }

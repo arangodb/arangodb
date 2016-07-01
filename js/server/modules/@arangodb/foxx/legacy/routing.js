@@ -1,29 +1,28 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2013-2014 triAGENS GmbH, Cologne, Germany
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
-
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2013-2014 triAGENS GmbH, Cologne, Germany
+// / Copyright 2015 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const fs = require('fs');
@@ -36,22 +35,22 @@ const actions = require('@arangodb/actions');
 
 const MIME_DEFAULT = 'text/plain; charset=utf-8';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief excludes certain files
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief excludes certain files
+// //////////////////////////////////////////////////////////////////////////////
 
-function isDotFile(name) {
+function isDotFile (name) {
   const parts = name.split('/');
   const filename = parts[parts.length - 1];
   // exclude all files starting with .
   return filename.charAt(0) === '.';
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds one asset of an app
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief builds one asset of an app
+// //////////////////////////////////////////////////////////////////////////////
 
-function buildAssetContent(app, assets, basePath) {
+function buildAssetContent (app, assets, basePath) {
   var i, j, m;
 
   var reSub = /(.*)\/\*\*$/;
@@ -109,11 +108,11 @@ function buildAssetContent(app, assets, basePath) {
   return content;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief installs an asset for an app
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief installs an asset for an app
+// //////////////////////////////////////////////////////////////////////////////
 
-function buildFileAsset(app, path, basePath, asset) {
+function buildFileAsset (app, path, basePath, asset) {
   var content = buildAssetContent(app, asset.files, basePath);
   var type;
 
@@ -149,11 +148,11 @@ function buildFileAsset(app, path, basePath, asset) {
   return {contentType: type, body: content};
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates asset action
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generates asset action
+// //////////////////////////////////////////////////////////////////////////////
 
-function buildAssetRoute(app, path, basePath, asset) {
+function buildAssetRoute (app, path, basePath, asset) {
   var c = buildFileAsset(app, path, basePath, asset);
 
   return {
@@ -162,12 +161,11 @@ function buildAssetRoute(app, path, basePath, asset) {
   };
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief installs the assets of an app
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief installs the assets of an app
-////////////////////////////////////////////////////////////////////////////////
-
-function installAssets(service) {
+function installAssets (service) {
   _.each(service.manifest.assets, function (asset, path) {
     let basePath = asset.basePath || service.basePath;
     let normalized = arangodb.normalizeURL(`/${path}`);
@@ -179,12 +177,11 @@ function installAssets(service) {
   });
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create middleware matchers
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create middleware matchers
-////////////////////////////////////////////////////////////////////////////////
-
-function createMiddlewareMatchers(rt, routes, controller, prefix) {
+function createMiddlewareMatchers (rt, routes, controller, prefix) {
   rt.forEach(function (route) {
     if (route.url) {
       route.url.match = arangodb.normalizeURL(`${prefix}/${route.url.match}`);
@@ -194,12 +191,11 @@ function createMiddlewareMatchers(rt, routes, controller, prefix) {
   });
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief transform the internal route objects into proper routing callbacks
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transform the internal route objects into proper routing callbacks
-////////////////////////////////////////////////////////////////////////////////
-
-function transformControllerToRoute(routeInfo, route, isDevel) {
+function transformControllerToRoute (routeInfo, route, isDevel) {
   return function (req, res) {
     var i, errInfo, tmp;
     try {
@@ -261,12 +257,11 @@ function transformControllerToRoute(routeInfo, route, isDevel) {
   };
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief transform the internal route objects into proper routing callbacks
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transform the internal route objects into proper routing callbacks
-////////////////////////////////////////////////////////////////////////////////
-
-function transformRoutes(rt, routes, controller, prefix, isDevel) {
+function transformRoutes (rt, routes, controller, prefix, isDevel) {
   rt.forEach(function (route) {
     route.action = {
       callback: transformControllerToRoute(route.action, route.url || 'No Route', isDevel)
@@ -281,7 +276,7 @@ function transformRoutes(rt, routes, controller, prefix, isDevel) {
 
 var routeRegEx = /^(\/:?[a-zA-Z0-9_\-%]+)+\/?$/;
 
-function validateRoute(route) {
+function validateRoute (route) {
   if (route.charAt(0) !== '/') {
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
@@ -302,7 +297,7 @@ function validateRoute(route) {
   }
 }
 
-function mountController(service, mount, filename) {
+function mountController (service, mount, filename) {
   validateRoute(mount);
 
   // set up a context for the service start function

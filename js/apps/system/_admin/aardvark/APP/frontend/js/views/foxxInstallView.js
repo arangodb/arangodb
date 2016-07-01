@@ -1,110 +1,109 @@
-/*jshint browser: true */
-/*global $, Joi, _, arangoHelper, templateEngine, window*/
-(function() {
-  "use strict";
-  
+/* jshint browser: true */
+/* global $, Joi, _, arangoHelper, templateEngine, window*/
+(function () {
+  'use strict';
+
   // mop: copy paste from common/bootstrap/errors.js
   var errors = {
-    "ERROR_SERVICE_DOWNLOAD_FAILED" : { "code" : 1752, "message" : "service download failed" },
+    'ERROR_SERVICE_DOWNLOAD_FAILED': { 'code': 1752, 'message': 'service download failed' }
   };
 
-  var appStoreTemplate = templateEngine.createTemplate("applicationListView.ejs");
+  var appStoreTemplate = templateEngine.createTemplate('applicationListView.ejs');
 
-  var FoxxInstallView = function(opts) {
+  var FoxxInstallView = function (opts) {
     this.collection = opts.collection;
   };
 
-  var installCallback = function(result) {
+  var installCallback = function (result) {
     var self = this;
 
     if (result.error === false) {
       this.collection.fetch({
-        success: function() {
+        success: function () {
           window.modalView.hide();
           self.reload();
           console.log(result);
-          arangoHelper.arangoNotification("Services", "Service " + result.name + " installed.");
+          arangoHelper.arangoNotification('Services', 'Service ' + result.name + ' installed.');
         }
       });
-                           
     } else {
       var res = result;
-      if (result.hasOwnProperty("responseJSON")) {
+      if (result.hasOwnProperty('responseJSON')) {
         res = result.responseJSON;
-      } 
-      switch(res.errorNum) {
+      }
+      switch (res.errorNum) {
         case errors.ERROR_SERVICE_DOWNLOAD_FAILED.code:
-          arangoHelper.arangoError("Services", "Unable to download application from the given repository.");
+          arangoHelper.arangoError('Services', 'Unable to download application from the given repository.');
           break;
         default:
-          arangoHelper.arangoError("Services", res.errorNum + ". " + res.errorMessage);
+          arangoHelper.arangoError('Services', res.errorNum + '. ' + res.errorMessage);
       }
     }
   };
 
-  var setMountpointValidators = function() {
+  var setMountpointValidators = function () {
     window.modalView.modalBindValidation({
-      id: "new-app-mount",
-      validateInput: function() {
+      id: 'new-app-mount',
+      validateInput: function () {
         return [
           {
             rule: Joi.string().regex(/^(\/(APP[^\/]+|(?!APP)[a-zA-Z0-9_\-%]+))+$/i),
-            msg: "May not contain /APP"
+            msg: 'May not contain /APP'
           },
           {
             rule: Joi.string().regex(/^(\/[a-zA-Z0-9_\-%]+)+$/),
-            msg: "Can only contain [a-zA-Z0-9_-%]"
+            msg: 'Can only contain [a-zA-Z0-9_-%]'
           },
           {
             rule: Joi.string().regex(/^\/([^_]|_open\/)/),
-            msg: "Mountpoints with _ are reserved for internal use"
+            msg: 'Mountpoints with _ are reserved for internal use'
           },
           {
             rule: Joi.string().regex(/[^\/]$/),
-            msg: "May not end with /"
+            msg: 'May not end with /'
           },
           {
             rule: Joi.string().regex(/^\//),
-            msg: "Has to start with /"
+            msg: 'Has to start with /'
           },
           {
             rule: Joi.string().required().min(2),
-            msg: "Has to be non-empty"
-          },
+            msg: 'Has to be non-empty'
+          }
         ];
       }
     });
   };
 
-  var setGithubValidators = function() {
+  var setGithubValidators = function () {
     window.modalView.modalBindValidation({
-      id: "repository",
-      validateInput: function() {
+      id: 'repository',
+      validateInput: function () {
         return [
           {
             rule: Joi.string().required().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/),
-            msg: "No valid Github account and repository."
+            msg: 'No valid Github account and repository.'
           }
         ];
       }
     });
   };
 
-  var setNewAppValidators = function() {
+  var setNewAppValidators = function () {
     window.modalView.modalBindValidation({
-      id: "new-app-author",
-      validateInput: function() {
+      id: 'new-app-author',
+      validateInput: function () {
         return [
           {
             rule: Joi.string().required().min(1),
-            msg: "Has to be non empty."
+            msg: 'Has to be non empty.'
           }
         ];
       }
     });
     window.modalView.modalBindValidation({
-      id: "new-app-name",
-      validateInput: function() {
+      id: 'new-app-name',
+      validateInput: function () {
         return [
           {
             rule: Joi.string().required().regex(/^[a-zA-Z\-_][a-zA-Z0-9\-_]*$/),
@@ -115,24 +114,24 @@
     });
 
     window.modalView.modalBindValidation({
-      id: "new-app-description",
-      validateInput: function() {
+      id: 'new-app-description',
+      validateInput: function () {
         return [
           {
             rule: Joi.string().required().min(1),
-            msg: "Has to be non empty."
+            msg: 'Has to be non empty.'
           }
         ];
       }
     });
 
     window.modalView.modalBindValidation({
-      id: "new-app-license",
-      validateInput: function() {
+      id: 'new-app-license',
+      validateInput: function () {
         return [
           {
             rule: Joi.string().required().regex(/^[a-zA-Z0-9 \.,;\-]+$/),
-            msg: "Has to be non empty."
+            msg: 'Has to be non empty.'
           }
         ];
       }
@@ -140,79 +139,78 @@
     window.modalView.modalTestAll();
   };
 
-  var switchTab = function(openTab) {
+  var switchTab = function (openTab) {
     window.modalView.clearValidators();
-    var button = $("#modalButton1");
+    var button = $('#modalButton1');
     if (!this._upgrade) {
       setMountpointValidators();
     }
     switch (openTab) {
-      case "newApp":
-        button.html("Generate");
-        button.prop("disabled", false);
+      case 'newApp':
+        button.html('Generate');
+        button.prop('disabled', false);
         setNewAppValidators();
         break;
-      case "appstore":
-        button.html("Install");
-        button.prop("disabled", true);
+      case 'appstore':
+        button.html('Install');
+        button.prop('disabled', true);
         break;
-      case "github":
+      case 'github':
         setGithubValidators();
-        button.html("Install");
-        button.prop("disabled", false);
+        button.html('Install');
+        button.prop('disabled', false);
         break;
-      case "zip":
-        button.html("Install");
-        button.prop("disabled", false);
+      case 'zip':
+        button.html('Install');
+        button.prop('disabled', false);
         break;
       default:
     }
-    
-    if (! button.prop("disabled") && ! window.modalView.modalTestAll()) {
+
+    if (!button.prop('disabled') && !window.modalView.modalTestAll()) {
       // trigger the validation so the "ok" button has the correct state
-      button.prop("disabled", true);
+      button.prop('disabled', true);
     }
   };
 
-  var switchModalButton = function(event) {
-    var openTab = $(event.currentTarget).attr("href").substr(1);
+  var switchModalButton = function (event) {
+    var openTab = $(event.currentTarget).attr('href').substr(1);
     switchTab.call(this, openTab);
   };
 
-  var installFoxxFromStore = function(e) {
-    switchTab.call(this, "appstore");
+  var installFoxxFromStore = function (e) {
+    switchTab.call(this, 'appstore');
     if (window.modalView.modalTestAll()) {
       var mount, flag;
       if (this._upgrade) {
         mount = this.mount;
-        flag = $('#new-app-teardown').prop("checked");
+        flag = $('#new-app-teardown').prop('checked');
       } else {
         mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
       }
-      var toInstall = $(e.currentTarget).attr("appId");
-      var version = $(e.currentTarget).attr("appVersion");
+      var toInstall = $(e.currentTarget).attr('appId');
+      var version = $(e.currentTarget).attr('appVersion');
       if (flag !== undefined) {
         this.collection.installFromStore({name: toInstall, version: version}, mount, installCallback.bind(this), flag);
       } else {
         this.collection.installFromStore({name: toInstall, version: version}, mount, installCallback.bind(this));
       }
       window.modalView.hide();
-      arangoHelper.arangoNotification("Services", "Installing " + toInstall + "."); 
+      arangoHelper.arangoNotification('Services', 'Installing ' + toInstall + '.');
     }
   };
 
-  var installFoxxFromZip = function(files, data) {
+  var installFoxxFromZip = function (files, data) {
     if (data === undefined) {
       data = this._uploadData;
-    }
-    else {
+    } else {
       this._uploadData = data;
     }
     if (data && window.modalView.modalTestAll()) {
       var mount, flag;
       if (this._upgrade) {
         mount = this.mount;
-        flag = $('#new-app-teardown').prop("checked");
+        flag = $('#new-app-teardown').prop('checked');
       } else {
         mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
       }
@@ -224,12 +222,12 @@
     }
   };
 
-  var installFoxxFromGithub = function() {
+  var installFoxxFromGithub = function () {
     if (window.modalView.modalTestAll()) {
       var url, version, mount, flag;
       if (this._upgrade) {
         mount = this.mount;
-        flag = $('#new-app-teardown').prop("checked");
+        flag = $('#new-app-teardown').prop('checked');
       } else {
         mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
       }
@@ -237,7 +235,7 @@
       version = window.arangoHelper.escapeHtml($('#tag').val());
 
       if (version === '') {
-        version = "master";
+        version = 'master';
       }
       var info = {
         url: window.arangoHelper.escapeHtml($('#repository').val()),
@@ -249,7 +247,7 @@
       } catch (e) {
         return;
       }
-      //send server req through collection
+      // send server req through collection
       if (flag !== undefined) {
         this.collection.installFromGithub(info, mount, installCallback.bind(this), flag);
       } else {
@@ -258,27 +256,27 @@
     }
   };
 
-  var generateNewFoxxApp = function() {
+  var generateNewFoxxApp = function () {
     if (window.modalView.modalTestAll()) {
       var mount, flag;
       if (this._upgrade) {
         mount = this.mount;
-        flag = $('#new-app-teardown').prop("checked");
+        flag = $('#new-app-teardown').prop('checked');
       } else {
         mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
       }
       var info = {
-        name: window.arangoHelper.escapeHtml($("#new-app-name").val()),
-        documentCollections: _.map($('#new-app-document-collections').select2("data"), function(d) {
+        name: window.arangoHelper.escapeHtml($('#new-app-name').val()),
+        documentCollections: _.map($('#new-app-document-collections').select2('data'), function (d) {
           return window.arangoHelper.escapeHtml(d.text);
         }),
-        edgeCollections: _.map($('#new-app-edge-collections').select2("data"), function(d) {
+        edgeCollections: _.map($('#new-app-edge-collections').select2('data'), function (d) {
           return window.arangoHelper.escapeHtml(d.text);
         }),
         //        authenticated: window.arangoHelper.escapeHtml($("#new-app-name").val()),
-        author: window.arangoHelper.escapeHtml($("#new-app-author").val()),
-        license: window.arangoHelper.escapeHtml($("#new-app-license").val()),
-        description: window.arangoHelper.escapeHtml($("#new-app-description").val())
+        author: window.arangoHelper.escapeHtml($('#new-app-author').val()),
+        license: window.arangoHelper.escapeHtml($('#new-app-license').val()),
+        description: window.arangoHelper.escapeHtml($('#new-app-description').val())
       };
       if (flag !== undefined) {
         this.collection.generate(info, mount, installCallback.bind(this), flag);
@@ -288,66 +286,65 @@
     }
   };
 
-  var addAppAction = function() {
-    var openTab = $(".modal-body .tab-pane.active").attr("id");
+  var addAppAction = function () {
+    var openTab = $('.modal-body .tab-pane.active').attr('id');
     switch (openTab) {
-      case "newApp":
+      case 'newApp':
         generateNewFoxxApp.apply(this);
         break;
-      case "github":
+      case 'github':
         installFoxxFromGithub.apply(this);
         break;
-      case "zip":
+      case 'zip':
         installFoxxFromZip.apply(this);
         break;
       default:
     }
   };
 
-  var render = function(scope, upgrade) {
+  var render = function (scope, upgrade) {
     var buttons = [];
     var modalEvents = {
-      "click #infoTab a"   : switchModalButton.bind(scope),
-      "click .install-app" : installFoxxFromStore.bind(scope)
+      'click #infoTab a': switchModalButton.bind(scope),
+      'click .install-app': installFoxxFromStore.bind(scope)
     };
     buttons.push(
-      window.modalView.createSuccessButton("Generate", addAppAction.bind(scope))
+      window.modalView.createSuccessButton('Generate', addAppAction.bind(scope))
     );
     window.modalView.show(
-      "modalApplicationMount.ejs",
-      "Install Service",
+      'modalApplicationMount.ejs',
+      'Install Service',
       buttons,
       upgrade,
       undefined,
       undefined,
       modalEvents
     );
-    $("#new-app-document-collections").select2({
+    $('#new-app-document-collections').select2({
       tags: [],
       showSearchBox: false,
       minimumResultsForSearch: -1,
-      width: "336px"
+      width: '336px'
     });
-    $("#new-app-edge-collections").select2({
+    $('#new-app-edge-collections').select2({
       tags: [],
       showSearchBox: false,
       minimumResultsForSearch: -1,
-      width: "336px"
+      width: '336px'
     });
 
-    var checkButton = function() {
-      var button = $("#modalButton1");
-        if (! button.prop("disabled") && ! window.modalView.modalTestAll()) {
-          button.prop("disabled", true);
-        }
-        else {
-          button.prop("disabled", false);
-        }
+    var checkButton = function () {
+      var button = $('#modalButton1');
+      if (!button.prop('disabled') && !window.modalView.modalTestAll()) {
+        button.prop('disabled', true);
+      } else {
+        button.prop('disabled', false);
+      }
     };
 
-    $('.select2-search-field input').focusout(function() {
+    $('.select2-search-field input').focusout(function () {
       checkButton();
-      window.setTimeout(function() {
+      window.setTimeout(function () {
         if ($('.select2-drop').is(':visible')) {
           if (!$('#select2-search-field input').is(':focus')) {
             $('#s2id_new-app-document-collections').select2('close');
@@ -357,31 +354,31 @@
         }
       }, 200);
     });
-    $('.select2-search-field input').focusin(function() {
+    $('.select2-search-field input').focusin(function () {
       if ($('.select2-drop').is(':visible')) {
-        var button = $("#modalButton1");
-        button.prop("disabled", true);
+        var button = $('#modalButton1');
+        button.prop('disabled', true);
       }
     });
-    $("#upload-foxx-zip").uploadFile({
-      url: arangoHelper.databaseUrl("/_api/upload?multipart=true"),
-      allowedTypes: "zip",
+    $('#upload-foxx-zip').uploadFile({
+      url: arangoHelper.databaseUrl('/_api/upload?multipart=true'),
+      allowedTypes: 'zip',
       multiple: false,
       onSuccess: installFoxxFromZip.bind(scope)
     });
-    $.get("foxxes/fishbowl", function(list) {
-      var table = $("#appstore-content");
+    $.get('foxxes/fishbowl', function (list) {
+      var table = $('#appstore-content');
       table.html('');
-      _.each(_.sortBy(list, "name"), function(app) {
+      _.each(_.sortBy(list, 'name'), function (app) {
         table.append(appStoreTemplate.render(app));
       });
-    }).fail(function() {
-      var table = $("#appstore-content");
-      table.append("<tr><td>Store is not available. ArangoDB is not able to connect to github.com</td></tr>");
+    }).fail(function () {
+      var table = $('#appstore-content');
+      table.append('<tr><td>Store is not available. ArangoDB is not able to connect to github.com</td></tr>');
     });
   };
 
-  FoxxInstallView.prototype.install = function(callback) {
+  FoxxInstallView.prototype.install = function (callback) {
     this.reload = callback;
     this._upgrade = false;
     this._uploadData = undefined;
@@ -392,7 +389,7 @@
     setNewAppValidators();
   };
 
-  FoxxInstallView.prototype.upgrade = function(mount, callback) {
+  FoxxInstallView.prototype.upgrade = function (mount, callback) {
     this.reload = callback;
     this._upgrade = true;
     this._uploadData = undefined;

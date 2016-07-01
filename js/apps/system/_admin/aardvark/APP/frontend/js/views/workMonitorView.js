@@ -1,75 +1,66 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global Backbone, EJS, $, window, _ */
-/*global _, arangoHelper, templateEngine, jQuery, Joi*/
+/* jshint browser: true */
+/* jshint unused: false */
+/* global Backbone, EJS, $, window, _ */
+/* global _, arangoHelper, templateEngine, jQuery, Joi*/
 
 (function () {
-  "use strict";
+  'use strict';
   window.workMonitorView = Backbone.View.extend({
-
     el: '#content',
     id: '#workMonitorContent',
 
-    template: templateEngine.createTemplate("workMonitorView.ejs"),
-    table: templateEngine.createTemplate("arangoTable.ejs"),
+    template: templateEngine.createTemplate('workMonitorView.ejs'),
+    table: templateEngine.createTemplate('arangoTable.ejs'),
 
-    initialize: function () {
-    },
+    initialize: function () {},
 
     events: {
     },
 
     tableDescription: {
-      id: "workMonitorTable",
+      id: 'workMonitorTable',
       titles: [
-        "Type", "Database", "Task ID", "Started", "Url", "User", "Description", "Method"
+        'Type', 'Database', 'Task ID', 'Started', 'Url', 'User', 'Description', 'Method'
       ],
       rows: [],
       unescaped: [false, false, false, false, false, false, false, false]
     },
 
-    render: function() {
-
+    render: function () {
       var self = this;
 
       this.$el.html(this.template.render({}));
       this.collection.fetch({
-        success: function() {
+        success: function () {
           self.parseTableData();
           $(self.id).append(self.table.render({content: self.tableDescription}));
         }
       });
     },
 
-    parseTableData: function() {
-
+    parseTableData: function () {
       var self = this;
 
-      this.collection.each(function(model) {
+      this.collection.each(function (model) {
         if (model.get('type') === 'AQL query') {
-
           var parent = model.get('parent');
           if (parent) {
             try {
-
               self.tableDescription.rows.push([
                 model.get('type'),
-                "(p) " + parent.database,
-                "(p) " + parent.taskId,
-                "(p) " + parent.startTime,
-                "(p) " + parent.url,
-                "(p) " + parent.user,
+                '(p) ' + parent.database,
+                '(p) ' + parent.taskId,
+                '(p) ' + parent.startTime,
+                '(p) ' + parent.url,
+                '(p) ' + parent.user,
                 model.get('description'),
-                "(p) " + parent.method
+                '(p) ' + parent.method
               ]);
-            }
-            catch (e) {
-              console.log("some parse error");
+            } catch (e) {
+              console.log('some parse error');
             }
           }
-
-        }
-        else if (model.get('type') !== 'thread') {
+        } else if (model.get('type') !== 'thread') {
           self.tableDescription.rows.push([
             model.get('type'),
             model.get('database'),

@@ -23,6 +23,7 @@
 
 #include "v8-vpack.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "V8/v8-utils.h"
 
@@ -30,9 +31,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
-
-/// @brief empty attribute name
-static std::string const NoAttribute("");
 
 /// @brief maximum object nesting depth
 static int const MaxLevels = 64;
@@ -248,23 +246,11 @@ struct BuilderContext {
 /// @brief adds a VPackValue to either an array or an object
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void AddValue(BuilderContext& context, std::string const& attributeName,
-                            bool inObject, VPackValue const& value) {
+template<typename T, bool inObject>
+static inline void AddValue(BuilderContext& context, arangodb::StringRef const& attributeName,
+                            T const& value) {
   if (inObject) {
-    context.builder.add(attributeName, value);
-  } else {
-    context.builder.add(value);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a VPackValue to either an array or an object
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void AddValuePair(BuilderContext& context, std::string const& attributeName,
-                                bool inObject, VPackValuePair const& value) {
-  if (inObject) {
-    context.builder.add(attributeName, value);
+    context.builder.add(attributeName.begin(), attributeName.size(), value);
   } else {
     context.builder.add(value);
   }
@@ -274,37 +260,37 @@ static inline void AddValuePair(BuilderContext& context, std::string const& attr
 /// @brief convert a V8 value to a VPack value
 ////////////////////////////////////////////////////////////////////////////////
 
-template <bool performAllChecks>
+template <bool performAllChecks, bool inObject>
 static int V8ToVPack(BuilderContext& context,
                      v8::Handle<v8::Value> const parameter,
-                     std::string const& attributeName, bool inObject) {
+                     arangodb::StringRef const& attributeName) {
   
   if (parameter->IsNull() || parameter->IsUndefined()) {
-    AddValue(context, attributeName, inObject,
+    AddValue<VPackValue, inObject>(context, attributeName,
              VPackValue(VPackValueType::Null));
     return TRI_ERROR_NO_ERROR;
   }
 
   if (parameter->IsBoolean()) {
-    AddValue(context, attributeName, inObject,
+    AddValue<VPackValue, inObject>(context, attributeName,
              VPackValue(parameter->ToBoolean()->Value()));
     return TRI_ERROR_NO_ERROR;
   }
   
   if (parameter->IsNumber()) {
     if (parameter->IsInt32()) {
-      AddValue(context, attributeName, inObject,
+      AddValue<VPackValue, inObject>(context, attributeName,
                VPackValue(parameter->ToInt32()->Value()));
       return TRI_ERROR_NO_ERROR;
     }
   
     if (parameter->IsUint32()) {
-      AddValue(context, attributeName, inObject,
+      AddValue<VPackValue, inObject>(context, attributeName,
                VPackValue(parameter->ToUint32()->Value()));
       return TRI_ERROR_NO_ERROR;
     }
 
-    AddValue(context, attributeName, inObject,
+    AddValue<VPackValue, inObject>(context, attributeName,
              VPackValue(parameter->ToNumber()->Value()));
     return TRI_ERROR_NO_ERROR;
   }
@@ -316,14 +302,14 @@ static int V8ToVPack(BuilderContext& context,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    AddValuePair(context, attributeName, inObject, VPackValuePair(*str, str.length(), VPackValueType::String));
+    AddValue<VPackValuePair, inObject>(context, attributeName, VPackValuePair(*str, str.length(), VPackValueType::String));
     return TRI_ERROR_NO_ERROR;
   }
 
   if (parameter->IsArray()) {
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
 
-    AddValue(context, attributeName, inObject,
+    AddValue<VPackValue, inObject>(context, attributeName,
              VPackValue(VPackValueType::Array));
     uint32_t const n = array->Length();
 
@@ -339,7 +325,7 @@ static int V8ToVPack(BuilderContext& context,
         return TRI_ERROR_BAD_PARAMETER;
       }
 
-      int res = V8ToVPack<performAllChecks>(context, value, NoAttribute, false);
+      int res = V8ToVPack<performAllChecks, false>(context, value, arangodb::StringRef());
       
       --context.level;
 
@@ -357,14 +343,14 @@ static int V8ToVPack(BuilderContext& context,
   if (parameter->IsObject()) {
     if (performAllChecks) {
       if (parameter->IsBooleanObject()) {
-        AddValue(context, attributeName, inObject,
+        AddValue<VPackValue, inObject>(context, attributeName,
                 VPackValue(v8::Handle<v8::BooleanObject>::Cast(parameter)
                                 ->BooleanValue()));
         return TRI_ERROR_NO_ERROR;
       }
 
       if (parameter->IsNumberObject()) {
-        AddValue(context, attributeName, inObject,
+        AddValue<VPackValue, inObject>(context, attributeName,
                 VPackValue(v8::Handle<v8::NumberObject>::Cast(parameter)
                                 ->NumberValue()));
         return TRI_ERROR_NO_ERROR;
@@ -377,7 +363,7 @@ static int V8ToVPack(BuilderContext& context,
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
-        AddValuePair(context, attributeName, inObject, VPackValuePair(*str, str.length(), VPackValueType::String));
+        AddValue<VPackValuePair, inObject>(context, attributeName, VPackValuePair(*str, str.length(), VPackValueType::String));
         return TRI_ERROR_NO_ERROR;
       }
 
@@ -409,7 +395,7 @@ static int V8ToVPack(BuilderContext& context,
             }
 
             // this passes ownership for the utf8 string to the JSON object
-            AddValuePair(context, attributeName, inObject, VPackValuePair(*str, str.length(), VPackValueType::String));
+            AddValue<VPackValuePair, inObject>(context, attributeName, VPackValuePair(*str, str.length(), VPackValueType::String));
             return TRI_ERROR_NO_ERROR;
           }
         }
@@ -421,7 +407,7 @@ static int V8ToVPack(BuilderContext& context,
     v8::Handle<v8::Array> names = o->GetOwnPropertyNames();
     uint32_t const n = names->Length();
 
-    AddValue(context, attributeName, inObject,
+    AddValue<VPackValue, inObject>(context, attributeName,
              VPackValue(VPackValueType::Object));
 
     for (uint32_t i = 0; i < n; ++i) {
@@ -444,7 +430,7 @@ static int V8ToVPack(BuilderContext& context,
         return TRI_ERROR_BAD_PARAMETER;
       }
 
-      int res = V8ToVPack<performAllChecks>(context, value, *str, true);
+      int res = V8ToVPack<performAllChecks, true>(context, value, arangodb::StringRef(*str, str.length()));
       
       --context.level;
 
@@ -473,7 +459,7 @@ int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL_STRING(ToJsonKey);
   context.toJsonKey = ToJsonKey;
-  return V8ToVPack<true>(context, value, NoAttribute, false);
+  return V8ToVPack<true, false>(context, value, arangodb::StringRef());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -486,6 +472,6 @@ int TRI_V8ToVPackSimple(v8::Isolate* isolate, arangodb::velocypack::Builder& bui
                         v8::Handle<v8::Value> const value) {
   // a HandleScope must have been created by the caller already
   BuilderContext context(isolate, builder, false);
-  return V8ToVPack<false>(context, value, NoAttribute, false);
+  return V8ToVPack<false, false>(context, value, arangodb::StringRef());
 }
 

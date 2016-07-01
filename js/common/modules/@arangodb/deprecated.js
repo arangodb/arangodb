@@ -1,7 +1,7 @@
 'use strict';
 const semver = require('semver');
 
-function deprecated(version, graceReleases, message) {
+function deprecated (version, graceReleases, message) {
   if (typeof version === 'number') {
     version = String(version);
   }

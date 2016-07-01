@@ -1,4 +1,4 @@
-/*global Backbone, window */
+/* global Backbone, window */
 
 window.Replication = Backbone.Model.extend({
   defaults: {
@@ -6,7 +6,6 @@ window.Replication = Backbone.Model.extend({
     server: {}
   },
 
-  initialize: function () {
-  }
+  initialize: function () {}
 
 });

@@ -1,69 +1,66 @@
-/*jshint unused: false */
-/*global beforeEach, afterEach */
-/*global describe, it, expect, jasmine*/
-/*global runs, waitsFor, spyOn */
-/*global window, eb, loadFixtures, document */
-/*global $, _, d3*/
-/*global helper, mocks, uiMatchers*/
-/*global EventDispatcher, EventDispatcherControls, NodeShaper, EdgeShaper*/
+/* jshint unused: false */
+/* global beforeEach, afterEach */
+/* global describe, it, expect, jasmine*/
+/* global runs, waitsFor, spyOn */
+/* global window, eb, loadFixtures, document */
+/* global $, _, d3*/
+/* global helper, mocks, uiMatchers*/
+/* global EventDispatcher, EventDispatcherControls, NodeShaper, EdgeShaper*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Graph functionality
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Graph functionality
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  "use strict";
+  'use strict';
 
   describe('Event Dispatcher UI', function () {
     var svg, dispatcherUI, list, $list,
       nodeShaper, edgeShaper, layouter,
       nodes, edges, adapter,
       start,
-    //mousePointerbox,
+      // mousePointerbox,
 
-    addSpies = function() {
-      spyOn(layouter, "drag");
-      spyOn(adapter, "createNode");
-      spyOn(adapter, "patchNode");
-      spyOn(adapter, "deleteNode");
-      spyOn(adapter, "createEdge");
-      spyOn(adapter, "patchEdge");
-      spyOn(adapter, "deleteEdge");
-      spyOn(adapter, "loadNode");
-      spyOn(adapter, "expandCommunity");
-      spyOn(adapter, "explore");
-      spyOn(start, "cb");
+      addSpies = function () {
+        spyOn(layouter, 'drag');
+        spyOn(adapter, 'createNode');
+        spyOn(adapter, 'patchNode');
+        spyOn(adapter, 'deleteNode');
+        spyOn(adapter, 'createEdge');
+        spyOn(adapter, 'patchEdge');
+        spyOn(adapter, 'deleteEdge');
+        spyOn(adapter, 'loadNode');
+        spyOn(adapter, 'expandCommunity');
+        spyOn(adapter, 'explore');
+        spyOn(start, 'cb');
     };
-
-
 
     beforeEach(function () {
       start = {
-        cb: function() {}
+        cb: function () {}
       };
       nodes = [{
         _id: 1,
@@ -73,9 +70,9 @@
           _id: 1,
           _rev: 1,
           _key: 1,
-          name: "Alice"
+          name: 'Alice'
         }
-      },{
+      }, {
         _id: 2,
         x: 1,
         y: 2,
@@ -84,13 +81,13 @@
           _key: 2,
           _id: 2,
           name: {
-            first: "Bob",
-            sir: "Bobbington"
+            first: 'Bob',
+            sir: 'Bobbington'
           }
         }
       }];
       edges = [{
-        _id: "1-2",
+        _id: '1-2',
         source: nodes[0],
         target: nodes[1],
         _data: {
@@ -99,10 +96,10 @@
           _key: 12,
           _from: 1,
           _to: 2,
-          label: "oldLabel",
+          label: 'oldLabel',
           nested: {
-            from: "1",
-            to: "2"
+            from: '1',
+            to: '2'
           }
         }
 
@@ -114,9 +111,9 @@
       var expandConfig = {
           edges: edges,
           nodes: nodes,
-          startCallback: function() {},
+          startCallback: function () {},
           adapter: adapter,
-          reshapeNodes: function() {}
+          reshapeNodes: function () {}
         },
 
         dragConfig = {
@@ -138,60 +135,58 @@
           drag: dragConfig,
           nodeEditor: nodeEditorConfig,
           edgeEditor: edgeEditorConfig
-        };
+      };
 
-      svg = document.createElement("svg");
-      svg.id = "graphViewerSVG";
+      svg = document.createElement('svg');
+      svg.id = 'graphViewerSVG';
       document.body.appendChild(svg);
-      nodeShaper = new NodeShaper(d3.select("svg"));
-      edgeShaper = new EdgeShaper(d3.select("svg"));
-      list = document.createElement("ul");
+      nodeShaper = new NodeShaper(d3.select('svg'));
+      edgeShaper = new EdgeShaper(d3.select('svg'));
+      list = document.createElement('ul');
       document.body.appendChild(list);
-      list.id = "control_event_list";
+      list.id = 'control_event_list';
       $list = $(list);
 
       nodeShaper.drawNodes(nodes);
       edgeShaper.drawEdges(edges);
 
       /* Archive
-      mousePointerbox = document.createElement("div");
-      mousePointerbox.id = "mousepointer";
-      mousePointerbox.className = "mousepointer";
+      mousePointerbox = document.createElement("div")
+      mousePointerbox.id = "mousepointer"
+      mousePointerbox.className = "mousepointer"
 
-      document.body.appendChild(mousePointerbox);
-
-
+      document.body.appendChild(mousePointerbox)
 
       dispatcherUI = new EventDispatcherControls(
         list, mousePointerbox, nodeShaper, edgeShaper, completeConfig
-      );
+      )
       */
 
       dispatcherUI = new EventDispatcherControls(
         list, nodeShaper, edgeShaper, start.cb, completeConfig
       );
 
-      spyOn(nodeShaper, "changeTo").andCallThrough();
-      spyOn(edgeShaper, "changeTo").andCallThrough();
+      spyOn(nodeShaper, 'changeTo').andCallThrough();
+      spyOn(edgeShaper, 'changeTo').andCallThrough();
 
       uiMatchers.define(this);
 
       this.addMatchers({
-        toConformToToolbox: function() {
+        toConformToToolbox: function () {
           var box = this.actual,
-            icon = $("h6", $(box))[0],
-            title = $("h6", $(box))[1],
+            icon = $('h6', $(box))[0],
+            title = $('h6', $(box))[1],
             foundActive = false,
             failed = false;
-          _.each(box.children, function(btn) {
-            expect(btn).toBeTag("div");
-            expect(btn).toBeOfClass("gv_action_button");
-            expect(icon).toBeTag("h6");
-            expect(icon).toBeOfClass("fa");
-            expect(icon).toBeOfClass("gv_icon_icon");
-            expect(title).toBeTag("h6");
-            expect(title).toBeOfClass("gv_button_title");
-            if ($(btn).hasClass("active")) {
+          _.each(box.children, function (btn) {
+            expect(btn).toBeTag('div');
+            expect(btn).toBeOfClass('gv_action_button');
+            expect(icon).toBeTag('h6');
+            expect(icon).toBeOfClass('fa');
+            expect(icon).toBeOfClass('gv_icon_icon');
+            expect(title).toBeTag('h6');
+            expect(title).toBeOfClass('gv_button_title');
+            if ($(btn).hasClass('active')) {
               if (foundActive) {
                 failed = true;
               } else {
@@ -199,46 +194,44 @@
               }
             }
           });
-          this.message = "Did find more than one active button.";
+          this.message = 'Did find more than one active button.';
           return !failed;
         }
       });
-
     });
 
     afterEach(function () {
       expect(list).toConformToToolbox();
       document.body.removeChild(list);
       document.body.removeChild(svg);
-      //document.body.removeChild(mousePointerbox);
+    // document.body.removeChild(mousePointerbox)
     });
 
-    it('should throw errors if not setup correctly', function() {
-      expect(function() {
+    it('should throw errors if not setup correctly', function () {
+      expect(function () {
         var e = new EventDispatcherControls();
-      }).toThrow("A list element has to be given.");
+      }).toThrow('A list element has to be given.');
 
-      expect(function() {
+      expect(function () {
         var e = new EventDispatcherControls(list);
-      }).toThrow("The NodeShaper has to be given.");
+      }).toThrow('The NodeShaper has to be given.');
 
-      expect(function() {
+      expect(function () {
         var e = new EventDispatcherControls(list, nodeShaper);
-      }).toThrow("The EdgeShaper has to be given.");
+      }).toThrow('The EdgeShaper has to be given.');
 
-      expect(function() {
+      expect(function () {
         var e = new EventDispatcherControls(list, nodeShaper, edgeShaper);
-      }).toThrow("The Start callback has to be given.");
-
+      }).toThrow('The Start callback has to be given.');
     });
 
-    it('should be able to add a new node control to the list', function() {
-      runs(function() {
+    it('should be able to add a new node control to the list', function () {
+      runs(function () {
         dispatcherUI.addControlNewNode();
 
-        expect($("#control_event_new_node", $list).length).toEqual(1);
+        expect($('#control_event_new_node', $list).length).toEqual(1);
 
-        helper.simulateMouseEvent("click", "control_event_new_node");
+        helper.simulateMouseEvent('click', 'control_event_new_node');
 
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
@@ -252,17 +245,17 @@
           }
         });
 
-        //expect(mousePointerbox.className).toEqual("mousepointer icon-plus-sign");
+        // expect(mousePointerbox.className).toEqual("mousepointer icon-plus-sign")
 
-        helper.simulateMouseEvent("click", svg.id);
+        helper.simulateMouseEvent('click', svg.id);
 
-        expect($("#control_event_new_node_modal").length).toEqual(1);
+        expect($('#control_event_new_node_modal').length).toEqual(1);
 
-        //$("#control_event_node_edit_name_value").val("Bob");
+        // $("#control_event_node_edit_name_value").val("Bob")
 
-        expect($("#control_event_new_node_submit").text()).toEqual("Create");
+        expect($('#control_event_new_node_submit').text()).toEqual('Create');
 
-        helper.simulateMouseEvent("click", "control_event_new_node_submit");
+        helper.simulateMouseEvent('click', 'control_event_new_node_submit');
 
         expect(adapter.createNode).toHaveBeenCalledWith(
           {},
@@ -272,20 +265,18 @@
         );
       });
 
-
-      waitsFor(function() {
-        return $("#control_event_node_edit_modal").length === 0;
-      }, 2000, "The modal dialog should disappear.");
-
+      waitsFor(function () {
+        return $('#control_event_node_edit_modal').length === 0;
+      }, 2000, 'The modal dialog should disappear.');
     });
 
-    it('should be able to add a drag control to the list', function() {
-      runs(function() {
+    it('should be able to add a drag control to the list', function () {
+      runs(function () {
         dispatcherUI.addControlDrag();
 
-        expect($("#control_event_list #control_event_drag").length).toEqual(1);
+        expect($('#control_event_list #control_event_drag').length).toEqual(1);
 
-        helper.simulateMouseEvent("click", "control_event_drag");
+        helper.simulateMouseEvent('click', 'control_event_drag');
 
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
@@ -300,31 +291,29 @@
           }
         });
 
-        //expect(mousePointerbox.className).toEqual("mousepointer icon-move");
+        // expect(mousePointerbox.className).toEqual("mousepointer icon-move")
 
-        helper.simulateDragEvent("1");
+        helper.simulateDragEvent('1');
 
         expect(layouter.drag).toHaveBeenCalled();
       });
-
     });
 
-    describe('the edit control', function() {
+    describe('the edit control', function () {
+      var id = 'control_event_edit',
+        nodeId = 'control_event_node_edit',
+        edgeId = 'control_event_edge_edit';
 
-      var id = "control_event_edit",
-        nodeId = "control_event_node_edit",
-        edgeId = "control_event_edge_edit";
-
-      beforeEach(function() {
+      beforeEach(function () {
         dispatcherUI.addControlEdit();
       });
 
-      it('should be added', function() {
-        expect($("#control_event_list #"+ id).length).toEqual(1);
+      it('should be added', function () {
+        expect($('#control_event_list #' + id).length).toEqual(1);
       });
 
-      it('should activate actions on nodes and edges if clicked', function() {
-        helper.simulateMouseEvent("click", id);
+      it('should activate actions on nodes and edges if clicked', function () {
+        helper.simulateMouseEvent('click', id);
 
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
@@ -340,96 +329,90 @@
           }
         });
 
-        //expect(mousePointerbox.className).toEqual("mousepointer icon-pencil");
+      // expect(mousePointerbox.className).toEqual("mousepointer icon-pencil")
       });
 
-      it('should be possible to edit nodes', function() {
+      it('should be possible to edit nodes', function () {
+        runs(function () {
+          helper.simulateMouseEvent('click', id);
 
-        runs(function() {
-          helper.simulateMouseEvent("click", id);
+          helper.simulateMouseEvent('click', '1');
 
-          helper.simulateMouseEvent("click", "1");
+          expect($('#' + nodeId + '_modal').length).toEqual(1);
 
-          expect($("#" + nodeId + "_modal").length).toEqual(1);
+          $('#' + nodeId + '_name_value').val('Bob');
 
-          $("#" + nodeId + "_name_value").val("Bob");
-
-          helper.simulateMouseEvent("click", nodeId + "_submit");
+          helper.simulateMouseEvent('click', nodeId + '_submit');
           expect(adapter.patchNode).toHaveBeenCalledWith(
             nodes[0],
             {
-              name: "Bob"
+              name: 'Bob'
             },
             jasmine.any(Function)
           );
         });
 
-        waitsFor(function() {
-          return $("#" + nodeId + "_modal").length === 0;
-        }, 2000, "The modal dialog should disappear.");
-
+        waitsFor(function () {
+          return $('#' + nodeId + '_modal').length === 0;
+        }, 2000, 'The modal dialog should disappear.');
       });
 
-      it('should be possible to add new attributes to nodes', function() {
+      it('should be possible to add new attributes to nodes', function () {
+        runs(function () {
+          helper.simulateMouseEvent('click', id);
+          helper.simulateMouseEvent('click', '1');
 
-        runs(function() {
-          helper.simulateMouseEvent("click", id);
-          helper.simulateMouseEvent("click", "1");
+          helper.simulateMouseEvent('click', nodeId + '_new');
 
-          helper.simulateMouseEvent("click", nodeId + "_new");
+          expect($('#' + nodeId + '_new_1_delete').length).toEqual(1);
+          expect($('#' + nodeId + '_new_1_key').length).toEqual(1);
+          expect($('#' + nodeId + '_new_1_value').length).toEqual(1);
 
-          expect($("#" + nodeId + "_new_1_delete").length).toEqual(1);
-          expect($("#" + nodeId + "_new_1_key").length).toEqual(1);
-          expect($("#" + nodeId + "_new_1_value").length).toEqual(1);
+          helper.simulateMouseEvent('click', nodeId + '_new');
 
-          helper.simulateMouseEvent("click", nodeId + "_new");
+          expect($('#' + nodeId + '_new_2_delete').length).toEqual(1);
+          expect($('#' + nodeId + '_new_2_key').length).toEqual(1);
+          expect($('#' + nodeId + '_new_2_value').length).toEqual(1);
 
-          expect($("#" + nodeId + "_new_2_delete").length).toEqual(1);
-          expect($("#" + nodeId + "_new_2_key").length).toEqual(1);
-          expect($("#" + nodeId + "_new_2_value").length).toEqual(1);
+          helper.simulateMouseEvent('click', nodeId + '_new_2_delete');
 
-          helper.simulateMouseEvent("click", nodeId + "_new_2_delete");
+          expect($('#' + nodeId + '_new_2_delete').length).toEqual(0);
+          expect($('#' + nodeId + '_new_2_key').length).toEqual(0);
+          expect($('#' + nodeId + '_new_2_value').length).toEqual(0);
 
-          expect($("#" + nodeId + "_new_2_delete").length).toEqual(0);
-          expect($("#" + nodeId + "_new_2_key").length).toEqual(0);
-          expect($("#" + nodeId + "_new_2_value").length).toEqual(0);
+          $('#' + nodeId + '_new_1_key').val('newKey');
+          $('#' + nodeId + '_new_1_value').val('newVal');
 
-          $("#" + nodeId + "_new_1_key").val("newKey");
-          $("#" + nodeId + "_new_1_value").val("newVal");
-
-          helper.simulateMouseEvent("click", nodeId + "_submit");
+          helper.simulateMouseEvent('click', nodeId + '_submit');
 
           expect(adapter.patchNode).toHaveBeenCalledWith(
             nodes[0],
             {
-              name: "Alice",
-              newKey: "newVal"
+              name: 'Alice',
+              newKey: 'newVal'
             },
             jasmine.any(Function)
           );
-
         });
 
-        waitsFor(function() {
-          return $("#" + nodeId + "_modal").length === 0;
-        }, 2000, "The modal dialog should disappear.");
-
+        waitsFor(function () {
+          return $('#' + nodeId + '_modal').length === 0;
+        }, 2000, 'The modal dialog should disappear.');
       });
 
-      it('should be possible to delete values from nodes', function() {
+      it('should be possible to delete values from nodes', function () {
+        runs(function () {
+          helper.simulateMouseEvent('click', id);
 
-        runs(function() {
-          helper.simulateMouseEvent("click", id);
+          helper.simulateMouseEvent('click', '1');
 
-          helper.simulateMouseEvent("click", "1");
+          expect($('#' + nodeId + '_name_delete').length).toEqual(1);
 
-          expect($("#" + nodeId + "_name_delete").length).toEqual(1);
+          helper.simulateMouseEvent('click', nodeId + '_name_delete');
 
-          helper.simulateMouseEvent("click", nodeId + "_name_delete");
+          expect($('#' + nodeId + '_name_delete').length).toEqual(0);
 
-          expect($("#" + nodeId + "_name_delete").length).toEqual(0);
-
-          helper.simulateMouseEvent("click", nodeId + "_submit");
+          helper.simulateMouseEvent('click', nodeId + '_submit');
           expect(adapter.patchNode).toHaveBeenCalledWith(
             nodes[0],
             {},
@@ -437,127 +420,118 @@
           );
         });
 
-        waitsFor(function() {
-          return $("#" + nodeId + "_modal").length === 0;
-        }, 2000, "The modal dialog should disappear.");
-
+        waitsFor(function () {
+          return $('#' + nodeId + '_modal').length === 0;
+        }, 2000, 'The modal dialog should disappear.');
       });
 
-      it('should display nested attributes', function() {
+      it('should display nested attributes', function () {
+        runs(function () {
+          helper.simulateMouseEvent('click', id);
 
-        runs(function() {
-          helper.simulateMouseEvent("click", id);
+          helper.simulateMouseEvent('click', '2');
 
-          helper.simulateMouseEvent("click", "2");
+          expect($('#' + nodeId + '_modal').length).toEqual(1);
 
-          expect($("#" + nodeId + "_modal").length).toEqual(1);
-
-          expect($("#" + nodeId + "_name_value").val()).toEqual(
+          expect($('#' + nodeId + '_name_value').val()).toEqual(
             JSON.stringify(nodes[1]._data.name
-          ));
+            ));
 
-          helper.simulateMouseEvent("click", nodeId + "_modal_dismiss");
+          helper.simulateMouseEvent('click', nodeId + '_modal_dismiss');
         });
 
-        waitsFor(function() {
-          return $("#" + nodeId + "_modal").length === 0;
-        }, 2000, "The modal dialog should disappear.");
-
-
+        waitsFor(function () {
+          return $('#' + nodeId + '_modal').length === 0;
+        }, 2000, 'The modal dialog should disappear.');
       });
 
-      it('should be possible to edit edges', function() {
-
-        runs(function() {
+      it('should be possible to edit edges', function () {
+        runs(function () {
           var nested = JSON.stringify(edges[0]._data.nested);
-          helper.simulateMouseEvent("click", id);
-          helper.simulateMouseEvent("click", "1-2");
+          helper.simulateMouseEvent('click', id);
+          helper.simulateMouseEvent('click', '1-2');
 
-          expect($("#" + edgeId + "_modal").length).toEqual(1);
+          expect($('#' + edgeId + '_modal').length).toEqual(1);
 
-          expect($("#" + edgeId + "_nested_value").val()).toEqual(nested);
+          expect($('#' + edgeId + '_nested_value').val()).toEqual(nested);
 
-          $("#" + edgeId + "_label_value").val("newLabel");
+          $('#' + edgeId + '_label_value').val('newLabel');
 
-          helper.simulateMouseEvent("click", edgeId + "_submit");
+          helper.simulateMouseEvent('click', edgeId + '_submit');
 
           expect(adapter.patchEdge).toHaveBeenCalledWith(
             edges[0],
             {
-              label: "newLabel",
+              label: 'newLabel',
               nested: nested
             },
             jasmine.any(Function)
           );
         });
 
-        waitsFor(function() {
-          return $("#" + edgeId + "_modal").length === 0;
-        }, 2000, "The modal dialog should disappear.");
-
+        waitsFor(function () {
+          return $('#' + edgeId + '_modal').length === 0;
+        }, 2000, 'The modal dialog should disappear.');
       });
 
-      it('should be possible to add new attributes to edges', function() {
-
-        runs(function() {
+      it('should be possible to add new attributes to edges', function () {
+        runs(function () {
           var nested = JSON.stringify(edges[0]._data.nested);
-          helper.simulateMouseEvent("click", id);
-          helper.simulateMouseEvent("click", "1-2");
+          helper.simulateMouseEvent('click', id);
+          helper.simulateMouseEvent('click', '1-2');
 
-          helper.simulateMouseEvent("click", edgeId + "_new");
+          helper.simulateMouseEvent('click', edgeId + '_new');
 
-          expect($("#" + edgeId + "_new_1_delete").length).toEqual(1);
-          expect($("#" + edgeId + "_new_1_key").length).toEqual(1);
-          expect($("#" + edgeId + "_new_1_value").length).toEqual(1);
+          expect($('#' + edgeId + '_new_1_delete').length).toEqual(1);
+          expect($('#' + edgeId + '_new_1_key').length).toEqual(1);
+          expect($('#' + edgeId + '_new_1_value').length).toEqual(1);
 
-          helper.simulateMouseEvent("click", edgeId + "_new");
+          helper.simulateMouseEvent('click', edgeId + '_new');
 
-          expect($("#" + edgeId + "_new_2_delete").length).toEqual(1);
-          expect($("#" + edgeId + "_new_2_key").length).toEqual(1);
-          expect($("#" + edgeId + "_new_2_value").length).toEqual(1);
+          expect($('#' + edgeId + '_new_2_delete').length).toEqual(1);
+          expect($('#' + edgeId + '_new_2_key').length).toEqual(1);
+          expect($('#' + edgeId + '_new_2_value').length).toEqual(1);
 
-          helper.simulateMouseEvent("click", edgeId + "_new_2_delete");
+          helper.simulateMouseEvent('click', edgeId + '_new_2_delete');
 
-          expect($("#" + edgeId + "_new_2_delete").length).toEqual(0);
-          expect($("#" + edgeId + "_new_2_key").length).toEqual(0);
-          expect($("#" + edgeId + "_new_2_value").length).toEqual(0);
+          expect($('#' + edgeId + '_new_2_delete').length).toEqual(0);
+          expect($('#' + edgeId + '_new_2_key').length).toEqual(0);
+          expect($('#' + edgeId + '_new_2_value').length).toEqual(0);
 
-          $("#" + edgeId + "_new_1_key").val("newKey");
-          $("#" + edgeId + "_new_1_value").val("newVal");
+          $('#' + edgeId + '_new_1_key').val('newKey');
+          $('#' + edgeId + '_new_1_value').val('newVal');
 
-          helper.simulateMouseEvent("click", edgeId + "_submit");
+          helper.simulateMouseEvent('click', edgeId + '_submit');
 
           expect(adapter.patchEdge).toHaveBeenCalledWith(
             edges[0],
             {
-              label: "oldLabel",
+              label: 'oldLabel',
               nested: nested,
-              newKey: "newVal"
+              newKey: 'newVal'
             },
             jasmine.any(Function)
           );
         });
 
-        waitsFor(function() {
-          return $("#" + edgeId + "_modal").length === 0;
-        }, 2000, "The modal dialog should disappear.");
-
+        waitsFor(function () {
+          return $('#' + edgeId + '_modal').length === 0;
+        }, 2000, 'The modal dialog should disappear.');
       });
 
-      it('should be possible to remove attributes from edges', function() {
-
-        runs(function() {
+      it('should be possible to remove attributes from edges', function () {
+        runs(function () {
           var nested = JSON.stringify(edges[0]._data.nested);
-          helper.simulateMouseEvent("click", id);
-          helper.simulateMouseEvent("click", "1-2");
+          helper.simulateMouseEvent('click', id);
+          helper.simulateMouseEvent('click', '1-2');
 
-          expect($("#" + edgeId + "_label_delete").length).toEqual(1);
+          expect($('#' + edgeId + '_label_delete').length).toEqual(1);
 
-          helper.simulateMouseEvent("click", edgeId + "_label_delete");
+          helper.simulateMouseEvent('click', edgeId + '_label_delete');
 
-          expect($("#" + edgeId + "_label_delete").length).toEqual(0);
+          expect($('#' + edgeId + '_label_delete').length).toEqual(0);
 
-          helper.simulateMouseEvent("click", edgeId + "_submit");
+          helper.simulateMouseEvent('click', edgeId + '_submit');
 
           expect(adapter.patchEdge).toHaveBeenCalledWith(
             edges[0],
@@ -568,21 +542,19 @@
           );
         });
 
-        waitsFor(function() {
-          return $("#" + edgeId + "_modal").length === 0;
-        }, 2000, "The modal dialog should disappear.");
-
+        waitsFor(function () {
+          return $('#' + edgeId + '_modal').length === 0;
+        }, 2000, 'The modal dialog should disappear.');
       });
-
     });
 
-    it('should be able to add an expand control to the list', function() {
-      runs(function() {
+    it('should be able to add an expand control to the list', function () {
+      runs(function () {
         dispatcherUI.addControlExpand();
 
-        expect($("#control_event_list #control_event_expand").length).toEqual(1);
+        expect($('#control_event_list #control_event_expand').length).toEqual(1);
 
-        helper.simulateMouseEvent("click", "control_event_expand");
+        helper.simulateMouseEvent('click', 'control_event_expand');
 
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
@@ -597,24 +569,22 @@
           }
         });
 
-        //expect(mousePointerbox.className).toEqual("mousepointer icon-plus");
+        // expect(mousePointerbox.className).toEqual("mousepointer icon-plus")
 
-        helper.simulateMouseEvent("click", "1");
+        helper.simulateMouseEvent('click', '1');
 
         expect(adapter.explore).toHaveBeenCalledWith(nodes[0], jasmine.any(Function));
-
       });
     });
 
-    describe("delete control", function() {
-
-      beforeEach(function() {
+    describe('delete control', function () {
+      beforeEach(function () {
         dispatcherUI.addControlDelete();
-        helper.simulateMouseEvent("click", "control_event_delete");
+        helper.simulateMouseEvent('click', 'control_event_delete');
       });
 
-      it("should be added to the list", function() {
-        expect($("#control_event_list #control_event_delete").length).toEqual(1);
+      it('should be added to the list', function () {
+        expect($('#control_event_list #control_event_delete').length).toEqual(1);
         expect(edgeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
             reset: true,
@@ -630,20 +600,20 @@
         });
       });
 
-      it("should ask for permission and delete nodes", function() {
-        var id = "1";
-        helper.simulateMouseEvent("click", id);
-        helper.simulateMouseEvent("click", "control_event_node_delete_submit");
+      it('should ask for permission and delete nodes', function () {
+        var id = '1';
+        helper.simulateMouseEvent('click', id);
+        helper.simulateMouseEvent('click', 'control_event_node_delete_submit');
         expect(adapter.deleteNode).toHaveBeenCalledWith(
           nodes[0],
           jasmine.any(Function)
         );
       });
 
-      it("should ask for permission and delete nodes", function() {
-        var id = "1-2";
-        helper.simulateMouseEvent("click", id);
-        helper.simulateMouseEvent("click", "control_event_edge_delete_submit");
+      it('should ask for permission and delete nodes', function () {
+        var id = '1-2';
+        helper.simulateMouseEvent('click', id);
+        helper.simulateMouseEvent('click', 'control_event_edge_delete_submit');
         expect(adapter.deleteEdge).toHaveBeenCalledWith(
           edges[0],
           jasmine.any(Function)
@@ -651,15 +621,14 @@
       });
     });
 
-    describe('the connect control', function() {
-
-      it('should be added to the list', function() {
-        runs(function() {
+    describe('the connect control', function () {
+      it('should be added to the list', function () {
+        runs(function () {
           dispatcherUI.addControlConnect();
 
-          expect($("#control_event_list #control_event_connect").length).toEqual(1);
+          expect($('#control_event_list #control_event_connect').length).toEqual(1);
 
-          helper.simulateMouseEvent("click", "control_event_connect");
+          helper.simulateMouseEvent('click', 'control_event_connect');
 
           expect(nodeShaper.changeTo).toHaveBeenCalledWith({
             actions: {
@@ -675,85 +644,82 @@
             }
           });
 
-          //expect(mousePointerbox.className).toEqual("mousepointer icon-resize-horizontal");
+          // expect(mousePointerbox.className).toEqual("mousepointer icon-resize-horizontal")
 
-          helper.simulateMouseEvent("mousedown", "2");
+          helper.simulateMouseEvent('mousedown', '2');
 
-          helper.simulateMouseEvent("mouseup", "1");
+          helper.simulateMouseEvent('mouseup', '1');
 
           expect(adapter.createEdge).toHaveBeenCalledWith(
             {source: nodes[1], target: nodes[0]},
             jasmine.any(Function)
           );
-
         });
       });
 
-      it('should draw a line from startNode following the cursor', function() {
-        spyOn(edgeShaper, "addAnEdgeFollowingTheCursor");
+      it('should draw a line from startNode following the cursor', function () {
+        spyOn(edgeShaper, 'addAnEdgeFollowingTheCursor');
 
         dispatcherUI.addControlConnect();
-        helper.simulateMouseEvent("click", "control_event_connect");
-        helper.simulateMouseEvent("mousedown", "2");
+        helper.simulateMouseEvent('click', 'control_event_connect');
+        helper.simulateMouseEvent('mousedown', '2');
 
         expect(edgeShaper.addAnEdgeFollowingTheCursor).toHaveBeenCalledWith(
-          -$("svg").offset().left, -$("svg").offset().top
+          -$('svg').offset().left, -$('svg').offset().top
         );
       });
 
-      it('the cursor-line should follow the cursor on mousemove over svg', function() {
+      it('the cursor-line should follow the cursor on mousemove over svg', function () {
         dispatcherUI.addControlConnect();
         var x = 40,
-          y= 50,
+          y = 50,
           line;
 
-        helper.simulateMouseEvent("click", "control_event_connect");
-        helper.simulateMouseEvent("mousedown", "2");
+        helper.simulateMouseEvent('click', 'control_event_connect');
+        helper.simulateMouseEvent('mousedown', '2');
 
         helper.simulateMouseMoveEvent(svg.id, x, y);
 
-        line = $("#connectionLine");
-        //The Helper event triggers at (0,0) no matter where the node is.
-        expect(line.attr("x1")).toEqual(String(- $("svg").offset().left));
-        expect(line.attr("y1")).toEqual(String(- $("svg").offset().top));
-        expect(line.attr("x2")).toEqual(String(x - $("svg").offset().left));
-        expect(line.attr("y2")).toEqual(String(y - $("svg").offset().top));
+        line = $('#connectionLine');
+        // The Helper event triggers at (0,0) no matter where the node is.
+        expect(line.attr('x1')).toEqual(String(- $('svg').offset().left));
+        expect(line.attr('y1')).toEqual(String(- $('svg').offset().top));
+        expect(line.attr('x2')).toEqual(String(x - $('svg').offset().left));
+        expect(line.attr('y2')).toEqual(String(y - $('svg').offset().top));
       });
 
-      it('the cursor-line should disappear on mouseup on svg', function() {
-        spyOn(edgeShaper, "removeCursorFollowingEdge");
+      it('the cursor-line should disappear on mouseup on svg', function () {
+        spyOn(edgeShaper, 'removeCursorFollowingEdge');
         dispatcherUI.addControlConnect();
-        helper.simulateMouseEvent("click", "control_event_connect");
-        helper.simulateMouseEvent("mousedown", "2");
-        helper.simulateMouseEvent("mouseup", "1-2");
+        helper.simulateMouseEvent('click', 'control_event_connect');
+        helper.simulateMouseEvent('mousedown', '2');
+        helper.simulateMouseEvent('mouseup', '1-2');
         expect(edgeShaper.removeCursorFollowingEdge).toHaveBeenCalled();
       });
 
-      it('the cursor-line should disappear on mouseup on svg', function() {
-        spyOn(edgeShaper, "removeCursorFollowingEdge");
+      it('the cursor-line should disappear on mouseup on svg', function () {
+        spyOn(edgeShaper, 'removeCursorFollowingEdge');
         dispatcherUI.addControlConnect();
-        helper.simulateMouseEvent("click", "control_event_connect");
-        helper.simulateMouseEvent("mousedown", "2");
-        helper.simulateMouseEvent("mouseup", "1");
+        helper.simulateMouseEvent('click', 'control_event_connect');
+        helper.simulateMouseEvent('mousedown', '2');
+        helper.simulateMouseEvent('mouseup', '1');
         expect(edgeShaper.removeCursorFollowingEdge).toHaveBeenCalled();
       });
-
     });
 
     it('should be able to add all controls to the list', function () {
       dispatcherUI.addAll();
 
-      expect($("#control_event_list #control_event_drag").length).toEqual(1);
-      expect($("#control_event_list #control_event_edit").length).toEqual(1);
-      expect($("#control_event_list #control_event_expand").length).toEqual(1);
-      expect($("#control_event_list #control_event_delete").length).toEqual(1);
-      expect($("#control_event_list #control_event_connect").length).toEqual(1);
-      expect($("#control_event_list #control_event_new_node").length).toEqual(1);
+      expect($('#control_event_list #control_event_drag').length).toEqual(1);
+      expect($('#control_event_list #control_event_edit').length).toEqual(1);
+      expect($('#control_event_list #control_event_expand').length).toEqual(1);
+      expect($('#control_event_list #control_event_delete').length).toEqual(1);
+      expect($('#control_event_list #control_event_connect').length).toEqual(1);
+      expect($('#control_event_list #control_event_new_node').length).toEqual(1);
     });
 
-    describe('checking the raw functions', function() {
-
-      it('should offer drag rebinds', function() {
+    describe('checking the raw functions', function () {
+      it('should offer drag rebinds', function () {
         expect(dispatcherUI.dragRebinds()).toEqual({
           nodes: {
             drag: jasmine.any(Function)
@@ -761,7 +727,7 @@
         });
       });
 
-      it('should offer new node rebinds', function() {
+      it('should offer new node rebinds', function () {
         expect(dispatcherUI.newNodeRebinds()).toEqual({
           svg: {
             click: jasmine.any(Function)
@@ -769,7 +735,7 @@
         });
       });
 
-      it('should offer connect nodes rebinds', function() {
+      it('should offer connect nodes rebinds', function () {
         expect(dispatcherUI.connectNodesRebinds()).toEqual({
           nodes: {
             mouseup: jasmine.any(Function),
@@ -781,7 +747,7 @@
         });
       });
 
-      it('should offer edit rebinds', function() {
+      it('should offer edit rebinds', function () {
         expect(dispatcherUI.editRebinds()).toEqual({
           nodes: {
             click: jasmine.any(Function)
@@ -792,15 +758,13 @@
         });
       });
 
-      it('should offer expand rebinds', function() {
+      it('should offer expand rebinds', function () {
         expect(dispatcherUI.expandRebinds()).toEqual({
           nodes: {
             click: jasmine.any(Function)
           }
         });
       });
-
     });
   });
-
 }());

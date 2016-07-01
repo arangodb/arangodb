@@ -1,34 +1,33 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const mimeTypes = require('mime-types');
 const querystring = require('querystring');
-// const assert = require('assert');
-// const contentDisposition = require('content-disposition');
+// const assert = require('assert')
+// const contentDisposition = require('content-disposition')
 
 const DEFAULT_CHARSET = 'utf-8';
-
 
 module.exports = new Map([
   [mimeTypes.lookup('text'), {
@@ -72,7 +71,7 @@ module.exports = new Map([
         }
       };
     }
-  }]/*,
+  }] /* ,
   ['multipart/form-data', {
     fromClient(body) {
       assert(
@@ -81,38 +80,37 @@ module.exports = new Map([
             part && typeof part === 'object'
             && part.headers && typeof part.headers === 'object'
             && part.data instanceof Buffer
-          );
+          )
         }),
         `Expecting a multipart array, not ${body ? typeof body : String(body)}`
-      );
-      const form = new Map();
+      )
+      const form = new Map()
       for (const part of body) {
-        const dispositionHeader = part.headers && part.headers['content-disposition'];
+        const dispositionHeader = part.headers && part.headers['content-disposition']
         if (!dispositionHeader) {
-          continue;
+          continue
         }
-        const disposition = contentDisposition.parse(dispositionHeader);
-        const name = disposition.parameters.name;
+        const disposition = contentDisposition.parse(dispositionHeader)
+        const name = disposition.parameters.name
         if (disposition.type !== 'form-data' || !name) {
-          continue;
+          continue
         }
-        let value = part.data;
+        let value = part.data
         // TODO parse value according to headers?
         if (!form.has(name)) {
-          form.set(name, value);
+          form.set(name, value)
         } else if (!Array.isArray(form.get(name))) {
-          form.set(name, [form.get(name), value]);
+          form.set(name, [form.get(name), value])
         } else {
-          form.get(name).push(value);
+          form.get(name).push(value)
         }
       }
-      return form;
+      return form
     }
   }]*/
 ]);
 
-
-function stringifyBuffer(buf, charset) {
+function stringifyBuffer (buf, charset) {
   if (!(buf instanceof Buffer)) {
     return buf;
   }

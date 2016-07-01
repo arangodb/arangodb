@@ -45,6 +45,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _posInDocs(0),
       _currentIndex(0),
       _indexes(en->getIndexes()),
+      _cursor(nullptr),
       _cursors(_indexes.size()),
       _condition(en->_condition->root()),
       _hasV8Expression(false) {}

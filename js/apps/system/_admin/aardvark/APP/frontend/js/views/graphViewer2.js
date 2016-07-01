@@ -1,43 +1,42 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global arangoHelper, sigma, Backbone, templateEngine, $, window*/
+/* jshint browser: true */
+/* jshint unused: false */
+/* global arangoHelper, sigma, Backbone, templateEngine, $, window*/
 (function () {
-  "use strict";
+  'use strict';
 
   window.GraphViewer2 = Backbone.View.extend({
+    el: '#content',
 
-    el: "#content",
+    template: templateEngine.createTemplate('graphViewer2.ejs'),
 
-    template: templateEngine.createTemplate("graphViewer2.ejs"),
-
-    initialize: function(options) {
+    initialize: function (options) {
       this.name = options.name;
     },
 
     render: function () {
       this.$el.html(this.template.render({}));
 
-      //adjust container widht + height
+      // adjust container widht + height
       $('#graph-container').width($('.centralContent').width());
       $('#graph-container').height($('.centralRow').height() - 150);
 
       this.fetchGraph();
     },
 
-    fetchGraph: function() {
+    fetchGraph: function () {
       var self = this;
 
       $.ajax({
-        type: "GET",
-        url: arangoHelper.databaseUrl("/_admin/aardvark/graph/" + encodeURIComponent(this.name)),
-        contentType: "application/json",
-        success: function(data) {
+        type: 'GET',
+        url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
+        contentType: 'application/json',
+        success: function (data) {
           self.renderGraph(data);
         }
       });
     },
 
-    renderGraph: function(graph) {
+    renderGraph: function (graph) {
       var s;
 
       if (graph.edges.left === 0) {
@@ -57,16 +56,16 @@
         scaleNodes: 1.05,
         gridSize: 75,
         easing: 'quadraticInOut', // animation transition function
-        duration: 10000   // animation duration. Long here for the purposes of this example only
+        duration: 10000 // animation duration. Long here for the purposes of this example only
       });
 
       // Bind the events:
-      noverlapListener.bind('start stop interpolate', function(e) {
+      noverlapListener.bind('start stop interpolate', function (e) {
         console.log(e.type);
-        if(e.type === 'start') {
+        if (e.type === 'start') {
           console.time('noverlap');
         }
-        if(e.type === 'interpolate') {
+        if (e.type === 'interpolate') {
           console.timeEnd('noverlap');
         }
       });
@@ -74,7 +73,6 @@
       // Start the layout:
       s.startNoverlap();
     }
-
 
   });
 }());

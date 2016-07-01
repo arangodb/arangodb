@@ -1,14 +1,14 @@
-/*global window, Backbone, arangoHelper, _ */
+/* global window, Backbone, arangoHelper, _ */
 
 window.arangoDocumentModel = Backbone.Model.extend({
   initialize: function () {
     'use strict';
   },
-  urlRoot: arangoHelper.databaseUrl("/_api/document"),
+  urlRoot: arangoHelper.databaseUrl('/_api/document'),
   defaults: {
-    _id: "",
-    _rev: "",
-    _key: ""
+    _id: '',
+    _rev: '',
+    _key: ''
   },
   getSorted: function () {
     'use strict';

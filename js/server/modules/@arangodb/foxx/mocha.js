@@ -1,26 +1,26 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const fs = require('fs');
 const Minimatch = require('minimatch').Minimatch;
@@ -29,12 +29,12 @@ const mocha = require('@arangodb/mocha');
 
 const isNotPattern = (pattern) => pattern.indexOf('*') === -1;
 
-exports.run = function runFoxxTests(service, reporterName) {
+exports.run = function runFoxxTests (service, reporterName) {
   const run = (file, context) => service.run(file, {context: context});
   return mocha.run(run, exports.findTests(service), reporterName);
 };
 
-exports.findTests = function findTestFiles(service) {
+exports.findTests = function findTestFiles (service) {
   const patterns = service.manifest.tests || [];
   if (patterns.every(isNotPattern)) {
     return patterns.slice();
@@ -51,7 +51,7 @@ exports.findTests = function findTestFiles(service) {
   });
   return paths.filter(
     (path) => path && matchers.some((pattern) => pattern.match(
-      isWindows ? path.replace(/\\/g, '/') : path
-    )) && fs.isFile(fs.join(basePath, path))
+        isWindows ? path.replace(/\\/g, '/') : path
+      )) && fs.isFile(fs.join(basePath, path))
   );
 };

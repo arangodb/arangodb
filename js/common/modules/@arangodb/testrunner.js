@@ -1,44 +1,42 @@
-/*global print */
+/* global print */
 'use strict';
 
 var runTest = require('jsunity').runTest,
   _ = require('lodash'),
   internal = require('internal');
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs all jsunity tests
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+  // / @brief runs all jsunity tests
+  // //////////////////////////////////////////////////////////////////////////////
 
-function runJSUnityTests(tests) {
+function runJSUnityTests (tests) {
   var result = true;
   var allResults = [];
   var failed = [];
   var res;
 
   // find out whether we're on server or client...
-  var runenvironment = "arangod";
-  if (typeof(require('internal').arango) === 'object') {
-    runenvironment = "arangosh";
+  var runenvironment = 'arangod';
+  if (typeof (require('internal').arango) === 'object') {
+    runenvironment = 'arangosh';
   }
-  
+
   _.each(tests, function (file) {
     if (result) {
-      print("\n" + Date() + " " + runenvironment + ": Running JSUnity test from file '" + file + "'");
-    } 
-    else {
-      print("\n" + Date() + " " + runenvironment +
-            ": Skipping JSUnity test from file '" + file + "' due to previous errors");
+      print('\n' + Date() + ' ' + runenvironment + ": Running JSUnity test from file '" + file + "'");
+    } else {
+      print('\n' + Date() + ' ' + runenvironment +
+        ": Skipping JSUnity test from file '" + file + "' due to previous errors");
     }
 
     try {
       res = runTest(file, true);
       allResults.push(res);
       result = result && res.status;
-      if (! res.status) {
+      if (!res.status) {
         failed.push(file);
       }
-    } 
-    catch (err) {
+    } catch (err) {
       print(runenvironment + ": cannot run test file '" + file + "': " + err);
       print(err.stack);
       print(err.message);
@@ -47,19 +45,19 @@ function runJSUnityTests(tests) {
 
     internal.wait(0); // force GC
   });
-  require("fs").write("testresult.json", JSON.stringify(allResults));
+  require('fs').write('testresult.json', JSON.stringify(allResults));
 
   if (failed.length > 1) {
-    print("The following " + failed.length + " test files produced errors: ", failed.join(", "));
+    print('The following ' + failed.length + ' test files produced errors: ', failed.join(', '));
   }
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs all mocha tests
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs all mocha tests
+// //////////////////////////////////////////////////////////////////////////////
 
-function runMochaTests(testFiles) {
+function runMochaTests (testFiles) {
   var result = true;
 
   if (testFiles.length > 0) {
@@ -70,11 +68,11 @@ function runMochaTests(testFiles) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs tests from command-line
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs tests from command-line
+// //////////////////////////////////////////////////////////////////////////////
 
-function runCommandLineTests() {
+function runCommandLineTests () {
   var result = true,
     unitTests = internal.unitTests(),
     isSpecRegEx = /.+-spec.*\.js/,

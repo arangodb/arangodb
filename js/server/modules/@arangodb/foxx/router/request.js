@@ -1,26 +1,26 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const parseUrl = require('url').parse;
 const formatUrl = require('url').format;
@@ -35,7 +35,7 @@ const crypto = require('@arangodb/crypto');
 const Netmask = require('netmask').Netmask;
 let trustedProxyBlocks;
 
-function generateTrustedProxyBlocks() {
+function generateTrustedProxyBlocks () {
   const trustedProxies = getTrustedProxies();
   if (!Array.isArray(trustedProxies)) {
     return false;
@@ -53,219 +53,218 @@ function generateTrustedProxyBlocks() {
   return blocks;
 }
 
-function shouldTrustProxy(address) {
+function shouldTrustProxy (address) {
   if (trustedProxyBlocks === undefined) {
     trustedProxyBlocks = generateTrustedProxyBlocks();
   }
   return !trustedProxyBlocks || trustedProxyBlocks
-  .some((block) => block.contains(address));
+      .some((block) => block.contains(address));
 }
 
+module.exports =
+  class SyntheticRequest {
+    constructor (req, context) {
+      this._url = parseUrl(req.url);
+      this._raw = req;
+      this.context = context;
+      this.suffix = req.suffix.join('/');
+      this.baseUrl = joinPath('/_db', encodeURIComponent(this._raw.database));
+      this.path = this._url.pathname;
+      this.pathParams = {};
+      this.queryParams = querystring.decode(this._url.query);
+      this.body = getRawBodyBuffer(req);
+      this.rawBody = this.body;
 
-module.exports = class SyntheticRequest {
-  constructor(req, context) {
-    this._url = parseUrl(req.url);
-    this._raw = req;
-    this.context = context;
-    this.suffix = req.suffix.join('/');
-    this.baseUrl = joinPath('/_db', encodeURIComponent(this._raw.database));
-    this.path = this._url.pathname;
-    this.pathParams = {};
-    this.queryParams = querystring.decode(this._url.query);
-    this.body = getRawBodyBuffer(req);
-    this.rawBody = this.body;
-
-    this.trustProxy = (
-      typeof context.trustProxy === 'boolean'
-      ? context.trustProxy
-      : shouldTrustProxy(req.client.address)
-    );
-
-    const server = extractServer(req, this.trustProxy);
-    this.protocol = server.protocol;
-    this.hostname = server.hostname;
-    this.port = server.port;
-
-    const client = extractClient(req, this.trustProxy);
-    this.remoteAddress = client.ip;
-    this.remoteAddresses = client.ips;
-    this.remotePort = client.port;
-  }
-
-  _PRINT(ctx) {
-    ctx.output += '[IncomingRequest]';
-  }
-
-  // Node compat
-
-  get headers() {
-    return this._raw.headers;
-  }
-
-  set headers(headers) {
-    this._raw.headers = headers;
-  }
-
-  get method() {
-    return this._raw.requestType;
-  }
-
-  // Express compat
-
-  get originalUrl() {
-    return joinPath(
-      '/_db',
-      encodeURIComponent(this._raw.database),
-      this._url.pathname
-    ) + (this._url.search || '');
-  }
-
-  get secure() {
-    return this.protocol === 'https';
-  }
-
-  get url() {
-    return this.path + (this._url.search || '');
-  }
-
-  get xhr() {
-    const header = this.headers['x-requested-with'];
-    return Boolean(header && header.toLowerCase() === 'xmlhttprequest');
-  }
-
-  accepts() {
-    const accept = accepts(this);
-    return accept.types.apply(accept, arguments);
-  }
-
-  acceptsCharsets() {
-    const accept = accepts(this);
-    return accept.charsets.apply(accept, arguments);
-  }
-
-  acceptsEncodings() {
-    const accept = accepts(this);
-    return accept.encodings.apply(accept, arguments);
-  }
-
-  acceptsLanguages() {
-    const accept = accepts(this);
-    return accept.languages.apply(accept, arguments);
-  }
-
-  range(size) {
-    const range = this.headers.range;
-    if (!range) {
-      return undefined;
-    }
-    return parseRange((size || size === 0) ? size : Infinity, range);
-  }
-
-  get(name) {
-    const lc = name.toLowerCase();
-    if (lc === 'referer' || lc === 'referrer') {
-      return this.headers.referer || this.headers.referrer;
-    }
-    return this.headers[lc];
-  }
-
-  header(name) {
-    return this.get(name);
-  }
-
-  is(mediaType) {
-    if (!this.headers['content-type']) {
-      return false;
-    }
-    if (!Array.isArray(mediaType)) {
-      mediaType = Array.prototype.slice.call(arguments);
-    }
-    return typeIs(this, mediaType);
-  }
-
-  // idiosyncratic
-
-  get arangoUser() {
-    return this._raw.user;
-  }
-
-  get arangoVersion() {
-    return this._raw.compatibility;
-  }
-
-  get database() {
-    return this._raw.database;
-  }
-
-  json() {
-    if (!this.rawBody || !this.rawBody.length) {
-      return undefined;
-    }
-    return JSON.parse(this.rawBody.toString('utf-8'));
-  }
-
-  param(name) {
-    if (hasOwnProperty.call(this.pathParams, name)) {
-      return this.pathParams[name];
-    }
-    return this.queryParams[name];
-  }
-
-  cookie(name, opts) {
-    if (typeof opts === 'string') {
-      opts = {secret: opts};
-    } else if (!opts) {
-      opts = {};
-    }
-    const value = this._raw.cookies[name];
-    if (value && opts.secret) {
-      const signature = this._raw.cookies[`${name}.sig`];
-      const valid = crypto.constantEquals(
-        signature || '',
-        crypto.hmac(opts.secret, value, opts.algorithm)
+      this.trustProxy = (
+        typeof context.trustProxy === 'boolean'
+          ? context.trustProxy
+          : shouldTrustProxy(req.client.address)
       );
-      if (!valid) {
+
+      const server = extractServer(req, this.trustProxy);
+      this.protocol = server.protocol;
+      this.hostname = server.hostname;
+      this.port = server.port;
+
+      const client = extractClient(req, this.trustProxy);
+      this.remoteAddress = client.ip;
+      this.remoteAddresses = client.ips;
+      this.remotePort = client.port;
+    }
+
+    _PRINT (ctx) {
+      ctx.output += '[IncomingRequest]';
+    }
+
+    // Node compat
+
+    get headers () {
+      return this._raw.headers;
+    }
+
+    set headers (headers) {
+      this._raw.headers = headers;
+    }
+
+    get method () {
+      return this._raw.requestType;
+    }
+
+    // Express compat
+
+    get originalUrl () {
+      return joinPath(
+          '/_db',
+          encodeURIComponent(this._raw.database),
+          this._url.pathname
+        ) + (this._url.search || '');
+    }
+
+    get secure () {
+      return this.protocol === 'https';
+    }
+
+    get url () {
+      return this.path + (this._url.search || '');
+    }
+
+    get xhr () {
+      const header = this.headers['x-requested-with'];
+      return Boolean(header && header.toLowerCase() === 'xmlhttprequest');
+    }
+
+    accepts () {
+      const accept = accepts(this);
+      return accept.types.apply(accept, arguments);
+    }
+
+    acceptsCharsets () {
+      const accept = accepts(this);
+      return accept.charsets.apply(accept, arguments);
+    }
+
+    acceptsEncodings () {
+      const accept = accepts(this);
+      return accept.encodings.apply(accept, arguments);
+    }
+
+    acceptsLanguages () {
+      const accept = accepts(this);
+      return accept.languages.apply(accept, arguments);
+    }
+
+    range (size) {
+      const range = this.headers.range;
+      if (!range) {
         return undefined;
       }
+      return parseRange((size || size === 0) ? size : Infinity, range);
     }
-    return value;
-  }
 
-  makeAbsolute(path, query) {
-    const opts = {
-      protocol: this.protocol,
-      hostname: this.hostname,
-      port: (this.secure ? this.port !== 443 : this.port !== 80) && this.port,
-      pathname: joinPath(
-        '/_db',
-        encodeURIComponent(this._raw.database),
-        this.context.mount,
-        path
-      )
-    };
-    if (query) {
-      if (typeof query === 'string') {
-        opts.search = query;
-      } else {
-        opts.query = query;
+    get (name) {
+      const lc = name.toLowerCase();
+      if (lc === 'referer' || lc === 'referrer') {
+        return this.headers.referer || this.headers.referrer;
       }
+      return this.headers[lc];
     }
-    return formatUrl(opts);
-  }
+
+    header (name) {
+      return this.get(name);
+    }
+
+    is (mediaType) {
+      if (!this.headers['content-type']) {
+        return false;
+      }
+      if (!Array.isArray(mediaType)) {
+        mediaType = Array.prototype.slice.call(arguments);
+      }
+      return typeIs(this, mediaType);
+    }
+
+    // idiosyncratic
+
+    get arangoUser () {
+      return this._raw.user;
+    }
+
+    get arangoVersion () {
+      return this._raw.compatibility;
+    }
+
+    get database () {
+      return this._raw.database;
+    }
+
+    json () {
+      if (!this.rawBody || !this.rawBody.length) {
+        return undefined;
+      }
+      return JSON.parse(this.rawBody.toString('utf-8'));
+    }
+
+    param (name) {
+      if (hasOwnProperty.call(this.pathParams, name)) {
+        return this.pathParams[name];
+      }
+      return this.queryParams[name];
+    }
+
+    cookie (name, opts) {
+      if (typeof opts === 'string') {
+        opts = {secret: opts};
+      } else if (!opts) {
+        opts = {};
+      }
+      const value = this._raw.cookies[name];
+      if (value && opts.secret) {
+        const signature = this._raw.cookies[`${name}.sig`];
+        const valid = crypto.constantEquals(
+          signature || '',
+          crypto.hmac(opts.secret, value, opts.algorithm)
+        );
+        if (!valid) {
+          return undefined;
+        }
+      }
+      return value;
+    }
+
+    makeAbsolute (path, query) {
+      const opts = {
+        protocol: this.protocol,
+        hostname: this.hostname,
+        port: (this.secure ? this.port !== 443 : this.port !== 80) && this.port,
+        pathname: joinPath(
+          '/_db',
+          encodeURIComponent(this._raw.database),
+          this.context.mount,
+          path
+        )
+      };
+      if (query) {
+        if (typeof query === 'string') {
+          opts.search = query;
+        } else {
+          opts.query = query;
+        }
+      }
+      return formatUrl(opts);
+    }
 };
 
-
-function extractServer(req, trustProxy) {
+function extractServer (req, trustProxy) {
   let hostname = req.server.address;
   let port = req.server.port;
   const protocol = (
-    (trustProxy && req.headers['x-forwarded-proto'])
-    || req.protocol
+  (trustProxy && req.headers['x-forwarded-proto'])
+  || req.protocol
   );
   const secure = protocol === 'https';
   const hostHeader = (
-    (trustProxy && req.headers['x-forwarded-host'])
-    || req.headers.host
+  (trustProxy && req.headers['x-forwarded-host'])
+  || req.headers.host
   );
   if (hostHeader) {
     const match = hostHeader.match(/^(.*):(\d+)$/) || [hostHeader, hostHeader];
@@ -277,8 +276,7 @@ function extractServer(req, trustProxy) {
   return {protocol, hostname, port};
 }
 
-
-function extractClient(req, trustProxy) {
+function extractClient (req, trustProxy) {
   let ip = req.client.address;
   let ips = [ip];
   const port = Number(

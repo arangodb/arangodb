@@ -1,41 +1,41 @@
-/*jshint strict: false */
+/* jshint strict: false */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief User management
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief User management
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var arangodb = require("@arangodb");
-var arangosh = require("@arangodb/arangosh");
+var internal = require('internal');
+var arangodb = require('@arangodb');
+var arangosh = require('@arangodb/arangosh');
 
 // creates a new user
 exports.save = function (user, passwd, active, extra, changePassword) {
   var db = internal.db;
 
-  var uri = "_api/user/";
+  var uri = '_api/user/';
   var data = {user: user};
 
   if (passwd !== undefined) {
@@ -62,7 +62,7 @@ exports.save = function (user, passwd, active, extra, changePassword) {
 exports.replace = function (user, passwd, active, extra, changePassword) {
   var db = internal.db;
 
-  var uri = "_api/user/" + encodeURIComponent(user);
+  var uri = '_api/user/' + encodeURIComponent(user);
   var data = {
     passwd: passwd,
     active: active,
@@ -78,7 +78,7 @@ exports.replace = function (user, passwd, active, extra, changePassword) {
 exports.update = function (user, passwd, active, extra, changePassword) {
   var db = internal.db;
 
-  var uri = "_api/user/" + encodeURIComponent(user);
+  var uri = '_api/user/' + encodeURIComponent(user);
   var data = {};
 
   if (passwd !== undefined) {
@@ -105,7 +105,7 @@ exports.update = function (user, passwd, active, extra, changePassword) {
 exports.remove = function (user) {
   var db = internal.db;
 
-  var uri = "_api/user/" + encodeURIComponent(user);
+  var uri = '_api/user/' + encodeURIComponent(user);
 
   var requestResult = db._connection.DELETE(uri);
   arangosh.checkRequestResult(requestResult);
@@ -115,7 +115,7 @@ exports.remove = function (user) {
 exports.document = function (user) {
   var db = internal.db;
 
-  var uri = "_api/user/" + encodeURIComponent(user);
+  var uri = '_api/user/' + encodeURIComponent(user);
 
   var requestResult = db._connection.GET(uri);
   return arangosh.checkRequestResult(requestResult);
@@ -125,7 +125,7 @@ exports.document = function (user) {
 exports.isValid = function (user, password) {
   var db = internal.db;
 
-  var uri = "_api/user/" + encodeURIComponent(user);
+  var uri = '_api/user/' + encodeURIComponent(user);
   var data = { passwd: password };
 
   var requestResult = db._connection.POST(uri, JSON.stringify(data));
@@ -145,7 +145,7 @@ exports.isValid = function (user, password) {
 exports.all = function () {
   var db = internal.db;
 
-  var uri = "_api/user";
+  var uri = '_api/user';
 
   var requestResult = db._connection.GET(uri);
   return arangosh.checkRequestResult(requestResult).result;
@@ -155,19 +155,19 @@ exports.all = function () {
 exports.reload = function () {
   var db = internal.db;
 
-  var requestResult = db._connection.GET("_admin/auth/reload");
+  var requestResult = db._connection.GET('_admin/auth/reload');
   arangosh.checkRequestResult(requestResult);
 };
 
 // changes the allowed databases
-exports.grantDatabase = function(username, database, type) {
+exports.grantDatabase = function (username, database, type) {
   if (type === undefined) {
-    type = "rw";
+    type = 'rw';
   }
 
   var db = internal.db;
-  var uri = "_api/user/" + encodeURIComponent(username)
-          + "/database/" + encodeURIComponent(database);
+  var uri = '_api/user/' + encodeURIComponent(username)
+  + '/database/' + encodeURIComponent(database);
   var data = { grant: type };
 
   var requestResult = db._connection.PUT(uri, JSON.stringify(data));
@@ -176,29 +176,29 @@ exports.grantDatabase = function(username, database, type) {
 };
 
 // changes the allowed databases
-exports.revokeDatabase = function(username, database) {
+exports.revokeDatabase = function (username, database) {
   var db = internal.db;
-  var uri = "_api/user/" + encodeURIComponent(username)
-            + "/database/" + encodeURIComponent(database);
+  var uri = '_api/user/' + encodeURIComponent(username)
+  + '/database/' + encodeURIComponent(database);
   var requestResult = db._connection.DELETE(uri);
 
   return arangosh.checkRequestResult(requestResult).result;
 };
 
 // create/update (value != null) or delete (value == null)
-exports.updateConfigData = function(username, key, value) {
+exports.updateConfigData = function (username, key, value) {
   var db = internal.db;
   var requestResult;
   var uri;
 
   if (key === undefined || key === null) {
-    uri = "_api/user/" + encodeURIComponent(username)
-        + "/config";
+    uri = '_api/user/' + encodeURIComponent(username)
+      + '/config';
 
     requestResult = db._connection.DELETE(uri);
   } else {
-    uri = "_api/user/" + encodeURIComponent(username)
-            + "/config/" + encodeURIComponent(key);
+    uri = '_api/user/' + encodeURIComponent(username)
+    + '/config/' + encodeURIComponent(key);
 
     var data = { value: value };
     requestResult = db._connection.PUT(uri, JSON.stringify(data));
@@ -208,19 +208,19 @@ exports.updateConfigData = function(username, key, value) {
 };
 
 // one config data (key != null) or all (key == null)    
-exports.configData = function(username, key) {
+exports.configData = function (username, key) {
   var db = internal.db;
   var requestResult;
   var uri;
 
   if (key === undefined || key === null) {
-    uri = "_api/user/" + encodeURIComponent(username)
-        + "/config";
+    uri = '_api/user/' + encodeURIComponent(username)
+      + '/config';
 
     requestResult = db._connection.GET(uri);
   } else {
-    uri = "_api/user/" + encodeURIComponent(username)
-            + "/config/" + encodeURIComponent(key);
+    uri = '_api/user/' + encodeURIComponent(username)
+    + '/config/' + encodeURIComponent(key);
 
     requestResult = db._connection.GET(uri);
   }
@@ -229,19 +229,19 @@ exports.configData = function(username, key) {
 };
 
 // one db permission data (key != null) or all (key == null)    
-exports.permission = function(username, key) {
+exports.permission = function (username, key) {
   var db = internal.db;
   var requestResult;
   var uri;
 
   if (key === undefined || key === null) {
-    uri = "_api/user/" + encodeURIComponent(username)
-        + "/permission";
+    uri = '_api/user/' + encodeURIComponent(username)
+      + '/permission';
 
     requestResult = db._connection.GET(uri);
   } else {
-    uri = "_api/user/" + encodeURIComponent(username)
-            + "/permission/" + encodeURIComponent(key);
+    uri = '_api/user/' + encodeURIComponent(username)
+    + '/permission/' + encodeURIComponent(key);
 
     requestResult = db._connection.GET(uri);
   }

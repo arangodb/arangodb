@@ -1,15 +1,14 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global frontendConfig, arangoHelper, Joi, Backbone, window, templateEngine, $ */
+/* jshint browser: true */
+/* jshint unused: false */
+/* global frontendConfig, arangoHelper, Joi, Backbone, window, templateEngine, $ */
 
-(function() {
-  "use strict";
+(function () {
+  'use strict';
 
   window.SettingsView = Backbone.View.extend({
+    el: '#content',
 
-    el: "#content",
-
-    initialize: function(options) {
+    initialize: function (options) {
       this.collectionName = options.collectionName;
       this.model = this.collection;
     },
@@ -17,7 +16,7 @@
     events: {
     },
 
-    render: function() {
+    render: function () {
       this.breadcrumb();
       window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Settings');
 
@@ -31,22 +30,18 @@
     },
 
     unloadCollection: function () {
-
-      var unloadCollectionCallback = function(error) {
+      var unloadCollectionCallback = function (error) {
         if (error) {
-          arangoHelper.arangoError('Collection error', this.model.get("name") + ' could not be unloaded.');
-        }
-        else if (error === undefined) {
-          this.model.set("status", "unloading");
+          arangoHelper.arangoError('Collection error', this.model.get('name') + ' could not be unloaded.');
+        } else if (error === undefined) {
+          this.model.set('status', 'unloading');
           this.render();
-        }
-        else {
-          if (window.location.hash === "#collections") {
-            this.model.set("status", "unloaded");
+        } else {
+          if (window.location.hash === '#collections') {
+            this.model.set('status', 'unloaded');
             this.render();
-          }
-          else {
-            arangoHelper.arangoNotification("Collection " + this.model.get("name") + " unloaded.");
+          } else {
+            arangoHelper.arangoNotification('Collection ' + this.model.get('name') + ' unloaded.');
           }
         }
       }.bind(this);
@@ -56,22 +51,18 @@
     },
 
     loadCollection: function () {
-
-      var loadCollectionCallback = function(error) {
+      var loadCollectionCallback = function (error) {
         if (error) {
-          arangoHelper.arangoError('Collection error', this.model.get("name") + ' could not be loaded.');
-        }
-        else if (error === undefined) {
-          this.model.set("status", "loading");
+          arangoHelper.arangoError('Collection error', this.model.get('name') + ' could not be loaded.');
+        } else if (error === undefined) {
+          this.model.set('status', 'loading');
           this.render();
-        }
-        else {
-          if (window.location.hash === "#collections") {
-            this.model.set("status", "loaded");
+        } else {
+          if (window.location.hash === '#collections') {
+            this.model.set('status', 'loaded');
             this.render();
-          }
-          else {
-            arangoHelper.arangoNotification("Collection " + this.model.get("name") + " loaded.");
+          } else {
+            arangoHelper.arangoNotification('Collection ' + this.model.get('name') + ' loaded.');
           }
         }
       }.bind(this);
@@ -88,28 +79,25 @@
     deleteCollection: function () {
       this.model.destroy(
         {
-          error: function() {
+          error: function () {
             arangoHelper.arangoError('Could not delete collection.');
           },
-          success: function() {
-            window.App.navigate("#collections", {trigger: true});
+          success: function () {
+            window.App.navigate('#collections', {trigger: true});
           }
         }
       );
     },
 
-    saveModifiedCollection: function() {
-
-      var callback = function(error, isCoordinator) {
+    saveModifiedCollection: function () {
+      var callback = function (error, isCoordinator) {
         if (error) {
-          arangoHelper.arangoError("Error", "Could not get coordinator info");
-        }
-        else {
+          arangoHelper.arangoError('Error', 'Could not get coordinator info');
+        } else {
           var newname;
           if (isCoordinator) {
             newname = this.model.get('name');
-          }
-          else {
+          } else {
             newname = $('#change-collection-name').val();
           }
           var status = this.model.get('status');
@@ -118,8 +106,7 @@
             var journalSize;
             try {
               journalSize = JSON.parse($('#change-collection-size').val() * 1024 * 1024);
-            }
-            catch (e) {
+            } catch (e) {
               arangoHelper.arangoError('Please enter a valid number');
               return 0;
             }
@@ -128,28 +115,25 @@
             try {
               indexBuckets = JSON.parse($('#change-index-buckets').val());
               if (indexBuckets < 1 || parseInt(indexBuckets) !== Math.pow(2, Math.log2(indexBuckets))) {
-                throw "invalid indexBuckets value";
+                throw 'invalid indexBuckets value';
               }
-            }
-            catch (e) {
+            } catch (e) {
               arangoHelper.arangoError('Please enter a valid number of index buckets');
               return 0;
             }
-            var callbackChange = function(error) {
+            var callbackChange = function (error) {
               if (error) {
-                arangoHelper.arangoError("Collection error: " + error.responseText);
-              }
-              else {
-                arangoHelper.arangoNotification("Collection: " + "Successfully changed.");
-                window.App.navigate("#cSettings/" + newname, {trigger: true});
+                arangoHelper.arangoError('Collection error: ' + error.responseText);
+              } else {
+                arangoHelper.arangoNotification('Collection: ' + 'Successfully changed.');
+                window.App.navigate('#cSettings/' + newname, {trigger: true});
               }
             }.bind(this);
 
-            var callbackRename = function(error) {
+            var callbackRename = function (error) {
               if (error) {
-                arangoHelper.arangoError("Collection error: " + error.responseText);
-              }
-              else {
+                arangoHelper.arangoError('Collection error: ' + error.responseText);
+              } else {
                 var wfs = $('#change-collection-sync').val();
                 this.model.changeCollection(wfs, journalSize, indexBuckets, callbackChange);
               }
@@ -157,32 +141,26 @@
 
             if (frontendConfig.isCluster === false) {
               this.model.renameCollection(newname, callbackRename);
-            }
-            else {
+            } else {
               callbackRename();
             }
-          }
-          else if (status === 'unloaded') {
+          } else if (status === 'unloaded') {
             if (this.model.get('name') !== newname) {
-
-              var callbackRename2 = function(error, data) {
+              var callbackRename2 = function (error, data) {
                 if (error) {
-                  arangoHelper.arangoError("Collection" + data.responseText);
-                }
-                else {
-                  arangoHelper.arangoNotification("Collection" + "Successfully changed.");
-                  window.App.navigate("#cSettings/" + newname, {trigger: true});
+                  arangoHelper.arangoError('Collection' + data.responseText);
+                } else {
+                  arangoHelper.arangoNotification('Collection' + 'Successfully changed.');
+                  window.App.navigate('#cSettings/' + newname, {trigger: true});
                 }
               }.bind(this);
 
               if (frontendConfig.isCluster === false) {
                 this.model.renameCollection(newname, callbackRename2);
-              }
-              else {
+              } else {
                 callbackRename2();
               }
-            }
-            else {
+            } else {
               window.modalView.hide();
             }
           }
@@ -191,16 +169,14 @@
 
       window.isCoordinator(callback);
     },
-    renderSettings: function() {
-
-      var callback = function(error, isCoordinator) {
+    renderSettings: function () {
+      var callback = function (error, isCoordinator) {
         if (error) {
-          arangoHelper.arangoError("Error","Could not get coordinator info");
-        }
-        else {
+          arangoHelper.arangoError('Error', 'Could not get coordinator info');
+        } else {
           var collectionIsLoaded = false;
 
-          if (this.model.get('status') === "loaded") {
+          if (this.model.get('status') === 'loaded') {
             collectionIsLoaded = true;
           }
 
@@ -210,16 +186,16 @@
           if (!isCoordinator) {
             tableContent.push(
               window.modalView.createTextEntry(
-                "change-collection-name",
-                "Name",
+                'change-collection-name',
+                'Name',
                 this.model.get('name'),
                 false,
-                "",
+                '',
                 true,
                 [
                   {
                     rule: Joi.string().regex(/^[a-zA-Z]/),
-                    msg: "Collection name must always start with a letter."
+                    msg: 'Collection name must always start with a letter.'
                   },
                   {
                     rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
@@ -227,53 +203,52 @@
                   },
                   {
                     rule: Joi.string().required(),
-                    msg: "No collection name given."
+                    msg: 'No collection name given.'
                   }
                 ]
               )
             );
           }
 
-          var after = function() {
-
+          var after = function () {
             tableContent.push(
               window.modalView.createReadOnlyEntry(
-                "change-collection-id", "ID", this.model.get('id'), ""
+                'change-collection-id', 'ID', this.model.get('id'), ''
               )
             );
             tableContent.push(
               window.modalView.createReadOnlyEntry(
-                "change-collection-type", "Type", this.model.get('type'), ""
+                'change-collection-type', 'Type', this.model.get('type'), ''
               )
             );
             tableContent.push(
               window.modalView.createReadOnlyEntry(
-                "change-collection-status", "Status", this.model.get('status'), ""
+                'change-collection-status', 'Status', this.model.get('status'), ''
               )
             );
             buttons.push(
               window.modalView.createDeleteButton(
-                "Delete",
+                'Delete',
                 this.deleteCollection.bind(this)
               )
             );
             buttons.push(
               window.modalView.createDeleteButton(
-                "Truncate",
+                'Truncate',
                 this.truncateCollection.bind(this)
               )
             );
             if (collectionIsLoaded) {
               buttons.push(
                 window.modalView.createNotificationButton(
-                  "Unload",
+                  'Unload',
                   this.unloadCollection.bind(this)
                 )
               );
             } else {
               buttons.push(
                 window.modalView.createNotificationButton(
-                  "Load",
+                  'Load',
                   this.loadCollection.bind(this)
                 )
               );
@@ -281,17 +256,17 @@
 
             buttons.push(
               window.modalView.createSuccessButton(
-                "Save",
+                'Save',
                 this.saveModifiedCollection.bind(this)
               )
             );
 
-            var tabBar = ["General", "Indices"],
-              templates =  ["modalTable.ejs", "indicesView.ejs"];
+            var tabBar = ['General', 'Indices'],
+              templates = ['modalTable.ejs', 'indicesView.ejs'];
 
             window.modalView.show(
               templates,
-              "Modify Collection",
+              'Modify Collection',
               buttons,
               tableContent, null, null,
               this.events, null,
@@ -301,28 +276,26 @@
           }.bind(this);
 
           if (collectionIsLoaded) {
-
-            var callback2 = function(error, data) {
+            var callback2 = function (error, data) {
               if (error) {
-                arangoHelper.arangoError("Collection", "Could not fetch properties");
-              }
-              else {
-                var journalSize = data.journalSize/(1024*1024);
+                arangoHelper.arangoError('Collection', 'Could not fetch properties');
+              } else {
+                var journalSize = data.journalSize / (1024 * 1024);
                 var indexBuckets = data.indexBuckets;
                 var wfs = data.waitForSync;
 
                 tableContent.push(
                   window.modalView.createTextEntry(
-                    "change-collection-size",
-                    "Journal size",
+                    'change-collection-size',
+                    'Journal size',
                     journalSize,
-                    "The maximal size of a journal or datafile (in MB). Must be at least 1.",
-                    "",
+                    'The maximal size of a journal or datafile (in MB). Must be at least 1.',
+                    '',
                     true,
                     [
                       {
                         rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                        msg: "Must be a number."
+                        msg: 'Must be a number.'
                       }
                     ]
                   )
@@ -330,16 +303,16 @@
 
                 tableContent.push(
                   window.modalView.createTextEntry(
-                    "change-index-buckets",
-                    "Index buckets",
+                    'change-index-buckets',
+                    'Index buckets',
                     indexBuckets,
-                    "The number of index buckets for this collection. Must be at least 1 and a power of 2.",
-                    "",
+                    'The number of index buckets for this collection. Must be at least 1 and a power of 2.',
+                    '',
                     true,
                     [
                       {
                         rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
-                        msg: "Must be a number greater than 1 and a power of 2."
+                        msg: 'Must be a number greater than 1 and a power of 2.'
                       }
                     ]
                   )
@@ -348,28 +321,24 @@
                 // prevent "unexpected sync method error"
                 tableContent.push(
                   window.modalView.createSelectEntry(
-                    "change-collection-sync",
-                    "Wait for sync",
+                    'change-collection-sync',
+                    'Wait for sync',
                     wfs,
-                    "Synchronize to disk before returning from a create or update of a document.",
-                    [{value: false, label: "No"}, {value: true, label: "Yes"}]        )
+                    'Synchronize to disk before returning from a create or update of a document.',
+                    [{value: false, label: 'No'}, {value: true, label: 'Yes'}])
                 );
               }
               after();
-
             }.bind(this);
 
             this.model.getProperties(callback2);
+          } else {
+            after();
           }
-          else {
-            after(); 
-          }
-
         }
       }.bind(this);
       window.isCoordinator(callback);
     }
 
   });
-
 }());

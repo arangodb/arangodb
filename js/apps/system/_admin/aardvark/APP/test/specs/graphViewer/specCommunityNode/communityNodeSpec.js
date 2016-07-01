@@ -1,42 +1,41 @@
-/*jshint unused: false */
-/*global beforeEach, afterEach, jasmine*/
-/*global describe, it, expect, spyOn */
-/*global helper*/
-/*global document, window*/
-/*global CommunityNode*/
+/* jshint unused: false */
+/* global beforeEach, afterEach, jasmine*/
+/* global describe, it, expect, spyOn */
+/* global helper*/
+/* global document, window*/
+/* global CommunityNode*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Graph functionality
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Graph functionality
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  "use strict";
+  'use strict';
 
-  describe('Community Node', function() {
-
+  describe('Community Node', function () {
     var nodes;
 
     beforeEach(function () {
@@ -44,37 +43,36 @@
       helper.insertNSimpleNodes(nodes, 30);
     });
 
-    describe('checking setup', function() {
-
-      it('should throw an error if no parent is given', function() {
+    describe('checking setup', function () {
+      it('should throw an error if no parent is given', function () {
         expect(
-          function() {
+          function () {
             var t = new CommunityNode();
           }
-        ).toThrow("A parent element has to be given.");
+        ).toThrow('A parent element has to be given.');
       });
 
-      it('should not throw an error if a parent is given', function() {
+      it('should not throw an error if a parent is given', function () {
         expect(
-          function() {
+          function () {
             var t = new CommunityNode({
-              dissolveCommunity: function() {},
-              checkNodeLimit: function() {}
+              dissolveCommunity: function () {},
+              checkNodeLimit: function () {}
             });
           }
         ).not.toThrow();
       });
 
-      it('should create a ForceLayouter on setup', function() {
-        spyOn(window, "ForceLayouter").andCallFake(function() {
+      it('should create a ForceLayouter on setup', function () {
+        spyOn(window, 'ForceLayouter').andCallFake(function () {
           return {
-            start: function(){},
-            stop: function(){}
+            start: function () {},
+            stop: function () {}
           };
         });
         var t = new CommunityNode({
-          dissolveCommunity: function() {},
-          checkNodeLimit: function() {}
+          dissolveCommunity: function () {},
+          checkNodeLimit: function () {}
         });
         expect(window.ForceLayouter).wasCalledWith({
           distance: 100,
@@ -86,31 +84,29 @@
           links: []
         });
       });
-
     });
 
-    describe('checking the interface', function() {
-
+    describe('checking the interface', function () {
       var testee;
 
-      beforeEach(function() {
+      beforeEach(function () {
         var parent = {
-          dissolveCommunity: function() {},
-          checkNodeLimit: function() {}
+          dissolveCommunity: function () {},
+          checkNodeLimit: function () {}
         };
         testee = new CommunityNode(parent, nodes.slice(3, 13));
         this.addMatchers({
-          toHaveFunction: function(func, argCounter) {
+          toHaveFunction: function (func, argCounter) {
             var obj = this.actual;
-            this.message = function(){
+            this.message = function () {
               return testee.constructor.name
-                + " should react to function "
+                + ' should react to function '
                 + func
-                + " with at least "
+                + ' with at least '
                 + argCounter
-                + " arguments.";
+                + ' arguments.';
             };
-            if (typeof(obj[func]) !== "function") {
+            if (typeof (obj[func]) !== 'function') {
               return false;
             }
             if (obj[func].length < argCounter) {
@@ -121,132 +117,131 @@
         });
       });
 
-      it('should offer a function to getAll included nodes', function() {
-        expect(testee).toHaveFunction("getNodes", 0);
+      it('should offer a function to getAll included nodes', function () {
+        expect(testee).toHaveFunction('getNodes', 0);
       });
 
-      it('should offer a function to check if a node is included', function() {
-        expect(testee).toHaveFunction("hasNode", 1);
+      it('should offer a function to check if a node is included', function () {
+        expect(testee).toHaveFunction('hasNode', 1);
       });
 
-      it('should offer a function to get a node if it is included', function() {
-        expect(testee).toHaveFunction("getNode", 1);
+      it('should offer a function to get a node if it is included', function () {
+        expect(testee).toHaveFunction('getNode', 1);
       });
 
-      it('should offer a function to insert an additional node', function() {
-        expect(testee).toHaveFunction("insertNode", 1);
+      it('should offer a function to insert an additional node', function () {
+        expect(testee).toHaveFunction('insertNode', 1);
       });
 
-      it('should offer a function to insert an incomming edge', function() {
-        expect(testee).toHaveFunction("insertInboundEdge", 1);
+      it('should offer a function to insert an incomming edge', function () {
+        expect(testee).toHaveFunction('insertInboundEdge', 1);
       });
 
-      it('should offer a function to insert an outgoing edge', function() {
-        expect(testee).toHaveFunction("insertOutboundEdge", 1);
+      it('should offer a function to insert an outgoing edge', function () {
+        expect(testee).toHaveFunction('insertOutboundEdge', 1);
       });
 
-      it('should offer a function to remove in incomming edge', function() {
-        expect(testee).toHaveFunction("removeInboundEdge", 1);
+      it('should offer a function to remove in incomming edge', function () {
+        expect(testee).toHaveFunction('removeInboundEdge', 1);
       });
 
-      it('should offer a function to remove in outgoing edge', function() {
-        expect(testee).toHaveFunction("removeOutboundEdge", 1);
+      it('should offer a function to remove in outgoing edge', function () {
+        expect(testee).toHaveFunction('removeOutboundEdge', 1);
       });
 
-      it('should offer a function to remove a node', function() {
-        expect(testee).toHaveFunction("removeNode", 1);
+      it('should offer a function to remove a node', function () {
+        expect(testee).toHaveFunction('removeNode', 1);
       });
 
-      it('should offer a function to remove and return all outgoing edges of a node', function() {
-        expect(testee).toHaveFunction("removeOutboundEdgesFromNode", 1);
+      it('should offer a function to remove and return all outgoing edges of a node', function () {
+        expect(testee).toHaveFunction('removeOutboundEdgesFromNode', 1);
       });
 
-      it('should offer a function to get the dissolve info', function() {
-        expect(testee).toHaveFunction("getDissolveInfo", 0);
+      it('should offer a function to get the dissolve info', function () {
+        expect(testee).toHaveFunction('getDissolveInfo', 0);
       });
 
-      it('should offer a function to shape the community', function() {
-        expect(testee).toHaveFunction("shapeNodes", 5);
+      it('should offer a function to shape the community', function () {
+        expect(testee).toHaveFunction('shapeNodes', 5);
       });
 
-      it('should offer a function to expand the community', function() {
-        expect(testee).toHaveFunction("expand", 0);
+      it('should offer a function to expand the community', function () {
+        expect(testee).toHaveFunction('expand', 0);
       });
 
-      it('should offer a function to collapse the community', function() {
-        expect(testee).toHaveFunction("collapse", 0);
+      it('should offer a function to collapse the community', function () {
+        expect(testee).toHaveFunction('collapse', 0);
       });
 
-      it('should offer a function to dissolve the community', function() {
-        expect(testee).toHaveFunction("dissolve", 0);
+      it('should offer a function to dissolve the community', function () {
+        expect(testee).toHaveFunction('dissolve', 0);
       });
 
-      it('should offer a function to return the charge value for layouting', function() {
-        expect(testee).toHaveFunction("getCharge", 0);
+      it('should offer a function to return the charge value for layouting', function () {
+        expect(testee).toHaveFunction('getCharge', 0);
       });
 
-      it('should offer a function to return the link distance value for layouting', function() {
-        expect(testee).toHaveFunction("getDistance", 0);
+      it('should offer a function to return the link distance value for layouting', function () {
+        expect(testee).toHaveFunction('getDistance', 0);
       });
     });
 
-    describe('node functionality', function() {
-
+    describe('node functionality', function () {
       var parent, layouter;
 
-      beforeEach(function() {
+      beforeEach(function () {
         parent = {
-          dissolveCommunity: function() {},
-          checkNodeLimit: function() {}
+          dissolveCommunity: function () {},
+          checkNodeLimit: function () {}
         };
         layouter = {
-          start: function() {},
-          stop: function() {}
+          start: function () {},
+          stop: function () {}
         };
-        spyOn(window, "ForceLayouter").andCallFake(function() {
+        spyOn(window, 'ForceLayouter').andCallFake(function () {
           return layouter;
         });
       });
 
-      it('should create a communityNode containing the given nodes', function() {
+      it('should create a communityNode containing the given nodes', function () {
         var c = new CommunityNode(parent, nodes.slice(3, 13));
         expect(c.getNodes()).toEqual(nodes.slice(3, 13));
       });
 
-      it('should be able to insert a new node', function() {
+      it('should be able to insert a new node', function () {
         var c = new CommunityNode(parent, nodes.slice(3, 13)),
           n = {
-          _id: "foxx",
-          _inboundCounter: 0,
-          _outboundCounter: 0,
-          position: {
-            x: 1,
-            y: 1,
-            z: 1
-          }
+            _id: 'foxx',
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
         };
         c.insertNode(n);
         expect(c.getNodes()).toEqual(nodes.slice(3, 13).concat([n]));
       });
 
-      it('should be able to check if a node is included', function() {
+      it('should be able to check if a node is included', function () {
         var n = {
-          _id: "foxx",
-          _inboundCounter: 0,
-          _outboundCounter: 0,
-          position: {
-            x: 1,
-            y: 1,
-            z: 1
-          }
-        },
-        c = new CommunityNode(parent, [n]);
+            _id: 'foxx',
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
+          },
+          c = new CommunityNode(parent, [n]);
 
-        expect(c.hasNode("foxx")).toBeTruthy();
-        expect(c.hasNode("1")).toBeFalsy();
+        expect(c.hasNode('foxx')).toBeTruthy();
+        expect(c.hasNode('1')).toBeFalsy();
       });
 
-      it('should only acknowledge included nodes', function() {
+      it('should only acknowledge included nodes', function () {
         var c = new CommunityNode(parent, nodes.slice(3, 13)),
           i;
         for (i = 0; i < nodes.length; i++) {
@@ -258,47 +253,47 @@
         }
       });
 
-      it('should return nodes by id', function() {
+      it('should return nodes by id', function () {
         var n = {
-          _id: "foxx",
-          _inboundCounter: 0,
-          _outboundCounter: 0,
-          position: {
-            x: 1,
-            y: 1,
-            z: 1
-          }
-        },
-        c = new CommunityNode(parent, [n]);
-        expect(c.getNode("foxx")).toEqual(n);
+            _id: 'foxx',
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
+          },
+          c = new CommunityNode(parent, [n]);
+        expect(c.getNode('foxx')).toEqual(n);
       });
 
-      it('should return undefined if node is not contained', function() {
+      it('should return undefined if node is not contained', function () {
         var n = {
-          _id: "foxx",
-          _inboundCounter: 0,
-          _outboundCounter: 0,
-          position: {
-            x: 1,
-            y: 1,
-            z: 1
-          }
-        },
-        c = new CommunityNode(parent, [n]);
-        expect(c.getNode("nofoxx")).toBeUndefined();
+            _id: 'foxx',
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
+          },
+          c = new CommunityNode(parent, [n]);
+        expect(c.getNode('nofoxx')).toBeUndefined();
       });
 
-      it('should be able to remove a node', function() {
+      it('should be able to remove a node', function () {
         var c = new CommunityNode(parent, nodes.slice(3, 5)),
           n = {
-          _id: "foxx",
-          _inboundCounter: 0,
-          _outboundCounter: 0,
-          position: {
-            x: 1,
-            y: 1,
-            z: 1
-          }
+            _id: 'foxx',
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
         };
         expect(c._size).toEqual(2);
         c.insertNode(n);
@@ -308,29 +303,29 @@
         expect(c.getNodes()).toEqual(nodes.slice(3, 5));
       });
 
-      it('should be able to remove a node by id', function() {
+      it('should be able to remove a node by id', function () {
         var c = new CommunityNode(parent, nodes.slice(3, 5)),
           n = {
-          _id: "foxx",
-          _inboundCounter: 0,
-          _outboundCounter: 0,
-          position: {
-            x: 1,
-            y: 1,
-            z: 1
-          }
+            _id: 'foxx',
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
         };
         expect(c._size).toEqual(2);
         c.insertNode(n);
         expect(c._size).toEqual(3);
-        c.removeNode("foxx");
+        c.removeNode('foxx');
         expect(c._size).toEqual(2);
         expect(c.getNodes()).toEqual(nodes.slice(3, 5));
       });
 
-      it('should position the initial nodes', function() {
-        spyOn(layouter, "start");
-        spyOn(layouter, "stop");
+      it('should position the initial nodes', function () {
+        spyOn(layouter, 'start');
+        spyOn(layouter, 'stop');
 
         var c = new CommunityNode(parent, nodes.slice(3, 13));
 
@@ -340,11 +335,11 @@
         expect(layouter.stop.calls.length).toEqual(1);
       });
 
-      it('should update the positioning if a new node is inserted', function() {
+      it('should update the positioning if a new node is inserted', function () {
         var c = new CommunityNode(parent, nodes.slice(3, 5));
 
-        spyOn(layouter, "start");
-        spyOn(layouter, "stop");
+        spyOn(layouter, 'start');
+        spyOn(layouter, 'stop');
 
         c.insertNode(nodes[12]);
 
@@ -354,11 +349,11 @@
         expect(layouter.stop.calls.length).toEqual(1);
       });
 
-      it('should update the positioning if a node is removed', function() {
+      it('should update the positioning if a node is removed', function () {
         var c = new CommunityNode(parent, nodes.slice(3, 5));
 
-        spyOn(layouter, "start");
-        spyOn(layouter, "stop");
+        spyOn(layouter, 'start');
+        spyOn(layouter, 'stop');
 
         c.removeNode(nodes[3]);
 
@@ -367,18 +362,16 @@
         expect(layouter.start.calls.length).toEqual(1);
         expect(layouter.stop.calls.length).toEqual(1);
       });
-
     });
 
-    describe('shaping functionality', function() {
-
+    describe('shaping functionality', function () {
       var tSpan1, tSpan2, tSpan3, text, g, shaper, gv, colourMapper, box, boxGroup, boxRect,
         parent, c, width, titleBG, disBtn, titleText, colBtn, comShapeInner;
 
-      beforeEach(function() {
+      beforeEach(function () {
         parent = {
-          dissolveCommunity: function() {},
-          checkNodeLimit: function() {}
+          dissolveCommunity: function () {},
+          checkNodeLimit: function () {}
         };
         var tspans = 0;
         width = 90;
@@ -389,64 +382,64 @@
           height: 20
         };
         tSpan1 = {
-          attr: function() {
+          attr: function () {
             return this;
           },
-          text: function() {
+          text: function () {
             return this;
           }
         };
         tSpan2 = {
-          attr: function() {
+          attr: function () {
             return this;
           },
-          text: function() {
+          text: function () {
             return this;
           }
         };
         tSpan3 = {
-          attr: function() {
+          attr: function () {
             return this;
           },
-          text: function() {
+          text: function () {
             return this;
           }
         };
         boxRect = {
-          attr: function() {
+          attr: function () {
             return this;
           }
         };
         titleBG = {
-          attr: function() {
+          attr: function () {
             return this;
           }
         };
         disBtn = {
-          attr: function() {
+          attr: function () {
             return this;
           },
-          on: function() {
+          on: function () {
             return this;
           }
         };
         colBtn = {
-          attr: function() {
+          attr: function () {
             return this;
           },
-          on: function() {
+          on: function () {
             return this;
           }
         };
         titleText = {
-          attr: function() {
+          attr: function () {
             return this;
           }
         };
         boxGroup = {
           appendCounter: 0,
-          append: function(name) {
-            if (name === "rect") {
+          append: function (name) {
+            if (name === 'rect') {
               this.appendCounter++;
               switch (this.appendCounter) {
                 case 1:
@@ -455,7 +448,7 @@
                   return titleBG;
               }
             }
-            if (name === "image") {
+            if (name === 'image') {
               this.appendCounter++;
               switch (this.appendCounter) {
                 case 3:
@@ -464,40 +457,40 @@
                   return colBtn;
               }
             }
-            if (name === "text") {
+            if (name === 'text') {
               return titleText;
             }
           },
-          attr: function() {
+          attr: function () {
             return this;
           }
         };
         comShapeInner = {
-          attr: function() {
+          attr: function () {
             return this;
           },
-          on: function() {
+          on: function () {
             return this;
           },
-          select: function() {
+          select: function () {
             return {
-              attr: function() {
+              attr: function () {
                 return width;
               }
             };
           },
-          append: function(type) {
-            if (type === "text") {
+          append: function (type) {
+            if (type === 'text') {
               return text;
             }
           }
         };
         text = {
-          attr: function() {
+          attr: function () {
             return this;
           },
-          append: function() {
-            switch(tspans) {
+          append: function () {
+            switch (tspans) {
               case 0:
                 tspans++;
                 return tSpan1;
@@ -511,37 +504,37 @@
           }
         };
         g = {
-          attr: function() {
+          attr: function () {
             return this;
           },
-          append: function(type) {
-            if (type === "g") {
+          append: function (type) {
+            if (type === 'g') {
               return boxGroup;
             }
           },
-          on: function() {
+          on: function () {
             return this;
           }
         };
         shaper = {
-          shapeFunc: function() {},
-          shapeQue: function() {}
+          shapeFunc: function () {},
+          shapeQue: function () {}
         };
         gv = {
-          start: function() {}
+          start: function () {}
         };
         colourMapper = {
-          getForegroundCommunityColour: function() {
-            return "black";
+          getForegroundCommunityColour: function () {
+            return 'black';
           },
-          getCommunityColour: function() {
-            return "white";
+          getCommunityColour: function () {
+            return 'white';
           }
         };
 
-        spyOn(document, "getElementById").andCallFake(function() {
+        spyOn(document, 'getElementById').andCallFake(function () {
           return {
-            getBBox: function() {
+            getBBox: function () {
               return box;
             }
           };
@@ -550,11 +543,11 @@
         c = new CommunityNode(parent, nodes.slice(0, 5));
       });
 
-      it('should initially contain the required attributes for shaping', function() {
+      it('should initially contain the required attributes for shaping', function () {
         var x = 42,
           y = 23,
           n = {
-            _id: "foxx",
+            _id: 'foxx',
             _inboundCounter: 0,
             _outboundCounter: 0,
             x: x,
@@ -566,7 +559,7 @@
               z: 1
             }
           },
-          otherC = new CommunityNode(parent, [n].concat(nodes.slice(5,21)));
+          otherC = new CommunityNode(parent, [n].concat(nodes.slice(5, 21)));
         expect(otherC.x).toBeDefined();
         expect(otherC.x).toEqual(x);
         expect(otherC.y).toBeDefined();
@@ -575,20 +568,20 @@
         expect(otherC._isCommunity).toBeTruthy();
       });
 
-      it('should shape the collapsed community with given functions', function() {
+      it('should shape the collapsed community with given functions', function () {
         g = {
-          on: function() {
+          on: function () {
             return this;
           },
-          append: function() {
+          append: function () {
             return comShapeInner;
           }
         };
-        spyOn(g, "append").andCallThrough();
-        spyOn(g, "on").andCallThrough();
-        spyOn(shaper, "shapeFunc").andCallThrough();
-        spyOn(comShapeInner, "attr").andCallThrough();
-        spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
+        spyOn(g, 'append').andCallThrough();
+        spyOn(g, 'on').andCallThrough();
+        spyOn(shaper, 'shapeFunc').andCallThrough();
+        spyOn(comShapeInner, 'attr').andCallThrough();
+        spyOn(colourMapper, 'getForegroundCommunityColour').andCallThrough();
 
         c.shapeNodes(
           g,
@@ -599,32 +592,32 @@
         );
 
         expect(colourMapper.getForegroundCommunityColour).wasCalled();
-        expect(g.append).wasCalledWith("g");
-        expect(g.on).wasCalledWith("click", null);
-        expect(comShapeInner.attr).wasCalledWith("stroke", "black");
+        expect(g.append).wasCalledWith('g');
+        expect(g.on).wasCalledWith('click', null);
+        expect(comShapeInner.attr).wasCalledWith('stroke', 'black');
         expect(shaper.shapeFunc).wasCalledWith(comShapeInner, 9);
         expect(shaper.shapeFunc).wasCalledWith(comShapeInner, 6);
         expect(shaper.shapeFunc).wasCalledWith(comShapeInner, 3);
         expect(shaper.shapeFunc).wasCalledWith(comShapeInner);
       });
 
-      it('should add a label containing the size of a community', function() {
+      it('should add a label containing the size of a community', function () {
         g = {
-          on: function() {
+          on: function () {
             return this;
           },
-          append: function() {
+          append: function () {
             return comShapeInner;
           }
         };
 
-        spyOn(g, "append").andCallThrough();
-        spyOn(comShapeInner, "append").andCallThrough();
-        spyOn(text, "attr").andCallThrough();
-        spyOn(text, "append").andCallThrough();
-        spyOn(tSpan1, "attr").andCallThrough();
-        spyOn(tSpan1, "text").andCallThrough();
-        spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
+        spyOn(g, 'append').andCallThrough();
+        spyOn(comShapeInner, 'append').andCallThrough();
+        spyOn(text, 'attr').andCallThrough();
+        spyOn(text, 'append').andCallThrough();
+        spyOn(tSpan1, 'attr').andCallThrough();
+        spyOn(tSpan1, 'text').andCallThrough();
+        spyOn(colourMapper, 'getForegroundCommunityColour').andCallThrough();
 
         c.shapeNodes(
           g,
@@ -634,45 +627,42 @@
           colourMapper
         );
 
+        expect(g.append).wasCalledWith('g');
+        expect(comShapeInner.append).wasCalledWith('text');
+        expect(text.attr).wasCalledWith('text-anchor', 'middle');
+        expect(text.attr).wasCalledWith('fill', 'black');
+        expect(text.attr).wasCalledWith('stroke', 'none');
 
-        expect(g.append).wasCalledWith("g");
-        expect(comShapeInner.append).wasCalledWith("text");
-        expect(text.attr).wasCalledWith("text-anchor", "middle");
-        expect(text.attr).wasCalledWith("fill", "black");
-        expect(text.attr).wasCalledWith("stroke", "none");
-
-        expect(text.append).wasCalledWith("tspan");
-        expect(tSpan1.attr).wasCalledWith("x", width * 2 / 3);
-        expect(tSpan1.attr).wasCalledWith("y", "0");
+        expect(text.append).wasCalledWith('tspan');
+        expect(tSpan1.attr).wasCalledWith('x', width * 2 / 3);
+        expect(tSpan1.attr).wasCalledWith('y', '0');
         expect(tSpan1.text).wasCalledWith(5);
-
-
       });
 
-      it('should add a label if a reason is given', function() {
+      it('should add a label if a reason is given', function () {
         g = {
-          on: function() {
+          on: function () {
             return this;
           },
-          append: function() {
+          append: function () {
             return comShapeInner;
           }
         };
         c._reason = {
-          key: "key",
-          value: "label"
+          key: 'key',
+          value: 'label'
         };
 
-        spyOn(comShapeInner, "append").andCallThrough();
-        spyOn(text, "attr").andCallThrough();
-        spyOn(text, "append").andCallThrough();
-        spyOn(tSpan1, "attr").andCallThrough();
-        spyOn(tSpan1, "text").andCallThrough();
-        spyOn(tSpan2, "attr").andCallThrough();
-        spyOn(tSpan2, "text").andCallThrough();
-        spyOn(tSpan3, "attr").andCallThrough();
-        spyOn(tSpan3, "text").andCallThrough();
-        spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
+        spyOn(comShapeInner, 'append').andCallThrough();
+        spyOn(text, 'attr').andCallThrough();
+        spyOn(text, 'append').andCallThrough();
+        spyOn(tSpan1, 'attr').andCallThrough();
+        spyOn(tSpan1, 'text').andCallThrough();
+        spyOn(tSpan2, 'attr').andCallThrough();
+        spyOn(tSpan2, 'text').andCallThrough();
+        spyOn(tSpan3, 'attr').andCallThrough();
+        spyOn(tSpan3, 'text').andCallThrough();
+        spyOn(colourMapper, 'getForegroundCommunityColour').andCallThrough();
         c.shapeNodes(
           g,
           shaper.shapeFunc,
@@ -681,77 +671,75 @@
           colourMapper
         );
 
-
-        expect(comShapeInner.append).wasCalledWith("text");
-        expect(text.attr).wasCalledWith("text-anchor", "middle");
-        expect(text.attr).wasCalledWith("fill", "black");
-        expect(text.attr).wasCalledWith("stroke", "none");
-        expect(text.append).wasCalledWith("tspan");
+        expect(comShapeInner.append).wasCalledWith('text');
+        expect(text.attr).wasCalledWith('text-anchor', 'middle');
+        expect(text.attr).wasCalledWith('fill', 'black');
+        expect(text.attr).wasCalledWith('stroke', 'none');
+        expect(text.append).wasCalledWith('tspan');
         expect(text.append.calls.length).toEqual(3);
-        expect(tSpan1.attr).wasCalledWith("x", "0");
-        expect(tSpan1.attr).wasCalledWith("dy", "-4");
-        expect(tSpan1.text).wasCalledWith("key:");
+        expect(tSpan1.attr).wasCalledWith('x', '0');
+        expect(tSpan1.attr).wasCalledWith('dy', '-4');
+        expect(tSpan1.text).wasCalledWith('key:');
 
-        expect(tSpan2.attr).wasCalledWith("x", "0");
-        expect(tSpan2.attr).wasCalledWith("dy", "16");
-        expect(tSpan2.text).wasCalledWith("label");
+        expect(tSpan2.attr).wasCalledWith('x', '0');
+        expect(tSpan2.attr).wasCalledWith('dy', '16');
+        expect(tSpan2.text).wasCalledWith('label');
 
-        expect(tSpan3.attr).wasCalledWith("x", width * 2 / 3);
-        expect(tSpan3.attr).wasCalledWith("y", "0");
+        expect(tSpan3.attr).wasCalledWith('x', width * 2 / 3);
+        expect(tSpan3.attr).wasCalledWith('y', '0');
         expect(tSpan3.text).wasCalledWith(5);
       });
 
-      describe('if the community is expanded', function() {
-
+      describe('if the community is expanded', function () {
         var nodeSelector, interior, iEnter, iExit, iAll, iG,
-        observer, observerCB;
+          observer, observerCB;
 
-        beforeEach(function() {
-          g.selectAll = function(selector) {
+        beforeEach(function () {
+          g.selectAll = function (selector) {
             return nodeSelector;
           };
           nodeSelector = {
-            data: function() {
+            data: function () {
               return interior;
             }
           };
           interior = {
-            enter: function() {
+            enter: function () {
               return iEnter;
             },
-            exit: function() {
+            exit: function () {
               return iExit;
             },
-            selectAll: function() {
+            selectAll: function () {
               return iAll;
             },
-            attr: function() {
+            attr: function () {
               return this;
             }
           };
           iEnter = {
-            append: function() {
+            append: function () {
               return iG;
             }
           };
           iG = {
-            attr: function() {
+            attr: function () {
               return this;
             }
           };
           iExit = {
-            remove: function() {}
+            remove: function () {}
           };
           iAll = {
-            remove: function() {}
+            remove: function () {}
           };
           observer = {
-            observe: function() {},
-            disconnect: function() {}
+            observe: function () {},
+            disconnect: function () {}
           };
-          spyOn(window, "DomObserverFactory").andCallFake(function() {
+          spyOn(window, 'DomObserverFactory').andCallFake(function () {
             return {
-              createObserver: function(cb) {
+              createObserver: function (cb) {
                 observerCB = cb;
                 return observer;
               }
@@ -761,18 +749,16 @@
           c.expand();
         });
 
-
-        it('should print the bounding box correctly', function() {
-          spyOn(g, "append").andCallThrough();
-          spyOn(boxGroup, "append").andCallThrough();
-          spyOn(boxRect, "attr").andCallThrough();
-          spyOn(titleBG, "attr").andCallThrough();
-          spyOn(disBtn, "attr").andCallThrough();
-          spyOn(disBtn, "on").andCallThrough();
-          spyOn(colBtn, "attr").andCallThrough();
-          spyOn(colBtn, "on").andCallThrough();
-          spyOn(titleText, "attr").andCallThrough();
-
+        it('should print the bounding box correctly', function () {
+          spyOn(g, 'append').andCallThrough();
+          spyOn(boxGroup, 'append').andCallThrough();
+          spyOn(boxRect, 'attr').andCallThrough();
+          spyOn(titleBG, 'attr').andCallThrough();
+          spyOn(disBtn, 'attr').andCallThrough();
+          spyOn(disBtn, 'on').andCallThrough();
+          spyOn(colBtn, 'attr').andCallThrough();
+          spyOn(colBtn, 'on').andCallThrough();
+          spyOn(titleText, 'attr').andCallThrough();
 
           c.shapeNodes(
             g,
@@ -782,53 +768,52 @@
             colourMapper
           );
 
-          expect(g.append).wasCalledWith("g");
-          expect(boxGroup.append).wasCalledWith("rect");
-          expect(boxGroup.append).wasCalledWith("image");
-          expect(boxGroup.append).wasCalledWith("text");
+          expect(g.append).wasCalledWith('g');
+          expect(boxGroup.append).wasCalledWith('rect');
+          expect(boxGroup.append).wasCalledWith('image');
+          expect(boxGroup.append).wasCalledWith('text');
           expect(boxGroup.append.calls.length).toEqual(5);
 
-          expect(boxRect.attr).wasCalledWith("rx", "8");
-          expect(boxRect.attr).wasCalledWith("ry", "8");
-          expect(boxRect.attr).wasCalledWith("fill", "none");
-          expect(boxRect.attr).wasCalledWith("stroke", "black");
+          expect(boxRect.attr).wasCalledWith('rx', '8');
+          expect(boxRect.attr).wasCalledWith('ry', '8');
+          expect(boxRect.attr).wasCalledWith('fill', 'none');
+          expect(boxRect.attr).wasCalledWith('stroke', 'black');
 
-          expect(titleBG.attr).wasCalledWith("height", "20");
-          expect(titleBG.attr).wasCalledWith("rx", "8");
-          expect(titleBG.attr).wasCalledWith("ry", "8");
-          expect(titleBG.attr).wasCalledWith("fill", "#686766");
-          expect(titleBG.attr).wasCalledWith("stroke", "none");
+          expect(titleBG.attr).wasCalledWith('height', '20');
+          expect(titleBG.attr).wasCalledWith('rx', '8');
+          expect(titleBG.attr).wasCalledWith('ry', '8');
+          expect(titleBG.attr).wasCalledWith('fill', '#686766');
+          expect(titleBG.attr).wasCalledWith('stroke', 'none');
 
-          expect(disBtn.attr).wasCalledWith("xlink:href", "img/icon_delete.png");
-          expect(disBtn.attr).wasCalledWith("height", "16");
-          expect(disBtn.attr).wasCalledWith("width", "16");
-          expect(disBtn.attr).wasCalledWith("x", "5");
-          expect(disBtn.attr).wasCalledWith("y", "2");
-          expect(disBtn.attr).wasCalledWith("style", "cursor:pointer");
-          expect(disBtn.on).wasCalledWith("click", jasmine.any(Function));
+          expect(disBtn.attr).wasCalledWith('xlink:href', 'img/icon_delete.png');
+          expect(disBtn.attr).wasCalledWith('height', '16');
+          expect(disBtn.attr).wasCalledWith('width', '16');
+          expect(disBtn.attr).wasCalledWith('x', '5');
+          expect(disBtn.attr).wasCalledWith('y', '2');
+          expect(disBtn.attr).wasCalledWith('style', 'cursor:pointer');
+          expect(disBtn.on).wasCalledWith('click', jasmine.any(Function));
 
-          expect(colBtn.attr).wasCalledWith("xlink:href", "img/gv_collapse.png");
-          expect(colBtn.attr).wasCalledWith("height", "16");
-          expect(colBtn.attr).wasCalledWith("width", "16");
-          expect(colBtn.attr).wasCalledWith("x", "25");
-          expect(colBtn.attr).wasCalledWith("y", "2");
-          expect(colBtn.attr).wasCalledWith("style", "cursor:pointer");
-          expect(colBtn.on).wasCalledWith("click", jasmine.any(Function));
+          expect(colBtn.attr).wasCalledWith('xlink:href', 'img/gv_collapse.png');
+          expect(colBtn.attr).wasCalledWith('height', '16');
+          expect(colBtn.attr).wasCalledWith('width', '16');
+          expect(colBtn.attr).wasCalledWith('x', '25');
+          expect(colBtn.attr).wasCalledWith('y', '2');
+          expect(colBtn.attr).wasCalledWith('style', 'cursor:pointer');
+          expect(colBtn.on).wasCalledWith('click', jasmine.any(Function));
 
-          expect(titleText.attr).wasCalledWith("fill", "white");
-          expect(titleText.attr).wasCalledWith("stroke", "none");
-          expect(titleText.attr).wasCalledWith("x", "45");
-          expect(titleText.attr).wasCalledWith("y", "15");
-          expect(titleText.attr).wasCalledWith("text-anchor", "left");
-
+          expect(titleText.attr).wasCalledWith('fill', 'white');
+          expect(titleText.attr).wasCalledWith('stroke', 'none');
+          expect(titleText.attr).wasCalledWith('x', '45');
+          expect(titleText.attr).wasCalledWith('y', '15');
+          expect(titleText.attr).wasCalledWith('text-anchor', 'left');
         });
 
-        it('should update the box as soon as the dom is ready', function() {
-          spyOn(boxGroup, "attr").andCallThrough();
-          spyOn(boxRect, "attr").andCallThrough();
-          spyOn(titleBG, "attr").andCallThrough();
-          spyOn(observer, "observe").andCallThrough();
-          spyOn(observer, "disconnect").andCallThrough();
+        it('should update the box as soon as the dom is ready', function () {
+          spyOn(boxGroup, 'attr').andCallThrough();
+          spyOn(boxRect, 'attr').andCallThrough();
+          spyOn(titleBG, 'attr').andCallThrough();
+          spyOn(observer, 'observe').andCallThrough();
+          spyOn(observer, 'disconnect').andCallThrough();
 
           c.shapeNodes(
             g,
@@ -837,43 +822,41 @@
             gv.start,
             colourMapper
           );
-
 
           expect(document.getElementById).wasCalledWith(c._id);
           expect(observer.observe).wasCalledWith(
             jasmine.any(Object),
             {
-              subtree:true,
-              attributes:true
+              subtree: true,
+              attributes: true
             }
           );
 
-          observerCB([{attributeName: "transform"}]);
+          observerCB([{attributeName: 'transform'}]);
           expect(boxGroup.attr).wasCalledWith(
-            "transform", "translate(" + (box.x - 5) + "," + (box.y - 25) + ")"
+            'transform', 'translate(' + (box.x - 5) + ',' + (box.y - 25) + ')'
           );
-          expect(boxRect.attr).wasCalledWith("width", box.width + 10);
-          expect(boxRect.attr).wasCalledWith("height", box.height + 30);
-          expect(titleBG.attr).wasCalledWith("width", box.width + 10);
+          expect(boxRect.attr).wasCalledWith('width', box.width + 10);
+          expect(boxRect.attr).wasCalledWith('height', box.height + 30);
+          expect(titleBG.attr).wasCalledWith('width', box.width + 10);
           expect(observer.disconnect).wasCalled();
         });
 
-        it('should shape the expanded community with given functions', function() {
-
-          spyOn(g, "selectAll").andCallThrough();
-          spyOn(nodeSelector, "data").andCallFake(function(a, func) {
+        it('should shape the expanded community with given functions', function () {
+          spyOn(g, 'selectAll').andCallThrough();
+          spyOn(nodeSelector, 'data').andCallFake(function (a, func) {
             expect(func(nodes[0])).toEqual(nodes[0]._id);
             expect(func(nodes[6])).toEqual(nodes[6]._id);
             return interior;
           });
-          spyOn(interior, "enter").andCallThrough();
-          spyOn(interior, "exit").andCallThrough();
-          spyOn(interior, "selectAll").andCallThrough();
-          spyOn(iEnter, "append").andCallThrough();
-          spyOn(iG, "attr").andCallThrough();
-          spyOn(iExit, "remove").andCallThrough();
-          spyOn(iAll, "remove").andCallThrough();
-          spyOn(shaper, "shapeQue").andCallThrough();
+          spyOn(interior, 'enter').andCallThrough();
+          spyOn(interior, 'exit').andCallThrough();
+          spyOn(interior, 'selectAll').andCallThrough();
+          spyOn(iEnter, 'append').andCallThrough();
+          spyOn(iG, 'attr').andCallThrough();
+          spyOn(iExit, 'remove').andCallThrough();
+          spyOn(iAll, 'remove').andCallThrough();
+          spyOn(shaper, 'shapeQue').andCallThrough();
 
           c.shapeNodes(
             g,
@@ -883,32 +866,32 @@
             colourMapper
           );
 
-          expect(g.selectAll).wasCalledWith(".node");
+          expect(g.selectAll).wasCalledWith('.node');
           expect(nodeSelector.data).wasCalledWith(c.getNodes(), jasmine.any(Function));
           expect(interior.enter).wasCalled();
-          expect(iEnter.append).wasCalledWith("g");
-          expect(iG.attr).wasCalledWith("class", "node");
-          expect(iG.attr).wasCalledWith("id", jasmine.any(Function));
+          expect(iEnter.append).wasCalledWith('g');
+          expect(iG.attr).wasCalledWith('class', 'node');
+          expect(iG.attr).wasCalledWith('id', jasmine.any(Function));
           expect(interior.exit).wasCalled();
           expect(iExit.remove).wasCalled();
-          expect(interior.selectAll).wasCalledWith("* > *");
+          expect(interior.selectAll).wasCalledWith('* > *');
           expect(iAll.remove).wasCalled();
 
           expect(shaper.shapeQue).wasCalledWith(interior);
         });
 
-        it('should apply distortion on the interior nodes', function() {
+        it('should apply distortion on the interior nodes', function () {
           // Fake Layouting to test correctness
           var distFake = {
-            distFunc: function(n){
+            distFunc: function (n) {
               return {
                 x: n.x,
                 y: n.y,
                 z: 1
-               };
+              };
             }
           };
-          distFake.distFunc.focus = function() {
+          distFake.distFunc.focus = function () {
             return [20, 10];
           };
           // Fake distortion from nodeShaper
@@ -930,7 +913,6 @@
           nodes[4].y = -20;
 
           c.addDistortion(distFake.distFunc);
-
 
           expect(nodes[0].position).toEqual({
             x: -20,
@@ -959,89 +941,86 @@
           });
         });
       });
-
-
     });
 
-    describe('edge functionality', function() {
-
+    describe('edge functionality', function () {
       var parent, layouter;
 
-      beforeEach(function() {
+      beforeEach(function () {
         parent = {
-          dissolveCommunity: function() {},
-          checkNodeLimit: function() {}
+          dissolveCommunity: function () {},
+          checkNodeLimit: function () {}
         };
         layouter = {
-          start: function() {},
-          stop: function() {}
+          start: function () {},
+          stop: function () {}
         };
-        spyOn(window, "ForceLayouter").andCallFake(function() {
+        spyOn(window, 'ForceLayouter').andCallFake(function () {
           return layouter;
         });
       });
 
-      it('should return true if an inserted edge is internal', function() {
+      it('should return true if an inserted edge is internal', function () {
         var c = new CommunityNode(parent),
           e1 = {
-            _id: "1-2",
+            _id: '1-2',
             _data: {
-              _from: "1",
-              _to: "2"
+              _from: '1',
+              _to: '2'
             },
             source: nodes[1],
             target: nodes[2]
           },
           e2 = {
-            _id: "2-1",
+            _id: '2-1',
             _data: {
-              _from: "2",
-              _to: "1"
+              _from: '2',
+              _to: '1'
             },
             source: nodes[2],
             target: nodes[1]
-          };
+        };
         c.insertInboundEdge(e1);
         expect(c.insertOutboundEdge(e1)).toBeTruthy();
         c.insertOutboundEdge(e2);
         expect(c.insertInboundEdge(e2)).toBeTruthy();
       });
 
-      it('should return false if an inserted edge is not internal', function() {
+      it('should return false if an inserted edge is not internal', function () {
         var c = new CommunityNode(parent),
           e1 = {
-            _id: "1-2",
+            _id: '1-2',
             _data: {
-              _from: "1",
-              _to: "2"
+              _from: '1',
+              _to: '2'
             },
             source: nodes[1],
             target: nodes[2]
           },
           e2 = {
-            _id: "2-1",
+            _id: '2-1',
             _data: {
-              _from: "2",
-              _to: "1"
+              _from: '2',
+              _to: '1'
             },
             source: nodes[2],
             target: nodes[1]
-          };
+        };
         expect(c.insertInboundEdge(e1)).toBeFalsy();
         expect(c.insertOutboundEdge(e2)).toBeFalsy();
       });
 
-      it('should be possible to remove an inbound edge', function() {
+      it('should be possible to remove an inbound edge', function () {
         var c = new CommunityNode(parent),
           e = {
-            _id: "1-2",
+            _id: '1-2',
             _data: {
-              _from: "1",
-              _to: "2"
+              _from: '1',
+              _to: '2'
             },
             source: nodes[1],
             target: nodes[2]
-          };
+        };
         c.insertInboundEdge(e);
 
         expect(c.getDissolveInfo().edges).toEqual({
@@ -1061,7 +1040,6 @@
 
         expect(e.target).toEqual(nodes[2]);
 
-
         expect(c.getDissolveInfo().edges).toEqual({
           inbound: [],
           outbound: [],
@@ -1069,17 +1047,17 @@
         });
       });
 
-      it('should be possible to remove an inbound edge by its id', function() {
+      it('should be possible to remove an inbound edge by its id', function () {
         var c = new CommunityNode(parent),
           e = {
-            _id: "1-2",
+            _id: '1-2',
             _data: {
-              _from: "1",
-              _to: "2"
+              _from: '1',
+              _to: '2'
             },
             source: nodes[1],
             target: nodes[2]
-          };
+        };
         c.insertInboundEdge(e);
 
         expect(c.getDissolveInfo().edges).toEqual({
@@ -1090,7 +1068,7 @@
 
         expect(e.target).toEqual(c);
 
-        c.removeInboundEdge("1-2");
+        c.removeInboundEdge('1-2');
 
         expect(e.target).toEqual(nodes[2]);
 
@@ -1101,17 +1079,17 @@
         });
       });
 
-      it('should be possible to remove the inbound value of an internal edge', function() {
+      it('should be possible to remove the inbound value of an internal edge', function () {
         var c = new CommunityNode(parent),
           e = {
-            _id: "1-2",
+            _id: '1-2',
             _data: {
-              _from: "1",
-              _to: "2"
+              _from: '1',
+              _to: '2'
             },
             source: nodes[1],
             target: nodes[2]
-          };
+        };
         c.insertInboundEdge(e);
         c.insertOutboundEdge(e);
         expect(c.getDissolveInfo().edges).toEqual({
@@ -1133,17 +1111,17 @@
         });
       });
 
-      it('should be possible to remove an outbound edge', function() {
+      it('should be possible to remove an outbound edge', function () {
         var c = new CommunityNode(parent),
           e = {
-            _id: "1-2",
+            _id: '1-2',
             _data: {
-              _from: "1",
-              _to: "2"
+              _from: '1',
+              _to: '2'
             },
             source: nodes[1],
             target: nodes[2]
-          };
+        };
         c.insertOutboundEdge(e);
 
         expect(c.getDissolveInfo().edges).toEqual({
@@ -1167,17 +1145,17 @@
         });
       });
 
-      it('should be possible to remove an outbound edge by its id', function() {
+      it('should be possible to remove an outbound edge by its id', function () {
         var c = new CommunityNode(parent),
           e = {
-            _id: "1-2",
+            _id: '1-2',
             _data: {
-              _from: "1",
-              _to: "2"
+              _from: '1',
+              _to: '2'
             },
             source: nodes[1],
             target: nodes[2]
-          };
+        };
         c.insertOutboundEdge(e);
 
         expect(c.getDissolveInfo().edges).toEqual({
@@ -1188,10 +1166,9 @@
 
         expect(e.source).toEqual(c);
 
-        c.removeOutboundEdge("1-2");
+        c.removeOutboundEdge('1-2');
 
         expect(e.source).toEqual(nodes[1]);
-
 
         expect(c.getDissolveInfo().edges).toEqual({
           inbound: [],
@@ -1200,17 +1177,17 @@
         });
       });
 
-      it('should be possible to remove the outbound value of an internal edge', function() {
+      it('should be possible to remove the outbound value of an internal edge', function () {
         var c = new CommunityNode(parent),
           e = {
-            _id: "1-2",
+            _id: '1-2',
             _data: {
-              _from: "1",
-              _to: "2"
+              _from: '1',
+              _to: '2'
             },
             source: nodes[1],
             target: nodes[2]
-          };
+        };
         c.insertInboundEdge(e);
         c.insertOutboundEdge(e);
         expect(c.getDissolveInfo().edges).toEqual({
@@ -1232,35 +1209,35 @@
         });
       });
 
-      it('should be possible to return and remove all outbound edges for a node', function() {
+      it('should be possible to return and remove all outbound edges for a node', function () {
         var c = new CommunityNode(parent, [nodes[0], nodes[1]]),
           e01 = {
-            _id: "0-1",
+            _id: '0-1',
             _data: {
-              _from: "0",
-              _to: "1"
+              _from: '0',
+              _to: '1'
             },
             source: nodes[0],
             target: nodes[1]
           },
           e02 = {
-            _id: "0-2",
+            _id: '0-2',
             _data: {
-              _from: "0",
-              _to: "2"
+              _from: '0',
+              _to: '2'
             },
             source: nodes[0],
             target: nodes[2]
           },
           e12 = {
-            _id: "1-2",
+            _id: '1-2',
             _data: {
-              _from: "1",
-              _to: "2"
+              _from: '1',
+              _to: '2'
             },
             source: nodes[1],
             target: nodes[2]
-          };
+        };
 
         c.insertOutboundEdge(e01);
         c.insertOutboundEdge(e02);
@@ -1275,23 +1252,22 @@
           outbound: [e12],
           both: []
         });
-
       });
 
-      it('should update the positioning if an inbound edge becomes internal', function() {
+      it('should update the positioning if an inbound edge becomes internal', function () {
         var c = new CommunityNode(parent, nodes.slice(0, 2)),
           e = {
-            _id: "0-1",
+            _id: '0-1',
             _data: {
-              _from: "0",
-              _to: "1"
+              _from: '0',
+              _to: '1'
             },
             source: nodes[0],
             target: nodes[1]
-          };
+        };
 
-        spyOn(layouter, "start");
-        spyOn(layouter, "stop");
+        spyOn(layouter, 'start');
+        spyOn(layouter, 'stop');
 
         c.insertInboundEdge(e);
 
@@ -1306,20 +1282,20 @@
         expect(layouter.stop.calls.length).toEqual(1);
       });
 
-      it('should update the positioning if an outbound edge becomes internal', function() {
+      it('should update the positioning if an outbound edge becomes internal', function () {
         var c = new CommunityNode(parent, nodes.slice(0, 2)),
           e = {
-            _id: "0-1",
+            _id: '0-1',
             _data: {
-              _from: "0",
-              _to: "1"
+              _from: '0',
+              _to: '1'
             },
             source: nodes[0],
             target: nodes[1]
-          };
+        };
 
-        spyOn(layouter, "start");
-        spyOn(layouter, "stop");
+        spyOn(layouter, 'start');
+        spyOn(layouter, 'stop');
 
         c.insertOutboundEdge(e);
 
@@ -1334,23 +1310,23 @@
         expect(layouter.stop.calls.length).toEqual(1);
       });
 
-      it('should update the positioning if an interal edge becomes inbound', function() {
+      it('should update the positioning if an interal edge becomes inbound', function () {
         var c = new CommunityNode(parent, nodes.slice(0, 2)),
           e = {
-            _id: "0-1",
+            _id: '0-1',
             _data: {
-              _from: "0",
-              _to: "1"
+              _from: '0',
+              _to: '1'
             },
             source: nodes[0],
             target: nodes[1]
-          };
+        };
 
         c.insertInboundEdge(e);
         c.insertOutboundEdge(e);
 
-        spyOn(layouter, "start");
-        spyOn(layouter, "stop");
+        spyOn(layouter, 'start');
+        spyOn(layouter, 'stop');
 
         c.removeOutboundEdge(e);
 
@@ -1360,23 +1336,23 @@
         expect(layouter.stop.calls.length).toEqual(1);
       });
 
-      it('should update the positioning if an interal edge becomes outbound', function() {
+      it('should update the positioning if an interal edge becomes outbound', function () {
         var c = new CommunityNode(parent, nodes.slice(0, 2)),
           e = {
-            _id: "0-1",
+            _id: '0-1',
             _data: {
-              _from: "0",
-              _to: "1"
+              _from: '0',
+              _to: '1'
             },
             source: nodes[0],
             target: nodes[1]
-          };
+        };
 
         c.insertInboundEdge(e);
         c.insertOutboundEdge(e);
 
-        spyOn(layouter, "start");
-        spyOn(layouter, "stop");
+        spyOn(layouter, 'start');
+        spyOn(layouter, 'stop');
 
         c.removeInboundEdge(e);
 
@@ -1385,35 +1361,33 @@
         expect(layouter.start.calls.length).toEqual(1);
         expect(layouter.stop.calls.length).toEqual(1);
       });
-
     });
 
-    describe('expansion functionality', function() {
-
+    describe('expansion functionality', function () {
       var parent;
 
-      beforeEach(function() {
+      beforeEach(function () {
         parent = {
-          dissolveCommunity: function() {},
-          checkNodeLimit: function() {}
+          dissolveCommunity: function () {},
+          checkNodeLimit: function () {}
         };
       });
 
-      it('should be possible to dissolve the community', function() {
+      it('should be possible to dissolve the community', function () {
         var c = new CommunityNode(parent);
-        spyOn(parent, "dissolveCommunity");
+        spyOn(parent, 'dissolveCommunity');
         c.dissolve();
         expect(parent.dissolveCommunity).wasCalledWith(c);
       });
 
-      it('should be possible to expand the community', function() {
+      it('should be possible to expand the community', function () {
         var c = new CommunityNode(parent);
         expect(c._expanded).toBeFalsy();
         c.expand();
         expect(c._expanded).toBeTruthy();
       });
 
-      it('should be possible to collapse the community', function() {
+      it('should be possible to collapse the community', function () {
         var c = new CommunityNode(parent);
         expect(c._expanded).toBeFalsy();
         c.expand();
@@ -1421,81 +1395,71 @@
         c.collapse();
         expect(c._expanded).toBeFalsy();
       });
-
     });
 
-    describe('user interaction', function() {
+    describe('user interaction', function () {
+      describe('if community is collapsed', function () {});
 
-      describe('if community is collapsed', function() {
-
-      });
-
-      describe('if the community is expanded', function() {
-
+      describe('if the community is expanded', function () {
         var c, parent;
 
-        beforeEach(function() {
+        beforeEach(function () {
           parent = {
-            dissolveCommunity: function() {},
-            checkNodeLimit: function() {}
+            dissolveCommunity: function () {},
+            checkNodeLimit: function () {}
           };
           c = new CommunityNode(parent, nodes.slice(0, 5));
         });
 
-        it('should be possible to collapse the community', function() {
-
-        });
-
+        it('should be possible to collapse the community', function () {});
       });
-
     });
 
-    describe('convenience methods', function() {
-
+    describe('convenience methods', function () {
       var parent;
 
-      beforeEach(function() {
+      beforeEach(function () {
         parent = {
-          dissolveCommunity: function() {},
-          checkNodeLimit: function() {}
+          dissolveCommunity: function () {},
+          checkNodeLimit: function () {}
         };
       });
 
-      it('should offer an attribute indicating that it is a community', function() {
+      it('should offer an attribute indicating that it is a community', function () {
         var c = new CommunityNode(parent, nodes.slice(0, 1));
         expect(c._isCommunity).toBeDefined();
         expect(c._isCommunity).toBeTruthy();
       });
 
-      it('should be able to dissolve the community', function() {
+      it('should be able to dissolve the community', function () {
         var c = new CommunityNode(parent, nodes.slice(3, 13)),
           e1 = {
-            _id: "3-4",
+            _id: '3-4',
             _data: {
-              _from: "3",
-              _to: "4"
+              _from: '3',
+              _to: '4'
             },
             source: nodes[3],
             target: nodes[4]
           },
           e2 = {
-            _id: "1-7",
+            _id: '1-7',
             _data: {
-              _from: "1",
-              _to: "7"
+              _from: '1',
+              _to: '7'
             },
             source: nodes[1],
             target: nodes[7]
           },
           e3 = {
-            _id: "8-25",
+            _id: '8-25',
             _data: {
-              _from: "8",
-              _to: "25"
+              _from: '8',
+              _to: '25'
             },
             source: nodes[8],
             target: nodes[25]
-          };
+        };
         c.insertInboundEdge(e1);
         c.insertOutboundEdge(e1);
         c.insertInboundEdge(e2);
@@ -1517,9 +1481,6 @@
         expect(e3.source).toEqual(c);
         expect(e3._source).toEqual(nodes[8]);
       });
-
     });
-
   });
-
 }());

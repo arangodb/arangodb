@@ -1,41 +1,40 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2013-2014 triAGENS GmbH, Cologne, Germany
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Lucas Dohmen
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2013-2014 triAGENS GmbH, Cologne, Germany
+// / Copyright 2015 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Lucas Dohmen
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const joi = require('joi');
 const Foxx = require('@arangodb/foxx/legacy');
 const crypto = require('@arangodb/crypto');
 const paramSchema = joi.string().optional().description('Foxx session ID');
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief decorates the controller with session logic
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decorates the controller with session logic
-////////////////////////////////////////////////////////////////////////////////
-
-function decorateController(auth, controller) {
+function decorateController (auth, controller) {
   var cfg = auth.configuration;
 
   if (cfg.param) {
@@ -98,11 +97,11 @@ function decorateController(auth, controller) {
   });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convenience wrapper for session destruction logic
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief convenience wrapper for session destruction logic
+// //////////////////////////////////////////////////////////////////////////////
 
-function createDestroySessionHandler(auth, opts) {
+function createDestroySessionHandler (auth, opts) {
   if (!opts) {
     opts = {};
   }
@@ -142,17 +141,15 @@ function createDestroySessionHandler(auth, opts) {
   };
 }
 
-
-
 var sessionTypes = ['cookie', 'header'];
 
 class Sessions {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief constructor
+  // //////////////////////////////////////////////////////////////////////////////
 
-  constructor(opts) {
+  constructor (opts) {
     if (!opts) {
       opts = {};
     }
@@ -244,19 +241,17 @@ class Sessions {
     this.configuration = opts;
   }
 
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief fetches the session storage
+  // //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fetches the session storage
-////////////////////////////////////////////////////////////////////////////////
-
-  getSessionStorage() {
+  getSessionStorage () {
     if (typeof this.configuration.sessionStorage !== 'string') {
       return this.configuration.sessionStorage;
     }
     return Foxx.getExports(this.configuration.sessionStorage).sessionStorage;
   }
 }
-
 
 exports.sessionTypes = sessionTypes;
 exports.Sessions = Sessions;

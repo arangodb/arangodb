@@ -1,14 +1,14 @@
-/*global window, Backbone */
+/* global window, Backbone */
 
 window.StatisticsDescription = Backbone.Model.extend({
   defaults: {
-    "figures" : "",
-    "groups" : ""
+    'figures': '',
+    'groups': ''
   },
-  url: function() {
+  url: function () {
     'use strict';
 
-    return "/_admin/statistics-description";
+    return '/_admin/statistics-description';
   }
 
 });

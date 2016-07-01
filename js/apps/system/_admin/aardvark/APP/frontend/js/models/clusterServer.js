@@ -1,31 +1,30 @@
-/*global window, Backbone */
-(function() {
-  "use strict";
+/* global window, Backbone */
+(function () {
+  'use strict';
 
   window.ClusterServer = Backbone.Model.extend({
     defaults: {
-      name: "",
-      address: "",
-      role: "",
-      status: "ok"
+      name: '',
+      address: '',
+      role: '',
+      status: 'ok'
     },
 
-    idAttribute: "name",
+    idAttribute: 'name',
     /*
-    url: "/_admin/aardvark/cluster/DBServers";
+    url: "/_admin/aardvark/cluster/DBServers"
 
     updateUrl: function() {
-      this.url = window.getNewRoute("DBServers");
+      this.url = window.getNewRoute("DBServers")
     },
     */
-    forList: function() {
+    forList: function () {
       return {
-        name: this.get("name"),
-        address: this.get("address"),
-        status: this.get("status")
+        name: this.get('name'),
+        address: this.get('address'),
+        status: this.get('status')
       };
     }
 
   });
 }());
-

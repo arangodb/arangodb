@@ -1,6 +1,6 @@
-/*jshint expr: true */
-/*eslint no-unused-expressions: 0 */
-/*global describe, it, beforeEach, afterEach */
+/* jshint expr: true */
+/* eslint no-unused-expressions: 0 */
+/* global describe, it, beforeEach, afterEach */
 'use strict';
 const internal = require('internal');
 const tasks = require('@arangodb/tasks');
@@ -16,11 +16,11 @@ const taskInfo = {
   }
 };
 
-function filterQueries(q) {
+function filterQueries (q) {
   return (q.query === query);
 }
 
-function sendQuery(count, async) {
+function sendQuery (count, async) {
   count = count || 1;
   for (let i = 0; i < count; ++i) {
     if (async === false) {
@@ -34,7 +34,7 @@ function sendQuery(count, async) {
   }
 }
 
-function restoreDefaults(testee) {
+function restoreDefaults (testee) {
   testee.properties({
     enabled: true,
     trackSlowQueries: true,
@@ -44,33 +44,33 @@ function restoreDefaults(testee) {
   });
 }
 
-describe('AQL query analyzer', function() {
+describe('AQL query analyzer', function () {
   let testee;
 
-  beforeEach(function() {
+  beforeEach(function () {
     testee = require('@arangodb/aql/queries');
     restoreDefaults(testee);
   });
 
-  afterEach(function() {
+  afterEach(function () {
     restoreDefaults(testee);
   });
 
-  it('should be able to activate the tracking', function() {
+  it('should be able to activate the tracking', function () {
     testee.properties({
       enabled: true
     });
     expect(testee.properties().enabled).to.be.ok;
   });
 
-  it('should be able to deactivate the tracking', function() {
+  it('should be able to deactivate the tracking', function () {
     testee.properties({
       enabled: false
     });
     expect(testee.properties().enabled).not.to.be.ok;
   });
 
-  it('should be able to set tracking properties', function() {
+  it('should be able to set tracking properties', function () {
     testee.properties({
       enabled: true,
       trackSlowQueries: false,
@@ -85,9 +85,8 @@ describe('AQL query analyzer', function() {
     expect(testee.properties().maxQueryStringLength).to.equal(117);
   });
 
-  describe('with active tracking', function() {
-
-    beforeEach(function() {
+  describe('with active tracking', function () {
+    beforeEach(function () {
       if (isServer && internal.debugCanUseFailAt()) {
         internal.debugClearFailAt();
       }
@@ -98,7 +97,7 @@ describe('AQL query analyzer', function() {
       testee.clearSlow();
     });
 
-    afterEach(function() {
+    afterEach(function () {
       if (isServer && internal.debugCanUseFailAt()) {
         internal.debugClearFailAt();
       }
@@ -113,7 +112,7 @@ describe('AQL query analyzer', function() {
     });
 
     if (isServer && internal.debugCanUseFailAt()) {
-      it('should not crash when inserting a query into the current list fails', function() {
+      it('should not crash when inserting a query into the current list fails', function () {
         internal.debugSetFailAt('QueryList::insert');
 
         // inserting the query will fail
@@ -122,12 +121,12 @@ describe('AQL query analyzer', function() {
       });
     }
 
-    it('should be able to get currently running queries', function() {
+    it('should be able to get currently running queries', function () {
       sendQuery(1, true);
       expect(testee.current().filter(filterQueries).length).to.equal(1);
     });
 
-    it('should not track queries if turned off', function() {
+    it('should not track queries if turned off', function () {
       testee.properties({
         enabled: false
       });
@@ -135,7 +134,7 @@ describe('AQL query analyzer', function() {
       expect(testee.current().filter(filterQueries).length).to.equal(0);
     });
 
-    it('should work when tracking is turned off in the middle', function() {
+    it('should work when tracking is turned off in the middle', function () {
       sendQuery(1, true);
       expect(testee.current().filter(filterQueries).length).to.equal(1);
 
@@ -155,7 +154,7 @@ describe('AQL query analyzer', function() {
       expect(testee.current().filter(filterQueries).length).to.equal(0);
     });
 
-    it('should track slow queries by threshold', function() {
+    it('should track slow queries by threshold', function () {
       sendQuery(1, false);
       expect(testee.current().filter(filterQueries).length).to.equal(0);
       expect(testee.slow().filter(filterQueries).length).to.equal(0);
@@ -169,7 +168,7 @@ describe('AQL query analyzer', function() {
       expect(testee.slow().filter(filterQueries).length).to.equal(1);
     });
 
-    it('should be able to clear the list of slow queries', function() {
+    it('should be able to clear the list of slow queries', function () {
       testee.properties({
         slowQueryThreshold: 2
       });
@@ -179,7 +178,7 @@ describe('AQL query analyzer', function() {
       expect(testee.slow().filter(filterQueries).length).to.equal(0);
     });
 
-    it('should track at most n slow queries', function() {
+    it('should track at most n slow queries', function () {
       const max = 2;
       testee.properties({
         slowQueryThreshold: 2,
@@ -191,7 +190,7 @@ describe('AQL query analyzer', function() {
     });
 
     if (isServer && internal.debugCanUseFailAt()) {
-      it('should not crash when trying to move a query into the slow list', function() {
+      it('should not crash when trying to move a query into the slow list', function () {
         internal.debugSetFailAt('QueryList::remove');
 
         testee.properties({
@@ -204,7 +203,7 @@ describe('AQL query analyzer', function() {
       });
     }
 
-    it('should not track slow queries if turned off', function() {
+    it('should not track slow queries if turned off', function () {
       testee.properties({
         slowQueryThreshold: 2,
         trackSlowQueries: false
@@ -214,7 +213,7 @@ describe('AQL query analyzer', function() {
       expect(testee.slow().filter(filterQueries).length).to.equal(0);
     });
 
-    it('should be able to kill a query', function() {
+    it('should be able to kill a query', function () {
       sendQuery(1, true);
       let list = testee.current().filter(filterQueries);
       expect(list.length).to.equal(1);
@@ -228,6 +227,5 @@ describe('AQL query analyzer', function() {
         expect(list.length).to.equal(0);
       }).not.to.throw();
     });
-
   });
 });

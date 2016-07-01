@@ -1,77 +1,75 @@
-/*global window, Backbone, $, arangoHelper */
-(function() {
-  "use strict";
+/* global window, Backbone, $, arangoHelper */
+(function () {
+  'use strict';
 
   window.Graph = Backbone.Model.extend({
+    idAttribute: '_key',
 
-    idAttribute: "_key",
+    urlRoot: arangoHelper.databaseUrl('/_api/gharial'),
 
-    urlRoot: arangoHelper.databaseUrl("/_api/gharial"),
-
-    isNew: function() {
-      return !this.get("_id");
+    isNew: function () {
+      return !this.get('_id');
     },
 
-    parse: function(raw) {
+    parse: function (raw) {
       return raw.graph || raw;
     },
 
-    addEdgeDefinition: function(edgeDefinition) {
+    addEdgeDefinition: function (edgeDefinition) {
       $.ajax(
         {
           async: false,
-          type: "POST",
-          url: this.urlRoot + "/" + this.get("_key") + "/edge",
+          type: 'POST',
+          url: this.urlRoot + '/' + this.get('_key') + '/edge',
           data: JSON.stringify(edgeDefinition)
         }
       );
     },
 
-    deleteEdgeDefinition: function(edgeCollection) {
+    deleteEdgeDefinition: function (edgeCollection) {
       $.ajax(
         {
           async: false,
-          type: "DELETE",
-          url: this.urlRoot + "/" + this.get("_key") + "/edge/" + edgeCollection
+          type: 'DELETE',
+          url: this.urlRoot + '/' + this.get('_key') + '/edge/' + edgeCollection
         }
       );
     },
 
-    modifyEdgeDefinition: function(edgeDefinition) {
+    modifyEdgeDefinition: function (edgeDefinition) {
       $.ajax(
         {
           async: false,
-          type: "PUT",
-          url: this.urlRoot + "/" + this.get("_key") + "/edge/" + edgeDefinition.collection,
+          type: 'PUT',
+          url: this.urlRoot + '/' + this.get('_key') + '/edge/' + edgeDefinition.collection,
           data: JSON.stringify(edgeDefinition)
         }
       );
     },
 
-    addVertexCollection: function(vertexCollectionName) {
+    addVertexCollection: function (vertexCollectionName) {
       $.ajax(
         {
           async: false,
-          type: "POST",
-          url: this.urlRoot + "/" + this.get("_key") + "/vertex",
+          type: 'POST',
+          url: this.urlRoot + '/' + this.get('_key') + '/vertex',
           data: JSON.stringify({collection: vertexCollectionName})
         }
       );
     },
 
-    deleteVertexCollection: function(vertexCollectionName) {
+    deleteVertexCollection: function (vertexCollectionName) {
       $.ajax(
         {
           async: false,
-          type: "DELETE",
-          url: this.urlRoot + "/" + this.get("_key") + "/vertex/" + vertexCollectionName
+          type: 'DELETE',
+          url: this.urlRoot + '/' + this.get('_key') + '/vertex/' + vertexCollectionName
         }
       );
     },
 
-
     defaults: {
-      name: "",
+      name: '',
       edgeDefinitions: [],
       orphanCollections: []
     }

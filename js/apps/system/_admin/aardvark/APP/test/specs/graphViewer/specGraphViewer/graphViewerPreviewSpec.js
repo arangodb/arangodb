@@ -1,78 +1,75 @@
-/*jshint unused: false */
-/*global beforeEach, afterEach */
-/*global describe, it, expect, jasmine*/
-/*global runs, waitsFor, spyOn, waits */
-/*global document, window, helper */
-/*global $, _, d3*/
-/*global GraphViewerPreview, mocks, uiMatchers*/
+/* jshint unused: false */
+/* global beforeEach, afterEach */
+/* global describe, it, expect, jasmine*/
+/* global runs, waitsFor, spyOn, waits */
+/* global document, window, helper */
+/* global $, _, d3*/
+/* global GraphViewerPreview, mocks, uiMatchers*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Graph functionality
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Graph functionality
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  "use strict";
+  'use strict';
 
   describe('Graph Viewer Preview', function () {
-
     var width, height, cont;
 
-    beforeEach(function() {
+    beforeEach(function () {
       width = 300;
       height = 300;
-      cont = document.createElement("div");
+      cont = document.createElement('div');
       document.body.appendChild(cont);
-      cont.style.height = height + "px";
-      cont.style.width =  width + "px";
+      cont.style.height = height + 'px';
+      cont.style.width = width + 'px';
       uiMatchers.define(this);
     });
 
-    afterEach(function() {
+    afterEach(function () {
       document.body.removeChild(cont);
     });
 
-    describe('setup process', function() {
-
-      it('should append an svg to the container', function() {
+    describe('setup process', function () {
+      it('should append an svg to the container', function () {
         var ui = new GraphViewerPreview(cont),
-          gsvg = $("#graphViewerSVG", $(cont));
+          gsvg = $('#graphViewerSVG', $(cont));
         expect(gsvg.length).toEqual(1);
-        expect(gsvg.get(0)).toBeTag("svg");
+        expect(gsvg.get(0)).toBeTag('svg');
       });
 
-      it('should create a graphViewer with container dimensions and preview adapter', function() {
-        spyOn(window, "GraphViewer").andCallThrough();
+      it('should create a graphViewer with container dimensions and preview adapter', function () {
+        spyOn(window, 'GraphViewer').andCallThrough();
         var ui = new GraphViewerPreview(cont);
         expect(window.GraphViewer).wasCalledWith(
           jasmine.any(Object),
           cont.offsetWidth,
           cont.offsetHeight,
           {
-            type: "preview",
+            type: 'preview',
             width: width,
             height: height
           },
@@ -80,58 +77,57 @@
         );
       });
 
-      it('should automatically load the first node', function() {
+      it('should automatically load the first node', function () {
         var mockObj = {
-            loadInitialNode: function() {},
-            explore: function() {}
+            loadInitialNode: function () {},
+            explore: function () {}
           },
-          startNode = "1",
+          startNode = '1',
           ui;
 
-        spyOn(window, "PreviewAdapter").andCallFake(function() {
+        spyOn(window, 'PreviewAdapter').andCallFake(function () {
           return mockObj;
         });
-        spyOn(mockObj, "loadInitialNode");
+        spyOn(mockObj, 'loadInitialNode');
         ui = new GraphViewerPreview(cont, {});
         expect(mockObj.loadInitialNode).wasCalledWith(startNode, jasmine.any(Function));
-
       });
 
-      it('should overwrite the nodeShaper label attribute', function() {
+      it('should overwrite the nodeShaper label attribute', function () {
         var oldShapes = window.NodeShaper.shapes,
-          spy = spyOn(window, "NodeShaper").andCallThrough(),
+          spy = spyOn(window, 'NodeShaper').andCallThrough(),
           config = {
             nodeShaper: {
-              label: "Foxx"
+              label: 'Foxx'
             }
           },
           ui;
         spy.shapes = oldShapes;
-        ui  = new GraphViewerPreview(cont, config);
+        ui = new GraphViewerPreview(cont, config);
         expect(window.NodeShaper).wasCalledWith(
           jasmine.any(Object),
           {
-            label: "label",
+            label: 'label',
             shape: jasmine.any(Object),
             color: jasmine.any(Object),
-            distortion: "reset"
+            distortion: 'reset'
           },
           undefined
         );
       });
 
-      it('should overwrite the source attribute if image should be displayed', function() {
+      it('should overwrite the source attribute if image should be displayed', function () {
         var oldShapes = window.NodeShaper.shapes,
           width = 32,
           height = 23,
-          spy = spyOn(window, "NodeShaper").andCallThrough(),
+          spy = spyOn(window, 'NodeShaper').andCallThrough(),
           config = {
             nodeShaper: {
               shape: {
                 type: oldShapes.IMAGE,
                 width: width,
                 height: height,
-                source: "Foxx"
+                source: 'Foxx'
               }
             }
           },
@@ -146,52 +142,51 @@
               type: oldShapes.IMAGE,
               width: width,
               height: height,
-              source: "image"
+              source: 'image'
             },
             color: jasmine.any(Object),
-            distortion: "reset"
+            distortion: 'reset'
           },
           undefined
         );
       });
 
-      it('should overwrite the edgeShaper label attribute', function() {
+      it('should overwrite the edgeShaper label attribute', function () {
         var oldShapes = window.EdgeShaper.shapes,
-          spy = spyOn(window, "EdgeShaper").andCallThrough(),
+          spy = spyOn(window, 'EdgeShaper').andCallThrough(),
           config = {
             edgeShaper: {
-              label: "Foxx"
+              label: 'Foxx'
             }
           },
           ui;
         spy.shapes = oldShapes;
-        ui  = new GraphViewerPreview(cont, config);
+        ui = new GraphViewerPreview(cont, config);
         expect(window.EdgeShaper).wasCalledWith(
           jasmine.any(Object),
           {
-            label: "label",
+            label: 'label',
             color: jasmine.any(Object),
             shape: jasmine.any(Object)
           }
         );
       });
-
     });
 
-    describe('testing mouse actions', function() {
+    describe('testing mouse actions', function () {
       var disp;
 
-      beforeEach(function() {
+      beforeEach(function () {
         var OrigDisp = window.EventDispatcher;
-        spyOn(window, "EventDispatcher").andCallFake(function(ns, es, conf) {
+        spyOn(window, 'EventDispatcher').andCallFake(function (ns, es, conf) {
           disp = new OrigDisp(ns, es, conf);
-          spyOn(disp, "rebind");
+          spyOn(disp, 'rebind');
           return disp;
         });
       });
 
-      it('should be able to allow zoom', function() {
-        spyOn(window, "ZoomManager");
+      it('should be able to allow zoom', function () {
+        spyOn(window, 'ZoomManager');
         var config = {
             zoom: true
           },
@@ -199,14 +194,14 @@
         expect(window.ZoomManager).wasCalled();
       });
 
-      it('should not configure zoom if it is undefined', function() {
-        spyOn(window, "ZoomManager");
+      it('should not configure zoom if it is undefined', function () {
+        spyOn(window, 'ZoomManager');
         var ui = new GraphViewerPreview(cont);
         expect(window.ZoomManager).wasNotCalled();
       });
 
-      it('should not configure zoom if it is forbidden', function() {
-        spyOn(window, "ZoomManager");
+      it('should not configure zoom if it is forbidden', function () {
+        spyOn(window, 'ZoomManager');
         var config = {
             zoom: false
           },
@@ -214,7 +209,7 @@
         expect(window.ZoomManager).wasNotCalled();
       });
 
-      it('should be able to bind drag initially', function() {
+      it('should be able to bind drag initially', function () {
         var OrigLayouter = window.ForceLayouter,
           layouter,
           actions = {
@@ -224,89 +219,87 @@
             actions: actions
           },
           ui;
-        spyOn(window, "ForceLayouter").andCallFake(function(c) {
+        spyOn(window, 'ForceLayouter').andCallFake(function (c) {
           layouter = new OrigLayouter(c);
-          spyOn(layouter, "drag");
+          spyOn(layouter, 'drag');
           return layouter;
         });
 
         ui = new GraphViewerPreview(cont, config);
-        expect(disp.rebind).wasCalledWith("nodes", {drag: layouter.drag});
-        expect(disp.rebind).wasCalledWith("edges", undefined);
-        expect(disp.rebind).wasCalledWith("svg", undefined);
+        expect(disp.rebind).wasCalledWith('nodes', {drag: layouter.drag});
+        expect(disp.rebind).wasCalledWith('edges', undefined);
+        expect(disp.rebind).wasCalledWith('svg', undefined);
       });
 
-      it('should be able to bind edit initially', function() {
+      it('should be able to bind edit initially', function () {
         var actions = {
-          edit: true
-        },
-        config = {
-          actions: actions
-        },
-        ui = new GraphViewerPreview(cont, config);
-        expect(disp.rebind).wasCalledWith("nodes", {click: jasmine.any(Function)});
-        expect(disp.rebind).wasCalledWith("edges", {click: jasmine.any(Function)});
-        expect(disp.rebind).wasCalledWith("svg", undefined);
+            edit: true
+          },
+          config = {
+            actions: actions
+          },
+          ui = new GraphViewerPreview(cont, config);
+        expect(disp.rebind).wasCalledWith('nodes', {click: jasmine.any(Function)});
+        expect(disp.rebind).wasCalledWith('edges', {click: jasmine.any(Function)});
+        expect(disp.rebind).wasCalledWith('svg', undefined);
       });
 
-      it('should be able to bind create initially', function() {
+      it('should be able to bind create initially', function () {
         var actions = {
-          create: true
-        },
-        config = {
-          actions: actions
-        },
-        ui = new GraphViewerPreview(cont, config);
-        expect(disp.rebind).wasCalledWith("nodes", {
+            create: true
+          },
+          config = {
+            actions: actions
+          },
+          ui = new GraphViewerPreview(cont, config);
+        expect(disp.rebind).wasCalledWith('nodes', {
           mousedown: jasmine.any(Function),
           mouseup: jasmine.any(Function)
         });
-        expect(disp.rebind).wasCalledWith("edges", undefined);
-        expect(disp.rebind).wasCalledWith("svg", {
+        expect(disp.rebind).wasCalledWith('edges', undefined);
+        expect(disp.rebind).wasCalledWith('svg', {
           click: jasmine.any(Function),
           mouseup: jasmine.any(Function)
         });
       });
 
-      it('should be able to bind remove initially', function() {
+      it('should be able to bind remove initially', function () {
         var actions = {
-          remove: true
-        },
-        config = {
-          actions: actions
-        },
-        ui = new GraphViewerPreview(cont, config);
-        expect(disp.rebind).wasCalledWith("nodes", {
+            remove: true
+          },
+          config = {
+            actions: actions
+          },
+          ui = new GraphViewerPreview(cont, config);
+        expect(disp.rebind).wasCalledWith('nodes', {
           click: jasmine.any(Function)
         });
-        expect(disp.rebind).wasCalledWith("edges", {
+        expect(disp.rebind).wasCalledWith('edges', {
           click: jasmine.any(Function)
         });
-        expect(disp.rebind).wasCalledWith("svg", undefined);
+        expect(disp.rebind).wasCalledWith('svg', undefined);
       });
 
-      it('should be able to bind expand initially', function() {
+      it('should be able to bind expand initially', function () {
         var actions = {
-          expand: true
-        },
-        config = {
-          actions: actions
-        },
-        ui = new GraphViewerPreview(cont, config);
-        expect(disp.rebind).wasCalledWith("nodes", {
+            expand: true
+          },
+          config = {
+            actions: actions
+          },
+          ui = new GraphViewerPreview(cont, config);
+        expect(disp.rebind).wasCalledWith('nodes', {
           click: jasmine.any(Function)
         });
-        expect(disp.rebind).wasCalledWith("edges", undefined);
-        expect(disp.rebind).wasCalledWith("svg", undefined);
+        expect(disp.rebind).wasCalledWith('edges', undefined);
+        expect(disp.rebind).wasCalledWith('svg', undefined);
       });
-
-
     });
 
-    describe('testing toolbox', function() {
-      var toolboxSelector = "#toolbox";
+    describe('testing toolbox', function () {
+      var toolboxSelector = '#toolbox';
 
-      it('should append the toolbox if any tool is added', function() {
+      it('should append the toolbox if any tool is added', function () {
         var toolboxConf = {
             expand: true
           },
@@ -317,7 +310,7 @@
         expect($(toolboxSelector).length).toEqual(1);
       });
 
-      it('should reduce the size of the svg', function() {
+      it('should reduce the size of the svg', function () {
         var toolboxConf = {
             expand: true
           },
@@ -326,14 +319,14 @@
           },
           ui;
 
-        spyOn(window, "GraphViewer").andCallThrough();
+        spyOn(window, 'GraphViewer').andCallThrough();
         ui = new GraphViewerPreview(cont, config);
         expect(window.GraphViewer).wasCalledWith(
           jasmine.any(Object),
           cont.offsetWidth - 43,
           cont.offsetHeight,
           {
-            type: "preview",
+            type: 'preview',
             width: width - 43,
             height: height
           },
@@ -349,10 +342,10 @@
           config = {
             toolbox: toolboxConf
           },
-          ui = new GraphViewerPreview(cont, config);
-        expect(pointerBox.length).toEqual(1);
-        expect(pointerBox[0]).toBeTag("div");
-      });
+          ui = new GraphViewerPreview(cont, config)
+        expect(pointerBox.length).toEqual(1)
+        expect(pointerBox[0]).toBeTag("div")
+      })
       */
       /*
       it('should position the mouse-icon box next to the mouse pointer', function() {
@@ -365,21 +358,21 @@
           ui = new GraphViewerPreview(cont, config),
           x = 40,
           y = 50,
-          pointerBox = $("#mousepointer");
+          pointerBox = $("#mousepointer")
 
-        helper.simulateMouseMoveEvent("graphViewerSVG", x, y);
-        expect(pointerBox.offset().left).toEqual(x + 7);
-        expect(pointerBox.offset().top).toEqual(y + 12);
+        helper.simulateMouseMoveEvent("graphViewerSVG", x, y)
+        expect(pointerBox.offset().left).toEqual(x + 7)
+        expect(pointerBox.offset().top).toEqual(y + 12)
 
-        x = 66;
-        y = 33;
+        x = 66
+        y = 33
 
-        helper.simulateMouseMoveEvent("graphViewerSVG", x, y);
-        expect(pointerBox.offset().left).toEqual(x + 7);
-        expect(pointerBox.offset().top).toEqual(y + 12);
-      });
+        helper.simulateMouseMoveEvent("graphViewerSVG", x, y)
+        expect(pointerBox.offset().left).toEqual(x + 7)
+        expect(pointerBox.offset().top).toEqual(y + 12)
+      })
       */
-      it('should not add a toolbox if no buttons are defined', function() {
+      it('should not add a toolbox if no buttons are defined', function () {
         var toolboxConf = {},
           config = {
             toolbox: toolboxConf
@@ -388,7 +381,7 @@
         expect($(toolboxSelector).length).toEqual(0);
       });
 
-      it('should be able to add the expand button', function() {
+      it('should be able to add the expand button', function () {
         var toolboxConf = {
             expand: true
           },
@@ -397,13 +390,13 @@
           },
           ui = new GraphViewerPreview(cont, config);
 
-        expect($(toolboxSelector + " #control_event_expand").length).toEqual(1);
+        expect($(toolboxSelector + ' #control_event_expand').length).toEqual(1);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
 
-      it('should not add a toolbox if all buttons are defined false', function() {
+      it('should not add a toolbox if all buttons are defined false', function () {
         var toolboxConf = {
-          expand: false
+            expand: false
           },
           config = {
             toolbox: toolboxConf
@@ -411,7 +404,7 @@
           ui = new GraphViewerPreview(cont, config);
       });
 
-      it('should be able to add the expand button', function() {
+      it('should be able to add the expand button', function () {
         var toolboxConf = {
             expand: true
           },
@@ -420,11 +413,11 @@
           },
           ui = new GraphViewerPreview(cont, config);
 
-        expect($(toolboxSelector + " #control_event_expand").length).toEqual(1);
+        expect($(toolboxSelector + ' #control_event_expand').length).toEqual(1);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
 
-      it('should be able to add the drag button', function() {
+      it('should be able to add the drag button', function () {
         var toolboxConf = {
             drag: true
           },
@@ -433,11 +426,11 @@
           },
           ui = new GraphViewerPreview(cont, config);
 
-        expect($(toolboxSelector + " #control_event_drag").length).toEqual(1);
+        expect($(toolboxSelector + ' #control_event_drag').length).toEqual(1);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
 
-      it('should be able to add the create buttons', function() {
+      it('should be able to add the create buttons', function () {
         var toolboxConf = {
             create: true
           },
@@ -446,12 +439,12 @@
           },
           ui = new GraphViewerPreview(cont, config);
 
-        expect($(toolboxSelector + " #control_event_new_node").length).toEqual(1);
-        expect($(toolboxSelector + " #control_event_connect").length).toEqual(1);
+        expect($(toolboxSelector + ' #control_event_new_node').length).toEqual(1);
+        expect($(toolboxSelector + ' #control_event_connect').length).toEqual(1);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
 
-      it('should be able to add the edit button', function() {
+      it('should be able to add the edit button', function () {
         var toolboxConf = {
             edit: true
           },
@@ -460,11 +453,11 @@
           },
           ui = new GraphViewerPreview(cont, config);
 
-        expect($(toolboxSelector + " #control_event_edit").length).toEqual(1);
+        expect($(toolboxSelector + ' #control_event_edit').length).toEqual(1);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
 
-      it('should be able to add the remove button', function() {
+      it('should be able to add the remove button', function () {
         var toolboxConf = {
             remove: true
           },
@@ -473,11 +466,11 @@
           },
           ui = new GraphViewerPreview(cont, config);
 
-        expect($(toolboxSelector + " #control_event_delete").length).toEqual(1);
+        expect($(toolboxSelector + ' #control_event_delete').length).toEqual(1);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
 
-      it('should not add buttons configured as false', function() {
+      it('should not add buttons configured as false', function () {
         var toolboxConf = {
             expand: false,
             drag: true
@@ -487,12 +480,9 @@
           },
           ui = new GraphViewerPreview(cont, config);
 
-        expect($(toolboxSelector + " #control_event_expand").length).toEqual(0);
+        expect($(toolboxSelector + ' #control_event_expand').length).toEqual(0);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
-
     });
-
   });
-
 }());
