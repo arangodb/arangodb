@@ -237,7 +237,7 @@ bool Agent::recvAppendEntriesRPC(term_t term,
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
-  //index_t lastPersistedIndex = _lastCommitIndex;
+//  index_t lastPersistedIndex = _lastCommitIndex;
 
   if (this->term() > term) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
@@ -253,13 +253,14 @@ bool Agent::recvAppendEntriesRPC(term_t term,
                                      << queries->slice().length()
                                      << " entries to state machine.";
     /* bool success = */
-    //lastPersistedIndex = _state.log(queries, term, leaderId, prevIndex, prevTerm);
+    _state.log(queries, term, leaderId, prevIndex, prevTerm);
+    _spearhead.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
+    _readDB.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
+    _lastCommitIndex = leaderCommitIndex;
   }
 
-  _lastCommitIndex = leaderCommitIndex;
-  
   if (_lastCommitIndex >= _nextCompationAfter) {
-    //rebuildDBs();
+
     _state.compact(_lastCommitIndex);
     _nextCompationAfter += _config.compactionStepSize;
   }
@@ -430,7 +431,7 @@ void Agent::run() {
   while (!this->isStopping() && size() > 1) {
 
     if (leading()) {             // Only if leading
-      _appendCV.wait(20000);
+      _appendCV.wait(100000);
     } else {
       _appendCV.wait();         // Else wait for our moment in the sun
     }

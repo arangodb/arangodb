@@ -22,7 +22,7 @@ fi
 MINP=1.0
 MAXP=5.0
 SFRE=2.5
-COMP=10
+COMP=1000
 BASE=4001
 
 rm -rf agency

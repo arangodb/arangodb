@@ -50,7 +50,7 @@ using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 using namespace arangodb;
 
-static const id_t NO_LEADER =
+static const arangodb::consensus::id_t NO_LEADER =
   (std::numeric_limits<arangodb::consensus::id_t>::max)();
 
 /// Raft role names for display purposes 
