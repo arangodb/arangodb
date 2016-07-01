@@ -32,16 +32,16 @@ addons:
 install:
 
 # prepare wrapper for gold
-- mkdir -p ~/bin/gold && (echo '#!/bin/bash'; echo 'gold "$@"') > ~/bin/gold/ld && chmod a+x ~/bin/gold/ld
+- mkdir -p $HOME/bin/gold && (echo '#!/bin/bash'; echo 'gold "$@"') > $HOME/bin/gold/ld && chmod a+x $HOME/bin/gold/ld
 
 # prepare GCC & G++
-- rm -f $HOME/bin/gcc && ln -s /usr/bin/gcc-4.9 ~/bin/gcc
-- rm -f $HOME/bin/g++ && ln -s /usr/bin/g++-4.9 ~/bin/g++
+- (echo '#!/bin/bash'; echo 'ccache /usr/bin/gcc-4.9 "$@"') > $HOME/bin/gcc && chmod a+x $HOME/bin/gold/ld
+- (echo '#!/bin/bash'; echo 'ccache /usr/bin/g++-4.9 "$@"') > $HOME/bin/g++ && chmod a+x $HOME/bin/gold/ld
 
 # prepare environment
 - export PATH="$HOME/bin:$PATH"
-- export CXX="/usr/lib/ccache/g++-4.9"
-- export CC="/usr/lib/ccache/gcc-4.9"
+- export CC="$HOME/bin/gcc"
+- export CXX="$HOME/bin/g++"
 - export CFLAGS="-B$HOME/bin/gold $CFLAGS"
 - export CXXFLAGS="-B$HOME/bin/gold $CXXFLAGS"
 
