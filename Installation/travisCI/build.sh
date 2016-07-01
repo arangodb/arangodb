@@ -2,17 +2,6 @@
 set -e
 
 echo
-echo "$0: loading precompiled libraries"
-
-V8_VERSION=`/bin/ls 3rdParty/V8/|grep V8 |sed "s;V8-;;"`
-
-wget \
-  -O 3rdParty.tar.gz \
-  "https://www.arangodb.com/support-files/travisCI/precompiled-libraries-${V8_VERSION}.tar.gz"
-
-tar xzf 3rdParty.tar.gz
-
-echo
 echo "$0: setup make-system"
 
 test -d build || mkdir build
