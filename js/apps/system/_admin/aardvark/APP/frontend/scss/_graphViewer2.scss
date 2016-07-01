@@ -1,3 +1,132 @@
-#graph-container {
-  background-color: $c-white;
+.graphContent {
+
+  #graph-container {
+    background-color: $c-white;
+    z-index: 5;
+  }
+
+  #graph-container:-webkit-full-screen {
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  #graph-container:-moz-full-screen {
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  #graph-container:-ms-full-screen {
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  #graph-container:-o-full-screen {
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  #graph-container:full-screen {
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  .fa {
+    &.fa-television {
+      margin-top: 6px;
+      position: absolute;
+      right: 20px;
+      z-index: 10;
+    }
+  }
+}
+
+.nodeContextMenu {
+
+  position: fixed;
+
+  .circular-menu {
+    width: 250px;
+    height: 250px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .circle {
+    width: 250px;
+    height: 250px;
+    opacity: 0;
+
+    -webkit-transform: scale(0);
+    -moz-transform: scale(0);
+    transform: scale(0);
+
+    -webkit-transition: all 0.4s ease-out;
+    -moz-transition: all 0.4s ease-out;
+    transition: all 0.4s ease-out;
+  }
+
+  .open.circle {
+    opacity: 1;
+
+    -webkit-transform: scale(1);
+    -moz-transform: scale(1);
+    transform: scale(1);
+  }
+
+  .circle a {
+    text-decoration: none;
+    color: $c-black;
+    display: block;
+    height: 40px;
+    width: 40px;
+    line-height: 40px;
+    margin-left: -20px;
+    margin-top: -20px;
+    position: absolute;
+    text-align: center;
+
+  }
+
+  .circle a:hover {
+    color: #eef;
+  }
+
+  .menu-button {
+    position: absolute;
+    top: calc(50% - 30px);
+    left: calc(50% - 30px);
+    text-decoration: none;
+    text-align: center;
+    color: #444;
+    border-radius: 50%;
+    display: block;
+    height: 40px;
+    width: 40px;
+    line-height: 40px;
+    padding: 10px;
+    background: rgba(0, 0, 0, .2);
+    visibility: hidden;
+  }
+
+  .menu-button:hover {
+    background-color: #eef;
+  }
+
+  /* Author stuff */
+  h1.author {
+    text-align:center;
+    color: white;
+    font-family: Helvetica, Arial, sans-serif;
+    font-weight: 300;
+  }
+
+  h1.author a {
+    color: #348;
+    text-decoration:none;
+  }
+
+  h1.author a:hover {
+    color: #ddd;
+  } 
+
 }

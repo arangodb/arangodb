@@ -307,7 +307,7 @@ authRouter.get('/graph/:name', function(req, res) {
   var startVertex = db[vertexName].any();
 
   var aqlQuery = 
-   'FOR v, e, p IN 1..2 ANY "' + startVertex._id + '" GRAPH "' + name + '"' + 
+   'FOR v, e, p IN 1..3 ANY "' + startVertex._id + '" GRAPH "' + name + '"' + 
    'RETURN p'
   ;
 
@@ -321,6 +321,7 @@ authRouter.get('/graph/:name', function(req, res) {
         edgesObj[edge._from + edge._to] = {
           id: edge._id,
           source: edge._from,
+          color: '#cccccc',
           target: edge._to
         };
       }

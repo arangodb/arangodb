@@ -180,10 +180,7 @@ HttpHandler::status_t RestAgencyHandler::handleWrite() {
           }
 
           if (max_index > 0) {
-            if(!_agent->waitFor(max_index)) {
-            LOG_TOPIC(WARN, Logger::AGENCY)
-              << "Waiting for log index" << max_index << " timed out.";
-            }
+            _agent->waitFor(max_index);
           }
         }
       }
