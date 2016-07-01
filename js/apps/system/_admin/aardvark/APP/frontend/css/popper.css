@@ -1,0 +1,13 @@
+.popper-container {
+  display: block;
+  position: relative;
+}
+.popper-container .primary-popper {
+  position: relative;
+  z-index: 2;
+}
+.popper-container .secondary-popper {
+  position: absolute;
+  display: none;
+  z-index: 1;
+}
