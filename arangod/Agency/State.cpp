@@ -141,19 +141,23 @@ std::vector<arangodb::consensus::index_t> State::log(
 
 
 /// Log transactions (follower)
-bool State::log(query_t const& transactions, term_t term,
-                arangodb::consensus::id_t lid,
-                arangodb::consensus::index_t prevLogIndex,
-                term_t prevLogTerm) {  // TODO: Throw exc
+arangodb::consensus::index_t State::log(
+  query_t const& transactions, term_t term, arangodb::consensus::id_t lid,
+  arangodb::consensus::index_t prevLogIndex, term_t prevLogTerm) {
 
   if (transactions->slice().type() != VPackValueType::Array) {
     return false;
   }
 
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
+  
+  arangodb::consensus::index_t highest = (_log.empty()) ? 0 : _log.back().index;
   for (auto const& i : VPackArrayIterator(transactions->slice())) {
     try {
       auto idx = i.get("index").getUInt();
+      if (highest < idx) {
+        highest = idx;
+      }
       std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
       buf->append((char const*)i.get("query").begin(),i.get("query").byteSize());
       _log.push_back(log_t(idx, term, lid, buf));
@@ -163,7 +167,7 @@ bool State::log(query_t const& transactions, term_t term,
     }
   }
   
-  return true;
+  return highest;
   
 }
 

@@ -237,8 +237,8 @@ bool Agent::recvAppendEntriesRPC(term_t term,
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
-  index_t lastCommitIndex = _lastCommitIndex;
-  // 1. Reply false if term < currentTerm ($5.1)
+  index_t lastPersistedIndex = _lastCommitIndex;
+
   if (this->term() > term) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
     return false;
@@ -248,34 +248,22 @@ bool Agent::recvAppendEntriesRPC(term_t term,
     return false;
   }
 
-  // 2. Reply false if log does not contain an entry at prevLogIndex
-  //    whose term matches prevLogTerm ($5.3)
-  /*if (!_state.find(prevIndex, prevTerm)) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Unable to find matching entry to previous entry (index,term) = ("
-        << prevIndex << "," << prevTerm << ")";
-    // return false;
-    }*/
-
-  // 3. If an existing entry conflicts with a new one (same index
-  //    but different terms), delete the existing entry and all that
-  //    follow it ($5.3)
-  // 4. Append any new entries not already in the log
   if (queries->slice().length()) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Appending "
                                      << queries->slice().length()
                                      << " entries to state machine.";
     /* bool success = */
-    _state.log(queries, term, leaderId, prevIndex, prevTerm);
-  } 
-  
-  // appendEntries 5. If leaderCommit > commitIndex, set commitIndex =
-  // min(leaderCommit, index of last new entry)
-  if (leaderCommitIndex > lastCommitIndex) {
-    _lastCommitIndex = (std::min)(leaderCommitIndex, lastCommitIndex);
+    lastPersistedIndex = _state.log(queries, term, leaderId, prevIndex, prevTerm);
   }
 
+  _lastCommitIndex = leaderCommitIndex;
+  
+  if (_lastCommitIndex >= _nextCompationAfter) {
+    _state.compact(_lastCommitIndex);
+    _nextCompationAfter += _config.compactionStepSize;
+  }
   return true;
+
 }
 
 
