@@ -57,7 +57,7 @@ make jslint
 (
   cd js/apps/system/_admin/aardvark/APP
   npm install --only=dev
-  npm run grunt
+  npm run grunt --force
 )
 
 git add -f Documentation/Examples/*.generated

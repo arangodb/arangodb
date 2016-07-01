@@ -130,6 +130,7 @@ typedef long suseconds_t;
 // -----------------------------------------------------------------------------
 
 #include <algorithm>
+#include <cmath>
 #include <deque>
 #include <list>
 #include <map>

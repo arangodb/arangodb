@@ -1,2 +1,2 @@
-shell> curl --header 'If-None-Match: "734663735"' --dump - http://localhost:8529/_api/document/products/734663735
+shell> curl --header 'If-None-Match: "731934607"' --dump - http://localhost:8529/_api/document/products/731934607
 

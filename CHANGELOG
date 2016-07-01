@@ -1,4 +1,4 @@
-v2.8.10 (XXXX-XX-XX)
+v2.8.10 (2016-07-01)
 --------------------
 
 * make sure next local _rev value used for a document is at least as high as the
