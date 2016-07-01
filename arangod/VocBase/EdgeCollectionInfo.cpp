@@ -23,6 +23,7 @@
 #include "EdgeCollectionInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/EdgeIndex.h"
+#include "Utils/OperationCursor.h"
 
 using namespace arangodb::traverser;
 
@@ -59,7 +60,7 @@ EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
 /// @brief Get edges for the given direction and start vertex.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
+std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
     std::string const& vertexId) {
   _searchBuilder.clear();
   EdgeIndex::buildSearchValue(_forwardDir, vertexId, _searchBuilder);
@@ -68,7 +69,7 @@ std::shared_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
                          _searchBuilder.slice(), 0, UINT64_MAX, 1000, false);
 }
 
-std::shared_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
+std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
     VPackSlice const& vertexId) {
   _searchBuilder.clear();
   EdgeIndex::buildSearchValue(_forwardDir, vertexId, _searchBuilder);
@@ -97,7 +98,7 @@ int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId,
 /// @brief Get edges for the given direction and start vertex. Reverse version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
+std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
     std::string const& vertexId) {
   _searchBuilder.clear();
   EdgeIndex::buildSearchValue(_backwardDir, vertexId, _searchBuilder);
@@ -106,7 +107,7 @@ std::shared_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
                          _searchBuilder.slice(), 0, UINT64_MAX, 1000, false);
 }
 
-std::shared_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
+std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
     VPackSlice const& vertexId) {
   _searchBuilder.clear();
   EdgeIndex::buildSearchValue(_backwardDir, vertexId, _searchBuilder);

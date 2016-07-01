@@ -1,26 +1,26 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const joi = require('joi');
@@ -49,398 +49,383 @@ const PARSED_JSON_MIME = (function (mime) {
   ]));
 }(MIME_JSON));
 
-module.exports = exports = class SwaggerContext {
-  constructor(path) {
-    if (!path) {
-      path = '';
-    }
-    {
-      const n = path.length - 1;
-      if (path.charAt(n) === '/') {
-        path = path.slice(0, n);
+module.exports = exports =
+  class SwaggerContext {
+    constructor (path) {
+      if (!path) {
+        path = '';
       }
-      if (path.charAt(0) !== '/') {
-        path = `/${path}`;
+      {
+        const n = path.length - 1;
+        if (path.charAt(n) === '/') {
+          path = path.slice(0, n);
+        }
+        if (path.charAt(0) !== '/') {
+          path = `/${path}`;
+        }
       }
-    }
-    this._headers = new Map();
-    this._queryParams = new Map();
-    this._bodyParam = null;
-    this._responses = new Map();
-    this._summary = null;
-    this._description = null;
-    this._deprecated = false;
-    this.path = path;
-    this._pathParams = new Map();
-    this._pathParamNames = [];
-    this._pathTokens = tokenize(path, this);
-  }
-
-  header(name, schema, description) {
-    [name, schema, description] = check(
-      'endpoint.header',
-      ['name', 'schema?', 'description?'],
-      ['string', check.validateSchema, 'string'],
-      [name, schema, description]
-    );
-    this._headers.set(name.toLowerCase(), {schema, description});
-    return this;
-  }
-
-  pathParam(name, schema, description) {
-    [name, schema, description] = check(
-      'endpoint.pathParam',
-      ['name', 'schema?', 'description?'],
-      ['string', check.validateSchema, 'string'],
-      [name, schema, description]
-    );
-    this._pathParams.set(name, {schema, description});
-    return this;
-  }
-
-  queryParam(name, schema, description) {
-    [name, schema, description] = check(
-      'endpoint.queryParam',
-      ['name', 'schema?', 'description?'],
-      ['string', check.validateSchema, 'string'],
-      [name, schema, description]
-    );
-    this._queryParams.set(name, {schema, description});
-    return this;
-  }
-
-  body(model, mimes, description) {
-    [model, mimes, description] = check(
-      'endpoint.body',
-      ['model?', 'mimes?', 'description?'],
-      [check.validateModel, check.validateMimes, 'string'],
-      [model, mimes, description]
-    );
-
-    if (!model) {
-      model = {multiple: false};
+      this._headers = new Map();
+      this._queryParams = new Map();
+      this._bodyParam = null;
+      this._responses = new Map();
+      this._summary = null;
+      this._description = null;
+      this._deprecated = false;
+      this.path = path;
+      this._pathParams = new Map();
+      this._pathParamNames = [];
+      this._pathTokens = tokenize(path, this);
     }
 
-    if (model.model === null) {
+    header (name, schema, description) { [name, schema, description] = check(
+        'endpoint.header',
+        ['name', 'schema?', 'description?'],
+        ['string', check.validateSchema, 'string'],
+        [name, schema, description]
+      );
+      this._headers.set(name.toLowerCase(), {schema, description});
+      return this;
+    }
+
+    pathParam (name, schema, description) { [name, schema, description] = check(
+        'endpoint.pathParam',
+        ['name', 'schema?', 'description?'],
+        ['string', check.validateSchema, 'string'],
+        [name, schema, description]
+      );
+      this._pathParams.set(name, {schema, description});
+      return this;
+    }
+
+    queryParam (name, schema, description) { [name, schema, description] = check(
+        'endpoint.queryParam',
+        ['name', 'schema?', 'description?'],
+        ['string', check.validateSchema, 'string'],
+        [name, schema, description]
+      );
+      this._queryParams.set(name, {schema, description});
+      return this;
+    }
+
+    body (model, mimes, description) { [model, mimes, description] = check(
+        'endpoint.body',
+        ['model?', 'mimes?', 'description?'],
+        [check.validateModel, check.validateMimes, 'string'],
+        [model, mimes, description]
+      );
+
+      if (!model) {
+        model = {multiple: false};
+      }
+
+      if (model.model === null) {
+        this._bodyParam = {
+          model: null,
+          multiple: model.multiple,
+          contentTypes: null,
+        description};
+        return this;
+      }
+
+      if (!mimes) {
+        mimes = [];
+      }
+
+      if (!mimes.length && model.model) {
+        mimes.push(PARSED_JSON_MIME);
+      }
+
       this._bodyParam = {
-        model: null,
+        model: model.model,
         multiple: model.multiple,
-        contentTypes: null,
-        description
-      };
+        contentTypes: mimes,
+      description};
       return this;
     }
 
-    if (!mimes) {
-      mimes = [];
-    }
+    response (status, model, mimes, description) { [status, model, mimes, description] = check(
+        'endpoint.response',
+        ['status?', 'model?', 'mimes?', 'description?'],
+        [check.validateStatus, check.validateModel, check.validateMimes, 'string'],
+        [status, model, mimes, description]
+      );
 
-    if (!mimes.length && model.model) {
-      mimes.push(PARSED_JSON_MIME);
-    }
+      if (!model) {
+        model = {multiple: false};
+      }
 
-    this._bodyParam = {
-      model: model.model,
-      multiple: model.multiple,
-      contentTypes: mimes,
-      description
-    };
-    return this;
-  }
+      if (!status) {
+        status = model.model === null ? 204 : 200;
+      }
 
-  response(status, model, mimes, description) {
-    [status, model, mimes, description] = check(
-      'endpoint.response',
-      ['status?', 'model?', 'mimes?', 'description?'],
-      [check.validateStatus, check.validateModel, check.validateMimes, 'string'],
-      [status, model, mimes, description]
-    );
+      if (model.model === null) {
+        this._responses.set(status, {
+          model: null,
+          multiple: model.multiple,
+          contentTypes: null,
+        description});
+        return this;
+      }
 
-    if (!model) {
-      model = {multiple: false};
-    }
+      if (!mimes) {
+        mimes = [];
+      }
 
-    if (!status) {
-      status = model.model === null ? 204 : 200;
-    }
+      if (!mimes.length && model.model) {
+        mimes.push(PARSED_JSON_MIME);
+      }
 
-
-    if (model.model === null) {
       this._responses.set(status, {
-        model: null,
+        model: model.model,
         multiple: model.multiple,
-        contentTypes: null,
-        description
-      });
+        contentTypes: mimes,
+      description});
       return this;
     }
 
-    if (!mimes) {
-      mimes = [];
-    }
-
-    if (!mimes.length && model.model) {
-      mimes.push(PARSED_JSON_MIME);
-    }
-
-    this._responses.set(status, {
-      model: model.model,
-      multiple: model.multiple,
-      contentTypes: mimes,
-      description
-    });
-    return this;
-  }
-
-  error(status, description) {
-    [status, description] = check(
-      'endpoint.error',
-      ['status', 'description?'],
-      [check.validateStatus, 'string'],
-      [status, description]
-    );
-    this._responses.set(status, {
-      model: DEFAULT_ERROR_SCHEMA,
-      multiple: false,
-      contentTypes: [PARSED_JSON_MIME],
-      description
-    });
-    return this;
-  }
-
-  summary(text) {
-    [text] = check(
-      'endpoint.summary',
-      ['text'],
-      ['string'],
-      [text]
-    );
-    this._summary = text;
-    return this;
-  }
-
-  description(text) {
-    [text] = check(
-      'endpoint.description',
-      ['text'],
-      ['string'],
-      [text]
-    );
-    this._description = text;
-    return this;
-  }
-
-  deprecated(flag) {
-    [flag] = check(
-      'endpoint.deprecated',
-      ['flag?'],
-      ['boolean'],
-      [flag]
-    );
-    this._deprecated = typeof flag === 'boolean' ? flag : true;
-    return this;
-  }
-
-  _merge(swaggerObj, pathOnly) {
-    if (!pathOnly) {
-      for (const header of swaggerObj._headers.entries()) {
-        this._headers.set(header[0], header[1]);
-      }
-      for (const queryParam of swaggerObj._queryParams.entries()) {
-        this._queryParams.set(queryParam[0], queryParam[1]);
-      }
-      for (const response of swaggerObj._responses.entries()) {
-        this._responses.set(response[0], response[1]);
-      }
-      if (!this._bodyParam && swaggerObj._bodyParam) {
-        this._bodyParam = swaggerObj._bodyParam;
-      }
-      this._deprecated = swaggerObj._deprecated || this._deprecated;
-      this._description = swaggerObj._description || this._description;
-      this._summary = swaggerObj._summary || this._summary;
-    }
-    if (this.path.charAt(this.path.length - 1) === '*') {
-      this.path = this.path.slice(0, this.path.length - 1);
-    }
-    if (this.path.charAt(this.path.length - 1) === '/') {
-      this.path = this.path.slice(0, this.path.length - 1);
-    }
-    this._pathTokens.pop();
-    this._pathTokens = this._pathTokens.concat(swaggerObj._pathTokens);
-    for (const pathParam of swaggerObj._pathParams.entries()) {
-      let name = pathParam[0];
-      const def = pathParam[1];
-      if (this._pathParams.has(name)) {
-        let baseName = name;
-        let i = 2;
-        const match = name.match(/(^.+)([0-9]+)$/i);
-        if (match) {
-          baseName = match[1];
-          i = Number(match[2]);
-        }
-        while (this._pathParams.has(baseName + i)) {
-          i++;
-        }
-        name = baseName + i;
-      }
-      this._pathParams.set(name, def);
-      this._pathParamNames.push(name);
-    }
-    this.path = tokenize.reverse(this._pathTokens, this._pathParamNames);
-  }
-
-  _buildOperation() {
-    const operation = {
-      produces: [],
-      parameters: []
-    };
-    if (this._deprecated) {
-      operation.deprecated = this._deprecated;
-    }
-    if (this._description) {
-      operation.description = this._description;
-    }
-    if (this._summary) {
-      operation.summary = this._summary;
-    }
-    if (this._bodyParam) {
-      operation.consumes = (
-        this._bodyParam.contentTypes
-        ? this._bodyParam.contentTypes.slice()
-        : []
+    error (status, description) { [status, description] = check(
+        'endpoint.error',
+        ['status', 'description?'],
+        [check.validateStatus, 'string'],
+        [status, description]
       );
+      this._responses.set(status, {
+        model: DEFAULT_ERROR_SCHEMA,
+        multiple: false,
+        contentTypes: [PARSED_JSON_MIME],
+      description});
+      return this;
     }
-    for (const response of this._responses.values()) {
-      if (!response.contentTypes) {
-        continue;
+
+    summary (text) { [text] = check(
+        'endpoint.summary',
+        ['text'],
+        ['string'],
+        [text]
+      );
+      this._summary = text;
+      return this;
+    }
+
+    description (text) { [text] = check(
+        'endpoint.description',
+        ['text'],
+        ['string'],
+        [text]
+      );
+      this._description = text;
+      return this;
+    }
+
+    deprecated (flag) { [flag] = check(
+        'endpoint.deprecated',
+        ['flag?'],
+        ['boolean'],
+        [flag]
+      );
+      this._deprecated = typeof flag === 'boolean' ? flag : true;
+      return this;
+    }
+
+    _merge (swaggerObj, pathOnly) {
+      if (!pathOnly) {
+        for (const header of swaggerObj._headers.entries()) {
+          this._headers.set(header[0], header[1]);
+        }
+        for (const queryParam of swaggerObj._queryParams.entries()) {
+          this._queryParams.set(queryParam[0], queryParam[1]);
+        }
+        for (const response of swaggerObj._responses.entries()) {
+          this._responses.set(response[0], response[1]);
+        }
+        if (!this._bodyParam && swaggerObj._bodyParam) {
+          this._bodyParam = swaggerObj._bodyParam;
+        }
+        this._deprecated = swaggerObj._deprecated || this._deprecated;
+        this._description = swaggerObj._description || this._description;
+        this._summary = swaggerObj._summary || this._summary;
       }
-      for (const contentType of response.contentTypes) {
-        if (operation.produces.indexOf(contentType) === -1) {
-          operation.produces.push(contentType);
+      if (this.path.charAt(this.path.length - 1) === '*') {
+        this.path = this.path.slice(0, this.path.length - 1);
+      }
+      if (this.path.charAt(this.path.length - 1) === '/') {
+        this.path = this.path.slice(0, this.path.length - 1);
+      }
+      this._pathTokens.pop();
+      this._pathTokens = this._pathTokens.concat(swaggerObj._pathTokens);
+      for (const pathParam of swaggerObj._pathParams.entries()) {
+        let name = pathParam[0];
+        const def = pathParam[1];
+        if (this._pathParams.has(name)) {
+          let baseName = name;
+          let i = 2;
+          const match = name.match(/(^.+)([0-9]+)$/i);
+          if (match) {
+            baseName = match[1];
+            i = Number(match[2]);
+          }
+          while (this._pathParams.has(baseName + i)) {
+            i++;
+          }
+          name = baseName + i;
+        }
+        this._pathParams.set(name, def);
+        this._pathParamNames.push(name);
+      }
+      this.path = tokenize.reverse(this._pathTokens, this._pathParamNames);
+    }
+
+    _buildOperation () {
+      const operation = {
+        produces: [],
+        parameters: []
+      };
+      if (this._deprecated) {
+        operation.deprecated = this._deprecated;
+      }
+      if (this._description) {
+        operation.description = this._description;
+      }
+      if (this._summary) {
+        operation.summary = this._summary;
+      }
+      if (this._bodyParam) {
+        operation.consumes = (
+          this._bodyParam.contentTypes
+            ? this._bodyParam.contentTypes.slice()
+            : []
+        );
+      }
+      for (const response of this._responses.values()) {
+        if (!response.contentTypes) {
+          continue;
+        }
+        for (const contentType of response.contentTypes) {
+          if (operation.produces.indexOf(contentType) === -1) {
+            operation.produces.push(contentType);
+          }
         }
       }
-    }
-    if (operation.produces.indexOf('application/json') === -1) {
-      // ArangoDB errors use 'application/json'
-      operation.produces.push('application/json');
-    }
+      if (operation.produces.indexOf('application/json') === -1) {
+        // ArangoDB errors use 'application/json'
+        operation.produces.push('application/json');
+      }
 
-    for (const param of this._pathParams.entries()) {
-      const name = param[0];
-      const def = param[1];
-      const parameter = (
+      for (const param of this._pathParams.entries()) {
+        const name = param[0];
+        const def = param[1];
+        const parameter = (
         def.schema
-        ? swaggerifyParam(def.schema.isJoi ? def.schema : joi.object(def.schema))
-        : {type: 'string'}
-      );
-      parameter.name = name;
-      parameter.in = 'path';
-      parameter.required = true;
-      if (def.description) {
-        parameter.description = def.description;
-      }
-      operation.parameters.push(parameter);
-    }
-
-    for (const param of this._queryParams.entries()) {
-      const name = param[0];
-      const def = param[1];
-      const parameter = (
-        def.schema
-        ? swaggerifyParam(def.schema.isJoi ? def.schema : joi.object(def.schema))
-        : {type: 'string'}
-      );
-      parameter.name = name;
-      parameter.in = 'query';
-      if (def.description) {
-        parameter.description = def.description;
-      }
-      operation.parameters.push(parameter);
-    }
-
-    for (const param of this._headers.entries()) {
-      const name = param[0];
-      const def = param[1];
-      const parameter = (
-        def.schema
-        ? swaggerifyParam(def.schema.isJoi ? def.schema : joi.object(def.schema))
-        : {type: 'string'}
-      );
-      parameter.name = name;
-      parameter.in = 'header';
-      if (def.description) {
-        parameter.description = def.description;
-      }
-      operation.parameters.push(parameter);
-    }
-
-    if (this._bodyParam && this._bodyParam.contentTypes) {
-      const def = this._bodyParam;
-      const schema = (
-        def.model
-        ? (def.model.isJoi ? def.model : def.model.schema)
-        : null
-      );
-      const parameter = (
-        schema
-        ? swaggerifyBody(schema, def.multiple)
-        : {schema: {type: 'string'}}
-      );
-      parameter.name = 'body';
-      parameter.in = 'body';
-      if (def.description) {
-        parameter.description = def.description;
-      }
-      operation.parameters.push(parameter);
-    }
-
-    operation.responses = {
-      500: {
-        description: 'Default error response.',
-        schema: joi2schema(DEFAULT_ERROR_SCHEMA)
-      }
-    };
-
-    for (const entry of this._responses.entries()) {
-      const code = entry[0];
-      const def = entry[1];
-      const schema = (
-        def.model
-        ? (def.model.isJoi ? def.model : def.model.schema)
-        : null
-      );
-      const response = {};
-      if (def.contentTypes && def.contentTypes.length) {
-        response.schema = (
-          schema
-          ? joi2schema(schema, def.multiple)
+          ? swaggerifyParam(def.schema.isJoi ? def.schema : joi.object(def.schema))
           : {type: 'string'}
         );
+        parameter.name = name;
+        parameter.in = 'path';
+        parameter.required = true;
+        if (def.description) {
+          parameter.description = def.description;
+        }
+        operation.parameters.push(parameter);
       }
-      if (schema && schema._description) {
-        response.description = schema._description;
-        delete response.schema.description;
-      }
-      if (def.description) {
-        response.description = def.description;
-      }
-      if (!response.description) {
-        const message = statuses[code];
-        response.description = message ? `HTTP ${code} ${message}.` : (
-          response.schema
-          ? `Nondescript ${code} response.`
-          : `Nondescript ${code} response without body.`
-        );
-      }
-      operation.responses[code] = response;
-    }
 
-    return operation;
-  }
+      for (const param of this._queryParams.entries()) {
+        const name = param[0];
+        const def = param[1];
+        const parameter = (
+        def.schema
+          ? swaggerifyParam(def.schema.isJoi ? def.schema : joi.object(def.schema))
+          : {type: 'string'}
+        );
+        parameter.name = name;
+        parameter.in = 'query';
+        if (def.description) {
+          parameter.description = def.description;
+        }
+        operation.parameters.push(parameter);
+      }
+
+      for (const param of this._headers.entries()) {
+        const name = param[0];
+        const def = param[1];
+        const parameter = (
+        def.schema
+          ? swaggerifyParam(def.schema.isJoi ? def.schema : joi.object(def.schema))
+          : {type: 'string'}
+        );
+        parameter.name = name;
+        parameter.in = 'header';
+        if (def.description) {
+          parameter.description = def.description;
+        }
+        operation.parameters.push(parameter);
+      }
+
+      if (this._bodyParam && this._bodyParam.contentTypes) {
+        const def = this._bodyParam;
+        const schema = (
+        def.model
+          ? (def.model.isJoi ? def.model : def.model.schema)
+          : null
+        );
+        const parameter = (
+        schema
+          ? swaggerifyBody(schema, def.multiple)
+          : {schema: {type: 'string'}}
+        );
+        parameter.name = 'body';
+        parameter.in = 'body';
+        if (def.description) {
+          parameter.description = def.description;
+        }
+        operation.parameters.push(parameter);
+      }
+
+      operation.responses = {
+        500: {
+          description: 'Default error response.',
+          schema: joi2schema(DEFAULT_ERROR_SCHEMA)
+        }
+      };
+
+      for (const entry of this._responses.entries()) {
+        const code = entry[0];
+        const def = entry[1];
+        const schema = (
+        def.model
+          ? (def.model.isJoi ? def.model : def.model.schema)
+          : null
+        );
+        const response = {};
+        if (def.contentTypes && def.contentTypes.length) {
+          response.schema = (
+            schema
+              ? joi2schema(schema, def.multiple)
+              : {type: 'string'}
+          );
+        }
+        if (schema && schema._description) {
+          response.description = schema._description;
+          delete response.schema.description;
+        }
+        if (def.description) {
+          response.description = def.description;
+        }
+        if (!response.description) {
+          const message = statuses[code];
+          response.description = message ? `HTTP ${code} ${message}.` : (
+            response.schema
+              ? `Nondescript ${code} response.`
+              : `Nondescript ${code} response without body.`
+            );
+        }
+        operation.responses[code] = response;
+      }
+
+      return operation;
+    }
 };
 
-
-function swaggerifyType(joi) {
+function swaggerifyType (joi) {
   switch (joi._type) {
     default:
       return ['string'];
@@ -469,8 +454,7 @@ function swaggerifyType(joi) {
   }
 }
 
-
-function swaggerifyParam(joi) {
+function swaggerifyParam (joi) {
   const param = {
     required: joi._presence === 'required',
     description: joi._description || undefined
@@ -496,8 +480,7 @@ function swaggerifyParam(joi) {
   return param;
 }
 
-
-function swaggerifyBody(joi, multiple) {
+function swaggerifyBody (joi, multiple) {
   return {
     required: joi._presence === 'required',
     description: joi._description || undefined,
@@ -505,8 +488,7 @@ function swaggerifyBody(joi, multiple) {
   };
 }
 
-
-function joi2schema(schema, multiple) {
+function joi2schema (schema, multiple) {
   if (multiple) {
     schema = joi.array().items(schema);
   }

@@ -1,51 +1,50 @@
-/*jshint unused: false */
+/* jshint unused: false */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2013 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Michael Hackstein
-/// @author Dr. Frank Celler
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2013 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Michael Hackstein
+// / @author Dr. Frank Celler
+// //////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("@arangodb");
-var arangosh = require("@arangodb/arangosh");
+var arangodb = require('@arangodb');
+var arangosh = require('@arangodb/arangosh');
 var errors = arangodb.errors;
 var ArangoError = arangodb.ArangoError;
 var checkParameter = arangodb.checkParameter;
-var arango = require("internal").arango;
-var fs = require("fs");
+var arango = require('internal').arango;
+var fs = require('fs');
 
 var throwFileNotFound = arangodb.throwFileNotFound;
 var throwBadParameter = arangodb.throwBadParameter;
 
-var utils = require("@arangodb/foxx/manager-utils");
-var store = require("@arangodb/foxx/store");
+var utils = require('@arangodb/foxx/manager-utils');
+var store = require('@arangodb/foxx/store');
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts command-line options
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief extracts command-line options
+// //////////////////////////////////////////////////////////////////////////////
 
-var extractCommandLineOptions = function(args) {
-
+var extractCommandLineOptions = function (args) {
   var options = {};
   var nargs = [];
   var i;
@@ -64,12 +63,10 @@ var extractCommandLineOptions = function(args) {
 
       if (reNumeric.test(value)) {
         options[key] = parseFloat(value);
-      }
-      else {
+      } else {
         options[key] = value;
       }
-    }
-    else {
+    } else {
       nargs.push(args[i]);
     }
   }
@@ -77,16 +74,15 @@ var extractCommandLineOptions = function(args) {
   return { 'options': options, 'args': nargs };
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract options from CLI options
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief extract options from CLI options
+// //////////////////////////////////////////////////////////////////////////////
 var extractOptions = function (args) {
   var opts = extractCommandLineOptions(args);
   if (3 < opts.args.length) {
     var options = JSON.parse(opts.args[3]);
 
-    if (options.hasOwnProperty("configuration")) {
+    if (options.hasOwnProperty('configuration')) {
       var key;
 
       for (key in opts.options) {
@@ -94,8 +90,7 @@ var extractOptions = function (args) {
           options.configuration[key] = opts.options[key];
         }
       }
-    }
-    else {
+    } else {
       options.configuration = opts.options;
     }
 
@@ -105,119 +100,118 @@ var extractOptions = function (args) {
   return { configuration: opts.options };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints out usage message for the command-line tool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief prints out usage message for the command-line tool
+// //////////////////////////////////////////////////////////////////////////////
 
 var cmdUsage = function () {
   var printf = arangodb.printf;
-  var fm = "foxx-manager";
+  var fm = 'foxx-manager';
 
-  printf("Example usage:\n");
-  printf(" %s install <service-info> <mount-point> option1=value1\n", fm);
-  printf(" %s uninstall <mount-point>\n\n", fm);
+  printf('Example usage:\n');
+  printf(' %s install <service-info> <mount-point> option1=value1\n', fm);
+  printf(' %s uninstall <mount-point>\n\n', fm);
 
-  printf("Further help:\n");
-  printf(" %s help   for the list of foxx-manager commands\n", fm);
-  printf(" %s --help for the list of options\n", fm);
+  printf('Further help:\n');
+  printf(' %s help   for the list of foxx-manager commands\n', fm);
+  printf(' %s --help for the list of options\n', fm);
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief outputs the help
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief outputs the help
+// //////////////////////////////////////////////////////////////////////////////
 
 var help = function () {
 
-  /*jshint maxlen: 200 */
+  /* jshint maxlen: 200 */
   var commands = {
-    "available"       : "lists all Foxx services available in the local repository",
-    "configuration"   : "request the configuration information for the given mountpoint",
-    "configure"       : "sets the configuration for the given mountpoint",
-    "updateDeps"      : "links the dependencies in manifest to a mountpoint",
-    "dependencies"    : "request the dependencies information for the given mountpoint",
-    "development"     : "activates development mode for the given mountpoint",
-    "help"            : "shows this help",
-    "info"            : "displays information about a Foxx service",
-    "install"         : "installs a foxx service identified by the given information to the given mountpoint",
-    "installed"       : "alias for the 'list' command",
-    "list"            : "lists all installed Foxx services",
-    "production"      : "activates production mode for the given mountpoint",
-    "replace"         : ["replaces an installed Foxx service",
-                         "WARNING: this action will remove service data if the service implements teardown!" ],
-    "run"             : "runs the given script of a foxx service mounted at the given mountpoint",
-    "search"          : "searches the local foxx-apps repository",
-    "set-dependencies": "sets the dependencies for the given mountpoint",
-    "setup"           : "executes the setup script",
-    "teardown"        : [ "executes the teardown script",
-                           "WARNING: this action will remove service data if the service implements teardown!" ],
-    "tests"           : "runs the tests of a foxx service mounted at the given mountpoint",
-    "uninstall"       : ["uninstalls a Foxx service and calls its teardown method",
-                       "WARNING: this will remove all data and code of the service!" ],
-    "update"          : "updates the local foxx-apps repository with data from the central foxx-apps repository",
-    "upgrade"         : ["upgrades an installed Foxx service",
-                         "Note: this action will not call setup or teardown" ]
+    'available': 'lists all Foxx services available in the local repository',
+    'configuration': 'request the configuration information for the given mountpoint',
+    'configure': 'sets the configuration for the given mountpoint',
+    'updateDeps': 'links the dependencies in manifest to a mountpoint',
+    'dependencies': 'request the dependencies information for the given mountpoint',
+    'development': 'activates development mode for the given mountpoint',
+    'help': 'shows this help',
+    'info': 'displays information about a Foxx service',
+    'install': 'installs a foxx service identified by the given information to the given mountpoint',
+    'installed': "alias for the 'list' command",
+    'list': 'lists all installed Foxx services',
+    'production': 'activates production mode for the given mountpoint',
+    'replace': ['replaces an installed Foxx service',
+      'WARNING: this action will remove service data if the service implements teardown!' ],
+    'run': 'runs the given script of a foxx service mounted at the given mountpoint',
+    'search': 'searches the local foxx-apps repository',
+    'set-dependencies': 'sets the dependencies for the given mountpoint',
+    'setup': 'executes the setup script',
+    'teardown': [ 'executes the teardown script',
+      'WARNING: this action will remove service data if the service implements teardown!' ],
+    'tests': 'runs the tests of a foxx service mounted at the given mountpoint',
+    'uninstall': ['uninstalls a Foxx service and calls its teardown method',
+      'WARNING: this will remove all data and code of the service!' ],
+    'update': 'updates the local foxx-apps repository with data from the central foxx-apps repository',
+    'upgrade': ['upgrades an installed Foxx service',
+      'Note: this action will not call setup or teardown' ]
   };
 
-  arangodb.print("\nThe following commands are available:\n");
+  arangodb.print('\nThe following commands are available:\n');
   var keys = Object.keys(commands).sort();
 
   var i;
   var pad, name, extra;
   for (i = 0; i < keys.length; ++i) {
-    pad  = "                  ";
+    pad = '                  ';
     name = keys[i] + pad;
     extra = commands[keys[i]];
 
     if (typeof extra !== 'string') {
       // list of strings
-      extra = extra.join("\n  " + pad) + "\n";
+      extra = extra.join('\n  ' + pad) + '\n';
     }
-    arangodb.printf(" %s %s\n", name.substr(0, pad.length), extra);
+    arangodb.printf(' %s %s\n', name.substr(0, pad.length), extra);
   }
 
   arangodb.print();
-  arangodb.print("Use  foxx-manager --help  to show a list of global options\n");
-  arangodb.print("There is also an online manual available at:");
-  arangodb.print("https://docs.arangodb.com/Foxx/Install/");
+  arangodb.print('Use  foxx-manager --help  to show a list of global options\n');
+  arangodb.print('There is also an online manual available at:');
+  arangodb.print('https://docs.arangodb.com/Foxx/Install/');
 
   // additional newline
   arangodb.print();
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs a script on a Foxx service
-///
-/// Input:
-/// * name: the name of the script
-/// * mount: the mount path starting with a "/"
-///
-/// Output:
-/// -
-////////////////////////////////////////////////////////////////////////////////
-var runScript = function(mount, name, options) {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs a script on a Foxx service
+// /
+// / Input:
+// / * name: the name of the script
+// / * mount: the mount path starting with a "/"
+// /
+// / Output:
+// / -
+// //////////////////////////////////////////////////////////////////////////////
+var runScript = function (mount, name, options) {
   checkParameter(
-    "run(<mount>, <name>, [<options>])",
-    [ [ "Mount path", "string" ], [ "Script name", "string" ] ],
-    [ mount, name ] );
+    'run(<mount>, <name>, [<options>])',
+    [ [ 'Mount path', 'string' ], [ 'Script name', 'string' ] ],
+    [ mount, name ]);
   var res;
   var req = {
     name: name,
     mount: mount,
     options: options
   };
-  res = arango.POST("/_admin/foxx/script", JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/script', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return res;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Zips and copies a local service to the server.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Zips and copies a local service to the server.
+// //////////////////////////////////////////////////////////////////////////////
 
-var moveAppToServer = function(serviceInfo) {
-  if (! fs.exists(serviceInfo)) {
-    throwFileNotFound("Cannot find file: " + serviceInfo + ".");
+var moveAppToServer = function (serviceInfo) {
+  if (!fs.exists(serviceInfo)) {
+    throwFileNotFound('Cannot find file: ' + serviceInfo + '.');
   }
   var filePath;
   var shouldDelete = false;
@@ -229,39 +223,38 @@ var moveAppToServer = function(serviceInfo) {
     filePath = serviceInfo;
   }
   if (!filePath) {
-    throwBadParameter("Invalid file: " + serviceInfo + ". Has to be a direcotry or zip archive");
+    throwBadParameter('Invalid file: ' + serviceInfo + '. Has to be a direcotry or zip archive');
   }
-  var response = arango.SEND_FILE("/_api/upload", filePath);
+  var response = arango.SEND_FILE('/_api/upload', filePath);
   if (shouldDelete) {
     try {
       fs.remove(filePath);
-    }
-    catch (err2) {
+    } catch (err2) {
       arangodb.printf("Cannot remove temporary file '%s'\n", filePath);
     }
   }
-  if (! response.filename) {
+  if (!response.filename) {
     throw new ArangoError({
       errorNum: errors.ERROR_SERVICE_UPLOAD_FAILED.code,
       errorMessage: errors.ERROR_SERVICE_UPLOAD_FAILED.message
-                  + ": " + String(response.errorMessage)
+        + ': ' + String(response.errorMessage)
     });
   }
   return response.filename;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Installs a new foxx service on the given mount point.
-///
-/// TODO: Long Documentation!
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Installs a new foxx service on the given mount point.
+// /
+// / TODO: Long Documentation!
+// //////////////////////////////////////////////////////////////////////////////
 
-var install = function(serviceInfo, mount, options) {
+var install = function (serviceInfo, mount, options) {
   checkParameter(
-    "install(<serviceInfo>, <mount>, [<options>])",
-    [ [ "Install information", "string" ],
-      [ "Mount path", "string" ] ],
-    [ serviceInfo, mount ] );
+    'install(<serviceInfo>, <mount>, [<options>])',
+    [ [ 'Install information', 'string' ],
+      [ 'Mount path', 'string' ] ],
+    [ serviceInfo, mount ]);
 
   utils.validateMount(mount);
   if (fs.exists(serviceInfo)) {
@@ -274,7 +267,7 @@ var install = function(serviceInfo, mount, options) {
     options: options
   };
 
-  res = arango.POST("/_admin/foxx/install", JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/install', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -283,24 +276,24 @@ var install = function(serviceInfo, mount, options) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Uninstalls the foxx service on the given mount point.
-///
-/// TODO: Long Documentation!
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Uninstalls the foxx service on the given mount point.
+// /
+// / TODO: Long Documentation!
+// //////////////////////////////////////////////////////////////////////////////
 
-var uninstall = function(mount, options) {
+var uninstall = function (mount, options) {
   checkParameter(
-    "uninstall(<mount>, [<options>])",
-    [ [ "Mount path", "string" ] ],
-    [ mount ] );
+    'uninstall(<mount>, [<options>])',
+    [ [ 'Mount path', 'string' ] ],
+    [ mount ]);
   var res;
   var req = {
     mount: mount,
     options: options || {}
   };
   utils.validateMount(mount);
-  res = arango.POST("/_admin/foxx/uninstall", JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/uninstall', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -309,18 +302,18 @@ var uninstall = function(mount, options) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Replaces a foxx service on the given mount point by an other one.
-///
-/// TODO: Long Documentation!
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Replaces a foxx service on the given mount point by an other one.
+// /
+// / TODO: Long Documentation!
+// //////////////////////////////////////////////////////////////////////////////
 
-var replace = function(serviceInfo, mount, options) {
+var replace = function (serviceInfo, mount, options) {
   checkParameter(
-    "replace(<serviceInfo>, <mount>, [<options>])",
-    [ [ "Install information", "string" ],
-      [ "Mount path", "string" ] ],
-    [ serviceInfo, mount ] );
+    'replace(<serviceInfo>, <mount>, [<options>])',
+    [ [ 'Install information', 'string' ],
+      [ 'Mount path', 'string' ] ],
+    [ serviceInfo, mount ]);
 
   utils.validateMount(mount);
   if (fs.exists(serviceInfo)) {
@@ -333,7 +326,7 @@ var replace = function(serviceInfo, mount, options) {
     options: options
   };
 
-  res = arango.POST("/_admin/foxx/replace", JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/replace', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -342,18 +335,18 @@ var replace = function(serviceInfo, mount, options) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Upgrade a foxx service on the given mount point by a new one.
-///
-/// TODO: Long Documentation!
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Upgrade a foxx service on the given mount point by a new one.
+// /
+// / TODO: Long Documentation!
+// //////////////////////////////////////////////////////////////////////////////
 
-var upgrade = function(serviceInfo, mount, options) {
+var upgrade = function (serviceInfo, mount, options) {
   checkParameter(
-    "upgrade(<serviceInfo>, <mount>, [<options>])",
-    [ [ "Install information", "string" ],
-      [ "Mount path", "string" ] ],
-    [ serviceInfo, mount ] );
+    'upgrade(<serviceInfo>, <mount>, [<options>])',
+    [ [ 'Install information', 'string' ],
+      [ 'Mount path', 'string' ] ],
+    [ serviceInfo, mount ]);
   utils.validateMount(mount);
   if (fs.exists(serviceInfo)) {
     serviceInfo = moveAppToServer(serviceInfo);
@@ -365,7 +358,7 @@ var upgrade = function(serviceInfo, mount, options) {
     options: options
   };
 
-  res = arango.POST("/_admin/foxx/upgrade", JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/upgrade', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -374,22 +367,22 @@ var upgrade = function(serviceInfo, mount, options) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Activate the development mode for the service on the given mount point.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Activate the development mode for the service on the given mount point.
+// //////////////////////////////////////////////////////////////////////////////
 
-var development = function(mount) {
+var development = function (mount) {
   checkParameter(
-    "development(<mount>)",
-    [ [ "Mount path", "string" ] ],
-    [ mount ] );
+    'development(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
+    [ mount ]);
   utils.validateMount(mount);
   var res;
   var req = {
     mount: mount,
     activate: true
   };
-  res = arango.POST("/_admin/foxx/development", JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/development', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -398,22 +391,22 @@ var development = function(mount) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Activate the production mode for the service on the given mount point.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Activate the production mode for the service on the given mount point.
+// //////////////////////////////////////////////////////////////////////////////
 
-var production = function(mount) {
+var production = function (mount) {
   checkParameter(
-    "production(<mount>)",
-    [ [ "Mount path", "string" ] ],
-    [ mount ] );
+    'production(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
+    [ mount ]);
   utils.validateMount(mount);
   var res;
   var req = {
     mount: mount,
     activate: false
   };
-  res = arango.POST("/_admin/foxx/development", JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/development', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -422,21 +415,21 @@ var production = function(mount) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Configure the service at the mountpoint
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Configure the service at the mountpoint
+// //////////////////////////////////////////////////////////////////////////////
 
-var configure = function(mount, options) {
+var configure = function (mount, options) {
   checkParameter(
-    "configure(<mount>)",
-    [ [ "Mount path", "string" ] ],
-    [ mount ] );
+    'configure(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
+    [ mount ]);
   utils.validateMount(mount);
   var req = {
     mount: mount,
     options: options
   };
-  var res = arango.POST("/_admin/foxx/configure", JSON.stringify(req));
+  var res = arango.POST('/_admin/foxx/configure', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -445,38 +438,38 @@ var configure = function(mount, options) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the configuration for the service at the given mountpoint
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Get the configuration for the service at the given mountpoint
+// //////////////////////////////////////////////////////////////////////////////
 
-var configuration = function(mount) {
+var configuration = function (mount) {
   checkParameter(
-    "configuration(<mount>)",
-    [ [ "Mount path", "string" ] ],
-    [ mount ] );
+    'configuration(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
+    [ mount ]);
   utils.validateMount(mount);
   var req = {
     mount: mount
   };
-  var res = arango.POST("/_admin/foxx/configuration", JSON.stringify(req));
+  var res = arango.POST('/_admin/foxx/configuration', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return res;
 };
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Link Dependencies to the installed mountpoint the service at the mountpoint
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Link Dependencies to the installed mountpoint the service at the mountpoint
+// //////////////////////////////////////////////////////////////////////////////
 
-var updateDeps = function(mount, options) {
+var updateDeps = function (mount, options) {
   checkParameter(
-    "update(<mount>)",
-    [ [ "Mount path", "string" ] ],
-    [ mount ] );
+    'update(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
+    [ mount ]);
   utils.validateMount(mount);
   var req = {
     mount: mount,
     options: options
   };
-  var res = arango.POST("/_admin/foxx/updateDeps", JSON.stringify(req));
+  var res = arango.POST('/_admin/foxx/updateDeps', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -484,21 +477,21 @@ var updateDeps = function(mount, options) {
     mount: res.mount
   };
 };
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Configure the dependencies of the service at the mountpoint
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Configure the dependencies of the service at the mountpoint
+// //////////////////////////////////////////////////////////////////////////////
 
-var setDependencies = function(mount, options) {
+var setDependencies = function (mount, options) {
   checkParameter(
-    "setDependencies(<mount>)",
-    [ [ "Mount path", "string" ] ],
-    [ mount ] );
+    'setDependencies(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
+    [ mount ]);
   utils.validateMount(mount);
   var req = {
     mount: mount,
     options: options
   };
-  var res = arango.POST("/_admin/foxx/set-dependencies", JSON.stringify(req));
+  var res = arango.POST('/_admin/foxx/set-dependencies', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -507,32 +500,32 @@ var setDependencies = function(mount, options) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the dependencies of the service at the given mountpoint
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Get the dependencies of the service at the given mountpoint
+// //////////////////////////////////////////////////////////////////////////////
 
-var dependencies = function(mount) {
+var dependencies = function (mount) {
   checkParameter(
-    "dependencies(<mount>)",
-    [ [ "Mount path", "string" ] ],
-    [ mount ] );
+    'dependencies(<mount>)',
+    [ [ 'Mount path', 'string' ] ],
+    [ mount ]);
   utils.validateMount(mount);
   var req = {
     mount: mount
   };
-  var res = arango.POST("/_admin/foxx/dependencies", JSON.stringify(req));
+  var res = arango.POST('/_admin/foxx/dependencies', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return res;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run a Foxx service's tests
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief run a Foxx service's tests
+// //////////////////////////////////////////////////////////////////////////////
 
 var tests = function (mount, options) {
   checkParameter(
-    "tests(<mount>, [<options>])",
-    [ [ "Mount path", "string" ] ],
+    'tests(<mount>, [<options>])',
+    [ [ 'Mount path', 'string' ] ],
     [ mount ]
   );
   utils.validateMount(mount);
@@ -540,18 +533,18 @@ var tests = function (mount, options) {
     mount: mount,
     options: options
   };
-  var res = arango.POST("/_admin/foxx/tests", JSON.stringify(req));
+  var res = arango.POST('/_admin/foxx/tests', JSON.stringify(req));
   arangosh.checkRequestResult(res);
   return res;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief command line dispatcher
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief command line dispatcher
+// //////////////////////////////////////////////////////////////////////////////
 
 var run = function (args) {
   if (args === undefined || args.length === 0) {
-    arangodb.print("Expecting a command, please try:\n");
+    arangodb.print('Expecting a command, please try:\n');
     cmdUsage();
     return 0;
   }
@@ -561,155 +554,150 @@ var run = function (args) {
   var res;
   var options;
 
-
   try {
     switch (type) {
-      case "setup":
-        runScript(args[1], "setup");
+      case 'setup':
+        runScript(args[1], 'setup');
         break;
-      case "teardown":
-        runScript(args[1], "teardown");
+      case 'teardown':
+        runScript(args[1], 'teardown');
         break;
-      case "run":
+      case 'run':
         options = args.slice(3).map(function (arg) {
           return JSON.parse(arg);
         });
         res = runScript(args[1], args[2], options);
-        printf(JSON.stringify(res, null, 2) + "\n");
+        printf(JSON.stringify(res, null, 2) + '\n');
         break;
-      case "tests":
+      case 'tests':
         options = args[2] ? JSON.parse(args[2]) : undefined;
         res = tests(args[1], options);
-        printf(JSON.stringify(res, null, 2) + "\n");
+        printf(JSON.stringify(res, null, 2) + '\n');
         break;
-      case "install":
+      case 'install':
         options = extractOptions(args);
         res = install(args[1], args[2], options);
-        printf("Service %s version %s installed successfully at mount point %s\n",
-             res.name,
-             res.version,
-             res.mount);
-        printf("options used: %s\n", JSON.stringify(options));
+        printf('Service %s version %s installed successfully at mount point %s\n',
+          res.name,
+          res.version,
+          res.mount);
+        printf('options used: %s\n', JSON.stringify(options));
         break;
-      case "replace":
+      case 'replace':
         options = extractOptions(args);
         res = replace(args[1], args[2], options);
-        printf("Service %s version %s replaced successfully at mount point %s\n",
-           res.name,
-           res.version,
-           res.mount);
+        printf('Service %s version %s replaced successfully at mount point %s\n',
+          res.name,
+          res.version,
+          res.mount);
         break;
-      case "upgrade":
+      case 'upgrade':
         options = extractOptions(args);
         res = upgrade(args[1], args[2], options);
-        printf("Service %s version %s upgraded successfully at mount point %s\n",
-           res.name,
-           res.version,
-           res.mount);
+        printf('Service %s version %s upgraded successfully at mount point %s\n',
+          res.name,
+          res.version,
+          res.mount);
         break;
-      case "uninstall":
+      case 'uninstall':
         options = extractOptions(args).configuration || {};
         res = uninstall(args[1], options);
 
-        printf("Service %s version %s uninstalled successfully from mount point %s\n",
-           res.name,
-           res.version,
-           res.mount);
+        printf('Service %s version %s uninstalled successfully from mount point %s\n',
+          res.name,
+          res.version,
+          res.mount);
         break;
-      case "list":
-      case "installed":
-        if (1 < args.length && args[1] === "prefix") {
+      case 'list':
+      case 'installed':
+        if (1 < args.length && args[1] === 'prefix') {
           utils.list(true);
-        }
-        else {
+        } else {
           utils.list();
         }
         break;
-      case "listDevelopment":
-        if (1 < args.length && args[1] === "prefix") {
+      case 'listDevelopment':
+        if (1 < args.length && args[1] === 'prefix') {
           utils.listDevelopment(true);
-        }
-        else {
+        } else {
           utils.listDevelopment();
         }
         break;
-      case "available":
+      case 'available':
         store.available();
         break;
-      case "info":
+      case 'info':
         store.info(args[1]);
         break;
-      case "search":
+      case 'search':
         store.search(args[1]);
         break;
-      case "update":
+      case 'update':
         store.update();
         break;
-      case "help":
+      case 'help':
         help();
         break;
-      case "development":
+      case 'development':
         res = development(args[1]);
-        printf("Activated development mode for Service %s version %s on mount point %s\n",
-           res.name,
-           res.version,
-           res.mount);
+        printf('Activated development mode for Service %s version %s on mount point %s\n',
+          res.name,
+          res.version,
+          res.mount);
         break;
-      case "production":
+      case 'production':
         res = production(args[1]);
-        printf("Activated production mode for Service %s version %s on mount point %s\n",
-           res.name,
-           res.version,
-           res.mount);
+        printf('Activated production mode for Service %s version %s on mount point %s\n',
+          res.name,
+          res.version,
+          res.mount);
         break;
-      case "configure":
+      case 'configure':
         options = extractOptions(args).configuration || {};
         res = configure(args[1], options);
-        printf("Reconfigured Service %s version %s on mount point %s\n",
-           res.name,
-           res.version,
-           res.mount);
+        printf('Reconfigured Service %s version %s on mount point %s\n',
+          res.name,
+          res.version,
+          res.mount);
         break;
-      case "configuration":
+      case 'configuration':
         res = configuration(args[1]);
-        printf("Configuration options:\n%s\n", JSON.stringify(res, undefined, 2));
+        printf('Configuration options:\n%s\n', JSON.stringify(res, undefined, 2));
         break;
-      case "updateDeps":
+      case 'updateDeps':
         options = extractOptions(args).configuration || {};
         res = updateDeps(args[1], options);
-        printf("Reconfigured Service %s version %s on mount point %s\n",
-           res.name,
-           res.version,
-           res.mount);
+        printf('Reconfigured Service %s version %s on mount point %s\n',
+          res.name,
+          res.version,
+          res.mount);
         break;
-      case "set-dependencies":
+      case 'set-dependencies':
         options = extractOptions(args).configuration || {};
         res = setDependencies(args[1], options);
-        printf("Reconfigured dependencies of Service %s version %s on mount point %s\n",
-           res.name,
-           res.version,
-           res.mount);
+        printf('Reconfigured dependencies of Service %s version %s on mount point %s\n',
+          res.name,
+          res.version,
+          res.mount);
         break;
-      case "dependencies":
+      case 'dependencies':
         res = dependencies(args[1]);
-        printf("Dependencies:\n%s\n", JSON.stringify(res, undefined, 2));
+        printf('Dependencies:\n%s\n', JSON.stringify(res, undefined, 2));
         break;
       default:
         printf("Unknown command '%s', please try:\n", type);
         cmdUsage();
     }
     return 0;
-  }
-  catch (err) {
+  } catch (err) {
     arangodb.print(String(err));
     return 1;
   }
 };
 
-
 exports.install = install;
-exports.setup = function (mount, opts) {return runScript(mount, "setup", opts);};
-exports.teardown = function (mount, opts) {return runScript(mount, "teardown", opts);};
+exports.setup = function (mount, opts) {return runScript(mount, 'setup', opts);};
+exports.teardown = function (mount, opts) {return runScript(mount, 'teardown', opts);};
 exports.runScript = runScript;
 exports.tests = tests;
 exports.uninstall = uninstall;
@@ -722,16 +710,16 @@ exports.configuration = configuration;
 exports.setDependencies = setDependencies;
 exports.dependencies = dependencies;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Clientside only API
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Clientside only API
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.run = run;
 exports.help = help;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Exports from foxx utils module.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Exports from foxx utils module.
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.mountedService = utils.mountedService;
 exports.list = utils.list;
@@ -739,9 +727,9 @@ exports.listJson = utils.listJson;
 exports.listDevelopment = utils.listDevelopment;
 exports.listDevelopmentJson = utils.listDevelopmentJson;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Exports from foxx store module.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Exports from foxx store module.
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.available = store.available;
 exports.availableJson = store.availableJson;

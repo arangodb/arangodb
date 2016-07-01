@@ -92,7 +92,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
   EdgeIndex::buildSearchValueFromArray(direction, ids, searchValueBuilder);
   VPackSlice search = searchValueBuilder.slice();
 
-  std::shared_ptr<OperationCursor> cursor =
+  std::unique_ptr<OperationCursor> cursor =
       trx.indexScan(collectionName, arangodb::Transaction::CursorType::INDEX,
                     indexId, search, 0, UINT64_MAX, 1000, false);
   if (cursor->failed()) {
@@ -145,7 +145,7 @@ bool RestEdgesHandler::getEdgesForVertex(
   EdgeIndex::buildSearchValue(direction, id, searchValueBuilder);
   VPackSlice search = searchValueBuilder.slice();
 
-  std::shared_ptr<OperationCursor> cursor =
+  std::unique_ptr<OperationCursor> cursor =
       trx.indexScan(collectionName, arangodb::Transaction::CursorType::INDEX,
                     indexId, search, 0, UINT64_MAX, 1000, false);
   if (cursor->failed()) {

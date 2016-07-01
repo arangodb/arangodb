@@ -1,34 +1,34 @@
-/*jshint -W083 */
-/*eslint no-loop-func: 0 */
-/*global describe, it, beforeEach, afterEach */
+/* jshint -W083 */
+/* eslint no-loop-func: 0 */
+/* global describe, it, beforeEach, afterEach */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Lucas Doomen
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Lucas Doomen
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
@@ -46,7 +46,7 @@ describe('createQuery(query)', function () {
 
   it('should execute QueryBuilder instances with no arguments', function () {
     const query = createQuery({toAQL() {
-      return 'RETURN 23';
+        return 'RETURN 23';
     }});
     expect(query()).to.eql([23]);
   });
@@ -56,7 +56,7 @@ describe('createQuery(query)', function () {
     expect(function () {
       query({foo: 'chicken'});
     }).to.throw(ArangoError)
-    .with.property('errorNum', errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code);
+      .with.property('errorNum', errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code);
   });
 
   it('should raise an ArangoError for missing arguments', function () {
@@ -64,7 +64,7 @@ describe('createQuery(query)', function () {
     expect(function () {
       query();
     }).to.throw(ArangoError)
-    .with.property('errorNum', errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code);
+      .with.property('errorNum', errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code);
   });
 
   it('should execute a query with valid arguments', function () {
@@ -75,7 +75,7 @@ describe('createQuery(query)', function () {
 });
 
 describe('createQuery(cfg)', function () {
-  function FakeModel(args) {
+  function FakeModel (args) {
     this.args = args;
   }
 

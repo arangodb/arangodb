@@ -90,14 +90,15 @@ Node::~Node() {}
 /// Get slice to value buffer
 Slice Node::slice() const {
 
+  // Some array
+  if (_isArray) {
+    rebuildVecBuf();
+    return Slice(_vecBuf.data());
+  } 
+
   // Some value
   if (!_value.empty()) {
-    if (!_isArray) {            // Scalar
-      return Slice(_value.front().data());
-    } else {                             // Vector
-      rebuildVecBuf();
-      return Slice(_vecBuf.data());
-    }
+    return Slice(_value.front().data());
   }
 
   // Empty object

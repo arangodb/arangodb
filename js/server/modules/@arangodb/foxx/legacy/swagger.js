@@ -1,26 +1,26 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 var _ = require('lodash');
 var fs = require('fs');
@@ -40,7 +40,7 @@ var jsonSchemaPrimitives = [
   'string'
 ];
 
-function createSwaggerRouteHandler(defaultAppPath, opts) {
+function createSwaggerRouteHandler (defaultAppPath, opts) {
   if (!opts) {
     opts = {};
   }
@@ -92,7 +92,7 @@ function createSwaggerRouteHandler(defaultAppPath, opts) {
   };
 }
 
-function swaggerPath(path, basePath) {
+function swaggerPath (path, basePath) {
   if (path.charAt(0) === '/') {
     return path;
   }
@@ -102,7 +102,7 @@ function swaggerPath(path, basePath) {
   return joinPath(basePath, path);
 }
 
-function resolveFoxx(req, res, appPath) {
+function resolveFoxx (req, res, appPath) {
   try {
     return FoxxManager.ensureRouted(appPath);
   } catch (e) {
@@ -114,7 +114,7 @@ function resolveFoxx(req, res, appPath) {
   }
 }
 
-function swaggerJson(req, res, opts) {
+function swaggerJson (req, res, opts) {
   let mount = opts.mount;
   let foxx = opts.foxx || resolveFoxx(req, res, mount);
   let docs = foxx.docs;
@@ -139,7 +139,7 @@ function swaggerJson(req, res, opts) {
   res.json(docs);
 }
 
-function fixSchema(model) {
+function fixSchema (model) {
   if (!model) {
     return undefined;
   }
@@ -162,11 +162,11 @@ function fixSchema(model) {
   return model;
 }
 
-function swaggerifyPath(path) {
+function swaggerifyPath (path) {
   return path.replace(/(?::)([^\/]*)/g, '{$1}');
 }
 
-function parseRoutes(tag, routes, models) {
+function parseRoutes (tag, routes, models) {
   var paths = {};
   var definitions = {};
 

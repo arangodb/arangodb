@@ -1,11 +1,12 @@
-/*jshint browser: true */
-/*global Backbone, $, _, arangoHelper, window */
+/* jshint browser: true */
+/* eslint-env browser */
+/* global Backbone, $, _, arangoHelper, window */
 (function () {
-  "use strict";
+  'use strict';
 
   var sendRequest = function (foxx, callback, method, part, body, args) {
     var req = {
-      contentType: "application/json",
+      contentType: 'application/json',
       processData: false,
       type: method
     };
@@ -14,7 +15,7 @@
     var qs = _.reduce(args, function (base, value, key) {
       return base + encodeURIComponent(key) + '=' + encodeURIComponent(value) + '&';
     }, '?');
-    req.url = arangoHelper.databaseUrl("/_admin/aardvark/foxxes" + (part ? '/' + part : '') + qs.slice(0, qs.length - 1));
+    req.url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes' + (part ? '/' + part : '') + qs.slice(0, qs.length - 1));
     if (body !== undefined) {
       req.data = JSON.stringify(body);
     }
@@ -26,8 +27,8 @@
         window.xhr = xhr;
         callback(_.extend(
           xhr.status
-          ? new Error(xhr.responseJSON ? xhr.responseJSON.errorMessage : xhr.responseText)
-          : new Error('Network Error'),
+            ? new Error(xhr.responseJSON ? xhr.responseJSON.errorMessage : xhr.responseText)
+            : new Error('Network Error'),
           {statusCode: xhr.status}
         ));
       }
@@ -35,21 +36,21 @@
   };
 
   window.Foxx = Backbone.Model.extend({
-    idAttribute: "mount",
+    idAttribute: 'mount',
 
     defaults: {
-      "author": "Unknown Author",
-      "name": "",
-      "version": "Unknown Version",
-      "description": "No description",
-      "license": "Unknown License",
-      "contributors": [],
-      "scripts": {},
-      "config": {},
-      "deps": {},
-      "git": "",
-      "system": false,
-      "development": false
+      'author': 'Unknown Author',
+      'name': '',
+      'version': 'Unknown Version',
+      'description': 'No description',
+      'license': 'Unknown License',
+      'contributors': [],
+      'scripts': {},
+      'config': {},
+      'deps': {},
+      'git': '',
+      'system': false,
+      'development': false
     },
 
     isNew: function () {
@@ -57,11 +58,11 @@
     },
 
     encodedMount: function () {
-      return encodeURIComponent(this.get("mount"));
+      return encodeURIComponent(this.get('mount'));
     },
 
     destroy: function (options, callback) {
-      sendRequest(this, callback, "DELETE", undefined, undefined, options);
+      sendRequest(this, callback, 'DELETE', undefined, undefined, options);
     },
 
     isBroken: function () {
@@ -87,62 +88,62 @@
     getConfiguration: function (callback) {
       sendRequest(this, function (err, data) {
         if (!err) {
-          this.set("config", data);
+          this.set('config', data);
         }
-        if (typeof callback === "function") {
+        if (typeof callback === 'function') {
           callback(err, data);
         }
-      }.bind(this), "GET", "config");
+      }.bind(this), 'GET', 'config');
     },
 
     setConfiguration: function (data, callback) {
-      sendRequest(this, callback, "PATCH", "config", data);
+      sendRequest(this, callback, 'PATCH', 'config', data);
     },
 
     getDependencies: function (callback) {
       sendRequest(this, function (err, data) {
         if (!err) {
-          this.set("deps", data);
+          this.set('deps', data);
         }
-        if (typeof callback === "function") {
+        if (typeof callback === 'function') {
           callback(err, data);
         }
-      }.bind(this), "GET", "deps");
+      }.bind(this), 'GET', 'deps');
     },
 
     setDependencies: function (data, callback) {
-      sendRequest(this, callback, "PATCH", "deps", data);
+      sendRequest(this, callback, 'PATCH', 'deps', data);
     },
 
     toggleDevelopment: function (activate, callback) {
       sendRequest(this, function (err, data) {
         if (!err) {
-          this.set("development", activate);
+          this.set('development', activate);
         }
-        if (typeof callback === "function") {
+        if (typeof callback === 'function') {
           callback(err, data);
         }
-      }.bind(this), "PATCH", "devel", activate);
+      }.bind(this), 'PATCH', 'devel', activate);
     },
 
     runScript: function (name, options, callback) {
-      sendRequest(this, callback, "POST", "scripts/" + name, options);
+      sendRequest(this, callback, 'POST', 'scripts/' + name, options);
     },
 
     runTests: function (options, callback) {
       sendRequest(this, function (err, data) {
-        if (typeof callback === "function") {
+        if (typeof callback === 'function') {
           callback(err ? err.responseJSON : err, data);
         }
-      }.bind(this), "POST", "tests", options);
+      }.bind(this), 'POST', 'tests', options);
     },
 
     isSystem: function () {
-      return this.get("system");
+      return this.get('system');
     },
 
     isDevelopment: function () {
-      return this.get("development");
+      return this.get('development');
     },
 
     download: function () {
@@ -151,19 +152,19 @@
           console.error(err.responseJSON);
           return;
         }
-        window.location.href = arangoHelper.databaseUrl("/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount() + "&nonce=" + data.nonce);
-      }.bind(this), "POST", "download/nonce");
+        window.location.href = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/download/zip?mount=' + this.encodedMount() + '&nonce=' + data.nonce);
+      }.bind(this), 'POST', 'download/nonce');
     },
 
-    fetchThumbnail: function(cb) {
+    fetchThumbnail: function (cb) {
       var xhr = new XMLHttpRequest();
       xhr.responseType = 'blob';
-      xhr.onload = function() {
+      xhr.onload = function () {
         this.thumbnailUrl = URL.createObjectURL(xhr.response);
         cb();
       }.bind(this);
       xhr.onerror = cb;
-      xhr.open("GET", "foxxes/thumbnail?mount=" + this.encodedMount());
+      xhr.open('GET', 'foxxes/thumbnail?mount=' + this.encodedMount());
       xhr.setRequestHeader('Authorization', 'bearer ' + window.arangoHelper.getCurrentJwt());
       xhr.send();
     }

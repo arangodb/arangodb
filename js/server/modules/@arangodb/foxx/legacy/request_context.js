@@ -1,29 +1,29 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2013-2014 triAGENS GmbH, Cologne, Germany
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Lucas Dohmen
-/// @author Michael Hackstein
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2013-2014 triAGENS GmbH, Cologne, Germany
+// / Copyright 2015 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Lucas Dohmen
+// / @author Michael Hackstein
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const SwaggerDocs = require('@arangodb/foxx/legacy/swaggerDocs').Docs;
 const joi = require('joi');
@@ -34,7 +34,7 @@ const is = require('@arangodb/is');
 const UnprocessableEntity = require('http-errors').UnprocessableEntity;
 const UnauthorizedError = require('@arangodb/foxx/legacy/authentication').UnauthorizedError;
 
-function createBodyParamExtractor(rootElement, paramName, allowInvalid) {
+function createBodyParamExtractor (rootElement, paramName, allowInvalid) {
   var extractElement;
 
   if (rootElement) {
@@ -60,7 +60,7 @@ function createBodyParamExtractor(rootElement, paramName, allowInvalid) {
   };
 }
 
-function createModelInstantiator(Model, allowInvalid) {
+function createModelInstantiator (Model, allowInvalid) {
   var multiple = is.array(Model);
   Model = multiple ? Model[0] : Model;
   var instantiate = function (raw) {
@@ -77,7 +77,7 @@ function createModelInstantiator(Model, allowInvalid) {
   };
 }
 
-function isJoi(schema) {
+function isJoi (schema) {
   if (!schema || typeof schema !== 'object' || is.array(schema)) {
     return false;
   }
@@ -91,7 +91,7 @@ function isJoi(schema) {
   });
 }
 
-function validateOrThrow(raw, schema, allowInvalid, validateOptions) {
+function validateOrThrow (raw, schema, allowInvalid, validateOptions) {
   if (!isJoi(schema)) {
     return raw;
   }
@@ -104,14 +104,14 @@ function validateOrThrow(raw, schema, allowInvalid, validateOptions) {
 
 class RequestContext {
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// JSF_foxx_RequestContext_initializer
-  /// @brief Context of a Request Definition
-  ///
-  /// Used for documenting and constraining the routes.
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / JSF_foxx_RequestContext_initializer
+  // / @brief Context of a Request Definition
+  // /
+  // / Used for documenting and constraining the routes.
+  // //////////////////////////////////////////////////////////////////////////////
 
-  constructor(executionBuffer, models, route, path, rootElement, constraints, extensions) {
+  constructor (executionBuffer, models, route, path, rootElement, constraints, extensions) {
     this.path = path;
     this.route = route;
     this.typeToRegex = {
@@ -125,8 +125,8 @@ class RequestContext {
     this.docs = new SwaggerDocs(this.route.docs, models);
 
     var attr;
-    var extensionWrapper = function(scope, func) {
-      return function() {
+    var extensionWrapper = function (scope, func) {
+      return function () {
         func.apply(this, arguments);
         return this;
       }.bind(scope);
@@ -139,11 +139,11 @@ class RequestContext {
     executionBuffer.applyEachFunction(this);
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContext_pathParam
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContext_pathParam
+  // //////////////////////////////////////////////////////////////////////////////
 
-  pathParam(paramName, attributes) {
+  pathParam (paramName, attributes) {
     var url = this.route.url,
       urlConstraint = url.constraint || {},
       type = attributes.type,
@@ -179,10 +179,10 @@ class RequestContext {
       description = cfg.description;
       if (
         type === 'number' &&
-          _.isArray(cfg.rules) &&
-          _.some(cfg.rules, function (rule) {
-            return rule.name === 'integer';
-          })
+        _.isArray(cfg.rules) &&
+        _.some(cfg.rules, function (rule) {
+          return rule.name === 'integer';
+        })
       ) {
         type = 'integer';
       }
@@ -202,11 +202,11 @@ class RequestContext {
     return this;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContext_queryParam
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContext_queryParam
+  // //////////////////////////////////////////////////////////////////////////////
 
-  queryParam(paramName, attributes) {
+  queryParam (paramName, attributes) {
     var type = attributes.type,
       required = attributes.required,
       description = attributes.description,
@@ -254,10 +254,10 @@ class RequestContext {
       }
       if (
         type === 'number' &&
-          _.isArray(cfg.rules) &&
-          _.some(cfg.rules, function (rule) {
-            return rule.name === 'integer';
-          })
+        _.isArray(cfg.rules) &&
+        _.some(cfg.rules, function (rule) {
+          return rule.name === 'integer';
+        })
       ) {
         type = 'integer';
       }
@@ -273,11 +273,11 @@ class RequestContext {
     return this;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContext_bodyParam
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContext_bodyParam
+  // //////////////////////////////////////////////////////////////////////////////
 
-  bodyParam(paramName, attributes) {
+  bodyParam (paramName, attributes) {
     var type = attributes.type,
       description = attributes.description,
       allowInvalid = attributes.allowInvalid,
@@ -345,32 +345,32 @@ class RequestContext {
     return this;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContext_summary
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContext_summary
+  // //////////////////////////////////////////////////////////////////////////////
 
-  summary(summary) {
+  summary (summary) {
     if (summary.length > 8192) {
-      throw new Error('Summary can\'t be longer than 8192 characters');
+      throw new Error("Summary can't be longer than 8192 characters");
     }
     this.docs.addSummary(summary);
     return this;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContext_notes
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContext_notes
+  // //////////////////////////////////////////////////////////////////////////////
 
-  notes() {
+  notes () {
     var notes = Array.prototype.join.call(arguments, '\n');
     this.docs.addNotes(notes);
     return this;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContext_errorResponse
-////////////////////////////////////////////////////////////////////////////////
-  errorResponse(errorClass, code, reason, errorHandler) {
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContext_errorResponse
+  // //////////////////////////////////////////////////////////////////////////////
+  errorResponse (errorClass, code, reason, errorHandler) {
     this.route.action.errorResponses.push({
       errorClass: errorClass,
       code: code,
@@ -381,26 +381,26 @@ class RequestContext {
     return this;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContext_onlyIf
-////////////////////////////////////////////////////////////////////////////////
-  onlyIf(check) {
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContext_onlyIf
+  // //////////////////////////////////////////////////////////////////////////////
+  onlyIf (check) {
     this.route.action.checks.push({
       check: check
     });
     return this;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
-////////////////////////////////////////////////////////////////////////////////
-  onlyIfAuthenticated(code, reason) {
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
+  // //////////////////////////////////////////////////////////////////////////////
+  onlyIfAuthenticated (code, reason) {
     var check;
 
     check = function (req) {
       if (
         !(req.session && req.session.get('uid')) // new and shiny
-          && !(req.user && req.currentSession) // old and busted
+        && !(req.user && req.currentSession) // old and busted
       ) {
         throw new UnauthorizedError();
       }
@@ -421,7 +421,7 @@ class RequestContext {
 }
 
 class RequestContextBuffer {
-  constructor() {
+  constructor () {
     this.applyChain = [];
   }
 }
@@ -436,28 +436,28 @@ Object.assign(RequestContextBuffer.prototype, {
 
 _.each([
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContextBuffer_pathParam
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContextBuffer_pathParam
+  // //////////////////////////////////////////////////////////////////////////////
   'pathParam',
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContextBuffer_queryParam
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContextBuffer_queryParam
+  // //////////////////////////////////////////////////////////////////////////////
   'queryParam',
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContextBuffer_errorResponse
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContextBuffer_errorResponse
+  // //////////////////////////////////////////////////////////////////////////////
   'errorResponse',
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContextBuffer_onlyIf
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContextBuffer_onlyIf
+  // //////////////////////////////////////////////////////////////////////////////
   'onlyIf',
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief was docuBlock JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
+  // //////////////////////////////////////////////////////////////////////////////
   'onlyIfAuthenticated'
 ], function (functionName) {
   Object.assign(RequestContextBuffer.prototype[functionName] = function () {

@@ -1,11 +1,11 @@
-/*global window, Backbone */
+/* global window, Backbone */
 
 window.Statistics = Backbone.Model.extend({
   defaults: {
   },
 
-  url: function() {
+  url: function () {
     'use strict';
-    return "/_admin/statistics";
+    return '/_admin/statistics';
   }
 });

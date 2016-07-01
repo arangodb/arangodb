@@ -840,8 +840,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
   }
 
   // it is an update, but only if found has a smaller revision identifier
-  else if (found->revisionId() < revisionId ||
-           (found->revisionId() == revisionId && found->getFid() <= fid)) {
+  else {
     // save the old data
     TRI_doc_mptr_t oldData = *found;
 
@@ -868,14 +867,6 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
     state->_dfi->numberAlive++;
     state->_dfi->sizeAlive += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
-  }
-
-  // it is a stale update
-  else {
-    TRI_ASSERT(found->vpack() != nullptr);
-
-    state->_dfi->numberDead++;
-    state->_dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(found->markerSize());
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1166,6 +1157,11 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   TRI_IterateCollection(collection, OpenIterator, &openState);
 
   LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->_info.name() << "'";
+  
+  // make sure our local tick is now at least as high as the highest revision id used in this collection
+  if (document->_info.revision() > 0) {
+    TRI_UpdateTickServer(document->_info.revision());
+  }
 
   // update the real statistics for the collection
   try {
@@ -3273,6 +3269,14 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     hash = Transaction::extractKeyFromDocument(slice).hashString();
     newSlice = slice;
   }
+    
+  if (options.isRestore) {
+    // make sure our local tick is at least as high as the remote tick
+    VPackSlice revSlice = newSlice.get(StaticStrings::RevString);
+    if (revSlice.isString()) {
+      TRI_UpdateTickServer(StringUtils::uint64(revSlice.copyString()));
+    }
+  }
 
   TRI_ASSERT(mptr != nullptr);
   mptr->setVPack(nullptr);
@@ -3376,6 +3380,8 @@ int TRI_document_collection_t::update(Transaction* trx,
     VPackValueLength length;
     char const* p = oldRev.getString(length);
     revisionId = arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
+    // make sure our local tick is at least as high as the remote tick
+    TRI_UpdateTickServer(revisionId);
   } else {
     revisionId = TRI_NewTickServer();
   }
@@ -3531,6 +3537,8 @@ int TRI_document_collection_t::replace(Transaction* trx,
     VPackValueLength length;
     char const* p = oldRev.getString(length);
     revisionId = arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
+    // make sure our local tick is at least as high as the remote tick
+    TRI_UpdateTickServer(revisionId);
   } else {
     revisionId = TRI_NewTickServer();
   }
@@ -3648,6 +3656,8 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
       VPackValueLength length;
       char const* p = oldRev.getString(length);
       revisionId = arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
+      // make sure our local tick is at least as high as the remote tick
+      TRI_UpdateTickServer(revisionId);
     }
   } else {
     revisionId = TRI_NewTickServer();

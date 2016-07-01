@@ -12,6 +12,7 @@ branches:
     - "3.0"
 
 language: cpp
+cache: ccache
 compiler: g++
 sudo: false
 
@@ -39,8 +40,8 @@ install:
 
 # prepare environment
 - export PATH="$HOME/bin:$PATH"
-- export CXX="g++-4.9"
-- export CC="gcc-4.9"
+- export CXX="/usr/lib/ccache/g++-4.9"
+- export CC="/usr/lib/ccache/gcc-4.9"
 - export CFLAGS="-B$HOME/bin/gold $CFLAGS"
 - export CXXFLAGS="-B$HOME/bin/gold $CXXFLAGS"
 

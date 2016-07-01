@@ -30,6 +30,8 @@
 using namespace arangodb;
 
 void OperationCursor::reset() {
+  code = TRI_ERROR_NO_ERROR;
+
   if (_indexIterator != nullptr) {
     _indexIterator->reset();
     _hasMore = true;
@@ -129,32 +131,13 @@ void OperationCursor::getMoreMptr(std::vector<TRI_doc_mptr_t*>& result,
   }
 
   size_t atMost = static_cast<size_t>(batchSize > _limit ? _limit : batchSize);
+
   _indexIterator->nextBabies(result, atMost);
 
-  size_t got = result.size();
-  if (got == 0) {
+  if (result.empty()) {
     // Index is empty
     _hasMore = false;
     return;
-  }
-  // NOTE: None of these could fall below zero
-  batchSize -= got;
-  _limit -= got;
-
-  /*
-  // result.clear();
-  // TODO: Improve this for baby awareness
-  TRI_doc_mptr_t* mptr = nullptr;
-
-  while (batchSize > 0 && _limit > 0 && (mptr = _indexIterator->next()) != nullptr) {
-    --batchSize;
-    --_limit;
-    result.emplace_back(mptr);
-  }
-  */
-  if (batchSize > 0 || _limit == 0) {
-    // Iterator empty, there is no more
-    _hasMore = false;
   }
 }
 

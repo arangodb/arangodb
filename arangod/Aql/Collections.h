@@ -57,7 +57,7 @@ class Collections {
 
   std::map<std::string, Collection*> _collections;
 
-  static size_t const MaxCollections = 32;
+  static size_t const MaxCollections = 256;
 };
 }
 }

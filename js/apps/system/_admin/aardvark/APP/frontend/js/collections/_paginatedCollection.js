@@ -1,22 +1,21 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global Backbone, window, $, _ */
+/* jshint browser: true */
+/* jshint unused: false */
+/* global Backbone, window, $, _ */
 (function () {
-
-  "use strict";
+  'use strict';
 
   window.PaginatedCollection = Backbone.Collection.extend({
     page: 0,
     pagesize: 10,
     totalAmount: 0,
 
-    getPage: function() {
+    getPage: function () {
       return this.page + 1;
     },
 
-    setPage: function(counter) {
+    setPage: function (counter) {
       if (counter >= this.getLastPageNumber()) {
-        this.page = this.getLastPageNumber()-1;
+        this.page = this.getLastPageNumber() - 1;
         return;
       }
       if (counter < 1) {
@@ -24,61 +23,56 @@
         return;
       }
       this.page = counter - 1;
-
     },
 
-    getLastPageNumber: function() {
+    getLastPageNumber: function () {
       return Math.max(Math.ceil(this.totalAmount / this.pagesize), 1);
     },
 
-    getOffset: function() {
+    getOffset: function () {
       return this.page * this.pagesize;
     },
 
-    getPageSize: function() {
+    getPageSize: function () {
       return this.pagesize;
     },
 
-    setPageSize: function(newPagesize) {
-      if (newPagesize === "all") {
+    setPageSize: function (newPagesize) {
+      if (newPagesize === 'all') {
         this.pagesize = 'all';
-      }
-      else {
+      } else {
         try {
           newPagesize = parseInt(newPagesize, 10);
           this.pagesize = newPagesize;
-        }
-        catch (ignore) {
-        }
+        } catch (ignore) {}
       }
     },
 
-    setToFirst: function() {
+    setToFirst: function () {
       this.page = 0;
     },
 
-    setToLast: function() {
+    setToLast: function () {
       this.setPage(this.getLastPageNumber());
     },
 
-    setToPrev: function() {
+    setToPrev: function () {
       this.setPage(this.getPage() - 1);
-
     },
 
-    setToNext: function() {
+    setToNext: function () {
       this.setPage(this.getPage() + 1);
     },
 
-    setTotal: function(total) {
+    setTotal: function (total) {
       this.totalAmount = total;
     },
 
-    getTotal: function() {
+    getTotal: function () {
       return this.totalAmount;
     },
 
-    setTotalMinusOne: function() {
+    setTotalMinusOne: function () {
       this.totalAmount--;
     }
 

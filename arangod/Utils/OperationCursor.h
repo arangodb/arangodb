@@ -43,11 +43,11 @@ struct OperationResult;
 struct OperationCursor {
 
  public:
-  int                                     code;
+  int                            code;
 
  private:
 
-  std::shared_ptr<IndexIterator> _indexIterator;
+  std::unique_ptr<IndexIterator> _indexIterator;
   bool                           _hasMore;
   uint64_t                       _limit;
   uint64_t const                 _originalLimit;
@@ -68,21 +68,18 @@ struct OperationCursor {
         _limit(limit),  // _limit is modified later on
         _originalLimit(limit),
         _batchSize(batchSize) {
-          if (_indexIterator == nullptr) {
-            _hasMore = false;
-          }
-        }
-
-  ~OperationCursor() {
+    if (_indexIterator == nullptr) {
+      _hasMore = false;
+    }
   }
+
+  ~OperationCursor() {}
   
   IndexIterator* indexIterator() const {
     return _indexIterator.get();
   }
 
-  bool hasMore() const {
-    return _hasMore;
-  }
+  inline bool hasMore() const { return _hasMore; }
 
   bool successful() const {
     return code == TRI_ERROR_NO_ERROR;
@@ -124,8 +121,8 @@ struct OperationCursor {
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<TRI_doc_mptr_t*> getMoreMptr(uint64_t batchSize);
+ public:
+  std::vector<TRI_doc_mptr_t*> getMoreMptr(uint64_t batchSize = UINT64_MAX);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Get next batchSize many elements. mptr variant
@@ -135,7 +132,7 @@ struct OperationCursor {
 ///        NOTE: The result vector handed in will be cleared.
 //////////////////////////////////////////////////////////////////////////////
 
-  void getMoreMptr(std::vector<TRI_doc_mptr_t*>& result, uint64_t batchSize);
+  void getMoreMptr(std::vector<TRI_doc_mptr_t*>& result, uint64_t batchSize = UINT64_MAX);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Skip the next toSkip many elements.

@@ -1,14 +1,13 @@
-/*global window, Backbone */
-(function() {
-  "use strict";
+/* global window, Backbone */
+(function () {
+  'use strict';
 
   window.Coordinator = Backbone.Model.extend({
-
     defaults: {
-      address: "",
-      protocol: "",
-      name: "",
-      status: ""
+      address: '',
+      protocol: '',
+      name: '',
+      status: ''
     }
 
   });

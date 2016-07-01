@@ -1,9 +1,9 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global _, Backbone, document, templateEngine, $, arangoHelper, window*/
+/* jshint browser: true */
+/* jshint unused: false */
+/* global _, Backbone, document, templateEngine, $, arangoHelper, window*/
 
-(function() {
-  "use strict";
+(function () {
+  'use strict';
   window.FooterView = Backbone.View.extend({
     el: '#footerBar',
     system: {},
@@ -15,13 +15,13 @@
     timerFunction: null,
 
     events: {
-      'click .footer-center p' : 'showShortcutModal'
+      'click .footer-center p': 'showShortcutModal'
     },
 
     initialize: function () {
-      //also server online check
+      // also server online check
       var self = this;
-      window.setInterval(function() {
+      window.setInterval(function () {
         self.getVersion();
       }, self.timer);
       self.getVersion();
@@ -31,23 +31,23 @@
         window.VISIBLE = !window.VISIBLE;
       });
 
-      $('#offlinePlaceholder button').on('click', function() {
+      $('#offlinePlaceholder button').on('click', function () {
         self.getVersion();
       });
 
-      window.setTimeout(function() {
+      window.setTimeout(function () {
         if (window.frontendConfig.isCluster === true) {
           $('.health-state').css('cursor', 'pointer');
-          $('.health-state').on('click', function() {
-            window.App.navigate("#nodes", {trigger: true});
+          $('.health-state').on('click', function () {
+            window.App.navigate('#nodes', {trigger: true});
           });
         }
       }, 1000);
     },
 
-    template: templateEngine.createTemplate("footerView.ejs"),
+    template: templateEngine.createTemplate('footerView.ejs'),
 
-    showServerStatus: function(isOnline) {
+    showServerStatus: function (isOnline) {
       var self = this;
 
       if (!window.App.isCluster) {
@@ -57,24 +57,22 @@
           $('.health-state').html('GOOD');
           $('.health-icon').html('<i class="fa fa-check-circle"></i>');
           $('#offlinePlaceholder').hide();
-        }
-        else {
+        } else {
           $('#healthStatus').removeClass('positive');
           $('#healthStatus').addClass('negative');
           $('.health-state').html('UNKNOWN');
           $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
 
-          //show offline overlay
+          // show offline overlay
           $('#offlinePlaceholder').show();
           this.reconnectAnimation(0);
         }
-      }
-      else {
+      } else {
         this.renderClusterState(isOnline);
       }
     },
 
-    reconnectAnimation: function(lap) {
+    reconnectAnimation: function (lap) {
       var self = this;
 
       if (lap === 0) {
@@ -87,29 +85,26 @@
         self.lap++;
         $('#offlineSeconds').text(self.timer / 1000 - self.lap);
 
-        self.timerFunction = window.setTimeout(function() {
+        self.timerFunction = window.setTimeout(function () {
           if (self.timer / 1000 - self.lap === 0) {
             self.getVersion();
-          }
-          else {
+          } else {
             self.reconnectAnimation(self.lap);
           }
         }, 1000);
       }
     },
 
-    renderClusterState: function(connection) {
-
+    renderClusterState: function (connection) {
       if (connection) {
         $('#offlinePlaceholder').hide();
 
-        var callbackFunction = function(data) {
-
+        var callbackFunction = function (data) {
           var health = data.Health;
 
           var error = 0;
 
-          _.each(health, function(node) {
+          _.each(health, function (node) {
             if (node.Status !== 'GOOD') {
               error++;
             }
@@ -120,13 +115,11 @@
             $('#healthStatus').addClass('negative');
             if (error === 1) {
               $('.health-state').html(error + ' NODE ERROR');
-            }
-            else {
+            } else {
               $('.health-state').html(error + ' NODES ERROR');
             }
             $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
-          }
-          else {
+          } else {
             $('#healthStatus').removeClass('negative');
             $('#healthStatus').addClass('positive');
             $('.health-state').html('NODES OK');
@@ -134,33 +127,31 @@
           }
         }.bind(this);
 
-        //check cluster state
+        // check cluster state
         $.ajax({
-          type: "GET",
+          type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl("/_admin/cluster/health"),
-          contentType: "application/json",
+          url: arangoHelper.databaseUrl('/_admin/cluster/health'),
+          contentType: 'application/json',
           processData: false,
           async: true,
-          success: function(data) {
+          success: function (data) {
             callbackFunction(data);
           }
         });
-
-      }
-      else {
+      } else {
         $('#healthStatus').removeClass('positive');
         $('#healthStatus').addClass('negative');
         $('.health-state').html(window.location.host + ' OFFLINE');
         $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
 
-        //show offline overlay
+        // show offline overlay
         $('#offlinePlaceholder').show();
         this.reconnectAnimation(0);
       }
     },
 
-    showShortcutModal: function() {
+    showShortcutModal: function () {
       window.arangoHelper.hotkeysFunctions.showHotkeysModal();
     },
 
@@ -169,19 +160,19 @@
 
       // always retry this call, because it also checks if the server is online
       $.ajax({
-        type: "GET",
+        type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl("/_api/version"),
-        contentType: "application/json",
+        url: arangoHelper.databaseUrl('/_api/version'),
+        contentType: 'application/json',
         processData: false,
         async: true,
-        success: function(data) {
+        success: function (data) {
           self.showServerStatus(true);
           if (self.isOffline === true) {
             self.isOffline = false;
             self.isOfflineCounter = 0;
             if (!self.firstLogin) {
-              window.setTimeout(function(){
+              window.setTimeout(function () {
                 self.showServerStatus(true);
               }, 1000);
             } else {
@@ -195,28 +186,27 @@
         error: function (jqXHR) {
           if (jqXHR.status === 401) {
             self.showServerStatus(true);
-            window.App.navigate("login", {trigger: true});
-          }
-          else {
+            window.App.navigate('login', {trigger: true});
+          } else {
             self.isOffline = true;
             self.isOfflineCounter++;
             if (self.isOfflineCounter >= 1) {
-              //arangoHelper.arangoError("Server", "Server is offline");
+              // arangoHelper.arangoError("Server", "Server is offline")
               self.showServerStatus(false);
             }
           }
         }
       });
-      
-      if (! self.system.hasOwnProperty('database')) {
+
+      if (!self.system.hasOwnProperty('database')) {
         $.ajax({
-          type: "GET",
+          type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl("/_api/database/current"),
-          contentType: "application/json",
+          url: arangoHelper.databaseUrl('/_api/database/current'),
+          contentType: 'application/json',
           processData: false,
           async: true,
-          success: function(data) {
+          success: function (data) {
             var name = data.result.name;
             self.system.database = name;
 
@@ -229,7 +219,7 @@
                 self.render();
               }
             }, 50);
-          },
+          }
         });
       }
     },

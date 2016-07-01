@@ -180,8 +180,10 @@ HttpHandler::status_t RestAgencyHandler::handleWrite() {
           }
 
           if (max_index > 0) {
-            std::this_thread::sleep_for(duration_t((_agent->size()-1)*5));
-            _agent->waitFor(max_index);
+            if(!_agent->waitFor(max_index)) {
+            LOG_TOPIC(WARN, Logger::AGENCY)
+              << "Waiting for log index" << max_index << " timed out.";
+            }
           }
         }
       }

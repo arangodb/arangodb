@@ -89,7 +89,7 @@ class Agent : public arangodb::Thread {
   write_ret_t write(query_t const&);
 
   /// @brief Read from agency
-  read_ret_t read(query_t const&) const;
+  read_ret_t read(query_t const&);
 
   /// @brief Received by followers to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).

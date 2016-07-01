@@ -28,7 +28,6 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Utils/OperationCursor.h"
@@ -40,18 +39,16 @@
 
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
-
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
       _collection(en->collection()),
-      _result(std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR)),
       _posInDocs(0),
       _currentIndex(0),
       _indexes(en->getIndexes()),
+      _cursor(nullptr),
+      _cursors(_indexes.size()),
       _condition(en->_condition->root()),
-      _hasV8Expression(false) {
-}
+      _hasV8Expression(false) {}
 
 IndexBlock::~IndexBlock() {
   cleanupNonConstExpressions();
@@ -87,6 +84,7 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
 void IndexBlock::executeExpressions() {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(_condition != nullptr);
+  TRI_ASSERT(!_nonConstExpressions.empty());
 
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
@@ -311,23 +309,8 @@ bool IndexBlock::initIndexes() {
 /// @brief create an OperationCursor object
 void IndexBlock::createCursor() {
   DEBUG_BEGIN_BLOCK();
-  IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
-  auto outVariable = node->outVariable();
-  auto ast = node->_plan->getAst();
-  
-  AstNode const* conditionNode = nullptr;
-  if (_condition != nullptr) {
-    TRI_ASSERT(_indexes.size() == _condition->numMembers());
-    TRI_ASSERT(_condition->numMembers() > _currentIndex);
-
-    conditionNode = _condition->getMember(_currentIndex);
-  }
-  
-  TRI_ASSERT(_indexes.size() > _currentIndex);
-
-   _cursor.reset(ast->query()->trx()->indexScanForCondition(
-      _collection->getName(), _indexes[_currentIndex], conditionNode,
-      outVariable, UINT64_MAX, Transaction::defaultBatchSize(), node->_reverse));
+  _cursor = orderCursor(_currentIndex);
+  _result.clear();
   DEBUG_END_BLOCK();
 }
 
@@ -345,7 +328,7 @@ void IndexBlock::startNextCursor() {
     // This check will work as long as _indexes.size() < MAX_SIZE_T
     createCursor();
   } else {
-    _cursor.reset(nullptr);
+    _cursor = nullptr;
   }
   DEBUG_END_BLOCK();
 }
@@ -387,13 +370,10 @@ bool IndexBlock::readIndex(size_t atMost) {
       startNextCursor();
       continue;
     }
-    _cursor->getMore(_result, atMost, true);
-    if (_result->failed()) {
-      THROW_ARANGO_EXCEPTION(_result->code);
-    }
-    VPackSlice slice = _result->slice();
-    TRI_ASSERT(slice.isArray());
-    size_t length = static_cast<size_t>(slice.length());
+
+    _cursor->getMoreMptr(_result, atMost);
+
+    size_t length = _result.size();
 
     if (length == 0) {
       startNextCursor();
@@ -406,17 +386,18 @@ bool IndexBlock::readIndex(size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     
-    for (auto const& doc : VPackArrayIterator(slice)) {
+    for (auto const& mptr : _result) {
       if (!hasMultipleIndexes) {
-        _documents.emplace_back(doc);
+        _documents.emplace_back(mptr->vpack());
       } else {
+        VPackSlice doc(mptr->vpack());
         VPackSlice keySlice = Transaction::extractKeyFromDocument(doc);
         std::string key = keySlice.copyString();
         if (_alreadyReturned.find(key) == _alreadyReturned.end()) {
           if (!isLastIndex) {
             _alreadyReturned.emplace(std::move(key));
           }
-          _documents.emplace_back(doc);
+          _documents.emplace_back(mptr->vpack());
         }
       } 
     }
@@ -519,12 +500,8 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 
       for (size_t j = 0; j < toSend; j++) {
         if (j > 0) {
-          // re-use already copied aqlvalues
-          for (RegisterId i = 0; i < curRegs; i++) {
-            res->setValue(j, i, res->getValueReference(0, i));
-            // Note: if this throws, then all values will be deleted
-            // properly since the first one is.
-          }
+          // re-use already copied AqlValues
+          res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
         }
 
         // The result is in the first variable of this depth,
@@ -532,9 +509,10 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
         auto doc = _documents[_posInDocs++];
-        TRI_ASSERT(doc.isExternal());
+        TRI_ASSERT(!doc.isExternal());
+        // doc points directly in the data files
         res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
-                      AqlValue(doc.resolveExternal().begin(), AqlValueFromMasterPointer()));
+                      AqlValue(doc.begin(), AqlValueFromMasterPointer()));
         // No harm done, if the setValue throws!
       }
     }
@@ -613,4 +591,39 @@ void IndexBlock::cleanupNonConstExpressions() {
     delete it;
   }
   _nonConstExpressions.clear();
+}
+  
+/// @brief order a cursor for the index at the specified position
+arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
+  AstNode const* conditionNode = nullptr;
+  if (_condition != nullptr) {
+    TRI_ASSERT(_indexes.size() == _condition->numMembers());
+    TRI_ASSERT(_condition->numMembers() > currentIndex);
+
+    conditionNode = _condition->getMember(currentIndex);
+  }
+
+  TRI_ASSERT(_indexes.size() > currentIndex);
+
+  // TODO: if we have _nonConstExpressions, we should also reuse the
+  // cursors, but in this case we have to adjust the iterator's search condition
+  // from _condition
+  if (!_nonConstExpressions.empty() || _cursors[currentIndex] == nullptr) {
+    // yet no cursor for index, so create it
+    IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
+    _cursors[currentIndex].reset(_trx->indexScanForCondition(
+      _collection->getName(), 
+      _indexes[currentIndex], 
+      conditionNode,
+      node->outVariable(), 
+      UINT64_MAX, 
+      Transaction::defaultBatchSize(),
+      node->_reverse
+    ));
+  } else {
+    // cursor for index already exists, reset and reuse it
+    _cursors[currentIndex]->reset();
+  }
+
+  return _cursors[currentIndex].get();
 }

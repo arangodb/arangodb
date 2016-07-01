@@ -1,28 +1,28 @@
-/*global window, Backbone */
-(function() {
-  "use strict";
+/* global window, Backbone */
+(function () {
+  'use strict';
 
   window.newArangoLog = Backbone.Model.extend({
     defaults: {
-      lid: "",
-      level: "",
-      timestamp: "",
-      text: "",
-      totalAmount: ""
+      lid: '',
+      level: '',
+      timestamp: '',
+      text: '',
+      totalAmount: ''
     },
 
-    getLogStatus: function() {
-      switch (this.get("level")) {
+    getLogStatus: function () {
+      switch (this.get('level')) {
         case 1:
-          return "Error";
+          return 'Error';
         case 2:
-          return "Warning";
+          return 'Warning';
         case 3:
-          return  "Info";
+          return 'Info';
         case 4:
-          return "Debug";
+          return 'Debug';
         default:
-          return "Unknown";
+          return 'Unknown';
       }
     }
   });

@@ -1,19 +1,19 @@
-/*global describe, beforeEach, afterEach, it*/
+/* global describe, beforeEach, afterEach, it*/
 'use strict';
 
-var expect = require("chai").expect;
-var FoxxManager = require("org/arangodb/foxx/manager");
-var fs = require("fs");
+var expect = require('chai').expect;
+var FoxxManager = require('org/arangodb/foxx/manager');
+var fs = require('fs');
 var internal = require('internal');
-var basePath = fs.makeAbsolute(fs.join(internal.startupPath, "common", "test-data", "apps"));
+var basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps'));
 
-describe("Foxx Manager", function () {
-  describe("when manifest changes", function () {
+describe('Foxx Manager', function () {
+  describe('when manifest changes', function () {
     var mount;
 
     beforeEach(function () {
-      mount = "/unittest/clobbered-manifest";
-      FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), mount);
+      mount = '/unittest/clobbered-manifest';
+      FoxxManager.install(fs.join(basePath, 'minimal-working-manifest'), mount);
     });
 
     afterEach(function () {

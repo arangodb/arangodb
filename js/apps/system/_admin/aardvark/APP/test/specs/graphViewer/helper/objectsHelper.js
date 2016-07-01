@@ -1,37 +1,35 @@
-/*jshint globalstrict:false, unused: false */
-/*global _, document, window*/
+/* jshint globalstrict:false, unused: false */
+/* global _, document, window*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Graph functionality
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Graph functionality
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var helper = helper || {};
-
-(function objectsHelper() {
-  "use strict";
+var helper = helper || {}(function objectsHelper () {
+  'use strict';
 
   helper.insertNSimpleNodes = function (nodes, n) {
     var i;
@@ -54,7 +52,7 @@ var helper = helper || {};
 
   helper.createSimpleNodes = function (ids) {
     var nodes = [];
-    _.each(ids, function(i) {
+    _.each(ids, function (i) {
       nodes.push({
         _id: i,
         _inboundCounter: 0,
@@ -74,30 +72,30 @@ var helper = helper || {};
 
   helper.insertSimpleNode = function (nodes, id) {
     var n = {
-      _id: String(id),
-      _inboundCounter: 0,
-      _outboundCounter: 0,
-      x: 1,
-      y: 1,
-      z: 1,
-      position: {
+        _id: String(id),
+        _inboundCounter: 0,
+        _outboundCounter: 0,
         x: 1,
         y: 1,
-        z: 1
-      }
-    },
-    index = nodes.length;
+        z: 1,
+        position: {
+          x: 1,
+          y: 1,
+          z: 1
+        }
+      },
+      index = nodes.length;
     nodes.push(n);
     return index;
   };
 
   helper.insertSimpleNodes = function (nodes, ids) {
-    _.each(ids, function(i) {
+    _.each(ids, function (i) {
       helper.insertSimpleNode(nodes, i);
     });
   };
 
-  helper.createSimpleEdge = function(nodes, s, t) {
+  helper.createSimpleEdge = function (nodes, s, t) {
     nodes[s]._outboundCounter++;
     nodes[t]._inboundCounter++;
     return {
@@ -106,7 +104,7 @@ var helper = helper || {};
     };
   };
 
-  helper.insertClique = function(nodes, edges, toConnect) {
+  helper.insertClique = function (nodes, edges, toConnect) {
     var i, j;
     for (i = 0; i < toConnect.length - 1; i++) {
       for (j = i + 1; j < toConnect.length; j++) {
@@ -116,15 +114,13 @@ var helper = helper || {};
     }
   };
 
-  helper.insertSatelite = function(nodes, edges, source, size) {
+  helper.insertSatelite = function (nodes, edges, source, size) {
     var i, s, t;
     s = helper.insertSimpleNode(nodes, source);
     for (i = 0; i < size; i++) {
-      t = helper.insertSimpleNode(nodes, source + "_" + i);
+      t = helper.insertSimpleNode(nodes, source + '_' + i);
       edges.push(helper.createSimpleEdge(nodes, s, t));
     }
     return s;
   };
-
-
 }());

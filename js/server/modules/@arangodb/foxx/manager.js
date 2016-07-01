@@ -1,33 +1,33 @@
-/*global ArangoServerState, ArangoClusterInfo, ArangoClusterComm */
+/* global ArangoServerState, ArangoClusterInfo, ArangoClusterComm */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Foxx service manager
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2013 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Michael Hackstein
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Foxx service manager
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2013 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Michael Hackstein
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const fs = require('fs');
@@ -76,7 +76,7 @@ const manifestSchema = {
   keywords: joi.array().optional(),
   license: joi.string().optional(),
   repository: (
-    joi.object().optional()
+  joi.object().optional()
     .keys({
       type: joi.string().required(),
       url: joi.string().required()
@@ -91,7 +91,7 @@ const manifestSchema = {
 
   // Compatibility
   engines: (
-    joi.object().optional()
+  joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
     .pattern(RE_NOT_EMPTY, joi.string().required())
   ),
@@ -107,67 +107,67 @@ const manifestSchema = {
 
   // Config
   configuration: (
-    joi.object().optional()
+  joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
     .pattern(RE_NOT_EMPTY, (
       joi.object().required()
-      .keys({
-        default: joi.any().optional(),
-        type: (
+        .keys({
+          default: joi.any().optional(),
+          type: (
           joi.only(Object.keys(utils.parameterTypes))
-          .default('string')
-        ),
-        description: joi.string().optional(),
-        required: joi.boolean().default(true)
-      })
-    ))
+            .default('string')
+          ),
+          description: joi.string().optional(),
+          required: joi.boolean().default(true)
+        })
+      ))
   ),
 
   // Dependencies supported
   dependencies: (
-    joi.object().optional()
+  joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
     .pattern(RE_NOT_EMPTY, joi.alternatives().try(
       joi.string().required(),
       joi.object().required()
-      .keys({
-        name: joi.string().default('*'),
-        version: joi.string().default('*'),
-        required: joi.boolean().default(true)
-      })
+        .keys({
+          name: joi.string().default('*'),
+          version: joi.string().default('*'),
+          required: joi.boolean().default(true)
+        })
     ))
   ),
 
   // Dependencies provided
   provides: (
-    joi.alternatives().try(
-      joi.string().optional(),
-      joi.array().optional()
+  joi.alternatives().try(
+    joi.string().optional(),
+    joi.array().optional()
       .items(joi.string().required()),
-      joi.object().optional()
+    joi.object().optional()
       .pattern(RE_EMPTY, joi.forbidden())
       .pattern(RE_NOT_EMPTY, joi.string().required())
-    )
+  )
   ),
 
   // Bundled assets
   files: (
-    joi.object().optional()
+  joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
     .pattern(RE_NOT_EMPTY, joi.alternatives().try(
       joi.string().required(),
       joi.object().required()
-      .keys({
-        path: joi.string().required(),
-        gzip: joi.boolean().optional(),
-        type: joi.string().optional()
-      })
+        .keys({
+          path: joi.string().required(),
+          gzip: joi.boolean().optional(),
+          type: joi.string().optional()
+        })
     ))
   ),
 
   // Scripts/queue jobs
   scripts: (
-    joi.object().optional()
+  joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
     .pattern(RE_NOT_EMPTY, joi.string().required())
     .default(Object, 'empty scripts object')
@@ -175,18 +175,17 @@ const manifestSchema = {
 
   // Foxx tests path
   tests: (
-    joi.alternatives()
+  joi.alternatives()
     .try(
       joi.string().required(),
       (
-        joi.array().optional()
+      joi.array().optional()
         .items(joi.string().required())
         .default(Array, 'empty test files array')
       )
-    )
+  )
   )
 };
-
 
 var serviceCache = {};
 var usedSystemMountPoints = [
@@ -194,30 +193,29 @@ var usedSystemMountPoints = [
   '/_api/gharial' // General_Graph API.
 ];
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Searches through a tree of files and returns true for all service roots
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Searches through a tree of files and returns true for all service roots
-////////////////////////////////////////////////////////////////////////////////
-
-function filterServiceRoots(folder) {
+function filterServiceRoots (folder) {
   return /[\\\/]APP$/i.test(folder) && !/(APP[\\\/])(.*)APP$/i.test(folder);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Trigger reload routing
-/// Triggers reloading of routes in this as well as all other threads.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Trigger reload routing
+// / Triggers reloading of routes in this as well as all other threads.
+// //////////////////////////////////////////////////////////////////////////////
 
-function reloadRouting() {
+function reloadRouting () {
   executeGlobalContextFunction('reloadRouting');
   actions.reloadRouting();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Resets the service cache
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Resets the service cache
+// //////////////////////////////////////////////////////////////////////////////
 
-function resetCache() {
+function resetCache () {
   _.each(serviceCache, (cache) => {
     _.each(cache, (service) => {
       service.main.loaded = false;
@@ -226,12 +224,12 @@ function resetCache() {
   serviceCache = {};
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup service in cache
-/// Returns either the service or undefined if it is not cached.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief lookup service in cache
+// / Returns either the service or undefined if it is not cached.
+// //////////////////////////////////////////////////////////////////////////////
 
-function lookupService(mount) {
+function lookupService (mount) {
   var dbname = arangodb.db._name();
   if (!serviceCache.hasOwnProperty(dbname) || Object.keys(serviceCache[dbname]).length === 0) {
     refillCaches(dbname);
@@ -252,12 +250,11 @@ function lookupService(mount) {
   return serviceCache[dbname][mount];
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief refills the routing cache
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief refills the routing cache
-////////////////////////////////////////////////////////////////////////////////
-
-function refillCaches(dbname) {
+function refillCaches (dbname) {
   var cache = {};
   _.each(serviceCache[dbname], (service) => {
     service.main.loaded = false;
@@ -278,31 +275,31 @@ function refillCaches(dbname) {
   return routes;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief routes of a foxx
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief routes of a foxx
+// //////////////////////////////////////////////////////////////////////////////
 
-function routes(mount) {
+function routes (mount) {
   var service = lookupService(mount);
   return routeAndExportService(service, false).routes;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure a foxx is routed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensure a foxx is routed
+// //////////////////////////////////////////////////////////////////////////////
 
-function ensureRouted(mount) {
+function ensureRouted (mount) {
   var service = lookupService(mount);
   return routeAndExportService(service, false);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Makes sure all system services are mounted.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Makes sure all system services are mounted.
+// //////////////////////////////////////////////////////////////////////////////
 
-function checkMountedSystemService(dbname) {
+function checkMountedSystemService (dbname) {
   var i, mount;
-  //var collection = utils.getStorage();
+  // var collection = utils.getStorage()
   for (i = 0; i < usedSystemMountPoints.length; ++i) {
     mount = usedSystemMountPoints[i];
     delete serviceCache[dbname][mount];
@@ -311,11 +308,11 @@ function checkMountedSystemService(dbname) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check a manifest for completeness
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check a manifest for completeness
+// //////////////////////////////////////////////////////////////////////////////
 
-function checkManifest(filename, inputManifest, mount, isDevelopment) {
+function checkManifest (filename, inputManifest, mount, isDevelopment) {
   const serverVersion = plainServerVersion();
   const errors = [];
   const manifest = {};
@@ -454,14 +451,12 @@ function checkManifest(filename, inputManifest, mount, isDevelopment) {
   return manifest;
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief validates a manifest file and returns it.
+// / All errors are handled including file not found. Returns undefined if manifest is invalid
+// //////////////////////////////////////////////////////////////////////////////
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validates a manifest file and returns it.
-/// All errors are handled including file not found. Returns undefined if manifest is invalid
-////////////////////////////////////////////////////////////////////////////////
-
-function validateManifestFile(filename, mount, isDevelopment) {
+function validateManifestFile (filename, mount, isDevelopment) {
   let mf;
   if (!fs.exists(filename)) {
     throwFileNotFound(`Cannot find manifest file "${filename}"`);
@@ -497,59 +492,59 @@ function validateManifestFile(filename, mount, isDevelopment) {
   return mf;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Checks if the mountpoint is reserved for system services
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Checks if the mountpoint is reserved for system services
+// //////////////////////////////////////////////////////////////////////////////
 
-function isSystemMount(mount) {
+function isSystemMount (mount) {
   return (/^\/_/).test(mount);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the root path for service. Knows about system services
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the root path for service. Knows about system services
+// //////////////////////////////////////////////////////////////////////////////
 
-function computeRootServicePath(mount) {
+function computeRootServicePath (mount) {
   if (isSystemMount(mount)) {
     return FoxxService._systemAppPath;
   }
   return FoxxService._appPath;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transforms a mount point to a sub-path relative to root
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief transforms a mount point to a sub-path relative to root
+// //////////////////////////////////////////////////////////////////////////////
 
-function transformMountToPath(mount) {
+function transformMountToPath (mount) {
   var list = mount.split('/');
   return joinPath(...list, 'APP');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transforms a sub-path to a mount point
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief transforms a sub-path to a mount point
+// //////////////////////////////////////////////////////////////////////////////
 
-function transformPathToMount(path) {
+function transformPathToMount (path) {
   var list = path.split(fs.pathSeparator);
   list.pop();
   return '/' + list.join('/');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the service path for mount point
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the service path for mount point
+// //////////////////////////////////////////////////////////////////////////////
 
-function computeServicePath(mount) {
+function computeServicePath (mount) {
   var root = computeRootServicePath(mount);
   var mountPath = transformMountToPath(mount);
   return joinPath(root, mountPath);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a service script
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes a service script
+// //////////////////////////////////////////////////////////////////////////////
 
-function executeScript(scriptName, service, argv) {
+function executeScript (scriptName, service, argv) {
   var scripts = service.manifest.scripts;
   // Only run setup/teardown scripts if they exist
   if (scripts[scriptName] || (scriptName !== 'setup' && scriptName !== 'teardown')) {
@@ -561,11 +556,11 @@ function executeScript(scriptName, service, argv) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a valid service config for validation purposes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns a valid service config for validation purposes
+// //////////////////////////////////////////////////////////////////////////////
 
-function fakeServiceConfig(path, mount) {
+function fakeServiceConfig (path, mount) {
   var file = joinPath(path, 'manifest.json');
   return {
     id: '__internal',
@@ -579,16 +574,16 @@ function fakeServiceConfig(path, mount) {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the service path and manifest
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the service path and manifest
+// //////////////////////////////////////////////////////////////////////////////
 
-function serviceConfig(mount, options, activateDevelopment) {
+function serviceConfig (mount, options, activateDevelopment) {
   var root = computeRootServicePath(mount);
   var path = transformMountToPath(mount);
 
   var file = joinPath(root, path, 'manifest.json');
-   return {
+  return {
     id: mount,
     path: path,
     options: options || {},
@@ -599,13 +594,13 @@ function serviceConfig(mount, options, activateDevelopment) {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Creates a service with options and returns it
-/// All errors are handled including service not found. Returns undefined if service is invalid.
-/// If the service is valid it will be added into the local service cache.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Creates a service with options and returns it
+// / All errors are handled including service not found. Returns undefined if service is invalid.
+// / If the service is valid it will be added into the local service cache.
+// //////////////////////////////////////////////////////////////////////////////
 
-function createService(mount, options, activateDevelopment) {
+function createService (mount, options, activateDevelopment) {
   var dbname = arangodb.db._name();
   var config = serviceConfig(mount, options, activateDevelopment);
   var service = new FoxxService(config);
@@ -613,11 +608,11 @@ function createService(mount, options, activateDevelopment) {
   return service;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Distributes zip file to peer coordinators. Only used in cluster
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Distributes zip file to peer coordinators. Only used in cluster
+// //////////////////////////////////////////////////////////////////////////////
 
-function uploadToPeerCoordinators(serviceInfo, coordinators) {
+function uploadToPeerCoordinators (serviceInfo, coordinators) {
   let coordOptions = {
     coordTransactionID: ArangoClusterComm.getId()
   };
@@ -634,16 +629,14 @@ function uploadToPeerCoordinators(serviceInfo, coordinators) {
   delete coordOptions.clientTransactionID;
   return {
     results: cluster.wait(coordOptions, coordinators.length),
-    mapping
-  };
+  mapping};
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Generates a service with the given options into the targetPath
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Generates a service with the given options into the targetPath
-////////////////////////////////////////////////////////////////////////////////
-
-function installServiceFromGenerator(targetPath, options) {
+function installServiceFromGenerator (targetPath, options) {
   var invalidOptions = [];
   // Set default values:
   options.documentCollections = options.documentCollections || [];
@@ -679,13 +672,13 @@ function installServiceFromGenerator(targetPath, options) {
   generator.write(targetPath, cfg.files, cfg.folders);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Extracts a service from zip and moves it to temporary path
-///
-/// return path to service
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Extracts a service from zip and moves it to temporary path
+// /
+// / return path to service
+// //////////////////////////////////////////////////////////////////////////////
 
-function extractServiceToPath(archive, targetPath, noDelete) {
+function extractServiceToPath (archive, targetPath, noDelete) {
   var tempFile = fs.getTempFile('zip', false);
   fs.makeDirectory(tempFile);
   fs.unzipFile(archive, tempFile, false, true);
@@ -696,8 +689,7 @@ function extractServiceToPath(archive, targetPath, noDelete) {
   if (!noDelete) {
     try {
       fs.remove(archive);
-    }
-    catch (err1) {
+    } catch (err1) {
       arangodb.printf(`Cannot remove temporary file "${archive}"\n`);
     }
   }
@@ -706,7 +698,7 @@ function extractServiceToPath(archive, targetPath, noDelete) {
   // locate the manifest file
   // .............................................................................
 
-  var tree = fs.listTree(tempFile).sort(function(a, b) {
+  var tree = fs.listTree(tempFile).sort(function (a, b) {
     return a.length - b.length;
   });
   var found;
@@ -731,8 +723,7 @@ function extractServiceToPath(archive, targetPath, noDelete) {
 
   if (found === mf) {
     mp = '.';
-  }
-  else {
+  } else {
     mp = found.substr(0, found.length - mf.length - 1);
   }
 
@@ -744,19 +735,18 @@ function extractServiceToPath(archive, targetPath, noDelete) {
   if (found !== mf) {
     try {
       fs.removeDirectoryRecursive(tempFile);
-    }
-    catch (err1) {
+    } catch (err1) {
       let details = String(err1.stack || err1);
       arangodb.printf(`Cannot remove temporary folder "${tempFile}"\n Stack: ${details}`);
     }
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds a github repository URL
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief builds a github repository URL
+// //////////////////////////////////////////////////////////////////////////////
 
-function buildGithubUrl(serviceInfo) {
+function buildGithubUrl (serviceInfo) {
   var splitted = serviceInfo.split(':');
   var repository = splitted[1];
   var version = splitted[2];
@@ -771,11 +761,11 @@ function buildGithubUrl(serviceInfo) {
   return urlPrefix + repository + '/archive/' + version + '.zip';
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Downloads a service from remote zip file and copies it to mount path
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Downloads a service from remote zip file and copies it to mount path
+// //////////////////////////////////////////////////////////////////////////////
 
-function installServiceFromRemote(url, targetPath) {
+function installServiceFromRemote (url, targetPath) {
   var tempFile = fs.getTempFile('downloads', false);
   var auth;
 
@@ -801,15 +791,14 @@ function installServiceFromRemote(url, targetPath) {
     if (result.code < 200 || result.code > 299) {
       throwDownloadError(`Could not download from "${url}"`);
     }
-  }
-  catch (err) {
+  } catch (err) {
     let details = String(err.stack || err);
     throwDownloadError(`Could not download from "${url}": ${details}`);
   }
   extractServiceToPath(tempFile, targetPath);
 }
 
-function patchManifestFile(servicePath, patchData) {
+function patchManifestFile (servicePath, patchData) {
   if (!patchData || !Object.keys(patchData).length) {
     return;
   }
@@ -834,11 +823,11 @@ function patchManifestFile(servicePath, patchData) {
   fs.write(filename, JSON.stringify(manifest));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Copies a service from local, either zip file or folder, to mount path
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Copies a service from local, either zip file or folder, to mount path
+// //////////////////////////////////////////////////////////////////////////////
 
-function installServiceFromLocal(path, targetPath) {
+function installServiceFromLocal (path, targetPath) {
   if (fs.isDirectory(path)) {
     extractServiceToPath(utils.zipDirectory(path), targetPath);
   } else {
@@ -846,19 +835,18 @@ function installServiceFromLocal(path, targetPath) {
   }
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief run a Foxx service script
+// /
+// / Input:
+// / * scriptName: the script name
+// / * mount: the mount path starting with a "/"
+// /
+// / Output:
+// / -
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run a Foxx service script
-///
-/// Input:
-/// * scriptName: the script name
-/// * mount: the mount path starting with a "/"
-///
-/// Output:
-/// -
-////////////////////////////////////////////////////////////////////////////////
-
-function runScript(scriptName, mount, options) {
+function runScript (scriptName, mount, options) {
   checkParameter(
     'runScript(<scriptName>, <mount>, [<options>])',
     [ [ 'Script name', 'string' ], [ 'Mount path', 'string' ] ],
@@ -870,17 +858,17 @@ function runScript(scriptName, mount, options) {
   return executeScript(scriptName, service, options) || null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the service's README.md
-///
-/// Input:
-/// * mount: the mount path starting with a "/"
-///
-/// Output:
-/// -
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the service's README.md
+// /
+// / Input:
+// / * mount: the mount path starting with a "/"
+// /
+// / Output:
+// / -
+// //////////////////////////////////////////////////////////////////////////////
 
-function readme(mount) {
+function readme (mount) {
   checkParameter(
     'readme(<mount>)',
     [ [ 'Mount path', 'string' ] ],
@@ -898,17 +886,17 @@ function readme(mount) {
   return readmeText || null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run a Foxx service's tests
-///
-/// Input:
-/// * mount: the mount path starting with a "/"
-///
-/// Output:
-/// -
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief run a Foxx service's tests
+// /
+// / Input:
+// / * mount: the mount path starting with a "/"
+// /
+// / Output:
+// / -
+// //////////////////////////////////////////////////////////////////////////////
 
-function runTests(mount, options) {
+function runTests (mount, options) {
   checkParameter(
     'runTests(<mount>, [<options>])',
     [ [ 'Mount path', 'string' ] ],
@@ -920,23 +908,23 @@ function runTests(mount, options) {
   return require('@arangodb/foxx/mocha').run(service, reporter);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Initializes the serviceCache and fills it initially for each db.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Initializes the serviceCache and fills it initially for each db.
+// //////////////////////////////////////////////////////////////////////////////
 
-function initCache() {
+function initCache () {
   var dbname = arangodb.db._name();
   if (!serviceCache.hasOwnProperty(dbname)) {
     initializeFoxx();
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Internal scanFoxx function. Check scanFoxx.
-/// Does not check parameters and throws errors.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Internal scanFoxx function. Check scanFoxx.
+// / Does not check parameters and throws errors.
+// //////////////////////////////////////////////////////////////////////////////
 
-function _scanFoxx(mount, options, activateDevelopment) {
+function _scanFoxx (mount, options, activateDevelopment) {
   options = options || { };
   var dbname = arangodb.db._name();
   delete serviceCache[dbname][mount];
@@ -949,8 +937,7 @@ function _scanFoxx(mount, options, activateDevelopment) {
       action() {
         try {
           utils.getStorage().save(service.toJSON());
-        }
-        catch (err) {
+        } catch (err) {
           if (!options.replace || err.errorNum !== errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
             throw err;
           }
@@ -974,37 +961,37 @@ function _scanFoxx(mount, options, activateDevelopment) {
   return service;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Scans the sources of the given mountpoint and publishes the routes
-///
-/// TODO: Long Documentation!
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Scans the sources of the given mountpoint and publishes the routes
+// /
+// / TODO: Long Documentation!
+// //////////////////////////////////////////////////////////////////////////////
 
-function scanFoxx(mount, options) {
+function scanFoxx (mount, options) {
   checkParameter(
     'scanFoxx(<mount>)',
     [ [ 'Mount path', 'string' ] ],
-    [ mount ] );
+    [ mount ]);
   initCache();
   var service = _scanFoxx(mount, options);
   reloadRouting();
   return service.simpleJSON();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Scans the sources of the given mountpoint and publishes the routes
-///
-/// TODO: Long Documentation!
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Scans the sources of the given mountpoint and publishes the routes
+// /
+// / TODO: Long Documentation!
+// //////////////////////////////////////////////////////////////////////////////
 
-function rescanFoxx(mount) {
+function rescanFoxx (mount) {
   checkParameter(
     'scanFoxx(<mount>)',
     [ [ 'Mount path', 'string' ] ],
-    [ mount ] );
+    [ mount ]);
 
   var old = lookupService(mount);
-  //var collection = utils.getStorage();
+  // var collection = utils.getStorage()
   initCache();
   _scanFoxx(
     mount,
@@ -1013,11 +1000,11 @@ function rescanFoxx(mount) {
   );
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Build service in path
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Build service in path
+// //////////////////////////////////////////////////////////////////////////////
 
-function _buildServiceInPath(serviceInfo, path, options) {
+function _buildServiceInPath (serviceInfo, path, options) {
   try {
     if (serviceInfo === 'EMPTY') {
       // Make Empty service
@@ -1053,12 +1040,12 @@ function _buildServiceInPath(serviceInfo, path, options) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Internal service validation function
-/// Does not check parameters and throws errors.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Internal service validation function
+// / Does not check parameters and throws errors.
+// //////////////////////////////////////////////////////////////////////////////
 
-function _validateService(serviceInfo, mount) {
+function _validateService (serviceInfo, mount) {
   var tempPath = fs.getTempFile('apps', false);
   try {
     _buildServiceInPath(serviceInfo, tempPath, {});
@@ -1071,13 +1058,12 @@ function _validateService(serviceInfo, mount) {
   }
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Internal install function. Check install.
+// / Does not check parameters and throws errors.
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Internal install function. Check install.
-/// Does not check parameters and throws errors.
-////////////////////////////////////////////////////////////////////////////////
-
-function _install(serviceInfo, mount, options, runSetup) {
+function _install (serviceInfo, mount, options, runSetup) {
   var targetPath = computeServicePath(mount, true);
   var service;
   var collection = utils.getStorage();
@@ -1135,25 +1121,25 @@ function _install(serviceInfo, mount, options, runSetup) {
   return service;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Installs a new foxx service on the given mount point.
-///
-/// TODO: Long Documentation!
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Installs a new foxx service on the given mount point.
+// /
+// / TODO: Long Documentation!
+// //////////////////////////////////////////////////////////////////////////////
 
-function install(serviceInfo, mount, options) {
+function install (serviceInfo, mount, options) {
   checkParameter(
     'install(<serviceInfo>, <mount>, [<options>])',
     [ [ 'Install information', 'string' ],
       [ 'Mount path', 'string' ] ],
-    [ serviceInfo, mount ] );
+    [ serviceInfo, mount ]);
   utils.validateMount(mount);
   let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(serviceInfo);
   var service = _install(serviceInfo, mount, options, true);
   options = options || {};
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
     let name = ArangoServerState.id();
-    let coordinators = ArangoClusterInfo.getCoordinators().filter(function(c) {
+    let coordinators = ArangoClusterInfo.getCoordinators().filter(function (c) {
       return c !== name;
     });
     if (hasToBeDistributed) {
@@ -1168,17 +1154,17 @@ function install(serviceInfo, mount, options) {
       let httpOptions = {};
       for (let i = 0; i < res.length; ++i) {
         let b = JSON.parse(res[i].body);
-        /*jshint -W075:true */
+        /* jshint -W075:true */
         let intReq = {appInfo: b.filename, mount, options: intOpts};
-        /*jshint -W075:false */
+        /* jshint -W075:false */
         ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].clientTransactionID], db._name(),
           '/_admin/foxx/install', JSON.stringify(intReq), httpOptions, coordOptions);
       }
       cluster.wait(coordOptions, res.length);
     } else {
-      /*jshint -W075:true */
+      /* jshint -W075:true */
       let req = {appInfo: serviceInfo, mount, options};
-      /*jshint -W075:false */
+      /* jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
         coordTransactionID: ArangoClusterComm.getId()
@@ -1198,12 +1184,12 @@ function install(serviceInfo, mount, options) {
   return service.simpleJSON();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Internal install function. Check install.
-/// Does not check parameters and throws errors.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Internal install function. Check install.
+// / Does not check parameters and throws errors.
+// //////////////////////////////////////////////////////////////////////////////
 
-function _uninstall(mount, options) {
+function _uninstall (mount, options) {
   var dbname = arangodb.db._name();
   if (!serviceCache.hasOwnProperty(dbname)) {
     initializeFoxx(options);
@@ -1267,25 +1253,25 @@ function _uninstall(mount, options) {
   return service;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Uninstalls the foxx service on the given mount point.
-///
-/// TODO: Long Documentation!
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Uninstalls the foxx service on the given mount point.
+// /
+// / TODO: Long Documentation!
+// //////////////////////////////////////////////////////////////////////////////
 
-function uninstall(mount, options) {
+function uninstall (mount, options) {
   checkParameter(
     'uninstall(<mount>, [<options>])',
     [ [ 'Mount path', 'string' ] ],
-    [ mount ] );
+    [ mount ]);
   utils.validateMount(mount);
   options = options || {};
   var service = _uninstall(mount, options);
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
     let coordinators = ArangoClusterInfo.getCoordinators();
-    /*jshint -W075:true */
+    /* jshint -W075:true */
     let req = {mount, options};
-    /*jshint -W075:false */
+    /* jshint -W075:false */
     let httpOptions = {};
     let coordOptions = {
       coordTransactionID: ArangoClusterComm.getId()
@@ -1305,25 +1291,25 @@ function uninstall(mount, options) {
   return service.simpleJSON();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Replaces a foxx service on the given mount point by an other one.
-///
-/// TODO: Long Documentation!
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Replaces a foxx service on the given mount point by an other one.
+// /
+// / TODO: Long Documentation!
+// //////////////////////////////////////////////////////////////////////////////
 
-function replace(serviceInfo, mount, options) {
+function replace (serviceInfo, mount, options) {
   checkParameter(
     'replace(<serviceInfo>, <mount>, [<options>])',
     [ [ 'Install information', 'string' ],
       [ 'Mount path', 'string' ] ],
-    [ serviceInfo, mount ] );
+    [ serviceInfo, mount ]);
   utils.validateMount(mount);
   _validateService(serviceInfo, mount);
   options = options || {};
   let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(serviceInfo);
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
     let name = ArangoServerState.id();
-    let coordinators = ArangoClusterInfo.getCoordinators().filter(function(c) {
+    let coordinators = ArangoClusterInfo.getCoordinators().filter(function (c) {
       return c !== name;
     });
     if (hasToBeDistributed) {
@@ -1338,18 +1324,18 @@ function replace(serviceInfo, mount, options) {
       let httpOptions = {};
       for (let i = 0; i < res.length; ++i) {
         let b = JSON.parse(res[i].body);
-        /*jshint -W075:true */
+        /* jshint -W075:true */
         let intReq = {appInfo: b.filename, mount, options: intOpts};
-        /*jshint -W075:false */
+        /* jshint -W075:false */
         ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].coordinatorTransactionID], db._name(),
           '/_admin/foxx/replace', JSON.stringify(intReq), httpOptions, coordOptions);
       }
       cluster.wait(coordOptions, res.length);
     } else {
       let intOpts = JSON.parse(JSON.stringify(options));
-      /*jshint -W075:true */
+      /* jshint -W075:true */
       let req = {appInfo: serviceInfo, mount, options: intOpts};
-      /*jshint -W075:false */
+      /* jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
         coordTransactionID: ArangoClusterComm.getId()
@@ -1373,25 +1359,25 @@ function replace(serviceInfo, mount, options) {
   return service.simpleJSON();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Upgrade a foxx service on the given mount point by a new one.
-///
-/// TODO: Long Documentation!
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Upgrade a foxx service on the given mount point by a new one.
+// /
+// / TODO: Long Documentation!
+// //////////////////////////////////////////////////////////////////////////////
 
-function upgrade(serviceInfo, mount, options) {
+function upgrade (serviceInfo, mount, options) {
   checkParameter(
     'upgrade(<serviceInfo>, <mount>, [<options>])',
     [ [ 'Install information', 'string' ],
       [ 'Mount path', 'string' ] ],
-    [ serviceInfo, mount ] );
+    [ serviceInfo, mount ]);
   utils.validateMount(mount);
   _validateService(serviceInfo, mount);
   options = options || {};
   let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(serviceInfo);
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
     let name = ArangoServerState.id();
-    let coordinators = ArangoClusterInfo.getCoordinators().filter(function(c) {
+    let coordinators = ArangoClusterInfo.getCoordinators().filter(function (c) {
       return c !== name;
     });
     if (hasToBeDistributed) {
@@ -1406,18 +1392,18 @@ function upgrade(serviceInfo, mount, options) {
       let httpOptions = {};
       for (let i = 0; i < res.length; ++i) {
         let b = JSON.parse(res[i].body);
-        /*jshint -W075:true */
+        /* jshint -W075:true */
         let intReq = {appInfo: b.filename, mount, options: intOpts};
-        /*jshint -W075:false */
+        /* jshint -W075:false */
         ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].coordinatorTransactionID], db._name(),
           '/_admin/foxx/update', JSON.stringify(intReq), httpOptions, coordOptions);
       }
       cluster.wait(coordOptions, res.length);
     } else {
       let intOpts = JSON.parse(JSON.stringify(options));
-      /*jshint -W075:true */
+      /* jshint -W075:true */
       let req = {appInfo: serviceInfo, mount, options: intOpts};
-      /*jshint -W075:false */
+      /* jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
         coordTransactionID: ArangoClusterComm.getId()
@@ -1456,11 +1442,11 @@ function upgrade(serviceInfo, mount, options) {
   return service.simpleJSON();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes the Foxx services
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief initializes the Foxx services
+// //////////////////////////////////////////////////////////////////////////////
 
-function initializeFoxx(options) {
+function initializeFoxx (options) {
   var dbname = arangodb.db._name();
   var mounts = syncWithFolder(options);
   refillCaches(dbname);
@@ -1470,20 +1456,20 @@ function initializeFoxx(options) {
   });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute all service routes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compute all service routes
+// //////////////////////////////////////////////////////////////////////////////
 
-function mountPoints() {
+function mountPoints () {
   var dbname = arangodb.db._name();
   return refillCaches(dbname);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toggles development mode of service and reloads routing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief toggles development mode of service and reloads routing
+// //////////////////////////////////////////////////////////////////////////////
 
-function _toggleDevelopment(mount, activate) {
+function _toggleDevelopment (mount, activate) {
   var service = lookupService(mount);
   service.development(activate);
   utils.updateService(mount, service.toJSON());
@@ -1491,41 +1477,41 @@ function _toggleDevelopment(mount, activate) {
   return service;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief activate development mode
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief activate development mode
+// //////////////////////////////////////////////////////////////////////////////
 
-function setDevelopment(mount) {
+function setDevelopment (mount) {
   checkParameter(
     'development(<mount>)',
     [ [ 'Mount path', 'string' ] ],
-    [ mount ] );
+    [ mount ]);
   var service = _toggleDevelopment(mount, true);
   return service.simpleJSON();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief activate production mode
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief activate production mode
+// //////////////////////////////////////////////////////////////////////////////
 
-function setProduction(mount) {
+function setProduction (mount) {
   checkParameter(
     'production(<mount>)',
     [ [ 'Mount path', 'string' ] ],
-    [ mount ] );
+    [ mount ]);
   var service = _toggleDevelopment(mount, false);
   return service.simpleJSON();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Configure the service at the mountpoint
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Configure the service at the mountpoint
+// //////////////////////////////////////////////////////////////////////////////
 
-function configure(mount, options) {
+function configure (mount, options) {
   checkParameter(
     'configure(<mount>)',
     [ [ 'Mount path', 'string' ] ],
-    [ mount ] );
+    [ mount ]);
   utils.validateMount(mount, true);
   var service = lookupService(mount);
   var invalid = service.applyConfiguration(options.configuration || {});
@@ -1538,15 +1524,15 @@ function configure(mount, options) {
   return service.simpleJSON();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Set up dependencies of the service at the mountpoint
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Set up dependencies of the service at the mountpoint
+// //////////////////////////////////////////////////////////////////////////////
 
-function updateDeps(mount, options) {
+function updateDeps (mount, options) {
   checkParameter(
     'updateDeps(<mount>)',
     [ [ 'Mount path', 'string' ] ],
-    [ mount ] );
+    [ mount ]);
   utils.validateMount(mount, true);
   var service = lookupService(mount);
   var invalid = service.applyDependencies(options.dependencies || {});
@@ -1559,43 +1545,43 @@ function updateDeps(mount, options) {
   return service.simpleJSON();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the configuration for the service at the given mountpoint
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Get the configuration for the service at the given mountpoint
+// //////////////////////////////////////////////////////////////////////////////
 
-function configuration(mount) {
+function configuration (mount) {
   checkParameter(
     'configuration(<mount>)',
     [ [ 'Mount path', 'string' ] ],
-    [ mount ] );
+    [ mount ]);
   utils.validateMount(mount, true);
   var service = lookupService(mount);
   return service.getConfiguration();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the dependencies for the service at the given mountpoint
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Get the dependencies for the service at the given mountpoint
+// //////////////////////////////////////////////////////////////////////////////
 
-function dependencies(mount) {
+function dependencies (mount) {
   checkParameter(
     'dependencies(<mount>)',
     [ [ 'Mount path', 'string' ] ],
-    [ mount ] );
+    [ mount ]);
   utils.validateMount(mount, true);
   var service = lookupService(mount);
   return service.getDependencies();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Require the exports defined on the mount point
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Require the exports defined on the mount point
+// //////////////////////////////////////////////////////////////////////////////
 
-function requireService(mount) {
+function requireService (mount) {
   checkParameter(
     'requireService(<mount>)',
     [ [ 'Mount path', 'string' ] ],
-    [ mount ] );
+    [ mount ]);
   utils.validateMount(mount, true);
   var service = lookupService(mount);
   if (service.needsConfiguration()) {
@@ -1607,18 +1593,18 @@ function requireService(mount) {
   return routeAndExportService(service, true).exports;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Syncs the services in ArangoDB with the services stored on disc
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Syncs the services in ArangoDB with the services stored on disc
+// //////////////////////////////////////////////////////////////////////////////
 
-function syncWithFolder(options) {
+function syncWithFolder (options) {
   var dbname = arangodb.db._name();
   options = options || {};
   options.replace = true;
   serviceCache = serviceCache || {};
   serviceCache[dbname] = {};
   var folders = fs.listTree(FoxxService._appPath).filter(filterServiceRoots);
-//  var collection = utils.getStorage();
+  //  var collection = utils.getStorage()
   return folders.map(function (folder) {
     var mount = transformPathToMount(folder);
     _scanFoxx(mount, options);
@@ -1626,10 +1612,9 @@ function syncWithFolder(options) {
   });
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Exports
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Exports
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.syncWithFolder = syncWithFolder;
 exports.install = install;
@@ -1650,9 +1635,9 @@ exports.dependencies = dependencies;
 exports.requireService = requireService;
 exports._resetCache = resetCache;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Serverside only API
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Serverside only API
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.scanFoxx = scanFoxx;
 exports.mountPoints = mountPoints;
@@ -1661,9 +1646,9 @@ exports.ensureRouted = ensureRouted;
 exports.rescanFoxx = rescanFoxx;
 exports.lookupService = lookupService;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Exports from foxx utils module.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Exports from foxx utils module.
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.mountedService = utils.mountedService;
 exports.list = utils.list;
@@ -1671,9 +1656,9 @@ exports.listJson = utils.listJson;
 exports.listDevelopment = utils.listDevelopment;
 exports.listDevelopmentJson = utils.listDevelopmentJson;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Exports from foxx store module.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Exports from foxx store module.
+// //////////////////////////////////////////////////////////////////////////////
 
 exports.available = store.available;
 exports.availableJson = store.availableJson;

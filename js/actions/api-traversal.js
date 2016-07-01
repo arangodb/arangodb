@@ -1,69 +1,68 @@
-/*jshint strict: false */
+/* jshint strict: false */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief traversal actions
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief traversal actions
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2014 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("@arangodb");
-var actions = require("@arangodb/actions");
-var db = require("internal").db;
-var traversal = require("@arangodb/graph/traversal");
+var arangodb = require('@arangodb');
+var actions = require('@arangodb/actions');
+var db = require('internal').db;
+var traversal = require('@arangodb/graph/traversal');
 var Traverser = traversal.Traverser;
-var graph = require("@arangodb/general-graph");
+var graph = require('@arangodb/general-graph');
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a "bad parameter" error
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a "bad parameter" error
+// //////////////////////////////////////////////////////////////////////////////
 
 function badParam (req, res, message) {
   actions.resultBad(req,
-                    res,
-                    arangodb.ERROR_HTTP_BAD_PARAMETER,
-                    message);
+    res,
+    arangodb.ERROR_HTTP_BAD_PARAMETER,
+    message);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a "not found" error
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a "not found" error
+// //////////////////////////////////////////////////////////////////////////////
 
 function notFound (req, res, code, message) {
   actions.resultNotFound(req,
-                         res,
-                         code,
-                         message);
+    res,
+    code,
+    message);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_HTTP_API_TRAVERSAL
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_HTTP_API_TRAVERSAL
+// //////////////////////////////////////////////////////////////////////////////
 
-function post_api_traversal(req, res) {
-  /*jshint evil: true */
+function post_api_traversal (req, res) {
+  /* jshint evil: true */
   var json = actions.getJsonBody(req, res);
 
   if (json === undefined) {
@@ -74,16 +73,15 @@ function post_api_traversal(req, res) {
   // -----------------------------------------
 
   if (json.startVertex === undefined ||
-      typeof json.startVertex !== "string") {
-    return badParam(req, res, "missing or invalid startVertex");
+    typeof json.startVertex !== 'string') {
+    return badParam(req, res, 'missing or invalid startVertex');
   }
 
   var doc;
   try {
     doc = db._document(json.startVertex);
-  }
-  catch (err) {
-    return notFound(req, res, arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND, "invalid startVertex");
+  } catch (err) {
+    return notFound(req, res, arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND, 'invalid startVertex');
   }
 
   var datasource;
@@ -94,38 +92,34 @@ function post_api_traversal(req, res) {
     // -----------------------------------------
 
     if (json.edgeCollection === undefined) {
-      return badParam(req, res, "missing graphname");
+      return badParam(req, res, 'missing graphname');
     }
-    if (typeof json.edgeCollection !== "string") {
-      return notFound(req, res, "invalid edgecollection");
+    if (typeof json.edgeCollection !== 'string') {
+      return notFound(req, res, 'invalid edgecollection');
     }
 
     try {
       edgeCollection = db._collection(json.edgeCollection);
       datasource = traversal.collectionDatasourceFactory(edgeCollection);
-    }
-    catch (ignore) {
-    }
+    } catch (ignore) {}
 
     if (edgeCollection === undefined ||
-        edgeCollection === null) {
-        return notFound(req, res, arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND,
-          "invalid edgeCollection");
+      edgeCollection === null) {
+      return notFound(req, res, arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND,
+        'invalid edgeCollection');
     }
-
   } else {
-    if (typeof json.graphName !== "string" || !graph._exists(json.graphName)) {
+    if (typeof json.graphName !== 'string' || !graph._exists(json.graphName)) {
       return notFound(req, res, arangodb.ERROR_GRAPH_NOT_FOUND,
-        "invalid graphname");
+        'invalid graphname');
     }
     datasource = traversal.generalGraphDatasourceFactory(json.graphName);
   }
 
-
   // set up filters
   // -----------------------------------------
 
-  var filters = [ ];
+  var filters = [];
   if (json.minDepth !== undefined) {
     filters.push(traversal.minDepthFilter);
   }
@@ -135,9 +129,8 @@ function post_api_traversal(req, res) {
   if (json.filter) {
     try {
       filters.push(new Function('config', 'vertex', 'path', json.filter));
-    }
-    catch (err3) {
-      return badParam(req, res, "invalid filter function");
+    } catch (err3) {
+      return badParam(req, res, 'invalid filter function');
     }
   }
 
@@ -154,12 +147,10 @@ function post_api_traversal(req, res) {
   if (json.visitor !== undefined) {
     try {
       visitor = new Function('config', 'result', 'vertex', 'path', 'connected', json.visitor);
+    } catch (err4) {
+      return badParam(req, res, 'invalid visitor function');
     }
-    catch (err4) {
-      return badParam(req, res, "invalid visitor function");
-    }
-  }
-  else {
+  } else {
     visitor = traversal.trackingVisitor;
   }
 
@@ -170,18 +161,16 @@ function post_api_traversal(req, res) {
 
   if (json.direction !== undefined) {
     expander = json.direction;
-  }
-  else if (json.expander !== undefined) {
+  } else if (json.expander !== undefined) {
     try {
       expander = new Function('config', 'vertex', 'path', json.expander);
-    }
-    catch (err5) {
-      return badParam(req, res, "invalid expander function");
+    } catch (err5) {
+      return badParam(req, res, 'invalid expander function');
     }
   }
 
   if (expander === undefined) {
-    return badParam(req, res, "missing or invalid expander");
+    return badParam(req, res, 'missing or invalid expander');
   }
 
   // set up sort
@@ -192,9 +181,8 @@ function post_api_traversal(req, res) {
   if (json.sort !== undefined) {
     try {
       sort = new Function('l', 'r', json.sort);
-    }
-    catch (err6) {
-      return badParam(req, res, "invalid sort function");
+    } catch (err6) {
+      return badParam(req, res, 'invalid sort function');
     }
   }
 
@@ -226,8 +214,8 @@ function post_api_traversal(req, res) {
 
   var result = {
     visited: {
-      vertices: [ ],
-      paths: [ ]
+      vertices: [],
+      paths: []
     }
   };
 
@@ -235,9 +223,8 @@ function post_api_traversal(req, res) {
     try {
       var init = new Function('result', json.init);
       init(result);
-    }
-    catch (err7) {
-      return badParam(req, res, "invalid init function");
+    } catch (err7) {
+      return badParam(req, res, 'invalid init function');
     }
   }
 
@@ -248,9 +235,8 @@ function post_api_traversal(req, res) {
   try {
     traverser = new Traverser(config);
     traverser.traverse(result, doc);
-    actions.resultOk(req, res, actions.HTTP_OK, { result : result });
-  }
-  catch (err8) {
+    actions.resultOk(req, res, actions.HTTP_OK, { result: result });
+  } catch (err8) {
     if (traverser === undefined) {
       // error during traversal setup
       return badParam(req, res, err8);
@@ -259,15 +245,14 @@ function post_api_traversal(req, res) {
   }
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gateway
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief gateway
+// //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_api/traversal",
+  url: '_api/traversal',
 
-  callback : function (req, res) {
+  callback: function (req, res) {
     try {
       switch (req.requestType) {
         case actions.POST:
@@ -277,11 +262,8 @@ actions.defineHttp({
         default:
           actions.resultUnsupported(req, res);
       }
-    }
-    catch (err) {
+    } catch (err) {
       actions.resultException(req, res, err);
     }
   }
 });
-
-

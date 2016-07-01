@@ -458,7 +458,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {
       // re-use already copied aqlvalues
-      res->copyValuesFromFirstRow(j, curRegs);
+      res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
     }
     if (usesVertexOutput()) {
       res->setValue(j, _vertexReg, _vertices[_posInPaths].clone());
@@ -611,7 +611,7 @@ void TraversalBlock::runNeighbors(std::vector<VPackSlice> const& startVertices,
         TRI_ASSERT(false);
       }
 
-      std::shared_ptr<OperationCursor> cursor = _trx->indexScan(collectionName,
+      std::unique_ptr<OperationCursor> cursor = _trx->indexScan(collectionName,
                          arangodb::Transaction::CursorType::INDEX, indexHandle,
                          builder->slice(), 0, UINT64_MAX, 1000, false);
     

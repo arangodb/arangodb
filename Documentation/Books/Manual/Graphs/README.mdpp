@@ -45,30 +45,63 @@ These guarantees are lost if you access the collections in any other way than th
 so if you delete documents from your vertex collections directly, the edges pointing to them will be remain in place.
 
 !SUBSECTION Anonymous graphs
+
 Sometimes you may not need all the powers of named graphs, but some of its bits may be valuable to you.
 You may use anonymous graphs in the [traversals](Traversals/README.md) and in the [Working with Edges](Edges/README.md) chapter.
 Anonymous graphs don't have *edge definitions* describing which *vertex collection* is connected by which *edge collection*. The graph model has to be maintained in the client side code.
 This gives you more freedom than the strict *named graphs*.
 
 !SUBSUBSECTION When to choose anonymous or named graphs?
+
 As noted above, named graphs ensure graph integrity, both when inserting or removing edges or vertices.
 So you won't encounter dangling edges, even if you use the same vertex collection in several named graphs.
 This involves more operations inside the database which don't come for free.
 Therefore anonymous graphs may be faster in many operations.
 So this question boils down to 'Can I afford the additional effort or do I need the warranty for integrity?'. 
 
+!SUBSECTION Multiple edge collections vs. `FILTER`s on edge document attributes
+
+If you want to only traverse edges of a specific type, there are two ways to achieve this. The first would be
+an attribute in the edge document - i.e. `type`, where you specify a differentiator for the edge -
+i.e. `"friends"`, `"family"`, `"maried"` or `"workmates"`, so you can later `FILTER e.type = "friends"`
+if you only want to follow the friend edges.
+
+Another way, which may be more efficient in some cases, is to use different edge collections for different
+types of edges, so you have `friend_eges`, `family_edges`, `maried_edges` and `workmate_edges` as collection names.
+You can then configure several named graphs including a subset of the available edge and vertex collections -
+or you use anonymous graph queries, where you specify a list of edge collections to take into account in that query.
+To only follow friend edges, you would specify `friend_edges` as sole edge collection.
+
+Both approaches have advantages and disadvantages. `FILTER` operations on ede attributes will do comparisons on
+each traversed edge, which may become CPU-intense. When not *finding* the edges in the first place because of the
+collection containing them is not traversed at all, there will never be a reason to actualy check for their
+`type` attribute with `FILTER`.
+
+The multiple edge collections approach is limited by the [number of collections that can be used simultaneously in one query](../../AQL/Fundamentals/Syntax.html#collection-names).
+Every collection used in a query requires some resources inside of ArangoDB and the number is therefore limited
+to cap the resource requirements. You may also have constraints on other edge attributes, such as a hash index
+with a unique constraint, which requires the documents to be in a single collection for the uniqueness guarantee,
+and it may thus not be possible to store the different types of edges in multiple edeg collections.
+
+So, if your edges have about a dozen different types, it's okay to choose the collection approach, otherwise
+the `FILTER` approach is preferred. You can still use `FILTER` operations on edges of course. You can get rid
+of a `FILTER` on the `type` with the former approach, everything else can stay the same.
+
 !SUBSECTION Backup and restore
+
 For sure you want to have backups of your graph data, you can use [Arangodump](../Administration/Arangodump.md) to create the backup,
 and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into a new ArangoDB. You should however note that:
 - you need the system collection `_graphs` if you backup named graphs.
 - you need to backup the complete set of all edge and vertex collections your graph consists of. Partial dump/restore may not work.
 
 !SUBSECTION Example Graphs
+
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrate the APIs.
 You can use the `add samples` tab in the `create graph` window in the webinterface, or load the module `@arangodb/graph-examples/example-graph` in arangosh and use it to create instances of these graphs in your ArangoDB.
 Once you've created them, you can [inspect them in the webinterface](../Administration/WebInterface/Graphs.md) - which was used to create the pictures below.
 
 !SUBSUBSECTION The Knows\_Graph
+
 A set of persons knowing each other:
 ![Persons relation Example Graph](knows_graph.png)
 
@@ -95,6 +128,7 @@ This is how we create it, inspect its *vertices* and *edges*, and drop it again:
 
 
 !SUBSUBSECTION The Social Graph
+
 A set of persons and their relations:
 
 ![Social Example Graph](social_graph.png)
@@ -115,6 +149,7 @@ This is how we create it, inspect its *vertices* and *edges*, and drop it again:
 
 
 !SUBSUBSECTION The City Graph
+
 A set of european cities, and their fictional traveling distances as connections:
 
 ![Cities Example Graph](cities_graph.png)
@@ -135,6 +170,7 @@ The example has the cities as *vertices* in several *vertex collections* - `germ
     @endDocuBlock graph_create_cities_sample
 
 !SUBSUBSECTION The Traversal Graph
+
 This graph was designed to demonstrate filters in traversals. It has some labels to filter on it.
 
 ![traversal graph](traversal_graph.png)
@@ -153,6 +189,7 @@ Circles have unique numeric labels. Edges have two boolean attributes (*theFalse
     @endDocuBlock graph_create_traversal_sample
 
 !SUBSUBSECTION The World Graph
+
 The world country graph structures its nodes like that: world -> continent -> country -> capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
 It is used to demonstrate raw traversal operations.
 
@@ -170,6 +207,7 @@ It is used to demonstrate raw traversal operations.
 
 
 !SUBSECTION Cookbook examples
+
 The above referenced chapters describe the various APIs of ArangoDBs graph engine with small examples. Our cookbook has some more real life examples:
 
  - [Traversing a graph in full depth](https://docs.arangodb.com/cookbook/Graph/FulldepthTraversal.html)
@@ -180,4 +218,5 @@ The above referenced chapters describe the various APIs of ArangoDBs graph engin
  - [AQL Example Queries on an Actors and Movies Database](https://docs.arangodb.com/cookbook/Graph/ExampleActorsAndMovies.html)
 
 !SUBSECTION Higher volume graph examples
+
 All of the above examples are rather small so they are easier to comprehend and can demonstrate the way the functionality works. There are however several datasets freely available on the web that are a lot bigger. [We collected some of them with import scripts](https://github.com/triAGENS/ArangoDB-Data/) so you may play around with them. Another huge graph is the [Pokec social network](https://snap.stanford.edu/data/soc-pokec.html) from Slovakia that we [used for performance testing on several databases](https://www.arangodb.com/2015/06/multi-model-benchmark/); You will find importing scripts etc. in this blogpost.

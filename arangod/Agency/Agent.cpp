@@ -152,12 +152,14 @@ bool Agent::waitFor(index_t index, double timeout) {
 
   // Wait until woken up through AgentCallback
   while (true) {
+
     /// success?
     if (_lastCommitIndex >= index) {
       return true;
     }
+
     // timeout
-    if (_waitForCV.wait(static_cast<uint64_t>(1.0e6 * timeout))) {
+    if (!_waitForCV.wait(static_cast<uint64_t>(1.0e6 * timeout))) {
       return false;
     }
 
@@ -177,6 +179,8 @@ bool Agent::waitFor(index_t index, double timeout) {
 void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
+
+  TRI_ASSERT(id<_confirmed.size());
 
   if (index > _confirmed[id]) {  // progress this follower?
     _confirmed[id] = index;
@@ -209,9 +213,11 @@ void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
     
   }
 
-  CONDITION_LOCKER(guard, _waitForCV);
-  _waitForCV.broadcast();  // wake up REST handlers
-  
+  {
+    CONDITION_LOCKER(guard, _waitForCV);
+    guard.broadcast();
+  }
+
 }
 
 
@@ -231,41 +237,33 @@ bool Agent::recvAppendEntriesRPC(term_t term,
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
-  index_t lastCommitIndex = _lastCommitIndex;
-  // 1. Reply false if term < currentTerm ($5.1)
+  index_t lastPersistedIndex = _lastCommitIndex;
+
   if (this->term() > term) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
     return false;
   }
 
-  // 2. Reply false if log does not contain an entry at prevLogIndex
-  //    whose term matches prevLogTerm ($5.3)
-  /*if (!_state.find(prevIndex, prevTerm)) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Unable to find matching entry to previous entry (index,term) = ("
-        << prevIndex << "," << prevTerm << ")";
-    // return false;
-    }*/
+  if (!_constituent.vote(term, leaderId, prevIndex, prevTerm, true)) {
+    return false;
+  }
 
-  // 3. If an existing entry conflicts with a new one (same index
-  //    but different terms), delete the existing entry and all that
-  //    follow it ($5.3)
-  // 4. Append any new entries not already in the log
   if (queries->slice().length()) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Appending "
                                      << queries->slice().length()
                                      << " entries to state machine.";
     /* bool success = */
-    _state.log(queries, term, leaderId, prevIndex, prevTerm);
-  } 
-  
-  // appendEntries 5. If leaderCommit > commitIndex, set commitIndex =
-  // min(leaderCommit, index of last new entry)
-  if (leaderCommitIndex > lastCommitIndex) {
-    _lastCommitIndex = (std::min)(leaderCommitIndex, lastCommitIndex);
+    lastPersistedIndex = _state.log(queries, term, leaderId, prevIndex, prevTerm);
   }
 
+  _lastCommitIndex = leaderCommitIndex;
+  
+  if (_lastCommitIndex >= _nextCompationAfter) {
+    _state.compact(_lastCommitIndex);
+    _nextCompationAfter += _config.compactionStepSize;
+  }
   return true;
+
 }
 
 
@@ -282,6 +280,10 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
     t = this->term();
   }
 
+  if (unconfirmed.empty()) {
+    return priv_rpc_ret_t(false, t);
+  }
+  
   // RPC path
   std::stringstream path;
   path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId=" << id()
@@ -336,7 +338,7 @@ bool Agent::load() {
 
   auto vocbase = database->vocbase();
   if (vocbase == nullptr) {
-    LOG(FATAL) << "could not determine _system database";
+    LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
     FATAL_ERROR_EXIT();
   }
 
@@ -401,8 +403,8 @@ write_ret_t Agent::write(query_t const& query) {
 
 
 /// Read from store
-read_ret_t Agent::read(query_t const& query) const {
-  
+read_ret_t Agent::read(query_t const& query) {
+
   // Only leader else redirect
   if (!_constituent.leading()) {
     return read_ret_t(false, _constituent.leaderID());
@@ -426,7 +428,7 @@ void Agent::run() {
   while (!this->isStopping() && size() > 1) {
 
     if (leading()) {             // Only if leading
-      _appendCV.wait(25000);
+      _appendCV.wait(20000);
     } else {
       _appendCV.wait();         // Else wait for our moment in the sun
     }

@@ -50,6 +50,9 @@ using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 using namespace arangodb;
 
+static const id_t NO_LEADER =
+  (std::numeric_limits<arangodb::consensus::id_t>::max)();
+
 /// Raft role names for display purposes 
 const std::vector<std::string> roleStr ({"Follower", "Candidate", "Leader"});
 
@@ -78,11 +81,11 @@ Constituent::Constituent()
     _queryRegistry(nullptr),
     _term(0),
     _cast(false),
-    _leaderID((std::numeric_limits<arangodb::consensus::id_t>::max)()),
+    _leaderID(NO_LEADER),
     _id(0),
     _role(FOLLOWER),
     _agent(nullptr),
-    _votedFor((std::numeric_limits<arangodb::consensus::id_t>::max)()),
+    _votedFor(NO_LEADER),
     _notifier(nullptr) {}
 
 
@@ -106,7 +109,7 @@ bool Constituent::waitForSync() const {
 
 /// Random sleep times in election process
 duration_t Constituent::sleepFor(double min_t, double max_t) {
-  int32_t left = 1000*min_t, right = 1000*max_t;
+  int32_t left = static_cast<int32_t>(1000.0 * min_t), right = static_cast<int32_t>(1000.0 * max_t);
   return duration_t(
     static_cast<long>(RandomGenerator::interval(left, right)));
 }
@@ -156,7 +159,7 @@ void Constituent::term(term_t t) {
     }
 
     OperationOptions options;
-    options.waitForSync = waitForSync();
+    options.waitForSync = false;
     options.silent = true;
 
     OperationResult result = trx.insert("election", body.slice(), options);
@@ -310,27 +313,30 @@ void Constituent::notifyAll() {
 
 /// @brief Vote
 bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
-                       index_t prevLogIndex, term_t prevLogTerm) {
+                       index_t prevLogIndex, term_t prevLogTerm,
+                       bool appendEntries) {
 
   term_t t = 0;
   arangodb::consensus::id_t lid = 0;
-  bool cast = false;
 
   {
     MUTEX_LOCKER(guard, _castLock);
     t = _term;
     lid = _leaderID;
-    cast = _cast;
     _cast = true;
+    if (appendEntries && t <= term) {
+      _leaderID = id;
+      return true;
+    }
   }
   
-  if (term > t || (t == term && lid == id && !cast)) {
-    this->term(term);
+  if (term > t || (t == term && lid == id)) {
     {
       MUTEX_LOCKER(guard, _castLock);
       _votedFor = id;  // The guy I voted for I assume leader.
       _leaderID = id;
     }
+    this->term(term);
     if (_role > FOLLOWER) {
       follow(_term);
     }
@@ -338,6 +344,7 @@ bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
       CONDITION_LOCKER(guard, _cv);
       _cv.signal();
     }
+
     return true;
   } 
 
@@ -351,9 +358,9 @@ void Constituent::callElection() {
 
   votes.at(_id) = true;  // vote for myself
   _cast = true;
-  if (_role == CANDIDATE) {
-    this->term(_term + 1);  // raise my term
-  }
+  _votedFor = _id;
+  _leaderID = NO_LEADER;
+  this->term(_term + 1);  // raise my term
 
   std::string body;
   std::vector<OperationID> operationIDs(config().endpoints.size());
@@ -498,7 +505,7 @@ void Constituent::run() {
         _cast = false;  // New round set not cast vote
       }
 
-      int32_t left = 1000000*config().minPing, right = 1000000*config().maxPing;
+      int32_t left = static_cast<int32_t>(1000000.0 * config().minPing), right = static_cast<int32_t>(1000000.0 * config().maxPing);
       long rand_wait = static_cast<long>(RandomGenerator::interval(left, right));
 
       {
@@ -515,8 +522,15 @@ void Constituent::run() {
         candidate();  // Next round, we are running
       }
       
-    } else {
+    } else if (_role == CANDIDATE) {
       callElection();  // Run for office
+    } else {
+      int32_t left = 100000.0 * config().minPing;
+      long rand_wait = static_cast<long>(left);
+      {
+        CONDITION_LOCKER(guardv, _cv);
+        _cv.wait(rand_wait);
+      }
     }
     
   }

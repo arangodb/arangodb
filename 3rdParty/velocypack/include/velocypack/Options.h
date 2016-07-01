@@ -103,14 +103,13 @@ struct Options {
   // creation of Object values via a Parser
   bool checkAttributeUniqueness = false;
 
-  // whether or not attribute names should be sorted in Object
-  // values created with a Builder. This also includes creation of
-  // Object values via a Parser
-  bool sortAttributeNames = true;
-
   // escape forward slashes when serializing VPack values into
   // JSON with a Dumper
   bool escapeForwardSlashes = false;
+
+  // escape multi-byte Unicode characters when dumping them to JSON 
+  // with a Dumper (creates \uxxxx sequences)
+  bool escapeUnicode = false;
 
   // disallow using type External (to prevent injection of arbitrary pointer
   // values as a security precaution)

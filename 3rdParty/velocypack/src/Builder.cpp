@@ -164,92 +164,72 @@ void Builder::removeLast() {
   index.pop_back();
 }
 
-Builder& Builder::close() {
-  if (isClosed()) {
-    throw Exception(Exception::BuilderNeedOpenCompound);
+Builder& Builder::closeEmptyArrayOrObject(ValueLength tos, bool isArray) {
+  // empty Array or Object
+  _start[tos] = (isArray ? 0x01 : 0x0a);
+  VELOCYPACK_ASSERT(_pos == tos + 9);
+  _pos -= 8;  // no bytelength and number subvalues needed
+  _stack.pop_back();
+  // Intentionally leave _index[depth] intact to avoid future allocs!
+  return *this;
+}
+
+bool Builder::closeCompactArrayOrObject(ValueLength tos, bool isArray,
+                                        std::vector<ValueLength> const& index) {
+  // use compact notation
+  ValueLength nLen =
+      getVariableValueLength(static_cast<ValueLength>(index.size()));
+  VELOCYPACK_ASSERT(nLen > 0);
+  ValueLength byteSize = _pos - (tos + 8) + nLen;
+  VELOCYPACK_ASSERT(byteSize > 0);
+  ValueLength bLen = getVariableValueLength(byteSize);
+  byteSize += bLen;
+  if (getVariableValueLength(byteSize) != bLen) {
+    byteSize += 1;
+    bLen += 1;
   }
-  ValueLength& tos = _stack.back();
-  uint8_t const head = _start[tos];
 
-  VELOCYPACK_ASSERT(head == 0x06 || head == 0x0b || head == 0x13 ||
-                    head == 0x14);
+  if (bLen < 9) {
+    // can only use compact notation if total byte length is at most 8 bytes
+    // long
+    _start[tos] = (isArray ? 0x13 : 0x14);
+    ValueLength targetPos = 1 + bLen;
 
-  bool const isArray = (head == 0x06 || head == 0x13);
-  std::vector<ValueLength>& index = _index[_stack.size() - 1];
+    if (_pos > (tos + 9)) {
+      ValueLength len = _pos - (tos + 9);
+      memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
+    }
 
-  if (index.empty()) {
-    // empty Array or Object
-    _start[tos] = (isArray ? 0x01 : 0x0a);
-    VELOCYPACK_ASSERT(_pos == tos + 9);
-    _pos -= 8;  // no bytelength and number subvalues needed
-    _stack.pop_back();
-    // Intentionally leave _index[depth] intact to avoid future allocs!
-    return *this;
-  }
-
-  // From now on index.size() > 0
-  VELOCYPACK_ASSERT(index.size() > 0);
-
-  // check if we can use the compact Array / Object format
-  if (index.size() > 1 && ((head == 0x13 || head == 0x14) ||
-                           (head == 0x06 && options->buildUnindexedArrays) ||
-                           (head == 0x0b && options->buildUnindexedObjects))) {
-    // use compact notation
-    ValueLength nLen =
-        getVariableValueLength(static_cast<ValueLength>(index.size()));
-    VELOCYPACK_ASSERT(nLen > 0);
-    ValueLength byteSize = _pos - (tos + 8) + nLen;
+    // store byte length
     VELOCYPACK_ASSERT(byteSize > 0);
-    ValueLength bLen = getVariableValueLength(byteSize);
-    byteSize += bLen;
-    if (getVariableValueLength(byteSize) != bLen) {
-      byteSize += 1;
-      bLen += 1;
+    storeVariableValueLength<false>(_start + tos + 1, byteSize);
+
+    // need additional memory for storing the number of values
+    if (nLen > 8 - bLen) {
+      reserveSpace(nLen);
     }
+    storeVariableValueLength<true>(_start + tos + byteSize - 1,
+                                   static_cast<ValueLength>(index.size()));
 
-    if (bLen < 9) {
-      // can only use compact notation if total byte length is at most 8 bytes
-      // long
-      _start[tos] = (isArray ? 0x13 : 0x14);
-      ValueLength targetPos = 1 + bLen;
+    _pos -= 8;
+    _pos += nLen + bLen;
 
-      if (_pos > (tos + 9)) {
-        ValueLength len = _pos - (tos + 9);
-        memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
-      }
-
-      // store byte length
-      VELOCYPACK_ASSERT(byteSize > 0);
-      storeVariableValueLength<false>(_start + tos + 1, byteSize);
-
-      // need additional memory for storing the number of values
-      if (nLen > 8 - bLen) {
-        reserveSpace(nLen);
-      }
-      storeVariableValueLength<true>(_start + tos + byteSize - 1,
-                                     static_cast<ValueLength>(index.size()));
-
-      _pos -= 8;
-      _pos += nLen + bLen;
-
-      _stack.pop_back();
-      return *this;
-    }
+    _stack.pop_back();
+    return true;
   }
+  return false;
+}
 
-  // fix head byte in case a compact Array / Object was originally requested
-  _start[tos] = (isArray ? 0x06 : 0x0b);
+Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
+  // fix head byte in case a compact Array was originally requested:
+  _start[tos] = 0x06;
 
   bool needIndexTable = true;
   bool needNrSubs = true;
   if (index.size() == 1) {
     needIndexTable = false;
-    if (_start[tos] == 0x06) {
-      needNrSubs = false;
-    }
-    // For objects we leave needNrSubs at true here!
-  } else if (_start[tos] == 0x06 &&  // an Array
-             (_pos - tos) - index[0] == index.size() * (index[1] - index[0])) {
+    needNrSubs = false;
+  } else if ((_pos - tos) - index[0] == index.size() * (index[1] - index[0])) {
     // In this case it could be that all entries have the same length
     // and we do not need an offset table at all:
     bool noTable = true;
@@ -293,7 +273,7 @@ Builder& Builder::close() {
   // Maybe we need to move down data:
   if (offsetSize == 1) {
     ValueLength targetPos = 3;
-    if (!needIndexTable && _start[tos] == 0x06) {
+    if (!needIndexTable) {
       targetPos = 2;
     }
     if (_pos > (tos + 9)) {
@@ -302,10 +282,12 @@ Builder& Builder::close() {
     }
     ValueLength const diff = 9 - targetPos;
     _pos -= diff;
-    size_t const n = index.size();
-    for (size_t i = 0; i < n; i++) {
-      index[i] -= diff;
-    }
+    if (needIndexTable) {
+      size_t const n = index.size();
+      for (size_t i = 0; i < n; i++) {
+        index[i] -= diff;
+      }
+    }  // Note: if !needIndexTable the index array is now wrong!
   }
   // One could move down things in the offsetSize == 2 case as well,
   // since we only need 4 bytes in the beginning. However, saving these
@@ -317,14 +299,6 @@ Builder& Builder::close() {
     reserveSpace(offsetSize * index.size() + (offsetSize == 8 ? 8 : 0));
     tableBase = _pos;
     _pos += offsetSize * index.size();
-    if (_start[tos] == 0x0b) {
-      // Object
-      if (!options->sortAttributeNames) {
-        _start[tos] = 0x0f;  // unsorted
-      } else if (index.size() >= 2 && options->sortAttributeNames) {
-        sortObjectIndex(_start + tos, index);
-      }
-    }
     for (size_t i = 0; i < index.size(); i++) {
       uint64_t x = index[i];
       for (size_t j = 0; j < offsetSize; j++) {
@@ -333,9 +307,7 @@ Builder& Builder::close() {
       }
     }
   } else {  // no index table
-    if (_start[tos] == 0x06) {
-      _start[tos] = 0x02;
-    }
+    _start[tos] = 0x02;
   }
   // Finally fix the byte width in the type byte:
   if (offsetSize > 1) {
@@ -366,9 +338,131 @@ Builder& Builder::close() {
     }
   }
 
+  // Now the array or object is complete, we pop a ValueLength
+  // off the _stack:
+  _stack.pop_back();
+  // Intentionally leave _index[depth] intact to avoid future allocs!
+  return *this;
+}
+
+Builder& Builder::close() {
+  if (isClosed()) {
+    throw Exception(Exception::BuilderNeedOpenCompound);
+  }
+  ValueLength tos = _stack.back();
+  uint8_t const head = _start[tos];
+
+  VELOCYPACK_ASSERT(head == 0x06 || head == 0x0b || head == 0x13 ||
+                    head == 0x14);
+
+  bool const isArray = (head == 0x06 || head == 0x13);
+  std::vector<ValueLength>& index = _index[_stack.size() - 1];
+
+  if (index.empty()) {
+    return closeEmptyArrayOrObject(tos, isArray);
+  }
+
+  // From now on index.size() > 0
+  VELOCYPACK_ASSERT(index.size() > 0);
+
+  // check if we can use the compact Array / Object format
+  if (head == 0x13 || head == 0x14 ||
+      (head == 0x06 && options->buildUnindexedArrays) ||
+      (head == 0x0b && (options->buildUnindexedObjects || index.size() == 1))) {
+    if (closeCompactArrayOrObject(tos, isArray, index)) {
+      return *this;
+    }
+    // This might fall through, if closeCompactArrayOrObject gave up!
+  }
+
+  if (isArray) {
+    return closeArray(tos, index);
+  }
+
+  // fix head byte in case a compact Array / Object was originally requested
+  _start[tos] = 0x0b;
+
+  // First determine byte length and its format:
+  unsigned int offsetSize;
+  // can be 1, 2, 4 or 8 for the byte width of the offsets,
+  // the byte length and the number of subvalues:
+  if (_pos - tos + index.size() - 6 <= 0xff) {
+    // We have so far used _pos - tos bytes, including the reserved 8
+    // bytes for byte length and number of subvalues. In the 1-byte number
+    // case we would win back 6 bytes but would need one byte per subvalue
+    // for the index table
+    offsetSize = 1;
+  } else if (_pos - tos + 2 * index.size() <= 0xffff) {
+    offsetSize = 2;
+  } else if (_pos - tos + 4 * index.size() <= 0xffffffffu) {
+    offsetSize = 4;
+  } else {
+    offsetSize = 8;
+  }
+
+  // Maybe we need to move down data:
+  if (offsetSize == 1) {
+    ValueLength targetPos = 3;
+    if (_pos > (tos + 9)) {
+      ValueLength len = _pos - (tos + 9);
+      memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
+    }
+    ValueLength const diff = 9 - targetPos;
+    _pos -= diff;
+    size_t const n = index.size();
+    for (size_t i = 0; i < n; i++) {
+      index[i] -= diff;
+    }
+  }
+  // One could move down things in the offsetSize == 2 case as well,
+  // since we only need 4 bytes in the beginning. However, saving these
+  // 4 bytes has been sacrificed on the Altar of Performance.
+
+  // Now build the table:
+  ValueLength tableBase;
+  reserveSpace(offsetSize * index.size() + (offsetSize == 8 ? 8 : 0));
+  tableBase = _pos;
+  _pos += offsetSize * index.size();
+  // Object
+  if (index.size() >= 2) {
+    sortObjectIndex(_start + tos, index);
+  }
+  for (size_t i = 0; i < index.size(); i++) {
+    uint64_t x = index[i];
+    for (size_t j = 0; j < offsetSize; j++) {
+      _start[tableBase + offsetSize * i + j] = x & 0xff;
+      x >>= 8;
+    }
+  }
+  // Finally fix the byte width in the type byte:
+  if (offsetSize > 1) {
+    if (offsetSize == 2) {
+      _start[tos] += 1;
+    } else if (offsetSize == 4) {
+      _start[tos] += 2;
+    } else {  // offsetSize == 8
+      _start[tos] += 3;
+      appendLength<8>(index.size());
+    }
+  }
+
+  // Fix the byte length in the beginning:
+  ValueLength x = _pos - tos;
+  for (unsigned int i = 1; i <= offsetSize; i++) {
+    _start[tos + i] = x & 0xff;
+    x >>= 8;
+  }
+
+  if (offsetSize < 8) {
+    x = index.size();
+    for (unsigned int i = offsetSize + 1; i <= 2 * offsetSize; i++) {
+      _start[tos + i] = x & 0xff;
+      x >>= 8;
+    }
+  }
+
   // And, if desired, check attribute uniqueness:
-  if (options->checkAttributeUniqueness && index.size() > 1 &&
-      _start[tos] >= 0x0b) {
+  if (options->checkAttributeUniqueness && index.size() > 1) {
     // check uniqueness of attribute names
     checkAttributeUniqueness(Slice(_start + tos));
   }
@@ -846,7 +940,7 @@ uint8_t* Builder::add(ObjectIterator&& sub) {
   }
   auto const oldPos = _pos;
   while (sub.valid()) {
-    add(sub.key());
+    add(sub.key(true));
     add(sub.value());
     sub.next();
   }

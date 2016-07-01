@@ -1727,6 +1727,347 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
   };
 }
 
+function ahuacatlQueryShortestPathTestSuite() {
+  
+  const v1 = "UnitTestsAhuacatlVertex1";
+  const v2 = "UnitTestsAhuacatlVertex2";
+  const v3 = "UnitTestsAhuacatlVertex3";
+  const e1 = "UnitTestsAhuacatlEdge1";
+  const e2 = "UnitTestsAhuacatlEdge2";
+  const e3 = "UnitTestsAhuacatlEdge3";
+  const e4 = "UnitTestsAhuacatlEdge4";
+  
+  const graphName = "abc";
+  
+  return {
+    setUp: function () {
+      db._drop(v1);
+      db._drop(v2);
+      db._drop(v3);
+      db._drop(e1);
+      db._drop(e2);
+      db._drop(e3);
+      db._drop(e4);
+      
+      var v1Col = db._create(v1);
+      var v2Col = db._create(v2);
+      var v3Col = db._create(v3);
+      db._createEdgeCollection(e1);
+      db._createEdgeCollection(e2);
+      db._createEdgeCollection(e3);
+      db._createEdgeCollection(e4);
+      
+      var A = v1Col.save({ _key: "A"});
+      var B = v2Col.save({ _key: "B"});
+      var C = v3Col.save({ _key: "C"});
+      var D = v2Col.save({ _key: "D"});
+      var E = v3Col.save({ _key: "E"});
+      var F = v1Col.save({ _key: "F"});
+      
+      try {
+        db._collection("_graphs").remove(graphName);
+      } catch (ignore) {
+      }
+      var g = graph._create(
+        graphName,
+        graph._edgeDefinitions(
+          graph._relation(e1, [v1, v2, v3], [v1, v2, v3]),
+          graph._relation(e2, [v1, v2, v3], [v1, v2, v3]),
+          graph._relation(e3, [v1, v2, v3], [v1, v2, v3]),
+          graph._relation(e4, [v1, v2, v3], [v1, v2, v3])
+        )
+      );
+      
+      function makeEdge(from, to, collection, distance) {
+        collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1], entfernung: distance});
+      }
+      
+      makeEdge(A._id, B._id, g[e1], 4);
+      makeEdge(A._id, C._id, g[e2], 2);
+      makeEdge(B._id, C._id, g[e1], 5);
+      makeEdge(B._id, D._id, g[e3], 10);
+      makeEdge(C._id, E._id, g[e1], 3);
+      makeEdge(D._id, F._id, g[e4], 11);
+      makeEdge(E._id, D._id, g[e1], 4);
+     
+      makeEdge(F._id, C._id, g[e1], 13);
+      makeEdge(F._id, E._id, g[e1], 6);
+      makeEdge(E._id, B._id, g[e1], 6);
+      makeEdge(C._id, A._id, g[e3], 2);
+      makeEdge(B._id, A._id, g[e2], 2);
+    },
+    
+    tearDown: function () {
+      db._drop(v1);
+      db._drop(v2);
+      db._drop(v3);
+      db._drop(e1);
+      db._drop(e2);
+      db._drop(e3);
+      db._drop(e4);
+      db._collection("_graphs").remove(graphName);
+    },
+    
+    testShortestPathAtoFoutbound: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN OUTBOUND SHORTEST_PATH source TO target GRAPH "${graphName}" RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "B");
+      assertEqual(actual[1].e.entfernung, 4);
+      assertEqual(actual[2].v._key, "D");
+      assertEqual(actual[2].e.entfernung, 10);
+      assertEqual(actual[3].v._key, "F");
+      assertEqual(actual[3].e.entfernung, 11);
+    },
+    
+    testShortestPathAtoFoutboundWeight: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN OUTBOUND SHORTEST_PATH source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 5);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "C");
+      assertEqual(actual[1].e.entfernung, 2);
+      assertEqual(actual[2].v._key, "E");
+      assertEqual(actual[2].e.entfernung, 3);
+      assertEqual(actual[3].v._key, "D");
+      assertEqual(actual[3].e.entfernung, 4);
+      assertEqual(actual[4].v._key, "F");
+      assertEqual(actual[4].e.entfernung, 11);
+    },
+    
+    testShortestPathAtoFoutboundEdgeCollectionRestriction: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN OUTBOUND SHORTEST_PATH source TO target ${e1},${e4} RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 6);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "B");
+      assertEqual(actual[1].e.entfernung, 4);
+      assertEqual(actual[2].v._key, "C");
+      assertEqual(actual[2].e.entfernung, 5);
+      assertEqual(actual[3].v._key, "E");
+      assertEqual(actual[3].e.entfernung, 3);
+      assertEqual(actual[4].v._key, "D");
+      assertEqual(actual[4].e.entfernung, 4);
+      assertEqual(actual[5].v._key, "F");
+      assertEqual(actual[5].e.entfernung, 11);
+    },
+    
+    testShortestPathAtoFoutboundWeightEdgeCollectionRestriction: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN OUTBOUND SHORTEST_PATH source TO target ${e1},${e3},${e4} OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "B");
+      assertEqual(actual[1].e.entfernung, 4);
+      assertEqual(actual[2].v._key, "D");
+      assertEqual(actual[2].e.entfernung, 10);
+      assertEqual(actual[3].v._key, "F");
+      assertEqual(actual[3].e.entfernung, 11);
+    },
+    
+    testShortestPathAtoFinbound: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN INBOUND SHORTEST_PATH source TO target GRAPH "${graphName}" RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 3);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "C");
+      assertEqual(actual[1].e.entfernung, 2);
+      assertEqual(actual[2].v._key, "F");
+      assertEqual(actual[2].e.entfernung, 13);
+    },
+    
+    testShortestPathAtoFinboundEdgeCollectionRestriction: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN INBOUND SHORTEST_PATH source TO target ${e1},${e2} RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "B");
+      assertEqual(actual[1].e.entfernung, 2);
+      assertEqual(actual[2].v._key, "E");
+      assertEqual(actual[2].e.entfernung, 6);
+      assertEqual(actual[3].v._key, "F");
+      assertEqual(actual[3].e.entfernung, 6);
+    },
+    
+    testShortestPathAtoFinboundWeight: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN INBOUND SHORTEST_PATH source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "B");
+      assertEqual(actual[1].e.entfernung, 2);
+      assertEqual(actual[2].v._key, "E");
+      assertEqual(actual[2].e.entfernung, 6);
+      assertEqual(actual[3].v._key, "F");
+      assertEqual(actual[3].e.entfernung, 6);
+    },
+    
+    testShortestPathAtoFinboundWeightEdgeCollectionRestriction: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN INBOUND SHORTEST_PATH source TO target ${e1},${e3} OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 3);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "C");
+      assertEqual(actual[1].e.entfernung, 2);
+      assertEqual(actual[2].v._key, "F");
+      assertEqual(actual[2].e.entfernung, 13);
+    },
+    
+    testShortestPathAtoFany: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN ANY SHORTEST_PATH source TO target GRAPH "${graphName}" RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 3);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "C");
+      assertEqual(actual[1].e.entfernung, 2);
+      assertEqual(actual[2].v._key, "F");
+      assertEqual(actual[2].e.entfernung, 13);
+    },
+    
+    testShortestPathAtoFanyEdgeCollectionRestriction: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN ANY SHORTEST_PATH source TO target ${e1} RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "B");
+      assertEqual(actual[1].e.entfernung, 4);
+      assertTrue(actual[2].v._key === "E" || actual[2].v._key === "C");
+      assertEqual(actual[3].v._key, "F");
+      if(actual[2].v._key === "E") {
+        assertEqual(actual[2].e.entfernung, 6);
+        assertEqual(actual[3].e.entfernung, 6);
+      } else if(actual[2].v._key === "C") {
+        assertEqual(actual[2].e.entfernung, 5);
+        assertEqual(actual[3].e.entfernung, 13);
+      }
+    },
+    
+    testShortestPathAtoFanyWeight: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN ANY SHORTEST_PATH source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "C");
+      assertEqual(actual[1].e.entfernung, 2);
+      assertEqual(actual[2].v._key, "E");
+      assertEqual(actual[2].e.entfernung, 3);
+      assertEqual(actual[3].v._key, "F");
+      assertEqual(actual[3].e.entfernung, 6);
+    },
+    
+    testShortestPathAtoFanyWeightEdgeCollectionRestriction: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN ANY SHORTEST_PATH source TO target ${e1} OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "B");
+      assertEqual(actual[1].e.entfernung, 4);
+      assertEqual(actual[2].v._key, "E");
+      assertEqual(actual[2].e.entfernung, 6);
+      assertEqual(actual[3].v._key, "F");
+      assertEqual(actual[3].e.entfernung, 6);
+    },
+    
+    testShortestPathAtoFdifferentDirections: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN OUTBOUND SHORTEST_PATH source TO target ${e1}, INBOUND ${e2},${e4} OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 6);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "B");
+      assertEqual(actual[1].e.entfernung, 2);
+      assertEqual(actual[2].v._key, "C");
+      assertEqual(actual[2].e.entfernung, 5);
+      assertEqual(actual[3].v._key, "E");
+      assertEqual(actual[3].e.entfernung, 3);
+      assertEqual(actual[4].v._key, "D");
+      assertEqual(actual[4].e.entfernung, 4);
+      assertEqual(actual[5].v._key, "F");
+      assertEqual(actual[5].e.entfernung, 11);
+    },
+    
+    testShortestPathAtoFnoPath: function () {
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN OUTBOUND SHORTEST_PATH source TO target ${e1} RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 0);
+    },
+    
+   testShortestPathAtoFwithDeletedVertex: function () {
+     db._collection(v2).remove({_key: "D"});
+      var query = `
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN OUTBOUND SHORTEST_PATH source TO target GRAPH "${graphName}" RETURN {v, e}`;
+      var actual = getQueryResults(query);
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0].v._key, "A");
+      assertEqual(actual[0].e, null);
+      assertEqual(actual[1].v._key, "B");
+      assertEqual(actual[1].e.entfernung, 4);
+      assertEqual(actual[2].v, null);
+      assertEqual(actual[2].e.entfernung, 10);
+      assertEqual(actual[2].e._to, v2 + "/D");
+      assertEqual(actual[3].v._key, "F");
+      assertEqual(actual[3].e.entfernung, 11);
+    }
+    
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -1737,6 +2078,7 @@ jsunity.run(ahuacatlQueryGeneralCyclesSuite);
 jsunity.run(ahuacatlQueryGeneralTraversalTestSuite);
 jsunity.run(ahuacatlQueryGeneralEdgesTestSuite);
 jsunity.run(ahuacatlQueryMultiCollectionMadnessTestSuite);
+jsunity.run(ahuacatlQueryShortestPathTestSuite);
 
 return jsunity.done();
 

@@ -149,47 +149,26 @@ struct AqlValue final {
       setType(AqlValueType::VPACK_INLINE);
     } else if (length <= 126) {
       // short string... cannot store inline, but we don't need to
-      // create a full-features Builder object here
+      // create a full-featured Builder object here
       _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
       _data.buffer->push_back(static_cast<char>(0x40 + length));
       _data.buffer->append(value, length);
       setType(AqlValueType::VPACK_MANAGED);
     } else {
       // long string
-      VPackBuilder builder;
-      builder.add(VPackValue(value));
-      initFromSlice(builder.slice());
+      // create a big enough Buffer object
+      auto buffer = std::make_unique<VPackBuffer<uint8_t>>(8 + length);
+      // add string to Builder
+      VPackBuilder builder(*buffer.get());
+      builder.add(VPackValuePair(value, length, VPackValueType::String));
+      // steal Buffer. now we have ownership
+      _data.buffer = buffer.release();
+      setType(AqlValueType::VPACK_MANAGED);
     }
   }
   
-  // construct from std::string, copying the string
-  explicit AqlValue(std::string const& value) {
-    if (value.empty()) {
-      // empty string
-      _data.internal[0] = 0x40;
-      setType(AqlValueType::VPACK_INLINE);
-      return;
-    }
-    size_t const length = value.size();
-    if (length < sizeof(_data.internal) - 1) {
-      // short string... can store it inline
-      _data.internal[0] = static_cast<uint8_t>(0x40 + length);
-      memcpy(_data.internal + 1, value.c_str(), value.size());
-      setType(AqlValueType::VPACK_INLINE);
-    } else if (length <= 126) {
-      // short string... cannot store inline, but we don't need to
-      // create a full-features Builder object here
-      _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
-      _data.buffer->push_back(static_cast<char>(0x40 + length));
-      _data.buffer->append(value.c_str(), length);
-      setType(AqlValueType::VPACK_MANAGED);
-    } else {
-      // long string
-      VPackBuilder builder;
-      builder.add(VPackValue(value));
-      initFromSlice(builder.slice());
-    }
-  }
+  // construct from std::string
+  explicit AqlValue(std::string const& value) : AqlValue(value.c_str(), value.size()) {}
   
   // construct from Buffer, potentially taking over its ownership
   // (by adjusting the boolean passed)
@@ -263,10 +242,7 @@ struct AqlValue final {
 
   /// @brief whether or not the value is empty / none
   inline bool isEmpty() const noexcept { 
-    if (type() != VPACK_INLINE) {
-      return false;
-    }
-    return arangodb::velocypack::Slice(_data.internal).isNone();
+    return (_data.internal[0] == '\x00' && _data.internal[sizeof(_data.internal) - 1] == VPACK_INLINE);
   }
   
   /// @brief whether or not the value is a pointer
@@ -318,7 +294,7 @@ struct AqlValue final {
   size_t length() const;
   
   /// @brief get the (array) element at position 
-  AqlValue at(int64_t position, bool& mustDestroy, bool copy) const;
+  AqlValue at(arangodb::AqlTransaction* trx, int64_t position, bool& mustDestroy, bool copy) const;
   
   /// @brief get the _key attribute from an object/document
   AqlValue getKeyAttribute(arangodb::AqlTransaction* trx,
@@ -342,9 +318,9 @@ struct AqlValue final {
   bool hasKey(arangodb::AqlTransaction* trx, std::string const& name) const;
 
   /// @brief get the numeric value of an AqlValue
-  double toDouble() const;
-  double toDouble(bool& failed) const;
-  int64_t toInt64() const;
+  double toDouble(arangodb::AqlTransaction* trx) const;
+  double toDouble(arangodb::AqlTransaction* trx, bool& failed) const;
+  int64_t toInt64(arangodb::AqlTransaction* trx) const;
   
   /// @brief whether or not an AqlValue evaluates to true/false
   bool toBoolean() const;

@@ -2,15 +2,14 @@
 /*jshint unused: false */
 /*global arangoHelper, document, sigma, Backbone, templateEngine, $, window*/
 (function () {
-  "use strict";
+  'use strict';
 
   window.GraphViewer2 = Backbone.View.extend({
+    el: '#content',
 
-    el: "#content",
+    template: templateEngine.createTemplate('graphViewer2.ejs'),
 
-    template: templateEngine.createTemplate("graphViewer2.ejs"),
-
-    initialize: function(options) {
+    initialize: function (options) {
       this.name = options.name;
       this.initSigma();
     },
@@ -33,21 +32,21 @@
       this.$el.html(this.template.render({}));
       arangoHelper.buildGraphSubNav(this.name, 'Content');
 
-      //adjust container widht + height
+      // adjust container widht + height
       $('#graph-container').width($('.centralContent').width());
       $('#graph-container').height($('.centralRow').height() - 150);
 
       this.fetchGraph();
     },
 
-    fetchGraph: function() {
+    fetchGraph: function () {
       var self = this;
 
       $.ajax({
-        type: "GET",
-        url: arangoHelper.databaseUrl("/_admin/aardvark/graph/" + encodeURIComponent(this.name)),
-        contentType: "application/json",
-        success: function(data) {
+        type: 'GET',
+        url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
+        contentType: 'application/json',
+        success: function (data) {
           self.renderGraph(data);
         }
       });
@@ -252,7 +251,6 @@
       }
 
     }
-
 
   });
 }());

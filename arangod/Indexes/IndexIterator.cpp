@@ -61,7 +61,8 @@ bool IndexIteratorContext::isCluster() const {
 
 int IndexIteratorContext::resolveId(char const* handle, size_t length,
                                     TRI_voc_cid_t& cid,
-                                    char const*& key) const {
+                                    char const*& key,
+                                    size_t& outLength) const {
   char const* p = static_cast<char const*>(memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
 
   if (p == nullptr || *p == '\0') {
@@ -80,6 +81,7 @@ int IndexIteratorContext::resolveId(char const* handle, size_t length,
   }
 
   key = p + 1;
+  outLength = length - (key - handle);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -100,8 +102,20 @@ TRI_doc_mptr_t* IndexIterator::next() { return nullptr; }
 /// @brief default implementation for nextBabies
 ////////////////////////////////////////////////////////////////////////////////
 
-void IndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+void IndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& result, size_t batchSize) {
+  result.clear();
+
+  while (true) {
+    TRI_doc_mptr_t* mptr = next();
+    if (mptr == nullptr) {
+      return;
+    }
+    result.emplace_back(mptr);
+    batchSize--;
+    if (batchSize == 0) {
+      return;
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

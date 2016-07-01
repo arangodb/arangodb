@@ -194,17 +194,13 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   // automatically freed if we throw
   TRI_ASSERT(curRegs <= res->getNrRegs());
 
-  // only copy 1st row of registers inherited from previous frame(s)1
+  // only copy 1st row of registers inherited from previous frame(s)
   inheritRegisters(cur, res.get(), _pos);
 
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {
       // re-use already copied AQLValues
-      for (RegisterId i = 0; i < curRegs; i++) {
-        res->setValue(j, i, res->getValueReference(0, i));
-        // Note: if this throws, then all values will be deleted
-        // properly since the first one is.
-      }
+      res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
     }
 
     if (_mustStoreResult) {

@@ -58,10 +58,12 @@ std::shared_ptr<VPackCustomTypeHandler> V8TransactionContext::orderCustomTypeHan
       _customTypeHandler.reset(TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
     }
     _options.customTypeHandler = _customTypeHandler.get();
+    _dumpOptions.customTypeHandler = _customTypeHandler.get();
   }
 
   TRI_ASSERT(_customTypeHandler != nullptr);
   TRI_ASSERT(_options.customTypeHandler != nullptr);
+  TRI_ASSERT(_dumpOptions.customTypeHandler != nullptr);
   return _customTypeHandler;
 }
 

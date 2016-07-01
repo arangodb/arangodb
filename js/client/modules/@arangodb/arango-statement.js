@@ -1,87 +1,84 @@
-/*jshint strict: false */
+/* jshint strict: false */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoStatement
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2013 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Achim Brandt
-/// @author Dr. Frank Celler
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ArangoStatement
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2013 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Achim Brandt
+// / @author Dr. Frank Celler
+// / @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var arangosh = require("@arangodb/arangosh");
+var internal = require('internal');
+var arangosh = require('@arangodb/arangosh');
 
-var ArangoStatement = require("@arangodb/arango-statement-common").ArangoStatement;
-var ArangoQueryCursor = require("@arangodb/arango-query-cursor").ArangoQueryCursor;
+var ArangoStatement = require('@arangodb/arango-statement-common').ArangoStatement;
+var ArangoQueryCursor = require('@arangodb/arango-query-cursor').ArangoQueryCursor;
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the statement
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a string representation of the statement
+// //////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.toString = function () {
-  return arangosh.getIdString(this, "ArangoStatement");
+  return arangosh.getIdString(this, 'ArangoStatement');
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints the help for ArangoStatement
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief prints the help for ArangoStatement
+// //////////////////////////////////////////////////////////////////////////////
 
-var helpArangoStatement = arangosh.createHelpHeadline("ArangoStatement help") +
-  'Create an AQL query:                                                    ' + "\n" +
-  ' > stmt = new ArangoStatement(db, { "query": "FOR..." })                ' + "\n" +
-  ' > stmt = db._createStatement({ "query": "FOR..." })                    ' + "\n" +
-  'Set query options:                                                      ' + "\n" +
-  ' > stmt.setBatchSize(<value>)           set the max. number of results  ' + "\n" +
-  '                                        to be transferred per roundtrip ' + "\n" +
-  ' > stmt.setCount(<value>)               set count flag (return number of' + "\n" +
-  '                                        results in "count" attribute)   ' + "\n" +
-  'Get query options:                                                      ' + "\n" +
-  ' > stmt.setBatchSize()                  return the max. number of results' + "\n" +
-  '                                        to be transferred per roundtrip ' + "\n" +
-  ' > stmt.getCount()                      return count flag (return number' + "\n" +
-  '                                        of results in "count" attribute)' + "\n" +
-  ' > stmt.getQuery()                      return query string             ' + "\n" +
-  '                                        results in "count" attribute)   ' + "\n" +
-  'Bind parameters to a query:                                             ' + "\n" +
-  ' > stmt.bind(<key>, <value>)            bind single variable            ' + "\n" +
-  ' > stmt.bind(<values>)                  bind multiple variables         ' + "\n" +
-  'Execute query:                                                          ' + "\n" +
-  ' > cursor = stmt.execute()              returns a cursor                ' + "\n" +
-  'Get all results in an array:                                            ' + "\n" +
-  ' > docs = cursor.toArray()                                              ' + "\n" +
-  'Or loop over the result set:                                            ' + "\n" +
+var helpArangoStatement = arangosh.createHelpHeadline('ArangoStatement help') +
+  'Create an AQL query:                                                    ' + '\n' +
+  ' > stmt = new ArangoStatement(db, { "query": "FOR..." })                ' + '\n' +
+  ' > stmt = db._createStatement({ "query": "FOR..." })                    ' + '\n' +
+  'Set query options:                                                      ' + '\n' +
+  ' > stmt.setBatchSize(<value>)           set the max. number of results  ' + '\n' +
+  '                                        to be transferred per roundtrip ' + '\n' +
+  ' > stmt.setCount(<value>)               set count flag (return number of' + '\n' +
+  '                                        results in "count" attribute)   ' + '\n' +
+  'Get query options:                                                      ' + '\n' +
+  ' > stmt.setBatchSize()                  return the max. number of results' + '\n' +
+  '                                        to be transferred per roundtrip ' + '\n' +
+  ' > stmt.getCount()                      return count flag (return number' + '\n' +
+  '                                        of results in "count" attribute)' + '\n' +
+  ' > stmt.getQuery()                      return query string             ' + '\n' +
+  '                                        results in "count" attribute)   ' + '\n' +
+  'Bind parameters to a query:                                             ' + '\n' +
+  ' > stmt.bind(<key>, <value>)            bind single variable            ' + '\n' +
+  ' > stmt.bind(<values>)                  bind multiple variables         ' + '\n' +
+  'Execute query:                                                          ' + '\n' +
+  ' > cursor = stmt.execute()              returns a cursor                ' + '\n' +
+  'Get all results in an array:                                            ' + '\n' +
+  ' > docs = cursor.toArray()                                              ' + '\n' +
+  'Or loop over the result set:                                            ' + '\n' +
   ' > while (cursor.hasNext()) { print(cursor.next()) }                    ';
 
 ArangoStatement.prototype._help = function () {
   internal.print(helpArangoStatement);
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a query and return the results
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief parse a query and return the results
+// //////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.parse = function () {
   var body = {
@@ -89,27 +86,27 @@ ArangoStatement.prototype.parse = function () {
   };
 
   var requestResult = this._database._connection.POST(
-    "/_api/query",
+    '/_api/query',
     JSON.stringify(body));
 
   arangosh.checkRequestResult(requestResult);
 
-  var result = { 
-    bindVars: requestResult.bindVars, 
+  var result = {
+    bindVars: requestResult.bindVars,
     collections: requestResult.collections,
-    ast: requestResult.ast 
+    ast: requestResult.ast
   };
   return result;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief explain a query and return the results
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief explain a query and return the results
+// //////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.explain = function (options) {
   var opts = this._options || { };
   if (typeof opts === 'object' && typeof options === 'object') {
-    Object.keys(options).forEach(function(o) {
+    Object.keys(options).forEach(function (o) {
       // copy options
       opts[o] = options[o];
     });
@@ -122,7 +119,7 @@ ArangoStatement.prototype.explain = function (options) {
   };
 
   var requestResult = this._database._connection.POST(
-    "/_api/explain",
+    '/_api/explain',
     JSON.stringify(body));
 
   arangosh.checkRequestResult(requestResult);
@@ -133,8 +130,7 @@ ArangoStatement.prototype.explain = function (options) {
       warnings: requestResult.warnings,
       stats: requestResult.stats
     };
-  }
-  else {
+  } else {
     return {
       plan: requestResult.plan,
       warnings: requestResult.warnings,
@@ -144,13 +140,13 @@ ArangoStatement.prototype.explain = function (options) {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute the query
-///
-/// Invoking execute() will transfer the query and all bind parameters to the
-/// server. It will return a cursor with the query results in case of success.
-/// In case of an error, the error will be printed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief execute the query
+// /
+// / Invoking execute() will transfer the query and all bind parameters to the
+// / server. It will return a cursor with the query results in case of success.
+// / In case of an error, the error will be printed
+// //////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.execute = function () {
   var body = {
@@ -172,7 +168,7 @@ ArangoStatement.prototype.execute = function () {
   }
 
   var requestResult = this._database._connection.POST(
-    "/_api/cursor",
+    '/_api/cursor',
     JSON.stringify(body));
 
   arangosh.checkRequestResult(requestResult);
@@ -180,7 +176,4 @@ ArangoStatement.prototype.execute = function () {
   return new ArangoQueryCursor(this._database, requestResult);
 };
 
-
 exports.ArangoStatement = ArangoStatement;
-
-

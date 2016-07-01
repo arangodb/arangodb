@@ -1,49 +1,49 @@
-/*jshint strict: false */
+/* jshint strict: false */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief querying and managing collections
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief querying and managing collections
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2014 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Achim Brandt
+// / @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("@arangodb");
-var actions = require("@arangodb/actions");
-var cluster = require("@arangodb/cluster");
+var arangodb = require('@arangodb');
+var actions = require('@arangodb/actions');
+var cluster = require('@arangodb/cluster');
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a prefixed URL
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a prefixed URL
+// //////////////////////////////////////////////////////////////////////////////
 
 function databasePrefix (req, url) {
   // location response (e.g. /_db/dbname/_api/collection/xyz)
-  return "/_db/" + encodeURIComponent(arangodb.db._name()) + url;
+  return '/_db/' + encodeURIComponent(arangodb.db._name()) + url;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection representation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief collection representation
+// //////////////////////////////////////////////////////////////////////////////
 
 function collectionRepresentation (collection, showProperties, showCount, showFigures) {
   var result = {};
@@ -55,12 +55,12 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
   if (showProperties) {
     var properties = collection.properties();
 
-    result.doCompact     = properties.doCompact;
-    result.isVolatile    = properties.isVolatile;
-    result.journalSize   = properties.journalSize;
-    result.keyOptions    = properties.keyOptions;
-    result.waitForSync   = properties.waitForSync;
-    result.indexBuckets  = properties.indexBuckets;
+    result.doCompact = properties.doCompact;
+    result.isVolatile = properties.isVolatile;
+    result.journalSize = properties.journalSize;
+    result.keyOptions = properties.keyOptions;
+    result.waitForSync = properties.waitForSync;
+    result.indexBuckets = properties.indexBuckets;
 
     if (cluster.isCoordinator()) {
       result.shardKeys = properties.shardKeys;
@@ -87,10 +87,9 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
   return result;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper to parse arguments for creating collections
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief helper to parse arguments for creating collections
+// //////////////////////////////////////////////////////////////////////////////
 
 function parseBodyForCreateCollection (req, res) {
   var body = actions.getJsonBody(req, res);
@@ -101,105 +100,102 @@ function parseBodyForCreateCollection (req, res) {
 
   var r = {};
 
-  if (! body.hasOwnProperty("name")) {
-    r.name = "";
-  }
-  else {
+  if (!body.hasOwnProperty('name')) {
+    r.name = '';
+  } else {
     r.name = body.name;
   }
-  r.parameters = { waitForSync : require("internal").options()["database.wait-for-sync"] };
+  r.parameters = { waitForSync: require('internal').options()['database.wait-for-sync']};
   r.type = arangodb.ArangoCollection.TYPE_DOCUMENT;
 
-  if (body.hasOwnProperty("doCompact")) {
+  if (body.hasOwnProperty('doCompact')) {
     r.parameters.doCompact = body.doCompact;
   }
 
-  if (body.hasOwnProperty("isSystem")) {
+  if (body.hasOwnProperty('isSystem')) {
     r.parameters.isSystem = (body.isSystem && r.name[0] === '_');
   }
-  
-  if (body.hasOwnProperty("id")) {
+
+  if (body.hasOwnProperty('id')) {
     r.parameters.id = body.id;
   }
 
-  if (body.hasOwnProperty("isVolatile")) {
+  if (body.hasOwnProperty('isVolatile')) {
     r.parameters.isVolatile = body.isVolatile;
   }
 
-  if (body.hasOwnProperty("journalSize")) {
+  if (body.hasOwnProperty('journalSize')) {
     r.parameters.journalSize = body.journalSize;
   }
 
-  if (body.hasOwnProperty("indexBuckets")) {
+  if (body.hasOwnProperty('indexBuckets')) {
     r.parameters.indexBuckets = body.indexBuckets;
   }
 
-  if (body.hasOwnProperty("keyOptions")) {
+  if (body.hasOwnProperty('keyOptions')) {
     r.parameters.keyOptions = body.keyOptions;
   }
 
-  if (body.hasOwnProperty("type")) {
+  if (body.hasOwnProperty('type')) {
     r.type = body.type;
   }
 
-  if (body.hasOwnProperty("waitForSync")) {
+  if (body.hasOwnProperty('waitForSync')) {
     r.parameters.waitForSync = body.waitForSync;
   }
 
   if (cluster.isCoordinator()) {
-    if (body.hasOwnProperty("shardKeys")) {
+    if (body.hasOwnProperty('shardKeys')) {
       r.parameters.shardKeys = body.shardKeys || { };
     }
 
-    if (body.hasOwnProperty("numberOfShards")) {
+    if (body.hasOwnProperty('numberOfShards')) {
       r.parameters.numberOfShards = body.numberOfShards || 0;
     }
 
-    if (body.hasOwnProperty("distributeShardsLike")) {
-      r.parameters.distributeShardsLike = body.distributeShardsLike || "";
+    if (body.hasOwnProperty('distributeShardsLike')) {
+      r.parameters.distributeShardsLike = body.distributeShardsLike || '';
     }
 
-    if (body.hasOwnProperty("replicationFactor")) {
-      r.parameters.replicationFactor = body.replicationFactor || "";
+    if (body.hasOwnProperty('replicationFactor')) {
+      r.parameters.replicationFactor = body.replicationFactor || '';
     }
 
-    if (body.hasOwnProperty("servers")) {
-      r.parameters.servers = body.servers || "";
+    if (body.hasOwnProperty('servers')) {
+      r.parameters.servers = body.servers || '';
     }
-
   }
 
   return r;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_post_api_collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_post_api_collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function post_api_collection (req, res) {
   var r = parseBodyForCreateCollection(req, res);
 
   if (r.bodyIsEmpty) {
-    return;   // error in JSON, is already reported
+    return; // error in JSON, is already reported
   }
 
-  if (r.name === "") {
+  if (r.name === '') {
     actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
-                      "name must be non-empty");
+      'name must be non-empty');
     return;
   }
 
   try {
     var collection;
-    if (typeof(r.type) === "string") {
-      if (r.type.toLowerCase() === "edge" || r.type === "3") {
+    if (typeof (r.type) === 'string') {
+      if (r.type.toLowerCase() === 'edge' || r.type === '3') {
         r.type = arangodb.ArangoCollection.TYPE_EDGE;
       }
     }
     if (r.type === arangodb.ArangoCollection.TYPE_EDGE) {
       collection = arangodb.db._createEdgeCollection(r.name, r.parameters);
-    }
-    else {
+    } else {
       collection = arangodb.db._createDocumentCollection(r.name, r.parameters);
     }
 
@@ -217,23 +213,22 @@ function post_api_collection (req, res) {
     if (cluster.isCoordinator()) {
       result.shardKeys = collection.shardKeys;
       result.numberOfShards = collection.numberOfShards;
-      result.distributeShardsLike = collection.distributeShardsLike || "";
+      result.distributeShardsLike = collection.distributeShardsLike || '';
     }
 
     var headers = {
-      location: databasePrefix(req, "/_api/collection/" + result.name)
+      location: databasePrefix(req, '/_api/collection/' + result.name)
     };
 
     actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-  }
-  catch (err) {
+  } catch (err) {
     actions.resultException(req, res, err, undefined, false);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_collections
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_get_api_collections
+// //////////////////////////////////////////////////////////////////////////////
 
 function get_api_collections (req, res) {
   var excludeSystem;
@@ -253,37 +248,37 @@ function get_api_collections (req, res) {
     var rep = collectionRepresentation(collection);
 
     // include system collections or exclude them?
-    if (! excludeSystem || rep.name.substr(0, 1) !== '_') {
+    if (!excludeSystem || rep.name.substr(0, 1) !== '_') {
       list.push(rep);
     }
   }
 
-  actions.resultOk(req, res, actions.HTTP_OK, { result : list });
+  actions.resultOk(req, res, actions.HTTP_OK, { result: list });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSA_get_api_collection_name
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSA_get_api_collection_name
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSA_get_api_collection_properties
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSA_get_api_collection_properties
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSA_get_api_collection_count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSA_get_api_collection_count
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSA_get_api_collection_figures
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSA_get_api_collection_figures
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSA_get_api_collection_revision
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSA_get_api_collection_revision
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSA_get_api_collection_checksum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSA_get_api_collection_checksum
+// //////////////////////////////////////////////////////////////////////////////
 
 function get_api_collection (req, res) {
   var name;
@@ -321,7 +316,7 @@ function get_api_collection (req, res) {
   if (req.suffix.length === 1) {
     result = collectionRepresentation(collection, false, false, false);
     headers = {
-      location : databasePrefix(req, "/_api/collection/" + collection.name())
+      location: databasePrefix(req, '/_api/collection/' + collection.name())
     };
     actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     return;
@@ -334,7 +329,7 @@ function get_api_collection (req, res) {
     // /_api/collection/<identifier>/checksum
     // .............................................................................
 
-    if (sub === "checksum") {
+    if (sub === 'checksum') {
       var withRevisions = false;
       var withData = false;
       var value;
@@ -362,11 +357,10 @@ function get_api_collection (req, res) {
     // .............................................................................
     // /_api/collection/<identifier>/figures
     // .............................................................................
-
-    else if (sub === "figures") {
+    else if (sub === 'figures') {
       result = collectionRepresentation(collection, true, true, true);
       headers = {
-        location : databasePrefix(req, "/_api/collection/" + collection.name() + "/figures")
+        location: databasePrefix(req, '/_api/collection/' + collection.name() + '/figures')
       };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
@@ -374,11 +368,10 @@ function get_api_collection (req, res) {
     // .............................................................................
     // /_api/collection/<identifier>/count
     // .............................................................................
-
-    else if (sub === "count") {
+    else if (sub === 'count') {
       result = collectionRepresentation(collection, true, true, false);
       headers = {
-        location : databasePrefix(req, "/_api/collection/" + collection.name() + "/count")
+        location: databasePrefix(req, '/_api/collection/' + collection.name() + '/count')
       };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
@@ -386,11 +379,10 @@ function get_api_collection (req, res) {
     // .............................................................................
     // /_api/collection/<identifier>/properties
     // .............................................................................
-
-    else if (sub === "properties") {
+    else if (sub === 'properties') {
       result = collectionRepresentation(collection, true, false, false);
       headers = {
-        location : databasePrefix(req, "/_api/collection/" + collection.name() + "/properties")
+        location: databasePrefix(req, '/_api/collection/' + collection.name() + '/properties')
       };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
@@ -398,28 +390,24 @@ function get_api_collection (req, res) {
     // .............................................................................
     // /_api/collection/<identifier>/revision
     // .............................................................................
-
-    else if (sub === "revision") {
+    else if (sub === 'revision') {
       result = collectionRepresentation(collection, false, false, false);
       result.revision = collection.revision();
       actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-
-    else {
+    } else {
       actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND,
-                             "expecting one of the resources 'count',"
-                             +" 'figures', 'properties', 'parameter'");
+        "expecting one of the resources 'count',"
+        + " 'figures', 'properties', 'parameter'");
     }
-  }
-  else {
+  } else {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expect GET /_api/collection/<collection-name>/<method>");
+      'expect GET /_api/collection/<collection-name>/<method>');
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_collection_load
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_put_api_collection_load
+// //////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_load (req, res, collection) {
   try {
@@ -428,32 +416,31 @@ function put_api_collection_load (req, res, collection) {
     var showCount = true;
     var body = actions.getJsonBody(req, res);
 
-    if (body && body.hasOwnProperty("count")) {
+    if (body && body.hasOwnProperty('count')) {
       showCount = body.count;
     }
 
     var result = collectionRepresentation(collection, false, showCount, false);
 
     actions.resultOk(req, res, actions.HTTP_OK, result);
-  }
-  catch (err) {
+  } catch (err) {
     actions.resultException(req, res, err, undefined, false);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_collection_unload
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_put_api_collection_unload
+// //////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_unload (req, res, collection) {
   try {
     if (req.parameters.hasOwnProperty('flush')) {
       var value = req.parameters.flush.toLowerCase();
       if (value === 'true' || value === 'yes' || value === 'on' || value === 'y' || value === '1') {
-        if (collection.status() === 3 /* loaded */ && 
-            collection.figures().uncollectedLogfileEntries > 0) {
+        if (collection.status() === 3 /* loaded */ &&
+          collection.figures().uncollectedLogfileEntries > 0) {
           // flush WAL so uncollected logfile entries can get collected
-          require("internal").wal.flush();
+          require('internal').wal.flush();
         }
       }
     }
@@ -464,15 +451,14 @@ function put_api_collection_unload (req, res, collection) {
     var result = collectionRepresentation(collection);
 
     actions.resultOk(req, res, actions.HTTP_OK, result);
-  }
-  catch (err) {
+  } catch (err) {
     actions.resultException(req, res, err, undefined, false);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_collection_truncate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_put_api_collection_truncate
+// //////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_truncate (req, res, collection) {
   try {
@@ -481,15 +467,14 @@ function put_api_collection_truncate (req, res, collection) {
     var result = collectionRepresentation(collection);
 
     actions.resultOk(req, res, actions.HTTP_OK, result);
-  }
-  catch (err) {
+  } catch (err) {
     actions.resultException(req, res, err, undefined, false);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_collection_properties
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_put_api_collection_properties
+// //////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_properties (req, res, collection) {
   var body = actions.getJsonBody(req, res);
@@ -504,15 +489,14 @@ function put_api_collection_properties (req, res, collection) {
     var result = collectionRepresentation(collection, true);
 
     actions.resultOk(req, res, actions.HTTP_OK, result);
-  }
-  catch (err) {
+  } catch (err) {
     actions.resultException(req, res, err, undefined, false);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_collection_rename
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_put_api_collection_rename
+// //////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_rename (req, res, collection) {
   var body = actions.getJsonBody(req, res);
@@ -521,9 +505,9 @@ function put_api_collection_rename (req, res, collection) {
     return;
   }
 
-  if (! body.hasOwnProperty("name")) {
+  if (!body.hasOwnProperty('name')) {
     actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
-                      "name must be non-empty");
+      'name must be non-empty');
     return;
   }
 
@@ -535,35 +519,33 @@ function put_api_collection_rename (req, res, collection) {
     var result = collectionRepresentation(collection);
 
     actions.resultOk(req, res, actions.HTTP_OK, result);
-  }
-  catch (err) {
+  } catch (err) {
     actions.resultException(req, res, err, undefined, false);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_collection_rotate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_put_api_collection_rotate
+// //////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_rotate (req, res, collection) {
   try {
     collection.rotate();
 
     actions.resultOk(req, res, actions.HTTP_OK, { result: true });
-  }
-  catch (err) {
+  } catch (err) {
     actions.resultException(req, res, err, undefined, false);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief changes a collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief changes a collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection (req, res) {
   if (req.suffix.length !== 2) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expected PUT /_api/collection/<collection-name>/<action>");
+      'expected PUT /_api/collection/<collection-name>/<action>');
     return;
   }
 
@@ -577,96 +559,80 @@ function put_api_collection (req, res) {
 
   var sub = decodeURIComponent(req.suffix[1]);
 
-  if (sub === "load") {
+  if (sub === 'load') {
     put_api_collection_load(req, res, collection);
-  }
-  else if (sub === "unload") {
+  } else if (sub === 'unload') {
     put_api_collection_unload(req, res, collection);
     collection = null;
     // run garbage collection once in all threads
-    require("internal").executeGlobalContextFunction("collectGarbage");
-  }
-  else if (sub === "truncate") {
+    require('internal').executeGlobalContextFunction('collectGarbage');
+  } else if (sub === 'truncate') {
     put_api_collection_truncate(req, res, collection);
-  }
-  else if (sub === "properties") {
+  } else if (sub === 'properties') {
     put_api_collection_properties(req, res, collection);
-  }
-  else if (sub === "rename") {
+  } else if (sub === 'rename') {
     put_api_collection_rename(req, res, collection);
-  }
-  else if (sub === "rotate") {
+  } else if (sub === 'rotate') {
     put_api_collection_rotate(req, res, collection);
-  }
-  else {
+  } else {
     actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND,
-                           "expecting one of the actions 'load', 'unload',"
-                           + " 'truncate', 'properties', 'rename'");
+      "expecting one of the actions 'load', 'unload',"
+      + " 'truncate', 'properties', 'rename'");
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_delete_api_collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_delete_api_collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function delete_api_collection (req, res) {
   if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expected DELETE /_api/collection/<collection-name>");
-  }
-  else {
+      'expected DELETE /_api/collection/<collection-name>');
+  } else {
     var name = decodeURIComponent(req.suffix[0]);
     var collection = arangodb.db._collection(name);
 
     if (collection === null) {
       actions.collectionNotFound(req, res, name);
-    }
-    else {
+    } else {
       try {
         var result = {
-          id : collection._id
+          id: collection._id
         };
 
         collection.drop();
 
         actions.resultOk(req, res, actions.HTTP_OK, result);
-      }
-      catch (err) {
+      } catch (err) {
         actions.resultException(req, res, err, undefined, false);
       }
     }
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles a collection request
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief handles a collection request
+// //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_api/collection",
+  url: '_api/collection',
 
-  callback : function (req, res) {
+  callback: function (req, res) {
     try {
       if (req.requestType === actions.GET) {
         get_api_collection(req, res);
-      }
-      else if (req.requestType === actions.DELETE) {
+      } else if (req.requestType === actions.DELETE) {
         delete_api_collection(req, res);
-      }
-      else if (req.requestType === actions.POST) {
+      } else if (req.requestType === actions.POST) {
         post_api_collection(req, res);
-      }
-      else if (req.requestType === actions.PUT) {
+      } else if (req.requestType === actions.PUT) {
         put_api_collection(req, res);
-      }
-      else {
+      } else {
         actions.resultUnsupported(req, res);
       }
-    }
-    catch (err) {
+    } catch (err) {
       actions.resultException(req, res, err, undefined, false);
     }
   }
 });
-
-

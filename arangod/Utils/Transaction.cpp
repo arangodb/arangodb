@@ -1143,23 +1143,16 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
-  std::shared_ptr<OperationCursor> cursor =
+  std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, Transaction::CursorType::ANY, IndexHandle(), 
                 {}, skip, limit, 1000, false);
 
-  auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  std::vector<TRI_doc_mptr_t*> result;
   while (cursor->hasMore()) {
-    cursor->getMore(result);
-
-    if (result->failed()) {
-      return OperationResult(result->code);
-    }
-  
-    VPackSlice docs = result->slice();
-    VPackArrayIterator it(docs);
-    while (it.valid()) {
-      resultBuilder.add(it.value());
-      it.next();
+    result.clear();
+    cursor->getMoreMptr(result);
+    for (auto const& mptr : result) {
+      resultBuilder.add(VPackSlice(mptr->vpack()));
     }
   }
 
@@ -2448,7 +2441,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
-  std::shared_ptr<OperationCursor> cursor =
+  std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, Transaction::CursorType::ALL, IndexHandle(),
                 {}, skip, limit, 1000, false);
 
@@ -2852,7 +2845,7 @@ OperationCursor* Transaction::indexScanForCondition(
     return new OperationCursor(TRI_ERROR_NO_ERROR);
   }
 
-  // Now collect the Iterator
+  // data that we pass to the iterator
   IndexIteratorContext ctxt(_vocbase, resolver(), _serverRole);
  
   auto idx = indexId.getIndex();
@@ -2861,6 +2854,7 @@ OperationCursor* Transaction::indexScanForCondition(
                                    "The index id cannot be empty.");
   }
 
+  // Now create the Iterator
   std::unique_ptr<IndexIterator> iterator(idx->iteratorForCondition(this, &ctxt, condition, var, reverse));
 
   if (iterator == nullptr) {
@@ -2877,7 +2871,7 @@ OperationCursor* Transaction::indexScanForCondition(
 /// calling this method
 //////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<OperationCursor> Transaction::indexScan(
+std::unique_ptr<OperationCursor> Transaction::indexScan(
     std::string const& collectionName, CursorType cursorType,
     IndexHandle const& indexId, VPackSlice const search, uint64_t skip,
     uint64_t limit, uint64_t batchSize, bool reverse) {
@@ -2890,7 +2884,7 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
 
   if (limit == 0) {
     // nothing to do
-    return std::make_shared<OperationCursor>(TRI_ERROR_NO_ERROR);
+    return std::make_unique<OperationCursor>(TRI_ERROR_NO_ERROR);
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
@@ -2952,13 +2946,13 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
   }
   if (iterator == nullptr) {
     // We could not create an ITERATOR and it did not throw an error itself
-    return std::make_shared<OperationCursor>(TRI_ERROR_OUT_OF_MEMORY);
+    return std::make_unique<OperationCursor>(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   uint64_t unused = 0;
   iterator->skip(skip, unused);
 
-  return std::make_shared<OperationCursor>(iterator.release(), limit, batchSize);
+  return std::make_unique<OperationCursor>(iterator.release(), limit, batchSize);
 }
   
 ////////////////////////////////////////////////////////////////////////////////

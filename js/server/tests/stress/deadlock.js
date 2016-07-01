@@ -1,36 +1,36 @@
-/*jshint strict: false, sub: true */
-/*global print */
+/* jshint strict: false, sub: true */
+/* global print */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// //////////////////////////////////////////////////////////////////////////////
 
-const internal = require("internal");
-const fs = require("fs");
-const tasks = require("org/arangodb/tasks");
+const internal = require('internal');
+const fs = require('fs');
+const tasks = require('org/arangodb/tasks');
 
-const _ = require("lodash");
+const _ = require('lodash');
 
-const executeExternalAndWait = require("internal").executeExternalAndWait;
+const executeExternalAndWait = require('internal').executeExternalAndWait;
 
 const db = internal.db;
 const sleep = internal.sleep;
@@ -40,42 +40,42 @@ const optsDefault = {
   concurrency: 1,
   duration: 10, // in minutes
   gnuplot: false,
-  results: "results",
-  runId: "run",
+  results: 'results',
+  runId: 'run',
   slowBarrier: 1
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection numbers
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief collection numbers
+// //////////////////////////////////////////////////////////////////////////////
 
 const c = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create image using gnuplot
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create image using gnuplot
+// //////////////////////////////////////////////////////////////////////////////
 
-function gnuplot() {
-  executeExternalAndWait("gnuplot", "out/locks.plot");
+function gnuplot () {
+  executeExternalAndWait('gnuplot', 'out/locks.plot');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief statistics generator
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief statistics generator
+// //////////////////////////////////////////////////////////////////////////////
 
 let statisticsInitialized = false;
 
-const locksLog = fs.join("out", "locks.csv");
+const locksLog = fs.join('out', 'locks.csv');
 
 const locksKeys = [
-  "runtime", "deadlocks", "success", "slow"
+  'runtime', 'deadlocks', 'success', 'slow'
 ];
 
-function statistics(opts) {
+function statistics (opts) {
   if (!statisticsInitialized) {
-    fs.makeDirectoryRecursive("out");
+    fs.makeDirectoryRecursive('out');
 
-    fs.write(locksLog, "# " + locksKeys.join("\t") + "\n");
+    fs.write(locksLog, '# ' + locksKeys.join('\t') + '\n');
 
     statisticsInitialized = true;
   }
@@ -99,17 +99,17 @@ function statistics(opts) {
   if (s !== undefined) {
     s.runtime = Math.round(((new Date()) - opts.startTime) / 1000);
 
-    fs.append(locksLog, locksKeys.map(function(x) {
-      return s[x];
-    }).join("\t") + "\n");
+    fs.append(locksLog, locksKeys.map(function (x) {
+        return s[x];
+      }).join('\t') + '\n');
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lock cycle
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief lock cycle
+// //////////////////////////////////////////////////////////////////////////////
 
-exports.lockCycleRaw = function(opts) {
+exports.lockCycleRaw = function (opts) {
   const slowBarrier = opts.slowBarrier;
   const runId = opts.runId;
 
@@ -142,12 +142,12 @@ exports.lockCycleRaw = function(opts) {
     }
   });
 
-  const randomSort = function( /* l, r */ ) {
+  const randomSort = function ( /* l, r */ ) {
     return -0.5 + Math.random();
   };
 
-  const transactionFunction = function() {
-    return require("internal").db.c2.any();
+  const transactionFunction = function () {
+    return require('internal').db.c2.any();
   };
 
   while (true) {
@@ -173,16 +173,15 @@ exports.lockCycleRaw = function(opts) {
 
       for (let i = 0; i < n; ++i) {
         if (Math.random() > 0.8) {
-          write.push("c" + c[i]);
+          write.push('c' + c[i]);
         } else {
-          read.push("c" + c[i]);
+          read.push('c' + c[i]);
         }
       }
 
       const obj = {
         collections: {
-          read, write
-        },
+        read, write},
         action: transactionFunction
       };
 
@@ -214,19 +213,19 @@ exports.lockCycleRaw = function(opts) {
   });
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lock cycle driver
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief lock cycle driver
+// //////////////////////////////////////////////////////////////////////////////
 
-exports.lockCycleParallel = function(opts) {
+exports.lockCycleParallel = function (opts) {
   _.defaults(opts, optsDefault);
 
   // start time
   opts.startTime = new Date();
 
   // create the test collections
-  c.forEach(function(i) {
-    const name = "c" + i;
+  c.forEach(function (i) {
+    const name = 'c' + i;
 
     db._drop(name);
     db._create(name);
@@ -238,25 +237,25 @@ exports.lockCycleParallel = function(opts) {
   db._create(results);
 
   // create output directory
-  fs.makeDirectoryRecursive("out");
+  fs.makeDirectoryRecursive('out');
 
   // start worker
   let n = opts.concurrency;
 
-  print("Starting", n, "worker");
+  print('Starting', n, 'worker');
 
-  const cmd = function(params) {
-    require("./js/server/tests/stress/deadlock").lockCycleRaw(params);
+  const cmd = function (params) {
+    require('./js/server/tests/stress/deadlock').lockCycleRaw(params);
   };
 
   for (let i = 0; i < n; ++i) {
     let o = JSON.parse(JSON.stringify(opts));
 
-    o.runId = "run_" + i;
+    o.runId = 'run_' + i;
 
     tasks.register({
-      id: "stress" + i,
-      name: "stress test " + i,
+      id: 'stress' + i,
+      name: 'stress test ' + i,
       offset: i,
       params: o,
       command: cmd
@@ -264,12 +263,12 @@ exports.lockCycleParallel = function(opts) {
   }
 
   // wait for a result
-  const countDone = function() {
-    const a = db._query("FOR u IN @@results FILTER u.finished RETURN 1", {
+  const countDone = function () {
+    const a = db._query('FOR u IN @@results FILTER u.finished RETURN 1', {
       '@results': 'results'
     });
 
-    const b = db._query("FOR u IN @@results FILTER u.started RETURN 1", {
+    const b = db._query('FOR u IN @@results FILTER u.started RETURN 1', {
       '@results': 'results'
     });
 
@@ -279,11 +278,11 @@ exports.lockCycleParallel = function(opts) {
   let m = 0;
 
   for (let i = 0; i < 10; ++i) {
-    m = db._query("FOR u IN @@results FILTER u.started RETURN 1", {
+    m = db._query('FOR u IN @@results FILTER u.started RETURN 1', {
       '@results': 'results'
     }).count();
 
-    print(m + " workers are up and running");
+    print(m + ' workers are up and running');
 
     if (m === n) {
       break;
@@ -293,13 +292,13 @@ exports.lockCycleParallel = function(opts) {
   }
 
   if (m < n) {
-    print("cannot start enough workers (want", n + ",", "got", m + "),",
-      "please check number V8 contexts");
-    throw new Error("cannot start workers");
+    print('cannot start enough workers (want', n + ',', 'got', m + '),',
+      'please check number V8 contexts');
+    throw new Error('cannot start workers');
   }
 
   if (opts.gnuplot) {
-    fs.write(fs.join("out", "locks.plot"),
+    fs.write(fs.join('out', 'locks.plot'),
       `
 set terminal png size 1024,1024
 set size ratio 0.8
@@ -323,7 +322,7 @@ plot \
     statistics(opts);
 
     if (opts.gnuplot && count % 6 === 0) {
-      print("generating image");
+      print('generating image');
       gnuplot();
     }
 
