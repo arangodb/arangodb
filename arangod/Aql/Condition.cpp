@@ -194,6 +194,14 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other, bool isReversed) con
     }
   }
 
+  TRI_ASSERT(valueNode != nullptr);
+  TRI_ASSERT(other.valueNode != nullptr);
+  
+  if (!valueNode->isConstant() || !other.valueNode->isConstant()) {
+    return false;
+  }
+
+
   // special cases for IN...
   if (!isExpanded && !other.isExpanded &&
       other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
