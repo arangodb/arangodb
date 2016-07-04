@@ -27,7 +27,6 @@
 
 #include "Rest/GeneralRequest.h"
 
-#include "Basics/StringBuffer.h"
 #include "Endpoint/ConnectionInfo.h"
 
 namespace arangodb {

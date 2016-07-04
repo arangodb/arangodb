@@ -31,7 +31,6 @@
 
 #include "Basics/conversions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
@@ -686,7 +685,10 @@ std::string const& HttpRequest::cookieValue(std::string const& key,
 std::string const& HttpRequest::body() const { return _body; }
 
 void HttpRequest::setBody(char const* body, size_t length) {
-  _body = std::string(body, length);
+  _body.reserve(length + 1);
+  _body.append(body, length);
+  // make sure the string is null-terminated
+  _body[length] = '\0';
 }
 
 std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack(

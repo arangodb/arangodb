@@ -22,13 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyCallbackRegistry.h"
-
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
+#include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 
 #include <ctime>
