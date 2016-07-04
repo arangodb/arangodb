@@ -185,9 +185,7 @@ int RestImportHandler::handleSingleDocument(
   VPackBuilder newBuilder;
 
   if (isEdgeCollection) {
-    // Validate from and to
-    // TODO: Check if this is unified in trx.insert
-
+    // add prefixes to _from and _to
     if (!_fromPrefix.empty() || !_toPrefix.empty()) {
       TransactionBuilderLeaser tempBuilder(&trx);
       
@@ -199,6 +197,9 @@ int RestImportHandler::handleSingleDocument(
           if (f.find('/') == std::string::npos) {
             tempBuilder->add(StaticStrings::FromString, VPackValue(_fromPrefix + f));
           }
+        } else if (from.isInteger()) {
+          uint64_t f = from.getNumber<uint64_t>();
+          tempBuilder->add(StaticStrings::FromString, VPackValue(_fromPrefix + std::to_string(f)));
         }
       }
       if (!_toPrefix.empty()) {
@@ -208,6 +209,9 @@ int RestImportHandler::handleSingleDocument(
           if (t.find('/') == std::string::npos) {
             tempBuilder->add(StaticStrings::ToString, VPackValue(_toPrefix + t));
           }
+        } else if (to.isInteger()) {
+          uint64_t t = to.getNumber<uint64_t>();
+          tempBuilder->add(StaticStrings::ToString, VPackValue(_toPrefix + std::to_string(t)));
         }
       }
       tempBuilder->close();

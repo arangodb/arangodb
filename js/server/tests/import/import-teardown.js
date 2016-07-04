@@ -31,6 +31,7 @@
   'use strict';
   var db = require("@arangodb").db;
 
+  db._drop("UnitTestsImportCsvSkip");
   db._drop("UnitTestsImportJson1");
   db._drop("UnitTestsImportJson2");
   db._drop("UnitTestsImportJson3");

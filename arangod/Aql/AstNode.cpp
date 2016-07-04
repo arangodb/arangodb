@@ -871,6 +871,10 @@ void AstNode::dump(int level) const {
   if (type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY) {
     std::unique_ptr<TRI_json_t> json(toJsonValue(TRI_UNKNOWN_MEM_ZONE));
     std::cout << ": " << json.get();
+  } else if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    std::cout << ": " << getString();
+  } else if (type == NODE_TYPE_REFERENCE) {
+    std::cout << ": " << static_cast<Variable const*>(getData())->name;
   }
   std::cout << "\n";
 

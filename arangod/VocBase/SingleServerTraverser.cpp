@@ -22,10 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleServerTraverser.h"
-#include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
 #include "VocBase/MasterPointer.h"
-#include "VocBase/SingleServerTraversalPath.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -140,6 +138,41 @@ aql::AqlValue SingleServerTraverser::fetchVertexData(std::string const& id) {
   return aql::AqlValue((*it).second, aql::AqlValueFromMasterPointer());
 }
 
+aql::AqlValue SingleServerTraverser::fetchEdgeData(std::string const& id) {
+  auto it = _edges.find(id);
+  
+  TRI_ASSERT(it != _edges.end());
+  return aql::AqlValue((*it).second, aql::AqlValueFromMasterPointer());
+}
+
+void SingleServerTraverser::addVertexToVelocyPack(std::string const& id,
+                             arangodb::velocypack::Builder& result) {
+  auto it = _vertices.find(id);
+
+  if (it == _vertices.end()) {
+    TRI_doc_mptr_t mptr;
+    int res = FetchDocumentById(_trx, id, &mptr);
+    ++_readDocuments;
+    if (res != TRI_ERROR_NO_ERROR) {
+      result.add(basics::VelocyPackHelper::NullValue());
+    } else {
+      uint8_t const* p = mptr.vpack();
+      _vertices.emplace(id, p);
+      result.addExternal(p);
+    }
+  } else {
+    result.addExternal((*it).second);
+  }
+}
+
+void SingleServerTraverser::addEdgeToVelocyPack(std::string const& id,
+    arangodb::velocypack::Builder& result) {
+  auto it = _edges.find(id);
+  
+  TRI_ASSERT(it != _edges.end());
+  result.addExternal((*it).second);
+}
+
 bool SingleServerTraverser::VertexGetter::getVertex(std::string const& edge,
                                                     std::string const& vertex,
                                                     size_t depth,
@@ -232,43 +265,44 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
 
   _vertexGetter->reset(v);
   if (_opts.useBreadthFirst) {
-    _enumerator.reset(
-        new basics::BreadthFirstEnumerator<std::string, std::string, size_t>(
-            _edgeGetter.get(), _vertexGetter.get(), v, _opts.maxDepth));
+    _enumerator.reset(new BreadthFirstEnumerator(this, v, &_opts));
   } else {
-    _enumerator.reset(
-        new basics::DepthFirstEnumerator<std::string, std::string, size_t>(
-            _edgeGetter.get(), _vertexGetter.get(), v, _opts.maxDepth));
+    _enumerator.reset(new DepthFirstEnumerator(this, v, &_opts));
   }
   _done = false;
 }
 
-TraversalPath* SingleServerTraverser::next() {
+void SingleServerTraverser::getEdge(std::string const& startVertex,
+                                    std::vector<std::string>& edges,
+                                    size_t*& last, size_t& eColIdx) {
+  return _edgeGetter->getEdge(startVertex, edges, last, eColIdx);
+}
+ 
+void SingleServerTraverser::getAllEdges(
+    std::string const& startVertex, std::unordered_set<std::string>& edges,
+    size_t depth) {
+  return _edgeGetter->getAllEdges(startVertex, edges, depth);
+}
+
+bool SingleServerTraverser::getVertex(std::string const& edge,
+                                      std::string const& vertex, size_t depth,
+                                      std::string& result) {
+  return _vertexGetter->getVertex(edge, vertex, depth, result);
+}
+
+bool SingleServerTraverser::next() {
   TRI_ASSERT(!_done);
   if (_pruneNext) {
     _pruneNext = false;
     _enumerator->prune();
   }
   TRI_ASSERT(!_pruneNext);
-  basics::EnumeratedPath<std::string, std::string> const& path = _enumerator->next();
-  if (path.vertices.empty()) {
+  bool res = _enumerator->next();
+  if (!res) {
     _done = true;
-    // Done traversing
-    return nullptr;
   }
-  if (_opts.uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
-    // it is sufficient to check if any of the vertices on the path is equal to the end.
-    // Then we prune and any intermediate equality cannot happen.
-    auto& last = path.vertices.back();
-    auto found = std::find(path.vertices.begin(), path.vertices.end(), last);
-    TRI_ASSERT(found != path.vertices.end()); // We have to find it once, it is at least the last!
-    if ((++found) != path.vertices.end()) {
-      // Test if we found the last element. That is ok.
-      _pruneNext = true;
-      return next();
-    }
-  }
-
+  return res;
+  /*
   size_t countEdges = path.edges.size();
   if (_opts.useBreadthFirst &&
       _opts.uniqueVertices == TraverserOptions::UniquenessLevel::NONE &&
@@ -290,12 +324,19 @@ TraversalPath* SingleServerTraverser::next() {
       }
     }
   }
+  */
+}
 
-  if (countEdges < _opts.minDepth) {
-    return next();
-  }
+aql::AqlValue SingleServerTraverser::lastVertexToAqlValue() {
+  return _enumerator->lastVertexToAqlValue();
+}
 
-  return new SingleServerTraversalPath(path, this);
+aql::AqlValue SingleServerTraverser::lastEdgeToAqlValue() {
+  return _enumerator->lastEdgeToAqlValue();
+}
+
+aql::AqlValue SingleServerTraverser::pathToAqlValue(VPackBuilder& builder) {
+  return _enumerator->pathToAqlValue(builder);
 }
 
 bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVertex,

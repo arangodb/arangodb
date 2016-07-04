@@ -48,6 +48,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
  private:
   std::string _filename;
   bool _useBackslash;
+  bool _convert;
   uint64_t _chunkSize;
   std::string _collectionName;
   std::string _fromCollectionPrefix;
@@ -60,6 +61,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   std::string _separator;
   bool _progress;
   std::string _onDuplicateAction;
+  uint64_t _rowsToSkip;
 
  private:
   int* _result;

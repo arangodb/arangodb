@@ -23,6 +23,7 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/ConditionLocker.h"
+#include "Logger/Logger.h"
 
 #include <chrono>
 #include <thread>

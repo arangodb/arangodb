@@ -1074,6 +1074,10 @@ function runArangoImp (options, instanceInfo, what) {
     'type': what.type
   };
 
+  if (what.skipLines !== undefined) {
+    args['skip-lines'] = what.skipLines;
+  }
+
   if (what.create !== undefined) {
     args['create-collection'] = what.create;
   }
@@ -2859,6 +2863,13 @@ testFuncs.http_server = function (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 const impTodos = [{
+  id: 'skip',
+  data: makePathUnix('js/common/test-data/import/import-skip.csv'),
+  coll: 'UnitTestsImportCsvSkip',
+  type: 'csv',
+  create: 'true',
+  skipLines: 3
+}, {
   id: 'json1',
   data: makePathUnix('js/common/test-data/import/import-1.json'),
   coll: 'UnitTestsImportJson1',
