@@ -34,10 +34,8 @@ class Transaction;
 namespace traverser {
 
 class PathEnumerator;
-class ClusterTraversalPath;
 
 class ClusterTraverser final : public Traverser {
-  friend class ClusterTraversalPath;
 
  public:
   ClusterTraverser(
@@ -226,28 +224,7 @@ class ClusterTraverser final : public Traverser {
   std::unique_ptr<arangodb::traverser::PathEnumerator> _enumerator;
 };
 
-class ClusterTraversalPath final : public TraversalPath {
- public:
-  ClusterTraversalPath(
-      ClusterTraverser const* traverser,
-      arangodb::traverser::EnumeratedPath const& path)
-      : _path(path), _traverser(traverser) {
-  }
-
-  void pathToVelocyPack(Transaction*, arangodb::velocypack::Builder&) override;
-
-  void lastEdgeToVelocyPack(Transaction*,
-                            arangodb::velocypack::Builder&) override;
-
-  aql::AqlValue lastVertexToAqlValue(Transaction*) override;
-
- private:
-  arangodb::traverser::EnumeratedPath _path;
-
-  ClusterTraverser const* _traverser;
-};
-
 }  // traverser
-}  // triagens
+}  // arangodb
 
 #endif

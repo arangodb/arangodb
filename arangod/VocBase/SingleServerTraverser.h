@@ -26,8 +26,8 @@
 
 #include "VocBase/Traverser.h"
 #include "Aql/AqlValue.h"
-#include "VocBase/PathEnumerator.h"
 #include "Utils/OperationCursor.h"
+#include "VocBase/PathEnumerator.h"
 
 namespace arangodb {
 
@@ -36,11 +36,8 @@ class EdgeIndex;
 namespace traverser {
 
 class PathEnumerator;
-class SingleServerTraversalPath;
 
 class SingleServerTraverser final : public Traverser {
-
-  friend class SingleServerTraversalPath;
 
  private:
 
@@ -292,12 +289,6 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   std::unordered_map<std::string, uint8_t const*> _edges;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief The element holding the result
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unique_ptr<SingleServerTraversalPath> _result;
 
 };
 } // namespace traverser

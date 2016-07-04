@@ -30,51 +30,7 @@
 
 using namespace arangodb;
 
-using ClusterTraversalPath = arangodb::traverser::ClusterTraversalPath;
 using ClusterTraverser = arangodb::traverser::ClusterTraverser;
-
-void ClusterTraversalPath::pathToVelocyPack(Transaction*, VPackBuilder& result) {
-  result.openObject();
-  result.add(VPackValue("edges"));
-  result.openArray();
-  for (auto const& it : _path.edges) {
-    auto cached = _traverser->_edges.find(it);
-    // All edges are cached!!
-    TRI_ASSERT(cached != _traverser->_edges.end());
-    result.add(VPackSlice((*cached).second->data()));
-  }
-  result.close();
-  result.add(VPackValue("vertices"));
-  result.openArray();
-  for (auto const& it : _path.vertices) {
-    // All vertices are cached!!
-    auto cached = _traverser->_vertices.find(it);
-    TRI_ASSERT(cached != _traverser->_vertices.end());
-    result.add(VPackSlice((*cached).second->data()));
-  }
-  result.close();
-  result.close();
-}
-
-aql::AqlValue ClusterTraversalPath::lastVertexToAqlValue(Transaction*){
-  TRI_ASSERT(!_path.vertices.empty());
-  auto cached = _traverser->_vertices.find(_path.vertices.back());
-  TRI_ASSERT(cached != _traverser->_vertices.end());
-  
-  return aql::AqlValue((*cached).second->data());
-}
-
-void ClusterTraversalPath::lastEdgeToVelocyPack(Transaction*, VPackBuilder& result) {
-  if (_path.edges.empty()) {
-    result.add(arangodb::basics::VelocyPackHelper::NullValue());
-    return;
-  }
-
-  auto cached = _traverser->_edges.find(_path.edges.back());
-  // All edges are cached!!
-  TRI_ASSERT(cached != _traverser->_edges.end());
-  result.add(VPackSlice((*cached).second->data()));
-}
 
 bool ClusterTraverser::VertexGetter::getVertex(std::string const& edgeId,
                                                std::string const& vertexId,
@@ -467,26 +423,6 @@ bool ClusterTraverser::next() {
   TRI_ASSERT(!_pruneNext);
   return _enumerator->next();
   /*
-  if (path.vertices.empty()) {
-    _done = true;
-    // Done traversing
-    return nullptr;
-  }
-  if (_opts.uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
-    // it is sufficient to check if any of the vertices on the path is equal to the end.
-    // Then we prune and any intermediate equality cannot happen.
-    auto last = path.vertices.back();
-    auto found = std::find(path.vertices.begin(), path.vertices.end(), last);
-    TRI_ASSERT(found != path.vertices.end()); // We have to find it once, it is at least the last!
-    if ((++found) != path.vertices.end()) {
-      // Test if we found the last element. That is ok.
-      _pruneNext = true;
-      return next();
-    }
-  }
-
-  size_t countEdges = path.edges.size();
-
   if (_opts.useBreadthFirst &&
       _opts.uniqueVertices == TraverserOptions::UniquenessLevel::NONE &&
       _opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
@@ -507,12 +443,6 @@ bool ClusterTraverser::next() {
       }
     }
   }
-
-  if (countEdges < _opts.minDepth) {
-    return next();
-  }
-  
-  return new ClusterTraversalPath(this, path);
   */
 }
 

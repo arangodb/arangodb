@@ -22,10 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleServerTraverser.h"
-#include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
 #include "VocBase/MasterPointer.h"
-#include "VocBase/SingleServerTraversalPath.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -305,25 +303,6 @@ bool SingleServerTraverser::next() {
   }
   return res;
   /*
-  basics::EnumeratedPath<std::string, std::string> const& path = _enumerator->next();
-  if (path.vertices.empty()) {
-    _done = true;
-    // Done traversing
-    return nullptr;
-  }
-  if (_opts.uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
-    // it is sufficient to check if any of the vertices on the path is equal to the end.
-    // Then we prune and any intermediate equality cannot happen.
-    auto& last = path.vertices.back();
-    auto found = std::find(path.vertices.begin(), path.vertices.end(), last);
-    TRI_ASSERT(found != path.vertices.end()); // We have to find it once, it is at least the last!
-    if ((++found) != path.vertices.end()) {
-      // Test if we found the last element. That is ok.
-      _pruneNext = true;
-      return next();
-    }
-  }
-
   size_t countEdges = path.edges.size();
   if (_opts.useBreadthFirst &&
       _opts.uniqueVertices == TraverserOptions::UniquenessLevel::NONE &&
@@ -345,12 +324,6 @@ bool SingleServerTraverser::next() {
       }
     }
   }
-
-  if (countEdges < _opts.minDepth) {
-    return next();
-  }
-
-  return _result.get();
   */
 }
 
