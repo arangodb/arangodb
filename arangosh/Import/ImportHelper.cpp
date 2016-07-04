@@ -143,6 +143,7 @@ ImportHelper::ImportHelper(httpclient::SimpleHttpClient* client,
       _quote("\""),
       _createCollectionType("document"),
       _useBackslash(false),
+      _convert(true),
       _createCollection(false),
       _overwrite(false),
       _progress(false),
@@ -154,6 +155,7 @@ ImportHelper::ImportHelper(httpclient::SimpleHttpClient* client,
       _numberIgnored(0),
       _rowsRead(0),
       _rowOffset(0),
+      _rowsToSkip(0),
       _onDuplicateAction("error"),
       _collectionName(),
       _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
@@ -464,8 +466,13 @@ void ImportHelper::beginLine(size_t row) {
 void ImportHelper::ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field,
                                  size_t fieldLength, size_t row, size_t column,
                                  bool escaped) {
-  static_cast<ImportHelper*>(parser->_dataAdd)
-      ->addField(field, fieldLength, row, column, escaped);
+  auto importHelper = static_cast<ImportHelper*>(parser->_dataAdd);
+
+  if (importHelper->getRowsRead() < importHelper->getRowsToSkip()) {
+    return;
+  }
+
+  importHelper->addField(field, fieldLength, row, column, escaped);
 }
 
 void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
@@ -477,6 +484,11 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
   if (row == 0 || escaped) {
     // head line or escaped value
     _lineBuffer.appendJsonEncoded(field, fieldLength);
+    return;
+  }
+    
+  if (!_convert) {
+    _lineBuffer.appendText(field, fieldLength);
     return;
   }
 
@@ -550,12 +562,14 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
 void ImportHelper::ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field,
                                  size_t fieldLength, size_t row, size_t column,
                                  bool escaped) {
-  ImportHelper* ih = static_cast<ImportHelper*>(parser->_dataAdd);
-
-  if (ih) {
-    ih->addLastField(field, fieldLength, row, column, escaped);
-    ih->incRowsRead();
+  auto importHelper = static_cast<ImportHelper*>(parser->_dataAdd);
+  
+  if (importHelper->getRowsRead() < importHelper->getRowsToSkip()) {
+    return;
   }
+
+  importHelper->addLastField(field, fieldLength, row, column, escaped);
+  importHelper->incRowsRead();
 }
 
 void ImportHelper::addLastField(char const* field, size_t fieldLength,
