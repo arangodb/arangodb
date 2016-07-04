@@ -40,6 +40,7 @@
 #include <velocypack/Exception.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+#include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -210,7 +211,7 @@ void RestVocbaseBaseHandler::generate20x(
   VPackSlice slice = result.slice();
   if (slice.isNone()) {
     // will happen if silent == true
-    slice = VelocyPackHelper::EmptyObjectValue(); 
+    slice = VelocyPackHelper::EmptyObjectValue();
   } else {
     TRI_ASSERT(slice.isObject() || slice.isArray());
     if (slice.isObject()) {
@@ -645,14 +646,16 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
   try {
     success = true;
 
-#if 0
-    // currently deactivated...
     bool found;
     std::string const& contentType =
         _request->header(StaticStrings::ContentTypeHeader, found);
 
     if (found && contentType.size() == StaticStrings::MimeTypeVPack.size() &&
         contentType == StaticStrings::MimeTypeVPack) {
+
+      VPackValidator validator;
+      validator.validate(_request->body().c_str(),_request->body().length());
+
       VPackSlice slice{_request->body().c_str()};
       auto builder = std::make_shared<VPackBuilder>(options);
       builder->add(slice);
@@ -660,13 +663,11 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     } else {
       return _request->toVelocyPack(options);
     }
-#else
-    return _request->toVelocyPack(options);
-#endif
+
   } catch (std::bad_alloc const&) {
     generateOOMError();
   } catch (VPackException const& e) {
-    std::string errmsg("Parse error: ");
+    std::string errmsg("VpackError error: ");
     errmsg.append(e.what());
     generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
