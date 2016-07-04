@@ -1,6 +1,10 @@
 devel
 -----
 
+* added option `--skip-lines` for arangoimp
+  this allows skipping the first few lines from the import file in case the
+  CSV or TSV import are used
+
 * fixed periodic jobs: there should be only one instance running - even if it
   runs longer than the period
 
@@ -15,6 +19,11 @@ devel
 
 v3.0.2 (XXXX-XX-XX)
 -------------------
+
+* make AQL optimizer not skip "use-indexes-rule", even if enough execution plans 
+  have been created already
+
+* fix double precision value loss in VelocyPack JSON parser
 
 * added missing SSL support for arangorestore
 
