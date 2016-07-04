@@ -28,6 +28,8 @@
 #include "velocypack/Parser.h"
 #include "asm-functions.h"
 
+#include <cstdlib>
+
 using namespace arangodb::velocypack;
 
 // The following function does the actual parse. It gets bytes
@@ -121,6 +123,7 @@ int Parser::skipWhiteSpace(char const* err) {
 
 // parses a number value
 void Parser::parseNumber() {
+  size_t startPos = _pos;
   ParsedNumber numberValue;
   bool negative = false;
   int i = consume();
@@ -191,7 +194,10 @@ void Parser::parseNumber() {
   }
   if (i != 'e' && i != 'E') {
     unconsume();
-    _b->addDouble(fractionalPart);
+    // use conventional atof() conversion here, to avoid precision loss
+    // when interpreting and multiplying the single digits of the input stream
+    // _b->addDouble(fractionalPart);
+    _b->addDouble(atof(reinterpret_cast<char const*>(_start) + startPos));
     return;
   }
   i = getOneOrThrow("Incomplete number");
@@ -214,7 +220,10 @@ void Parser::parseNumber() {
   if (std::isnan(fractionalPart) || !std::isfinite(fractionalPart)) {
     throw Exception(Exception::NumberOutOfRange);
   }
-  _b->addDouble(fractionalPart);
+  // use conventional atof() conversion here, to avoid precision loss
+  // when interpreting and multiplying the single digits of the input stream
+  // _b->addDouble(fractionalPart);
+  _b->addDouble(atof(reinterpret_cast<char const*>(_start) + startPos));
 }
 
 void Parser::parseString() {
