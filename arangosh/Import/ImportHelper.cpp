@@ -453,7 +453,7 @@ void ImportHelper::beginLine(size_t row) {
 
   ++_numberLines;
 
-  if (row > 0) {
+  if (row > 0 + _rowsToSkip) {
     _lineBuffer.appendChar('\n');
   }
   _lineBuffer.appendChar('[');
@@ -471,7 +471,7 @@ void ImportHelper::ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field,
   if (importHelper->getRowsRead() < importHelper->getRowsToSkip()) {
     return;
   }
-
+    
   importHelper->addField(field, fieldLength, row, column, escaped);
 }
 
@@ -481,7 +481,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     _lineBuffer.appendChar(',');
   }
 
-  if (row == 0 || escaped) {
+  if (row == 0 + _rowsToSkip || escaped) {
     // head line or escaped value
     _lineBuffer.appendJsonEncoded(field, fieldLength);
     return;
@@ -565,9 +565,10 @@ void ImportHelper::ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field,
   auto importHelper = static_cast<ImportHelper*>(parser->_dataAdd);
   
   if (importHelper->getRowsRead() < importHelper->getRowsToSkip()) {
+    importHelper->incRowsRead();
     return;
   }
-
+    
   importHelper->addLastField(field, fieldLength, row, column, escaped);
   importHelper->incRowsRead();
 }
@@ -584,10 +585,10 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
 
   _lineBuffer.appendChar(']');
 
-  if (row == 0) {
+  if (row == _rowsToSkip) {
     // save the first line
     _firstLine = _lineBuffer.c_str();
-  } else if (row > 0 && _firstLine.empty()) {
+  } else if (row > _rowsToSkip && _firstLine.empty()) {
     // error
     ++_numberErrors;
     _lineBuffer.reset();
@@ -660,7 +661,7 @@ void ImportHelper::sendCsvBuffer() {
   if (!checkCreateCollection()) {
     return;
   }
-
+    
   std::unordered_map<std::string, std::string> headerFields;
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
