@@ -54,21 +54,21 @@ inline RestHandler::status RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC(WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
-  return RestHandler::status::DONE;
+  return status::DONE;
 }
 
 inline RestHandler::status RestAgencyHandler::reportTooManySuffices() {
   LOG_TOPIC(WARN, Logger::AGENCY)
       << "Too many suffixes. Agency public interface takes one path.";
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
-  return RestHandler::status::DONE;
+  return status::DONE;
 }
 
 inline RestHandler::status RestAgencyHandler::reportUnknownMethod() {
   LOG_TOPIC(WARN, Logger::AGENCY) << "Public REST interface has no method "
                                   << _request->suffix()[0];
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 405);
-  return RestHandler::status::DONE;
+  return status::DONE;
 }
 
 void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
@@ -100,7 +100,7 @@ RestHandler::status RestAgencyHandler::handleStores() {
   } else {
     generateError(GeneralResponse::ResponseCode::BAD, 400);
   }
-  return RestHandler::status::DONE;
+  return status::DONE;
 }
 
 RestHandler::status RestAgencyHandler::handleWrite() {
@@ -117,7 +117,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
       body.add("message", VPackValue(e.what()));
       body.close();
       generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
-      return RestHandler::status::DONE;
+      return status::DONE;
     }
 
     if (!query->slice().isArray()) {
@@ -127,7 +127,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
                VPackValue("Excpecting array of arrays as body for writes"));
       body.close();
       generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
-      return RestHandler::status::DONE;
+      return status::DONE;
     }
 
     if (query->slice().length() == 0) {
@@ -137,7 +137,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
         "message", VPackValue("Empty request."));
       body.close();
       generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
-      return RestHandler::status::DONE;
+      return status::DONE;
     }
 
     while(_agent->size() > 1 && _agent->leaderID() > 100) {
@@ -200,7 +200,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
   } else {  // Unknown method
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
   }
-  return RestHandler::status::DONE;
+  return status::DONE;
 }
 
 inline RestHandler::status RestAgencyHandler::handleRead() {
@@ -212,7 +212,7 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
       generateError(GeneralResponse::ResponseCode::BAD, 400);
-      return RestHandler::status::DONE;
+      return status::DONE;
     }
 
     while(_agent->size() > 1 && _agent->leaderID() > 100) {
@@ -230,13 +230,13 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
       }
     } else {  // Redirect to leader
       redirectRequest(ret.redirect);
-      return RestHandler::status::DONE;
+      return status::DONE;
     }
   } else {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
-    return RestHandler::status::DONE;
+    return status::DONE;
   }
-  return RestHandler::status::DONE;
+  return status::DONE;
 }
 
 RestHandler::status RestAgencyHandler::handleConfig() {
@@ -247,7 +247,7 @@ RestHandler::status RestAgencyHandler::handleConfig() {
   body.add("configuration", _agent->config().toBuilder()->slice());
   body.close();
   generateResult(GeneralResponse::ResponseCode::OK, body.slice());
-  return RestHandler::status::DONE;
+  return status::DONE;
 }
 
 RestHandler::status RestAgencyHandler::handleState() {
@@ -263,12 +263,12 @@ RestHandler::status RestAgencyHandler::handleState() {
   }
   body.close();
   generateResult(GeneralResponse::ResponseCode::OK, body.slice());
-  return RestHandler::status::DONE;
+  return status::DONE;
 }
 
 inline RestHandler::status RestAgencyHandler::reportMethodNotAllowed() {
   generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
-  return RestHandler::status::DONE;
+  return status::DONE;
 }
 
 RestHandler::status RestAgencyHandler::execute() {
@@ -301,5 +301,5 @@ RestHandler::status RestAgencyHandler::execute() {
   } catch (...) {
     // Ignore this error
   }
-  return RestHandler::status::DONE;
+  return status::DONE;
 }

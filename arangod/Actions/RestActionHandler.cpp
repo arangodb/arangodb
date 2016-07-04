@@ -85,8 +85,7 @@ RestHandler::status RestActionHandler::execute() {
   }
 
   // handler has finished, generate result
-  return result.isValid ? RestHandler::status::DONE
-                        : RestHandler::status::FAILED;
+  return result.isValid ? status::DONE : status::FAILED;
 }
 
 bool RestActionHandler::cancel() { return _action->cancel(&_dataLock, &_data); }
