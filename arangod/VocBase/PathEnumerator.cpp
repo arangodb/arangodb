@@ -26,6 +26,8 @@
 
 using DepthFirstEnumerator = arangodb::traverser::DepthFirstEnumerator;
 using BreadthFirstEnumerator = arangodb::traverser::BreadthFirstEnumerator;
+using Traverser = arangodb::traverser::Traverser;
+using TraverserOptions = arangodb::traverser::TraverserOptions;
 
 bool DepthFirstEnumerator::next() {
   if (_isFirst) {
