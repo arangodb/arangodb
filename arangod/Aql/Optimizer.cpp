@@ -146,9 +146,13 @@ int Optimizer::createPlans(ExecutionPlan* plan,
         level = (*it).first;
         auto& rule = (*it).second;
 
+        // skip over rules if we should
+        // however, we don't want to skip the "use-indexes" rule when it
+        // was not explicitly deactivated by the caller
         if ((runOnlyRequiredRules ||
              disabledIds.find(level) != disabledIds.end()) &&
-            rule.canBeDisabled) {
+            rule.canBeDisabled &&
+            (!runOnlyRequiredRules || rule.name != "use-indexes")) { 
           // we picked a disabled rule or we have reached the max number of
           // plans
           // and just skip this rule
@@ -299,7 +303,7 @@ std::unordered_set<int> Optimizer::getDisabledRuleIds(
         }
       } else {
         // disable a specific rule
-        auto it = _ruleLookup.find(std::string(name.c_str() + 1));
+        auto it = _ruleLookup.find(name.c_str() + 1);
 
         if (it != _ruleLookup.end()) {
           disabled.emplace((*it).second);
@@ -311,7 +315,7 @@ std::unordered_set<int> Optimizer::getDisabledRuleIds(
         // enable all rules
         disabled.clear();
       } else {
-        auto it = _ruleLookup.find(std::string(name.c_str() + 1));
+        auto it = _ruleLookup.find(name.c_str() + 1);
 
         if (it != _ruleLookup.end()) {
           disabled.erase((*it).second);
