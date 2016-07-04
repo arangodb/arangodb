@@ -26,12 +26,13 @@
 #define ARANGODB_REST_GENERAL_REQUEST_H 1
 
 #include "Basics/Common.h"
-
-#include "Basics/StringBuffer.h"
-#include "Basics/json.h"
 #include "Endpoint/ConnectionInfo.h"
 
 namespace arangodb {
+namespace basics {
+class StringBuffer;
+}
+
 class RequestContext;
 
 class GeneralRequest {
