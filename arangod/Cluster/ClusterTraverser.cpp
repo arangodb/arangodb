@@ -30,51 +30,7 @@
 
 using namespace arangodb;
 
-using ClusterTraversalPath = arangodb::traverser::ClusterTraversalPath;
 using ClusterTraverser = arangodb::traverser::ClusterTraverser;
-
-void ClusterTraversalPath::pathToVelocyPack(Transaction*, VPackBuilder& result) {
-  result.openObject();
-  result.add(VPackValue("edges"));
-  result.openArray();
-  for (auto const& it : _path.edges) {
-    auto cached = _traverser->_edges.find(it);
-    // All edges are cached!!
-    TRI_ASSERT(cached != _traverser->_edges.end());
-    result.add(VPackSlice((*cached).second->data()));
-  }
-  result.close();
-  result.add(VPackValue("vertices"));
-  result.openArray();
-  for (auto const& it : _path.vertices) {
-    // All vertices are cached!!
-    auto cached = _traverser->_vertices.find(it);
-    TRI_ASSERT(cached != _traverser->_vertices.end());
-    result.add(VPackSlice((*cached).second->data()));
-  }
-  result.close();
-  result.close();
-}
-
-aql::AqlValue ClusterTraversalPath::lastVertexToAqlValue(Transaction*){
-  TRI_ASSERT(!_path.vertices.empty());
-  auto cached = _traverser->_vertices.find(_path.vertices.back());
-  TRI_ASSERT(cached != _traverser->_vertices.end());
-  
-  return aql::AqlValue((*cached).second->data());
-}
-
-void ClusterTraversalPath::lastEdgeToVelocyPack(Transaction*, VPackBuilder& result) {
-  if (_path.edges.empty()) {
-    result.add(arangodb::basics::VelocyPackHelper::NullValue());
-    return;
-  }
-
-  auto cached = _traverser->_edges.find(_path.edges.back());
-  // All edges are cached!!
-  TRI_ASSERT(cached != _traverser->_edges.end());
-  result.add(VPackSlice((*cached).second->data()));
-}
 
 bool ClusterTraverser::VertexGetter::getVertex(std::string const& edgeId,
                                                std::string const& vertexId,
@@ -363,13 +319,11 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
   _vertexGetter->reset();
   if (_opts.useBreadthFirst) {
     _enumerator.reset(
-        new arangodb::basics::BreadthFirstEnumerator<std::string, std::string, size_t>(
-            _edgeGetter.get(), _vertexGetter.get(), id, _opts.maxDepth));
+        new arangodb::traverser::BreadthFirstEnumerator(this, id, &_opts));
     _vertexGetter->setStartVertex(id);
   } else {
     _enumerator.reset(
-        new arangodb::basics::DepthFirstEnumerator<std::string, std::string, size_t>(
-            _edgeGetter.get(), _vertexGetter.get(), id, _opts.maxDepth));
+        new arangodb::traverser::DepthFirstEnumerator(this, id, &_opts));
   }
   _done = false;
   auto it = _vertices.find(id);
@@ -400,6 +354,24 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
     // We can stop here. The start vertex does not match condition
     _done = true;
   }
+}
+
+void ClusterTraverser::getEdge(std::string const& startVertex,
+                               std::vector<std::string>& result, size_t*& last,
+                               size_t& eColIdx) {
+  return _edgeGetter->getEdge(startVertex, result, last, eColIdx);
+}
+
+void ClusterTraverser::getAllEdges(
+    std::string const& startVertex, std::unordered_set<std::string>& result,
+    size_t depth) {
+  return _edgeGetter->getAllEdges(startVertex, result, depth);
+}
+
+bool ClusterTraverser::getVertex(std::string const& edgeId,
+                                 std::string const& vertexId, size_t depth,
+                                 std::string& result) {
+  return _vertexGetter->getVertex(edgeId, vertexId, depth, result);
 }
 
 void ClusterTraverser::fetchVertices(std::unordered_set<std::string>& verticesToFetch, size_t depth) {
@@ -442,35 +414,15 @@ bool ClusterTraverser::vertexMatchesCondition(
   return true;
 }
 
-arangodb::traverser::TraversalPath* ClusterTraverser::next() {
+bool ClusterTraverser::next() {
   TRI_ASSERT(!_done);
   if (_pruneNext) {
     _pruneNext = false;
     _enumerator->prune();
   }
   TRI_ASSERT(!_pruneNext);
-  arangodb::basics::EnumeratedPath<std::string, std::string> const& path =
-      _enumerator->next();
-  if (path.vertices.empty()) {
-    _done = true;
-    // Done traversing
-    return nullptr;
-  }
-  if (_opts.uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
-    // it is sufficient to check if any of the vertices on the path is equal to the end.
-    // Then we prune and any intermediate equality cannot happen.
-    auto last = path.vertices.back();
-    auto found = std::find(path.vertices.begin(), path.vertices.end(), last);
-    TRI_ASSERT(found != path.vertices.end()); // We have to find it once, it is at least the last!
-    if ((++found) != path.vertices.end()) {
-      // Test if we found the last element. That is ok.
-      _pruneNext = true;
-      return next();
-    }
-  }
-
-  size_t countEdges = path.edges.size();
-
+  return _enumerator->next();
+  /*
   if (_opts.useBreadthFirst &&
       _opts.uniqueVertices == TraverserOptions::UniquenessLevel::NONE &&
       _opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
@@ -491,10 +443,55 @@ arangodb::traverser::TraversalPath* ClusterTraverser::next() {
       }
     }
   }
+  */
+}
 
-  if (countEdges < _opts.minDepth) {
-    return next();
-  }
-  
-  return new ClusterTraversalPath(this, path);
+aql::AqlValue ClusterTraverser::fetchVertexData(std::string const& id) {
+  auto cached = _vertices.find(id);
+  // All vertices are cached!!
+  TRI_ASSERT(cached != _vertices.end());
+  return aql::AqlValue((*cached).second->data());
+}
+
+aql::AqlValue ClusterTraverser::fetchEdgeData(std::string const& id) {
+  auto cached = _edges.find(id);
+  // All edges are cached!!
+  TRI_ASSERT(cached != _edges.end());
+  return aql::AqlValue((*cached).second->data());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Function to add the real data of a vertex into a velocypack builder
+//////////////////////////////////////////////////////////////////////////////
+
+void ClusterTraverser::addVertexToVelocyPack(std::string const& id,
+                           arangodb::velocypack::Builder& result) {
+  auto cached = _vertices.find(id);
+  // All vertices are cached!!
+  TRI_ASSERT(cached != _vertices.end());
+  result.addExternal((*cached).second->data());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Function to add the real data of an edge into a velocypack builder
+//////////////////////////////////////////////////////////////////////////////
+
+void ClusterTraverser::addEdgeToVelocyPack(std::string const& id,
+                         arangodb::velocypack::Builder& result) {
+  auto cached = _edges.find(id);
+  // All edges are cached!!
+  TRI_ASSERT(cached != _edges.end());
+  result.addExternal((*cached).second->data());
+}
+
+aql::AqlValue ClusterTraverser::lastVertexToAqlValue() {
+  return _enumerator->lastVertexToAqlValue();
+}
+
+aql::AqlValue ClusterTraverser::lastEdgeToAqlValue() {
+  return _enumerator->lastEdgeToAqlValue();
+}
+
+aql::AqlValue ClusterTraverser::pathToAqlValue(VPackBuilder& builder) {
+  return _enumerator->pathToAqlValue(builder);
 }
