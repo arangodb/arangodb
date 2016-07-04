@@ -1939,4 +1939,66 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compute a shard distribution for a new collection, the list
+/// dbServers must be a list of DBserver ids to distribute across. 
+/// If this list is empty, the complete current list of DBservers is
+/// fetched from ClusterInfo and with random_shuffle to mix it up.
+////////////////////////////////////////////////////////////////////////////////
+
+std::map<std::string, std::vector<std::string>> distributeShards(
+    uint64_t numberOfShards,
+    uint64_t replicationFactor,
+    std::vector<std::string>& dbServers) {
+
+  std::map<std::string, std::vector<std::string>> shards;
+
+  ClusterInfo*  ci = ClusterInfo::instance();
+  if (dbServers.size() == 0) {
+    dbServers = ci->getCurrentDBServers();
+    if (dbServers.empty()) {
+      return shards;
+    }
+    random_shuffle(dbServers.begin(), dbServers.end());
+  }
+
+  // fetch a unique id for each shard to create
+  uint64_t const id = ci->uniqid(numberOfShards);
+
+  // now create the shards
+  size_t count = 0;
+  for (uint64_t i = 0; i < numberOfShards; ++i) {
+    // determine responsible server(s)
+    std::vector<std::string> serverIds;
+    for (uint64_t j = 0; j < replicationFactor; ++j) {
+      std::string candidate;
+      size_t count2 = 0;
+      bool found = true;
+      do {
+        candidate = dbServers[count++];
+        if (count >= dbServers.size()) {
+          count = 0;
+        }
+        if (++count2 == dbServers.size() + 1) {
+          LOG(WARN) << "createCollectionCoordinator: replicationFactor is "
+                       "too large for the number of DBservers";
+          found = false;
+          break;
+        }
+      } while (std::find(serverIds.begin(), serverIds.end(), candidate) != 
+               serverIds.end());
+      if (found) {
+        serverIds.push_back(candidate);
+      }
+    }
+
+    // determine shard id
+    std::string shardId = "s" + StringUtils::itoa(id + 1 + i);
+
+    shards.insert(std::make_pair(shardId, serverIds));
+  }
+
+  return shards;
+}
+
 }  // namespace arangodb

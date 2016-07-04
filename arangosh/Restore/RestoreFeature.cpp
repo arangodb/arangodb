@@ -66,6 +66,7 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _force(false),
       _clusterMode(false),
       _defaultNumberOfShards(1),
+      _defaultReplicationFactor(1),
       _result(result),
       _stats{ 0, 0, 0 } {
   requiresElevatedPrivileges(false);
@@ -118,6 +119,10 @@ void RestoreFeature::collectOptions(
   options->addOption("--default-number-of-shards",
                      "default value for numberOfShards if not specified",
                      new UInt64Parameter(&_defaultNumberOfShards));
+
+  options->addOption("--default-replication-factor",
+                     "default value for replicationFactor if not specified",
+                     new UInt64Parameter(&_defaultReplicationFactor));
 
   options->addOption(
       "--force", "continue restore even in the face of some server-side errors",
@@ -222,16 +227,25 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
       std::string(_recycleIds ? "true" : "false") + "&force=" +
       std::string(_force ? "true" : "false");
 
-  if (_clusterMode &&
-      !slice.hasKey(std::vector<std::string>({"parameters", "shards"})) &&
-      !slice.hasKey(
-          std::vector<std::string>({"parameters", "numberOfShards"}))) {
-    // no "shards" and no "numberOfShards" attribute present. now assume
-    // default value from --default-number-of-shards
-    std::cerr << "# no sharding information specified for collection '" << name
-              << "', using default number of shards " << _defaultNumberOfShards
-              << std::endl;
-    url += "&numberOfShards=" + std::to_string(_defaultNumberOfShards);
+  if (_clusterMode) {
+    if (!slice.hasKey(std::vector<std::string>({"parameters", "shards"})) &&
+        !slice.hasKey(
+            std::vector<std::string>({"parameters", "numberOfShards"}))) {
+      // no "shards" and no "numberOfShards" attribute present. now assume
+      // default value from --default-number-of-shards
+      std::cerr << "# no sharding information specified for collection '"
+                << name << "', using default number of shards "
+                << _defaultNumberOfShards << std::endl;
+      url += "&numberOfShards=" + std::to_string(_defaultNumberOfShards);
+    }
+    if (!slice.hasKey(std::vector<std::string>({"parameters", "replicationFactor"}))) {
+      // No replication factor given, so take the default:
+      std::cerr << "# no replication information specified for collection '"
+                << name << "', using default replication factor "
+                << _defaultReplicationFactor << std::endl;
+      url += "&replicationFactor=" + std::to_string(_defaultReplicationFactor);
+    }
+
   }
 
   std::string const body = slice.toJson();
