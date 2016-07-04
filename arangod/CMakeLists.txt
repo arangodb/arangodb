@@ -304,6 +304,7 @@ add_executable(${BIN_ARANGOD}
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/MasterPointers.cpp
+  VocBase/PathEnumerator.cpp
   VocBase/SingleServerTraversalPath.cpp
   VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp

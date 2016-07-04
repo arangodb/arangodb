@@ -30,11 +30,12 @@
 
 namespace arangodb {
 namespace traverser {
+class SingleServerTraverser;
 
 class SingleServerTraversalPath final : public TraversalPath {
  public:
   SingleServerTraversalPath(
-      arangodb::basics::EnumeratedPath<std::string, std::string> const& path,
+      arangodb::traverser::EnumeratedPath const& path,
       SingleServerTraverser* traverser)
       : _traverser(traverser), _path(path) {}
 
@@ -52,7 +53,7 @@ class SingleServerTraversalPath final : public TraversalPath {
 
   SingleServerTraverser* _traverser;
 
-  arangodb::basics::EnumeratedPath<std::string, std::string> const _path;
+  arangodb::traverser::EnumeratedPath _path;
 };
 
 } // namespace traverser

@@ -140,6 +140,41 @@ aql::AqlValue SingleServerTraverser::fetchVertexData(std::string const& id) {
   return aql::AqlValue((*it).second, aql::AqlValueFromMasterPointer());
 }
 
+aql::AqlValue SingleServerTraverser::fetchEdgeData(std::string const& id) {
+  auto it = _edges.find(id);
+  
+  TRI_ASSERT(it != _edges.end());
+  return aql::AqlValue((*it).second, aql::AqlValueFromMasterPointer());
+}
+
+void SingleServerTraverser::addVertexToVelocyPack(std::string const& id,
+                             arangodb::velocypack::Builder& result) {
+  auto it = _vertices.find(id);
+
+  if (it == _vertices.end()) {
+    TRI_doc_mptr_t mptr;
+    int res = FetchDocumentById(_trx, id, &mptr);
+    ++_readDocuments;
+    if (res != TRI_ERROR_NO_ERROR) {
+      result.add(basics::VelocyPackHelper::NullValue());
+    } else {
+      uint8_t const* p = mptr.vpack();
+      _vertices.emplace(id, p);
+      result.addExternal(p);
+    }
+  } else {
+    result.addExternal((*it).second);
+  }
+}
+
+void SingleServerTraverser::addEdgeToVelocyPack(std::string const& id,
+    arangodb::velocypack::Builder& result) {
+  auto it = _edges.find(id);
+  
+  TRI_ASSERT(it != _edges.end());
+  result.addExternal((*it).second);
+}
+
 bool SingleServerTraverser::VertexGetter::getVertex(std::string const& edge,
                                                     std::string const& vertex,
                                                     size_t depth,
@@ -232,24 +267,44 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
 
   _vertexGetter->reset(v);
   if (_opts.useBreadthFirst) {
-    _enumerator.reset(
-        new basics::BreadthFirstEnumerator<std::string, std::string, size_t>(
-            _edgeGetter.get(), _vertexGetter.get(), v, _opts.maxDepth));
+    _enumerator.reset(new BreadthFirstEnumerator(this, v, &_opts));
   } else {
-    _enumerator.reset(
-        new basics::DepthFirstEnumerator<std::string, std::string, size_t>(
-            _edgeGetter.get(), _vertexGetter.get(), v, _opts.maxDepth));
+    _enumerator.reset(new DepthFirstEnumerator(this, v, &_opts));
   }
   _done = false;
 }
 
-TraversalPath* SingleServerTraverser::next() {
+void SingleServerTraverser::getEdge(std::string const& startVertex,
+                                    std::vector<std::string>& edges,
+                                    size_t*& last, size_t& eColIdx) {
+  return _edgeGetter->getEdge(startVertex, edges, last, eColIdx);
+}
+ 
+void SingleServerTraverser::getAllEdges(
+    std::string const& startVertex, std::unordered_set<std::string>& edges,
+    size_t depth) {
+  return _edgeGetter->getAllEdges(startVertex, edges, depth);
+}
+
+bool SingleServerTraverser::getVertex(std::string const& edge,
+                                      std::string const& vertex, size_t depth,
+                                      std::string& result) {
+  return _vertexGetter->getVertex(edge, vertex, depth, result);
+}
+
+bool SingleServerTraverser::next() {
   TRI_ASSERT(!_done);
   if (_pruneNext) {
     _pruneNext = false;
     _enumerator->prune();
   }
   TRI_ASSERT(!_pruneNext);
+  bool res = _enumerator->next();
+  if (!res) {
+    _done = true;
+  }
+  return res;
+  /*
   basics::EnumeratedPath<std::string, std::string> const& path = _enumerator->next();
   if (path.vertices.empty()) {
     _done = true;
@@ -295,7 +350,20 @@ TraversalPath* SingleServerTraverser::next() {
     return next();
   }
 
-  return new SingleServerTraversalPath(path, this);
+  return _result.get();
+  */
+}
+
+aql::AqlValue SingleServerTraverser::lastVertexToAqlValue() {
+  return _enumerator->lastVertexToAqlValue();
+}
+
+aql::AqlValue SingleServerTraverser::lastEdgeToAqlValue() {
+  return _enumerator->lastEdgeToAqlValue();
+}
+
+aql::AqlValue SingleServerTraverser::pathToAqlValue(VPackBuilder& builder) {
+  return _enumerator->pathToAqlValue(builder);
 }
 
 bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVertex,

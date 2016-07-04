@@ -62,4 +62,3 @@ void SingleServerTraversalPath::lastEdgeToVelocyPack(arangodb::Transaction* trx,
 AqlValue SingleServerTraversalPath::lastVertexToAqlValue(arangodb::Transaction* trx) {
   return _traverser->fetchVertexData(_path.vertices.back());
 }
-
