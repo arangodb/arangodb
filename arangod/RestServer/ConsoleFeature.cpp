@@ -39,6 +39,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
       _consoleThread(nullptr) {
   startsAfter("Server");
   startsAfter("RestServer");
+  startsAfter("Bootstrap");
 }
 
 void ConsoleFeature::start() {
@@ -59,7 +60,7 @@ void ConsoleFeature::start() {
   _consoleThread->start();
 }
 
-void ConsoleFeature::stop() {
+void ConsoleFeature::unprepare() {
   if (_operationMode != OperationMode::MODE_CONSOLE) {
     return;
   }

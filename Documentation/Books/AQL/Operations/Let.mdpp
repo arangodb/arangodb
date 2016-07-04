@@ -1,11 +1,11 @@
 !CHAPTER LET 
 
-The *LET* statement can be used to assign an arbitrary value to a variable.  The
-variable is then introduced in the scope the *LET* statement is placed in.  The
-general syntax is:
+The *LET* statement can be used to assign an arbitrary value to a variable.
+The variable is then introduced in the scope the *LET* statement is placed in.
+The general syntax is:
 
 ```
-LET variable-name = expression
+LET variableName = expression
 ```
 
 *LET* statements are mostly used to declare complex computations and to avoid
@@ -47,4 +47,3 @@ FOR u IN users
     "memberShips" : memberships 
   }
 ```
-

@@ -25,7 +25,7 @@
 #define ARANGODB_REST_REQUEST_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "Rest/RequestUser.h"
+
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
@@ -41,8 +41,6 @@ class RequestContext {
   virtual ~RequestContext() {}
 
  public:
-  virtual rest::RequestUser* requestUser() { return nullptr; }
-  virtual std::string realm() const = 0;
   virtual GeneralResponse::ResponseCode authenticate() = 0;
 
  protected:

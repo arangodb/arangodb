@@ -1,9 +1,9 @@
 
+
 # Summary
 * [How to invoke AQL](Invocation/README.md)
   * [with Arangosh](Invocation/WithArangosh.md)
   * [with the Web Interface](Invocation/WithWebInterface.md)
-* [Data Modification Queries](DataModification.md)
 * [AQL Fundamentals](Fundamentals/README.md)
   * [AQL Syntax](Fundamentals/Syntax.md)
   * [Data types](Fundamentals/DataTypes.md)
@@ -12,6 +12,8 @@
   * [Accessing data from collections](Fundamentals/DocumentData.md)
   * [Query Results](Fundamentals/QueryResults.md)
   * [Query Errors](Fundamentals/QueryErrors.md)
+* [Operators](Operators.md)
+* [Data Queries](DataQueries.md)
 * [High level Operations](Operations/README.md)
   * [FOR](Operations/For.md)
   * [RETURN](Operations/Return.md)
@@ -25,7 +27,7 @@
   * [REPLACE](Operations/Replace.md)
   * [INSERT](Operations/Insert.md)
   * [UPSERT](Operations/Upsert.md)
-* [Operators](Operators.md)
+  * [WITH](Operations/With.md)
 * [Functions](Functions/README.md)
   * [Type cast](Functions/TypeCast.md)
   * [String](Functions/String.md)
@@ -38,8 +40,7 @@
   * [Miscellaneous](Functions/Miscellaneous.md)
 * [Graphs](Graphs/README.md)
   * [Traversal](Graphs/Traversals.md)
-  * [Named Operations](Graphs/Operations.md)
-  * [Other](Graphs/Functions.md)
+  * [Shortest Path](Graphs/ShortestPath.md)
 * [Advanced Features](Advanced/README.md)
   * [Array Operators](Advanced/ArrayOperators.md)
 * [Usual Query Patterns](Examples/README.md)

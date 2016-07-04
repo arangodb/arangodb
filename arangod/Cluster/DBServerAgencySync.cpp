@@ -29,6 +29,7 @@
 #include "Dispatcher/DispatcherQueue.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
@@ -116,6 +117,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     return result;
   }
 
+  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+
   auto isolate = context->_isolate;
   
   try {
@@ -156,6 +159,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       return result;
     }
     
+    result.success = true;  // unless overwritten by actual result
+
     if (res->IsObject()) {
       v8::Handle<v8::Object> o = res->ToObject();
 
@@ -174,19 +179,18 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           } else if (strcmp(*str, "current") == 0) {
             result.currentVersion = static_cast<uint64_t>(value->ToUint32()->Value());
           }
+        } else if (value->IsBoolean() && strcmp(*str, "success")) {
+          result.success = TRI_ObjectToBoolean(value);
         }
       }
     } else {
       LOG(ERR) << "handlePlanChange returned a non-object";
       return result;
     }
-    result.success = true;
     // invalidate our local cache, even if an error occurred
     clusterInfo->flush();
   } catch (...) {
   }
-
-  V8DealerFeature::DEALER->exitContext(context);
 
   return result;
 }

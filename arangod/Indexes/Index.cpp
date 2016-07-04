@@ -112,7 +112,7 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "skiplist") == 0) {
     return TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
-  if (::strcmp(type, "rocksdb") == 0) {
+  if (::strcmp(type, "persistent") == 0 || ::strcmp(type, "rocksdb") == 0) {
     return TRI_IDX_TYPE_ROCKSDB_INDEX;
   }
   if (::strcmp(type, "fulltext") == 0) {
@@ -143,7 +143,7 @@ char const* Index::typeName(Index::IndexType type) {
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
       return "skiplist";
     case TRI_IDX_TYPE_ROCKSDB_INDEX:
-      return "rocksdb";
+      return "persistent";
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
       return "fulltext";
     case TRI_IDX_TYPE_GEO1_INDEX:
@@ -505,9 +505,11 @@ bool Index::supportsSortCondition(arangodb::aql::SortCondition const*,
 /// @brief default iterator factory method. does not create an iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* Index::iteratorForCondition(
-    arangodb::Transaction*, IndexIteratorContext*, arangodb::aql::Ast*,
-    arangodb::aql::AstNode const*, arangodb::aql::Variable const*, bool) const {
+IndexIterator* Index::iteratorForCondition(arangodb::Transaction*,
+                                           IndexIteratorContext*,
+                                           arangodb::aql::AstNode const*,
+                                           arangodb::aql::Variable const*,
+                                           bool) const {
   // the super class index cannot create an iterator
   // the derived index classes have to manage this.
   return nullptr;
@@ -641,7 +643,7 @@ void Index::expandInSearchValues(VPackSlice const base,
 
     bool usesIn = false;
     for (auto const& it : VPackArrayIterator(oneLookup)) {
-      if (it.hasKey(TRI_SLICE_KEY_IN)) {
+      if (it.hasKey(StaticStrings::IndexIn)) {
         usesIn = true;
         break;
       }
@@ -658,8 +660,8 @@ void Index::expandInSearchValues(VPackSlice const base,
     size_t n = static_cast<size_t>(oneLookup.length());
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice current = oneLookup.at(i);
-      if (current.hasKey(TRI_SLICE_KEY_IN)) {
-        VPackSlice inList = current.get(TRI_SLICE_KEY_IN);
+      if (current.hasKey(StaticStrings::IndexIn)) {
+        VPackSlice inList = current.get(StaticStrings::IndexIn);
 
         std::unordered_set<VPackSlice, 
                            arangodb::basics::VelocyPackHelper::VPackHash, 
@@ -701,7 +703,7 @@ void Index::expandInSearchValues(VPackSlice const base,
           result.add(oneLookup.at(i));
         } else {
           VPackObjectBuilder objGuard(&result);
-          result.add(TRI_SLICE_KEY_EQUAL, list->second.at(positions[i]));
+          result.add(StaticStrings::IndexEq, list->second.at(positions[i]));
         }
       }
       while (true) {

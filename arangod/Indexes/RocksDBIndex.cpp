@@ -258,6 +258,7 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 
 int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
                          bool) {
+  auto comparator = RocksDBFeature::instance()->comparator();
   std::vector<TRI_index_element_t*> elements;
 
   int res;
@@ -281,9 +282,18 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
   }
   
   VPackSlice const key = Transaction::extractKeyFromDocument(VPackSlice(doc->vpack()));
+  std::string const prefix = buildPrefix(trx->vocbase()->_id, _collection->_info.id(), _iid);
 
   VPackBuilder builder;
   std::vector<std::string> values;
+  values.reserve(elements.size());
+
+  // lower and upper bounds, only required if the index is unique
+  std::vector<std::pair<std::string, std::string>> bounds;
+  if (_unique) {
+    bounds.reserve(elements.size());
+  }
+
   for (auto& it : elements) {
     builder.clear();
     builder.openArray();
@@ -296,9 +306,44 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
     VPackSlice const s = builder.slice();
     std::string value;
     value.reserve(keyPrefixSize() + s.byteSize());
-    value += buildPrefix(trx->vocbase()->_id, _collection->_info.id(), _iid);
+    value += prefix;
     value.append(s.startAs<char const>(), s.byteSize());
     values.emplace_back(std::move(value));
+
+    if (_unique) {
+      builder.clear();
+      builder.openArray();
+      for (size_t i = 0; i < _fields.size(); ++i) {
+        builder.add(it->subObjects()[i].slice(doc));
+      }
+      builder.add(VPackSlice::minKeySlice());
+      builder.close();
+    
+      VPackSlice s = builder.slice();
+      std::string value;
+      value.reserve(keyPrefixSize() + s.byteSize());
+      value += prefix;
+      value.append(s.startAs<char const>(), s.byteSize());
+      
+      std::pair<std::string, std::string> p;
+      p.first = value;
+      
+      builder.clear();
+      builder.openArray();
+      for (size_t i = 0; i < _fields.size(); ++i) {
+        builder.add(it->subObjects()[i].slice(doc));
+      }
+      builder.add(VPackSlice::maxKeySlice());
+      builder.close();
+    
+      s = builder.slice();
+      value.clear();
+      value += prefix;
+      value.append(s.startAs<char const>(), s.byteSize());
+      
+      p.second = value;
+      bounds.emplace_back(std::move(p));
+    }
   }
 
   auto rocksTransaction = trx->rocksTransaction();
@@ -309,10 +354,28 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
     if (_unique) {
-      std::string existing;
-      auto status = rocksTransaction->Get(readOptions, values[i], &existing); 
+      bool uniqueConstraintViolated = false;
+      auto iterator = rocksTransaction->GetIterator(readOptions);
 
-      if (status.ok()) {
+      if (iterator != nullptr) {
+        auto& bound = bounds[i];
+        iterator->Seek(rocksdb::Slice(bound.first.c_str(), bound.first.size()));
+
+        while (iterator->Valid()) {
+          int res = comparator->Compare(iterator->key(), rocksdb::Slice(bound.second.c_str(), bound.second.size()));
+
+          if (res > 0) {
+            break;
+          }
+
+          uniqueConstraintViolated = true;
+          break;
+        }
+
+        delete iterator;
+      }
+
+      if (uniqueConstraintViolated) {
         // duplicate key
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
         if (!_collection->useSecondaryIndexes()) {
@@ -324,6 +387,7 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
 
     if (res == TRI_ERROR_NO_ERROR) {
       auto status = rocksTransaction->Put(values[i], std::string());
+      
       if (! status.ok()) {
         res = TRI_ERROR_INTERNAL;
       }
@@ -441,7 +505,7 @@ RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
   leftSearch.openArray();
   for (auto const& it : VPackArrayIterator(searchValues)) {
     TRI_ASSERT(it.isObject());
-    VPackSlice eq = it.get(TRI_SLICE_KEY_EQUAL);
+    VPackSlice eq = it.get(StaticStrings::IndexEq);
     if (eq.isNone()) {
       lastNonEq = it;
       break;
@@ -469,16 +533,16 @@ RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
     rightSearch = leftSearch;
 
     // Define Lower-Bound 
-    VPackSlice lastLeft = lastNonEq.get(TRI_SLICE_KEY_GE);
+    VPackSlice lastLeft = lastNonEq.get(StaticStrings::IndexGe);
     if (!lastLeft.isNone()) {
-      TRI_ASSERT(!lastNonEq.hasKey(TRI_SLICE_KEY_GT));
+      TRI_ASSERT(!lastNonEq.hasKey(StaticStrings::IndexGt));
       leftSearch.add(lastLeft);
       leftSearch.add(VPackSlice::minKeySlice());
       leftSearch.close();
       VPackSlice search = leftSearch.slice();
       leftBorder = search;
     } else {
-      lastLeft = lastNonEq.get(TRI_SLICE_KEY_GT);
+      lastLeft = lastNonEq.get(StaticStrings::IndexGt);
       if (!lastLeft.isNone()) {
         leftSearch.add(lastLeft);
         leftSearch.add(VPackSlice::maxKeySlice());
@@ -495,16 +559,16 @@ RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
     }
 
     // Define upper-bound
-    VPackSlice lastRight = lastNonEq.get(TRI_SLICE_KEY_LE);
+    VPackSlice lastRight = lastNonEq.get(StaticStrings::IndexLe);
     if (!lastRight.isNone()) {
-      TRI_ASSERT(!lastNonEq.hasKey(TRI_SLICE_KEY_LT));
+      TRI_ASSERT(!lastNonEq.hasKey(StaticStrings::IndexLt));
       rightSearch.add(lastRight);
       rightSearch.add(VPackSlice::maxKeySlice());
       rightSearch.close();
       VPackSlice search = rightSearch.slice();
       rightBorder = search;
     } else {
-      lastRight = lastNonEq.get(TRI_SLICE_KEY_LT);
+      lastRight = lastNonEq.get(StaticStrings::IndexLt);
       if (!lastRight.isNone()) {
         rightSearch.add(lastRight);
         rightSearch.add(VPackSlice::minKeySlice());
@@ -798,7 +862,7 @@ bool RocksDBIndex::supportsSortCondition(
 
 IndexIterator* RocksDBIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext* context,
-    arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
+    arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   VPackBuilder searchValues;
   searchValues.openArray();
@@ -866,21 +930,21 @@ IndexIterator* RocksDBIndex::iteratorForCondition(
       
       if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
         searchValues.openObject();
-        searchValues.add(VPackValue(TRI_SLICE_KEY_EQUAL));
+        searchValues.add(VPackValue(StaticStrings::IndexEq));
         TRI_IF_FAILURE("RocksDBIndex::permutationEQ") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
       } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
         if (isAttributeExpanded(usedFields)) {
           searchValues.openObject();
-          searchValues.add(VPackValue(TRI_SLICE_KEY_EQUAL));
+          searchValues.add(VPackValue(StaticStrings::IndexEq));
           TRI_IF_FAILURE("RocksDBIndex::permutationArrayIN") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
         } else {
           needNormalize = true;
           searchValues.openObject();
-          searchValues.add(VPackValue(TRI_SLICE_KEY_IN));
+          searchValues.add(VPackValue(StaticStrings::IndexIn));
         }
       } else {
         // This is a one-sided range
@@ -907,30 +971,30 @@ IndexIterator* RocksDBIndex::iteratorForCondition(
           switch (comp->type) {
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
               if (isReverseOrder) {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_GT));
+                searchValues.add(VPackValue(StaticStrings::IndexGt));
               } else {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_LT));
+                searchValues.add(VPackValue(StaticStrings::IndexLt));
               }
               break;
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
               if (isReverseOrder) {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_GE));
+                searchValues.add(VPackValue(StaticStrings::IndexGe));
               } else {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_LE));
+                searchValues.add(VPackValue(StaticStrings::IndexLe));
               }
               break;
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
               if (isReverseOrder) {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_LT));
+                searchValues.add(VPackValue(StaticStrings::IndexLt));
               } else {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_GT));
+                searchValues.add(VPackValue(StaticStrings::IndexGt));
               }
               break;
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
               if (isReverseOrder) {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_LE));
+                searchValues.add(VPackValue(StaticStrings::IndexLe));
               } else {
-                searchValues.add(VPackValue(TRI_SLICE_KEY_GE));
+                searchValues.add(VPackValue(StaticStrings::IndexGe));
               }
               break;
           default:

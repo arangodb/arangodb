@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Aql/Range.h"
 #include "Aql/types.h"
+#include "Basics/ConditionalDeleter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "VocBase/document-collection.h"
 
@@ -44,6 +45,10 @@ class AqlTransaction;
 
 namespace aql {
 class AqlItemBlock;
+
+// no-op struct used only in an internal API to signal we want
+// to construct from a master pointer!
+struct AqlValueFromMasterPointer {};
 
 struct AqlValue final {
  friend struct std::hash<arangodb::aql::AqlValue>;
@@ -93,32 +98,30 @@ struct AqlValue final {
     _data.internal[0] = '\x00';
     setType(AqlValueType::VPACK_INLINE);
   }
-
-  // construct from document
-  explicit AqlValue(TRI_doc_mptr_t const* mptr) {
-    _data.pointer = mptr->vpack();
-    setType(AqlValueType::VPACK_SLICE_POINTER);
-    TRI_ASSERT(VPackSlice(_data.pointer).isObject());
+  
+  // construct from mptr, not copying!
+  AqlValue(uint8_t const* pointer, AqlValueFromMasterPointer const&) {
+    setPointer<true>(pointer);
     TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
   }
   
-  // construct from pointer
+  // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer) {
     // we must get rid of Externals first here, because all
     // methods that use VPACK_SLICE_POINTER expect its contents
     // to be non-Externals
     if (*pointer == '\x1d') {
       // an external
-      _data.pointer = VPackSlice(pointer).resolveExternals().begin();
+      setPointer<false>(VPackSlice(pointer).resolveExternals().begin());
     } else {
-      _data.pointer = pointer;
+      setPointer<false>(pointer);
     }
-    setType(AqlValueType::VPACK_SLICE_POINTER);
     TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
   }
   
   // construct from docvec, taking over its ownership
   explicit AqlValue(std::vector<AqlItemBlock*>* docvec) {
+    TRI_ASSERT(docvec != nullptr);
     _data.docvec = docvec;
     setType(AqlValueType::DOCVEC);
   }
@@ -130,8 +133,9 @@ struct AqlValue final {
     setType(AqlValueType::VPACK_INLINE);
   }
   
-  // construct from char* and length
+  // construct from char* and length, copying the string
   AqlValue(char const* value, size_t length) {
+    TRI_ASSERT(value != nullptr);
     if (length == 0) {
       // empty string
       _data.internal[0] = 0x40;
@@ -145,66 +149,71 @@ struct AqlValue final {
       setType(AqlValueType::VPACK_INLINE);
     } else if (length <= 126) {
       // short string... cannot store inline, but we don't need to
-      // create a full-features Builder object here
+      // create a full-featured Builder object here
       _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
       _data.buffer->push_back(static_cast<char>(0x40 + length));
       _data.buffer->append(value, length);
       setType(AqlValueType::VPACK_MANAGED);
     } else {
       // long string
-      VPackBuilder builder;
-      builder.add(VPackValue(value));
-      initFromSlice(builder.slice());
+      // create a big enough Buffer object
+      auto buffer = std::make_unique<VPackBuffer<uint8_t>>(8 + length);
+      // add string to Builder
+      VPackBuilder builder(*buffer.get());
+      builder.add(VPackValuePair(value, length, VPackValueType::String));
+      // steal Buffer. now we have ownership
+      _data.buffer = buffer.release();
+      setType(AqlValueType::VPACK_MANAGED);
     }
   }
   
   // construct from std::string
-  explicit AqlValue(std::string const& value) {
-    if (value.empty()) {
-      // empty string
-      _data.internal[0] = 0x40;
+  explicit AqlValue(std::string const& value) : AqlValue(value.c_str(), value.size()) {}
+  
+  // construct from Buffer, potentially taking over its ownership
+  // (by adjusting the boolean passed)
+  AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer, bool& shouldDelete) {
+    TRI_ASSERT(buffer != nullptr);
+    TRI_ASSERT(shouldDelete); // here, the Buffer is still owned by the caller
+
+    // intentionally do not resolve externals here
+    // if (slice.isExternal()) {
+    //   // recursively resolve externals
+    //   slice = slice.resolveExternals();
+    // }
+    if (buffer->length() < sizeof(_data.internal)) {
+      // Use inline value
+      memcpy(_data.internal, buffer->data(), static_cast<size_t>(buffer->length()));
       setType(AqlValueType::VPACK_INLINE);
-      return;
-    }
-    size_t const length = value.size();
-    if (length < sizeof(_data.internal) - 1) {
-      // short string... can store it inline
-      _data.internal[0] = static_cast<uint8_t>(0x40 + length);
-      memcpy(_data.internal + 1, value.c_str(), value.size());
-      setType(AqlValueType::VPACK_INLINE);
-    } else if (length <= 126) {
-      // short string... cannot store inline, but we don't need to
-      // create a full-features Builder object here
-      _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
-      _data.buffer->push_back(static_cast<char>(0x40 + length));
-      _data.buffer->append(value.c_str(), length);
-      setType(AqlValueType::VPACK_MANAGED);
     } else {
-      // long string
-      VPackBuilder builder;
-      builder.add(VPackValue(value));
-      initFromSlice(builder.slice());
+      // Use managed buffer, simply reuse the pointer and adjust the original
+      // Buffer's deleter
+      _data.buffer = buffer;
+      setType(AqlValueType::VPACK_MANAGED);
+      shouldDelete = false; // adjust deletion control variable
     }
   }
   
   // construct from Buffer, taking over its ownership
   explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer) {
+    TRI_ASSERT(buffer != nullptr);
     _data.buffer = buffer;
     setType(AqlValueType::VPACK_MANAGED);
   }
   
-  // construct from Builder
+  // construct from Builder, copying contents
   explicit AqlValue(arangodb::velocypack::Builder const& builder) {
     TRI_ASSERT(builder.isClosed());
     initFromSlice(builder.slice());
   }
   
+  // construct from Builder, copying contents
   explicit AqlValue(arangodb::velocypack::Builder const* builder) {
     TRI_ASSERT(builder->isClosed());
     initFromSlice(builder->slice());
   }
-
-  // construct from Slice
+  
+  // construct from Slice, copying contents
   explicit AqlValue(arangodb::velocypack::Slice const& slice) {
     initFromSlice(slice);
   }
@@ -226,26 +235,33 @@ struct AqlValue final {
   ~AqlValue() = default;
   
   /// @brief whether or not the value must be destroyed
-  inline bool requiresDestruction() const {
-    AqlValueType t = type();
-    return (t == VPACK_MANAGED || t == DOCVEC || t == RANGE);
+  inline bool requiresDestruction() const noexcept {
+    auto t = type();
+    return (t != VPACK_SLICE_POINTER && t != VPACK_INLINE);
   }
 
   /// @brief whether or not the value is empty / none
-  inline bool isEmpty() const { 
-    if (type() != VPACK_INLINE) {
-      return false;
-    }
-    return arangodb::velocypack::Slice(_data.internal).isNone();
+  inline bool isEmpty() const noexcept { 
+    return (_data.internal[0] == '\x00' && _data.internal[sizeof(_data.internal) - 1] == VPACK_INLINE);
+  }
+  
+  /// @brief whether or not the value is a pointer
+  inline bool isPointer() const noexcept {
+    return type() == VPACK_SLICE_POINTER;
+  }
+
+  /// @brief whether or not the value is a master pointer
+  inline bool isMasterPointer() const noexcept {
+    return isPointer() && (_data.internal[sizeof(_data.internal) - 2] == 1);
   }
   
   /// @brief whether or not the value is a range
-  inline bool isRange() const {
+  inline bool isRange() const noexcept {
     return type() == RANGE;
   }
   
   /// @brief whether or not the value is a docvec
-  inline bool isDocvec() const {
+  inline bool isDocvec() const noexcept {
     return type() == DOCVEC;
   }
 
@@ -278,7 +294,7 @@ struct AqlValue final {
   size_t length() const;
   
   /// @brief get the (array) element at position 
-  AqlValue at(int64_t position, bool& mustDestroy, bool copy) const;
+  AqlValue at(arangodb::AqlTransaction* trx, int64_t position, bool& mustDestroy, bool copy) const;
   
   /// @brief get the _key attribute from an object/document
   AqlValue getKeyAttribute(arangodb::AqlTransaction* trx,
@@ -302,9 +318,9 @@ struct AqlValue final {
   bool hasKey(arangodb::AqlTransaction* trx, std::string const& name) const;
 
   /// @brief get the numeric value of an AqlValue
-  double toDouble() const;
-  double toDouble(bool& failed) const;
-  int64_t toInt64() const;
+  double toDouble(arangodb::AqlTransaction* trx) const;
+  double toDouble(arangodb::AqlTransaction* trx, bool& failed) const;
+  int64_t toInt64(arangodb::AqlTransaction* trx) const;
   
   /// @brief whether or not an AqlValue evaluates to true/false
   bool toBoolean() const;
@@ -352,7 +368,7 @@ struct AqlValue final {
   AqlValue clone() const;
   
   /// @brief invalidates/resets a value to None, not freeing any memory
-  void erase() {
+  void erase() noexcept {
     _data.internal[0] = '\x00';
     setType(AqlValueType::VPACK_INLINE);
   }
@@ -378,7 +394,7 @@ struct AqlValue final {
   
   /// @brief Returns the type of this value. If true it uses an external pointer
   /// if false it uses the internal data structure
-  inline AqlValueType type() const {
+  inline AqlValueType type() const noexcept {
     return static_cast<AqlValueType>(_data.internal[sizeof(_data.internal) - 1]);
   }
   
@@ -401,13 +417,22 @@ struct AqlValue final {
       setType(AqlValueType::VPACK_MANAGED);
     }
   }
-
+  
   /// @brief sets the value type
   inline void setType(AqlValueType type) noexcept {
     _data.internal[sizeof(_data.internal) - 1] = type;
   }
-};
 
+  template<bool isMasterPointer>
+  inline void setPointer(uint8_t const* pointer) {
+    _data.pointer = pointer;
+    // we use the byte at (size - 2) to distinguish between data pointing to database
+    // documents (size[-2] == 1) and other data(size[-2] == 0)
+    _data.internal[sizeof(_data.internal) - 2] = isMasterPointer ? 1 : 0;
+    _data.internal[sizeof(_data.internal) - 1] = AqlValueType::VPACK_SLICE_POINTER;
+  }
+};
+  
 class AqlValueGuard {
  public:
   AqlValueGuard() = delete;

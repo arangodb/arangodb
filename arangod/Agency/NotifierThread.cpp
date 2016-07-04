@@ -1,3 +1,26 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Andreas Streichardt
+////////////////////////////////////////////////////////////////////////////////
+
 #include "Basics/ConditionLocker.h"
 
 #include "Agency/NotifierThread.h"
@@ -10,17 +33,18 @@ using namespace arangodb::consensus;
 NotifierThread::NotifierThread(const std::string& path,
                                std::shared_ptr<VPackBuilder> body,
                                const std::vector<std::string>& endpoints)
-    : Thread("AgencyNotifiaction"),
+    : Thread("AgencyNotification"),
       _path(path),
       _body(body),
       _endpoints(endpoints) {}
 
 void NotifierThread::scheduleNotification(const std::string& endpoint) {
-  LOG(DEBUG) << "Scheduling " << endpoint << _path << " " << _body->toJson()
-             << " " << endpoint;
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Scheduling " << endpoint << _path << " " << _body->toJson()
+    << " " << endpoint;
 
   auto cb = [this, endpoint](bool result) {
-    LOG(DEBUG) << "Agencynotification for " << endpoint
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agencynotification for " << endpoint
                << ". Result: " << result;
 
     CONDITION_LOCKER(guard, _cv);
@@ -31,24 +55,18 @@ void NotifierThread::scheduleNotification(const std::string& endpoint) {
   auto headerFields =
       std::make_unique<std::unordered_map<std::string, std::string>>();
 
-  while (true) {
-    auto res = arangodb::ClusterComm::instance()->asyncRequest(
-        "", TRI_NewTickServer(), endpoint, GeneralRequest::RequestType::POST,
-        _path, std::make_shared<std::string>(_body->toJson()), headerFields,
-        std::make_shared<NotifyCallback>(cb), 5.0, true);
-
-    if (res.status == CL_COMM_SUBMITTED) {
-      break;
-    }
-    usleep(500000);
-  }
+  // This is best effort: We do not guarantee at least once delivery!
+  arangodb::ClusterComm::instance()->asyncRequest(
+      "", TRI_NewTickServer(), endpoint, GeneralRequest::RequestType::POST,
+      _path, std::make_shared<std::string>(_body->toJson()), headerFields,
+      std::make_shared<NotifyCallback>(cb), 5.0, true);
 }
 
 bool NotifierThread::start() { return Thread::start(); }
 
 void NotifierThread::run() {
   try {
-    LOG(DEBUG) << "Starting Agencynotifications";
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting Agencynotifications";
     // mop: locker necessary because if scheduledNotifications may return
     // earlier than this thread reaching the while
     CONDITION_LOCKER(locker, _cv);
@@ -58,10 +76,10 @@ void NotifierThread::run() {
     }
 
     while (numEndpoints > 0) {
-      LOG(DEBUG) << "WAITING " << numEndpoints;
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "WAITING " << numEndpoints;
       locker.wait();
       if (isStopping()) {
-        LOG(DEBUG) << "Agencynotifications stopping";
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agencynotifications stopping";
         break;
       }
 
@@ -77,12 +95,13 @@ void NotifierThread::run() {
       }
       _openResults.clear();
     }
-    LOG(DEBUG) << "Agencynotifications done";
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agencynotifications done";
   } catch (std::exception& e) {
-    LOG(ERR) << "Couldn't notify agents: " << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Couldn't notify agents: " << e.what();
   } catch (...) {
-    LOG(ERR) << "Couldn't notify agents!";
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Couldn't notify agents!";
   }
+
 }
 
 void NotifierThread::beginShutdown() {

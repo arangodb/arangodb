@@ -73,7 +73,7 @@ class AqlItemBlock {
   }
 
   /// @brief getValue, get the value of a register by reference
-  AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
+  inline AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
@@ -85,17 +85,7 @@ class AqlItemBlock {
 
     // First update the reference count, if this fails, the value is empty
     if (value.requiresDestruction()) {
-      auto it = _valueCount.find(value);
-
-      if (it == _valueCount.end()) {
-        TRI_IF_FAILURE("AqlItemBlock::setValue") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        _valueCount.emplace(value, 1);
-      } else {
-        TRI_ASSERT(it->second > 0);
-        ++(it->second);
-      }
+      ++_valueCount[value];
     }
 
     _data[index * _nrRegs + varNr] = value;
@@ -106,8 +96,7 @@ class AqlItemBlock {
   /// use with caution only in special situations when it can be ensured that
   /// no one else will be pointing to the same value
   void destroyValue(size_t index, RegisterId varNr) {
-    size_t const pos = index * _nrRegs + varNr;
-    auto& element = _data[pos];
+    auto& element = _data[index * _nrRegs + varNr];
 
     if (element.requiresDestruction()) {
       auto it = _valueCount.find(element);
@@ -130,8 +119,7 @@ class AqlItemBlock {
   /// @brief eraseValue, erase the current value of a register not freeing it
   /// this is used if the value is stolen and later released from elsewhere
   void eraseValue(size_t index, RegisterId varNr) {
-    size_t const pos = index * _nrRegs + varNr;
-    auto& element = _data[pos];
+    auto& element = _data[index * _nrRegs + varNr];
 
     if (element.requiresDestruction()) {
       auto it = _valueCount.find(element);
@@ -149,7 +137,7 @@ class AqlItemBlock {
     element.erase();
   }
 
-  /// @brief eraseValue, erase the current value of a register not freeing it
+  /// @brief eraseValue, erase the current value of all values, not freeing them.
   /// this is used if the value is stolen and later released from elsewhere
   void eraseAll() {
     for (auto& it : _data) {
@@ -159,6 +147,14 @@ class AqlItemBlock {
     }
 
     _valueCount.clear();
+  }
+
+  void copyValuesFromFirstRow(size_t currentRow, RegisterId curRegs) {
+    TRI_ASSERT(currentRow > 0);
+
+    for (RegisterId i = 0; i < curRegs; i++) {
+      setValue(currentRow, i, _data[i]);
+    }
   }
 
   /// @brief valueCount
@@ -176,13 +172,9 @@ class AqlItemBlock {
   /// the same value again. Note that once you do this for a single AqlValue
   /// you should delete the AqlItemBlock soon, because the stolen AqlValues
   /// might be deleted at any time!
-  void steal(AqlValue const& v) {
-    if (v.requiresDestruction()) {
-      auto it = _valueCount.find(v);
-
-      if (it != _valueCount.end()) {
-        _valueCount.erase(it);
-      }
+  void steal(AqlValue const& value) {
+    if (value.requiresDestruction()) {
+      _valueCount.erase(value);
     }
   }
 
@@ -208,7 +200,7 @@ class AqlItemBlock {
 
   /// @brief slice/clone chosen rows for a subset, this does a deep copy
   /// of all entries
-  AqlItemBlock* slice(std::vector<size_t>& chosen, size_t from,
+  AqlItemBlock* slice(std::vector<size_t> const& chosen, size_t from,
                       size_t to) const;
 
   /// @brief steal for a subset, this does not copy the entries, rather,
@@ -216,7 +208,7 @@ class AqlItemBlock {
   /// this AqlItemBlock. It is highly recommended to delete it right
   /// after this operation, because it is unclear, when the values
   /// to which our AqlValues point will vanish.
-  AqlItemBlock* steal(std::vector<size_t>& chosen, size_t from, size_t to);
+  AqlItemBlock* steal(std::vector<size_t> const& chosen, size_t from, size_t to);
 
   /// @brief concatenate multiple blocks, note that the new block now owns all
   /// AqlValue pointers in the old blocks, therefore, the latter are all

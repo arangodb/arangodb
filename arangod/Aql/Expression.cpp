@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
 #include "Aql/Executor.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
@@ -252,7 +253,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
       size_t m = l + ((r - l) / 2);
 
       bool localMustDestroy;
-      AqlValue a = right.at(m, localMustDestroy, false);
+      AqlValue a = right.at(trx, m, localMustDestroy, false);
       AqlValueGuard guard(a, localMustDestroy);
 
       int compareResult = AqlValue::Compare(trx, left, a, true);
@@ -286,8 +287,8 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
     }
 
     // check if conversion to int64 would be lossy
-    int64_t value = left.toInt64();
-    if (left.toDouble() == static_cast<double>(value)) {
+    int64_t value = left.toInt64(trx);
+    if (left.toDouble(trx) == static_cast<double>(value)) {
       // no loss
       Range const* r = right.range();
       TRI_ASSERT(r != nullptr);
@@ -300,7 +301,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
   // use linear search
   for (size_t i = 0; i < n; ++i) {
     bool mustDestroy;
-    AqlValue a = right.at(i, mustDestroy, false);
+    AqlValue a = right.at(trx, i, mustDestroy, false);
     AqlValueGuard guard(a, mustDestroy);
 
     int compareResult = AqlValue::Compare(trx, left, a, false);
@@ -574,7 +575,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
     AqlValueGuard guard(indexResult, mustDestroy);
 
     if (indexResult.isNumber()) {
-      return result.at(indexResult.toInt64(), mustDestroy, true);
+      return result.at(trx, indexResult.toInt64(trx), mustDestroy, true);
     }
      
     if (indexResult.isString()) {
@@ -583,7 +584,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
       try {
         // stoll() might throw an exception if the string is not a number
         int64_t position = static_cast<int64_t>(std::stoll(value));
-        return result.at(position, mustDestroy, true);
+        return result.at(trx, position, mustDestroy, true);
       } catch (...) {
         // no number found.
       }
@@ -597,7 +598,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
     AqlValueGuard guard(indexResult, mustDestroy);
 
     if (indexResult.isNumber()) {
-      std::string const indexString = std::to_string(indexResult.toInt64());
+      std::string const indexString = std::to_string(indexResult.toInt64(trx));
       return result.get(trx, indexString, mustDestroy, true);
     }
      
@@ -626,6 +627,10 @@ AqlValue Expression::executeSimpleExpressionArray(
   }
 
   size_t const n = node->numMembers();
+
+  if (n == 0) {
+    return AqlValue(VelocyPackHelper::EmptyArrayValue());
+  }
 
   TransactionBuilderLeaser builder(trx);
   builder->openArray();
@@ -658,6 +663,12 @@ AqlValue Expression::executeSimpleExpressionObject(
     // this will not create a copy
     return AqlValue(node->computeValue().begin()); 
   }
+  
+  size_t const n = node->numMembers();
+
+  if (n == 0) {
+    return AqlValue(VelocyPackHelper::EmptyObjectValue());
+  }
 
   // unordered map to make object keys unique afterwards
   std::unordered_map<std::string, size_t> uniqueKeyValues;
@@ -667,7 +678,6 @@ AqlValue Expression::executeSimpleExpressionObject(
   TransactionBuilderLeaser builder(trx);
   builder->openObject();
 
-  size_t const n = node->numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
 
@@ -804,12 +814,14 @@ AqlValue Expression::executeSimpleExpressionReference(
 
   mustDestroy = false;
   auto v = static_cast<Variable const*>(node->getData());
+  TRI_ASSERT(v != nullptr);
 
   {
     auto it = _variables.find(v);
 
     if (it != _variables.end()) {
-      return AqlValue((*it).second.begin()); // use only pointer to data
+      mustDestroy = true;
+      return AqlValue(VPackSlice((*it).second.begin())); 
     }
   }
 
@@ -852,7 +864,7 @@ AqlValue Expression::executeSimpleExpressionRange(
   AqlValueGuard guardHigh(resultHigh, mustDestroy);
  
   mustDestroy = true; // as we're creating a new range object
-  return AqlValue(resultLow.toInt64(), resultHigh.toInt64());
+  return AqlValue(resultLow.toInt64(trx), resultHigh.toInt64(trx));
 }
 
 /// @brief execute an expression of type SIMPLE with FCALL
@@ -1091,7 +1103,7 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
 
   for (size_t i = 0; i < n; ++i) {
     bool localMustDestroy;
-    AqlValue leftItemValue = left.at(i, localMustDestroy, false);
+    AqlValue leftItemValue = left.at(trx, i, localMustDestroy, false);
     AqlValueGuard guard(leftItemValue, localMustDestroy);
 
     bool result;
@@ -1210,12 +1222,12 @@ AqlValue Expression::executeSimpleExpressionExpansion(
     AqlValue subOffset =
         executeSimpleExpression(limitNode->getMember(0), trx,
                                 argv, startPos, vars, regs, mustDestroy, false);
-    offset = subOffset.toInt64();
+    offset = subOffset.toInt64(trx);
     if (mustDestroy) { subOffset.destroy(); }
 
     AqlValue subCount = executeSimpleExpression(limitNode->getMember(1), trx,
                                                 argv, startPos, vars, regs, mustDestroy, false);
-    count = subCount.toInt64();
+    count = subCount.toInt64(trx);
     if (mustDestroy) { subCount.destroy(); }
   }
     
@@ -1273,7 +1285,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
           size_t const n = v.length();
           for (size_t i = 0; i < n; ++i) {
             bool localMustDestroy;
-            AqlValue item = v.at(i, localMustDestroy, false);
+            AqlValue item = v.at(trx, i, localMustDestroy, false);
             AqlValueGuard guard(item, localMustDestroy);
 
             bool const isArray = item.isArray();
@@ -1319,13 +1331,29 @@ AqlValue Expression::executeSimpleExpressionExpansion(
     projectionNode = node->getMember(4);
   }
 
+  if (filterNode == nullptr && 
+      projectionNode->type == NODE_TYPE_REFERENCE &&
+      value.isArray() && 
+      offset == 0 &&
+      count == INT64_MAX) {
+    // no filter and no projection... we can return the array as it is
+    auto other = static_cast<Variable const*>(projectionNode->getData());
+
+    if (other->id == variable->id) {
+      // simplify `v[*]` to just `v` if it's already an array
+      mustDestroy = true;
+      guard.steal();
+      return value; 
+    }
+  }
+
   VPackBuilder builder;
   builder.openArray();
 
   size_t const n = value.length();
   for (size_t i = 0; i < n; ++i) {
     bool localMustDestroy;
-    AqlValue item = value.at(i, localMustDestroy, false);
+    AqlValue item = value.at(trx, i, localMustDestroy, false);
     AqlValueGuard guard(item, localMustDestroy);
 
     AqlValueMaterializer materializer(trx);
@@ -1405,26 +1433,32 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
   mustDestroy = false;
 
   bool failed = false;
-  double l = lhs.toDouble(failed);
+  double l = lhs.toDouble(trx, failed);
 
   if (failed) {
     TRI_ASSERT(!mustDestroy);
     l = 0.0;
   }
 
-  double r = rhs.toDouble(failed);
+  double r = rhs.toDouble(trx, failed);
 
   if (failed) {
     TRI_ASSERT(!mustDestroy);
     r = 0.0;
   }
 
-  if (r == 0.0 &&
-      (node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
-       node->type == NODE_TYPE_OPERATOR_BINARY_MOD)) {
-    TRI_ASSERT(!mustDestroy);
-    RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-    return AqlValue(VelocyPackHelper::ZeroValue());
+  if (r == 0.0) {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
+      // division by zero
+      RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+      TRI_ASSERT(!mustDestroy);
+      return AqlValue(VelocyPackHelper::NullValue());
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
+      // modulo zero
+      RegisterWarning(_ast, "%", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+      TRI_ASSERT(!mustDestroy);
+      return AqlValue(VelocyPackHelper::NullValue());
+    }
   }
 
   double result;
@@ -1451,9 +1485,9 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
   }
       
   if (std::isnan(result) || !std::isfinite(result) || result == HUGE_VAL || result == -HUGE_VAL) {
-    // convert NaN, +inf & -inf to 0
+    // convert NaN, +inf & -inf to null
     mustDestroy = false;
-    return AqlValue(VelocyPackHelper::ZeroValue());
+    return AqlValue(VelocyPackHelper::NullValue());
   }
 
   TransactionBuilderLeaser builder(trx);

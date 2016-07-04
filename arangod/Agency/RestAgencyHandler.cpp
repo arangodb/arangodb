@@ -32,6 +32,8 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
+#include <thread>
+
 using namespace arangodb;
 
 using namespace arangodb::basics;
@@ -77,7 +79,7 @@ void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
     createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, e.what());
   }
@@ -109,7 +111,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
     try {
       query = _request->toVelocyPack(&options);
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
       Builder body;
       body.openObject();
       body.add("message", VPackValue(e.what()));
@@ -118,11 +120,40 @@ RestHandler::status RestAgencyHandler::handleWrite() {
       return RestHandler::status::DONE;
     }
 
+    if (!query->slice().isArray()) {
+      Builder body;
+      body.openObject();
+      body.add("message",
+               VPackValue("Excpecting array of arrays as body for writes"));
+      body.close();
+      generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
+      return RestHandler::status::DONE;
+    }
+
+    if (query->slice().length() == 0) {
+      Builder body;
+      body.openObject();
+      body.add(
+        "message", VPackValue("Empty request."));
+      body.close();
+      generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
+      return RestHandler::status::DONE;
+    }
+
+    while(_agent->size() > 1 && _agent->leaderID() > 100) {
+      std::this_thread::sleep_for(duration_t(100));
+    }
+
     write_ret_t ret = _agent->write(query);
 
     if (ret.accepted) {  // We're leading and handling the request
 
-      std::string const& call_mode = _request->header("x-arangodb-agency-mode");
+      bool found;
+      std::string call_mode = _request->header("x-arangodb-agency-mode", found);
+      if (!found) {
+        call_mode = "waitForCommitted";
+      }
+
       size_t errors = 0;
       Builder body;
       body.openObject();
@@ -137,11 +168,18 @@ RestHandler::status RestAgencyHandler::handleWrite() {
           }
         }
         body.close();
-
+        
         // Wait for commit of highest except if it is 0?
         if (!ret.indices.empty() && call_mode == "waitForCommitted") {
-          arangodb::consensus::index_t max_index =
+          arangodb::consensus::index_t max_index = 0;
+          try {
+            max_index =
               *std::max_element(ret.indices.begin(), ret.indices.end());
+          } catch (std::exception const& e) {
+            LOG_TOPIC(WARN, Logger::AGENCY)
+              << e.what() << " " << __FILE__ << __LINE__;
+          }
+
           if (max_index > 0) {
             _agent->waitFor(max_index);
           }
@@ -165,12 +203,6 @@ RestHandler::status RestAgencyHandler::handleWrite() {
   return RestHandler::status::DONE;
 }
 
-/*inline RestHandler::status RestAgencyHandler::handleReplicate () {
-  if (_request->requestType() == GeneralRequest::RequestType::POST) {
-
-  }
-  }*/
-
 inline RestHandler::status RestAgencyHandler::handleRead() {
   arangodb::velocypack::Options options;
   if (_request->requestType() == GeneralRequest::RequestType::POST) {
@@ -178,10 +210,15 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
     try {
       query = _request->toVelocyPack(&options);
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
+      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
       generateError(GeneralResponse::ResponseCode::BAD, 400);
       return RestHandler::status::DONE;
     }
+
+    while(_agent->size() > 1 && _agent->leaderID() > 100) {
+      std::this_thread::sleep_for(duration_t(100));
+    }
+        
     read_ret_t ret = _agent->read(query);
 
     if (ret.accepted) {  // I am leading

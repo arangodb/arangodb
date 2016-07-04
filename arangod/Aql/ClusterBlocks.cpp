@@ -101,13 +101,7 @@ GatherBlock::~GatherBlock() {
 int GatherBlock::initialize() {
   ENTER_BLOCK
   _atDep = 0;
-  auto res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return ExecutionBlock::initialize();
   LEAVE_BLOCK
 }
 
@@ -1091,18 +1085,19 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT, errorMessage);
   }
 
+  if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    // there is no result
+    std::string errorMessage = 
+        std::string("Empty result in communication with shard '") +
+        std::string(res->shardID) + std::string("' on cluster node '") +
+        std::string(res->serverID) + std::string("'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
+                                   errorMessage);
+  }
+
   if (res->status == CL_COMM_ERROR) {
     std::string errorMessage;
-    // This could be a broken connection or an Http error:
-    if (res->result == nullptr || !res->result->isComplete()) {
-      // there is no result
-      errorMessage +=
-          std::string("Empty result in communication with shard '") +
-          std::string(res->shardID) + std::string("' on cluster node '") +
-          std::string(res->serverID) + std::string("'");
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
-                                     errorMessage);
-    }
+    TRI_ASSERT(nullptr != res->result);
 
     StringBuffer const& responseBodyBuf(res->result->getBody());
 
@@ -1175,7 +1170,7 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       _server(server),
       _ownName(ownName),
       _queryId(queryId),
-      _isResponsibleForInitCursor(en->isResponsibleForInitCursor()) {
+      _isResponsibleForInitializeCursor(en->isResponsibleForInitializeCursor()) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT(
       (arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
@@ -1194,7 +1189,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
 
   // Later, we probably want to set these sensibly:
   ClientTransactionID const clientTransactionId = "AQL";
-  CoordTransactionID const coordTransactionId = TRI_NewTickServer();  // 1;
+  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
   if (!_ownName.empty()) {
     headers.emplace("Shard-Id", _ownName);
@@ -1224,13 +1219,27 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
 /// @brief initialize
 int RemoteBlock::initialize() {
   ENTER_BLOCK
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  
+  if (!_isResponsibleForInitializeCursor) {
+    // do nothing...
+    return TRI_ERROR_NO_ERROR;
   }
+ 
+  std::unique_ptr<ClusterCommResult> res =
+      sendRequest(GeneralRequest::RequestType::PUT,
+                  "/_api/aql/initialize/", "{}");
+  throwExceptionAfterBadSyncRequest(res.get(), false);
+ 
 
-  return TRI_ERROR_NO_ERROR;
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  Json responseBodyJson(
+      TRI_UNKNOWN_MEM_ZONE,
+      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
+
+  return JsonHelper::getNumericValue<int>(responseBodyJson.json(), "code",
+                                          TRI_ERROR_INTERNAL);
   LEAVE_BLOCK
 }
 
@@ -1239,7 +1248,7 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
 
-  if (!_isResponsibleForInitCursor) {
+  if (!_isResponsibleForInitializeCursor) {
     // do nothing...
     return TRI_ERROR_NO_ERROR;
   }
@@ -1285,7 +1294,7 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 int RemoteBlock::shutdown(int errorCode) {
   ENTER_BLOCK
 
-  if (!_isResponsibleForInitCursor) {
+  if (!_isResponsibleForInitializeCursor) {
     // do nothing...
     return TRI_ERROR_NO_ERROR;
   }

@@ -33,6 +33,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_FILE_EXISTS, "file exists");
   REG_ERROR(ERROR_LOCKED, "locked");
   REG_ERROR(ERROR_DEADLOCK, "deadlock detected");
+  REG_ERROR(ERROR_SHUTTING_DOWN, "shutdown in progress");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -92,7 +93,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_ARANGO_USE_SYSTEM_DATABASE, "operation only allowed in system database");
   REG_ERROR(ERROR_ARANGO_ENDPOINT_NOT_FOUND, "endpoint not found");
   REG_ERROR(ERROR_ARANGO_INVALID_KEY_GENERATOR, "invalid key generator");
-  REG_ERROR(ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE, "edge attribute missing");
+  REG_ERROR(ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE, "edge attribute missing or invalid");
   REG_ERROR(ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING, "index insertion warning - attribute missing in document");
   REG_ERROR(ERROR_ARANGO_INDEX_CREATION_FAILED, "index creation failed");
   REG_ERROR(ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT, "write-throttling timeout");
@@ -199,10 +200,10 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");
   REG_ERROR(ERROR_USER_NOT_FOUND, "user not found");
   REG_ERROR(ERROR_USER_CHANGE_PASSWORD, "user must change his password");
-  REG_ERROR(ERROR_APPLICATION_INVALID_NAME, "invalid application name");
-  REG_ERROR(ERROR_APPLICATION_INVALID_MOUNT, "invalid mount");
-  REG_ERROR(ERROR_APPLICATION_DOWNLOAD_FAILED, "application download failed");
-  REG_ERROR(ERROR_APPLICATION_UPLOAD_FAILED, "application upload failed");
+  REG_ERROR(ERROR_SERVICE_INVALID_NAME, "invalid application name");
+  REG_ERROR(ERROR_SERVICE_INVALID_MOUNT, "invalid mount");
+  REG_ERROR(ERROR_SERVICE_DOWNLOAD_FAILED, "application download failed");
+  REG_ERROR(ERROR_SERVICE_UPLOAD_FAILED, "application upload failed");
   REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
   REG_ERROR(ERROR_KEYVALUE_KEY_EXISTS, "key already exists");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_FOUND, "key not found");
@@ -251,11 +252,12 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
   REG_ERROR(ERROR_MALFORMED_MANIFEST_FILE, "malformed manifest file");
-  REG_ERROR(ERROR_INVALID_APPLICATION_MANIFEST, "manifest file is invalid");
+  REG_ERROR(ERROR_INVALID_SERVICE_MANIFEST, "manifest file is invalid");
   REG_ERROR(ERROR_INVALID_FOXX_OPTIONS, "invalid foxx options");
   REG_ERROR(ERROR_INVALID_MOUNTPOINT, "mountpoint is invalid");
-  REG_ERROR(ERROR_APP_NOT_FOUND, "App not found");
-  REG_ERROR(ERROR_APP_NEEDS_CONFIGURATION, "App not configured");
+  REG_ERROR(ERROR_SERVICE_NOT_FOUND, "Service not found");
+  REG_ERROR(ERROR_SERVICE_NEEDS_CONFIGURATION, "Service not configured");
+  REG_ERROR(ERROR_SERVICE_MOUNTPOINT_CONFLICT, "mountpoint already in use");
   REG_ERROR(ERROR_MODULE_NOT_FOUND, "cannot locate module");
   REG_ERROR(ERROR_MODULE_FAILURE, "failed to invoke module");
   REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");

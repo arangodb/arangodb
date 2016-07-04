@@ -40,8 +40,8 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer* serv
       _keyfile(),
       _sessionCache(false),
       _cipherList(),
-      _protocol(TLS_V1),
-      _options(
+      _sslProtocol(TLS_V1),
+      _sslOptions(
           (long)(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
       _ecdhCurve("prime256v1"),
       _sslContext(nullptr) {
@@ -52,6 +52,13 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer* serv
 }
 
 void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addOldOption("server.cafile", "ssl.cafile");
+  options->addOldOption("server.keyfile", "ssl.keyfile");
+  options->addOldOption("server.ssl-cache", "ssl.session-cache");
+  options->addOldOption("server.ssl-cipher-list", "ssl.cipher-list");
+  options->addOldOption("server.ssl-options", "ssl.options");
+  options->addOldOption("server.ssl-protocol", "ssl.protocol");
+
   options->addSection("ssl", "Configure SSL communication");
 
   options->addOption("--ssl.cafile", "ca file used for secure connections",
@@ -68,16 +75,17 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "ssl cipers to use, see OpenSSL documentation",
                      new StringParameter(&_cipherList));
 
-  std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4};
+  std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4, 5};
 
   options->addOption("--ssl.protocol",
                      "ssl protocol (1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = "
                      "TLSv1, 5 = TLSV1.2 (recommended)",
-                     new UInt64Parameter(&_protocol));
+                     new DiscreteValuesParameter<UInt64Parameter>(
+                         &_sslProtocol, sslProtocols));
 
   options->addHiddenOption(
       "--ssl.options", "ssl connection options, see OpenSSL documentation",
-      new DiscreteValuesParameter<UInt64Parameter>(&_options, sslProtocols));
+      new DiscreteValuesParameter<UInt64Parameter>(&_sslOptions, sslProtocols));
 
   options->addOption(
       "--ssl.ecdh-curve",
@@ -87,17 +95,15 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void SslServerFeature::prepare() {
   createSslContext();
-}
 
-void SslServerFeature::start() {
-  LOG(INFO) << "using SSL options: " << stringifySslOptions(_options);
+  LOG(INFO) << "using SSL options: " << stringifySslOptions(_sslOptions);
 
   if (!_cipherList.empty()) {
       LOG(INFO) << "using SSL cipher-list '" << _cipherList << "'";
   }
 }
 
-void SslServerFeature::stop() {
+void SslServerFeature::unprepare() {
   if (_sslContext != nullptr) {
     SSL_CTX_free(_sslContext);
     _sslContext = nullptr;
@@ -123,14 +129,14 @@ void SslServerFeature::createSslContext() {
   }
 
   // validate protocol
-  if (_protocol <= SSL_UNKNOWN || _protocol >= SSL_LAST) {
+  if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
     LOG(FATAL) << "invalid SSL protocol version specified. Please use a valid "
                   "value for '--ssl.protocol.'";
     FATAL_ERROR_EXIT();
   }
 
   LOG(DEBUG) << "using SSL protocol version '"
-             << protocolName((protocol_e)_protocol) << "'";
+             << protocolName((protocol_e)_sslProtocol) << "'";
 
   if (!FileUtils::exists(_keyfile)) {
     LOG(FATAL) << "unable to find SSL keyfile '" << _keyfile << "'";
@@ -138,7 +144,7 @@ void SslServerFeature::createSslContext() {
   }
 
   // create context
-  _sslContext = ::sslContext(protocol_e(_protocol), _keyfile);
+  _sslContext = ::sslContext(protocol_e(_sslProtocol), _keyfile);
 
   if (_sslContext == nullptr) {
     LOG(FATAL) << "failed to create SSL context, cannot create HTTPS server";
@@ -154,7 +160,7 @@ void SslServerFeature::createSslContext() {
   }
 
   // set options
-  SSL_CTX_set_options(_sslContext, (long)_options);
+  SSL_CTX_set_options(_sslContext, (long)_sslOptions);
 
   if (!_cipherList.empty()) {
     if (SSL_CTX_set_cipher_list(_sslContext, _cipherList.c_str()) != 1) {

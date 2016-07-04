@@ -1,0 +1,9 @@
+{
+  "name": "to-iso-string",
+  "repo": "segmentio/to-iso-string",
+  "version": "0.0.2",
+  "license": "MIT",
+  "description": "Cross-browser toISOString support.",
+  "keywords": ["iso", "format", "iso8601", "date", "isostring", "toISOString"],
+  "scripts": ["index.js"]
+}

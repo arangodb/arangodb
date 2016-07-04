@@ -24,6 +24,7 @@
 #include "RestShutdownHandler.h"
 
 #include "Rest/HttpRequest.h"
+#include "Cluster/ClusterFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -42,6 +43,18 @@ bool RestShutdownHandler::isDirect() const { return true; }
 ////////////////////////////////////////////////////////////////////////////////
 
 RestHandler::status RestShutdownHandler::execute() {
+  if (_request->requestType() != GeneralRequest::RequestType::DELETE_REQ) {
+    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    return status::DONE;
+  }
+
+  bool found;
+  std::string const& remove = _request->value("remove_from_cluster", found);
+  if (found && remove == "1") {
+    ClusterFeature* clusterFeature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    clusterFeature->setUnregisterOnShutdown(true);
+  }
+
   ApplicationServer::server->beginShutdown();
 
   try {

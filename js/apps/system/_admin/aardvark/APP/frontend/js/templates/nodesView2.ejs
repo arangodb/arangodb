@@ -1,0 +1,163 @@
+<script id="nodesView2.ejs" type="text/template">
+
+  <div id="nodesContent" class="innerContent">
+
+  <% if (Object.keys(coords).length > 0) { %>
+
+    <% var disabled = ''; %> 
+    <% var genClass = "pure-u-1-5"; %>
+
+    <div class="pure-g">
+
+    <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
+
+    <div class="sectionHeader pure-g">
+      <div class="pure-u-1-4">
+        <div class="title">
+          Coordinators
+        </div>
+      </div>
+
+
+      <div class="pure-u-3-4">
+
+        <% if (scaling === true) { %>
+          <div class="scaleGroup" id="scaleCoords">
+            <div style="text-align: -webkit-right;">
+            <span class="left" id="removeCoord"><i class="fa fa-minus"></i></span>
+            <input id="plannedCoords" type="text" value="<%= plannedCoords %>"/>
+            <span class="right" id="addCoord"><i class="fa fa-plus"></i></span>
+            </div>
+          </div>
+        <% } %>
+
+        <div class="information" id="infoCoords">
+          <span class="positive"><span> <%= scaleProperties.coordsOk %> </span><i class="fa fa-check-circle"></i></span>
+          <% if (scaleProperties.coordsError) { %>
+            <span class="negative"><span> <%= scaleProperties.coordsError %> </span><i class="fa fa-exclamation-circle"></i></span>
+          <% } %>
+          <% if (scaleProperties.coordsPending && scaling === true) { %>
+            <span class="warning"><span> <%= scaleProperties.coordsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
+          <% } %>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title" style="clear: both">
+      <div class="pure-table-row">
+        <div class="<%= genClass %> left">Name</div>
+        <div class="<%= genClass %> left">Endpoint</div>
+        <div class="<%= genClass %> mid hide-small">Heartbeat</div>
+        <div class="<%= genClass %> mid">Status</div>
+        <div class="<%= genClass %> mid">Health</div>
+      </div>
+    </div>
+
+    <div class="pure-g cluster-nodes coords-nodes pure-table pure-table-body">
+      <% _.each(coords, function(node, name) { %>
+        <% var id = name + "-node"; %>
+
+        <div class="pure-table-row <%= disabled %>" node="<%= id %>">
+
+          <div class="<%= genClass %> left"><%= name %></div>
+          <div class="<%= genClass %> left"><%= node.Endpoint %></div>
+
+          <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %> 
+          <div class="<%= genClass %> hide-small mid"><%= formatted %></div>
+          <div class="<%=genClass%> mid"><%= node.LastHeartbeatStatus %></div>
+
+          <% if(node.Status === 'GOOD') { %>
+            <div class="<%= genClass %> mid state"><i class="fa fa-check-circle"></i></div>
+          <% } else { %>
+            <div class="<%= genClass %> mid state"><i class="fa fa-exclamation-circle"></i></div>
+          <% } %>
+
+        </div>
+
+      <% }); %>
+    </div>
+  </div>
+
+  <% } %>
+
+  <% if (Object.keys(dbs).length > 0) { %>
+    <% var disabled = ''; %> 
+    <% var genClass = "pure-u-1-5"; %>
+    <% disabled = " disabled"; %> 
+    
+    <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
+    
+      <div class="sectionHeader pure-g">
+        <div class="pure-u-1-4">
+          <div class="title">
+            DB Servers
+          </div>
+        </div>
+
+        <div class="pure-u-3-4">
+
+          <% if (scaling === true) { %>
+            <div class="scaleGroup" id="scaleCoords">
+              <div style="text-align: -webkit-right;">
+              <span class="left" id="removeDBs"><i class="fa fa-minus"></i></span>
+              <input id="plannedDBs" value="<%= plannedDBs %>" type="text"/>
+              <span class="right" id="addDBs"><i class="fa fa-plus"></i></span>
+              </div>
+            </div>
+          <% } %>
+
+          <div class="information" id="infoDBs">
+            <span class="positive"><span> <%= scaleProperties.dbsOk %> </span><i class="fa fa-check-circle"></i></span>
+            <% if (scaleProperties.dbsError) { %>
+              <span class="negative"><span> <%= scaleProperties.dbsError %> </span><i class="fa fa-exclamation-circle"></i></span>
+            <% } %>
+            <% if (scaleProperties.dbsPending && scaling === true) { %>
+              <span class="warning"><span> <%= scaleProperties.dbsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
+            <% } %>
+          </div>
+
+        </div>
+
+      </div>
+
+    <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title">
+      <div class="pure-table-row">
+        <div class="<%= genClass %> left">Name</div>
+        <div class="<%= genClass %> left">Endpoint</div>
+        <div class="<%= genClass %> mid hide-small">Heartbeat</div>
+        <div class="<%= genClass %> mid">Status</div>
+        <div class="<%= genClass %> mid">Health</div>
+      </div>
+    </div>
+  <% } %>
+
+    <div class="pure-g cluster-nodes dbs-nodes pure-table pure-table-body">
+      <% _.each(dbs, function(node, name) { %>
+        <% var id = name + "-node"; %>
+
+        <div class="pure-table-row <%= disabled %>" id="<%= id %>">
+
+          <div class="<%= genClass %> left"><%= name %></div>
+          <div class="<%= genClass %> left"><%= node.Endpoint %></div>
+
+          <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %> 
+          <div class="<%= genClass %> mid hide-small"><%= formatted %></div>
+          <div class="<%=genClass%> mid"><%= node.LastHeartbeatStatus %></div>
+
+          <% if(node.Status === 'GOOD') { %>
+            <div class="<%= genClass %> mid state"><i class="fa fa-check-circle"></i></div>
+          <% } else { %>
+            <div class="<%= genClass %> mid state"><i class="fa fa-exclamation-circle"></i></div>
+          <% } %>
+
+        </div>
+
+      <% }); %>
+    </div>
+  </div>
+
+  </div>
+  </div>
+
+</script>

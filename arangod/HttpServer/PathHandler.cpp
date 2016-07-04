@@ -207,7 +207,7 @@ RestHandler::status PathHandler::execute() {
   return status::DONE;
 }
 
-void PathHandler::handleError(const Exception&) {
+void PathHandler::handleError(Exception const&) {
   createResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
 }
 }

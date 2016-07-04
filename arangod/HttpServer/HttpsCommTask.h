@@ -54,8 +54,7 @@ class HttpsCommTask : public HttpCommTask {
   //////////////////////////////////////////////////////////////////////////////
 
   HttpsCommTask(HttpsServer*, TRI_socket_t, ConnectionInfo&&,
-                double keepAliveTimeout, std::string const& authenticationRealm,
-                SSL_CTX* ctx, int verificationMode,
+                double keepAliveTimeout, SSL_CTX* ctx, int verificationMode,
                 int (*verificationCallback)(int, X509_STORE_CTX*));
 
   //////////////////////////////////////////////////////////////////////////////

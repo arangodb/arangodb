@@ -1,47 +1,45 @@
 /*jshint strict: false */
 /*global ArangoServerState*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief static information required for the cluster interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Michael hackstein
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief static information required for the cluster interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael hackstein
+// / @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
+var internal = require('internal');
 var db = internal.db;
-var cluster = require("@arangodb/cluster");
-var actions = require("@arangodb/actions");
-var STATISTICS_INTERVAL = require("@arangodb/statistics").STATISTICS_INTERVAL;
-var STATISTICS_HISTORY_INTERVAL = require("@arangodb/statistics").STATISTICS_HISTORY_INTERVAL;
+var cluster = require('@arangodb/cluster');
+var actions = require('@arangodb/actions');
+var STATISTICS_INTERVAL = require('@arangodb/statistics').STATISTICS_INTERVAL;
+var STATISTICS_HISTORY_INTERVAL = require('@arangodb/statistics').STATISTICS_HISTORY_INTERVAL;
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief percentChange
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief percentChange
+// //////////////////////////////////////////////////////////////////////////////
 
 function percentChange (current, prev, section, src) {
-
   if (prev === null) {
     return 0;
   }
@@ -55,12 +53,11 @@ function percentChange (current, prev, section, src) {
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief percentChange2
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief percentChange2
+// //////////////////////////////////////////////////////////////////////////////
 
 function percentChange2 (current, prev, section, src1, src2) {
-
   if (prev === null) {
     return 0;
   }
@@ -74,57 +71,56 @@ function percentChange2 (current, prev, section, src1, src2) {
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computeStatisticsRaw
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief computeStatisticsRaw
+// //////////////////////////////////////////////////////////////////////////////
 
 var STAT_SERIES = {
-  avgTotalTime: [ "client", "avgTotalTime" ],
-  avgRequestTime: [ "client", "avgRequestTime" ],
-  avgQueueTime: [ "client", "avgQueueTime" ],
-  avgIoTime: [ "client", "avgIoTime" ],
+  avgTotalTime: [ 'client', 'avgTotalTime' ],
+  avgRequestTime: [ 'client', 'avgRequestTime' ],
+  avgQueueTime: [ 'client', 'avgQueueTime' ],
+  avgIoTime: [ 'client', 'avgIoTime' ],
 
-  bytesSentPerSecond: [ "client", "bytesSentPerSecond" ],
-  bytesReceivedPerSecond: [ "client", "bytesReceivedPerSecond" ],
+  bytesSentPerSecond: [ 'client', 'bytesSentPerSecond' ],
+  bytesReceivedPerSecond: [ 'client', 'bytesReceivedPerSecond' ],
 
-  asyncPerSecond: [ "http", "requestsAsyncPerSecond" ],
-  optionsPerSecond: [ "http", "requestsOptionsPerSecond" ],
-  putsPerSecond: [ "http", "requestsPutPerSecond" ],
-  headsPerSecond: [ "http", "requestsHeadPerSecond" ],
-  postsPerSecond: [ "http", "requestsPostPerSecond" ],
-  getsPerSecond: [ "http", "requestsGetPerSecond" ],
-  deletesPerSecond: [ "http", "requestsDeletePerSecond" ],
-  othersPerSecond: [ "http", "requestsOptionsPerSecond" ],
-  patchesPerSecond: [ "http", "requestsPatchPerSecond" ],
+  asyncPerSecond: [ 'http', 'requestsAsyncPerSecond' ],
+  optionsPerSecond: [ 'http', 'requestsOptionsPerSecond' ],
+  putsPerSecond: [ 'http', 'requestsPutPerSecond' ],
+  headsPerSecond: [ 'http', 'requestsHeadPerSecond' ],
+  postsPerSecond: [ 'http', 'requestsPostPerSecond' ],
+  getsPerSecond: [ 'http', 'requestsGetPerSecond' ],
+  deletesPerSecond: [ 'http', 'requestsDeletePerSecond' ],
+  othersPerSecond: [ 'http', 'requestsOptionsPerSecond' ],
+  patchesPerSecond: [ 'http', 'requestsPatchPerSecond' ],
 
-  systemTimePerSecond: [ "system", "systemTimePerSecond" ],
-  userTimePerSecond: [ "system", "userTimePerSecond" ],
-  majorPageFaultsPerSecond: [ "system", "majorPageFaultsPerSecond" ],
-  minorPageFaultsPerSecond: [ "system", "minorPageFaultsPerSecond" ]
+  systemTimePerSecond: [ 'system', 'systemTimePerSecond' ],
+  userTimePerSecond: [ 'system', 'userTimePerSecond' ],
+  majorPageFaultsPerSecond: [ 'system', 'majorPageFaultsPerSecond' ],
+  minorPageFaultsPerSecond: [ 'system', 'minorPageFaultsPerSecond' ]
 };
 
 var STAT_DISTRIBUTION = {
-  totalTimeDistributionPercent: [ "client", "totalTimePercent" ],
-  requestTimeDistributionPercent: [ "client", "requestTimePercent" ],
-  queueTimeDistributionPercent: [ "client", "queueTimePercent" ],
-  bytesSentDistributionPercent: [ "client", "bytesSentPercent" ],
-  bytesReceivedDistributionPercent: [ "client", "bytesReceivedPercent" ]
+  totalTimeDistributionPercent: [ 'client', 'totalTimePercent' ],
+  requestTimeDistributionPercent: [ 'client', 'requestTimePercent' ],
+  queueTimeDistributionPercent: [ 'client', 'queueTimePercent' ],
+  bytesSentDistributionPercent: [ 'client', 'bytesSentPercent' ],
+  bytesReceivedDistributionPercent: [ 'client', 'bytesReceivedPercent' ]
 };
 
 function computeStatisticsRaw (result, start, clusterId) {
-
-  var filter = "";
+  var filter = '';
 
   if (clusterId !== undefined) {
-    filter = " FILTER s.clusterId == @clusterId ";
+    filter = ' FILTER s.clusterId == @clusterId ';
   }
 
   var values = db._query(
-        "FOR s IN _statistics "
-      + "  FILTER s.time > @start "
-      +    filter
-      + "  SORT s.time "
-      + "  return s",
+    'FOR s IN _statistics '
+    + '  FILTER s.time > @start '
+    + filter
+    + '  SORT s.time '
+    + '  return s',
     { start: start - 2 * STATISTICS_INTERVAL, clusterId: clusterId });
 
   result.times = [];
@@ -187,7 +183,7 @@ function computeStatisticsRaw (result, start, clusterId) {
 
     result.syncPerSecondCurrent = lastRaw.http.requestsTotalPerSecond - lastRaw.http.requestsAsyncPerSecond;
     result.syncPerSecondPercentChange
-        = percentChange2(lastRaw, lastRaw2, 'http', 'requestsTotalPerSecond', 'requestsAsyncPerSecond');
+    = percentChange2(lastRaw, lastRaw2, 'http', 'requestsTotalPerSecond', 'requestsAsyncPerSecond');
 
     result.clientConnectionsCurrent = lastRaw.client.httpConnections;
     result.clientConnectionsPercentChange = percentChange(lastRaw, lastRaw2, 'client', 'httpConnections');
@@ -197,7 +193,7 @@ function computeStatisticsRaw (result, start, clusterId) {
   else {
     for (key in STAT_DISTRIBUTION) {
       if (STAT_DISTRIBUTION.hasOwnProperty(key)) {
-        result[key] = { values: [0,0,0,0,0,0,0], cuts: [0,0,0,0,0,0] };
+        result[key] = { values: [0, 0, 0, 0, 0, 0, 0], cuts: [0, 0, 0, 0, 0, 0] };
       }
     }
 
@@ -231,31 +227,29 @@ function computeStatisticsRaw (result, start, clusterId) {
   if (lastRaw === null) {
     result.nextStart = internal.time();
     result.waitFor = STATISTICS_INTERVAL;
-  }
-  else {
+  }else {
     result.nextStart = lastRaw.time;
     result.waitFor = (lastRaw.time + STATISTICS_INTERVAL) - internal.time();
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computeStatisticsRaw15M
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief computeStatisticsRaw15M
+// //////////////////////////////////////////////////////////////////////////////
 
 function computeStatisticsRaw15M (result, start, clusterId) {
-
-  var filter = "";
+  var filter = '';
 
   if (clusterId !== undefined) {
-    filter = " FILTER s.clusterId == @clusterId ";
+    filter = ' FILTER s.clusterId == @clusterId ';
   }
 
   var values = db._query(
-        "FOR s IN _statistics15 "
-      + "  FILTER s.time > @start "
-      +    filter
-      + "  SORT s.time "
-      + "  return s",
+    'FOR s IN _statistics15 '
+    + '  FILTER s.time > @start '
+    + filter
+    + '  SORT s.time '
+    + '  return s',
     { start: start - 2 * STATISTICS_HISTORY_INTERVAL, clusterId: clusterId });
 
   var lastRaw = null;
@@ -282,7 +276,7 @@ function computeStatisticsRaw15M (result, start, clusterId) {
 
     result.syncPerSecond15M = lastRaw.http.requestsTotalPerSecond - lastRaw.http.requestsAsyncPerSecond;
     result.syncPerSecond15MPercentChange
-      = percentChange2(lastRaw, lastRaw2, 'http', 'requestsTotalPerSecond', 'requestsAsyncPerSecond');
+    = percentChange2(lastRaw, lastRaw2, 'http', 'requestsTotalPerSecond', 'requestsAsyncPerSecond');
 
     result.clientConnections15M = lastRaw.client.httpConnections;
     result.clientConnections15MPercentChange = percentChange(lastRaw, lastRaw2, 'client', 'httpConnections');
@@ -309,12 +303,11 @@ function computeStatisticsRaw15M (result, start, clusterId) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computeStatisticsShort
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief computeStatisticsShort
+// //////////////////////////////////////////////////////////////////////////////
 
 function computeStatisticsShort (start, clusterId) {
-
   var result = {};
 
   computeStatisticsRaw(result, start, clusterId);
@@ -324,12 +317,11 @@ function computeStatisticsShort (start, clusterId) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computeStatisticsValues
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief computeStatisticsValues
+// //////////////////////////////////////////////////////////////////////////////
 
 function computeStatisticsValues (result, values, attrs) {
-
   var key;
 
   for (key in attrs) {
@@ -353,43 +345,42 @@ function computeStatisticsValues (result, values, attrs) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computeStatisticsLong
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief computeStatisticsLong
+// //////////////////////////////////////////////////////////////////////////////
 
 function computeStatisticsLong (attrs, clusterId) {
-
   var short = { times: [] };
 
-  var filter = "";
+  var filter = '';
 
   if (clusterId !== undefined) {
-    filter = " FILTER s.clusterId == @clusterId ";
+    filter = ' FILTER s.clusterId == @clusterId ';
   }
 
   var values = db._query(
-      "FOR s IN _statistics "
-    +    filter
-    + "  SORT s.time "
-      + "  return s",
+    'FOR s IN _statistics '
+    + filter
+    + '  SORT s.time '
+    + '  return s',
     { clusterId: clusterId });
 
   computeStatisticsValues(short, values, attrs);
 
-  var filter2 = "";
+  var filter2 = '';
   var end = 0;
 
   if (short.times.length !== 0) {
-    filter2 = " FILTER s.time < @end ";
+    filter2 = ' FILTER s.time < @end ';
     end = short.times[0];
   }
 
   values = db._query(
-    "FOR s IN _statistics15 "
-    +    filter
-    +    filter2
-    + "  SORT s.time "
-    + "  return s",
+    'FOR s IN _statistics15 '
+    + filter
+    + filter2
+    + '  SORT s.time '
+    + '  return s',
     { end: end, clusterId: clusterId });
 
   var long = { times: [] };
@@ -411,20 +402,17 @@ function computeStatisticsLong (attrs, clusterId) {
   return long;
 }
 
-
-
 actions.defineHttp({
-  url : "_admin/statistics/short",
-  prefix : false,
+  url: '_admin/statistics/short',
+  prefix: false,
 
-  callback : function (req, res) {
+  callback: function (req, res) {
     var start = req.parameters.start;
     var dbServer = req.parameters.DBserver;
 
     if (start !== null && start !== undefined) {
       start = parseFloat(start, 10);
-    }
-    else {
+    }else {
       start = internal.time() - STATISTICS_INTERVAL * 10;
     }
 
@@ -434,8 +422,7 @@ actions.defineHttp({
       if (cluster.isCluster()) {
         clusterId = ArangoServerState.id();
       }
-    }
-    else {
+    }else {
       clusterId = dbServer;
     }
 
@@ -446,19 +433,19 @@ actions.defineHttp({
 });
 
 actions.defineHttp({
-  url : "_admin/statistics/long",
-  prefix : false,
+  url: '_admin/statistics/long',
+  prefix: false,
 
-  callback : function (req, res) {
-    var filter = req.params("filter");
-    var dbServer = req.params("DBserver");
+  callback: function (req, res) {
+    var filter = req.params('filter');
+    var dbServer = req.params('DBserver');
 
     if (filter === undefined) {
       actions.resultError(req, res, actions.HTTP_BAD, "required parameter 'filter' was not given");
     }
 
     var attrs = {};
-    var s = filter.split(",");
+    var s = filter.split(',');
     var i;
 
     for (i = 0;  i < s.length;  ++i) {
@@ -471,8 +458,7 @@ actions.defineHttp({
       if (cluster.isCluster()) {
         clusterId = ArangoServerState.id();
       }
-    }
-    else {
+    }else {
       clusterId = dbServer;
     }
 

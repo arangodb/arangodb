@@ -33,8 +33,7 @@ namespace rest {
 
 class HttpsServer : public HttpServer {
  public:
-  HttpsServer(double keepAliveTimeout, std::string const& authenticationRealm,
-              bool allowMethodOverride,
+  HttpsServer(double keepAliveTimeout, bool allowMethodOverride,
               std::vector<std::string> const& accessControlAllowOrigins,
               SSL_CTX*);
   ~HttpsServer();

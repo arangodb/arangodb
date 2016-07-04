@@ -35,14 +35,6 @@
 
 struct TRI_document_collection_t;
 
-// Define search slice attribute names
-#define TRI_SLICE_KEY_EQUAL "eq"
-#define TRI_SLICE_KEY_IN "in"
-#define TRI_SLICE_KEY_LE "le"
-#define TRI_SLICE_KEY_LT "lt"
-#define TRI_SLICE_KEY_GE "ge"
-#define TRI_SLICE_KEY_GT "gt"
-
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +47,6 @@ class Slice;
 }
 
 namespace aql {
-class Ast;
 struct AstNode;
 class SortCondition;
 struct Variable;
@@ -377,7 +368,6 @@ class Index {
 
   virtual IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                               IndexIteratorContext*,
-                                              arangodb::aql::Ast*,
                                               arangodb::aql::AstNode const*,
                                               arangodb::aql::Variable const*,
                                               bool) const;

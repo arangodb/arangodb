@@ -4,12 +4,14 @@
 ## --SECTION--                                                  COMMON VARIABLES
 ## -----------------------------------------------------------------------------
 
+SRC=$(shell pwd |sed "s;.*/;;")
+
 .PHONY: warning help
 
 warning:
-	@echo "ArangoDB has switch to CMAKE. In order to compile, use:"
+	@echo "ArangoDB has switched to CMAKE. In order to compile, use:"
 	@echo ""
-	@echo "  mkdir build"
+	@echo "  mkdir -p build"
 	@echo "  cd build"
 	@echo "  cmake .. -DCMAKE_BUILD_TYPE=Release"
 	@echo "  make"
@@ -52,6 +54,10 @@ help:
 	@echo "  -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
 	@echo "    sets the location of the openssl includes and libraries"
 	@echo ""
+	@echo "JEMALLOC supports:"
+	@echo "  -DUSE_JEMALLOC=on"
+	@echo "    if ON, link against JEMALLOC"
+	@echo ""
 	@echo "TCMALLOC supports:"
 	@echo "  -DUSE_TCMALLOC=on"
 	@echo "    if ON, link against TCMALLOC"
@@ -66,11 +72,6 @@ help:
 	@echo "  -DAMD64=on"
 	@echo "    if ON, enables building amd64 assembly implementation"
 
-
-VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
-VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
-VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
-VERSION_PATCH := $(wordlist 1,1,$(subst -, ,$(VERSION_PATCH)))
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                     CMAKE & CPACK
@@ -90,24 +91,14 @@ pack-dmg:
 
 pack-dmg-cmake:
 	cd Build && cmake \
-		-D "BUILD_PACKAGE=dmg-cli" \
-		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-		-D "OPENSSL_INCLUDE=`brew --prefix`/opt/openssl/include" \
-		-D "OPENSSL_LIB_PATH=`brew --prefix`/opt/openssl/lib" \
-		-D "OPENSSL_LIBS=`brew --prefix`/opt/openssl/lib/libssl.a;`brew --prefix`/opt/openssl/lib/libcrypto.a" \
+		-D "USE_OPTIMIZE_FOR_ARCHITECTURE=Off" \
+		-D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
+		-D "CMAKE_OSX_DEPLOYMENT_TARGET=10.10" \
+		-D "CMAKE_INSTALL_PREFIX=/opt/arangodb" \
+		-D "OPENSSL_ROOT_DIR=`brew --prefix`/opt/openssl" \
 		..
 
-	${MAKE} ${BUILT_SOURCES}
-
-	test -d bin || mkdir bin
-
-	rm -f ./.file-list-js
 	cd Build && ${MAKE}
-
-	./Installation/file-copy-js.sh . Build
 
 	cd Build && cpack \
 		-G Bundle \
@@ -126,21 +117,15 @@ pack-macosxcode:
 	${MAKE} -f GNUMakefile pack-macosxcode-cmake MOREOPTS='$(MOREOPTS)'
 
 pack-macosxcode-cmake:
-	rm -f ./.file-list-js
 	cd Build && cmake \
-		-D "BUILD_PACKAGE=dmg-cli" \
-		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-		-D "OPENSSL_INCLUDE=`brew --prefix`/opt/openssl/include" \
-		-D "OPENSSL_LIB_PATH=`brew --prefix`/opt/openssl/lib" \
-		-D "OPENSSL_LIBS=`brew --prefix`/opt/openssl/lib/libssl.a;`brew --prefix`/opt/openssl/lib/libcrypto.a" \
+		-D "USE_OPTIMIZE_FOR_ARCHITECTURE=Off" \
+		-D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
+		-D "CMAKE_OSX_DEPLOYMENT_TARGET=10.10" \
+		-D "CMAKE_INSTALL_PREFIX=/opt/arangodb" \
+		-D "OPENSSL_ROOT_DIR=`brew --prefix`/opt/openssl" \
 		-G Xcode \
 		$(MOREOPTS) \
 		..
-
-	./Installation/file-copy-js.sh . Build
 
 
 ################################################################################
@@ -160,9 +145,6 @@ pack-macosx-cmake:
 	cd Build && cmake \
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "OPENSSL_INCLUDE=`brew --prefix`/opt/openssl/include" \
 		-D "OPENSSL_LIB_PATH=`brew --prefix`/opt/openssl/lib" \
 		-D "OPENSSL_LIBS=`brew --prefix`/opt/openssl/lib/libssl.a;`brew --prefix`/opt/openssl/lib/libcrypto.a" \
@@ -193,14 +175,10 @@ pack-arm:
 
 pack-arm-cmake:
 	cd Build && cmake \
-		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "BUILD_PACKAGE=raspbian" \
 		-D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		-D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "ETCDIR=${sysconfdir}" \
 		-D "VARDIR=${localstatedir}" \
 		$(MOREOPTS) \
@@ -219,13 +197,9 @@ pack-arm-cmake:
 pack-deb-cmake:
 	mkdir Build
 	cd Build && cmake \
-		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		-D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "ETCDIR=${sysconfdir}" \
 		-D "VARDIR=${localstatedir}" \
 		$(MOREOPTS) \
@@ -247,64 +221,57 @@ pack-deb-cmake:
 .PHONY: pack-win32 pack-winXX winXX-cmake win64-relative win64-relative-debug
 
 pack-win32: 
-	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12"
+	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 14" MOREOPTS='-D "V8_TARGET_ARCHS=Release"'
 
 pack-win64:
-	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64"
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "V8_TARGET_ARCHS=Release"'
 
 pack-win32-relative:
-	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 14" MOREOPTS='-D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON" -D "V8_TARGET_ARCHS=Debug"'
 
 pack-win64-relative:
-	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON" -D "V8_TARGET_ARCHS=Debug"' 
 
 win64-relative:
-	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON"'
+	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS='-D "V8_TARGET_ARCHS=Debug"'
 	$(MAKE) winXX-build BITS=64 BUILD_TARGET=RelWithDebInfo
 
 win64-relative-debug:
-	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 14 Win64" MOREOPTS=' -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON" -D "V8_TARGET_ARCHS=Debug"' 
 	$(MAKE) winXX-build BITS=64 BUILD_TARGET=Debug
 
 pack-winXX:
-	rm -rf Build$(BITS) && mkdir Build$(BITS)
+	rm -rf ../b && mkdir ../b
 
-	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
+	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=RelWithDebInfo
 	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=RelWithDebInfo
-	${MAKE} packXX BITS="$(BITS)"
+	${MAKE} packXX BITS="$(BITS)" BUILD_TARGET=RelWithDebInfo
 
 pack-winXX-MOREOPTS:
-	rm -rf Build$(BITS) && mkdir Build$(BITS)
+	rm -rf ../b && mkdir ../b
 
-	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`" MOREOPTS=$(MOREOPTS)
+	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" MOREOPTS=$(MOREOPTS)
 	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 	${MAKE} packXX BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 
-winXX-cmake: checkcmake
+winXX-cmake:
 	rm -f ./.file-list-js
-	cd Build$(BITS) && cmake \
+	cd ../b && cmake \
 		-G "$(TARGET)" \
-		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
 		-D "BUILD_TYPE=RelWithDebInfo" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-		-D "LIBEV_VERSION=4.11" \
-		-D "V8_VERSION=4.3.61" \
-		-D "ZLIB_VERSION=1.2.7" \
 		-D "BUILD_ID=${BUILD_ID}" \
 		$(MOREOPTS) \
-		..
+		../$(SRC)/
 
 winXX-build:
-	cp Installation/Windows/Icons/arangodb.ico Build$(BITS) 
-	cd Build$(BITS) && cmake --build . --config $(BUILD_TARGET)
+	cp Installation/Windows/Icons/arangodb.ico ../b
+	cd ../b && cmake --build . --config $(BUILD_TARGET)
 
 packXX:
-	./Installation/file-copy-js.sh . Build$(BITS)
+	if test ! -d ../b/js; then ./Installation/file-copy-js.sh . ../b; fi
+	cd ../b; rm -f ArangoDB-*.exe ArangoDB*.nsi
+	cd ../b && cpack -G NSIS -C $(BUILD_TARGET)
+	cd ../b && cpack -G ZIP  -C $(BUILD_TARGET)
 
-	cd Build$(BITS) && cpack -G NSIS -C $(BUILD_TARGET)
-	cd Build$(BITS) && cpack -G ZIP  -C $(BUILD_TARGET)
-
-	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
+	./Installation/Windows/installer-generator.sh $(BITS) ..\\b

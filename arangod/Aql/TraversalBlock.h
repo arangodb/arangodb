@@ -26,7 +26,11 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/TraversalNode.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/Traverser.h"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace aql {
@@ -36,9 +40,6 @@ class TraversalBlock : public ExecutionBlock {
   TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep);
 
   ~TraversalBlock();
-
-  /// @brief cleanup, here we clean up all internally generated values
-  void freeCaches();
 
   /// @brief initialize, here we fetch all docs from the database
   int initialize() override;
@@ -55,6 +56,10 @@ class TraversalBlock : public ExecutionBlock {
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
  private:
+
+  /// @brief cleanup, here we clean up all internally generated values
+  void freeCaches();
+
   /// @brief vertices buffer
   std::vector<arangodb::aql::AqlValue> _vertices;
 
@@ -105,9 +110,6 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief Register for the full path output
   RegisterId _pathReg;
 
-  /// @brief A collection name resolver required to identify vertex collections
-  arangodb::CollectionNameResolver* _resolver;
-
   /// @brief reference to the conditions that might be executed locally
   std::unordered_map<
       size_t, std::vector<arangodb::traverser::TraverserExpression*>> const*
@@ -148,6 +150,17 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief Executes the path-local filter expressions
   ///        Also determines the context
   void executeFilterExpressions();
+
+  /// @brief optimized version of neighbors search, must properly implement this
+  void neighbors(std::string const& startVertex);
+
+  /// @brief worker for neighbors() function
+  void runNeighbors(std::vector<VPackSlice> const& startVertices,
+                    std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual>& visited,
+                    std::vector<VPackSlice>& distinct,
+                    TRI_edge_direction_e direction,
+                    uint64_t depth);
+
 };
 }  // namespace arangodb::aql
 }  // namespace arangodb

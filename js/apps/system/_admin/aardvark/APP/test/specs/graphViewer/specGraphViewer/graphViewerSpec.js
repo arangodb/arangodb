@@ -1,122 +1,119 @@
-/*jshint unused: false */
-/*global beforeEach, afterEach */
-/*global describe, it, expect, jasmine, spyOn*/
-/*global waitsFor, runs, waits */
-/*global window, eb, loadFixtures, document */
-/*global $, _, d3*/
-/*global helper*/
-/*global GraphViewer, EdgeShaper, NodeShaper*/
+/* jshint unused: false */
+/* global beforeEach, afterEach */
+/* global describe, it, expect, jasmine, spyOn*/
+/* global waitsFor, runs, waits */
+/* global window, eb, loadFixtures, document */
+/* global $, _, d3*/
+/* global helper*/
+/* global GraphViewer, EdgeShaper, NodeShaper*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Graph functionality
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Graph functionality
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-
-describe("Graph Viewer", function() {
-  "use strict";
+describe('Graph Viewer', function () {
+  'use strict';
   var waittime = 500,
     svg,
     docSVG;
 
-  beforeEach(function() {
-    docSVG = document.createElement("svg");
-    docSVG.id = "outersvg";
+  beforeEach(function () {
+    docSVG = document.createElement('svg');
+    docSVG.id = 'outersvg';
     document.body.appendChild(docSVG);
-    svg = d3.select("svg");
+    svg = d3.select('svg');
     window.communicationMock(spyOn);
   });
 
-
-  afterEach(function() {
+  afterEach(function () {
     document.body.removeChild(docSVG);
   });
 
-  describe('set up process', function() {
-
-    it('should throw an error if the svg is not given or incorrect', function() {
+  describe('set up process', function () {
+    it('should throw an error if the svg is not given or incorrect', function () {
       expect(
-        function() {
+        function () {
           var t = new GraphViewer();
         }
-      ).toThrow("SVG has to be given and has to be selected using d3.select");
+      ).toThrow('SVG has to be given and has to be selected using d3.select');
       expect(
-        function() {
+        function () {
           var t = new GraphViewer(docSVG);
         }
-      ).toThrow("SVG has to be given and has to be selected using d3.select");
+      ).toThrow('SVG has to be given and has to be selected using d3.select');
     });
 
-    it('should throw an error if the width is not given or incorrect', function() {
+    it('should throw an error if the width is not given or incorrect', function () {
       expect(
-        function() {
+        function () {
           var t = new GraphViewer(svg);
         }
-      ).toThrow("A width greater 0 has to be given");
+      ).toThrow('A width greater 0 has to be given');
       expect(
-        function() {
+        function () {
           var t = new GraphViewer(svg, -10);
         }
-      ).toThrow("A width greater 0 has to be given");
+      ).toThrow('A width greater 0 has to be given');
     });
 
-    it('should throw an error if the height is not given or incorrect', function() {
+    it('should throw an error if the height is not given or incorrect', function () {
       expect(
-        function() {
+        function () {
           var t = new GraphViewer(svg, 10);
         }
-      ).toThrow("A height greater 0 has to be given");
+      ).toThrow('A height greater 0 has to be given');
       expect(
-        function() {
+        function () {
           var t = new GraphViewer(svg, 10, -10);
         }
-      ).toThrow("A height greater 0 has to be given");
+      ).toThrow('A height greater 0 has to be given');
     });
 
-    it('should throw an error if the adapterConfig is not given', function() {
+    it('should throw an error if the adapterConfig is not given', function () {
       expect(
-        function() {
+        function () {
           var t = new GraphViewer(svg, 10, 10);
         }
-      ).toThrow("An adapter configuration has to be given");
+      ).toThrow('An adapter configuration has to be given');
     });
 
-    it('should not throw an error if everything is given', function() {
-      var adapterConfig = {type: "json", path: "../test_data/"};
+    it('should not throw an error if everything is given', function () {
+      var adapterConfig = {type: 'json', path: '../test_data/'};
       expect(
-        function() {
+        function () {
           var t = new GraphViewer(svg, 10, 10, adapterConfig);
         }
       ).not.toThrow();
     });
 
-    it('should be able to be setup with a foxx adapter', function() {
-      var route = "foxx/route",
-        adapterConfig = {type: "foxx", route: route},
+    it('should be able to be setup with a foxx adapter', function () {
+      var route = 'foxx/route',
+        adapterConfig = {type: 'foxx', route: route},
         gv;
-      spyOn(window, "FoxxAdapter");
+      spyOn(window, 'FoxxAdapter');
       gv = new GraphViewer(svg, 10, 10, adapterConfig);
       expect(window.FoxxAdapter).wasCalledWith(
         jasmine.any(Array),
@@ -127,13 +124,13 @@ describe("Graph Viewer", function() {
       );
     });
 
-    it('should be able to be setup with a json adapter', function() {
-      var path = "json/path",
-        adapterConfig = {type: "json", path: path},
+    it('should be able to be setup with a json adapter', function () {
+      var path = 'json/path',
+        adapterConfig = {type: 'json', path: path},
         gv,
         width = 20,
         height = 10;
-      spyOn(window, "JSONAdapter");
+      spyOn(window, 'JSONAdapter');
       gv = new GraphViewer(svg, width, height, adapterConfig);
       expect(window.JSONAdapter).wasCalledWith(
         path,
@@ -145,13 +142,13 @@ describe("Graph Viewer", function() {
       );
     });
 
-    it('should be able to be setup with a arango adapter', function() {
-      var adapterConfig = {type: "arango"},
+    it('should be able to be setup with a arango adapter', function () {
+      var adapterConfig = {type: 'arango'},
         gv,
         width = 20,
         height = 10;
-      spyOn(window, "ArangoAdapter").andReturn({
-        setChildLimit: function(){
+      spyOn(window, 'ArangoAdapter').andReturn({
+        setChildLimit: function () {
           return undefined;
         }
       });
@@ -164,13 +161,13 @@ describe("Graph Viewer", function() {
       );
     });
 
-    it('should be able to be setup with a gharial adapter', function() {
-      var adapterConfig = {type: "gharial"},
+    it('should be able to be setup with a gharial adapter', function () {
+      var adapterConfig = {type: 'gharial'},
         gv,
         width = 20,
         height = 10;
-      spyOn(window, "GharialAdapter").andReturn({
-        setChildLimit: function(){
+      spyOn(window, 'GharialAdapter').andReturn({
+        setChildLimit: function () {
           return undefined;
         }
       });
@@ -183,10 +180,10 @@ describe("Graph Viewer", function() {
       );
     });
 
-    it('should be able to be setup with a preview adapter', function() {
-      var adapterConfig = {type: "preview"},
+    it('should be able to be setup with a preview adapter', function () {
+      var adapterConfig = {type: 'preview'},
         gv;
-      spyOn(window, "PreviewAdapter");
+      spyOn(window, 'PreviewAdapter');
       gv = new GraphViewer(svg, 10, 10, adapterConfig);
       expect(window.PreviewAdapter).wasCalledWith(
         jasmine.any(Array),
@@ -196,27 +193,27 @@ describe("Graph Viewer", function() {
       );
     });
 
-    it('should throw an error if initialized with an invalid adapter', function() {
-      var adapterConfig = {type: "unknown"};
-      expect(function() {
+    it('should throw an error if initialized with an invalid adapter', function () {
+      var adapterConfig = {type: 'unknown'};
+      expect(function () {
         var gv = new GraphViewer(svg, 10, 10, adapterConfig);
-      }).toThrow("Sorry unknown adapter type.");
+      }).toThrow('Sorry unknown adapter type.');
     });
 
-    describe("layouter config", function() {
+    describe('layouter config', function () {
       var adapterConfig;
 
-      beforeEach(function() {
-        adapterConfig = {type: "json", path: "../test_data/"};
+      beforeEach(function () {
+        adapterConfig = {type: 'json', path: '../test_data/'};
       });
 
-      it("should support a force layout", function() {
-        spyOn(window, "ForceLayouter").andCallThrough();
+      it('should support a force layout', function () {
+        spyOn(window, 'ForceLayouter').andCallThrough();
         var viewer = new GraphViewer(svg, 10, 10, adapterConfig, {
-          layouter: {type: "force"}
+          layouter: {type: 'force'}
         });
         expect(window.ForceLayouter).toHaveBeenCalledWith({
-          type: "force",
+          type: 'force',
           nodes: [],
           links: [],
           width: 10,
@@ -224,48 +221,45 @@ describe("Graph Viewer", function() {
         });
       });
 
-      it("should throw an error for unknown layouts", function() {
-        expect(function() {
+      it('should throw an error for unknown layouts', function () {
+        expect(function () {
           var t = new GraphViewer(svg, 10, 10, adapterConfig, {
-            layouter: {type: "unkown"}
+            layouter: {type: 'unkown'}
           });
-        }).toThrow("Sorry unknown layout type.");
-
+        }).toThrow('Sorry unknown layout type.');
       });
     });
-
   });
 
-  describe('set up correctly', function() {
-
+  describe('set up correctly', function () {
     var viewer, adapterConfig;
 
-    beforeEach(function() {
-      adapterConfig = {type: "json", path: "../test_data/"};
+    beforeEach(function () {
+      adapterConfig = {type: 'json', path: '../test_data/'};
       viewer = new GraphViewer(svg, 10, 10, adapterConfig);
     });
 
-    it('should offer the nodeShaper', function() {
+    it('should offer the nodeShaper', function () {
       expect(viewer.nodeShaper).toBeDefined();
     });
 
-    it('should offer the edgeShaper', function() {
+    it('should offer the edgeShaper', function () {
       expect(viewer.edgeShaper).toBeDefined();
     });
 
-    it('should offer the startFunction', function() {
+    it('should offer the startFunction', function () {
       expect(viewer.start).toBeDefined();
     });
 
-    it('should offer the adapter', function() {
+    it('should offer the adapter', function () {
       expect(viewer.adapter).toBeDefined();
     });
 
-    it('should offer the layouter', function() {
+    it('should offer the layouter', function () {
       expect(viewer.layouter).toBeDefined();
     });
 
-    it('should offer the complete config for the event dispatcher', function() {
+    it('should offer the complete config for the event dispatcher', function () {
       expect(viewer.dispatcherConfig).toBeDefined();
       expect(viewer.dispatcherConfig).toEqual({
         expand: {
@@ -307,34 +301,34 @@ describe("Graph Viewer", function() {
       });
     });
 
-    it('should offer to load a new graph', function() {
+    it('should offer to load a new graph', function () {
       expect(viewer.loadGraph).toBeDefined();
     });
 
-    it('should offer to load a new graph by attribute value', function() {
+    it('should offer to load a new graph by attribute value', function () {
       expect(viewer.loadGraphWithAttributeValue).toBeDefined();
     });
 
-    it("should offer a function for cleanUp", function() {
+    it('should offer a function for cleanUp', function () {
       expect(viewer.cleanUp).toBeDefined();
     });
 
-    it("should be able to load a root node", function() {
-      runs (function() {
+    it('should be able to load a root node', function () {
+      runs(function () {
         this.addMatchers({
-          toBeDisplayed: function() {
+          toBeDisplayed: function () {
             var nodes = this.actual,
-            nonDisplayed = [];
-            this.message = function(){
-              var msg = "Nodes: [";
-              _.each(nonDisplayed, function(n) {
-                msg += n + " ";
+              nonDisplayed = [];
+            this.message = function () {
+              var msg = 'Nodes: [';
+              _.each(nonDisplayed, function (n) {
+                msg += n + ' ';
               });
-              msg += "] are not displayed.";
+              msg += '] are not displayed.';
               return msg;
             };
-            _.each(nodes, function(n) {
-              if ($("svg #" + n)[0] === undefined) {
+            _.each(nodes, function (n) {
+              if ($('svg #' + n)[0] === undefined) {
                 nonDisplayed.push(n);
               }
             });
@@ -348,41 +342,41 @@ describe("Graph Viewer", function() {
       // Unfortunately there is no handle to check for changes
       waits(waittime);
 
-      runs(function() {
+      runs(function () {
         expect([0, 1, 2, 3, 4]).toBeDisplayed();
       });
     });
 
-    /*
-    it("should change the width of all elements", function() {
-      var width = 500;
-      spyOn(viewer.layouter, "changeWidth");
-      spyOn(viewer.zoomManager, "changeWidth");
-      spyOn(viewer.adapter, "setWidth");
-      viewer.changeWidth(width);
-      expect(viewer.layouter.changeWidth).toHaveBeenCalledWith(width);
-      expect(viewer.zoomManager.changeWidth).toHaveBeenCalledWith(width);
-      expect(viewer.adapter.setWidth).toHaveBeenCalledWith(width);
-    });
-    */
+  /*
+  it("should change the width of all elements", function() {
+    var width = 500
+    spyOn(viewer.layouter, "changeWidth")
+    spyOn(viewer.zoomManager, "changeWidth")
+    spyOn(viewer.adapter, "setWidth")
+    viewer.changeWidth(width)
+    expect(viewer.layouter.changeWidth).toHaveBeenCalledWith(width)
+    expect(viewer.zoomManager.changeWidth).toHaveBeenCalledWith(width)
+    expect(viewer.adapter.setWidth).toHaveBeenCalledWith(width)
+  })
+  */
   });
 
-  describe('set up to support zoom', function() {
+  describe('set up to support zoom', function () {
     var viewer, adapterConfig;
 
-    beforeEach(function() {
+    beforeEach(function () {
       if (window.ZoomManager === undefined) {
         window.ZoomManager = {};
       }
-      spyOn(window, "ZoomManager").andCallThrough();
-      adapterConfig = {type: "json", path: "../test_data/"};
+      spyOn(window, 'ZoomManager').andCallThrough();
+      adapterConfig = {type: 'json', path: '../test_data/'};
       var config = {
         zoom: true
       };
       viewer = new GraphViewer(svg, 42, 13, adapterConfig, config);
     });
 
-    it('should set up the zoom manager', function() {
+    it('should set up the zoom manager', function () {
       expect(window.ZoomManager).toHaveBeenCalledWith(
         42,
         13,
@@ -395,30 +389,27 @@ describe("Graph Viewer", function() {
       );
     });
 
-    it('should trigger the adapter if zoom level is changed', function() {
-      spyOn(viewer.adapter, "setNodeLimit");
-      helper.simulateScrollUpMouseEvent("outersvg");
+    it('should trigger the adapter if zoom level is changed', function () {
+      spyOn(viewer.adapter, 'setNodeLimit');
+      helper.simulateScrollUpMouseEvent('outersvg');
       expect(viewer.adapter.setNodeLimit).wasCalled();
     });
 
-    it('should trigger the start function if node limit is reduced to far', function() {
-      spyOn(viewer.adapter, "setNodeLimit").andCallFake(function(l, callback) {
+    it('should trigger the start function if node limit is reduced to far', function () {
+      spyOn(viewer.adapter, 'setNodeLimit').andCallFake(function (l, callback) {
         callback();
       });
-      spyOn(viewer, "start");
-      helper.simulateScrollUpMouseEvent("outersvg");
+      spyOn(viewer, 'start');
+      helper.simulateScrollUpMouseEvent('outersvg');
       expect(viewer.start).wasCalled();
     });
 
-    it("should trigger colourlist resets on the shapers on cleanup", function() {
-      spyOn(viewer.edgeShaper, "resetColourMap");
-      spyOn(viewer.nodeShaper, "resetColourMap");
+    it('should trigger colourlist resets on the shapers on cleanup', function () {
+      spyOn(viewer.edgeShaper, 'resetColourMap');
+      spyOn(viewer.nodeShaper, 'resetColourMap');
       viewer.cleanUp();
       expect(viewer.edgeShaper.resetColourMap).toHaveBeenCalled();
       expect(viewer.nodeShaper.resetColourMap).toHaveBeenCalled();
     });
-
   });
-
-
 });

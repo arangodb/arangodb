@@ -1,36 +1,36 @@
-/*jshint strict: false, sub: true */
-/*global print */
+/* jshint strict: false, sub: true */
+/* global print */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// //////////////////////////////////////////////////////////////////////////////
 
-const internal = require("internal");
-const fs = require("fs");
-const tasks = require("org/arangodb/tasks");
+const internal = require('internal');
+const fs = require('fs');
+const tasks = require('org/arangodb/tasks');
 
-const _ = require("lodash");
+const _ = require('lodash');
 
-const executeExternalAndWait = require("internal").executeExternalAndWait;
+const executeExternalAndWait = require('internal').executeExternalAndWait;
 
 const db = internal.db;
 const sleep = internal.sleep;
@@ -38,32 +38,32 @@ const sleep = internal.sleep;
 const optsDefault = {
   duration: 60, // in minutes
   gnuplot: false,
-  results: "results",
-  runId: "run"
+  results: 'results',
+  runId: 'run'
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create image using gnuplot
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create image using gnuplot
+// //////////////////////////////////////////////////////////////////////////////
 
-function gnuplot() {
-  executeExternalAndWait("gnuplot", "out/kills.plot");
+function gnuplot () {
+  executeExternalAndWait('gnuplot', 'out/kills.plot');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief statistics generator
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief statistics generator
+// //////////////////////////////////////////////////////////////////////////////
 
 let statisticsInitialized = false;
 
-const killsLog = fs.join("out", "kills.csv");
-const types = ["inserter", "updater", "remover", "killer"];
+const killsLog = fs.join('out', 'kills.csv');
+const types = ['inserter', 'updater', 'remover', 'killer'];
 
-function statistics(opts) {
+function statistics (opts) {
   if (!statisticsInitialized) {
-    fs.makeDirectoryRecursive("out");
+    fs.makeDirectoryRecursive('out');
 
-    fs.write(killsLog, "# " + types.join("\t") + "\n");
+    fs.write(killsLog, '# ' + types.join('\t') + '\n');
 
     statisticsInitialized = true;
   }
@@ -95,14 +95,14 @@ function statistics(opts) {
     }
   }
 
-  fs.append(killsLog, line.join("\t") + "\n");
+  fs.append(killsLog, line.join('\t') + '\n');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief INSERTER
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief INSERTER
+// //////////////////////////////////////////////////////////////////////////////
 
-exports.inserter = function(opts) {
+exports.inserter = function (opts) {
   const runId = opts.runId;
 
   const duration = opts.duration;
@@ -122,7 +122,7 @@ exports.inserter = function(opts) {
     finished: false,
     startDate: start,
     endDate: end,
-    type: "inserter",
+    type: 'inserter',
     statistics: {
       count: 0,
       success: 0,
@@ -133,7 +133,7 @@ exports.inserter = function(opts) {
   let count = 0;
   let success = 0;
   let failures = 0;
-  let lastErr = "";
+  let lastErr = '';
 
   while (true) {
     ++count;
@@ -163,8 +163,7 @@ exports.inserter = function(opts) {
       db._query({
         query: q,
         bindVars: {
-          c
-        }
+        c}
       });
 
       ++success;
@@ -191,11 +190,11 @@ exports.inserter = function(opts) {
   });
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief UPDATER
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief UPDATER
+// //////////////////////////////////////////////////////////////////////////////
 
-exports.updater = function(opts) {
+exports.updater = function (opts) {
   const runId = opts.runId;
 
   const duration = opts.duration;
@@ -215,7 +214,7 @@ exports.updater = function(opts) {
     finished: false,
     startDate: start,
     endDate: end,
-    type: "updater",
+    type: 'updater',
     statistics: {
       count: 0,
       success: 0,
@@ -226,7 +225,7 @@ exports.updater = function(opts) {
   let count = 0;
   let success = 0;
   let failures = 0;
-  let lastErr = "";
+  let lastErr = '';
 
   while (true) {
     ++count;
@@ -253,8 +252,7 @@ exports.updater = function(opts) {
       db._query({
         query: q,
         bindVars: {
-          c
-        }
+        c}
       });
 
       success++;
@@ -281,11 +279,11 @@ exports.updater = function(opts) {
   });
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief REOMVER
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief REOMVER
+// //////////////////////////////////////////////////////////////////////////////
 
-exports.remover = function(opts) {
+exports.remover = function (opts) {
   const runId = opts.runId;
 
   const duration = opts.duration;
@@ -305,7 +303,7 @@ exports.remover = function(opts) {
     finished: false,
     startDate: start,
     endDate: end,
-    type: "remover",
+    type: 'remover',
     statistics: {
       count: 0,
       success: 0,
@@ -316,7 +314,7 @@ exports.remover = function(opts) {
   let count = 0;
   let success = 0;
   let failures = 0;
-  let lastErr = "";
+  let lastErr = '';
 
   while (true) {
     ++count;
@@ -343,8 +341,7 @@ exports.remover = function(opts) {
       db._query({
         query: q,
         bindVars: {
-          c
-        }
+        c}
       });
 
       success++;
@@ -371,11 +368,11 @@ exports.remover = function(opts) {
   });
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief KILLER
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief KILLER
+// //////////////////////////////////////////////////////////////////////////////
 
-exports.killer = function(opts) {
+exports.killer = function (opts) {
   const runId = opts.runId;
 
   const duration = opts.duration;
@@ -395,7 +392,7 @@ exports.killer = function(opts) {
     finished: false,
     startDate: start,
     endDate: end,
-    type: "killer",
+    type: 'killer',
     statistics: {
       count: 0,
       success: 0,
@@ -406,9 +403,9 @@ exports.killer = function(opts) {
   let count = 0;
   let success = 0;
   let failures = 0;
-  let lastErr = "";
+  let lastErr = '';
 
-  const queries = require("org/arangodb/aql/queries");
+  const queries = require('org/arangodb/aql/queries');
 
   while (true) {
     ++count;
@@ -423,8 +420,8 @@ exports.killer = function(opts) {
       });
     }
 
-    queries.current().forEach(function(q) {
-      if (q.query.indexOf("edges") !== -1) {
+    queries.current().forEach(function (q) {
+      if (q.query.indexOf('edges') !== -1) {
         try {
           queries.kill(q.id);
           success++;
@@ -455,22 +452,22 @@ exports.killer = function(opts) {
   });
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief killing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief killing
+// //////////////////////////////////////////////////////////////////////////////
 
-exports.killingParallel = function(opts) {
+exports.killingParallel = function (opts) {
   _.defaults(opts, optsDefault);
 
   // start time
   opts.startTime = new Date();
 
   // create the test collections
-  db._drop("edges");
-  db._createEdgeCollection("edges");
+  db._drop('edges');
+  db._createEdgeCollection('edges');
 
-  db._drop("posts");
-  db._create("posts");
+  db._drop('posts');
+  db._create('posts');
 
   // create the "results" collection
   const results = opts.results;
@@ -478,21 +475,21 @@ exports.killingParallel = function(opts) {
   db._create(results);
 
   // create output directory
-  fs.makeDirectoryRecursive("out");
+  fs.makeDirectoryRecursive('out');
 
   // start worker
   const w = [
-    function(params) {
-      require("./js/server/tests/stress/killingQueries").inserter(params);
+    function (params) {
+      require('./js/server/tests/stress/killingQueries').inserter(params);
     },
-    function(params) {
-      require("./js/server/tests/stress/killingQueries").updater(params);
+    function (params) {
+      require('./js/server/tests/stress/killingQueries').updater(params);
     },
-    function(params) {
-      require("./js/server/tests/stress/killingQueries").remover(params);
+    function (params) {
+      require('./js/server/tests/stress/killingQueries').remover(params);
     },
-    function(params) {
-      require("./js/server/tests/stress/killingQueries").killer(params);
+    function (params) {
+      require('./js/server/tests/stress/killingQueries').killer(params);
     }
   ];
 
@@ -500,11 +497,11 @@ exports.killingParallel = function(opts) {
     const cmd = w[i];
     let o = JSON.parse(JSON.stringify(opts));
 
-    o.runId = "run_" + i;
+    o.runId = 'run_' + i;
 
     tasks.register({
-      id: "stress" + i,
-      name: "stress test " + i,
+      id: 'stress' + i,
+      name: 'stress test ' + i,
       offset: i,
       params: o,
       command: cmd
@@ -512,12 +509,12 @@ exports.killingParallel = function(opts) {
   }
 
   // wait for a result
-  const countDone = function() {
-    const a = db._query("FOR u IN @@results FILTER u.finished RETURN 1", {
+  const countDone = function () {
+    const a = db._query('FOR u IN @@results FILTER u.finished RETURN 1', {
       '@results': 'results'
     });
 
-    const b = db._query("FOR u IN @@results FILTER u.started RETURN 1", {
+    const b = db._query('FOR u IN @@results FILTER u.started RETURN 1', {
       '@results': 'results'
     });
 
@@ -527,11 +524,11 @@ exports.killingParallel = function(opts) {
   let m = 0;
 
   for (let i = 0; i < 10; ++i) {
-    m = db._query("FOR u IN @@results FILTER u.started RETURN 1", {
+    m = db._query('FOR u IN @@results FILTER u.started RETURN 1', {
       '@results': 'results'
     }).count();
 
-    print(m + " workers are up and running");
+    print(m + ' workers are up and running');
 
     if (m === w.length) {
       break;
@@ -541,13 +538,13 @@ exports.killingParallel = function(opts) {
   }
 
   if (m < w.length) {
-    print("cannot start enough workers (want", w.length + ",", "got", m + "),",
-      "please check number V8 contexts");
-    throw new Error("cannot start workers");
+    print('cannot start enough workers (want', w.length + ',', 'got', m + '),',
+      'please check number V8 contexts');
+    throw new Error('cannot start workers');
   }
 
   if (opts.gnuplot) {
-    fs.write(fs.join("out", "kills.plot"),
+    fs.write(fs.join('out', 'kills.plot'),
       `
 set terminal png size 1024,1024
 set size ratio 0.3
@@ -593,7 +590,7 @@ plot \
     statistics(opts);
 
     if (opts.gnuplot && count % 6 === 0) {
-      print("generating image");
+      print('generating image');
       gnuplot();
     }
 

@@ -140,7 +140,7 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request,
                                                GeneralResponse* response)
     : RestBaseHandler(request, response),
       _context(static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context->getVocbase()),
+      _vocbase(_context->vocbase()),
       _nolockHeaderSet(nullptr) {}
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
@@ -209,18 +209,23 @@ void RestVocbaseBaseHandler::generate20x(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type, VPackOptions const* options) {
   VPackSlice slice = result.slice();
-  TRI_ASSERT(slice.isObject() || slice.isArray());
-  if (slice.isObject()) {
-    _response->setHeaderNC(
-        StaticStrings::Etag,
-        "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
-    // pre 1.4 location headers withdrawn for >= 3.0
-    std::string escapedHandle(assembleDocumentId(
-        collectionName, slice.get(StaticStrings::KeyString).copyString(),
-        true));
-    _response->setHeaderNC(StaticStrings::Location,
-                           std::string("/_db/" + _request->databaseName() +
-                                       DOCUMENT_PATH + "/" + escapedHandle));
+  if (slice.isNone()) {
+    // will happen if silent == true
+    slice = VelocyPackHelper::EmptyObjectValue(); 
+  } else {
+    TRI_ASSERT(slice.isObject() || slice.isArray());
+    if (slice.isObject()) {
+      _response->setHeaderNC(
+          StaticStrings::Etag,
+          "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
+      // pre 1.4 location headers withdrawn for >= 3.0
+      std::string escapedHandle(assembleDocumentId(
+          collectionName, slice.get(StaticStrings::KeyString).copyString(),
+          true));
+      _response->setHeaderNC(StaticStrings::Location,
+                            std::string("/_db/" + _request->databaseName() +
+                                        DOCUMENT_PATH + "/" + escapedHandle));
+    }
   }
 
   writeResult(slice, *options);
@@ -278,7 +283,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   }
 
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
-  writeResult(builder.slice(), *(transactionContext->getVPackOptions()));
+  writeResult(builder.slice(), *(transactionContext->getVPackOptionsForDump()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -638,28 +643,27 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
 
 std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     VPackOptions const* options, bool& success) {
-  // TODO needs to generalized
-  auto request = dynamic_cast<HttpRequest*>(_request);
-
-  if (request == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
-  bool found;
-  std::string const& contentType =
-      _request->header(StaticStrings::ContentTypeHeader, found);
-
   try {
     success = true;
 
-    if (found && contentType == StaticStrings::MimeTypeVPack) {
-      VPackSlice slice{request->body().c_str()};
+#if 0
+    // currently deactivated...
+    bool found;
+    std::string const& contentType =
+        _request->header(StaticStrings::ContentTypeHeader, found);
+
+    if (found && contentType.size() == StaticStrings::MimeTypeVPack.size() &&
+        contentType == StaticStrings::MimeTypeVPack) {
+      VPackSlice slice{_request->body().c_str()};
       auto builder = std::make_shared<VPackBuilder>(options);
       builder->add(slice);
       return builder;
     } else {
       return _request->toVelocyPack(options);
     }
+#else
+    return _request->toVelocyPack(options);
+#endif
   } catch (std::bad_alloc const&) {
     generateOOMError();
   } catch (VPackException const& e) {

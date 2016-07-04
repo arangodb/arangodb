@@ -114,7 +114,7 @@ class SimpleAttributeEqualityMatcher {
   /// @brief array of attributes used for comparisons
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::vector<arangodb::basics::AttributeName>> const _attributes;
+  std::vector<std::vector<arangodb::basics::AttributeName>> const& _attributes;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief an internal map to mark which condition parts were useful and

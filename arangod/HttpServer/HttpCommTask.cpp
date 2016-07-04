@@ -53,8 +53,7 @@ size_t const HttpCommTask::RunCompactEvery = 500;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
-                           ConnectionInfo&& info, double keepAliveTimeout,
-                           std::string const& authenticationRealm)
+                           ConnectionInfo&& info, double keepAliveTimeout)
     : Task("HttpCommTask"),
       SocketTask(socket, keepAliveTimeout),
       _connectionInfo(std::move(info)),
@@ -81,8 +80,7 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
       _startPosition(0),
       _sinceCompactification(0),
       _originalBodyLength(0),
-      _setupDone(false),
-      _authenticationRealm(authenticationRealm) {
+      _setupDone(false) {
   LOG(TRACE) << "connection established, client "
              << TRI_get_fd_or_handle_of_socket(socket) << ", server ip "
              << _connectionInfo.serverAddress << ", server port "
@@ -155,20 +153,6 @@ void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
     resetState(true);
     addResponse(&response);
   }
-}
-
-std::string HttpCommTask::authenticationRealm() const {
-  auto context = (_request == nullptr) ? nullptr : _request->requestContext();
-
-  if (context != nullptr) {
-    auto realm = context->realm();
-
-    if (!realm.empty()) {
-      return _authenticationRealm + "/" + realm;
-    }
-  }
-
-  return _authenticationRealm;
 }
 
 GeneralResponse::ResponseCode HttpCommTask::authenticateRequest() {
@@ -279,8 +263,6 @@ bool HttpCommTask::processRead() {
           _connectionInfo, _readBuffer->c_str() + _startPosition,
           _readPosition - _startPosition, _allowMethodOverride);
 
-      RestServerFeature::HANDLER_FACTORY->setRequestContext(_request);
-
       if (_request == nullptr) {
         LOG(ERR) << "cannot generate request";
 
@@ -289,6 +271,7 @@ bool HttpCommTask::processRead() {
         return false;
       }
 
+      RestServerFeature::HANDLER_FACTORY->setRequestContext(_request);
       _request->setClientTaskId(_taskId);
 
       // check HTTP protocol version
@@ -560,11 +543,10 @@ bool HttpCommTask::processRead() {
   // not authenticated
   else {
     HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED);
+    std::string realm =
+      "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
 
-    if (sendWwwAuthenticateHeader()) {
-      std::string realm = "basic realm=\"" + authenticationRealm() + "\"";
-      response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
-    }
+    response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
 
     clearRequest();
     handleResponse(&response);
@@ -990,17 +972,6 @@ void HttpCommTask::resetState(bool close) {
   _startThread = false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decides whether or not we should send back a www-authenticate header
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpCommTask::sendWwwAuthenticateHeader() const {
-  bool found;
-  _request->header(StaticStrings::OmitWwwAuthenticate, found);
-
-  return !found;
-}
-
 bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {
   bool ok = SocketTask::setup(scheduler, loop);
 
@@ -1064,8 +1035,6 @@ void HttpCommTask::signalTask(TaskData* data) {
       finishedChunked();
     } else {
       StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
-
-      TRI_ASSERT(buffer != nullptr);
 
       buffer->appendHex(len);
       buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));

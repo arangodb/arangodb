@@ -135,7 +135,7 @@ If the query specification is complete, the server will process the query. If an
 error occurs during query processing, the server will respond with *HTTP 400*.
 Again, the body of the response will contain details about the error.
 
-A [list of query errors can be found here](../ErrorCodes/README.md).
+A [list of query errors can be found here](../../Manual/Appendix/ErrorCodes.html).
 
 
 @RESTRETURNCODE{404}

@@ -1,26 +1,26 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const joinPath = require('path').posix.join;
@@ -36,154 +36,149 @@ const validation = require('@arangodb/foxx/router/validation');
 const $_ROUTES = Symbol.for('@@routes'); // routes and child routers
 const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware
 
+module.exports =
+  class Tree {
+    constructor (context, router) {
+      this.context = context;
+      this.router = router;
+      this.root = new Map();
 
-module.exports = class Tree {
-  constructor(context, router) {
-    this.context = context;
-    this.router = router;
-    this.root = new Map();
-
-    for (const middleware of router._middleware) {
-      let node = this.root;
-      for (const token of middleware._pathTokens) {
-        if (!node.has(token)) {
-          node.set(token, new Map());
-        }
-        node = node.get(token);
-      }
-      if (!node.has($_MIDDLEWARE)) {
-        node.set($_MIDDLEWARE, []);
-      }
-      node.get($_MIDDLEWARE).push(middleware);
-    }
-
-    for (const route of router._routes) {
-      let node = this.root;
-      for (const token of route._pathTokens) {
-        if (!node.has(token)) {
-          node.set(token, new Map());
-        }
-        node = node.get(token);
-      }
-      if (!node.has($_ROUTES)) {
-        node.set($_ROUTES, []);
-      }
-      node.get($_ROUTES).push(route);
-      if (route.router) {
-        route.tree = new Tree(context, route.router);
-      }
-    }
-  }
-
-  *findRoutes(suffix) {
-    const result = [{router: this.router, path: [], suffix: suffix}];
-    for (const route of findRoutes(this.root, result, suffix, [])) {
-      yield route;
-    }
-  }
-
-  *flatten() {
-    for (const route of flatten(this.root, [this.router])) {
-      yield route;
-    }
-  }
-
-  resolve(rawReq) {
-    const method = rawReq.requestType;
-    let error;
-
-    for (const route of this.findRoutes(rawReq.suffix)) {
-      const endpoint = route[route.length - 1].endpoint;
-
-      try {
-        applyPathParams(route);
-      } catch (e) {
-        if (!error) {
-          error = Object.assign(
-            new httperr.NotFound(),
-            {cause: e}
-          );
-        }
-        continue;
-      }
-
-      if (endpoint._methods.indexOf(method) === -1) {
-        error = Object.assign(
-          new httperr.MethodNotAllowed(),
-          {methods: endpoint._methods}
-        );
-        continue;
-      }
-
-      return route;
-    }
-
-    if (error) {
-      throw error;
-    }
-  }
-
-  dispatch(rawReq, rawRes) {
-    const route = this.resolve(rawReq);
-
-    if (!route) {
-      return false;
-    }
-
-    const req = new SyntheticRequest(rawReq, this.context);
-    const res = new SyntheticResponse(rawRes, this.context);
-    dispatch(route, req, res);
-
-    return true;
-  }
-
-  buildSwaggerPaths() {
-    const paths = {};
-    for (const route of this.flatten()) {
-      const parts = [];
-      const swagger = new SwaggerContext();
-      let i = 0;
-      for (const item of route) {
-        if (item.router) {
-          swagger._merge(item, true);
-          if (item.router) {
-            swagger._merge(item.router);
+      for (const middleware of router._middleware) {
+        let node = this.root;
+        for (const token of middleware._pathTokens) {
+          if (!node.has(token)) {
+            node.set(token, new Map());
           }
-        } else {
-          swagger._merge(item);
-          swagger._methods = item._methods;
+          node = node.get(token);
         }
-      }
-      for (let token of swagger._pathTokens) {
-        if (token === tokenize.PARAM) {
-          token = `{${swagger._pathParamNames[i]}}`;
-          i++;
-        } else if (token === tokenize.WILDCARD) {
-          token = '*';
+        if (!node.has($_MIDDLEWARE)) {
+          node.set($_MIDDLEWARE, []);
         }
-        if (typeof token === 'string') {
-          parts.push(token);
+        node.get($_MIDDLEWARE).push(middleware);
+      }
+
+      for (const route of router._routes) {
+        let node = this.root;
+        for (const token of route._pathTokens) {
+          if (!node.has(token)) {
+            node.set(token, new Map());
+          }
+          node = node.get(token);
         }
-      }
-      const path = '/' + parts.join('/');
-      if (!paths[path]) {
-        paths[path] = {};
-      }
-      const pathItem = paths[path];
-      const operation = swagger._buildOperation();
-      for (let method of swagger._methods) {
-        method = method.toLowerCase();
-        if (!pathItem[method]) {
-          pathItem[method] = operation;
+        if (!node.has($_ROUTES)) {
+          node.set($_ROUTES, []);
+        }
+        node.get($_ROUTES).push(route);
+        if (route.router) {
+          route.tree = new Tree(context, route.router);
         }
       }
     }
-    return paths;
-  }
+
+    * findRoutes (suffix) {
+      const result = [{router: this.router, path: [], suffix: suffix}];
+      yield* findRoutes(this.root, result, suffix, []);
+    }
+
+    * flatten () {
+      yield* flatten(this.root, [this.router]);
+    }
+
+    resolve (rawReq) {
+      const method = rawReq.requestType;
+      let error;
+
+      for (const route of this.findRoutes(rawReq.suffix)) {
+        const endpoint = route[route.length - 1].endpoint;
+
+        try {
+          applyPathParams(route);
+        } catch (e) {
+          if (!error) {
+            error = Object.assign(
+              new httperr.NotFound(),
+              {cause: e}
+            );
+          }
+          continue;
+        }
+
+        if (endpoint._methods.indexOf(method) === -1) {
+          error = Object.assign(
+            new httperr.MethodNotAllowed(),
+            {methods: endpoint._methods}
+          );
+          continue;
+        }
+
+        return route;
+      }
+
+      if (error) {
+        throw error;
+      }
+    }
+
+    dispatch (rawReq, rawRes) {
+      const route = this.resolve(rawReq);
+
+      if (!route) {
+        return false;
+      }
+
+      const req = new SyntheticRequest(rawReq, this.context);
+      const res = new SyntheticResponse(rawRes, this.context);
+      dispatch(route, req, res);
+
+      return true;
+    }
+
+    buildSwaggerPaths () {
+      const paths = {};
+      for (const route of this.flatten()) {
+        const parts = [];
+        const swagger = new SwaggerContext();
+        let i = 0;
+        for (const item of route) {
+          if (item.router) {
+            swagger._merge(item, true);
+            if (item.router) {
+              swagger._merge(item.router);
+            }
+          } else {
+            swagger._merge(item);
+            swagger._methods = item._methods;
+          }
+        }
+        for (let token of swagger._pathTokens) {
+          if (token === tokenize.PARAM) {
+            token = `{${swagger._pathParamNames[i]}}`;
+            i++;
+          } else if (token === tokenize.WILDCARD) {
+            token = '*';
+          }
+          if (typeof token === 'string') {
+            parts.push(token);
+          }
+        }
+        const path = '/' + parts.join('/');
+        if (!paths[path]) {
+          paths[path] = {};
+        }
+        const pathItem = paths[path];
+        const operation = swagger._buildOperation();
+        for (let method of swagger._methods) {
+          method = method.toLowerCase();
+          if (!pathItem[method]) {
+            pathItem[method] = operation;
+          }
+        }
+      }
+      return paths;
+    }
 };
 
-
-function applyPathParams(route) {
+function applyPathParams (route) {
   for (const item of route) {
     const context = item.middleware || item.endpoint || item.router;
     const params = parsePathParams(
@@ -194,11 +189,12 @@ function applyPathParams(route) {
     try {
       item.pathParams = validation.validateParams(
         (
-          item.router && item.router.router
+        item.router && item.router.router
           ? union(context._pathParams, context.router._pathParams)
           : context._pathParams
         ),
-        params
+        params,
+        'path parameter'
       );
     } catch (e) {
       if (item.router || item.endpoint) {
@@ -208,17 +204,17 @@ function applyPathParams(route) {
   }
 }
 
-
-function dispatch(route, req, res) {
+function dispatch (route, req, res) {
   let pathParams = {};
   let queryParams = Object.assign({}, req.queryParams);
+  let headers = Object.assign({}, req.headers);
 
   {
     let basePath = [];
     let responses = res._responses;
     for (const item of route) {
       const context = (
-        item.router
+      item.router
         ? (item.router.router || item.router)
         : (item.middleware || item.endpoint)
       );
@@ -233,7 +229,7 @@ function dispatch(route, req, res) {
 
   let i = 0;
   let requestBodyParsed = false;
-  function next(err) {
+  function next (err) {
     if (err) {
       throw err;
     }
@@ -245,7 +241,7 @@ function dispatch(route, req, res) {
     }
 
     const context = (
-      item.router
+    item.router
       ? (item.router.router || item.router)
       : (item.middleware || item.endpoint)
     );
@@ -275,7 +271,23 @@ function dispatch(route, req, res) {
       try {
         item.queryParams = validation.validateParams(
           context._queryParams,
-          req.queryParams
+          req.queryParams,
+          'query parameter'
+        );
+      } catch (e) {
+        throw Object.assign(
+          new httperr.BadRequest(e.message),
+          {cause: e}
+        );
+      }
+    }
+
+    if (context._headers.size) {
+      try {
+        item.headers = validation.validateParams(
+          context._headers,
+          req.headers,
+          'header'
         );
       } catch (e) {
         throw Object.assign(
@@ -287,6 +299,7 @@ function dispatch(route, req, res) {
 
     let tempPathParams = req.pathParams;
     let tempQueryParams = req.queryParams;
+    let tempHeaders = req.headers;
     let tempSuffix = req.suffix;
     let tempPath = req.path;
     let tempReverse = req.reverse;
@@ -355,11 +368,14 @@ function dispatch(route, req, res) {
     if (item.endpoint || item.router) {
       pathParams = Object.assign(pathParams, item.pathParams);
       queryParams = Object.assign(queryParams, item.queryParams);
+      headers = Object.assign(headers, item.headers);
       req.pathParams = pathParams;
       req.queryParams = queryParams;
+      req.headers = headers;
     } else {
       req.pathParams = Object.assign({}, pathParams, item.pathParams);
       req.queryParams = Object.assign({}, queryParams, item.queryParams);
+      req.headers = Object.assign({}, headers, item.headers);
     }
 
     if (!context._handler) {
@@ -374,6 +390,7 @@ function dispatch(route, req, res) {
     req.reverse = tempReverse;
     req.path = tempPath;
     req.suffix = tempSuffix;
+    req.headers = tempHeaders;
     req.queryParams = tempQueryParams;
     req.pathParams = tempPathParams;
   }
@@ -390,50 +407,44 @@ function dispatch(route, req, res) {
   }
 }
 
-
-function* findRoutes(node, result, suffix, path) {
-  let wildcardNode = node.get(tokenize.WILDCARD);
-  let nodeMiddleware = [];
+function * findRoutes (node, result, suffix, path) {
+  const wildcardNode = node.get(tokenize.WILDCARD);
 
   if (wildcardNode && wildcardNode.has($_MIDDLEWARE)) {
-    nodeMiddleware = wildcardNode.get($_MIDDLEWARE);
+    const nodeMiddleware = wildcardNode.get($_MIDDLEWARE);
     result = result.concat(nodeMiddleware.map(
       (mw) => ({middleware: mw, path: path, suffix: suffix})
     ));
   }
 
   if (!suffix.length) {
-    let terminalNode = node.get(tokenize.TERMINAL);
-    let terminalRoutes = terminalNode && terminalNode.get($_ROUTES) || [];
-    for (let endpoint of terminalRoutes) {
+    const terminalNode = node.get(tokenize.TERMINAL);
+    const terminalRoutes = terminalNode && terminalNode.get($_ROUTES) || [];
+    for (const endpoint of terminalRoutes) {
       yield result.concat(
         {endpoint: endpoint, path: path, suffix: suffix}
       );
     }
   } else {
-    let part = suffix[0];
-    let path2 = path.concat(part);
-    let suffix2 = suffix.slice(1);
-    for (let childNode of [node.get(part), node.get(tokenize.PARAM)]) {
+    const part = suffix[0];
+    const path2 = path.concat(part);
+    const suffix2 = suffix.slice(1);
+    for (const childNode of [node.get(part), node.get(tokenize.PARAM)]) {
       if (childNode) {
-        for (let route of findRoutes(childNode, result, suffix2, path2)) {
-          yield route;
-        }
+        yield* findRoutes(childNode, result, suffix2, path2);
       }
     }
   }
 
-  let wildcardRoutes = wildcardNode && wildcardNode.get($_ROUTES) || [];
-  for (let endpoint of wildcardRoutes) {
+  const wildcardRoutes = wildcardNode && wildcardNode.get($_ROUTES) || [];
+  for (const endpoint of wildcardRoutes) {
     if (endpoint.router) {
-      let childNode = endpoint.tree.root;
-      let result2 = result.concat(
+      const childNode = endpoint.tree.root;
+      const result2 = result.concat(
         {router: endpoint, path: path, suffix: suffix}
       );
-      let path2 = [];
-      for (let route of findRoutes(childNode, result2, suffix, path2)) {
-        yield route;
-      }
+      const path2 = [];
+      yield* findRoutes(childNode, result2, suffix, path2);
     } else {
       yield result.concat(
         {endpoint: endpoint, path: path, suffix: suffix}
@@ -442,31 +453,25 @@ function* findRoutes(node, result, suffix, path) {
   }
 }
 
-
-function* flatten(node, result) {
+function * flatten (node, result) {
   for (let entry of node.entries()) {
-    let token = entry[0];
-    let child = entry[1];
+    const token = entry[0];
+    const child = entry[1];
     if (token === tokenize.WILDCARD || token === tokenize.TERMINAL) {
-      for (let endpoint of child.get($_ROUTES) || []) {
+      for (const endpoint of child.get($_ROUTES) || []) {
         if (endpoint.router) {
-          for (let route of flatten(endpoint.tree.root, result.concat(endpoint))) {
-            yield route;
-          }
+          yield* flatten(endpoint.tree.root, result.concat(endpoint));
         } else {
           yield result.concat(endpoint);
         }
       }
     } else {
-      for (let route of flatten(child, result)) {
-        yield route;
-      }
+      yield* flatten(child, result);
     }
   }
 }
 
-
-function parsePathParams(names, route, path) {
+function parsePathParams (names, route, path) {
   const params = {};
   let j = 0;
   for (let i = 0; i < route.length; i++) {
@@ -478,8 +483,7 @@ function parsePathParams(names, route, path) {
   return params;
 }
 
-
-function reverse(route, path) {
+function reverse (route, path) {
   const routers = route.filter((item) => item.router);
   const keys = path.split('.');
   const visited = [];
@@ -495,8 +499,7 @@ function reverse(route, path) {
   return null;
 }
 
-
-function search(router, path, visited) {
+function search (router, path, visited) {
   const name = path[0];
   const tail = path.slice(1);
 

@@ -93,7 +93,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
   EdgeIndex::buildSearchValueFromArray(direction, ids, searchValueBuilder);
   VPackSlice search = searchValueBuilder.slice();
 
-  std::shared_ptr<OperationCursor> cursor =
+  std::unique_ptr<OperationCursor> cursor =
       trx.indexScan(collectionName, arangodb::Transaction::CursorType::INDEX,
                     indexId, search, 0, UINT64_MAX, 1000, false);
   if (cursor->failed()) {
@@ -112,7 +112,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
     // generate result
     scannedIndex += static_cast<size_t>(edges.length());
 
-    for (auto const& edge : VPackArrayIterator(edges, true)) {
+    for (auto const& edge : VPackArrayIterator(edges)) {
       bool add = true;
       if (!expressions.empty()) {
         for (auto& exp : expressions) {
@@ -146,7 +146,7 @@ bool RestEdgesHandler::getEdgesForVertex(
   EdgeIndex::buildSearchValue(direction, id, searchValueBuilder);
   VPackSlice search = searchValueBuilder.slice();
 
-  std::shared_ptr<OperationCursor> cursor =
+  std::unique_ptr<OperationCursor> cursor =
       trx.indexScan(collectionName, arangodb::Transaction::CursorType::INDEX,
                     indexId, search, 0, UINT64_MAX, 1000, false);
   if (cursor->failed()) {
@@ -165,7 +165,7 @@ bool RestEdgesHandler::getEdgesForVertex(
     // generate result
     scannedIndex += static_cast<size_t>(edges.length());
 
-    for (auto const& edge : VPackArrayIterator(edges, true)) {
+    for (auto const& edge : VPackArrayIterator(edges)) {
       bool add = true;
       if (!expressions.empty()) {
         for (auto& exp : expressions) {
@@ -186,10 +186,7 @@ bool RestEdgesHandler::getEdgesForVertex(
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock API_EDGE_READINOUTBOUND
-////////////////////////////////////////////////////////////////////////////////
-
+// read in- or outbound edges
 bool RestEdgesHandler::readEdges(
     std::vector<traverser::TraverserExpression*> const& expressions) {
   std::vector<std::string> const& suffix = _request->suffix();
@@ -253,13 +250,12 @@ bool RestEdgesHandler::readEdges(
   if (ServerState::instance()->isCoordinator()) {
     std::string vertexString(startVertex);
     GeneralResponse::ResponseCode responseCode;
-    std::string contentType;
     VPackBuilder resultDocument;
     resultDocument.openObject();
 
     int res = getFilteredEdgesOnCoordinator(
         _vocbase->_name, collectionName, vertexString, direction, expressions,
-        responseCode, contentType, resultDocument);
+        responseCode, resultDocument);
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(responseCode, res);
       return false;
@@ -334,12 +330,9 @@ bool RestEdgesHandler::readEdges(
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Internal function to receive all edges for a list of vertices
-/// Not publicly documented on purpose.
-/// NOTE: It ONLY except _id strings. Nothing else
-////////////////////////////////////////////////////////////////////////////////
-
+// Internal function to receive all edges for a list of vertices
+// Not publicly documented on purpose.
+// NOTE: It ONLY except _id strings. Nothing else
 bool RestEdgesHandler::readEdgesForMultipleVertices() {
   std::vector<std::string> const& suffix = _request->suffix();
 
@@ -411,7 +404,6 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   std::vector<traverser::TraverserExpression*> const expressions;
   if (ServerState::instance()->isCoordinator()) {
     GeneralResponse::ResponseCode responseCode;
-    std::string contentType;
     VPackBuilder resultDocument;
     resultDocument.openObject();
 
@@ -421,7 +413,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
         int res = getFilteredEdgesOnCoordinator(
             _vocbase->_name, collectionName, vertexString, direction,
-            expressions, responseCode, contentType, resultDocument);
+            expressions, responseCode, resultDocument);
         if (res != TRI_ERROR_NO_ERROR) {
           generateError(responseCode, res);
           return false;
@@ -496,12 +488,9 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// Internal function for optimized edge retrieval.
 /// Allows to send an TraverserExpression for filtering in the body
 /// Not publicly documented on purpose.
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestEdgesHandler::readFilteredEdges() {
   std::vector<traverser::TraverserExpression*> expressions;
   bool parseSuccess = true;

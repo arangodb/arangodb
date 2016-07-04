@@ -147,7 +147,7 @@ struct ConditionPart {
   }
 
   /// @brief true if the condition is completely covered by the other condition
-  bool isCoveredBy(ConditionPart const&) const;
+  bool isCoveredBy(ConditionPart const&, bool) const;
 
   Variable const* variable;
   std::string attributeName;
@@ -252,8 +252,9 @@ class Condition {
 
   /// @brief registers an attribute access for a particular (collection)
   /// variable
-  void storeAttributeAccess(VariableUsageType&, AstNode const*, size_t,
-                            AttributeSideType);
+  void storeAttributeAccess(
+      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>& varAccess,
+      VariableUsageType&, AstNode const*, size_t, AttributeSideType);
 
 /// @brief validate the condition's AST
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

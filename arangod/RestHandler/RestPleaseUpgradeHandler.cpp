@@ -52,9 +52,9 @@ RestHandler::status RestPleaseUpgradeHandler::execute() {
   buffer.appendText("\r\n\r\n");
   buffer.appendText("It appears that your database must be upgraded. ");
   buffer.appendText("Normally this can be done using\r\n\r\n");
-  buffer.appendText("  /etc/init.d/arangodb stop\r\n");
-  buffer.appendText("  /etc/init.d/arangodb upgrade\r\n");
-  buffer.appendText("  /etc/init.d/arangodb start\r\n\r\n");
+  buffer.appendText("  /etc/init.d/arangodb3 stop\r\n");
+  buffer.appendText("  /etc/init.d/arangodb3 upgrade\r\n");
+  buffer.appendText("  /etc/init.d/arangodb3 start\r\n\r\n");
   buffer.appendText("Please check the log file for details.\r\n");
 
   return status::DONE;

@@ -1,12 +1,12 @@
-/*global Backbone, window, arangoHelper, frontendConfig */
+/* global Backbone, window, arangoHelper, frontendConfig */
 
-(function() {
-  "use strict";
+(function () {
+  'use strict';
 
   window.CurrentDatabase = Backbone.Model.extend({
-    url: arangoHelper.databaseUrl("/_api/database/current", frontendConfig.db),
+    url: arangoHelper.databaseUrl('/_api/database/current', frontendConfig.db),
 
-    parse: function(data) {
+    parse: function (data) {
       return data.result;
     }
   });

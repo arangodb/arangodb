@@ -1,0 +1,98 @@
+<script id="shardsView.ejs" type="text/template">
+
+  <div id="shardsContent" class="innerContent">
+      <% var genClass1 = 'pure-u-1-5'; %>
+      <% var genClass2 = 'pure-u-3-5'; %>
+      <% var disabled = ' '; %>
+      <% var collectionName; %>
+      <% var first = 0; %>
+
+      <% _.each(collections, function(collection, name) { %>
+        <% if (name.substring(0,1) !== '_') { %>
+          <% collectionName = name%>
+
+            <% if (first === 0) { %>
+              <div class="sectionHeader pure-g" style="margin-top: -20px;">
+              <% first++; %>
+            <% } else { %>
+              <div class="sectionHeader pure-g">
+            <% } %>
+
+            <div class="pure-u-1-1">
+              <div class="title" style="position: relative; top: -4px;">
+                <%= name %>
+              </div>
+            </div>
+          </div>
+
+          <div class="pure-g pure-table pure-table-header pure-title" style="clear: both">
+            <div class="pure-table-row">
+              <div class="<%= genClass1 %> left">Shard</div>
+              <div class="<%= genClass1 %> left">Leader</div>
+              <div class="<%= genClass2 %> left">Followers</div>
+            </div>
+          </div>
+
+          <% var counter = 0; %>
+          <% _.each(collection.Plan, function(shard, name) { %>
+            <div class="pure-g pure-table pure-table-body">
+              <div class="pure-table-row noHover" collection="<%= collectionName %>" shard="<%= name %>" leader="<%= shard.leader%>">
+
+                <% if (shard.leader.substring(0,1) === '_') { %>
+                <%   shard.leader = shard.leader.slice(1) %>
+                <% } %>
+
+                <div class="<%= genClass1 %> left"><%= name %></div>
+
+                <% if (name === Object.keys(collection.Current)[counter]) { %>
+                  <div class="shardLeader <%= genClass1 %> positive left"><span><%= shard.leader %></span></div>
+                <% } else { %>
+                  <div class="<%= genClass1 %> negative left"><%= shard.leader %></div>
+                <% } %>
+
+                <% var found = null;  %>
+                <% _.each(shard.followers, function(db) {  %>
+                  <% if (db === shard.leader) { %>
+                    <% found = true; %>
+                  <% } %>
+                <% }); %>
+
+                <% if (found) { %>
+                  <div class="<%= genClass2 %> mid"><i class="fa fa-circle-o-notch fa-spin"></i></div>
+                <% } else { %>
+                  <% if (shard.followers.length === 0) { %>
+                    <div class="<%= genClass2 %> left"> no followers </div>
+                  <% } else { %>
+
+                    <% var string = ''; %>
+                    <% var counter2 = 0; %>
+                    <% _.each(shard.followers, function(db) {  %>
+                      <% if (shard.followers.length === 1) { %>
+                        <% string += '<span>' + db + '</span> '; %>
+                      <% } else { %>
+
+                        <% if (counter2 === 0) { %>
+                          <% string += '<span>' + db + '</span>'; counter2++; %>
+                        <% } else { %>
+                          <% string += ", " + '<span>' + db + '</span>'; %>
+                        <% } %>
+                      <% } %>
+                    <% });  %>
+                    
+                    <div class="shardFollowers <%= genClass2 %> left"><%= string %></div>
+                  <% } %>
+                <% } %>
+
+              </div>
+            </div>
+
+            <% counter++; %>
+          <% }); %>
+
+        <% } %>
+      <% }); %>
+
+  <button id="rebalanceShards" style="margin-top: 20px;" class="button-success pull-right">Rebalance Shards</button>
+  </div>
+
+</script>

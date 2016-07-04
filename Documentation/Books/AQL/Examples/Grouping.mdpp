@@ -43,50 +43,22 @@ we'll issue a query like this:
 
 ```js
 FOR u IN users
-  FILTER u.active == true
-  COLLECT age = u.age INTO usersByAge
-  SORT age DESC LIMIT 0, 5
-  RETURN {
-    age,
-    users: usersByAge[*].u.name
-  }
+    FILTER u.active == true
+    COLLECT age = u.age INTO usersByAge
+    SORT age DESC LIMIT 0, 5
+    RETURN {
+        age,
+        users: usersByAge[*].u.name
+    }
 ```
 
 ```json
 [
-  {
-    "age": 37,
-    "users": [
-      "John",
-      "Sophia"
-    ]
-  },
-  {
-    "age": 36,
-    "users": [
-      "Fred",
-      "Emma"
-    ]
-  },
-  {
-    "age": 34,
-    "users": [
-      "Madison"
-    ]
-  },
-  {
-    "age": 33,
-    "users": [
-      "Chloe",
-      "Michael"
-    ]
-  },
-  {
-    "age": 32,
-    "users": [
-      "Alexander"
-    ]
-  }
+  { "age": 37, "users": [ "John", "Sophia" ] },
+  { "age": 36, "users": [ "Fred", "Emma" ] },
+  { "age": 34, "users": [ "Madison" ] },
+  { "age": 33, "users": [ "Chloe", "Michael" ] },
+  { "age": 32, "users": [ "Alexander" ] }
 ]
 ```
 
@@ -99,14 +71,17 @@ the *COLLECT* statement.
 
 The *usersByAge* variable contains the full documents found, and as we're only
 interested in user names, we'll use the expansion operator <i>[\*]</i> to extract just the
-*name* attribute of all user documents in each group.
-
-The <i>[\*]</i> expansion operator is just a handy short-cut. Instead of <i>usersByAge[\*].u.name</i>
-we could also write:
+*name* attribute of all user documents in each group:
 
 ```js
-FOR temp IN usersByAge
-    RETURN temp.u.name
+usersByAge[*].u.name
+```
+
+The <i>[\*]</i> expansion operator is just a handy short-cut. We could also write
+a subquery:
+
+```js
+( FOR temp IN usersByAge RETURN temp.u.name )
 ```
 
 !SUBSECTION Grouping by multiple criteria
@@ -129,30 +104,12 @@ FOR u IN users
 
 ```json
 [
-  {
-    "ageGroup": 35,
-    "gender": "f"
-  },
-  {
-    "ageGroup": 35,
-    "gender": "m"
-  },
-  {
-    "ageGroup": 30,
-    "gender": "f"
-  },
-  {
-    "ageGroup": 30,
-    "gender": "m"
-  },
-  {
-    "ageGroup": 25,
-    "gender": "f"
-  },
-  {
-    "ageGroup": 25,
-    "gender": "m"
-  }
+  { "ageGroup": 35, "gender": "f" },
+  { "ageGroup": 35, "gender": "m" },
+  { "ageGroup": 30, "gender": "f" },
+  { "ageGroup": 30, "gender": "m" },
+  { "ageGroup": 25, "gender": "f" },
+  { "ageGroup": 25, "gender": "m" }
 ]
 ```
 
@@ -177,36 +134,12 @@ FOR u IN users
 
 ```json
 [
-  {
-    "ageGroup": 35,
-    "gender": "f",
-    "numUsers": 2
-  },
-  {
-    "ageGroup": 35,
-    "gender": "m",
-    "numUsers": 2
-  },
-  {
-    "ageGroup": 30,
-    "gender": "f",
-    "numUsers": 4
-  },
-  {
-    "ageGroup": 30,
-    "gender": "m",
-    "numUsers": 4
-  },
-  {
-    "ageGroup": 25,
-    "gender": "f",
-    "numUsers": 2
-  },
-  {
-    "ageGroup": 25,
-    "gender": "m",
-    "numUsers": 2
-  }
+  { "ageGroup": 35, "gender": "f", "numUsers": 2 },
+  { "ageGroup": 35, "gender": "m", "numUsers": 2 },
+  { "ageGroup": 30, "gender": "f", "numUsers": 4 },
+  { "ageGroup": 30, "gender": "m", "numUsers": 4 },
+  { "ageGroup": 25, "gender": "f", "numUsers": 2 },
+  { "ageGroup": 25, "gender": "m", "numUsers": 2 }
 ]
 ```
 

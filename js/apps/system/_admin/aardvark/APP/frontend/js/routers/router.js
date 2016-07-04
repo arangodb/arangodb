@@ -1,49 +1,50 @@
-/*jshint unused: false */
-/*global window, $, Backbone, document, arangoCollectionModel*/
-/*global arangoHelper, btoa, dashboardView, arangoDatabase, _, frontendConfig */
+/* jshint unused: false */
+/* global window, $, Backbone, document, arangoCollectionModel*/
+/* global arangoHelper, btoa, dashboardView, arangoDatabase, _, frontendConfig */
 
 (function () {
-  "use strict";
+  'use strict';
 
   window.Router = Backbone.Router.extend({
-
     toUpdate: [],
     dbServers: [],
     isCluster: undefined,
 
     routes: {
-      "": "cluster",
-      "dashboard": "dashboard",
-      "collections": "collections",
-      "new": "newCollection",
-      "login": "login",
-      "collection/:colid/documents/:pageid": "documents",
-      "cIndices/:colname": "cIndices",
-      "cSettings/:colname": "cSettings",
-      "cInfo/:colname": "cInfo",
-      "collection/:colid/:docid": "document",
-      "shell": "shell",
-      "queries": "query",
-      "workMonitor": "workMonitor",
-      "databases": "databases",
-      "settings": "databases",
-      "services": "applications",
-      "service/:mount": "applicationDetail",
-      "graphs": "graphManagement",
-      "graphs/:name": "showGraph",
-      "users": "userManagement",
-      "userProfile": "userProfile",
-      "cluster": "cluster",
-      "nodes": "cNodes",
-      "cNodes": "cNodes",
-      "dNodes": "dNodes",
-      "node/:name": "node",
-      //"nLogs/:name": "nLogs",
-      "logs": "logs",
-      "helpus": "helpUs"
+      '': 'cluster',
+      'dashboard': 'dashboard',
+      'collections': 'collections',
+      'new': 'newCollection',
+      'login': 'login',
+      'collection/:colid/documents/:pageid': 'documents',
+      'cIndices/:colname': 'cIndices',
+      'cSettings/:colname': 'cSettings',
+      'cInfo/:colname': 'cInfo',
+      'collection/:colid/:docid': 'document',
+      'shell': 'shell',
+      'queries': 'query',
+      'workMonitor': 'workMonitor',
+      'databases': 'databases',
+      'settings': 'databases',
+      'services': 'applications',
+      'service/:mount': 'applicationDetail',
+      'graphs': 'graphManagement',
+      'graphs/:name': 'showGraph',
+      'users': 'userManagement',
+      'user/:name': 'userView',
+      'user/:name/permission': 'userPermissionView',
+      'userProfile': 'userProfile',
+      'cluster': 'cluster',
+      'nodes': 'nodes',
+      'shards': 'shards',
+      'node/:name': 'node',
+      'logs': 'logs',
+      'helpus': 'helpUs',
+      'graph2/:name': 'graph2',
+      'support': 'support'
     },
 
-    execute: function(callback, args) {
+    execute: function (callback, args) {
       $('#subNavigationBar .breadcrumb').html('');
       $('#subNavigationBar .bottom').html('');
       $('#loadingScreen').hide();
@@ -54,50 +55,49 @@
     },
 
     checkUser: function () {
+      var self = this;
 
       if (window.location.hash === '#login') {
         return;
       }
 
-      var startInit = function() {
+      var startInit = function () {
         this.initOnce();
 
-        //show hidden by default divs
+        // show hidden by default divs
         $('.bodyWrapper').show();
         $('.navbar').show();
       }.bind(this);
 
-      var callback = function(error, user) {
+      var callback = function (error, user) {
         if (frontendConfig.authenticationEnabled) {
+          self.currentUser = user;
           if (error || user === null) {
             if (window.location.hash !== '#login') {
-              this.navigate("login", {trigger: true});
+              this.navigate('login', {trigger: true});
             }
-          }
-          else {
+          } else {
             startInit();
           }
-        }
-        else {
+        } else {
           startInit();
         }
       }.bind(this);
 
       if (frontendConfig.authenticationEnabled) {
         this.userCollection.whoAmI(callback);
-      }
-      else {
+      } else {
         this.initOnce();
 
-        //show hidden by default divs
+        // show hidden by default divs
         $('.bodyWrapper').show();
         $('.navbar').show();
       }
     },
 
-    waitForInit: function(origin, param1, param2) {
+    waitForInit: function (origin, param1, param2) {
       if (!this.initFinished) {
-        setTimeout(function() {
+        setTimeout(function () {
           if (!param1) {
             origin(false);
           }
@@ -125,7 +125,7 @@
 
     initialize: function () {
 
-      //check frontend config for global conf settings
+      // check frontend config for global conf settings
       if (frontendConfig.isCluster === true) {
         this.isCluster = true;
       }
@@ -144,14 +144,13 @@
       this.userCollection = new window.ArangoUsers();
 
       this.initOnce = function () {
-        this.initOnce = function() {};
+        this.initOnce = function () {};
 
-        var callback = function(error, isCoordinator) {
+        var callback = function (error, isCoordinator) {
           self = this;
           if (isCoordinator === true) {
-
             self.coordinatorCollection.fetch({
-              success: function() {
+              success: function () {
                 self.fetchDBS();
               }
             });
@@ -160,22 +159,27 @@
 
         window.isCoordinator(callback);
 
-        this.initFinished = true;
+        if (frontendConfig.isCluster === false) {
+          this.initFinished = true;
+        }
+
         this.arangoDatabase = new window.ArangoDatabase();
         this.currentDB = new window.CurrentDatabase();
 
         this.arangoCollectionsStore = new window.arangoCollections();
         this.arangoDocumentStore = new window.arangoDocument();
 
-        //Cluster 
+        // Cluster 
         this.coordinatorCollection = new window.ClusterCoordinators();
 
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
-        this.arangoCollectionsStore.fetch();
+        this.arangoCollectionsStore.fetch({
+          cache: false
+        });
 
         window.spotlightView = new window.SpotlightView({
-          collection: this.arangoCollectionsStore 
+          collection: this.arangoCollectionsStore
         });
 
         this.footerView = new window.FooterView({
@@ -184,7 +188,8 @@
         this.notificationList = new window.NotificationCollection();
 
         this.currentDB.fetch({
-          success: function() {
+          cache: false,
+          success: function () {
             self.naviView = new window.NavigationView({
               database: self.arangoDatabase,
               currentDB: self.currentDB,
@@ -201,27 +206,30 @@
         this.footerView.render();
 
         window.checkVersion();
-      }.bind(this);
 
+        this.documentsView = new window.DocumentsView({
+          collection: new window.arangoDocuments(),
+          documentStore: this.arangoDocumentStore,
+          collectionsStore: this.arangoCollectionsStore
+        });
+      }.bind(this);
 
       $(window).resize(function () {
         self.handleResize();
       });
 
       $(window).scroll(function () {
-        //self.handleScroll();
+        // self.handleScroll()
       });
-
     },
 
-    handleScroll: function() {
+    handleScroll: function () {
       if ($(window).scrollTop() > 50) {
         $('.navbar > .secondary').css('top', $(window).scrollTop());
         $('.navbar > .secondary').css('position', 'absolute');
         $('.navbar > .secondary').css('z-index', '10');
         $('.navbar > .secondary').css('width', $(window).width());
-      }
-      else {
+      } else {
         $('.navbar > .secondary').css('top', '0');
         $('.navbar > .secondary').css('position', 'relative');
         $('.navbar > .secondary').css('width', '');
@@ -235,13 +243,12 @@
         return;
       }
       if (this.isCluster === false || this.isCluster === undefined) {
-        if (this.currentDB.get("name") === '_system') {
-          this.routes[""] = 'dashboard';
-          this.navigate("#dashboard", {trigger: true});
-        }
-        else {
-          this.routes[""] = 'collections';
-          this.navigate("#collections", {trigger: true});
+        if (this.currentDB.get('name') === '_system') {
+          this.routes[''] = 'dashboard';
+          this.navigate('#dashboard', {trigger: true});
+        } else {
+          this.routes[''] = 'collections';
+          this.navigate('#collections', {trigger: true});
         }
         return;
       }
@@ -262,8 +269,8 @@
         return;
       }
       if (this.isCluster === false) {
-        this.routes[""] = 'dashboard';
-        this.navigate("#dashboard", {trigger: true});
+        this.routes[''] = 'dashboard';
+        this.navigate('#dashboard', {trigger: true});
         return;
       }
 
@@ -277,6 +284,41 @@
       this.nodeView.render();
     },
 
+    shards: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.shards.bind(this));
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[''] = 'dashboard';
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
+      if (!this.shardsView) {
+        this.shardsView = new window.ShardsView({
+          dbServers: this.dbServers
+        });
+      }
+      this.shardsView.render();
+    },
+
+    nodes: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.nodes.bind(this));
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[''] = 'dashboard';
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
+      this.nodesView = new window.NodesView2({
+      });
+      this.nodesView.render();
+    },
+
     cNodes: function (initialized) {
       this.checkUser();
       if (!initialized || this.isCluster === undefined) {
@@ -284,8 +326,8 @@
         return;
       }
       if (this.isCluster === false) {
-        this.routes[""] = 'dashboard';
-        this.navigate("#dashboard", {trigger: true});
+        this.routes[''] = 'dashboard';
+        this.navigate('#dashboard', {trigger: true});
         return;
       }
       this.nodesView = new window.NodesView({
@@ -303,12 +345,12 @@
         return;
       }
       if (this.isCluster === false) {
-        this.routes[""] = 'dashboard';
-        this.navigate("#dashboard", {trigger: true});
+        this.routes[''] = 'dashboard';
+        this.navigate('#dashboard', {trigger: true});
         return;
       }
       if (this.dbServers.length === 0) {
-        this.navigate("#cNodes", {trigger: true});
+        this.navigate('#cNodes', {trigger: true});
         return;
       }
 
@@ -320,8 +362,27 @@
       this.nodesView.render();
     },
 
+    sNodes: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.sNodes.bind(this));
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[''] = 'dashboard';
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
+
+      this.scaleView = new window.ScaleView({
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers[0]
+      });
+      this.scaleView.render();
+    },
+
     addAuth: function (xhr) {
-      var u = this.clusterPlan.get("user");
+      var u = this.clusterPlan.get('user');
       if (!u) {
         xhr.abort();
         if (!this.isCheckingUser) {
@@ -331,8 +392,8 @@
       }
       var user = u.name;
       var pass = u.passwd;
-      var token = user.concat(":", pass);
-      xhr.setRequestHeader('Authorization', "Basic " + btoa(token));
+      var token = user.concat(':', pass);
+      xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
     },
 
     logs: function (name, initialized) {
@@ -343,19 +404,19 @@
       }
       if (!this.logsView) {
         var newLogsAllCollection = new window.ArangoLogs(
-          {upto: true, loglevel: 4}
-        ),
-        newLogsDebugCollection = new window.ArangoLogs(
-          {loglevel: 4}
-        ),
-        newLogsInfoCollection = new window.ArangoLogs(
-          {loglevel: 3}
-        ),
-        newLogsWarningCollection = new window.ArangoLogs(
-          {loglevel: 2}
-        ),
-        newLogsErrorCollection = new window.ArangoLogs(
-          {loglevel: 1}
+            {upto: true, loglevel: 4}
+          ),
+          newLogsDebugCollection = new window.ArangoLogs(
+            {loglevel: 4}
+          ),
+          newLogsInfoCollection = new window.ArangoLogs(
+            {loglevel: 3}
+          ),
+          newLogsWarningCollection = new window.ArangoLogs(
+            {loglevel: 2}
+          ),
+          newLogsErrorCollection = new window.ArangoLogs(
+            {loglevel: 1}
         );
         this.logsView = new window.LogsView({
           logall: newLogsAllCollection,
@@ -370,10 +431,10 @@
 
     /*
     nLogs: function (nodename, initialized) {
-      this.checkUser();
+      this.checkUser()
       if (!initialized) {
-        this.waitForInit(this.nLogs.bind(this), nodename);
-        return;
+        this.waitForInit(this.nLogs.bind(this), nodename)
+        return
       }
       var newLogsAllCollection = new window.ArangoLogs(
         {upto: true, loglevel: 4}
@@ -389,15 +450,15 @@
       ),
       newLogsErrorCollection = new window.ArangoLogs(
         {loglevel: 1}
-      );
+      )
       this.nLogsView = new window.LogsView({
         logall: newLogsAllCollection,
         logdebug: newLogsDebugCollection,
         loginfo: newLogsInfoCollection,
         logwarning: newLogsWarningCollection,
         logerror: newLogsErrorCollection
-      });
-      this.nLogsView.render();
+      })
+      this.nLogsView.render()
     },
     */
 
@@ -407,7 +468,7 @@
         this.waitForInit(this.applicationDetail.bind(this), mount);
         return;
       }
-      var callback = function() {
+      var callback = function () {
         if (!this.hasOwnProperty('applicationDetailView')) {
           this.applicationDetailView = new window.ApplicationDetailView({
             model: this.foxxList.get(decodeURIComponent(mount))
@@ -420,19 +481,18 @@
 
       if (this.foxxList.length === 0) {
         this.foxxList.fetch({
-          success: function() {
+          cache: false,
+          success: function () {
             callback();
           }
         });
-      }
-      else {
+      } else {
         callback();
       }
     },
 
     login: function () {
-
-      var callback = function(error, user) {
+      var callback = function (error, user) {
         if (!this.loginView) {
           this.loginView = new window.loginView({
             collection: this.userCollection
@@ -440,8 +500,7 @@
         }
         if (error || user === null) {
           this.loginView.render();
-        }
-        else {
+        } else {
           this.loginView.render(true);
         }
       }.bind(this);
@@ -462,6 +521,7 @@
         });
       }
       this.arangoCollectionsStore.fetch({
+        cache: false,
         success: function () {
           self.collectionsView.render();
         }
@@ -477,6 +537,7 @@
         return;
       }
       this.arangoCollectionsStore.fetch({
+        cache: false,
         success: function () {
           self.indicesView = new window.IndicesView({
             collectionName: colname,
@@ -498,6 +559,7 @@
         return;
       }
       this.arangoCollectionsStore.fetch({
+        cache: false,
         success: function () {
           self.settingsView = new window.SettingsView({
             collectionName: colname,
@@ -519,6 +581,7 @@
         return;
       }
       this.arangoCollectionsStore.fetch({
+        cache: false,
         success: function () {
           self.infoView = new window.InfoView({
             collectionName: colname,
@@ -561,8 +624,8 @@
       }
       this.documentView.colid = colid;
 
-      var doc = window.location.hash.split("/")[2];
-      var test = (doc.split("%").length - 1) % 3;
+      var doc = window.location.hash.split('/')[2];
+      var test = (doc.split('%').length - 1) % 3;
 
       if (decodeURI(doc) !== doc && test !== 0) {
         doc = decodeURIComponent(doc);
@@ -571,12 +634,11 @@
 
       this.documentView.render();
 
-      var callback = function(error, type) {
+      var callback = function (error, type) {
         if (!error) {
           this.documentView.setType(type);
-        }
-        else {
-          console.log("Error", "Could not fetch collection type");
+        } else {
+          console.log('Error', 'Could not fetch collection type');
         }
       }.bind(this);
 
@@ -601,28 +663,28 @@
         this.waitForInit(this.query.bind(this));
         return;
       }
-      if (!this.queryView2) {
-        this.queryView2 = new window.queryView2({
+      if (!this.queryView) {
+        this.queryView = new window.queryView({
           collection: this.queryCollection
         });
       }
-      this.queryView2.render();
+      this.queryView.render();
     },
-   
-    /* 
-    test: function (initialized) {
+
+    graph2: function (name, initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.test.bind(this));
+        this.waitForInit(this.graph2.bind(this), name);
         return;
       }
-      if (!this.testView) {
-        this.testView = new window.testView({
+      if (!this.graphViewer2) {
+        this.graphViewer2 = new window.GraphViewer2({
+          name: name
         });
       }
-      this.testView.render();
+      this.graphViewer2.render();
     },
-    */
+
     helpUs: function (initialized) {
       this.checkUser();
       if (!initialized) {
@@ -634,6 +696,19 @@
         });
       }
       this.helpUsView.render();
+    },
+
+    support: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.support.bind(this));
+        return;
+      }
+      if (!this.testView) {
+        this.supportView = new window.SupportView({
+        });
+      }
+      this.supportView.render();
     },
 
     workMonitor: function (initialized) {
@@ -674,29 +749,27 @@
         return;
       }
 
-      var callback = function(error) {
+      var callback = function (error) {
         if (error) {
-          arangoHelper.arangoError("DB","Could not get list of allowed databases");
-          this.navigate("#", {trigger: true});
+          arangoHelper.arangoError('DB', 'Could not get list of allowed databases');
+          this.navigate('#', {trigger: true});
           $('#databaseNavi').css('display', 'none');
           $('#databaseNaviSelect').css('display', 'none');
-        }
-        else {
-          if (! this.databaseView) {
+        } else {
+          if (!this.databaseView) {
             this.databaseView = new window.databaseView({
               users: this.userCollection,
               collection: this.arangoDatabase
             });
           }
           this.databaseView.render();
-          }
+        }
       }.bind(this);
 
       arangoHelper.databaseAllowed(callback);
     },
 
     dashboard: function (initialized) {
-
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.dashboard.bind(this));
@@ -720,11 +793,11 @@
       }
       if (!this.graphManagementView) {
         this.graphManagementView =
-        new window.GraphManagementView(
-          {
-            collection: new window.GraphCollection(),
-            collectionCollection: this.arangoCollectionsStore
-          }
+          new window.GraphManagementView(
+            {
+              collection: new window.GraphCollection(),
+              collectionCollection: this.arangoCollectionsStore
+            }
         );
       }
       this.graphManagementView.render();
@@ -738,15 +811,14 @@
       }
       if (!this.graphManagementView) {
         this.graphManagementView =
-        new window.GraphManagementView(
-          {
-            collection: new window.GraphCollection(),
-            collectionCollection: this.arangoCollectionsStore
-          }
+          new window.GraphManagementView(
+            {
+              collection: new window.GraphCollection(),
+              collectionCollection: this.arangoCollectionsStore
+            }
         );
         this.graphManagementView.render(name, true);
-      }
-      else {
+      } else {
         this.graphManagementView.loadGraphViewer(name);
       }
     },
@@ -779,19 +851,44 @@
         this.dashboardView.resize();
       }
       if (this.graphManagementView) {
-        this.graphManagementView.handleResize($("#content").width());
+        this.graphManagementView.handleResize($('#content').width());
       }
       if (this.queryView) {
         this.queryView.resize();
-      }
-      if (this.queryView2) {
-        this.queryView2.resize();
       }
       if (this.documentsView) {
         this.documentsView.resize();
       }
       if (this.documentView) {
         this.documentView.resize();
+      }
+    },
+
+    userPermissionView: function (name, initialized) {
+      this.checkUser();
+      if (initialized || initialized === null) {
+        this.userPermissionView = new window.UserPermissionView({
+          collection: this.userCollection,
+          databases: this.arangoDatabase,
+          username: name
+        });
+        this.userPermissionView.render();
+      } else if (initialized === false) {
+        this.waitForInit(this.userPermissionView.bind(this), name);
+        return;
+      }
+    },
+
+    userView: function (name, initialized) {
+      this.checkUser();
+      if (initialized || initialized === null) {
+        this.userView = new window.UserView({
+          collection: this.userCollection,
+          username: name
+        });
+        this.userView.render();
+      } else if (initialized === false) {
+        this.waitForInit(this.userView.bind(this), name);
       }
     },
 
@@ -822,31 +919,43 @@
       }
       this.userManagementView.render(true);
     },
-    
-    fetchDBS: function() {
-      var self = this;
 
-      this.coordinatorCollection.each(function(coordinator) {
+    fetchDBS: function (callback) {
+      var self = this;
+      var cb = false;
+
+      this.coordinatorCollection.each(function (coordinator) {
         self.dbServers.push(
           new window.ClusterServers([], {
-            host: coordinator.get('address') 
+            host: coordinator.get('address')
           })
         );
       });
-      _.each(this.dbServers, function(dbservers) {
-        dbservers.fetch();
+
+      this.initFinished = true;
+
+      _.each(this.dbServers, function (dbservers) {
+        dbservers.fetch({
+          success: function () {
+            if (cb === false) {
+              if (callback) {
+                callback();
+                cb = true;
+              }
+            }
+          }
+        });
       });
     },
 
-    getNewRoute: function(host) {
-      return "http://" + host;
+    getNewRoute: function (host) {
+      return 'http://' + host;
     },
 
-    registerForUpdate: function(o) {
+    registerForUpdate: function (o) {
       this.toUpdate.push(o);
       o.updateUrl();
     }
 
   });
-
 }());

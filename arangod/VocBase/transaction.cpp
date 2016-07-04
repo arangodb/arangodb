@@ -55,7 +55,7 @@
 #endif
 
 using namespace arangodb;
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns whether the collection is currently locked
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,18 +117,13 @@ static inline bool NeedWriteMarker(TRI_transaction_t const* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClearQueryCache(TRI_transaction_t* trx) {
-  size_t const n = trx->_collections._length;
-
-  if (n == 0) {
+  if (trx->_collections.empty()) {
     return;
   }
 
   try {
     std::vector<std::string> collections;
-    for (size_t i = 0; i < n; ++i) {
-      auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-          TRI_AtVectorPointer(&trx->_collections, i));
-
+    for (auto& trxCollection : trx->_collections) {
       if (trxCollection->_accessType != TRI_TRANSACTION_WRITE ||
           trxCollection->_operations == nullptr ||
           trxCollection->_operations->empty()) {
@@ -179,14 +174,12 @@ static char const* StatusTransaction(const TRI_transaction_status_e status) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeOperations(TRI_transaction_t* trx) {
-  size_t const n = trx->_collections._length;
   bool const mustRollback = (trx->_status == TRI_TRANSACTION_ABORTED);
   bool const isSingleOperation = IsSingleOperationTransaction(trx);
+      
+  std::unordered_map<TRI_voc_fid_t, std::pair<int64_t, int64_t>> stats;
 
-  for (size_t i = 0; i < n; ++i) {
-    auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-        TRI_AtVectorPointer(&trx->_collections, i));
-
+  for (auto& trxCollection : trx->_collections) {
     if (trxCollection->_operations == nullptr) {
       continue;
     }
@@ -205,7 +198,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
     } else {
       // update datafile statistics for all operations
       // pair (number of dead markers, size of dead markers)
-      std::unordered_map<TRI_voc_fid_t, std::pair<int64_t, int64_t>> stats;
+      stats.clear();
 
       for (auto it = trxCollection->_operations->rbegin();
            it != trxCollection->_operations->rend(); ++it) {
@@ -258,14 +251,14 @@ static void FreeOperations(TRI_transaction_t* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_transaction_collection_t* FindCollection(
-    const TRI_transaction_t* const trx, const TRI_voc_cid_t cid,
+    TRI_transaction_t const* trx, TRI_voc_cid_t cid,
     size_t* position) {
-  size_t const n = trx->_collections._length;
+
+  size_t const n = trx->_collections.size();
   size_t i;
 
   for (i = 0; i < n; ++i) {
-    auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-        TRI_AtVectorPointer(&trx->_collections, i));
+    auto trxCollection = trx->_collections.at(i);
 
     if (cid < trxCollection->_cid) {
       // collection not found
@@ -276,7 +269,6 @@ static TRI_transaction_collection_t* FindCollection(
       // found
       return trxCollection;
     }
-
     // next
   }
 
@@ -371,11 +363,11 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
   if (type == TRI_TRANSACTION_READ) {
     LOG_TRX(trx, nestingLevel) << "read-locking collection " << trxCollection->_cid;
     res = document->beginReadTimed(timeout,
-                                   TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
+                                   TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
   } else {
     LOG_TRX(trx, nestingLevel) << "write-locking collection " << trxCollection->_cid;
     res = document->beginWriteTimed(timeout,
-                                    TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
+                                    TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -452,13 +444,8 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
-  size_t const n = trx->_collections._length;
-
   // process collections in forward order
-  for (size_t i = 0; i < n; ++i) {
-    auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-        TRI_AtVectorPointer(&trx->_collections, i));
-
+  for (auto& trxCollection : trx->_collections) {
     if (trxCollection->_nestingLevel != nestingLevel) {
       // only process our own collections
       continue;
@@ -546,12 +533,9 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
 static int UnuseCollections(TRI_transaction_t* trx, int nestingLevel) {
   int res = TRI_ERROR_NO_ERROR;
 
-  size_t i = trx->_collections._length;
-
   // process collections in reverse order
-  while (i-- > 0) {
-    auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-        TRI_AtVectorPointer(&trx->_collections, i));
+  for (auto it = trx->_collections.rbegin(); it != trx->_collections.rend(); ++it) {
+    TRI_transaction_collection_t* trxCollection = (*it);
 
     if (IsLocked(trxCollection) &&
         (nestingLevel == 0 || trxCollection->_nestingLevel == nestingLevel)) {
@@ -588,12 +572,9 @@ static int ReleaseCollections(TRI_transaction_t* trx, int nestingLevel) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  size_t i = trx->_collections._length;
-
   // process collections in reverse order
-  while (i-- > 0) {
-    auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-        TRI_AtVectorPointer(&trx->_collections, i));
+  for (auto it = trx->_collections.rbegin(); it != trx->_collections.rend(); ++it) {
+    TRI_transaction_collection_t* trxCollection = (*it);
 
     // the top level transaction releases all collections
     if (trxCollection->_collection != nullptr) {
@@ -700,7 +681,14 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
   try {
     arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, trx->_waitForSync).errorCode;
+    
+    TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") { 
+      TRI_SegfaultDebugging("crashing on commit");
+    }
 #ifdef ARANGODB_ENABLE_ROCKSDB
+
+    TRI_IF_FAILURE("TransactionWriteCommitMarkerNoRocksSync") { return TRI_ERROR_NO_ERROR; }
+
     if (trx->_waitForSync) {
       // also sync RocksDB WAL
       RocksDBFeature::syncWal();
@@ -737,84 +725,6 @@ static void UpdateTransactionStatus(TRI_transaction_t* const trx,
   }
 
   trx->_status = status;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new transaction container
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_transaction_t* TRI_CreateTransaction(TRI_vocbase_t* vocbase,
-                                         TRI_voc_tid_t externalId,
-                                         double timeout, bool waitForSync) {
-  TRI_transaction_t* trx = static_cast<TRI_transaction_t*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_t), false));
-
-  if (trx == nullptr) {
-    // out of memory
-    return nullptr;
-  }
-
-  trx->_vocbase = vocbase;
-
-  // note: the real transaction id will be acquired on transaction start
-  trx->_id = 0;  // local trx id
-  trx->_status = TRI_TRANSACTION_CREATED;
-  trx->_type = TRI_TRANSACTION_READ;
-  trx->_hints = 0;
-  trx->_nestingLevel = 0;
-  trx->_timeout = TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT;
-  trx->_hasOperations = false;
-  trx->_waitForSync = waitForSync;
-  trx->_beginWritten = false;
-#ifdef ARANGODB_ENABLE_ROCKSDB
-  trx->_rocksTransaction = nullptr;
-#endif
-
-  if (timeout > 0.0) {
-    trx->_timeout = (uint64_t)(timeout * 1000000.0);
-  } else if (timeout == 0.0) {
-    trx->_timeout = static_cast<uint64_t>(0);
-  }
-
-  TRI_InitVectorPointer(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
-
-  return trx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a transaction container
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_FreeTransaction(TRI_transaction_t* trx) {
-  TRI_ASSERT(trx != nullptr);
-
-  if (trx->_status == TRI_TRANSACTION_RUNNING) {
-    TRI_AbortTransaction(trx, 0);
-  }
-
-#ifdef ARANGODB_ENABLE_ROCKSDB
-  delete trx->_rocksTransaction;
-#endif
-
-  // release the marker protector
-  bool const hasFailedOperations =
-      (trx->_hasOperations && trx->_status == TRI_TRANSACTION_ABORTED);
-
-  ReleaseCollections(trx, 0);
-
-  // free all collections
-  size_t i = trx->_collections._length;
-  while (i-- > 0) {
-    auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-        TRI_AtVectorPointer(&trx->_collections, i));
-
-    FreeCollection(trxCollection);
-  }
-
-  TRI_DestroyVectorPointer(&trx->_collections);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, trx);
-
-  return hasFailedOperations;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -855,9 +765,8 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction(
         !HasHint(trx, TRI_TRANSACTION_HINT_NO_USAGE_LOCK)) {
       // not opened. probably a mistake made by the caller
       return nullptr;
-    } else {
-      // ok
     }
+    // ok
   }
 
   // check if access type matches
@@ -944,8 +853,9 @@ int TRI_AddCollectionTransaction(TRI_transaction_t* trx, TRI_voc_cid_t cid,
   }
 
   // insert collection at the correct position
-  if (TRI_InsertVectorPointer(&trx->_collections, trxCollection, position) !=
-      TRI_ERROR_NO_ERROR) {
+  try {
+    trx->_collections.insert(trx->_collections.begin() + position, trxCollection);
+  } catch (...) {
     FreeCollection(trxCollection);
 
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1039,12 +949,7 @@ bool TRI_IsLockedCollectionTransaction(
 
 bool TRI_IsContainedCollectionTransaction(TRI_transaction_t* trx,
                                           TRI_voc_cid_t cid) {
-  size_t const n = trx->_collections._length;
-
-  for (size_t i = 0; i < n; ++i) {
-    auto trxCollection = static_cast<TRI_transaction_collection_t const*>(
-        TRI_AtVectorPointer(&trx->_collections, i));
-
+  for (auto& trxCollection : trx->_collections) {
     if (trxCollection->_cid == cid) {
       return true;
     }
@@ -1324,7 +1229,8 @@ int TRI_CommitTransaction(TRI_transaction_t* trx, int nestingLevel) {
     UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
 
     // if a write query, clear the query cache for the participating collections
-    if (trx->_type == TRI_TRANSACTION_WRITE && trx->_collections._length > 0 &&
+    if (trx->_type == TRI_TRANSACTION_WRITE && 
+        !trx->_collections.empty() &&
         arangodb::aql::QueryCache::instance()->mayBeActive()) {
       ClearQueryCache(trx);
     }
@@ -1367,5 +1273,54 @@ int TRI_AbortTransaction(TRI_transaction_t* trx, int nestingLevel) {
 
 bool TRI_IsSingleOperationTransaction(TRI_transaction_t const* trx) {
   return HasHint(trx, TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transaction type
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_transaction_t::TRI_transaction_t(TRI_vocbase_t* vocbase, double timeout, bool waitForSync)
+    : _vocbase(vocbase), 
+      _id(0), 
+      _type(TRI_TRANSACTION_READ),
+      _status(TRI_TRANSACTION_CREATED),
+      _arena(),
+      _collections{_arena}, // assign arena to vector 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+      _rocksTransaction(nullptr),
+#endif
+      _hints(0),
+      _nestingLevel(0), 
+      _hasOperations(false), 
+      _waitForSync(waitForSync),
+      _beginWritten(false), 
+      _timeout(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT) {
+  
+  if (timeout > 0.0) {
+    _timeout = (uint64_t)(timeout * 1000000.0);
+  } else if (timeout == 0.0) {
+    _timeout = static_cast<uint64_t>(0);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a transaction container
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_transaction_t::~TRI_transaction_t() {
+  if (_status == TRI_TRANSACTION_RUNNING) {
+    TRI_AbortTransaction(this, 0);
+  }
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  delete _rocksTransaction;
+#endif
+
+  ReleaseCollections(this, 0);
+
+  // free all collections
+  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
+    FreeCollection(*it);
+  }
 }
 

@@ -115,6 +115,8 @@ class Dumper {
   void appendDouble(double);
 
  private:
+  void dumpUnicodeCharacter(uint16_t value);
+
   void dumpInteger(Slice const*);
 
   void dumpString(char const*, ValueLength);

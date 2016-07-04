@@ -42,7 +42,6 @@ class VocbaseContext;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestVocbaseBaseHandler : public RestBaseHandler {
- private:
   RestVocbaseBaseHandler(RestVocbaseBaseHandler const&) = delete;
   RestVocbaseBaseHandler& operator=(RestVocbaseBaseHandler const&) = delete;
 
@@ -136,7 +135,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   ~RestVocbaseBaseHandler();
 
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief assemble a document id from a string and a string
   /// optionally url-encodes
@@ -155,15 +153,15 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates ok message without content
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateOk() { createResponse(GeneralResponse::ResponseCode::NO_CONTENT); }
+  void generateOk() {
+    createResponse(GeneralResponse::ResponseCode::NO_CONTENT);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates ok message with no body but with certain status code
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateOk(GeneralResponse::ResponseCode code) {
-    createResponse(code);
-  }
+  void generateOk(GeneralResponse::ResponseCode code) { createResponse(code); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates message for a saved document
@@ -171,8 +169,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateSaved(arangodb::OperationResult const& result,
                      std::string const& collectionName, TRI_col_type_e type,
-                     arangodb::velocypack::Options const*,
-                     bool isMultiple);
+                     arangodb::velocypack::Options const*, bool isMultiple);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates deleted message
@@ -188,7 +185,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateDocumentNotFound(std::string const& /* collection name */,
                                 std::string const& /* document key */) {
-    generateError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -265,7 +263,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   std::shared_ptr<VPackBuilder> parseVelocyPackBody(VPackOptions const*, bool&);
 
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request context
   //////////////////////////////////////////////////////////////////////////////

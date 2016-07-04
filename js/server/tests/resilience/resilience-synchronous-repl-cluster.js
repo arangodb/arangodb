@@ -4,7 +4,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test synchronous replication in the cluster
 ///
-/// @file js/server/tests/shell/shell-synchronous-replication-cluster.js
+/// @file js/server/tests/resilience/resilience-synchronous-replication-cluster.js
 ///
 /// DISCLAIMER
 ///
@@ -76,10 +76,11 @@ function SynchronousReplicationSuite () {
         s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
       );
       let replicas = ccinfo.map(s => s.servers.length);
-      if (_.all(replicas, x => x === 2)) {
+      if (_.every(replicas, x => x === 2)) {
         console.info("Replication up and running!");
         return true;
       }
+      console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       wait(0.5);
       global.ArangoClusterInfo.flush();
     }
@@ -98,6 +99,7 @@ function SynchronousReplicationSuite () {
                           x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
+    console.info("Have failed follower", follower);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,6 +114,37 @@ function SynchronousReplicationSuite () {
                           x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
+    console.info("Have healed follower", follower);
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail the leader
+////////////////////////////////////////////////////////////////////////////////
+
+  function failLeader() {
+    var leader = cinfo.shards[shards[0]][0];
+    var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
+    // Now look for instanceInfo:
+    var pos = _.findIndex(global.instanceInfo.arangods,
+                          x => x.endpoint === endpoint);
+    assertTrue(pos >= 0);
+    assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
+    console.info("Have failed leader", leader);
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief heal the follower
+////////////////////////////////////////////////////////////////////////////////
+
+  function healLeader() {
+    var leader = cinfo.shards[shards[0]][0];
+    var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
+    // Now look for instanceInfo:
+    var pos = _.findIndex(global.instanceInfo.arangods,
+                          x => x.endpoint === endpoint);
+    assertTrue(pos >= 0);
+    assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
+    console.info("Have healed leader", leader);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,9 +154,8 @@ function SynchronousReplicationSuite () {
   function makeFailure(failure) {
     if (failure.follower) {
       failFollower();
-/*    } else {
-      failLeader(); // TODO: function does not exist 
-*/      
+    } else {
+      failLeader();
     }
   }
 
@@ -134,9 +166,8 @@ function SynchronousReplicationSuite () {
   function healFailure(failure) {
     if (failure.follower) {
       healFollower();
-/*    } else {
-      healLeader(); // TODO: function does not exist 
-*/      
+    } else {
+      healLeader();
     }
   }
 
@@ -253,22 +284,26 @@ function SynchronousReplicationSuite () {
     catch (e1) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, e1.errorNum);
     }
-    assertEqual(2, c.count());
 
     if (healing.place === 15) { healFailure(healing); }
     if (failure.place === 16) { makeFailure(failure); }
 
-    c.remove([ids[0]._key, ids[1]._key]);
+    assertEqual(2, c.count());
 
     if (healing.place === 16) { healFailure(healing); }
     if (failure.place === 17) { makeFailure(failure); }
+
+    c.remove([ids[0]._key, ids[1]._key]);
+
+    if (healing.place === 17) { healFailure(healing); }
+    if (failure.place === 18) { makeFailure(failure); }
 
     docs = c.document([ids[0]._key, ids[1]._key]);
     assertEqual(2, docs.length);
     assertTrue(docs[0].error);
     assertTrue(docs[1].error);
 
-    if (healing.place === 17) { healFailure(healing); }
+    if (healing.place === 18) { healFailure(healing); }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,14 +318,18 @@ function SynchronousReplicationSuite () {
 
     setUp : function () {
       var systemCollServers = findCollectionServers("_system", "_graphs");
+      console.info("System collections use servers:", systemCollServers);
       while (true) {
         db._drop(cn);
         c = db._create(cn, {numberOfShards: 1, replicationFactor: 2});
         var servers = findCollectionServers("_system", cn);
+        console.info("Test collections uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
           return;
         }
         console.info("Need to recreate collection to avoid system collection servers.");
+        waitForSynchronousReplication("_system");
+        console.info("Synchronous replication has settled, now dropping again.");
       }
     },
 
@@ -345,7 +384,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail1 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:1, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:1, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -355,7 +394,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail2 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:2, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:2, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -365,7 +404,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail3 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:3, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:3, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -375,7 +414,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail4 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:4, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:4, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -385,7 +424,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail5 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:5, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:5, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -395,7 +434,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail6 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:6, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:6, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -405,7 +444,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail7 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:7, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:7, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -415,7 +454,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail8 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:8, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:8, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -425,7 +464,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail9 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:9, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:9, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -435,7 +474,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail10 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:10, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:10, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -445,7 +484,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail11 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:11, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:11, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -455,7 +494,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail12 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:12, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:12, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -465,7 +504,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail13 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:13, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:13, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -475,7 +514,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail14 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:14, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:14, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -485,7 +524,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail15 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:15, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:15, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -495,7 +534,7 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail16 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:16, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:16, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -505,7 +544,227 @@ function SynchronousReplicationSuite () {
 
     testBasicOperationsFollowerFail17 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:17, follower:true}, {place:17, follower: true});
+      runBasicOperations({place:17, follower:true}, {place:18, follower:true});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail in place 18
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsFollowerFail18 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:18, follower:true}, {place:18, follower:true});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run a standard check with failures:
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsFailureLeader : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      failLeader();
+      runBasicOperations({}, {});
+      healLeader();
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 1
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail1 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:1, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 2
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail2 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:2, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 3
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail3 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:3, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 4
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail4 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:4, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 5
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail5 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:5, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 6
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail6 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:6, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 7
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail7 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:7, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 8
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail8 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:8, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 9
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail9 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:9, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 10
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail10 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:10, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 11
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail11 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:11, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 12
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail12 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:12, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 13
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail13 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:13, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 14
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail14 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:14, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 15
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail15 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:15, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 16
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail16 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:16, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 17
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail17 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:17, follower: false},
+                         {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fail leader in place 18
+////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail18 : function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place:18, follower: false},
+                         {place:18, follower: false});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -515,12 +774,10 @@ function SynchronousReplicationSuite () {
 
     testDummy : function () {
       assertEqual(12, 12);
-      wait(15);
     }
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite

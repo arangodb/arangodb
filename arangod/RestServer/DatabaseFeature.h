@@ -39,7 +39,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
-  void stop() override final;
+  void unprepare() override final;
 
  public:
   TRI_vocbase_t* vocbase() const { return _vocbase; }

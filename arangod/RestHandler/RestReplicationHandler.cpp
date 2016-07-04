@@ -270,6 +270,16 @@ RestHandler::status RestReplicationHandler::execute() {
       } else {
         handleCommandAddFollower();
       }
+    } else if (command == "removeFollower") {
+      if (type != GeneralRequest::RequestType::PUT) {
+        goto BAD_CALL;
+      }
+      if (!ServerState::instance()->isDBServer()) {
+        generateError(GeneralResponse::ResponseCode::FORBIDDEN,
+                      TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+      } else {
+        handleCommandRemoveFollower();
+      }
     } else if (command == "holdReadLockCollection") {
       if (!ServerState::instance()->isDBServer()) {
         generateError(GeneralResponse::ResponseCode::FORBIDDEN,
@@ -819,15 +829,16 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
                   "timeout within cluster");
     return;
   }
+  if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    // there is no result
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_CLUSTER_CONNECTION_LOST,
+                  "lost connection within cluster");
+    return;
+  }
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
-    if (res->result == nullptr || !res->result->isComplete()) {
-      // there is no result
-      generateError(GeneralResponse::ResponseCode::BAD,
-                    TRI_ERROR_CLUSTER_CONNECTION_LOST,
-                    "lost connection within cluster");
-      return;
-    }
+    TRI_ASSERT(nullptr != res->result && res->result->isComplete());
     // In this case a proper HTTP error was reported by the DBserver,
     // we simply forward the result.
     // We intentionally fall through here.
@@ -1204,57 +1215,50 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   AgencyComm _agency;
   AgencyCommResult result;
-
-  {
-    std::string prefix("Plan/Collections/");
-    prefix.append(dbName);
-
-    AgencyCommLocker locker("Plan", "READ");
-    if (!locker.successful()) {
+  
+  std::string prefix("Plan/Collections/");
+  prefix.append(dbName);
+  
+  result = _agency.getValues(prefix);
+  if (!result.successful()) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
+  } else {
+    VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
+      {_agency.prefix(), "Plan", "Collections", dbName}));
+    if (!colls.isObject()) {
       generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                    TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN);
+                    TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
     } else {
-      result = _agency.getValues(prefix);
-      if (!result.successful()) {
-        generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                      TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
-      } else {
-        VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
-            {_agency.prefix(), "Plan", "Collections", dbName}));
-        if (!colls.isObject()) {
-          generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                        TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
-        } else {
-          VPackBuilder resultBuilder;
-          {
-            VPackObjectBuilder b1(&resultBuilder);
-            resultBuilder.add(VPackValue("collections"));
-            {
-              VPackArrayBuilder b2(&resultBuilder);
-              for (auto const& p : VPackObjectIterator(colls)) {
-                VPackSlice const subResultSlice = p.value;
-                if (subResultSlice.isObject()) {
-                  if (includeSystem ||
-                      !arangodb::basics::VelocyPackHelper::getBooleanValue(
-                          subResultSlice, "isSystem", true)) {
-                    VPackObjectBuilder b3(&resultBuilder);
-                    resultBuilder.add("indexes", subResultSlice.get("indexes"));
-                    resultBuilder.add("parameters", subResultSlice);
-                  }
-                }
+      VPackBuilder resultBuilder;
+      {
+        VPackObjectBuilder b1(&resultBuilder);
+        resultBuilder.add(VPackValue("collections"));
+        {
+          VPackArrayBuilder b2(&resultBuilder);
+          for (auto const& p : VPackObjectIterator(colls)) {
+            VPackSlice const subResultSlice = p.value;
+            if (subResultSlice.isObject()) {
+              if (includeSystem ||
+                  !arangodb::basics::VelocyPackHelper::getBooleanValue(
+                    subResultSlice, "isSystem", true)) {
+                VPackObjectBuilder b3(&resultBuilder);
+                resultBuilder.add("indexes", subResultSlice.get("indexes"));
+                resultBuilder.add("parameters", subResultSlice);
               }
             }
-            TRI_voc_tick_t tick = TRI_CurrentTickServer();
-            auto tickString = std::to_string(tick);
-            resultBuilder.add("tick", VPackValue(tickString));
-            resultBuilder.add("state", VPackValue("unused"));
           }
-          generateResult(GeneralResponse::ResponseCode::OK,
-                         resultBuilder.slice());
         }
+        TRI_voc_tick_t tick = TRI_CurrentTickServer();
+        auto tickString = std::to_string(tick);
+        resultBuilder.add("tick", VPackValue(tickString));
+        resultBuilder.add("state", VPackValue("unused"));
       }
+      generateResult(GeneralResponse::ResponseCode::OK,
+                     resultBuilder.slice());
     }
   }
+  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2269,7 +2273,7 @@ void RestReplicationHandler::handleCommandRestoreData() {
   bool recycleIds = false;
   std::string const& value2 = _request->value("recycleIds");
 
-  if (value2.empty()) {
+  if (!value2.empty()) {
     recycleIds = StringUtils::boolean(value2);
   }
 
@@ -2973,6 +2977,13 @@ void RestReplicationHandler::handleCommandDump() {
     withTicks = StringUtils::boolean(value7);
   }
 
+  bool compat28 = false;
+  std::string const& value8 = _request->value("compat28", found);
+  
+  if (found) {
+    compat28 = StringUtils::boolean(value8);
+  }
+
   TRI_vocbase_col_t* c =
       TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
@@ -3010,6 +3021,10 @@ void RestReplicationHandler::handleCommandDump() {
     TRI_replication_dump_t dump(transactionContext,
                                 static_cast<size_t>(determineChunkSize()),
                                 includeSystem, 0);
+    
+    if (compat28) {
+      dump._compat28 = true;
+    }
 
     res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd,
                                         withTicks);
@@ -3126,6 +3141,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
       VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
   config._incremental = VelocyPackHelper::getBooleanValue(
       body, "incremental", defaults._incremental);
+  config._useCollectionId = VelocyPackHelper::getBooleanValue(
+      body, "useCollectionId", defaults._useCollectionId);
   config._requireFromPresent = VelocyPackHelper::getBooleanValue(
       body, "requireFromPresent", defaults._requireFromPresent);
   config._restrictType = VelocyPackHelper::getStringValue(
@@ -3280,6 +3297,8 @@ void RestReplicationHandler::handleCommandSync() {
       VelocyPackHelper::getBooleanValue(body, "incremental", false);
   bool const keepBarrier =
       VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
+  bool const useCollectionId =
+      VelocyPackHelper::getBooleanValue(body, "useCollectionId", true);
 
   std::unordered_map<std::string, bool> restrictCollections;
   VPackSlice const restriction = body.get("restrictCollections");
@@ -3313,7 +3332,8 @@ void RestReplicationHandler::handleCommandSync() {
   config._password = password;
   config._includeSystem = includeSystem;
   config._verbose = verbose;
-
+  config._useCollectionId = useCollectionId;
+        
   // wait until all data in current logfile got synced
   arangodb::wal::LogfileManager::instance()->waitForSync(5.0);
 
@@ -3690,6 +3710,62 @@ void RestReplicationHandler::handleCommandAddFollower() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a follower of a shard from the list of followers
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandRemoveFollower() {
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&VPackOptions::Defaults, success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "body needs to be an object with attributes 'followerId' and 'shard'");
+    return;
+  }
+  VPackSlice const followerId = body.get("followerId");
+  VPackSlice const shard = body.get("shard");
+  if (!followerId.isString() || !shard.isString()) {
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'followerId' and 'shard' attributes must be strings");
+    return;
+  }
+
+  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, shard.copyString());
+  if (col == nullptr) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  "did not find collection");
+    return;
+  }
+
+  TRI_document_collection_t* docColl = col->_collection;
+  if (docColl == nullptr) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
+                  "collection not loaded");
+    return;
+  }
+
+  TRI_ASSERT(docColl != nullptr);
+  docColl->followers()->remove(followerId.copyString());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+  }
+
+  generateResult(GeneralResponse::ResponseCode::OK, b.slice());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief hold a read lock on a collection to stop writes temporarily
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3731,7 +3807,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   double ttl = 0.0;
   if (ttlSlice.isInteger()) {
     try {
-      ttl = ttlSlice.getInt();
+      ttl = static_cast<double>(ttlSlice.getInt());
     } catch (...) {
     }
   } else {

@@ -55,6 +55,8 @@
 @import 'logs';
 // Graph Viewer
 @import 'graphViewer';
+// Graph Viewer 2
+@import 'graphViewer2';
 // General Dialogs
 @import 'dialogs';
 // Collections
@@ -79,6 +81,10 @@
 @import 'pure';
 // screen hotkeys
 @import 'hotkeys';
+// screen nodes
+@import 'nodes';
+// screen shards
+@import 'shards';
 
 //arangoTable Template
 @import 'arangoTable';
@@ -88,6 +94,11 @@
 @import 'subNavbar';
 //Help View
 @import 'help';
+//Support View
+@import 'support';
+
+// Extra CSS for internet explorer :)
+@import 'ie';
 
 // Data Tables, TODO: might all be superflous
 @import 'dataTables';
@@ -98,5 +109,4 @@
 
 // Plugin
 @import 'uploadfile';
-
 @import 'animate';

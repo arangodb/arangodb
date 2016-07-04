@@ -1,7 +1,7 @@
 
 
 @brief CA file
-`--server.cafile filename`
+`--ssl.cafile filename`
 
 This option can be used to specify a file with CA certificates that are
 sent

@@ -33,11 +33,6 @@
   "defaultDocument": "index.html",
 
   "configuration": {
-    "sessionPruneProb": {
-      "description": "Probability that dead sessions will be removed from the database for any given request.",
-      "type": "number",
-      "default": "0.001"
-    }
   },
 
   "files": {

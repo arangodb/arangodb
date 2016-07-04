@@ -51,8 +51,8 @@ QueryList::QueryList(TRI_vocbase_t*)
       _slow(),
       _slowCount(0),
       _enabled(!Query::DisableQueryTracking()),
-      _trackSlowQueries(true),
-      _slowQueryThreshold(QueryList::DefaultSlowQueryThreshold),
+      _trackSlowQueries(!Query::DisableQueryTracking()),
+      _slowQueryThreshold(Query::SlowQueryThreshold()),
       _maxSlowQueries(QueryList::DefaultMaxSlowQueries),
       _maxQueryStringLength(QueryList::DefaultMaxQueryStringLength) {
   _current.reserve(64);

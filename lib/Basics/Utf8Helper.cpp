@@ -79,11 +79,7 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
                             char const* right, size_t rightLength) const {
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
-
-  if (!_coll) {
-    LOG(ERR) << "no Collator in Utf8Helper::compareUtf8()!";
-    return (strcmp(left, right));
-  }
+  TRI_ASSERT(_coll);
 
   UErrorCode status = U_ZERO_ERROR;
   int result =
@@ -91,7 +87,7 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
                          StringPiece(right, (int32_t)rightLength), status);
   if (U_FAILURE(status)) {
     LOG(ERR) << "error in Collator::compareUTF8(...): " << u_errorName(status);
-    return (strcmp(left, right));
+    return (strncmp(left, right, leftLength < rightLength ? leftLength : rightLength));
   }
 
   return result;
@@ -522,17 +518,8 @@ RegexMatcher* Utf8Helper::buildMatcher(std::string const& pattern) {
 /// @brief whether or not value matches a regex
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Utf8Helper::matches(RegexMatcher* matcher, std::string const& value,
-                         bool& error) {
-  return matches(matcher, value.c_str(), value.size(), error);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not value matches a regex
-////////////////////////////////////////////////////////////////////////////////
-
 bool Utf8Helper::matches(RegexMatcher* matcher, char const* value,
-                         size_t valueLength, bool& error) {
+                         size_t valueLength, bool partial, bool& error) {
   TRI_ASSERT(value != nullptr);
   UnicodeString v = UnicodeString::fromUTF8(
       StringPiece(value, static_cast<int32_t>(valueLength)));
@@ -543,34 +530,20 @@ bool Utf8Helper::matches(RegexMatcher* matcher, char const* value,
   error = false;
 
   TRI_ASSERT(matcher != nullptr);
-  UBool result = matcher->matches(status);
+  UBool result;
+
+  if (partial) {
+    // partial match
+    result = matcher->find(status);
+  } else {
+    // full match
+    result = matcher->matches(status);
+  }
   if (U_FAILURE(status)) {
     error = true;
   }
 
   return (result ? true : false);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two utf8 strings
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_compare_utf8(char const* left, char const* right) {
-  TRI_ASSERT(left != nullptr);
-  TRI_ASSERT(right != nullptr);
-  return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, right);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two utf8 strings
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_compare_utf8(char const* left, size_t leftLength, char const* right,
-                     size_t rightLength) {
-  TRI_ASSERT(left != nullptr);
-  TRI_ASSERT(right != nullptr);
-  return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength, right,
-                                                   rightLength);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

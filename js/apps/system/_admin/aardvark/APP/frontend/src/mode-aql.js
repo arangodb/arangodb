@@ -88,21 +88,18 @@ var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 var AqlHighlightRules = function() {
 
     var keywords = (
-        "for|return|filter|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|options|with|and|or|not|distinct|graph|outbound|inbound|any|all|none|aggregate|like|count"
+        "for|return|filter|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|options|with|and|or|not|distinct|graph|shortest_path|outbound|inbound|any|all|none|aggregate|like"
     );
 
     var builtinFunctions = (
         "(to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|typename|" +
         "concat|concat_separator|char_length|lower|upper|substring|left|right|trim|reverse|contains|" +
-        "like|floor|ceil|round|abs|rand|sqrt|pow|length|min|max|average|sum|median|variance_population|" +
+        "log|log2|log10|exp|exp2|sin|cos|tan|asin|acos|atan|atan2|radians|degrees|pi|regex_test|" +
+        "like|floor|ceil|round|abs|rand|sqrt|pow|length|count|min|max|average|sum|median|variance_population|" +
         "variance_sample|first|last|unique|matches|merge|merge_recursive|has|attributes|values|unset|unset_recursive|keep|" +
         "near|within|within_rectangle|is_in_polygon|fulltext|paths|traversal|traversal_tree|edges|stddev_sample|stddev_population|" +
         "slice|nth|position|translate|zip|call|apply|push|append|pop|shift|unshift|remove_value|remove_values|" + 
-        "remove_nth|graph_paths|shortest_path|graph_shortest_path|graph_distance_to|graph_traversal|graph_traversal_tree|graph_edges|" +
-        "graph_vertices|neighbors|graph_neighbors|graph_common_neighbors|graph_common_properties|" +
-        "graph_eccentricity|graph_betweenness|graph_closeness|graph_absolute_eccentricity|" +
-        "graph_absolute_betweenness|graph_absolute_closeness|graph_diameter|graph_radius|date_now|" +
-        "date_timestamp|date_iso8601|date_dayofweek|date_year|date_month|date_day|date_hour|" +
+        "remove_nth|date_now|date_timestamp|date_iso8601|date_dayofweek|date_year|date_month|date_day|date_hour|" +
         "date_minute|date_second|date_millisecond|date_dayofyear|date_isoweek|date_leapyear|date_quarter|date_days_in_month|" + 
         "date_add|date_subtract|date_diff|date_compare|date_format|fail|passthru|sleep|not_null|" +
         "first_list|first_document|parse_identifier|current_user|current_database|" +

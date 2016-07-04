@@ -33,10 +33,11 @@ var getPathInfo = require('./getPathInfo');
  * @param {String} path
  * @param {Object} object
  * @returns {Object} value or `undefined`
+ * @namespace Utils
  * @name getPathValue
  * @api public
  */
 module.exports = function(path, obj) {
   var info = getPathInfo(path, obj);
   return info.value;
-}; 
+};

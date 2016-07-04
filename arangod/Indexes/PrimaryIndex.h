@@ -47,13 +47,13 @@ class PrimaryIndexIterator final : public IndexIterator {
       : _trx(trx), 
         _index(index), 
         _keys(keys.get()), 
-        _iterator(_keys->slice(), true) {
+        _iterator(_keys->slice()) {
 
         keys.release(); // now we have ownership for _keys
         TRI_ASSERT(_keys->slice().isArray());
       }
 
-  ~PrimaryIndexIterator() {}
+  ~PrimaryIndexIterator();
 
   TRI_doc_mptr_t* next() override;
 
@@ -79,6 +79,8 @@ class AllIndexIterator final : public IndexIterator {
   ~AllIndexIterator() {}
 
   TRI_doc_mptr_t* next() override;
+  
+  void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override;
 
   void reset() override;
 
@@ -115,6 +117,8 @@ class AnyIndexIterator final : public IndexIterator {
 };
 
 class PrimaryIndex final : public Index {
+  friend class PrimaryIndexIterator;
+
  public:
   PrimaryIndex() = delete;
 
@@ -156,28 +160,8 @@ class PrimaryIndex final : public Index {
   int remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
              bool) override final;
 
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief looks up an element given a request Slice. Key has to have the format
-  ///        [{eq: _key}]
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_doc_mptr_t* lookup(arangodb::Transaction*, VPackSlice const&) const;
-  
+ public:
   TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, VPackSlice const&) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a method to iterate over all elements in the index in
-  ///        a random order.
-  ///        Returns nullptr if all documents have been returned.
-  ///        Convention: step === 0 indicates a new start.
-  ///        DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_doc_mptr_t* lookupRandom(
-      arangodb::Transaction*, arangodb::basics::BucketPosition& initialPosition,
-      arangodb::basics::BucketPosition& position, uint64_t& step,
-      uint64_t& total);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a method to iterate over all elements in the index in
@@ -245,7 +229,6 @@ class PrimaryIndex final : public Index {
 
   IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,
-                                      arangodb::aql::Ast*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       bool) const override;
@@ -258,14 +241,40 @@ class PrimaryIndex final : public Index {
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
  private:
+
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create the iterator
+  /// @brief looks up an element given a request Slice. The slice has to be
+  ///        of type string.
   //////////////////////////////////////////////////////////////////////////////
 
-  IndexIterator* createIterator(
+  TRI_doc_mptr_t* lookup(arangodb::Transaction*, VPackSlice const&) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create the iterator, for a single attribute, IN operator
+  //////////////////////////////////////////////////////////////////////////////
+
+  IndexIterator* createInIterator(
       arangodb::Transaction*, IndexIteratorContext*,
       arangodb::aql::AstNode const*,
-      std::vector<arangodb::aql::AstNode const*> const&) const;
+      arangodb::aql::AstNode const*) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create the iterator, for a single attribute, EQ operator
+  //////////////////////////////////////////////////////////////////////////////
+  
+  IndexIterator* createEqIterator(
+      arangodb::Transaction*, IndexIteratorContext*,
+      arangodb::aql::AstNode const*,
+      arangodb::aql::AstNode const*) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a single value node to the iterator's keys
+  ////////////////////////////////////////////////////////////////////////////////
+   
+  void handleValNode(IndexIteratorContext* context,
+                     VPackBuilder* keys,
+                     arangodb::aql::AstNode const* valNode,
+                     bool isId) const; 
 
  private:
   //////////////////////////////////////////////////////////////////////////////

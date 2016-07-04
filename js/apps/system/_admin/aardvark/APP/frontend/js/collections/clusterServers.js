@@ -1,52 +1,50 @@
-/*global window, arangoHelper */
-(function() {
-
-  "use strict";
+/* global window, arangoHelper */
+(function () {
+  'use strict';
 
   window.ClusterServers = window.AutomaticRetryCollection.extend({
-
     model: window.ClusterServer,
     host: '',
 
-    url: arangoHelper.databaseUrl("/_admin/aardvark/cluster/DBServers"),
+    url: arangoHelper.databaseUrl('/_admin/aardvark/cluster/DBServers'),
 
-    updateUrl: function() {
-      //this.url = window.App.getNewRoute("DBServers");
+    updateUrl: function () {
+      // this.url = window.App.getNewRoute("DBServers")
       this.url = window.App.getNewRoute(this.host) + this.url;
     },
 
-    initialize: function(models, options) {
+    initialize: function (models, options) {
       this.host = options.host;
-      //window.App.registerForUpdate(this);
+    // window.App.registerForUpdate(this)
     },
 
-    statusClass: function(s) {
+    statusClass: function (s) {
       switch (s) {
-        case "ok":
-          return "success";
-        case "warning":
-          return "warning";
-        case "critical":
-          return "danger";
-        case "missing":
-          return "inactive";
+        case 'ok':
+          return 'success';
+        case 'warning':
+          return 'warning';
+        case 'critical':
+          return 'danger';
+        case 'missing':
+          return 'inactive';
         default:
-          return "danger";
+          return 'danger';
       }
     },
 
-    getStatuses: function(cb) {
-      if(!this.checkRetries()) {
+    getStatuses: function (cb) {
+      if (!this.checkRetries()) {
         return;
       }
       var self = this,
-        completed = function() {
+        completed = function () {
           self.successFullTry();
           self._retryCount = 0;
-          self.forEach(function(m) {
-            cb(self.statusClass(m.get("status")), m.get("address"));
+          self.forEach(function (m) {
+            cb(self.statusClass(m.get('status')), m.get('address'));
           });
-        };
+      };
       // This is the first function called in
       // Each update loop
       this.fetch({
@@ -56,101 +54,99 @@
     },
 
     byAddress: function (res, callback) {
-      if(!this.checkRetries()) {
+      if (!this.checkRetries()) {
         return;
       }
       var self = this;
       this.fetch({
         beforeSend: window.App.addAuth.bind(window.App),
         error: self.failureTry.bind(self, self.byAddress.bind(self, res, callback))
-      }).done(function() {
+      }).done(function () {
         self.successFullTry();
         res = res || {};
-        self.forEach(function(m) {
-          var addr = m.get("address");
-          addr = addr.split(":")[0];
+        self.forEach(function (m) {
+          var addr = m.get('address');
+          addr = addr.split(':')[0];
           res[addr] = res[addr] || {};
           res[addr].dbs = res[addr].dbs || [];
           res[addr].dbs.push(m);
         });
         callback(res);
-      }).error(function(e) {
-        console.log("error");
+      }).error(function (e) {
+        console.log('error');
         console.log(e);
       });
     },
 
-    getList: function() {
-      throw "Do not use";
-      /*
-      var self = this;
-      this.fetch({
-        beforeSend: window.App.addAuth.bind(window.App),
-        error: self.failureTry.bind(self, self.getList.bind(self, callback))
-      }).done(function() {
-        self.successFullTry();
-        var res = [];
-        _.each(self.where({role: "primary"}), function(m) {
-          var e = {};
-          e.primary = m.forList();
-          if (m.get("secondary")) {
-            e.secondary = self.get(m.get("secondary")).forList();
-          }
-          res.push(e);
-        });
-        callback(res);
-      });
-      */
+    getList: function () {
+      throw 'Do not use';
+    /*
+    var self = this
+    this.fetch({
+      beforeSend: window.App.addAuth.bind(window.App),
+      error: self.failureTry.bind(self, self.getList.bind(self, callback))
+    }).done(function() {
+      self.successFullTry()
+      var res = []
+      _.each(self.where({role: "primary"}), function(m) {
+        var e = {}
+        e.primary = m.forList()
+        if (m.get("secondary")) {
+          e.secondary = self.get(m.get("secondary")).forList()
+        }
+        res.push(e)
+      })
+      callback(res)
+    })
+    */
     },
 
-    getOverview: function() {
-      throw "Do not use DbServer.getOverview";
-      /*
-      this.fetch({
-        async: false,
-        beforeSend: window.App.addAuth.bind(window.App)
-      });
-      var res = {
-        plan: 0,
-        having: 0,
-        status: "ok"
-      },
-      self = this,
-      updateStatus = function(to) {
-        if (res.status === "critical") {
-          return;
-        }
-        res.status = to;
-      };
-      _.each(this.where({role: "primary"}), function(m) {
-        res.plan++;
-        switch (m.get("status")) {
-          case "ok":
-            res.having++;
-            break;
-          case "warning":
-            res.having++;
-            updateStatus("warning");
-            break;
-          case "critical":
-            var bkp = self.get(m.get("secondary"));
-            if (!bkp || bkp.get("status") === "critical") {
-              updateStatus("critical");
-            } else {
-              if (bkp.get("status") === "ok") {
-                res.having++;
-                updateStatus("warning");
-              }
+    getOverview: function () {
+      throw 'Do not use DbServer.getOverview';
+    /*
+    this.fetch({
+      async: false,
+      beforeSend: window.App.addAuth.bind(window.App)
+    })
+    var res = {
+      plan: 0,
+      having: 0,
+      status: "ok"
+    },
+    self = this,
+    updateStatus = function(to) {
+      if (res.status === "critical") {
+        return
+      }
+      res.status = to
+    }
+    _.each(this.where({role: "primary"}), function(m) {
+      res.plan++
+      switch (m.get("status")) {
+        case "ok":
+          res.having++
+          break
+        case "warning":
+          res.having++
+          updateStatus("warning")
+          break
+        case "critical":
+          var bkp = self.get(m.get("secondary"))
+          if (!bkp || bkp.get("status") === "critical") {
+            updateStatus("critical")
+          } else {
+            if (bkp.get("status") === "ok") {
+              res.having++
+              updateStatus("warning")
             }
-            break;
-          default:
-            console.debug("Undefined server state occurred. This is still in development");
-        }
-      });
-      return res;
-      */
+          }
+          break
+        default:
+          console.debug("Undefined server state occurred. This is still in development")
+      }
+    })
+    return res
+    */
     }
   });
-
 }());
-

@@ -61,6 +61,7 @@ set(ARANGODB_VERSION
 # for NSIS
 set(ARANGODB_DISPLAY_NAME       "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT     "https://www.arangodb.com")
+set(ARANGODB_HELP_LINK          "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
 set(ARANGODB_CONTACT            "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING    "ArangoDB - the multi-model database")
 
@@ -118,6 +119,11 @@ configure_file(
 ################################################################################
 ## OPERATION SYSTEM
 ################################################################################
+
+option(HOMEBREW
+  "whether to install for homebrew"
+  Off
+)
 
 if (WIN32)
   set(WINDOWS TRUE)
@@ -213,9 +219,9 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 endif ()
 
 if (WINDOWS)
-  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3" CACHE STRING "base flags")
-  set(BASE_C_FLAGS   ""                         CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "/GR /EHsc"                CACHE STRING "base C++flags")
+  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP" CACHE STRING "base flags")
+  set(BASE_C_FLAGS   ""                         	CACHE STRING "base C flags")
+  set(BASE_CXX_FLAGS "/GR /EHsc"                	CACHE STRING "base C++flags")
 else ()
   set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
   set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
@@ -264,7 +270,7 @@ find_package(Threads REQUIRED)
 if (MSVC)
   configure_file("Installation/Windows/vcproj.user/arangod.vcxproj.user" ${CMAKE_BINARY_DIR})
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
-  add_definitions("-DFD_SETSIZE=2048")
+  add_definitions("-DFD_SETSIZE=8192")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
   
   # https://blogs.msdn.microsoft.com/vcblog/2016/04/14/stl-fixes-in-vs-2015-update-2/
@@ -328,12 +334,12 @@ else ()
 
   option(USE_OPTIMIZE_FOR_ARCHITECTURE "try to determine CPU architecture" ON)
 
-  if (NOT ${USE_OPTIMIZE_FOR_ARCHITECTURE})
+  if (USE_OPTIMIZE_FOR_ARCHITECTURE)
     # mop: core2 (merom) is our absolute minimum!
-    SET(TARGET_ARCHITECTURE "merom")
+    # SET(TARGET_ARCHITECTURE "merom")
+    include(OptimizeForArchitecture)
+    OptimizeForArchitecture()
   endif ()
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
 
   set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
@@ -424,12 +430,19 @@ option(USE_JEMALLOC
   ${JEMALLOC_DEFAULT_VALUE}
 )
 
+set(FORCE_JEMALLOC_LIB "" CACHE STRING "force this library command to link jemalloc")
+
 if (USE_JEMALLOC)
   if (NOT JEMALLOC_FOUND)
     message(FATAL_ERROR "jemalloc build was requested but jemalloc not found")
   endif ()
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
-  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
+
+  if (FORCE_JEMALLOC_LIB STREQUAL "")
+    set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
+  else ()
+    set(SYS_LIBS ${SYS_LIBS} ${FORCE_JEMALLOC_LIB})
+  endif ()
 endif ()
 
 ################################################################################
@@ -625,6 +638,12 @@ endif ()
 
 add_subdirectory(3rdParty)
 
+################################################################################
+## VELOCYPACK
+################################################################################
+
+add_definitions("-DVELOCYPACK_XXHASH=1")
+
 set(BOOST_VERSION 1.61.0b1)
 
 foreach (LINK_DIR ${LINK_DIRECTORIES})
@@ -667,8 +686,26 @@ add_definitions("-DARANGODB_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 ## OPENSSL
 ################################################################################
 
+find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
+
+if (OPENSSL_VERSION)
+  string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
+  list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
+  list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
+  if ("${OPENSSL_VERSION_MAJOR}" GREATER 0 AND "${OPENSSL_VERSION_MINOR}" GREATER 0)
+    option(USE_OPENSSL_NO_SSL2
+      "do not use OPENSSL_NO_SSL2"
+      ON
+    )
+  else ()
+    option(USE_OPENSSL_NO_SSL2
+      "do not use OPENSSL_NO_SSL2"
+      OFF
+    )
+  endif ()
+endif ()
 
 if (USE_OPENSSL_NO_SSL2)
   add_definitions(-DOPENSSL_NO_SSL2)
@@ -792,9 +829,6 @@ add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoimp     zlibstatic)
 add_dependencies(arangorestore zlibstatic)
 add_dependencies(arangosh      zlibstatic)
-if (TARGET prepare_debian)
-  add_dependencies(arangod       prepare_debian)
-endif()
 
 if (NOT USE_PRECOMPILED_V8)
   # all binaries depend on v8_build because it contains ICU as well

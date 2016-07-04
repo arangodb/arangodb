@@ -45,7 +45,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
-  void stop() override final;
+  void unprepare() override final;
 
  private:
   double _gcFrequency;
@@ -76,11 +76,11 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   void shutdownContexts();
 
-  void defineBoolean(std::string name, bool value) {
+  void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
   }
 
-  void defineDouble(std::string name, double value) {
+  void defineDouble(std::string const& name, double value) {
     _definedDoubles[name] = value;
   }
 

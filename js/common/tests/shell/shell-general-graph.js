@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false, unused: false */
+/*jshint globalstrict:false, strict:false */
 /*global assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +122,7 @@ function GeneralGraphCreationSuite() {
         return;
       }
 
-      var g = graph._create(
+      graph._create(
         gN1,
         graph._edgeDefinitions(
           graph._relation(rn1, [vn2, vn1], [vn4, vn3])
@@ -159,7 +159,7 @@ function GeneralGraphCreationSuite() {
         return;
       }
 
-      var g = graph._create(
+      graph._create(
         gN1,
         graph._edgeDefinitions(
           graph._relation(rn1, [vn2, vn1], [vn4, vn3])
@@ -187,7 +187,7 @@ function GeneralGraphCreationSuite() {
         return;
       }
 
-      var g = graph._create(
+      graph._create(
         gN1,
         graph._edgeDefinitions(
           graph._relation(rn1, [vn2, vn1], [vn4, vn3])
@@ -644,8 +644,8 @@ function GeneralGraphCreationSuite() {
       var dr1 = graph._relation(ec1, [vc1], [vc1, vc2]),
         dr2 = graph._relation(ec2, [vc3], [vc4, vc5]),
         dr2a = graph._relation(ec2, [vc3], [vc4]),
-        g1 = graph._create(gN1, [dr1]),
-        g2 = graph._create(gN2, [dr2]);
+        g1 = graph._create(gN1, [dr1]);
+      graph._create(gN2, [dr2]);
 
       try {
         g1._extendEdgeDefinitions(dr2a);
@@ -680,8 +680,8 @@ function GeneralGraphCreationSuite() {
       var dr1 = graph._relation(ec1, [vc1], [vc1, vc2]),
         dr2 = graph._relation(ec2, [vc3], [vc4, vc5]),
         dr3 = graph._relation(ec3, [vc3], [vc4]),
-        g1 = graph._create(gN1, [dr1]),
-        g2 = graph._create(gN2, [dr2]);
+        g1 = graph._create(gN1, [dr1]);
+      graph._create(gN2, [dr2]);
 
       assertEqual([dr1], g1.__edgeDefinitions);
       g1._addVertexCollection(vc3);
@@ -710,7 +710,7 @@ function GeneralGraphCreationSuite() {
 
       g1._extendEdgeDefinitions(dr2);
       assertEqual([dr1, dr2], g1.__edgeDefinitions);
-      var edgeDefinition = _.findWhere(g1.__edgeDefinitions, {collection: ec2});
+      var edgeDefinition = _.find(g1.__edgeDefinitions, {collection: ec2});
       assertEqual(edgeDefinition.from, [vc1, vc2, vc3, vc4]);
       assertEqual(edgeDefinition.to, [vc1, vc2, vc3, vc4]);
 
@@ -784,1144 +784,6 @@ function GeneralGraphCreationSuite() {
   };
 }
 
-
-function GeneralGraphAQLQueriesSuite() {
-  'use strict';
-  // Definition of names
-  var graphName = "UnitTestsGraph";
-  var included = "UnitTestIncluded";
-  var excluded = "UnitTestExcluded";
-  var v1 = "UnitTestV1";
-  var v2 = "UnitTestV2";
-  var v3 = "UnitTestV3";
-
-  var dropInclExcl = function() {
-    if (graph._exists(graphName)) {
-      graph._drop(graphName, true);
-    }
-  };
-
-  var e1, e2, e3;
-
-  var createInclExcl = function() {
-    dropInclExcl();
-    var inc = graph._relation(
-      included, [v1], [v1, v2]
-    );
-    var exc = graph._relation(
-      excluded, [v1], [v3]
-    );
-    var g = graph._create(graphName, [inc, exc]);
-    g[v1].save({_key: "1"});
-    g[v1].save({_key: "2"});
-    g[v2].save({_key: "1"});
-    g[v3].save({_key: "1"});
-    e1 = g[included].save(
-      v1 + "/1",
-      v2 + "/1",
-      {
-        _key: "e1",
-        val: true
-      }
-    )._id;
-    e2 = g[included].save(
-      v1 + "/2",
-      v1 + "/1",
-      {
-        _key: "e2",
-        val: false
-      }
-    )._id;
-    e3 = g[excluded].save(
-      v1 + "/1",
-      v3 + "/1",
-      {
-        _key: "e3",
-        val: false
-      }
-    )._id;
-    return g;
-  };
-
-  var findIdInResult = function(result, id) {
-    return _.some(result, function(i) {
-      return i._id === id;
-    });
-  };
-
-  // The testee graph object
-  var g;
-
-  return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setUp: query creation for edges and vertices
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp: function() {
-      g = createInclExcl();
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: query creation for edges and vertices
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown: function() {
-      dropInclExcl();
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: restrict construct on edges
-////////////////////////////////////////////////////////////////////////////////
-
-    test_restrictOnEdges: function() {
-      var query = g._edges().restrict(included);
-      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + '@graphName,{},@options_0)');
-      var bindVars = query.bindVars;
-      assertEqual(bindVars.graphName, graphName);
-      assertEqual(bindVars
-        .options_0
-        .edgeCollectionRestriction, [included]);
-      assertEqual(bindVars
-        .options_0
-        .direction, "outbound"
-      );
-
-      var result = query.toArray();
-      assertEqual(result.length, 2);
-      assertTrue(findIdInResult(result, e1), "Did not include e1");
-      assertTrue(findIdInResult(result, e2), "Did not include e2");
-      assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: query creation for Vertices
-////////////////////////////////////////////////////////////////////////////////
-
-    test_vertices: function() {
-      var query = g._vertices(v1 + "/1");
-      assertEqual(query.printQuery(), 'FOR vertices_0 IN GRAPH_VERTICES('
-        + '@graphName,@vertexExample_0,@options_0)');
-      var bindVars = query.bindVars;
-      assertEqual(bindVars.graphName, graphName);
-      assertEqual(bindVars.vertexExample_0, {_id: v1 + "/1"});
-      var result = query.toArray();
-      assertEqual(result.length, 1);
-      assertTrue(findIdInResult(result,  v1 + "/1"), "Did not include " +  v1 + "/1");
-
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: restrict error handling
-////////////////////////////////////////////////////////////////////////////////
-
-    test_restrictErrorHandlingSingle: function() {
-      try {
-        g._edges(v1 + "/1").restrict([included, "unknown"]);
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
-        assertEqual(err.errorMessage, "edge collections: unknown are not known to the graph");
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: restrict error handling on multiple failures
-////////////////////////////////////////////////////////////////////////////////
-
-    test_restrictErrorHandlingMultiple: function() {
-      try {
-        g._edges(v1 + "/1").restrict(["failed", included, "unknown", "foxxle"]);
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
-        assertEqual(err.errorMessage,
-          "edge collections: failed and unknown and foxxle are not known to the graph");
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: filter construct on Edges
-////////////////////////////////////////////////////////////////////////////////
-
-   test_filterOnEdges: function() {
-      var query = g._edges().filter({val: true});
-      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + '@graphName,{},@options_0) '
-        + 'FILTER MATCHES(edges_0,[{"val":true}])');
-      var bindVars = query.bindVars;
-      assertEqual(bindVars.graphName, graphName);
-      assertEqual(bindVars.options_0, {
-        direction: "outbound",
-        edgeExamples: [{}],
-        includeData: true
-      });
-      var result = query.toArray();
-      assertEqual(result.length, 1);
-      assertTrue(findIdInResult(result, e1), "Did not include e1");
-      assertFalse(findIdInResult(result, e2), "e2 is not excluded");
-      assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-   },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: counting of query results
-////////////////////////////////////////////////////////////////////////////////
-//
-    test_queryCount: function() {
-      var query = g._edges();
-      assertEqual(query.count(), 3);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: Cursor iteration
-////////////////////////////////////////////////////////////////////////////////
-    test_cursorIteration: function() {
-      var query = g._edges();
-      var list = [e1, e2, e3];
-      var next;
-      assertTrue(query.hasNext());
-      next = query.next();
-      list = _.without(list, next._id);
-      assertEqual(list.length, 2);
-      assertTrue(query.hasNext());
-      next = query.next();
-      list = _.without(list, next._id);
-      assertEqual(list.length, 1);
-      assertTrue(query.hasNext());
-      next = query.next();
-      list = _.without(list, next._id);
-      assertEqual(list.length, 0);
-      assertFalse(query.hasNext());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: Cursor recreation after iteration
-////////////////////////////////////////////////////////////////////////////////
-    test_cursorIterationAndRecreation: function() {
-      var query = g._edges();
-      var list = [e1, e2, e3];
-      var next;
-      assertTrue(query.hasNext());
-      next = query.next();
-      list = _.without(list, next._id);
-      assertEqual(list.length, 2);
-      assertTrue(query.hasNext());
-      next = query.next();
-      list = _.without(list, next._id);
-      assertEqual(list.length, 1);
-      assertTrue(query.hasNext());
-      next = query.next();
-      list = _.without(list, next._id);
-      assertEqual(list.length, 0);
-      assertFalse(query.hasNext());
-      query = query.filter({val: true});
-      list = [e1];
-      assertTrue(query.hasNext());
-      next = query.next();
-      list = _.without(list, next._id);
-      assertEqual(list.length, 0);
-      assertFalse(query.hasNext());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: Is cursor recreated after counting of query results and appending filter
-////////////////////////////////////////////////////////////////////////////////
-    test_cursorRecreationAfterCount: function() {
-      var query = g._edges();
-      assertEqual(query.count(), 3);
-      query = query.filter({val: true});
-      assertEqual(query.count(), 1);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: Is cursor recreated after to array of query results and appending filter
-////////////////////////////////////////////////////////////////////////////////
-    test_cursorRecreationAfterToArray: function() {
-      var query = g._edges();
-      var result = query.toArray();
-      assertTrue(findIdInResult(result, e1), "Did not include e1");
-      assertTrue(findIdInResult(result, e2), "Did not include e2");
-      assertTrue(findIdInResult(result, e3), "Did not include e3");
-      query = query.filter({val: true});
-      result = query.toArray();
-      assertTrue(findIdInResult(result, e1), "Did not include e1");
-      assertFalse(findIdInResult(result, e2), "e2 is not excluded");
-      assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-    }
-
-  };
-
-}
-
-function ChainedFluentAQLResultsSuite() {
-  'use strict';
-
-  var gn = "UnitTestGraph";
-  var user = "UnitTestUsers";
-  var product = "UnitTestProducts";
-  var isFriend = "UnitTestIsFriend";
-  var hasBought = "UnitTestHasBought";
-  var uaName = "Alice";
-  var ubName = "Bob";
-  var ucName = "Charly";
-  var udName = "Diana";
-  var p1Name = "HiFi";
-  var p2Name = "Shirt";
-  var p3Name = "TV";
-  var pTypeElec = "Electro";
-  var pTypeCloth = "Cloth";
-
-  var ud1 = 2000;
-  var ud2 = 2001;
-  var ud3 = 2002;
-  var ud4 = 2003;
-
-  var d1 = 2004;
-  var d2 = 2005;
-  var d3 = 2006;
-  var d4 = 2007;
-  var d5 = 2008;
-
-  var g;
-
-  var edgeDef = [];
-  edgeDef.push(graph._relation(isFriend, user, user));
-  edgeDef.push(graph._relation(hasBought, user, product));
-
-
-  var findBoughts = function(result, list) {
-    var boughts = _.sortBy(
-      _.filter(result, function(e) {
-        return e._id.split("/")[0] === hasBought;
-      }),
-      "date"
-    );
-    assertEqual(list.length, boughts.length, "Did not return all expected boughts");
-    _.each(list.sort(), function(v, i) {
-      assertEqual(boughts[i].date, v);
-    });
-  };
-
-  var findFriends = function(result, list) {
-    var friends = _.sortBy(
-      _.filter(result, function(e) {
-        return e._id.split("/")[0] === isFriend;
-      }),
-      "since"
-    );
-    assertEqual(list.length, friends.length, "Did not return all expected friendships");
-    _.each(list.sort(), function(v, i) {
-      assertEqual(friends[i].since, v);
-    });
-  };
-
-  var dropData = function() {
-    try {
-      graph._drop(gn, true);
-    } catch(ignore) {
-
-    }
-  };
-
-  var createTestData = function() {
-    dropData();
-    g = graph._create(gn, edgeDef);
-    var ua = g[user].save({name: uaName})._id;
-    var ub = g[user].save({name: ubName})._id;
-    var uc = g[user].save({name: ucName})._id;
-    var ud = g[user].save({name: udName})._id;
-
-    var p1 = g[product].save({name: p1Name, type: pTypeElec})._id;
-    var p2 = g[product].save({name: p2Name, type: pTypeCloth})._id;
-    var p3 = g[product].save({name: p3Name, type: pTypeElec})._id;
-
-    g[isFriend].save(ua, ub, {
-      since: ud1
-    });
-    g[isFriend].save(ua, uc, {
-      since: ud2
-    });
-    g[isFriend].save(ub, ud, {
-      since: ud3
-    });
-    g[isFriend].save(uc, ud, {
-      since: ud4
-    });
-
-    g[hasBought].save(ua, p1, {
-      date: d1
-    });
-    g[hasBought].save(ub, p1, {
-      date: d2
-    });
-    g[hasBought].save(ub, p3, {
-      date: d3
-    });
-
-    g[hasBought].save(ud, p1, {
-      date: d4
-    });
-    g[hasBought].save(ud, p2, {
-      date: d5
-    });
-
-  };
-
-  var plainVertexQueryStmt = function(depth, mergeWith) {
-    var stmt = "FOR vertices_" + depth + " IN "
-      + "GRAPH_VERTICES("
-      + "@graphName,";
-    if (mergeWith !== undefined) {
-      if (Array.isArray(mergeWith)) {
-        var i;
-        stmt += "[";
-        for (i = 0; i < mergeWith.length; ++i) {
-          if (i > 0) {
-            stmt += ",";
-          }
-          stmt += "MERGE(@vertexExample_" + depth 
-            + "," + mergeWith[i] + ")";
-        }
-        stmt += "]";
-      } else {
-        stmt += "MERGE(@vertexExample_" + depth
-          + "," + mergeWith + ")";
-      }
-    } else {
-      stmt += "@vertexExample_" + depth;
-    }
-    stmt += ",@options_" + depth + ")";
-    return stmt;
-  };
-
-  var plainNeighborQueryStmt = function(depth, vdepth) {
-    return "FOR neighbors_" + depth + " IN "
-      + "GRAPH_NEIGHBORS("
-      + "@graphName,"
-      + "vertices_" + vdepth + ","
-      + "@options_" + depth + ")";
-  };
-
-  var vertexMergeStmt = function(direction, eDepth) {
-    switch(direction) {
-      case "both":
-        return [
-          vertexMergeStmt("from", eDepth),
-          vertexMergeStmt("to", eDepth)
-        ];
-      case "from":
-        return  "{'_id': edges_" + eDepth + "._from}";
-      case "to":
-        return  "{'_id': edges_" + eDepth + "._to}";
-      default:
-        fail("Helper function does not know direction:" + direction);
-    }
-
-  };
-
-  var plainEdgesQueryStmt = function(depth, vDepth, type) {
-    if (!type) {
-      type = "vertices";
-    }
-    var q = "FOR edges_" + depth + " IN "
-      + "GRAPH_EDGES("
-      + "@graphName,";
-    if(vDepth > -1) {
-      q += type + "_" + vDepth;
-      q += ",";
-    } else {
-      q += "{},";
-    }
-    q += "@options_" + depth + ")";
-    return q;
-  };
-
-  return {
-
-    setUp: createTestData,
-
-    tearDown: dropData,
-
-    test_getAllVerticesResultingAQL: function() {
-      var query = g._vertices();
-      var stmt = query.printQuery();
-      assertEqual(stmt, plainVertexQueryStmt(0));
-      assertEqual(query.bindVars.vertexExample_0, {});
-      assertEqual(query.bindVars.options_0, {});
-    },
-
-    test_getAllVertices: function() {
-      var result = g._vertices().toArray();
-      assertEqual(result.length, 7);
-      var sorted = _.sortBy(result, "name");
-      assertEqual(sorted[0].name, uaName);
-      assertEqual(sorted[1].name, ubName);
-      assertEqual(sorted[2].name, ucName);
-      assertEqual(sorted[3].name, udName);
-      assertEqual(sorted[4].name, p1Name);
-      assertEqual(sorted[5].name, p2Name);
-      assertEqual(sorted[6].name, p3Name);
-    },
-
-    test_getVertexByIdResultingAQL: function() {
-      var a_id = g[user].firstExample({name: uaName})._id;
-      var query = g._vertices(a_id);
-      var stmt = query.printQuery();
-      assertEqual(stmt, plainVertexQueryStmt(0));
-      assertEqual(query.bindVars.vertexExample_0, {_id: a_id});
-      assertEqual(query.bindVars.options_0, {});
-    },
-
-    test_getVertexById: function() {
-      var a_id = g[user].firstExample({name: uaName})._id;
-      var result = g._vertices(a_id).toArray();
-      assertEqual(result.length, 1);
-      assertEqual(result[0].name, uaName);
-    },
-
-    test_getVerticesByIdResultingAQL: function() {
-      var a_id = g[user].firstExample({name: uaName})._id;
-      var b_id = g[user].firstExample({name: ubName})._id;
-      var query = g._vertices([a_id, b_id]);
-      var stmt = query.printQuery();
-      assertEqual(stmt, plainVertexQueryStmt(0));
-      assertEqual(query.bindVars.vertexExample_0, [{_id: a_id}, {_id: b_id}]);
-      assertEqual(query.bindVars.options_0, {});
-    },
-
-    test_getVerticesById: function() {
-      var a_id = g[user].firstExample({name: uaName})._id;
-      var b_id = g[user].firstExample({name: ubName})._id;
-      var result = g._vertices([a_id, b_id]).toArray();
-      assertEqual(result.length, 2);
-      var sorted = _.sortBy(result, "name");
-      assertEqual(sorted[0].name, uaName);
-      assertEqual(sorted[1].name, ubName);
-    },
-
-    test_getVertexByExampleResultingAQL: function() {
-      var query = g._vertices({
-        name: uaName
-      });
-      var stmt = query.printQuery();
-      assertEqual(stmt, plainVertexQueryStmt(0));
-      assertEqual(query.bindVars.vertexExample_0, {name: uaName});
-      assertEqual(query.bindVars.options_0, {});
-    },
-
-    test_getVertexByExample: function() {
-      var result = g._vertices({
-        name: uaName
-      }).toArray();
-      assertEqual(result.length, 1);
-      assertEqual(result[0].name, uaName);
-    },
-
-    test_getVerticesByExampleResultingAQL: function() {
-      var query = g._vertices([{
-        name: uaName
-      },{
-        name: p1Name
-      }]);
-      var stmt = query.printQuery();
-      assertEqual(stmt, plainVertexQueryStmt(0));
-      assertEqual(query.bindVars.vertexExample_0, [
-        {name: uaName},
-        {name: p1Name}
-      ]);
-      assertEqual(query.bindVars.options_0, {});
-    },
-
-    test_getVerticesByExample: function() {
-      var result = g._vertices([{
-        name: uaName
-      },{
-        name: p1Name
-      }]).toArray();
-      assertEqual(result.length, 2);
-      var sorted = _.sortBy(result, "name");
-      assertEqual(sorted[0].name, uaName);
-      assertEqual(sorted[1].name, p1Name);
-    },
-
-    test_getVerticesByExampleAndIdMixResultingAQL: function() {
-      var b_id = g[user].firstExample({name: ubName})._id;
-      var query = g._vertices([{
-        name: uaName
-      },
-      b_id,
-      {
-        name: ucName
-      }]);
-      var stmt = query.printQuery();
-      assertEqual(stmt, plainVertexQueryStmt(0));
-      assertEqual(query.bindVars.vertexExample_0, [
-        {name: uaName},
-        {_id: b_id},
-        {name: ucName}
-      ]);
-      assertEqual(query.bindVars.options_0, {});
-    },
-
-    test_getVerticesByExampleAndIdMix: function() {
-      var b_id = g[user].firstExample({name: ubName})._id;
-      var result = g._vertices([{
-        name: uaName
-      },
-      b_id,
-      {
-        name: ucName
-      }]).toArray();
-      assertEqual(result.length, 3);
-      var sorted = _.sortBy(result, "name");
-      assertEqual(sorted[0].name, uaName);
-      assertEqual(sorted[1].name, ubName);
-      assertEqual(sorted[2].name, ucName);
-    },
-
-    test_getAllEdgesResultingAQL: function() {
-      var query = g._edges();
-      var stmt = query.printQuery();
-      assertEqual(stmt, plainEdgesQueryStmt(0));
-      assertEqual(query.bindVars.options_0, {
-        direction: "outbound",
-        edgeExamples: [{}],
-        includeData: true
-      });
-    },
-
-    test_getAllEdges: function() {
-      var result = g._edges().toArray();
-      assertEqual(result.length, 9);
-      findFriends(result, [ud1, ud2, ud3, ud4]);
-      findBoughts(result, [d1, d2, d3, d4, d5]);
-    },
-
-    test_getEdgeByIdResultingAQL: function() {
-      var a_id = g[hasBought].firstExample({date: d1})._id;
-      var query = g._edges(a_id);
-      var stmt = query.printQuery();
-      assertEqual(stmt, plainEdgesQueryStmt(0));
-      assertEqual(query.bindVars.options_0, {
-        direction: "outbound",
-        edgeExamples: [{_id: a_id}],
-        includeData: true
-      });
-    },
-
-    test_getEdgeById: function() {
-      var a_id = g[hasBought].firstExample({date: d1})._id;
-      var result = g._edges(a_id).toArray();
-      assertEqual(result.length, 1);
-      findBoughts(result, [d1]);
-    },
-
-    test_getEdgesByIdResultingAQL: function() {
-      var a_id = g[hasBought].firstExample({date: d1})._id;
-      var b_id = g[isFriend].firstExample({since: ud2})._id;
-      var query = g._edges([a_id, b_id]);
-      var stmt = query.printQuery();
-      assertEqual(stmt, plainEdgesQueryStmt(0));
-      assertEqual(query.bindVars.options_0, {
-        direction: "outbound",
-        edgeExamples: [
-          {_id: a_id},
-          {_id: b_id}
-        ],
-        includeData: true
-      });
-    },
-
-    test_getEdgesById: function() {
-      var a_id = g[hasBought].firstExample({date: d1})._id;
-      var b_id = g[isFriend].firstExample({since: ud2})._id;
-      var result = g._edges([a_id, b_id]).toArray();
-      assertEqual(result.length, 2);
-      findBoughts(result, [d1]);
-      findFriends(result, [ud2]);
-    },
-
-    test_getEdgeByExampleResultingAQL: function() {
-      var query = g._edges({
-        date: d2
-      });
-      var stmt = query.printQuery();
-      assertEqual(stmt, plainEdgesQueryStmt(0));
-      assertEqual(query.bindVars.options_0, {
-        direction: "outbound",
-        edgeExamples: [
-          {date: d2}
-        ],
-        includeData: true
-      });
-    },
-
-    test_getEdgeByExample: function() {
-      var result = g._edges({
-        date: d2
-      }).toArray();
-      assertEqual(result.length, 1);
-      findBoughts(result, [d2]);
-    },
-
-    test_getEdgesByExampleResultingAQL: function() {
-      var query = g._edges([{
-        since: ud3
-      },{
-        date: d3
-      }]);
-      var stmt = query.printQuery();
-      assertEqual(stmt, plainEdgesQueryStmt(0));
-      assertEqual(query.bindVars.options_0, {
-        direction: "outbound",
-        edgeExamples: [
-          {since: ud3},
-          {date: d3}
-        ],
-        includeData: true
-      });
-    },
-
-    test_getEdgesByExample: function() {
-      var result = g._edges([{
-        since: ud3
-      },{
-        date: d3
-      }]).toArray();
-      assertEqual(result.length, 2);
-      findBoughts(result, [d3]);
-      findFriends(result, [ud3]);
-    },
-
-    test_getEdgesByExampleAndIdMixResultingAQL: function() {
-      var b_id = g[hasBought].firstExample({date: d1})._id;
-      var query = g._edges([{
-        date: d5
-      },
-      b_id,
-      {
-        since: ud1
-      }]);
-      var stmt = query.printQuery();
-      assertEqual(stmt, plainEdgesQueryStmt(0));
-      assertEqual(query.bindVars.options_0, {
-        direction: "outbound",
-        edgeExamples: [
-          {date: d5},
-          {_id: b_id},
-          {since: ud1}
-        ],
-        includeData: true
-      });
-    },
-
-    test_getEdgesByExampleAndIdMix: function() {
-      var b_id = g[hasBought].firstExample({date: d1})._id;
-      var result = g._edges([{
-        date: d5
-      },
-      b_id,
-      {
-        since: ud1
-      }]).toArray();
-      assertEqual(result.length, 3);
-      findBoughts(result, [d1, d5]);
-      findFriends(result, [ud1]);
-    },
-
-    test_getEdgesForSelectedVertexResultingAQL: function() {
-      var query = g._vertices({name: uaName})
-        .edges();
-      var stmt = query.printQuery();
-      var expected = [];
-      expected.push(plainVertexQueryStmt(0));
-      expected.push(plainEdgesQueryStmt(1, 0));
-      assertEqual(stmt, expected.join(" "));
-      assertEqual(query.bindVars.vertexExample_0, {name: uaName});
-      assertEqual(query.bindVars.options_0, {});
-      assertEqual(query.bindVars.options_1, {
-        direction: "any",
-        edgeExamples: [{}],
-        includeData: true
-      });
-    },
-
-    test_getEdgesForSelectedVertex: function() {
-      var result = g._vertices({name: uaName})
-        .edges()
-        .toArray();
-      assertEqual(result.length, 3);
-      findBoughts(result, [d1]);
-      findFriends(result, [ud1, ud2]);
-    },
-
-    test_getEdgesForSelectedVertexWithoutEdges: function() {
-      var result = g._vertices({name: p1Name})
-        .edges()
-        .restrict(isFriend)
-        .toArray();
-      assertEqual(result.length, 0);
-    },
-
-    test_getEdgesWithRestrictionIfThereAreNone: function() {
-      var emptyGN = "UnitTestEmptyGraph";
-      var emptyEdges = "UnitTestEmptyEdges";
-      var emptyVertices = "UnitTestEmptyVertices";
-      try {
-        graph._drop(emptyGN, true);
-      } catch (ignore) {
-      }
-      var g2 = graph._create(emptyGN, [
-        graph._relation(emptyEdges, emptyVertices, emptyVertices)
-      ]);
-      g2[emptyVertices].save({_key: "highlander"});
-      var res = g2._vertices(emptyVertices + "/highlander").edges().restrict(emptyEdges).toArray();
-      assertEqual(res, []);
-      graph._drop(emptyGN, true);
-    },
-
-    test_getInEdgesForSelectedVertexResultingAQL: function() {
-      var query = g._vertices({name: ubName})
-        .inEdges();
-      var stmt = query.printQuery();
-      var expected = [];
-      expected.push(plainVertexQueryStmt(0));
-      expected.push(plainEdgesQueryStmt(1, 0));
-      assertEqual(stmt, expected.join(" "));
-      assertEqual(query.bindVars.vertexExample_0, {name: ubName});
-      assertEqual(query.bindVars.options_0, {});
-      assertEqual(query.bindVars.options_1, {
-        direction: "inbound",
-        edgeExamples: [{}],
-        includeData: true
-      });
-    },
-
-    test_getInEdgesForSelectedVertex: function() {
-      var result = g._vertices({name: ubName})
-        .inEdges()
-        .toArray();
-      assertEqual(result.length, 1);
-      findFriends(result, [ud1]);
-    },
-
-    test_getOutEdgesForSelectedVertexResultingAQL: function() {
-      var query = g._vertices({name: ubName})
-        .outEdges();
-      var stmt = query.printQuery();
-      var expected = [];
-      expected.push(plainVertexQueryStmt(0));
-      expected.push(plainEdgesQueryStmt(1, 0));
-      assertEqual(stmt, expected.join(" "));
-      assertEqual(query.bindVars.vertexExample_0, {name: ubName});
-      assertEqual(query.bindVars.options_0, {});
-      assertEqual(query.bindVars.options_1, {
-        direction: "outbound",
-        edgeExamples: [{}],
-        includeData: true
-      });
-    },
-
-    test_getOutEdgesForSelectedVertex: function() {
-      var result = g._vertices({name: ubName})
-        .outEdges()
-        .toArray();
-      assertEqual(result.length, 3);
-      findBoughts(result, [d2, d3]);
-      findFriends(result, [ud3]);
-    },
-
-    test_getVerticesForSelectedEdgeResultingAQL: function() {
-      var query = g._edges({since: ud1})
-        .vertices();
-      var stmt = query.printQuery();
-      var expected = [];
-      expected.push(plainEdgesQueryStmt(0));
-      expected.push(plainVertexQueryStmt(1, vertexMergeStmt("both", 0)));
-      assertEqual(stmt, expected.join(" "));
-      assertEqual(query.bindVars.options_0, {
-        direction: "outbound",
-        edgeExamples: [{since: ud1}],
-        includeData: true
-      });
-      assertEqual(query.bindVars.options_1, {});
-    },
-
-    test_getVerticesForSelectedEdge: function() {
-      var result = g._edges({since: ud1})
-        .vertices()
-        .toArray();
-      assertEqual(result.length, 2);
-      var sorted = _.sortBy(result, "name");
-      assertEqual(sorted[0].name, uaName);
-      assertEqual(sorted[1].name, ubName);
-    },
-
-    test_toVertexForSelectedEdgeResultingAQL: function() {
-      var query = g._edges({since: ud1})
-        .toVertices();
-      var stmt = query.printQuery();
-      var expected = [];
-      expected.push(plainEdgesQueryStmt(0));
-      expected.push(plainVertexQueryStmt(1, vertexMergeStmt("to", 0)));
-      assertEqual(stmt, expected.join(" "));
-      assertEqual(query.bindVars.options_0, {
-        direction: "outbound",
-        edgeExamples: [{since: ud1}],
-        includeData: true
-      });
-      assertEqual(query.bindVars.options_1, {});
-    },
-
-    test_toVertexForSelectedEdge: function() {
-      var result = g._edges({since: ud1})
-        .toVertices()
-        .toArray();
-      assertEqual(result.length, 1);
-      assertEqual(result[0].name, ubName);
-    },
-
-    test_fromVertexForSelectedEdgeResultingAQL: function() {
-      var query = g._edges({since: ud1})
-        .fromVertices();
-      var stmt = query.printQuery();
-      var expected = [];
-      expected.push(plainEdgesQueryStmt(0));
-      expected.push(plainVertexQueryStmt(1, vertexMergeStmt("from", 0)));
-      assertEqual(stmt, expected.join(" "));
-      assertEqual(query.bindVars.options_0, {
-        direction: "outbound",
-        edgeExamples: [{since: ud1}],
-        includeData: true
-      });
-      assertEqual(query.bindVars.options_1, {});
-    },
-
-    test_fromVertexForSelectedEdge: function() {
-      var result = g._edges({since: ud1})
-        .fromVertices()
-        .toArray();
-      assertEqual(result.length, 1);
-      assertEqual(result[0].name, uaName);
-    },
-
-    test_getAllVerticesThroughOutgoingEdgeResultingAQL: function() {
-      var query = g._vertices({name: uaName})
-        .outEdges()
-        .toVertices();
-      var stmt = query.printQuery();
-      var expected = [];
-      expected.push(plainVertexQueryStmt(0));
-      expected.push(plainEdgesQueryStmt(1, 0));
-      expected.push(plainVertexQueryStmt(2, vertexMergeStmt("to", 1)));
-      assertEqual(stmt, expected.join(" "));
-      assertEqual(query.bindVars.vertexExample_0, {
-        name: uaName
-      });
-      assertEqual(query.bindVars.options_0, {});
-      assertEqual(query.bindVars.options_1, {
-        direction: "outbound",
-        edgeExamples: [{}],
-        includeData: true
-      });
-      assertEqual(query.bindVars.options_2, {});
-    },
-
-    test_getAllVerticesThroughOutgoingEdges: function() {
-      var result = g._vertices({name: uaName})
-        .outEdges()
-        .toVertices()
-        .toArray();
-      assertEqual(result.length, 3);
-      var sorted = _.sortBy(result, "name");
-      assertEqual(sorted[0].name, ubName);
-      assertEqual(sorted[1].name, ucName);
-      assertEqual(sorted[2].name, p1Name);
-    },
-
-    test_getAllVerticesThroughOutgoingEdgesWithFilterResultingAQL: function() {
-      var query = g._vertices({name: uaName})
-        .outEdges([
-        {since: ud1},
-        {date: d1}
-      ])
-        .toVertices();
-      var stmt = query.printQuery();
-      var expected = [];
-      expected.push(plainVertexQueryStmt(0));
-      expected.push(plainEdgesQueryStmt(1, 0));
-      expected.push(plainVertexQueryStmt(2, vertexMergeStmt("to", 1)));
-      assertEqual(stmt, expected.join(" "));
-      assertEqual(query.bindVars.vertexExample_0, {
-        name: uaName
-      });
-      assertEqual(query.bindVars.options_0, {});
-      assertEqual(query.bindVars.options_1, {
-        direction: "outbound",
-        edgeExamples: [
-          {since: ud1},
-          {date: d1}
-        ],
-        includeData: true
-      });
-      assertEqual(query.bindVars.options_2, {});
-    },
-
-    test_getAllVerticesThroughOutgoingEdgesWithFilter: function() {
-      var result = g._vertices({name: uaName})
-      .outEdges([
-        {since: ud1},
-        {date: d1}
-      ]).toVertices()
-        .toArray();
-      assertEqual(result.length, 2);
-      var sorted = _.sortBy(result, "name");
-      assertEqual(sorted[0].name, ubName);
-      assertEqual(sorted[1].name, p1Name);
-    },
-
-    test_getNeighborsOfSelectedVerticesResultingAQL: function() {
-      var query = g._vertices({name: uaName})
-        .neighbors();
-      var stmt = query.printQuery();
-      var expected = [];
-      expected.push(plainVertexQueryStmt(0));
-      expected.push(plainNeighborQueryStmt(1, 0));
-      assertEqual(stmt, expected.join(" "));
-      assertEqual(query.bindVars.options_0, {});
-      assertEqual(query.bindVars.options_1, {
-        neighborExamples: {},
-        includeData: true
-      });
-    },
-
-    test_getNeighborsOfSelectedVertices: function() {
-      var result = g._vertices({name: uaName})
-        .neighbors()
-        .toArray();
-      assertEqual(result.length, 3);
-      var sorted = _.sortBy(result, "name");
-      assertEqual(sorted[0].name, ubName);
-      assertEqual(sorted[1].name, ucName);
-      assertEqual(sorted[2].name, p1Name);
-    },
-
-    test_getExampleNeighborsOfSelectedVerticesResultingAQL: function() {
-      var query = g._vertices({name: uaName})
-        .neighbors([{
-          name: ubName
-        },{
-          name: p1Name
-        }]);
-      var stmt = query.printQuery();
-      var expected = [];
-      expected.push(plainVertexQueryStmt(0));
-      expected.push(plainNeighborQueryStmt(1, 0));
-      assertEqual(stmt, expected.join(" "));
-      assertEqual(query.bindVars.options_0, {});
-      assertEqual(query.bindVars.options_1, {
-        neighborExamples: [{
-          name: ubName
-        },{
-          name: p1Name
-        }],
-        includeData: true
-      });
-    },
-
-    test_getExampleNeighborsOfSelectedVertices: function() {
-      var result = g._vertices({name: uaName})
-        .neighbors([{
-          name: ubName
-        },{
-          name: p1Name
-        }])
-        .toArray();
-      assertEqual(result.length, 2);
-      var sorted = _.sortBy(result, "name");
-      assertEqual(sorted[0].name, ubName);
-      assertEqual(sorted[1].name, p1Name);
-    },
-
-    test_getEdgesOfNeighborsResultingAQL: function() {
-      var query = g._vertices({name: uaName})
-        .neighbors()
-        .outEdges();
-      var stmt = query.printQuery();
-      var expected = [];
-      expected.push(plainVertexQueryStmt(0));
-      expected.push(plainNeighborQueryStmt(1, 0));
-      expected.push(plainEdgesQueryStmt(2, 1, "neighbors"));
-      assertEqual(stmt, expected.join(" "));
-      assertEqual(query.bindVars.options_0, {});
-      assertEqual(query.bindVars.options_1, {
-        neighborExamples: {},
-        includeData: true
-      });
-      assertEqual(query.bindVars.options_2, {
-        direction: "outbound",
-        edgeExamples: [{}],
-        includeData: true
-      });
-    },
-
-    test_getEdgesOfNeighbors: function() {
-      var result = g._vertices({name: uaName})
-        .neighbors()
-        .outEdges()
-        .toArray();
-      assertEqual(result.length, 4);
-      findFriends(result, [ud3, ud4]);
-      findBoughts(result, [d2, d3]);
-    },
-
-    test_path: function() {
-      var result = g._vertices({name: uaName})
-        .edges()
-        .toVertices()
-        .path()
-        .toArray();
-      assertEqual(uaName, result[0][0].name);
-      assertEqual(ud1, result[0][1].since);
-      assertEqual(ubName, result[0][2].name);
-      assertEqual(uaName, result[1][0].name);
-      assertEqual(ud2, result[1][1].since);
-      assertEqual(ucName, result[1][2].name);
-      assertEqual(uaName, result[2][0].name);
-      assertEqual(d1, result[2][1].date);
-      assertEqual(p1Name, result[2][2].name);
-    },
-
-    test_pathVertices: function() {
-      var result = g._vertices({name: uaName})
-        .edges()
-        .toVertices()
-        .pathVertices()
-        .toArray();
-      assertEqual(uaName, result[0][0].name);
-      assertEqual(ubName, result[0][1].name);
-      assertEqual(uaName, result[1][0].name);
-      assertEqual(ucName, result[1][1].name);
-      assertEqual(uaName, result[2][0].name);
-      assertEqual(p1Name, result[2][1].name);
-    },
-
-    test_pathEdges: function() {
-      var result = g._vertices({name: uaName})
-        .edges()
-        .toVertices()
-        .pathEdges()
-        .toArray();
-      assertEqual(ud1, result[0][0].since);
-      assertEqual(ud2, result[1][0].since);
-      assertEqual(d1, result[2][0].date);
-    }
-
-
-  };
-}
-
 function EdgesAndVerticesSuite() {
   'use strict';
 
@@ -1989,6 +851,16 @@ function EdgesAndVerticesSuite() {
     return ids;
   };
 
+  var pickStartByName = function (name) {
+    var exampleFilter = `FILTER x.first_name == "${name}" RETURN x`;
+    return `FOR start IN UNION(
+       (FOR x IN ${vc1} ${exampleFilter}),
+       (FOR x IN ${vc2} ${exampleFilter}),
+       (FOR x IN ${vc3} ${exampleFilter}),
+       (FOR x IN ${vc4} ${exampleFilter}))`;
+
+  };
+
   return {
 
     setUp : function() {
@@ -2013,37 +885,36 @@ function EdgesAndVerticesSuite() {
 
     test_connectingEdges : function () {
       fillCollections();
-      var res = g._getConnectingEdges({first_name: "Tam"}, {first_name: "Tem"}, {});
+      var query = `${pickStartByName("Tam")} FOR v, e IN ANY start GRAPH "${unitTestGraphName}" FILTER v.first_name == "Tem" RETURN e`;
+      var res = db._query(query).toArray();
       assertEqual(res.length, 3);
     },
 
     test_connectingEdgesWithEdgeCollectionRestriction : function () {
       fillCollections();
-      var res = g._getConnectingEdges({first_name: "Tam"}, null, {});
+      var query = `${pickStartByName("Tam")} FOR v, e IN ANY start GRAPH "${unitTestGraphName}" RETURN DISTINCT e`;
+      var res = db._query(query).toArray();
       assertEqual(res.length, 13);
-      res = g._getConnectingEdges({first_name: "Tam"},
-                                  null,
-                                  {edgeCollectionRestriction : "unitTestEdgeCollection2"});
+
+      query = `${pickStartByName("Tam")} FOR v, e IN ANY start ${ec2} RETURN DISTINCT e`;
+      res = db._query(query).toArray();
       assertEqual(res.length, 5);
     },
 
     test_connectingEdgesWithVertexCollectionRestriction : function () {
       fillCollections();
-      var res = g._getConnectingEdges(null, null, {});
+      var query = `FOR start IN ${vc1} FOR v, e IN ANY start GRAPH "${unitTestGraphName}" RETURN DISTINCT e`;
+      var res = db._query(query).toArray();
       assertEqual(res.length, 13);
-      res = g._getConnectingEdges(null, null,
-                                      {vertex1CollectionRestriction : "unitTestVertexCollection1"});
-      assertEqual(res.length, 13);
-      res = g._getConnectingEdges(null, null, {
-        vertex1CollectionRestriction : "unitTestVertexCollection1",
-        vertex2CollectionRestriction : "unitTestVertexCollection3"
-      });
+      query = `FOR start IN ${vc1} FOR v, e IN ANY start GRAPH "${unitTestGraphName}" FILTER IS_SAME_COLLECTION("${vc3}", v) RETURN DISTINCT e`;
+      res = db._query(query).toArray();
       assertEqual(res.length, 5);
     },
 
     test_connectingEdgesWithIds : function () {
       var ids = fillCollections();
-      var res = g._getConnectingEdges(ids.vId11, ids.vId13, {});
+      var query = `FOR v, e IN ANY "${ids.vId11}" GRAPH "${unitTestGraphName}" FILTER v._id == "${ids.vId13}" RETURN e`;
+      var res = db._query(query).toArray();
       assertEqual(res.length, 2);
     },
 
@@ -2243,6 +1114,10 @@ function EdgesAndVerticesSuite() {
       var vId2 = vertex2._id;
       var edge = g[ec1].save(vertexId1, vId2, {});
       assertFalse(edge.error);
+
+      edge = g[ec1].insert(vertexId1, vId2, {});
+      assertFalse(edge.error);
+
       g[vc1].remove(vId1);
       g[vc1].remove(vId2);
     },
@@ -2252,8 +1127,13 @@ function EdgesAndVerticesSuite() {
       vertexId1 = vertex1._id;
       var vertex2 = g[vc4].save({first_name: "Tim"});
       vertexId2 = vertex2._id;
+
       var edge = g[ec2].save(vertexId1, vertexId2, {});
       assertFalse(edge.error);
+
+      edge = g[ec2].insert(vertexId1, vertexId2, {});
+      assertFalse(edge.error);
+
       g[vc2].remove(vertexId1);
       g[vc4].remove(vertexId2);
     },
@@ -2269,6 +1149,14 @@ function EdgesAndVerticesSuite() {
       } catch (e) {
         assertEqual(e.errorNum, 1906);
       }
+
+      try {
+        g[ec1].insert(vertexId1, vertexId2, {});
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, 1906);
+      }
+
       g[vc1].remove(vertexId1);
       g[vc2].remove(vertexId2);
     },
@@ -2420,19 +1308,19 @@ function EdgesAndVerticesSuite() {
           graph._relation(eC1, [eC4], [vC1])
         )
       );
-      var g2 = graph._create(
+      graph._create(
         gN2,
         graph._edgeDefinitions(
           graph._relation(eC2, [eC1], [vC2])
         )
       );
-      var g3 = graph._create(
+      graph._create(
         gN3,
         graph._edgeDefinitions(
           graph._relation(eC3, [eC2], [vC3])
         )
       );
-      var g4 = graph._create(
+      graph._create(
         gN4,
         graph._edgeDefinitions(
           graph._relation(eC4, [eC3], [vC4])
@@ -2447,7 +1335,9 @@ function EdgesAndVerticesSuite() {
       assertTrue(db._exists(vertexId2));
       assertTrue(db._exists(vertexId3));
       assertTrue(db._exists(vertexId4));
-      var edge = g1[eC1].remove(edge1._id);
+
+      g1[eC1].remove(edge1._id);
+
       assertFalse(db._exists(edge1._id));
       assertFalse(db._exists(edge2._id));
       assertFalse(db._exists(edge3._id));
@@ -2466,7 +1356,7 @@ function EdgesAndVerticesSuite() {
     test_eC_malformedId : function() {
       [ null, "foo", [ ] ].forEach(function(v) {
         try {
-          var x= g[ec2].save(v, v, {});
+          g[ec2].save(v, v, {});
           fail();
         }
         catch (e) {
@@ -2618,7 +1508,7 @@ function GeneralGraphCommonNeighborsSuite() {
 
 
     testNeighborsAnyV3: function () {
-      actual = testGraph._neighbors(v3).sort();
+      actual = testGraph._neighbors(v3, {includeData: true}).sort();
       assertTrue(actual[0]._id, v2);
       assertTrue(actual[1]._id, v5);
       assertTrue(actual[2]._id, v7);
@@ -2626,7 +1516,7 @@ function GeneralGraphCommonNeighborsSuite() {
     },
 
     testNeighborsAnyV6: function () {
-      actual = testGraph._neighbors(v6).sort();
+      actual = testGraph._neighbors(v6, {includeData: true}).sort();
       assertTrue(actual[0]._id, v2);
       assertTrue(actual[1]._id, v7);
     },
@@ -2971,15 +1861,11 @@ function OrphanCollectionSuite() {
       }
     }
   };
-
-
-
 }
 
 function MeasurementsSuite() {
   'use strict';
   var g;
-  var vertexId1, vertexId2;
   var unitTestGraphName = "unitTestGraph";
 
   var ec1 = "unitTestEdgeCollection1";
@@ -3052,31 +1938,6 @@ function MeasurementsSuite() {
       }
     },
 
-    test_absoluteEccentricity : function () {
-      var a = g._absoluteEccentricity({});
-      assertEqual(Object.keys(a).length , 10);
-    },
-
-    test_eccentricity : function () {
-      var a = g._eccentricity({});
-      assertEqual(Object.keys(a).length , 10);
-    },
-    test_absoluteCloseness : function () {
-      var a = g._absoluteCloseness({});
-      assertEqual(Object.keys(a).length , 10);
-    },
-    test_closeness : function () {
-      var a = g._closeness({});
-      assertEqual(Object.keys(a).length , 10);
-    },
-    test_absoluteBetweenness : function () {
-      var a = g._absoluteBetweenness({});
-      assertEqual(Object.keys(a).length , 10);
-    },
-    test_betweenness : function () {
-      var a = g._betweenness({});
-      assertEqual(Object.keys(a).length , 10);
-    },
     test_radius : function () {
       var a = g._radius({});
       assertEqual(a , 3);
@@ -3084,11 +1945,6 @@ function MeasurementsSuite() {
     test_diameter : function () {
       var a = g._diameter({});
       assertEqual(a , 5);
-    },
-
-    test_paths : function () {
-      var a = g._paths({maxLength : 2});
-      assertEqual(a[0].length , 28);
     },
 
     test_shortestPaths : function () {
@@ -3099,7 +1955,7 @@ function MeasurementsSuite() {
         {first_name: 'Tam'},
         {first_name: 'Tem', age : 20}
       ]);
-      assertEqual(a[0].length , 9);
+      assertEqual(a.length , 9);
     },
 
     test_distanceTo : function () {
@@ -3115,21 +1971,469 @@ function MeasurementsSuite() {
   };
 }
 
+function MeasurementsMovedFromAQLSuite() {
+  'use strict';
+
+  const v1 = "UnitTests_Berliner";
+  const v2 = "UnitTests_Hamburger";
+  const v3 = "UnitTests_Frankfurter";
+  const v4 = "UnitTests_Leipziger";
+  var vertexIds = {};
+  const graphName = "werKenntWen";
+  var g;
+
+  var validateNumericValues = function (actual, expected) {
+    assertEqual(Object.keys(actual).sort(), Object.keys(expected).sort());
+    for (let k of Object.keys(expected)) {
+      assertEqual(actual[k].toFixed(4), expected[k].toFixed(4));
+    }
+  };
+
+  return {
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      db._drop(v1);
+      db._drop(v2);
+      db._drop(v3);
+      db._drop(v4);
+      db._drop("UnitTests_KenntAnderenBerliner");
+      db._drop("UnitTests_KenntAnderen");
+
+      var KenntAnderenBerliner = "UnitTests_KenntAnderenBerliner";
+      var KenntAnderen = "UnitTests_KenntAnderen";
+
+      var Berlin = db._create(v1);
+      var Hamburg = db._create(v2);
+      var Frankfurt = db._create(v3);
+      var Leipzig = db._create(v4);
+      db._createEdgeCollection(KenntAnderenBerliner);
+      db._createEdgeCollection(KenntAnderen);
+
+      var Anton = Berlin.save({ _key: "Anton", gender: "male", age: 20});
+      var Berta = Berlin.save({ _key: "Berta", gender: "female", age: 25});
+      var Caesar = Hamburg.save({ _key: "Caesar", gender: "male", age: 30});
+      var Dieter = Hamburg.save({ _key: "Dieter", gender: "male", age: 20});
+      var Emil = Frankfurt.save({ _key: "Emil", gender: "male", age: 25});
+      var Fritz = Frankfurt.save({ _key: "Fritz", gender: "male", age: 30});
+      var Gerda = Leipzig.save({ _key: "Gerda", gender: "female", age: 40});
+
+      vertexIds.Anton = Anton._id;
+      vertexIds.Berta = Berta._id;
+      vertexIds.Caesar = Caesar._id;
+      vertexIds.Dieter = Dieter._id;
+      vertexIds.Emil = Emil._id;
+      vertexIds.Fritz = Fritz._id;
+      vertexIds.Gerda = Gerda._id;
+
+      try {
+        db._collection("_graphs").remove(graphName);
+      } catch (ignore) {
+      }
+      g = graph._create(
+        graphName,
+        graph._edgeDefinitions(
+          graph._relation(KenntAnderenBerliner, v1, v1),
+          graph._relation(KenntAnderen,
+            [v1, v2, v3, v4],
+            [v1, v2, v3, v4]
+          )
+        )
+      );
+
+      function makeEdge(from, to, collection, distance) {
+        collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1], entfernung: distance});
+      }
+
+      makeEdge(Berta._id, Anton._id, g[KenntAnderenBerliner], 0.1);
+      makeEdge(Caesar._id, Anton._id, g[KenntAnderen], 350);
+      makeEdge(Caesar._id, Berta._id, g[KenntAnderen], 250.1);
+      makeEdge(Berta._id, Gerda._id, g[KenntAnderen], 200);
+      makeEdge(Gerda._id, Dieter._id, g[KenntAnderen], "blub");
+      makeEdge(Dieter._id, Emil._id, g[KenntAnderen], 300);
+      makeEdge(Emil._id, Fritz._id, g[KenntAnderen], 0.2);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      graph._drop("werKenntWen", true);
+    },
+
+    // Test Radius
+    testRadiusDefault: function () {
+      var actual = g._radius();
+      assertEqual(actual, 3);
+    },
+
+    testRadiusWeight: function () {
+      var actual = g._radius({weightAttribute: "entfernung", defaultWeight: 80});
+      assertEqual(actual.toFixed(1), 450.1);
+    },
+
+    testRadiusInbound: function () {
+      var actual = g._radius({direction: "inbound"});
+      assertEqual(actual, 1);
+    },
+
+    testRadiusInboundWeight: function () {
+      var actual = g._radius({direction: "inbound", weightAttribute: "entfernung", defaultWeight: 80});
+      assertEqual(actual.toFixed(1), 250.1);
+    },
+
+    testRadiusOutbound: function () {
+      var actual = g._radius({direction: "outbound"});
+      assertEqual(actual, 1);
+    },
+
+    testRadiusOutboundWeight: function () {
+      var actual = g._radius({direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      assertEqual(actual.toFixed(1), 0.2);
+    },
+
+
+    // Test Diameter
+
+    testDiameterDefault: function () {
+      var actual = g._diameter();
+      assertEqual(actual, 5);
+    },
+
+    testDiameterWeight: function () {
+      var actual = g._diameter({weightAttribute: "entfernung", defaultWeight: 80});
+      assertEqual(actual.toFixed(1), 830.3);
+    },
+
+    testDiameterInbound: function () {
+      var actual = g._diameter({direction: "inbound"});
+      assertEqual(actual, 5);
+    },
+
+    testDiameterInboundWeight: function () {
+      var actual = g._diameter({direction: "inbound", weightAttribute: "entfernung", defaultWeight: 80});
+      assertEqual(actual.toFixed(1), 830.3);
+    },
+
+    testDiameterOutbound: function () {
+      var actual = g._diameter({direction: "outbound"});
+      assertEqual(actual, 5);
+    },
+
+    testDiameterOutboundWeight: function () {
+      var actual = g._diameter({direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      assertEqual(actual.toFixed(1), 830.3);
+    },
+
+    testAbsoluteEccentricityDefault: function () {
+      var actual = g._absoluteEccentricity(vertexIds.Anton);
+      var expected = {};
+      expected[vertexIds.Anton] = 5;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityWeight: function () {
+      var actual = g._absoluteEccentricity(vertexIds.Anton, {weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Anton] = 580.3;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityInbound: function () {
+      var actual = g._absoluteEccentricity(vertexIds.Anton, {direction: "inbound"});
+      var expected = {};
+      expected[vertexIds.Anton] = 1;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityInboundWeight: function () {
+      var actual = g._absoluteEccentricity(vertexIds.Anton, {direction: "inbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Anton] = 250.2;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityOutbound: function () {
+      var actual = g._absoluteEccentricity(vertexIds.Gerda, {direction: "outbound"});
+      var expected = {};
+      expected[vertexIds.Gerda] = 3;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityOutboundWeight: function () {
+      var actual = g._absoluteEccentricity(vertexIds.Gerda, {direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Gerda] = 380.2;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityExample: function () {
+      var actual = g._absoluteEccentricity({gender: "female"}, {direction: "outbound"});
+      var expected = {};
+      expected[vertexIds.Berta] = 4;
+      expected[vertexIds.Gerda] = 3;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityExampleWeight: function () {
+      var actual = g._absoluteEccentricity({gender: "female"}, {direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Berta] = 580.2;
+      expected[vertexIds.Gerda] = 380.2;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityAll: function () {
+      var actual = g._absoluteEccentricity({}, {direction: "outbound"});
+      var expected = {};
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 4;
+      expected[vertexIds.Caesar] = 5;
+      expected[vertexIds.Dieter] = 2;
+      expected[vertexIds.Emil] = 1;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 3;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteEccentricityAllWeight: function () {
+      var actual = g._absoluteEccentricity({}, {direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 580.2;
+      expected[vertexIds.Caesar] = 830.3;
+      expected[vertexIds.Dieter] = 300.2;
+      expected[vertexIds.Emil] = 0.2;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 380.2;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testEccentricityOutbound: function () {
+      var actual = g._eccentricity({direction: "outbound"});
+      var expected = {};
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] =  1 / 4;
+      expected[vertexIds.Caesar] = 1 / 5;
+      expected[vertexIds.Dieter] = 1 / 2;
+      expected[vertexIds.Emil] = 1 / 1;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 1 / 3;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testEccentricityOutboundWeight: function () {
+      var actual = g._eccentricity({direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 0.2 / 580.2;
+      expected[vertexIds.Caesar] = 0.2 / 830.3;
+      expected[vertexIds.Dieter] = 0.2 / 300.2;
+      expected[vertexIds.Emil] = 0.2 / 0.2;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 0.2 / 380.2;
+
+      validateNumericValues(actual, expected);
+    },
+
+    testFarness: function () {
+      var actual = g._farness(vertexIds.Anton);
+      var expected = { };
+      expected[vertexIds.Anton] = 16;
+      validateNumericValues(actual, expected);
+    },
+
+    testFarnessOutbound: function () {
+      var actual = g._farness(vertexIds.Anton, {direction: "outbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      validateNumericValues(actual, expected);
+    },
+
+    testFarnessExampleWeight: function () {
+      var actual = g._farness({gender: "male"}, {weightAttribute: "entfernung", defaultWeight: 80});
+      var expected = {};
+      expected[vertexIds.Anton] = 1890.9;
+      expected[vertexIds.Caesar] = 3140.9;
+      expected[vertexIds.Dieter] = 1770.4;
+      expected[vertexIds.Emil] = 2670.4;
+      expected[vertexIds.Fritz] = 2671.4;
+      validateNumericValues(actual, expected);
+
+      // Legacy
+      actual = g._absoluteCloseness({gender: "male"}, {weightAttribute: "entfernung", defaultWeight: 80});
+      validateNumericValues(actual, expected);
+    },
+
+    testFarnessAll: function () {
+      var actual = g._farness({});
+      var expected = { };
+      expected[vertexIds.Anton] = 16;
+      expected[vertexIds.Berta] = 12;
+      expected[vertexIds.Caesar] = 16;
+      expected[vertexIds.Dieter] = 12;
+      expected[vertexIds.Emil] = 15;
+      expected[vertexIds.Fritz] = 20;
+      expected[vertexIds.Gerda] = 11;
+      validateNumericValues(actual, expected);
+    },
+
+    testFarnessAllOutbound: function () {
+      var actual = g._farness({}, {direction: "outbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 11;
+      expected[vertexIds.Caesar] = 16;
+      expected[vertexIds.Dieter] = 3;
+      expected[vertexIds.Emil] = 1;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 6;
+      validateNumericValues(actual, expected);
+    },
+
+    testClosenessDefault: function () {
+      var actual = g._closeness();
+      var expected = { };
+      expected[vertexIds.Anton] = 11 / 16;
+      expected[vertexIds.Berta] = 11 / 12;
+      expected[vertexIds.Caesar] = 11 / 16;
+      expected[vertexIds.Dieter] = 11 / 12;
+      expected[vertexIds.Emil] = 11 / 15;
+      expected[vertexIds.Fritz] = 11 / 20;
+      expected[vertexIds.Gerda] = 11 / 11;
+      validateNumericValues(actual, expected);
+    },
+
+    testClosenessOutbound: function () {
+      var actual = g._closeness({direction: "outbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 1 / 11;
+      expected[vertexIds.Caesar] = 1 / 16;
+      expected[vertexIds.Dieter] = 1 / 3;
+      expected[vertexIds.Emil] = 1 / 1;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 1 / 6;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteBetweness: function () {
+      var actual = g._absoluteBetweenness(vertexIds.Anton);
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      validateNumericValues(actual, expected);
+    },
+    
+    testAbsoluteBetwenessAll: function () {
+      var actual = g._absoluteBetweenness({});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 8;
+      expected[vertexIds.Caesar] = 0;
+      expected[vertexIds.Dieter] = 8;
+      expected[vertexIds.Emil] = 5;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 9;
+      validateNumericValues(actual, expected);
+    },
+    
+    testAbsoluteBetwenessExample: function () {
+      var actual = g._absoluteBetweenness({gender: "female"});
+      var expected = { };
+      expected[vertexIds.Berta] = 8;
+      expected[vertexIds.Gerda] = 9;
+      validateNumericValues(actual, expected);
+    },
+ 
+    testAbsoluteBetwenessAllOutbound: function () {
+      var actual = g._absoluteBetweenness({}, {direction: "outbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 4;
+      expected[vertexIds.Caesar] = 0;
+      expected[vertexIds.Dieter] = 6;
+      expected[vertexIds.Emil] = 4;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 6;
+      validateNumericValues(actual, expected);
+    },
+
+    testAbsoluteBetwenessAllInbound: function () {
+      var actual = g._absoluteBetweenness({}, {direction: "inbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 4;
+      expected[vertexIds.Caesar] = 0;
+      expected[vertexIds.Dieter] = 6;
+      expected[vertexIds.Emil] = 4;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 6;
+      validateNumericValues(actual, expected);
+    },
+
+    testBetwenessAny: function () {
+      var actual = g._betweenness();
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 8 / 9;
+      expected[vertexIds.Caesar] = 0;
+      expected[vertexIds.Dieter] = 8 / 9;
+      expected[vertexIds.Emil] = 5 / 9;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 9 / 9;
+      validateNumericValues(actual, expected);
+    },
+    
+    testBetwenessOutbound: function () {
+      var actual = g._betweenness({direction: "outbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 4 / 6;
+      expected[vertexIds.Caesar] = 0;
+      expected[vertexIds.Dieter] = 6 / 6;
+      expected[vertexIds.Emil] = 4 / 6;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 6 / 6;
+      validateNumericValues(actual, expected);
+    },
+
+    testBetwenessInbound: function () {
+      var actual = g._betweenness({direction: "inbound"});
+      var expected = { };
+      expected[vertexIds.Anton] = 0;
+      expected[vertexIds.Berta] = 4 / 6;
+      expected[vertexIds.Caesar] = 0;
+      expected[vertexIds.Dieter] = 6 / 6;
+      expected[vertexIds.Emil] = 4 / 6;
+      expected[vertexIds.Fritz] = 0;
+      expected[vertexIds.Gerda] = 6 / 6;
+      validateNumericValues(actual, expected);
+    }
 
 
 
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(EdgesAndVerticesSuite);
 jsunity.run(GeneralGraphCommonNeighborsSuite);
-jsunity.run(GeneralGraphAQLQueriesSuite);
+jsunity.run(EdgesAndVerticesSuite);
 jsunity.run(GeneralGraphCreationSuite);
-jsunity.run(ChainedFluentAQLResultsSuite);
 jsunity.run(OrphanCollectionSuite);
 jsunity.run(MeasurementsSuite);
+jsunity.run(MeasurementsMovedFromAQLSuite);
 
 return jsunity.done();
-

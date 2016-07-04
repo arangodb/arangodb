@@ -28,9 +28,9 @@ of the index details. Depending on the index type, a single attribute or
 multiple attributes can be indexed. In the latter case, an array of
 strings is expected.
 
-Indexing system attributes such as *_id*, *_key*, *_from*, and *_to*
-is not supported for user-defined indexes. Manually creating an index using
-any of these attributes will fail with an error.
+Indexing the system attribute *_id* is not supported for user-defined indexes. 
+Manually creating an index using *_id* as an index attribute will fail with 
+an error.
 
 Some indexes can be created as unique or non-unique variants. Uniqueness
 can be controlled for most indexes by specifying the *unique* flag in the
@@ -41,12 +41,13 @@ create a non-unique index.
 **Note**: The following index types do not support uniqueness, and using
 the *unique* attribute with these types may lead to an error:
 
+- geo indexes
 - fulltext indexes
 
 **Note**: Unique indexes on non-shard keys are not supported in a
 cluster.
 
-Hash and skiplist indexes can optionally be created in a sparse
+Hash, skiplist and persistent indexes can optionally be created in a sparse
 variant. A sparse index will be created if the *sparse* attribute in
 the index details is set to *true*. Sparse indexes do not index documents
 for which any of the index attributes is either not set or is *null*. 

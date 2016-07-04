@@ -62,7 +62,7 @@ is set to *true*.
 
 Each plan in the result is a JSON object with the following attributes:
 - *nodes*: the array of execution nodes of the plan. The array of available node types
-  can be found [here](../Aql/Optimizer.md)
+  can be found [here](../../AQL/ExecutionAndPerformance/Optimizer.html)
 
 - *estimatedCost*: the total estimated cost for the plan. If there are multiple
   plans, the optimizer will choose the plan with the lowest total cost.
@@ -70,7 +70,7 @@ Each plan in the result is a JSON object with the following attributes:
 - *collections*: an array of collections used in the query
 
 - *rules*: an array of rules the optimizer applied. An overview of the
-  available rules can be found [here](../Aql/Optimizer.md)
+  available rules can be found [here](../../AQL/ExecutionAndPerformance/Optimizer.html)
 
 - *variables*: array of variables used in the query (note: this may contain
   internal variables created by the optimizer)
@@ -222,11 +222,10 @@ Invalid query (missing bind parameter)
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-The data returned in the *plan* attribute of the result contains one
-element per AQL top-level statement (i.e. *FOR*, *RETURN*,
-*FILTER* etc.). If the query optimizer removed some unnecessary statements,
-the result might also contain less elements than there were top-level
-statements in the AQL query.
+The data returned in the **plan** attribute of the result contains one element per AQL top-level statement
+(i.e. `FOR`, `RETURN`, `FILTER` etc.). If the query optimizer removed some unnecessary statements,
+the result might also contain less elements than there were top-level statements in the AQL query.
+
 The following example shows a query with a non-sensible filter condition that
 the optimizer has removed so that there are less top-level statements.
 

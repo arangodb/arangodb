@@ -33,28 +33,42 @@
 
 using TraverserExpression = arangodb::traverser::TraverserExpression;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper to transform a vertex _id string to VertexId struct.
-/// NOTE:  Make sure the given string is not freed as long as the resulting
-///        VertexId is in use
-////////////////////////////////////////////////////////////////////////////////
+/// @brief Class Shortest Path
 
-arangodb::traverser::VertexId arangodb::traverser::IdStringToVertexId(
-    CollectionNameResolver const* resolver, std::string const& vertex) {
-  size_t split;
-  char const* str = vertex.c_str();
 
-  if (!TRI_ValidateDocumentIdKeyGenerator(str, vertex.size(), &split)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+/// @brief Clears the path
+void arangodb::traverser::ShortestPath::clear() {
+  _vertices.clear();
+  _edges.clear();
+}
+
+void arangodb::traverser::ShortestPath::edgeToVelocyPack(Transaction*, size_t position, VPackBuilder& builder) {
+  TRI_ASSERT(position < length());
+  if (position == 0) {
+    builder.add(basics::VelocyPackHelper::NullValue());
+  } else {
+    TRI_ASSERT(position - 1 < _edges.size());
+    builder.add(_edges[position - 1]);
   }
+}
 
-  std::string const collectionName = vertex.substr(0, split);
-  auto cid = resolver->getCollectionIdCluster(collectionName);
+void arangodb::traverser::ShortestPath::vertexToVelocyPack(Transaction* trx, size_t position, VPackBuilder& builder) {
+  TRI_ASSERT(position < length());
+  VPackSlice v = _vertices[position];
+  TRI_ASSERT(v.isString());
+  std::string collection =  v.copyString();
+  size_t p = collection.find("/");
+  TRI_ASSERT(p != std::string::npos);
 
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  TransactionBuilderLeaser searchBuilder(trx);
+  searchBuilder->add(VPackValue(collection.substr(p + 1)));
+  collection = collection.substr(0, p);
+
+  int res = trx->documentFastPath(collection, searchBuilder->slice(), builder);
+  if (res != TRI_ERROR_NO_ERROR) {
+    builder.clear(); // Just in case...
+    builder.add(basics::VelocyPackHelper::NullValue());
   }
-  return VertexId(cid, const_cast<char*>(str + split + 1));
 }
 
 void arangodb::traverser::TraverserOptions::setCollections(
@@ -90,7 +104,7 @@ size_t arangodb::traverser::TraverserOptions::collectionCount () const {
 }
 
 bool arangodb::traverser::TraverserOptions::getCollection(
-    size_t const index, std::string& name, TRI_edge_direction_e& dir) const {
+    size_t index, std::string& name, TRI_edge_direction_e& dir) const {
   if (index >= _collections.size()) {
     // No more collections stop now
     return false;
@@ -102,24 +116,28 @@ bool arangodb::traverser::TraverserOptions::getCollection(
   }
   name = _collections.at(index);
 
-  // arangodb::EdgeIndex::buildSearchValue(direction, eColName, _builder);
   return true;
 }
 
 bool arangodb::traverser::TraverserOptions::getCollectionAndSearchValue(
     size_t index, std::string const& vertexId, std::string& name,
-    Transaction::IndexHandle& indexHandle, VPackBuilder& builder) {
+    Transaction::IndexHandle& indexHandle, VPackBuilder& builder) const {
   if (index >= _collections.size()) {
     // No more collections stop now
     return false;
   }
   TRI_edge_direction_e dir;
+  TRI_ASSERT(!_directions.empty());
   if (_directions.size() == 1) {
     dir = _directions.at(0);
   } else {
     dir = _directions.at(index);
   }
+
+  TRI_ASSERT(!_collections.empty());
   name = _collections.at(index);
+  
+  TRI_ASSERT(!_indexHandles.empty());
   indexHandle = _indexHandles.at(index);
 
   builder.clear();

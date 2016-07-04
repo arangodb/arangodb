@@ -57,6 +57,9 @@ class RestHandlerFactory {
   // sets maintenance mode
   static void setMaintenance(bool);
 
+  // checks maintenance mode
+  static bool isMaintenance();
+
  public:
   // set request context, wrapper method
   bool setRequestContext(GeneralRequest*);
@@ -88,6 +91,9 @@ class RestHandlerFactory {
 
   // constructor for a not-found handler
   create_fptr _notFound;
+
+ private:
+  static std::atomic<bool> _maintenanceMode;
 };
 }
 }

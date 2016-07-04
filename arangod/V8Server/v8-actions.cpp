@@ -116,6 +116,8 @@ class v8_action_t : public TRI_action_t {
       return result;
     }
 
+    TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+
     // locate the callback
     READ_LOCKER(readLocker, _callbacksLock);
 
@@ -125,8 +127,6 @@ class v8_action_t : public TRI_action_t {
       if (it == _callbacks.end()) {
         LOG(WARN) << "no callback function for JavaScript action '" << _url
                   << "'";
-
-        V8DealerFeature::DEALER->exitContext(context);
 
         result.isValid = true;
         response->setResponseCode(GeneralResponse::ResponseCode::NOT_FOUND);
@@ -140,9 +140,6 @@ class v8_action_t : public TRI_action_t {
 
         if (*data != nullptr) {
           result.canceled = true;
-
-          V8DealerFeature::DEALER->exitContext(context);
-
           return result;
         }
 
@@ -164,7 +161,6 @@ class v8_action_t : public TRI_action_t {
         *data = nullptr;
       }
     }
-    V8DealerFeature::DEALER->exitContext(context);
 
     return result;
   }
@@ -728,6 +724,7 @@ static TRI_action_result_t ExecuteActionVocbase(
     result.isValid = false;
     result.canceled = false;
 
+    // TODO how to generalize this?
     response->setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
 
     if (errorMessage.empty()) {
@@ -745,6 +742,8 @@ static TRI_action_result_t ExecuteActionVocbase(
   else if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
       response->setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
+
+      // TODO how to generalize this?
       response->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
     } else {
       v8g->_canceled = true;
@@ -1134,85 +1133,6 @@ static void JS_SendChunk(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief createSid
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_CreateSid(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("createSid(<sid>, <username>)");
-  }
-
-  TRI_GET_GLOBALS();
-
-  TRI_Utf8ValueNFC sidStr(TRI_UNKNOWN_MEM_ZONE, args[0]);
-  TRI_Utf8ValueNFC username(TRI_UNKNOWN_MEM_ZONE, args[1]);
-
-  if (v8g->_vocbase == nullptr || *sidStr == nullptr || *username == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  VocbaseContext::createSid(v8g->_vocbase->_name, *sidStr, *username);
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clearSid
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_ClearSid(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("clearSid(<sid>)");
-  }
-
-  TRI_GET_GLOBALS();
-
-  TRI_Utf8ValueNFC sidStr(TRI_UNKNOWN_MEM_ZONE, args[0]);
-
-  if (v8g->_vocbase == nullptr || *sidStr == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  VocbaseContext::clearSid(v8g->_vocbase->_name, *sidStr);
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief accessSid
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_AccessSid(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("accessSid(<sid>)");
-  }
-
-  TRI_GET_GLOBALS();
-
-  TRI_Utf8ValueNFC sidStr(TRI_UNKNOWN_MEM_ZONE, args[0]);
-
-  if (v8g->_vocbase == nullptr || *sidStr == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  double lastAccess = VocbaseContext::accessSid(v8g->_vocbase->_name, *sidStr);
-
-  TRI_V8_RETURN(v8::Number::New(isolate, lastAccess));
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1223,12 +1143,6 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("SYS_ACCESS_SID"), JS_AccessSid);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("SYS_CLEAR_SID"), JS_ClearSid);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("SYS_CREATE_SID"), JS_CreateSid);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEFINE_ACTION"),
                                JS_DefineAction);
@@ -1288,7 +1202,8 @@ static bool clusterSendToAllServers(
       cc->drop("", coordTransactionID, 0, "");
       return TRI_ERROR_CLUSTER_TIMEOUT;
     }
-    if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED) {
+    if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED ||
+        res.status == CL_COMM_BACKEND_UNAVAILABLE) {
       cc->drop("", coordTransactionID, 0, "");
       return TRI_ERROR_INTERNAL;
     }

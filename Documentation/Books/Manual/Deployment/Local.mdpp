@@ -1,0 +1,71 @@
+!SECTION Launching an ArangoDB cluster for testing
+
+An ArangoDB cluster consists of several running tasks which form the cluster. ArangoDB itself won't start or monitor any of these tasks. So it will need some kind of supervisor which is monitoring and starting these tasks. For production usage we recommend using Apache Mesos as the cluster supervisor.
+
+However starting a cluster manually is possible and is a very easy method to get a first impression of what an ArangoDB cluster looks like.
+
+The easiest way to start a local cluster for testing purposes is to run `scripts/startLocalCluster.sh` from a clone of the [source repository](https://github.com/ArangoDB/ArangoDB) after compiling ArangoDB from source (see instructions in the file `README_maintainers.md` in the repository. This will start 1 Agency, 2 DBServers and 1 Coordinator. To stop the cluster issue `scripts/stopLocalCluster.sh`.
+
+This section will discuss the required parameters for every role in an ArangoDB cluster. Be sure to read the [Architecture](../Scalability/Architecture.md) documentation to get a basic understanding of the underlying architecture and the involved roles in an ArangoDB cluster.
+
+In the following sections we will go through the relevant options per role.
+
+![single node cluster](simple_cluster.png)
+
+!SUBSECTION Agency
+
+The bare minimum to start an agent is to provide the id. The id has to be `0` for a single instance.
+
+To start up the agency in its fault tolerant mode set the `--agency.size` to `3` and start the agents with increasing ids starting from `0`. Furthermore you should provide different `--server.endpoint` values to every agent. One of the agents must also have `--agency.notify true` to bootstrap the agency. This agent must also get a list of all endpoints via `--agency.endpoint`.
+
+So in summary this is what your startup might look like:
+
+```
+build/bin/arangod --server.endpoint tcp://0.0.0.0:5001 --server.authentication false --agency.id 0 --agency.size 3 --agency.supervision true agency1 &
+build/bin/arangod --server.endpoint tcp://0.0.0.0:5002 --server.authentication false --agency.id 1 --agency.size 3 --agency.supervision true agency2 &
+build/bin/arangod --server.endpoint tcp://0.0.0.0:5003 --server.authentication false --agency.id 2 --agency.size 3 --agency.endpoint tcp://127.0.0.1:5001 --agency.endpoint tcp://127.0.0.1:5002 --agency.endpoint tcp://127.0.0.1:5003 --agency.notify true --agency.supervision true agency3 &
+```
+
+Note in particular that the endpoint descriptions given under `--agency.endpoint` must not use the IP address `0.0.0.0` because they must contain an actual address that can be routed to the corresponding server. The `0.0.0.0` in `--server.endpoint` simply means that the server binds itself to all available network devices with all available IP addresses.
+
+If you are happy with a single agent, then simply use a single command like this:
+```
+build/bin/arangod --server.endpoint tcp://0.0.0.0:5001 --server.authentication false --agency.id 0 --agency.size 1 --agency.endpoint tcp://127.0.0.1:5001 --agency.supervision true agency1 &
+```
+
+Furthermore, in the following sections when `--cluster.agency-address` is used multiple times to specify all three agent addresses, just use a single option ```--cluster.agency.address tcp://127.0.0.1:5001``` instead.
+
+
+!SUBSECTION Coordinators and DBServers
+
+These two roles share a common set of relevant options. First you should specify the role using `--cluster.my-role`. This can either be `PRIMARY` (a database server) or `COORDINATOR`. Both need some unique information with which they will register in the agency, too. This could for example be some combination of host name and port or whatever you have at hand. However it must be unique for each instance and be provided as value for `--cluster.my-local-info`. Furthermore provide the external endpoint (IP and port) of the task via `--cluster.my-address`.
+
+The following is a full-example of what it might look like:
+
+```
+build/bin/arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8529 --cluster.my-address tcp://127.0.0.1:8529 --cluster.my-local-info db1 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 primary1 &
+build/bin/arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8530 --cluster.my-address tcp://127.0.0.1:8530 --cluster.my-local-info db2 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 primary2 &
+build/bin/arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8531 --cluster.my-address tcp://127.0.0.1:8531 --cluster.my-local-info coord1 --cluster.my-role COORDINATOR --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 coordinator &
+```
+
+Note in particular that the endpoint descriptions given under `--cluster.my-address` and `--cluster.agency-endpoint` must not use the IP address `0.0.0.0` because they must contain an actual address that can be routed to the corresponding server. The `0.0.0.0` in `--server.endpoint` simply means that the server binds itself to all available network devices with all available IP addresses.
+
+Upon registering with the agency during startup the cluster will assign an ID to every task. The generated ID will be printed out to the log or can be accessed via the http API by calling `http://server-address/_admin/server/id`.
+Should you ever have to restart a task, simply reuse the same value for `--cluster.my-local-info` and the same ID will be picked.
+
+You have now launched a complete ArangoDB cluster and can contact its coordinator at the endpoint `tcp://127.0.0.1:8531`, which means that you can reach the web UI under `http://127.0.0.1:8531`.
+
+
+!SUBSECTION Secondaries
+
+Secondaries need a bit more work. Secondaries need to have some primary assigned. To do that there is a special route. To register a secondary you must first find out the Server-ID of the primary server. Then generate your own ID for the secondary you are about to start and call one of the coordinators like this (replace the value of "newSecondary" in the command):
+
+    curl -f -X PUT --data '{"primary": "DBServer001", "oldSecondary": "none", "newSecondary": "Secondary001"}' -H "Content-Type: application/json" http://127.0.0.1:8531/_admin/cluster/replaceSecondary
+
+If that call was successful you can start the secondary. Instead of providing `--cluster.my-local-info` you should now provide the Id in the curl call above via `--cluster.my-id`. You can omit the `--cluster.my-role` in this case. The secondary will find out from the agency about its role.
+
+To sum it up:
+
+    curl -f -X PUT --data '{"primary": "DBServer001", "oldSecondary": "none", "newSecondary": "Secondary001"}' -H "Content-Type: application/json" http://127.0.0.1:8531/_admin/cluster/replaceSecondary && arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8629 --cluster.my-id Secondary001 --cluster.my-address tcp://127.0.0.1:8629 --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 secondary1 &
+    curl -f -X PUT --data '{"primary": "DBServer002", "oldSecondary": "none", "newSecondary": "Secondary002"}' -H "Content-Type: application/json" http://127.0.0.1:8531/_admin/cluster/replaceSecondary && arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8630 --cluster.my-id Secondary002 --cluster.my-address tcp://127.0.0.1:8630 --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 secondary2 &
+

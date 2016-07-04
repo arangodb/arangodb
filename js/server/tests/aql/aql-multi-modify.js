@@ -161,7 +161,7 @@ function ahuacatlMultiModifySuite () {
     },
     
     testEdgesAfterModification : function () {
-      var q = "INSERT { _from: @from, _to: @to } INTO @@cn RETURN EDGES(@@cn, @from, 'outbound')";
+      var q = "INSERT { _from: @from, _to: @to } INTO @@cn FOR v, e IN OUTBOUND @from @@cn RETURN e";
       assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn3, from: cn2 + "/1", to: cn2 + "/2" });
     },
 

@@ -1,42 +1,40 @@
-/*jshint strict: false */
-/*global more:true */
+/* jshint strict: false */
+/* global more:true */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoQueryCursor
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2013 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Achim Brandt
-/// @author Dr. Frank Celler
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ArangoQueryCursor
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2013 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Achim Brandt
+// / @author Dr. Frank Celler
+// / @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var arangosh = require("@arangodb/arangosh");
+var internal = require('internal');
+var arangosh = require('@arangodb/arangosh');
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief constructor
+// //////////////////////////////////////////////////////////////////////////////
 
 function ArangoQueryCursor (database, data) {
   this._database = database;
@@ -63,50 +61,48 @@ function ArangoQueryCursor (database, data) {
 
 exports.ArangoQueryCursor = ArangoQueryCursor;
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the cursor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a string representation of the cursor
+// //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.toString = function () {
   var isCaptureModeActive = internal.isCaptureMode();
-  var rows = [ ], i = 0;
+  var rows = [], i = 0;
   while (++i <= 10 && this.hasNext()) {
     rows.push(this.next());
   }
 
-  var result = "[object ArangoQueryCursor";
+  var result = '[object ArangoQueryCursor';
 
   if (this.data.id) {
-    result += " " + this.data.id;
+    result += ' ' + this.data.id;
   }
 
   if (this._count !== null && this._count !== undefined) {
-    result += ", count: " + this._count;
+    result += ', count: ' + this._count;
   }
 
-  result += ", hasMore: " + (this.hasNext() ? "true" : "false");
+  result += ', hasMore: ' + (this.hasNext() ? 'true' : 'false');
 
-  if (this.data.hasOwnProperty("extra") && 
-      this.data.extra.hasOwnProperty("warnings")) {
+  if (this.data.hasOwnProperty('extra') &&
+    this.data.extra.hasOwnProperty('warnings')) {
     for (var j = 0; j < this.data.extra.warnings.length; j++) {
-      result += ", warning: " + this.data.extra.warnings[j].code +
-        " - " + this.data.extra.warnings[j].message;
+      result += ', warning: ' + this.data.extra.warnings[j].code +
+      ' - ' + this.data.extra.warnings[j].message;
     }
   }
-  result += "]";
+  result += ']';
 
   if (!isCaptureModeActive) {
     internal.print(result);
-    result = "";
+    result = '';
   }
   if (rows.length > 0) {
     if (!isCaptureModeActive) {
       var old = internal.startCaptureMode();
       internal.print(rows);
-      result += "\n\n" + internal.stopCaptureMode(old);
-    }
-    else {
+      result += '\n\n' + internal.stopCaptureMode(old);
+    } else {
       internal.print(rows);
     }
 
@@ -118,18 +114,18 @@ ArangoQueryCursor.prototype.toString = function () {
 
   if (!isCaptureModeActive) {
     internal.print(result);
-    result = "";
+    result = '';
   }
   return result;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return all remaining result documents from the cursor
-///
-/// If no more results are available locally but more results are available on
-/// the server, this function will make one or multiple roundtrips to the
-/// server. Calling this function will also fully exhaust the cursor.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return all remaining result documents from the cursor
+// /
+// / If no more results are available locally but more results are available on
+// / the server, this function will make one or multiple roundtrips to the
+// / server. Calling this function will also fully exhaust the cursor.
+// //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.toArray = function () {
   var result = [];
@@ -141,51 +137,50 @@ ArangoQueryCursor.prototype.toArray = function () {
   return result;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for the cursor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief print the help for the cursor
+// //////////////////////////////////////////////////////////////////////////////
 
-var helpArangoQueryCursor = arangosh.createHelpHeadline("ArangoQueryCursor help") +
-  'ArangoQueryCursor constructor:                                      ' + "\n" +
-  ' > cursor = stmt.execute()                                          ' + "\n" +
-  'Functions:                                                          ' + "\n" +
-  '  hasNext()                             returns true if there are   ' + "\n" +
-  '                                        more results to fetch       ' + "\n" +
-  '  next()                                returns the next document   ' + "\n" +
-  '  toArray()                             returns all data from the cursor' + "\n" +
-  '  _help()                               this help                   ' + "\n" +
-  'Attributes:                                                         ' + "\n" +
-  '  _database                             database object             ' + "\n" +
-  'Example:                                                            ' + "\n" +
-  ' > stmt = db._createStatement({ "query": "FOR c IN coll RETURN c" })' + "\n" +
-  ' > cursor = stmt.execute()                                          ' + "\n" +
-  ' > documents = cursor.toArray()                                     ' + "\n" +
-  ' > cursor = stmt.execute()                                          ' + "\n" +
+var helpArangoQueryCursor = arangosh.createHelpHeadline('ArangoQueryCursor help') +
+  'ArangoQueryCursor constructor:                                      ' + '\n' +
+  ' > cursor = stmt.execute()                                          ' + '\n' +
+  'Functions:                                                          ' + '\n' +
+  '  hasNext()                             returns true if there are   ' + '\n' +
+  '                                        more results to fetch       ' + '\n' +
+  '  next()                                returns the next document   ' + '\n' +
+  '  toArray()                             returns all data from the cursor' + '\n' +
+  '  _help()                               this help                   ' + '\n' +
+  'Attributes:                                                         ' + '\n' +
+  '  _database                             database object             ' + '\n' +
+  'Example:                                                            ' + '\n' +
+  ' > stmt = db._createStatement({ "query": "FOR c IN coll RETURN c" })' + '\n' +
+  ' > cursor = stmt.execute()                                          ' + '\n' +
+  ' > documents = cursor.toArray()                                     ' + '\n' +
+  ' > cursor = stmt.execute()                                          ' + '\n' +
   ' > while (cursor.hasNext()) { print(cursor.next())  }               ';
 
 ArangoQueryCursor.prototype._help = function () {
   internal.print(helpArangoQueryCursor);
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether there are more results available in the cursor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return whether there are more results available in the cursor
+// //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.hasNext = function () {
   return this._hasNext;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the next result document from the cursor
-///
-/// If no more results are available locally but more results are available on
-/// the server, this function will make a roundtrip to the server
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the next result document from the cursor
+// /
+// / If no more results are available locally but more results are available on
+// / the server, this function will make a roundtrip to the server
+// //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.next = function () {
-  if (! this._hasNext) {
-    throw "No more results";
+  if (!this._hasNext) {
+    throw 'No more results';
   }
 
   var result = this.data.result[this._pos];
@@ -200,7 +195,7 @@ ArangoQueryCursor.prototype.next = function () {
       this._hasMore = false;
 
       // load more results
-      var requestResult = this._database._connection.PUT(this._baseurl(), "");
+      var requestResult = this._database._connection.PUT(this._baseurl(), '');
 
       arangosh.checkRequestResult(requestResult);
 
@@ -220,62 +215,60 @@ ArangoQueryCursor.prototype.next = function () {
   return result;
 };
 
-ArangoQueryCursor.prototype[Symbol.iterator] = function* () {
+ArangoQueryCursor.prototype[Symbol.iterator] = function * () {
   while (this._hasNext) {
     yield this.next();
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief explicitly dispose the cursor
-///
-/// Calling this function will mark the cursor as deleted on the server. It will
-/// therefore make a roundtrip to the server. Using a cursor after it has been
-/// disposed is considered a user error
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief explicitly dispose the cursor
+// /
+// / Calling this function will mark the cursor as deleted on the server. It will
+// / therefore make a roundtrip to the server. Using a cursor after it has been
+// / disposed is considered a user error
+// //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.dispose = function () {
-  if (! this.data.id) {
+  if (!this.data.id) {
     // client side only cursor
     return;
   }
 
-  var requestResult = this._database._connection.DELETE(this._baseurl(), "");
+  var requestResult = this._database._connection.DELETE(this._baseurl(), '');
 
   arangosh.checkRequestResult(requestResult);
 
   this.data.id = undefined;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the total number of documents in the cursor
-///
-/// The number will remain the same regardless how much result documents have
-/// already been fetched from the cursor.
-///
-/// This function will return the number only if the cursor was constructed
-/// with the "doCount" attribute. Otherwise it will return undefined.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the total number of documents in the cursor
+// /
+// / The number will remain the same regardless how much result documents have
+// / already been fetched from the cursor.
+// /
+// / This function will return the number only if the cursor was constructed
+// / with the "doCount" attribute. Otherwise it will return undefined.
+// //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.count = function () {
   return this.data.count;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return extra data stored for the cursor (if any)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return extra data stored for the cursor (if any)
+// //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.getExtra = function () {
   return this.data.extra || { };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return baseurl for query cursor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return baseurl for query cursor
+// //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype._baseurl = function () {
-  return "/_db/" + encodeURIComponent(this._dbName) +
-         "/_api/cursor/" + encodeURIComponent(this.data.id);
+  return '/_db/' + encodeURIComponent(this._dbName) +
+    '/_api/cursor/' + encodeURIComponent(this.data.id);
 };
-
-

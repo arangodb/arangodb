@@ -22,9 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Basics/tri-strings.h"
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
+#ifdef _WIN32
+#include "ApplicationFeatures/WindowsServiceFeature.h"
+#endif
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -52,6 +56,7 @@
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FrontendFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestServerFeature.h"
 #include "RestServer/ScriptFeature.h"
@@ -74,16 +79,9 @@
 using namespace arangodb;
 using namespace arangodb::wal;
 
-#if 0
-#ifdef _WIN32
-WindowsService WINDOWS_SERVICE;
-#endif
-#endif
-
 static int runServer(int argc, char** argv) {
   ArangoGlobalContext context(argc, argv);
   context.installSegv();
-  context.maskAllSignals();
   context.runStartupChecks();
 
   std::string name = context.binaryName();
@@ -93,45 +91,6 @@ static int runServer(int argc, char** argv) {
 
   application_features::ApplicationServer server(options);
 
-#if 0
-#ifdef _WIN32
-  application_features::ProgressHandler reporter{
-      [](application_features::ServerState state) {
-        switch (_state) {
-          case ServerState::IN_WAIT:
-            WINDOWS_SERVICE.startupFinished();
-            break;
-          case ServerState::IN_STOP:
-            server.shutdownBegins();
-            break;
-          case ServerState::IN_COLLECT_OPTIONS:
-          case ServerState::IN_VALIDATE_OPTIONS:
-          case ServerState::IN_PREPARE:
-          case ServerState::IN_START:
-            WINDOWS_SERVICE.startupProgress();
-            break;
-          case ServerState::UNINITIALIZED:
-          case ServerState::STOPPED:
-            break;
-        }
-      },
-      [](application_features::ServerState state, std::string const& name) {
-        switch (_state) {
-          case ServerState::IN_COLLECT_OPTIONS:
-          case ServerState::IN_VALIDATE_OPTIONS:
-          case ServerState::IN_PREPARE:
-          case ServerState::IN_START:
-            WINDOWS_SERVICE.startupProgress();
-            break;
-          default:
-            break;
-        }
-      }};
-
-  server.addReporter(reporter);
-#endif
-#endif
-
   std::vector<std::string> nonServerFeatures = {
       "Action",     "Affinity",   "Agency",
       "Cluster",    "Daemon",     "Dispatcher",
@@ -140,7 +99,11 @@ static int runServer(int argc, char** argv) {
       "SslServer",  "Statistics", "Supervisor"};
 
   int ret = EXIT_FAILURE;
-
+  
+#ifdef _WIN32
+  server.addFeature(new WindowsServiceFeature(&server));
+#endif
+  
   server.addFeature(new ActionFeature(&server));
   server.addFeature(new AffinityFeature(&server));
   server.addFeature(new AgencyFeature(&server));
@@ -156,6 +119,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new FoxxQueuesFeature(&server));
   server.addFeature(new FrontendFeature(&server));
+  server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LogfileManager(&server));
   server.addFeature(new LoggerBufferFeature(&server));
@@ -165,10 +129,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new QueryRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RecoveryFeature(&server));
-  server.addFeature(new RestServerFeature(&server, "arangodb"));
-#ifdef ARANGODB_ENABLE_ROCKSDB
-  server.addFeature(new RocksDBFeature(&server));
-#endif
+  server.addFeature(new RestServerFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ScriptFeature(&server, &ret));
   server.addFeature(new ServerFeature(&server, &ret));
@@ -183,6 +144,10 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new V8PlatformFeature(&server));
   server.addFeature(new VersionFeature(&server));
   server.addFeature(new WorkMonitorFeature(&server));
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  server.addFeature(new RocksDBFeature(&server));
+#endif
 
 #ifdef ARANGODB_HAVE_FORK
   server.addFeature(new DaemonFeature(&server));
@@ -208,12 +173,45 @@ static int runServer(int argc, char** argv) {
   return context.exit(ret);
 }
 
-int main(int argc, char* argv[]) {
-#if 0
-#ifdef _WIN32
-  WINDOWS_SERVICE.serviceStart(argc, argv, runServer);
-#endif
+#if _WIN32
+static int ARGC;
+static char** ARGV;
+
+static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
+  if (!TRI_InitWindowsEventLog()) {
+    return;
+  }
+  // register the service ctrl handler,  lpszArgv[0] contains service name
+  ServiceStatus = RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION) ServiceCtrl);
+
+  // set start pending
+  SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000);
+
+  runServer(ARGC, ARGV);
+
+  // service has stopped
+  SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0);
+  TRI_CloseWindowsEventlog();
+}
+
 #endif
 
-  return runServer(argc, argv);
+int main(int argc, char* argv[]) {
+#if _WIN32
+  if (argc > 1 && TRI_EqualString("--start-service", argv[1])) {
+    ARGC = argc;
+    ARGV = argv;
+    
+    SERVICE_TABLE_ENTRY ste[] = {{TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+                                 {nullptr, nullptr}};
+    
+    if (!StartServiceCtrlDispatcher(ste)) {
+      std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
+                << GetLastError() << std::endl;
+      exit(EXIT_FAILURE);
+    }
+  }
+  else
+#endif
+    return runServer(argc, argv);
 }

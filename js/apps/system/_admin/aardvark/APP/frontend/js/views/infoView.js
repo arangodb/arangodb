@@ -1,15 +1,14 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global arangoHelper, Backbone, window, templateEngine, $ */
+/* jshint browser: true */
+/* jshint unused: false */
+/* global arangoHelper, Backbone, window, templateEngine, $ */
 
-(function() {
-  "use strict";
+(function () {
+  'use strict';
 
   window.InfoView = Backbone.View.extend({
+    el: '#content',
 
-    el: "#content",
-
-    initialize: function(options) {
+    initialize: function (options) {
       this.collectionName = options.collectionName;
       this.model = this.collection;
     },
@@ -17,7 +16,7 @@
     events: {
     },
 
-    render: function() {
+    render: function () {
       this.breadcrumb();
       window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Info');
 
@@ -30,15 +29,14 @@
       );
     },
 
-    renderInfoView: function() {
-      if (this.model.get("locked")) {
+    renderInfoView: function () {
+      if (this.model.get('locked')) {
         return 0;
       }
-      var callbackRev = function(error, revision, figures) {
+      var callbackRev = function (error, revision, figures) {
         if (error) {
-          arangoHelper.arangoError("Figures", "Could not get revision.");        
-        }
-        else {
+          arangoHelper.arangoError('Figures', 'Could not get revision.');
+        } else {
           var buttons = [];
           var tableContent = {
             figures: figures,
@@ -46,8 +44,8 @@
             model: this.model
           };
           window.modalView.show(
-            "modalCollectionInfo.ejs",
-            "Collection: " + this.model.get('name'),
+            'modalCollectionInfo.ejs',
+            'Collection: ' + this.model.get('name'),
             buttons,
             tableContent, null, null,
             null, null,
@@ -56,11 +54,10 @@
         }
       }.bind(this);
 
-      var callback = function(error, data) {
+      var callback = function (error, data) {
         if (error) {
-          arangoHelper.arangoError("Figures", "Could not get figures.");        
-        }
-        else {
+          arangoHelper.arangoError('Figures', 'Could not get figures.');
+        } else {
           var figures = data;
           this.model.getRevision(callbackRev, figures);
         }
@@ -70,5 +67,4 @@
     }
 
   });
-
 }());

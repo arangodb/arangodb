@@ -33,7 +33,11 @@ LoggerStream::~LoggerStream() {
   try {
     Logger::log(_function, _file, _line, _level, _topicId, _out.str());
   } catch (...) {
-    std::cerr << "failed to log: " << _out.str() << std::endl;
+    try {
+      // logging the error may fail as well, and we should never throw in the dtor
+      std::cerr << "failed to log: " << _out.str() << std::endl;
+    } catch (...) {
+    }
   }
 }
 

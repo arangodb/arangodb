@@ -29,6 +29,7 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Logger/LogAppender.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -56,6 +57,12 @@ SchedulerFeature::SchedulerFeature(
   startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("WorkMonitor");
+}
+
+SchedulerFeature::~SchedulerFeature() {
+  if (_scheduler != nullptr) {
+    delete _scheduler;
+  }
 }
 
 void SchedulerFeature::collectOptions(
@@ -99,6 +106,7 @@ void SchedulerFeature::validateOptions(
 }
 
 void SchedulerFeature::start() {
+  ArangoGlobalContext::CONTEXT->maskAllSignals();
   buildScheduler();
   buildHangupHandler();
 
@@ -141,12 +149,11 @@ void SchedulerFeature::stop() {
     }
 
     _scheduler->shutdown();
-
-    // delete the scheduler
-    delete _scheduler;
-    _scheduler = nullptr;
-    SCHEDULER = nullptr;
   }
+}
+
+void SchedulerFeature::unprepare() {
+  SCHEDULER = nullptr;
 }
 
 #ifdef _WIN32

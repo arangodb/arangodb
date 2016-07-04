@@ -101,7 +101,7 @@ class Slot {
   void setUsed(void*, uint32_t, Logfile::IdType, Slot::TickType);
 
   /// @brief mark as slot as returned
-  void setReturned(bool);
+  void setReturned(bool waitForSync);
 
  private:
   /// @brief slot tick
@@ -121,7 +121,7 @@ class Slot {
   uint32_t _size;
 
   /// @brief slot status
-  StatusType _status;
+  StatusType _status; 
 };
 
 static_assert(sizeof(Slot) == 32, "invalid slot size");

@@ -1,48 +1,45 @@
-/*jshint strict: false */
-/*global ArangoAgency */
+/* jshint strict: false */
+/* global ArangoAgency */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief User management
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+'use strict';
 
-var internal = require("internal"); // OK: reloadAuth
-var arangodb = require("@arangodb");
-var shallowCopy = require("@arangodb/util").shallowCopy;
-var crypto = require("@arangodb/crypto");
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief User management
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var db = arangodb.db;
-var ArangoError = arangodb.ArangoError;
+const internal = require('internal'); // OK: reloadAuth
+const arangodb = require('@arangodb');
+const shallowCopy = require('@arangodb/util').shallowCopy;
+const crypto = require('@arangodb/crypto');
 
+const db = arangodb.db;
+const ArangoError = arangodb.ArangoError;
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a user document to the legacy format
-////////////////////////////////////////////////////////////////////////////////
-
-var convertToLegacyFormat = function (doc) {
+// converts a user document to the legacy format
+const convertToLegacyFormat = function (doc) {
   return {
     user: doc.user,
     active: doc.authData.active,
@@ -51,27 +48,21 @@ var convertToLegacyFormat = function (doc) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief encode password using SHA256
-////////////////////////////////////////////////////////////////////////////////
-
-var hashPassword = function (password) {
-  var salt = internal.genRandomAlphaNumbers(16);
+// encode password using SHA256
+const hashPassword = function (password) {
+  const salt = internal.genRandomAlphaNumbers(16);
 
   return {
     hash: crypto.sha256(salt + password),
     salt: salt,
-    method: "sha256"
+    method: 'sha256'
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validates a username
-////////////////////////////////////////////////////////////////////////////////
-
-var validateName = function (username) {
-  if (typeof username !== "string" || username === "") {
-    var err = new ArangoError();
+// validates a username
+const validateName = function (username) {
+  if (typeof username !== 'string' || username === '') {
+    const err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_USER_INVALID_NAME.code;
     err.errorMessage = arangodb.errors.ERROR_USER_INVALID_NAME.message;
 
@@ -79,51 +70,50 @@ var validateName = function (username) {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validates password
-////////////////////////////////////////////////////////////////////////////////
-
-var validatePassword = function (password) {
-  if (typeof password !== "string") {
-    var err = new ArangoError();
+// validates password
+const validatePassword = function (password) {
+  if (typeof password !== 'string') {
+    const err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_USER_INVALID_PASSWORD.code;
     err.errorMessage = arangodb.errors.ERROR_USER_INVALID_PASSWORD.message;
 
     throw err;
   }
 
-  if (password === "ARANGODB_DEFAULT_ROOT_PASSWORD") {
-    password = require("process").env.ARANGODB_DEFAULT_ROOT_PASSWORD || "";
+  if (password === 'ARANGODB_DEFAULT_ROOT_PASSWORD') {
+    password = require('process').env.ARANGODB_DEFAULT_ROOT_PASSWORD || '';
   }
 
   return password;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the users collection
-////////////////////////////////////////////////////////////////////////////////
+// returns the users collection
+const getStorage = function () {
+  if (db._name() !== '_system') {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
+    err.errorMessage = 'users can only be used in _system database';
+    throw err;
+  }
 
-var getStorage = function () {
-  var users = db._collection("_users");
+  const users = db._collection('_users');
 
   if (users === null) {
-    var err = new ArangoError();
+    const err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
-    err.errorMessage = "collection _users not found";
+    err.errorMessage = 'collection _users not found';
     throw err;
   }
 
   return users;
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new user
-////////////////////////////////////////////////////////////////////////////////
-
+// creates a new user
 exports.save = function (username, password, active, userData, changePassword) {
+  const users = getStorage();
+
   if (password === null || password === undefined) {
-    password = "";
+    password = '';
   }
 
   // validate input
@@ -142,18 +132,21 @@ exports.save = function (username, password, active, userData, changePassword) {
     changePassword = false; // this is the default
   }
 
-  var users = getStorage();
-  var user = users.firstExample({user: username});
+  const user = users.firstExample({
+    user: username
+  });
 
   if (user !== null) {
-    var err = new ArangoError();
+    const err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_USER_DUPLICATE.code;
     err.errorMessage = arangodb.errors.ERROR_USER_DUPLICATE.message;
     throw err;
   }
 
-  var data = {
+  const data = {
     user: username,
+    databases: {},
+    configData: {},
     userData: userData || {},
     authData: {
       simple: hashPassword(password),
@@ -162,21 +155,20 @@ exports.save = function (username, password, active, userData, changePassword) {
     }
   };
 
-  var doc = users.save(data);
+  const doc = users.save(data);
 
   // not exports.reload() as this is an abstract method...
-  require("@arangodb/users").reload();
+  require('@arangodb/users').reload();
 
   return convertToLegacyFormat(users.document(doc._id));
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replaces an existing user
-////////////////////////////////////////////////////////////////////////////////
-
+// replaces an existing user
 exports.replace = function (username, password, active, userData, changePassword) {
+  const users = getStorage();
+
   if (password === null || password === undefined) {
-    password = "";
+    password = '';
   }
 
   // validate input
@@ -191,18 +183,21 @@ exports.replace = function (username, password, active, userData, changePassword
     changePassword = false; // this is the default
   }
 
-  var users = getStorage();
-  var user = users.firstExample({user: username});
+  const user = users.firstExample({
+    user: username
+  });
 
   if (user === null) {
-    var err = new ArangoError();
+    const err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
     err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
     throw err;
   }
 
-  var data = {
+  const data = {
     user: username,
+    databases: user.databases,
+    configData: user.configData,
     userData: userData || {},
     authData: {
       simple: hashPassword(password),
@@ -211,19 +206,18 @@ exports.replace = function (username, password, active, userData, changePassword
     }
   };
 
-  var doc = users.replace(user, data);
+  const doc = users.replace(user, data);
 
   // not exports.reload() as this is an abstract method...
-  require("@arangodb/users").reload();
+  require('@arangodb/users').reload();
 
   return convertToLegacyFormat(users.document(doc._id));
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates an existing user
-////////////////////////////////////////////////////////////////////////////////
-
+// updates an existing user
 exports.update = function (username, password, active, userData, changePassword) {
+  const users = getStorage();
+
   // validate input
   validateName(username);
 
@@ -231,17 +225,18 @@ exports.update = function (username, password, active, userData, changePassword)
     password = validatePassword(password);
   }
 
-  var users = getStorage();
-  var user = users.firstExample({user: username});
+  const user = users.firstExample({
+    user: username
+  });
 
   if (user === null) {
-    var err = new ArangoError();
+    const err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
     err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
     throw err;
   }
 
-  var data = shallowCopy(user);
+  const data = shallowCopy(user);
 
   if (password !== undefined) {
     data.authData.simple = hashPassword(password);
@@ -262,48 +257,48 @@ exports.update = function (username, password, active, userData, changePassword)
   users.update(user, data);
 
   // not exports.reload() as this is an abstract method...
-  require("@arangodb/users").reload();
+  require('@arangodb/users').reload();
 
   return convertToLegacyFormat(users.document(user._id));
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes an existing user
-////////////////////////////////////////////////////////////////////////////////
-
+// deletes an existing user
 exports.remove = function (username) {
+  const users = getStorage();
+
   // validate input
   validateName(username);
 
-  var users = getStorage();
-  var user = users.firstExample({user: username});
+  const user = users.firstExample({
+    user: username
+  });
 
   if (user === null) {
-    var err = new ArangoError();
+    const err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
     err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
     throw err;
   }
 
   // not exports.reload() as this is an abstract method...
-  require("@arangodb/users").reload();
+  require('@arangodb/users').reload();
 
   users.remove(user);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets an existing user
-////////////////////////////////////////////////////////////////////////////////
-
+// gets an existing user
 exports.document = function (username) {
+  const users = getStorage();
+
   // validate name
   validateName(username);
 
-  var users = getStorage();
-  var user = users.firstExample({user: username});
+  const user = users.firstExample({
+    user: username
+  });
 
   if (user === null) {
-    var err = new ArangoError();
+    const err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
     err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
     throw err;
@@ -312,16 +307,28 @@ exports.document = function (username) {
   return convertToLegacyFormat(user);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether a combination of username / password is valid.
-////////////////////////////////////////////////////////////////////////////////
+exports.exists = function (username) {
+  try {
+    exports.document(username);
+    return true;
+  } catch (e) {
+    if (e.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
+      return false;
+    }
+    throw e;
+  }
+};
 
+// checks whether a combination of username / password is valid.
 exports.isValid = function (username, password) {
+  const users = getStorage();
+
   // validate name
   validateName(username);
 
-  var users = getStorage();
-  var user = users.firstExample({user: username});
+  const user = users.firstExample({
+    user: username
+  });
 
   if (user === null || !user.authData.active) {
     return false;
@@ -330,59 +337,52 @@ exports.isValid = function (username, password) {
   // penalize the call
   internal.sleep(Math.random());
 
-  var hash = crypto[user.authData.simple.method](user.authData.simple.salt + password);
+  const hash = crypto[user.authData.simple.method](user.authData.simple.salt + password);
   return crypto.constantEquals(user.authData.simple.hash, hash);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets all existing users
-////////////////////////////////////////////////////////////////////////////////
-
+// gets all existing users
 exports.all = function () {
-  var users = getStorage();
+  const users = getStorage();
 
   return users.all().toArray().map(convertToLegacyFormat);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reloads the user authentication data
-////////////////////////////////////////////////////////////////////////////////
-
+// reloads the user authentication data
 exports.reload = function () {
   internal.reloadAuth();
 
-  if (require("@arangodb/cluster").isCoordinator()) {
+  if (require('@arangodb/cluster').isCoordinator()) {
     // Tell the agency about this reload, such that all other coordinators
     // reload as well. This is important because most calls to this
     // function here come from actual changes in the collection _users.
-    var UserVersion;
-    var done = false;
+    let UserVersion;
+    let done = false;
 
-    while (! done) {
+    while (!done) {
       try {
-        UserVersion = ArangoAgency.get("Sync/UserVersion");
+        UserVersion = ArangoAgency.get('Sync/UserVersion');
         UserVersion = UserVersion.arango.Sync.UserVersion;
-      }
-      catch (err) {
+      } catch (err) {
         break;
       }
       try {
-        done = ArangoAgency.cas("Sync/UserVersion",UserVersion, UserVersion+1);
-      }
-      catch (err2) {
+        done = ArangoAgency.cas('Sync/UserVersion', UserVersion, UserVersion + 1);
+      } catch (err2) {
         break;
       }
     }
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a password-change token
-////////////////////////////////////////////////////////////////////////////////
-
+// sets a password-change token
 exports.setPasswordToken = function (username, token) {
-  var users = getStorage();
-  var user = users.firstExample({user: username});
+  const users = getStorage();
+
+  const user = users.firstExample({
+    user: username
+  });
+
   if (user === null) {
     return null;
   }
@@ -391,27 +391,31 @@ exports.setPasswordToken = function (username, token) {
     token = internal.genRandomAlphaNumbers(50);
   }
 
-  users.update(user, {authData: {passwordToken: token}});
+  users.update(user, {
+    authData: {
+      passwordToken: token
+    }
+  });
 
   return token;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the password-change token
-////////////////////////////////////////////////////////////////////////////////
-
+// checks the password-change token
 exports.userByToken = function (token) {
-  var users = getStorage();
-  return users.firstExample({"authData.passwordToken": token});
+  const users = getStorage();
+
+  return users.firstExample({
+    'authData.passwordToken': token
+  });
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the password-change token
-////////////////////////////////////////////////////////////////////////////////
-
+// checks the password-change token
 exports.changePassword = function (token, password) {
-  var users = getStorage();
-  var user = users.firstExample({'authData.passwordToken': token});
+  const users = getStorage();
+
+  const user = users.firstExample({
+    'authData.passwordToken': token
+  });
 
   if (user === null) {
     return false;
@@ -419,18 +423,197 @@ exports.changePassword = function (token, password) {
 
   password = validatePassword(password);
 
-  var authData = shallowCopy(user).authData;
+  const authData = shallowCopy(user).authData;
 
   delete authData.passwordToken;
   authData.simple = hashPassword(password);
   authData.changePassword = false;
 
-  users.update(user, {authData: authData});
+  users.update(user, {
+    authData: authData
+  });
 
   // not exports.reload() as this is an abstract method...
-  require("@arangodb/users").reload();
+  require('@arangodb/users').reload();
 
   return true;
 };
 
+// changes the allowed databases
+exports.grantDatabase = function (username, database, type) {
+  const users = getStorage();
 
+  if (type === undefined) {
+    type = 'rw';
+  } else if (type !== 'rw' && type !== 'ro') {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = "expecting access type 'rw' or 'ro'";
+    throw err;
+  }
+
+  // validate name
+  validateName(username);
+
+  const user = users.firstExample({
+    user: username
+  });
+
+  if (user === null) {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+    throw err;
+  }
+
+  let databases = user.databases || {};
+  databases[database] = type;
+
+  users.update(user, { databases: databases });
+
+  // not exports.reload() as this is an abstract method...
+  require('@arangodb/users').reload();
+
+  return databases;
+};
+
+// changes the allowed databases
+exports.revokeDatabase = function (username, database) {
+  const users = getStorage();
+
+  // validate name
+  validateName(username);
+
+  const user = users.firstExample({
+    user: username
+  });
+
+  if (user === null) {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+    throw err;
+  }
+
+  let databases = user.databases || {};
+  databases[database] = 'none';
+
+  users.update(user, { databases: databases }, false, false);
+
+  // not exports.reload() as this is an abstract method...
+  require('@arangodb/users').reload();
+
+  return databases;
+};
+
+// create/update (value != null) or delete (value == null)
+exports.updateConfigData = function (username, key, value) {
+  const users = getStorage();
+
+  validateName(username);
+
+  const user = users.firstExample({
+    user: username
+  });
+
+  if (user === null) {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+    throw err;
+  }
+
+  if (value === undefined) {
+    value = null;
+  }
+
+  var options = user.configData;
+
+  if (key === undefined || key === null) {
+    var data = shallowCopy(user);
+    data.configData = {};
+    users.replace(user, data);
+  } else {
+    options[key] = value;
+    users.update(user, { configData: options }, false, false);
+  }
+};
+
+// one config data (key != null) or all (key == null)    
+exports.configData = function (username, key) {
+  const users = getStorage();
+
+  validateName(username);
+
+  const user = users.firstExample({
+    user: username
+  });
+
+  if (user === null) {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+    throw err;
+  }
+
+  if (key === undefined || key === null) {
+    return user.configData;
+  } else {
+    return user.configData[key];
+  }
+};
+
+// one db permission data (key != null) or all (key == null)    
+exports.permission = function (username, key) {
+  const users = getStorage();
+
+  validateName(username);
+
+  const user = users.firstExample({
+    user: username
+  });
+
+  if (user === null) {
+    const err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+    throw err;
+  }
+
+  if (key === undefined || key === null) {
+    let databases = user.databases;
+    let result = {};
+
+    if (databases.hasOwnProperty('*')) {
+      const p = databases['*'];
+      const l = db._databases();
+
+      for (let k = 0; k < l.length; ++k) {
+        var dbname = l[k];
+        result[dbname] = p;
+      }
+    }
+
+    for (let k in databases) {
+      if (k !== '*' && databases.hasOwnProperty(k)) {
+        result[k] = databases[k];
+      }
+    }
+
+    return result;
+  } else {
+    if (key === '*') {
+      return user.databases[key];
+    } else {
+      if (user.databases.hasOwnProperty(key)) {
+        return user.databases[key];
+      }
+
+      if (user.databases.hasOwnProperty('*')) {
+        return user.databases['*'];
+      }
+
+      return '';
+    }
+  }
+};

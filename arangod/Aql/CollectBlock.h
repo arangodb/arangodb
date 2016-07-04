@@ -85,7 +85,7 @@ class SortedCollectBlock : public ExecutionBlock {
 
   ~SortedCollectBlock();
 
-  int initialize() override;
+  int initialize() override final;
 
  private:
   int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
@@ -125,8 +125,6 @@ class HashedCollectBlock : public ExecutionBlock {
  public:
   HashedCollectBlock(ExecutionEngine*, CollectNode const*);
   ~HashedCollectBlock();
-
-  int initialize() override;
 
  private:
   int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,

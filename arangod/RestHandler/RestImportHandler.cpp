@@ -52,13 +52,6 @@ RestImportHandler::RestImportHandler(GeneralRequest* request,
       _onDuplicateAction(DUPLICATE_ERROR) {}
 
 RestHandler::status RestImportHandler::execute() {
-  if (ServerState::instance()->isCoordinator()) {
-    generateError(GeneralResponse::ResponseCode::NOT_IMPLEMENTED,
-                  TRI_ERROR_CLUSTER_UNSUPPORTED,
-                  "'/_api/import' is not yet supported in a cluster");
-    return status::DONE;
-  }
-
   // set default value for onDuplicate
   _onDuplicateAction = DUPLICATE_ERROR;
 
@@ -168,9 +161,9 @@ std::string RestImportHandler::buildParseError(size_t i,
 
 int RestImportHandler::handleSingleDocument(
     SingleCollectionTransaction& trx, RestImportResult& result,
-    VPackBuilder& tempBuilder, char const* lineStart, VPackSlice slice,
-    std::string const& collectionName, bool isEdgeCollection,
-    OperationOptions const& opOptions, size_t i) {
+    VPackBuilder& babies, char const* lineStart, VPackSlice slice, 
+    bool isEdgeCollection, size_t i) {
+
   if (!slice.isObject()) {
     std::string part = VPackDumper::toString(slice);
     if (part.size() > 255) {
@@ -189,8 +182,6 @@ int RestImportHandler::handleSingleDocument(
 
   // document ok, now import it
   TRI_doc_mptr_t document;
-  int res = TRI_ERROR_NO_ERROR;
-
   VPackBuilder newBuilder;
 
   if (isEdgeCollection) {
@@ -198,15 +189,15 @@ int RestImportHandler::handleSingleDocument(
     // TODO: Check if this is unified in trx.insert
 
     if (!_fromPrefix.empty() || !_toPrefix.empty()) {
-      tempBuilder.clear();
-      tempBuilder.openObject();
+      TransactionBuilderLeaser tempBuilder(&trx);
+      
+      tempBuilder->openObject();
       if (!_fromPrefix.empty()) {
         VPackSlice from = slice.get(StaticStrings::FromString);
         if (from.isString()) {
           std::string f = from.copyString();
           if (f.find('/') == std::string::npos) {
-            tempBuilder.add(StaticStrings::FromString,
-                            VPackValue(_fromPrefix + f));
+            tempBuilder->add(StaticStrings::FromString, VPackValue(_fromPrefix + f));
           }
         }
       }
@@ -215,15 +206,14 @@ int RestImportHandler::handleSingleDocument(
         if (to.isString()) {
           std::string t = to.copyString();
           if (t.find('/') == std::string::npos) {
-            tempBuilder.add(StaticStrings::ToString, VPackValue(_toPrefix + t));
+            tempBuilder->add(StaticStrings::ToString, VPackValue(_toPrefix + t));
           }
         }
       }
-      tempBuilder.close();
+      tempBuilder->close();
 
-      if (tempBuilder.slice().length() > 0) {
-        newBuilder =
-            VPackCollection::merge(slice, tempBuilder.slice(), false, false);
+      if (tempBuilder->slice().length() > 0) {
+        newBuilder = VPackCollection::merge(slice, tempBuilder->slice(), false, false);
         slice = newBuilder.slice();
       }
     }
@@ -250,61 +240,8 @@ int RestImportHandler::handleSingleDocument(
     }
   }
 
-  OperationResult opResult = trx.insert(collectionName, slice, opOptions);
-
-  if (opResult.successful()) {
-    ++result._numCreated;
-  }
-  res = opResult.code;
-
-  // special behavior in case of unique constraint violation . . .
-  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
-      _onDuplicateAction != DUPLICATE_ERROR) {
-    VPackSlice const keySlice = slice.get(StaticStrings::KeyString);
-
-    if (keySlice.isString()) {
-      // insert failed. now try an update/replace
-
-      if (_onDuplicateAction == DUPLICATE_UPDATE) {
-        // update
-        opResult = trx.update(collectionName, slice, opOptions);
-        if (opResult.successful()) {
-          ++result._numUpdated;
-        }
-        res = opResult.code;
-        // We silently ignore all failed updates
-      } else if (_onDuplicateAction == DUPLICATE_REPLACE) {
-        // replace
-        opResult = trx.replace(collectionName, slice, opOptions);
-        if (opResult.successful()) {
-          ++result._numUpdated;
-        }
-        res = opResult.code;
-      } else {
-        // simply ignore unique key violations silently
-        TRI_ASSERT(_onDuplicateAction == DUPLICATE_IGNORE);
-        res = TRI_ERROR_NO_ERROR;
-        ++result._numIgnored;
-      }
-    }
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    std::string part = VPackDumper::toString(slice);
-    if (part.size() > 255) {
-      // UTF-8 chars in string will be escaped so we can truncate it at any
-      // point
-      part = part.substr(0, 255) + "...";
-    }
-
-    std::string errorMsg =
-        positionize(i) + "creating document failed with error '" +
-        TRI_errno_string(res) + "', offending document: " + part;
-
-    registerError(result, errorMsg);
-  }
-
-  return res;
+  babies.add(slice);
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,8 +296,14 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   } else if (type == "auto") {
     linewise = true;
 
-    // TODO: generalize to calling handler fillBody
-    // auto detect import type by peeking at first character
+      // TODO generalize
+      auto* httpResponse = dynamic_cast<HttpResponse*>(_response);
+
+      if (httpResponse == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
+    // auto detect import type by peeking at first non-whitespace character
     std::string const& body = request->body();
     char const* ptr = body.c_str();
     char const* end = ptr + body.size();
@@ -399,7 +342,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     return false;
   }
 
-  VPackBuilder tempBuilder;
   bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
@@ -409,6 +351,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     trx.truncate(collectionName, truncateOpts);
     // Ignore the result ...
   }
+
+  VPackBuilder babies;
+  babies.openArray();
 
   if (linewise) {
     // each line is a separate JSON document
@@ -434,7 +379,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       }
 
       // now find end of line
-      char const* pos = strchr(ptr, '\n');
+      char const* pos = static_cast<char const*>(memchr(ptr, '\n', end - ptr));
       char const* oldPtr = nullptr;
 
       std::shared_ptr<VPackBuilder> builder;
@@ -446,7 +391,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
         ptr = pos + 1;
         ++result._numEmpty;
         continue;
-      } else if (pos != nullptr) {
+      } 
+      
+      if (pos != nullptr) {
         // non-empty line
         *(const_cast<char*>(pos)) = '\0';
         TRI_ASSERT(ptr != nullptr);
@@ -473,9 +420,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
         continue;
       }
 
-      res = handleSingleDocument(trx, result, tempBuilder, oldPtr,
-                                 builder->slice(), collectionName,
-                                 isEdgeCollection, opOptions, i);
+      res = handleSingleDocument(trx, result, babies, oldPtr, builder->slice(),
+                                 isEdgeCollection, i);
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
@@ -514,9 +460,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice const slice = documents.at(i);
 
-      res = handleSingleDocument(trx, result, tempBuilder, nullptr, slice,
-                                 collectionName, isEdgeCollection, opOptions,
-                                 static_cast<size_t>(i + 1));
+      res = handleSingleDocument(trx, result, babies, nullptr, slice,
+                                 isEdgeCollection, static_cast<size_t>(i + 1));
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
@@ -528,21 +473,21 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       }
     }
   }
-
-  // this may commit, even if previous errors occurred
+  
+  babies.close();
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    // no error so far. go on and perform the actual insert
+    res = performImport(trx, result, collectionName, babies, complete, opOptions);
+  }
+   
   res = trx.finish(res);
-
-  // .............................................................................
-  // outside write transaction
-  // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collectionName, res, "");
   } else {
-    // generate result
     generateDocumentsCreated(result);
   }
-
   return true;
 }
 
@@ -600,7 +545,7 @@ bool RestImportHandler::createFromKeyValueList() {
   char const* bodyEnd = current + bodyStr.size();
 
   // process header
-  char const* next = strchr(current, '\n');
+  char const* next = static_cast<char const*>(memchr(current, '\n', bodyEnd - current));
 
   if (next == nullptr) {
     generateError(GeneralResponse::ResponseCode::BAD,
@@ -675,7 +620,9 @@ bool RestImportHandler::createFromKeyValueList() {
     // Ignore the result ...
   }
 
-  VPackBuilder tempBuilder;
+  VPackBuilder babies;
+  babies.openArray();
+
   size_t i = static_cast<size_t>(lineNumber);
 
   while (current != nullptr && current < bodyEnd) {
@@ -730,9 +677,9 @@ bool RestImportHandler::createFromKeyValueList() {
       try {
         std::shared_ptr<VPackBuilder> objectBuilder =
             createVelocyPackObject(keys, values, errorMsg, i);
-        res = handleSingleDocument(trx, result, tempBuilder, lineStart,
-                                   objectBuilder->slice(), collectionName,
-                                   isEdgeCollection, opOptions, i);
+        res =
+            handleSingleDocument(trx, result, babies, lineStart, objectBuilder->slice(),
+                                 isEdgeCollection, i);
       } catch (...) {
         // raise any error
         res = TRI_ERROR_INTERNAL;
@@ -750,21 +697,134 @@ bool RestImportHandler::createFromKeyValueList() {
     }
   }
 
-  // we'll always commit, even if previous errors occurred
+  babies.close();
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    // no error so far. go on and perform the actual insert
+    res = performImport(trx, result, collectionName, babies, complete, opOptions);
+  }
+  
   res = trx.finish(res);
-
-  // .............................................................................
-  // outside write transaction
-  // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collectionName, res, "");
   } else {
-    // generate result
     generateDocumentsCreated(result);
   }
-
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform the actual import (insert/update/replace) operations
+////////////////////////////////////////////////////////////////////////////////
+
+int RestImportHandler::performImport(SingleCollectionTransaction& trx,
+                                     RestImportResult& result, 
+                                     std::string const& collectionName,
+                                     VPackBuilder const& babies,
+                                     bool complete,
+                                     OperationOptions const& opOptions) {
+
+  auto makeError = [&](size_t i, int res, VPackSlice const& slice, RestImportResult& result) {
+    VPackOptions options(VPackOptions::Defaults);
+    options.escapeUnicode = false;
+    std::string part = VPackDumper::toString(slice, &options);
+    if (part.size() > 255) {
+      // UTF-8 chars in string will be escaped so we can truncate it at any
+      // point
+      part = part.substr(0, 255) + "...";
+    }
+
+    std::string errorMsg =
+        positionize(i) + "creating document failed with error '" +
+        TRI_errno_string(res) + "', offending document: " + part;
+    registerError(result, errorMsg);
+  };
+
+  int res = TRI_ERROR_NO_ERROR;
+  OperationResult opResult = trx.insert(collectionName, babies.slice(), opOptions);
+
+  VPackSlice resultSlice = opResult.slice();
+
+  if (resultSlice.isArray()) {
+    std::vector<size_t> originalPositions;
+    VPackBuilder updateReplace;
+    updateReplace.openArray();
+    size_t pos = 0;
+
+    for (auto const& it : VPackArrayIterator(resultSlice)) {
+      if (!it.hasKey("error") || !it.get("error").getBool()) {
+        ++result._numCreated;
+      } else {
+        // got an error, now handle it
+
+        int errorCode = it.get("errorNum").getNumber<int>();
+        VPackSlice const which = babies.slice().at(pos);
+        // special behavior in case of unique constraint violation . . .
+        if (errorCode == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && _onDuplicateAction != DUPLICATE_ERROR) {
+          VPackSlice const keySlice = which.get(StaticStrings::KeyString);
+    
+          if (keySlice.isString()) {
+            // insert failed. now try an update/replace
+            if (_onDuplicateAction == DUPLICATE_UPDATE || 
+                _onDuplicateAction == DUPLICATE_REPLACE) {
+              // update/replace
+              updateReplace.add(which);
+              originalPositions.emplace_back(pos);
+            } else {
+              // simply ignore unique key violations silently
+              TRI_ASSERT(_onDuplicateAction == DUPLICATE_IGNORE);
+              res = TRI_ERROR_NO_ERROR;
+              ++result._numIgnored;
+            }
+          } else {
+            makeError(pos, errorCode, which, result);
+            if (!complete) {
+              res = errorCode;
+              break;
+            }
+          }
+        } else {
+          makeError(pos, errorCode, which, result);
+          if (complete) {
+            res = errorCode;
+            break;
+          }
+        }
+      } 
+
+      ++pos;
+    }
+
+    updateReplace.close();
+
+    if (res == TRI_ERROR_NO_ERROR && updateReplace.slice().length() > 0) {
+      if (_onDuplicateAction == DUPLICATE_UPDATE) { 
+        opResult = trx.update(collectionName, updateReplace.slice(), opOptions);
+      } else {
+        opResult = trx.replace(collectionName, updateReplace.slice(), opOptions);
+      }
+   
+      VPackSlice resultSlice = opResult.slice();
+      size_t pos = 0; 
+      for (auto const& it : VPackArrayIterator(resultSlice)) {
+        if (!it.hasKey("error") || !it.get("error").getBool()) {
+          ++result._numUpdated;
+        } else {
+          int errorCode = it.get("errorNum").getNumber<int>();
+          makeError(originalPositions[pos], errorCode, babies.slice().at(originalPositions[pos]), result);
+          if (complete) {
+            res = errorCode;
+            break;
+          }
+        }
+      }
+
+      ++pos;
+    }
+  }
+  
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

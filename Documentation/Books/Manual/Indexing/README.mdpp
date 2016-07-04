@@ -1,0 +1,14 @@
+!CHAPTER Handling Indexes
+
+This is an introduction to ArangoDB's interface for indexes in general.  
+There are special sections for 
+
+- [index basics](IndexBasics.md) 
+- [Which Index to use when](WhichIndex.md)
+- [How ArangoDB uses indexes](IndexUtilization.md)
+- [working with indexes](WorkingWithIndexes.md)
+ - [hash indexes](Hash.md)
+ - [skiplists](Skiplist.md)
+ - [persistent indexes](Persistent.md)
+ - [fulltext indexes](Fulltext.md)
+ - [geo-spatial indexes](Geo.md)

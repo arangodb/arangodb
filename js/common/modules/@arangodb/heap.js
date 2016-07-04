@@ -1,64 +1,64 @@
-/*jshint strict: false */
+/* jshint strict: false */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief binary min heap
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2011-2013 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief binary min heap
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2011-2013 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// This file contains significant portions from the min heap published here:
-/// http://github.com/bgrins/javascript-astar
-/// Copyright (c) 2010, Brian Grinstead, http://briangrinstead.com
-/// Freely distributable under the MIT License.
-/// Includes Binary Heap (with modifications) from Marijn Haverbeke.
-/// http://eloquentjavascript.net/appendix2.html
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / This file contains significant portions from the min heap published here:
+// / http://github.com/bgrins/javascript-astar
+// / Copyright (c) 2010, Brian Grinstead, http://briangrinstead.com
+// / Freely distributable under the MIT License.
+// / Includes Binary Heap (with modifications) from Marijn Haverbeke.
+// / http://eloquentjavascript.net/appendix2.html
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief constructor
+// //////////////////////////////////////////////////////////////////////////////
 
 function BinaryHeap (scoreFunction) {
-  this.values = [ ];
+  this.values = [];
   this.scoreFunction = scoreFunction;
 }
 
 BinaryHeap.prototype = {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief push an element into the heap
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief push an element into the heap
+  // //////////////////////////////////////////////////////////////////////////////
 
   push: function (element) {
     this.values.push(element);
     this._sinkDown(this.values.length - 1);
   },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pop the min element from the heap
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief pop the min element from the heap
+  // //////////////////////////////////////////////////////////////////////////////
 
   pop: function () {
     var result = this.values[0];
@@ -70,9 +70,9 @@ BinaryHeap.prototype = {
     return result;
   },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a specific element from the heap
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief remove a specific element from the heap
+  // //////////////////////////////////////////////////////////////////////////////
 
   remove: function (node) {
     var i = this.values.indexOf(node);
@@ -83,59 +83,57 @@ BinaryHeap.prototype = {
 
       if (this.scoreFunction(end) < this.scoreFunction(node)) {
         this._sinkDown(i);
-      }
-      else {
+      } else {
         this._bubbleUp(i);
       }
     }
   },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return number of elements in heap
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief return number of elements in heap
+  // //////////////////////////////////////////////////////////////////////////////
 
-  size: function() {
+  size: function () {
     return this.values.length;
   },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reposition an element in the heap
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief reposition an element in the heap
+  // //////////////////////////////////////////////////////////////////////////////
 
   rescoreElement: function (node) {
     this._sinkDown(this.values.indexOf(node));
   },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move an element down the heap
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief move an element down the heap
+  // //////////////////////////////////////////////////////////////////////////////
 
   _sinkDown: function (n) {
     var element = this.values[n];
 
     while (n > 0) {
       var parentN = Math.floor((n + 1) / 2) - 1,
-      parent = this.values[parentN];
+        parent = this.values[parentN];
 
       if (this.scoreFunction(element) < this.scoreFunction(parent)) {
         this.values[parentN] = element;
         this.values[n] = parent;
         n = parentN;
-      }
-      else {
+      } else {
         break;
       }
     }
   },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bubble up an element
-////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief bubble up an element
+  // //////////////////////////////////////////////////////////////////////////////
 
   _bubbleUp: function (n) {
     var length = this.values.length,
-        element = this.values[n],
-        elemScore = this.scoreFunction(element);
+      element = this.values[n],
+      elemScore = this.scoreFunction(element);
 
     while (true) {
       var child2n = (n + 1) * 2;
@@ -164,15 +162,11 @@ BinaryHeap.prototype = {
         this.values[n] = this.values[swap];
         this.values[swap] = element;
         n = swap;
-      }
-      else {
+      } else {
         break;
       }
     }
   }
 };
 
-
 exports.BinaryHeap = BinaryHeap;
-
-

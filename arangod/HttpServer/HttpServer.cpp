@@ -66,11 +66,10 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer::HttpServer(
-    double keepAliveTimeout, std::string const& authenticationRealm,
+    double keepAliveTimeout, 
     bool allowMethodOverride,
     std::vector<std::string> const& accessControlAllowOrigins)
-    : _authenticationRealm(authenticationRealm),
-      _listenTasks(),
+    : _listenTasks(),
       _endpointList(nullptr),
       _commTasks(),
       _keepAliveTimeout(keepAliveTimeout),
@@ -89,8 +88,7 @@ HttpServer::~HttpServer() { stopListening(); }
 
 HttpCommTask* HttpServer::createCommTask(TRI_socket_t s,
                                          ConnectionInfo&& info) {
-  return new HttpCommTask(this, s, std::move(info), _keepAliveTimeout,
-                          _authenticationRealm);
+  return new HttpCommTask(this, s, std::move(info), _keepAliveTimeout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,8 +118,7 @@ void HttpServer::startListening() {
     } else {
       LOG(FATAL) << "failed to bind to endpoint '" << it.first
                  << "'. Please check whether another instance is already "
-                    "running using this endpint and review your endpoints "
-                    "configuration.";
+                    "running using this endpoint and review your endpoints configuration.";
       FATAL_ERROR_EXIT();
     }
   }

@@ -1,26 +1,27 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global Backbone, document, EJS, _, arangoHelper, window, setTimeout, $, templateEngine, frontendConfig*/
+/* jshint browser: true */
+/* jshint unused: false */
+/* global Backbone, document, EJS, _, arangoHelper, window, setTimeout, $, templateEngine, frontendConfig*/
 
-(function() {
-  "use strict";
+(function () {
+  'use strict';
   window.loginView = Backbone.View.extend({
     el: '#content',
     el2: '.header',
     el3: '.footer',
     loggedIn: false,
+    loginCounter: 0,
 
     events: {
-      "keyPress #loginForm input" : "keyPress",
-      "click #submitLogin" : "validate",
-      "submit #dbForm"    : "goTo",
-      "click #logout"     : "logout",
-      "change #loginDatabase" : "renderDBS"
+      'keyPress #loginForm input': 'keyPress',
+      'click #submitLogin': 'validate',
+      'submit #dbForm': 'goTo',
+      'click #logout': 'logout',
+      'change #loginDatabase': 'renderDBS'
     },
 
-    template: templateEngine.createTemplate("loginView.ejs"),
+    template: templateEngine.createTemplate('loginView.ejs'),
 
-    render: function(loggedIn) {
+    render: function (loggedIn) {
       var self = this;
 
       $(this.el).html(this.template.render({}));
@@ -28,10 +29,11 @@
       $(this.el3).hide();
 
       if (frontendConfig.authenticationEnabled && loggedIn !== true) {
-        $('#loginUsername').focus();
-      }
-      else {
-        var url = arangoHelper.databaseUrl("/_api/database/user");
+        window.setTimeout(function () {
+          $('#loginUsername').focus();
+        }, 300);
+      } else {
+        var url = arangoHelper.databaseUrl('/_api/database/user');
 
         if (frontendConfig.authenticationEnabled === false) {
           $('#logout').hide();
@@ -41,17 +43,20 @@
         $('#loginForm').hide();
         $('.login-window #databases').show();
 
-        $.ajax(url).success(function(data) {
-          //enable db select and login button
+        $.ajax(url).success(function (permissions) {
+          // enable db select and login button
           $('#loginDatabase').html('');
-          //fill select with allowed dbs
-          _.each(data.result, function(db) {
+          // fill select with allowed dbs
+
+          _.each(permissions.result, function (db) {
             $('#loginDatabase').append(
               '<option>' + db + '</option>'
-            ); 
+            );
           });
 
           self.renderDBS();
+        }).error(function () {
+          console.log('could not fetch user db data');
         });
       }
 
@@ -61,22 +66,21 @@
     },
 
     clear: function () {
-      $('#loginForm input').removeClass("form-error");
+      $('#loginForm input').removeClass('form-error');
       $('.wrong-credentials').hide();
     },
 
-    keyPress: function(e) {
+    keyPress: function (e) {
       if (e.ctrlKey && e.keyCode === 13) {
         e.preventDefault();
         this.validate();
-      }
-      else if (e.metaKey && e.keyCode === 13) {
+      } else if (e.metaKey && e.keyCode === 13) {
         e.preventDefault();
         this.validate();
       }
     },
 
-    validate: function(event) {
+    validate: function (event) {
       event.preventDefault();
       this.clear();
 
@@ -84,58 +88,84 @@
       var password = $('#loginPassword').val();
 
       if (!username) {
-        //do not send unneccessary requests if no user is given
+        // do not send unneccessary requests if no user is given
         return;
       }
 
-      var callback = function(error) {
-        var self = this;
-        if (error) {
-          $('.wrong-credentials').show();
-          $('#loginDatabase').html('');
-          $('#loginDatabase').append(
-            '<option>_system</option>'
-          ); 
+      this.collection.login(username, password, this.loginCallback.bind(this, username, password));
+    },
+
+    loginCallback: function (username, password, error) {
+      var self = this;
+
+      if (error) {
+        if (self.loginCounter === 0) {
+          self.loginCounter++;
+          self.collection.login(username, password, this.loginCallback.bind(this, username));
+          return;
         }
-        else {
-          var url = arangoHelper.databaseUrl("/_api/database/user", '_system');
+        self.loginCounter = 0;
+        $('.wrong-credentials').show();
+        $('#loginDatabase').html('');
+        $('#loginDatabase').append(
+          '<option>_system</option>'
+        );
+      } else {
+        var url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(username) + '/database', '_system');
 
-          if (frontendConfig.authenticationEnabled === false) {
-            url = arangoHelper.databaseUrl("/_api/database/user");
-          }
+        if (frontendConfig.authenticationEnabled === false) {
+          url = arangoHelper.databaseUrl('/_api/database/user');
+        }
 
-          $('.wrong-credentials').hide();
-          self.loggedIn = true;
-          //get list of allowed dbs
-          $.ajax(url).success(function(data) {
+        $('.wrong-credentials').hide();
+        self.loggedIn = true;
 
-            $('#loginForm').hide();
-            $('#databases').show();
+        // get list of allowed dbs
+        $.ajax(url).success(function (permissions) {
 
-            //enable db select and login button
-            $('#loginDatabase').html('');
-            //fill select with allowed dbs
-            _.each(data.result, function(db) {
-              $('#loginDatabase').append(
-                '<option>' + db + '</option>'
-              ); 
-            });
-
-            self.renderDBS();
+          // HANDLE PERMISSIONS
+          _.each(permissions.result, function (value, key) {
+            if (value !== 'rw') {
+              delete permissions.result[key];
+            }
           });
-        }
-      }.bind(this);
 
-      this.collection.login(username, password, callback);
+          $('#loginForm').hide();
+          $('.login-window #databases').show();
+
+          // enable db select and login button
+          $('#loginDatabase').html('');
+
+          // fill select with allowed dbs
+          _.each(permissions.result, function (db, key) {
+            $('#loginDatabase').append(
+              '<option>' + key + '</option>'
+            );
+          });
+
+          self.renderDBS();
+        }).error(function () {
+          $('.wrong-credentials').show();
+        });
+      }
     },
 
-    renderDBS: function() {
-      var db = $('#loginDatabase').val();
-      $('#goToDatabase').html("Select: "  + db);
-      $('#goToDatabase').focus();
+    renderDBS: function () {
+      if ($('#loginDatabase').children().length === 0) {
+        $('#dbForm').remove();
+        $('.login-window #databases').prepend(
+          '<div class="no-database">You do not have permission to a database.</div>'
+        );
+      } else {
+        var db = $('#loginDatabase').val();
+        $('#goToDatabase').html('Select DB: ' + db);
+        window.setTimeout(function () {
+          $('#goToDatabase').focus();
+        }, 300);
+      }
     },
 
-    logout: function() {
+    logout: function () {
       this.collection.logout();
     },
 
@@ -143,22 +173,20 @@
       e.preventDefault();
       var username = $('#loginUsername').val();
       var database = $('#loginDatabase').val();
-      console.log(window.App.dbSet);
       window.App.dbSet = database;
-      console.log(window.App.dbSet);
 
-      var callback2 = function(error) {
+      var callback2 = function (error) {
         if (error) {
-          arangoHelper.arangoError("User", "Could not fetch user settings"); 
+          arangoHelper.arangoError('User', 'Could not fetch user settings');
         }
       };
 
-      var path = window.location.protocol + "//" + window.location.host
-                 + frontendConfig.basePath + "/_db/" + database + "/_admin/aardvark/index.html";
+      var path = window.location.protocol + '//' + window.location.host
+        + frontendConfig.basePath + '/_db/' + database + '/_admin/aardvark/index.html';
 
       window.location.href = path;
 
-      //show hidden divs
+      // show hidden divs
       $(this.el2).show();
       $(this.el3).show();
       $('.bodyWrapper').show();

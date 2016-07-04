@@ -11,6 +11,7 @@ input.search-input {
 .search-field {
   @extend %pull-right;
   margin-left: 10px;
+  margin-right: 3px;
 
   .fa-search {
     color: $c-c2grey;
@@ -18,7 +19,7 @@ input.search-input {
     margin-left: -20px;
     opacity: .5;
     position: absolute;
-    right: 7px;
+    right: 9px;
     top: 9px;
 
     &:hover {
@@ -140,6 +141,19 @@ div.headerBar {
 
 .headerButtonList {
   a {
+
+    span {
+      .fa-top {
+        color: $c-white;
+        font-size: 7pt;
+        position: absolute;
+
+        &:hover {
+          color: $c-positive;
+        }
+      }
+    }
+
     &.error {
       color: $c-negative;
 
@@ -271,4 +285,101 @@ div.headerBar {
 
 #transparentHeader input[type=checkbox].css-checkbox {
   display: none;
+}
+
+.sectionHeader {
+  background-color: $c-bluegrey-dark;
+  margin-bottom: 10px;
+  padding-bottom: 2px;
+  padding-top: 10px;
+  width: 100%;
+
+  .title {
+    color: $c-white;
+    font-size: 12pt;
+    font-weight: 100;
+    line-height: 20pt;
+    margin-left: 10px;
+  }
+
+  .information {
+    float: right;
+    font-size: 12.5pt;
+    font-weight: 100;
+
+    .fa {
+      font-size: 17pt;
+    }
+
+    span:first-child {
+      margin-left: 10px;
+    }
+
+    span {
+
+      span {
+        position: relative;
+        top: -2px;
+      }
+
+      &.positive {
+        color: $c-positive;
+      }
+
+      &.warning {
+        color: $c-warning;
+      }
+
+      &.negative {
+        color: $c-negative;
+      }
+    }
+
+    i {
+      margin-left: 5px;
+      margin-right: 10px;
+    }
+  }
+
+  .scaleGroup {
+    float: right;
+    margin-right: 10px;
+    position: inherit;
+    width: 80px;
+
+    span {
+      border-radius: 30px;
+      color: $c-white;
+      padding: 3px 5px;
+      position: relative;
+      top: -4px;
+
+      &.left {
+        background: $c-negative;
+        margin-right: -19px;
+      }
+
+      &.right {
+        background: $c-positive;
+        margin-left: -16px;
+      }
+
+      &.left:hover,
+      &.right:hover {
+        cursor: pointer;
+      }
+    }
+
+    input {
+      @extend %inputs;
+      background: rgb(64, 74, 83) !important;
+      border-color: rgba(255, 255, 255, .3);
+      color: $c-white;
+      font-weight: 100;
+      height: 10px;
+      text-align: center;
+      width: 40px;
+    }
+
+  }
 }

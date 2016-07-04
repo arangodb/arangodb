@@ -26,6 +26,7 @@
 #include <openssl/opensslconf.h>
 
 #include "Basics/FileUtils.h"
+#include "Basics/Thread.h"
 #include "Basics/locks.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -48,7 +49,9 @@ TRI_mutex_t* opensslLocks;
 
 #if OPENSSL_VERSION_NUMBER < 0x01000000L
 
-unsigned long opensslThreadId() { return (unsigned long)TRI_CurrentThreadId(); }
+unsigned long opensslThreadId() {
+  return (unsigned long)Thread::currentThreadId();
+}
 
 #else
 
@@ -145,7 +148,7 @@ void SslFeature::prepare() {
   opensslSetup();
 }
 
-void SslFeature::stop() {
+void SslFeature::unprepare() {
   opensslCleanup();
 
   ERR_free_strings();

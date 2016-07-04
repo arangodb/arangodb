@@ -1,26 +1,26 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const fs = require('fs');
@@ -54,7 +54,6 @@ const TEMPLATES = [
   obj[name] = template(`${name}.js`);
   return obj;
 }, {readme: template('README.md')});
-
 
 exports.generate = function (opts) {
   const dcNames = generateNames(opts.documentCollections);
@@ -90,8 +89,8 @@ exports.generate = function (opts) {
   files.push({name: 'manifest.json', content: manifest});
 
   const main = TEMPLATES.main({routePaths: [].concat(
-    pluck(dcNames, 'routerFile'),
-    pluck(ecNames, 'routerFile')
+      pluck(dcNames, 'routerFile'),
+      pluck(ecNames, 'routerFile')
   )});
   files.push({name: 'main.js', content: main});
 
@@ -120,8 +119,8 @@ exports.generate = function (opts) {
   });
   files.push({name: fs.join('scripts', 'setup.js'), content: setup});
   const teardown = TEMPLATES.teardown({collections: [].concat(
-    pluck(dcNames, 'collection'),
-    pluck(ecNames, 'collection')
+      pluck(dcNames, 'collection'),
+      pluck(ecNames, 'collection')
   )});
   files.push({name: fs.join('scripts', 'teardown.js'), content: teardown});
 
@@ -142,8 +141,7 @@ exports.write = function (path, files, folders) {
   }
 };
 
-
-function generateNames(collectionNames) {
+function generateNames (collectionNames) {
   return collectionNames.map(function (collectionName, i) {
     const routerFileName = collectionName.toLowerCase();
     collectionNames.forEach(function (next, j) {

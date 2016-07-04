@@ -840,8 +840,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
   }
 
   // it is an update, but only if found has a smaller revision identifier
-  else if (found->revisionId() < revisionId ||
-           (found->revisionId() == revisionId && found->getFid() <= fid)) {
+  else {
     // save the old data
     TRI_doc_mptr_t oldData = *found;
 
@@ -868,14 +867,6 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
     state->_dfi->numberAlive++;
     state->_dfi->sizeAlive += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
-  }
-
-  // it is a stale update
-  else {
-    TRI_ASSERT(found->vpack() != nullptr);
-
-    state->_dfi->numberDead++;
-    state->_dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(found->markerSize());
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1166,6 +1157,11 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   TRI_IterateCollection(collection, OpenIterator, &openState);
 
   LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->_info.name() << "'";
+  
+  // make sure our local tick is now at least as high as the highest revision id used in this collection
+  if (document->_info.revision() > 0) {
+    TRI_UpdateTickServer(document->_info.revision());
+  }
 
   // update the real statistics for the collection
   try {
@@ -1353,7 +1349,7 @@ int TRI_FromVelocyPackIndexDocumentCollection(
   // ...........................................................................
   // ROCKSDB INDEX
   // ...........................................................................
-  if (typeStr == "rocksdb") {
+  if (typeStr == "persistent" || typeStr == "rocksdb") {
 #ifdef ARANGODB_ENABLE_ROCKSDB
     return RocksDBIndexFromVelocyPack(trx, document, slice, iid, idx);
 #else
@@ -3175,11 +3171,16 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
 
 int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
                                     TRI_doc_mptr_t* mptr, bool lock) {
+  return read(trx, StringRef(key.c_str(), key.size()), mptr, lock);
+}
+
+int TRI_document_collection_t::read(Transaction* trx, StringRef const& key,
+                                    TRI_doc_mptr_t* mptr, bool lock) {
   TRI_ASSERT(mptr != nullptr);
   mptr->setVPack(nullptr);  
 
   TransactionBuilderLeaser builder(trx);
-  builder->add(VPackValue(key));
+  builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
   VPackSlice slice = builder->slice();
 
   {
@@ -3267,6 +3268,14 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     // restricted to strings
     hash = Transaction::extractKeyFromDocument(slice).hashString();
     newSlice = slice;
+  }
+    
+  if (options.isRestore) {
+    // make sure our local tick is at least as high as the remote tick
+    VPackSlice revSlice = newSlice.get(StaticStrings::RevString);
+    if (revSlice.isString()) {
+      TRI_UpdateTickServer(StringUtils::uint64(revSlice.copyString()));
+    }
   }
 
   TRI_ASSERT(mptr != nullptr);
@@ -3371,6 +3380,8 @@ int TRI_document_collection_t::update(Transaction* trx,
     VPackValueLength length;
     char const* p = oldRev.getString(length);
     revisionId = arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
+    // make sure our local tick is at least as high as the remote tick
+    TRI_UpdateTickServer(revisionId);
   } else {
     revisionId = TRI_NewTickServer();
   }
@@ -3526,6 +3537,8 @@ int TRI_document_collection_t::replace(Transaction* trx,
     VPackValueLength length;
     char const* p = oldRev.getString(length);
     revisionId = arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
+    // make sure our local tick is at least as high as the remote tick
+    TRI_UpdateTickServer(revisionId);
   } else {
     revisionId = TRI_NewTickServer();
   }
@@ -3643,6 +3656,8 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
       VPackValueLength length;
       char const* p = oldRev.getString(length);
       revisionId = arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
+      // make sure our local tick is at least as high as the remote tick
+      TRI_UpdateTickServer(revisionId);
     }
   } else {
     revisionId = TRI_NewTickServer();
@@ -4115,7 +4130,7 @@ int TRI_document_collection_t::newObjectForInsert(
       return TRI_ERROR_ARANGO_OUT_OF_KEYS;
     }
     uint8_t* where = builder.add(StaticStrings::KeyString,
-                                  VPackValue(keyString));
+                                 VPackValue(keyString));
     s = VPackSlice(where);  // point to newly built value, the string
   } else if (!s.isString()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
@@ -4132,8 +4147,12 @@ int TRI_document_collection_t::newObjectForInsert(
   uint8_t* p = builder.add(StaticStrings::IdString,
       VPackValuePair(9ULL, VPackValueType::Custom));
   *p++ = 0xf3;  // custom type for _id
-  if (ServerState::isDBServer(trx->serverRole())) {
-    // db server in cluster
+  if (ServerState::isDBServer(trx->serverRole()) &&
+      _info.namec_str()[0] != '_') {
+    // db server in cluster, note: the local collections _statistics,
+    // _statisticsRaw and _statistics15 (which are the only system collections)
+    // must not be treated as shards but as local collections, we recognise
+    // this by looking at the first letter of the collection name in _info
     DatafileHelper::StoreNumber<uint64_t>(p, _info.planId(), sizeof(uint64_t));
   } else {
     // local server
@@ -4262,7 +4281,7 @@ void TRI_document_collection_t::mergeObjectsForUpdate(
           fromSlice = it.value();
         } else if (key == StaticStrings::ToString) {
           toSlice = it.value();
-        }
+        } // else do nothing
       } else {
         // regular attribute
         newValues.emplace(std::move(key), it.value());

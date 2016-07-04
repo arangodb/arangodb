@@ -335,12 +335,12 @@ function ahuacatlQueryCacheTestSuite () {
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
       result = AQL_EXECUTE(query);
       assertFalse(result.cached);
-      assertEqual([ 0, 0, 0 ], result.json);
+      assertEqual([ null, null, null ], result.json);
       assertEqual(3, result.warnings.length);
 
       result = AQL_EXECUTE(query);
       assertFalse(result.cached); // won't be cached because of the warnings
-      assertEqual([ 0, 0, 0 ], result.json);
+      assertEqual([ null, null, null ], result.json);
       assertEqual(3, result.warnings.length);
     },
 

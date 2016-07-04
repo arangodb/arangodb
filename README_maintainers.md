@@ -1,14 +1,34 @@
 
 ArangoDB Maintainers manual
 ===========================
+
 This file contains documentation about the build process, documentation generation means, unittests - put short - if you want to hack parts of arangod this could be interesting for you.
 
 CMake
 =====
- * *--enable-relative* - relative mode so you can run without make install
- * *--enable-maintainer-mode* - generate lex/yacc files
- * *--with-backtrace* - add backtraces to native code asserts & exceptions
- * *--enable-failure-tests* - adds javascript hook to crash the server for data integrity tests
+
+Essentially, you can compile ArangoDB from source by issueing the
+following commands from a clone of the source repository:
+
+    mkdir build
+    cd build
+    cmake ..
+    make
+    cd ..
+
+After that, the binaries will reside in `build/bin`. To quickly start
+up your compiled ArangoDB, simply do
+
+    build/bin/arangod -c etc/relative/arangod.conf data
+
+This will use a configuration file that is included in the source
+repository.
+
+CMake flags
+-----------
+ * *-DUSE_MAINTAINER_MODE* - generate lex/yacc files
+ * *-DUSE_BACKTRACE=1* - add backtraces to native code asserts & exceptions
+ * *-DUSE_FAILURE_TESTS=1* - adds javascript hook to crash the server for data integrity tests
 
 CFLAGS
 ------
@@ -33,7 +53,7 @@ If the compile goes wrong for no particular reason, appending 'verbose=' adds mo
 Runtime
 -------
  * start arangod with `--console` to get a debug console
- * Cheapen startup for valgrind: `--no-server --javascript.gc-frequency 1000000 --javascript.gc-interval 65536 --scheduler.threads=1 --javascript.v8-contexts=1`
+ * Cheapen startup for valgrind: `--server.rest-server false --javascript.gc-frequency 1000000 --javascript.gc-interval 65536 --scheduler.threads=1 --javascript.v8-contexts=1`
  * to have backtraces output set this on the prompt: `ENABLE_NATIVE_BACKTRACES(true)`
 
 Startup
@@ -60,8 +80,8 @@ JSLint
 ======
 (we switched to jshint a while back - this is still named jslint for historical reasons)
 
-Make target
------------
+checker Script
+--------------
 use
 
     ./utils/gitjslint.sh
@@ -187,16 +207,11 @@ jsUnity via arangosh
 --------------------
 arangosh is similar, however, you can only run tests which are intended to be ran via arangosh:
 
-    require("jsunity").runTest("js/client/tests/shell-client.js");
+    require("jsunity").runTest("js/client/tests/shell/shell-client.js");
 
 mocha tests
 -----------
 All tests with -spec in their names are using the [mochajs.org](https://mochajs.org) framework.
-
-
-jasmine tests
--------------
-Jasmine tests cover testing the UI components of aardvark
 
 Javascript framework
 --------------------
@@ -232,7 +247,7 @@ A commandline for running a single test (-> with the facility 'single_server') u
 valgrind could look like this. Options are passed as regular long values in the
 syntax --option value --sub:option value. Using Valgrind could look like this:
 
-    ./scripts/unittest single_server --test js/server/tests/aql-escaping.js \
+    ./scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js \
       --extraargs:server.threads 1 \
       --extraargs:scheduler.threads 1 \
       --extraargs:javascript.gc-frequency 1000000 \
@@ -249,11 +264,11 @@ Running a single unittestsuite
 ------------------------------
 Testing a single test with the framework directly on a server:
 
-    scripts/unittest single_server --test js/server/tests/aql-escaping.js
+    scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js
 
 Testing a single test with the framework via arangosh:
 
-    scripts/unittest single_client --test js/server/tests/aql-escaping.js
+    scripts/unittest single_client --test js/server/tests/aql/aql-escaping.js
 
 Testing a single rspec test:
 
@@ -268,23 +283,23 @@ Since downloading fox apps from github can be cumbersome with shaky DSL
 and DOS'ed github, we can fake it like this:
 
     export FOXX_BASE_URL="http://germany/fakegit/"
-    ./scripts/unittest single_server --test 'js/server/tests/shell-foxx-manager-spec.js'
+    ./scripts/unittest single_server --test 'js/server/tests/shell/shell-foxx-manager-spec.js'
 
 arangod Emergency console
 -------------------------
 
-    require("jsunity").runTest("js/server/tests/aql-escaping.js");
+    require("jsunity").runTest("js/server/tests/aql/aql-escaping.js");
 
 arangosh client
 ---------------
 
-    require("jsunity").runTest("js/server/tests/aql-escaping.js");
+    require("jsunity").runTest("js/server/tests/aql/aql-escaping.js");
 
 
 arangod commandline arguments
 -----------------------------
 
-    bin/arangod /tmp/dataUT --javascript.unit-tests="js/server/tests/aql-escaping.js" --no-server
+    bin/arangod /tmp/dataUT --javascript.unit-tests="js/server/tests/aql/aql-escaping.js" --no-server
 
     js/common/modules/loadtestrunner.js
 
@@ -351,7 +366,7 @@ Dependencies to build documentation:
 
 - MarkdownPP
 
-    https://github.com/triAGENS/markdown-pp/
+    https://github.com/arangodb-helper/markdown-pp/
 
     Checkout the code with Git, use your system python to install:
 
@@ -366,6 +381,7 @@ Dependencies to build documentation:
     - `npm`
 
     If not, add the installation path to your environment variable PATH.
+    Gitbook requires more recent node versions.
 
 - [Gitbook](https://github.com/GitbookIO/gitbook)
 
@@ -381,17 +397,17 @@ Dependencies to build documentation:
 
 Generate users documentation
 ============================
-If you've edited examples, see below howto regenerate them.
-If you've edited REST-Documentation, first invoke `./utils/generateSwagger.sh`.
+If you've edited examples, see below how to regenerate them with `./utils/generateExamples.sh`.
+If you've edited REST documentation, first invoke `./utils/generateSwagger.sh`.
 Run the `make` command in `arangodb/Documentation/Books` to generate it.
-The documentation will be generated into `arangodb/Documentation/Books/books/Users` -
+The documentation will be generated in subfolders in `arangodb/Documentation/Books/books` -
 use your favorite browser to read it.
 
-You may encounter permission problem with gitbook and its NPM invokations;
-In that case you need to run the command as root / Administrator.
+You may encounter permission problems with gitbook and its npm invocations.
+In that case, you need to run the command as root / Administrator.
 
-On windows you may see "device busy" errors, retry. Make sure you don't have
-intermediate files in the ppbooks / books -sub folder open (i.e. browser or editor)
+If you see "device busy" errors on Windows, retry. Make sure you don't have
+intermediate files open in the ppbooks / books subfolder (i.e. browser or editor).
 It can also temporarily occur during phases of high HDD / SSD load.
 
 The build-scripts contain several sanity checks, i.e. whether all examples are
@@ -411,7 +427,7 @@ restrictions.
 
 To only regereneate one file (faster) you may specify a filter:
 
-    make FILTER=Users/Aql/Invoke.mdpp
+    make FILTER=Manual/Aql/Invoke.mdpp
 
 (regular expressions allowed)
 
@@ -420,21 +436,23 @@ Using Gitbook
 
 The `make` command in `arangodb/Documentation/Books/` generates a website
 version of the manual. If you want to generate PDF, ePUB etc., run below
-build commands in `arangodb/Documentation/Books/books/Users/`. Calibre's
+build commands in `arangodb/Documentation/Books/books/Manual/`. Calibre's
 `ebook-convert` will be used for the conversion.
 
 Generate a PDF:
 
-    gitbook pdf ./ppbooks/Users ./target/path/filename.pdf
+    gitbook pdf ./ppbooks/Manual ./target/path/filename.pdf
 
 Generate an ePub:
 
-    gitbook epub ./ppbooks/Users ./target/path/filename.epub
+    gitbook epub ./ppbooks/Manual ./target/path/filename.epub
 
+Examples
+========
 Where to add new...
 -------------------
  - Documentation/DocuBlocks/* - markdown comments with execution section
- - Documentation/Books/Users/SUMMARY.md - index of all sub documentations
+ - Documentation/Books/Manual/SUMMARY.md - index of all sub documentations
 
 generate
 --------
@@ -466,7 +484,7 @@ you need to place hooks:
 
 Read / use the documentation
 ----------------------------
- - `file:///Documentation/Books/books/Users/index.html` contains the generated documentation
+ - `file:///Documentation/Books/books/Manual/index.html` contains the generated manual
  - JS-Console - Tools/API - Interactive swagger documentation which you can play with.
 
 arangod Example tool
@@ -609,6 +627,8 @@ Attributes:
                can be either a swaggertype, or a *RESTRUCT*
     - format: if type is a native swagger type, some support a format to specify them
 
+
+--------------------------------------------------------------------------------
 Local cluster startup
 =====================
 
@@ -630,6 +650,7 @@ up in the GNU debugger in separate windows (using `xterm`s). In that
 case one has to hit ENTER in the original terminal where the script runs
 to continue, once all processes have been start up in the debugger.
 
+--------------------------------------------------------------------------------
 Front-End (WebUI)
 =========
 

@@ -73,9 +73,7 @@ bool TRI_ExcludeCollectionReplication(char const* name, bool includeSystem) {
     return true;
   }
 
-  if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
-      TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
-      TRI_IsPrefixString(name, TRI_COL_NAME_STATISTICS) ||
+  if (TRI_IsPrefixString(name, TRI_COL_NAME_STATISTICS) ||
       TRI_EqualString(name, "_apps") ||
       TRI_EqualString(name, "_configuration") ||
       TRI_EqualString(name, "_cluster_kickstarter_plans") ||

@@ -29,7 +29,6 @@
 
 #include "Scheduler/Task.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Statistics/StatisticsAgent.h"
 

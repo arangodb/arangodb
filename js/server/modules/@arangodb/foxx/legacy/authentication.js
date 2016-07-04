@@ -1,42 +1,41 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Foxx Authentication
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2013 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann, Lucas Dohmen
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Foxx Authentication
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2013 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann, Lucas Dohmen
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var db = require("@arangodb").db,
-  crypto = require("@arangodb/crypto"),
-  internal = require("internal"),
-  is = require("@arangodb/is"),
-  _ = require("lodash"),
+var db = require('@arangodb').db,
+  crypto = require('@arangodb/crypto'),
+  internal = require('internal'),
+  is = require('@arangodb/is'),
+  _ = require('lodash'),
   errors = internal.errors,
   defaultsFor = {};
 
-
-function createAuthenticationMiddleware(auth, applicationContext) {
+function createAuthenticationMiddleware (auth, applicationContext) {
   return function (req) {
     var users = new Users(applicationContext),
       authResult = auth.authenticate(req);
@@ -51,7 +50,7 @@ function createAuthenticationMiddleware(auth, applicationContext) {
   };
 }
 
-function createSessionUpdateMiddleware() {
+function createSessionUpdateMiddleware () {
   return function (req) {
     var session = req.currentSession;
 
@@ -61,7 +60,7 @@ function createSessionUpdateMiddleware() {
   };
 }
 
-function createAuthObject(applicationContext, opts) {
+function createAuthObject (applicationContext, opts) {
   var sessions,
     cookieAuth,
     auth,
@@ -76,21 +75,21 @@ function createAuthObject(applicationContext, opts) {
   return auth;
 }
 
-function checkAuthenticationOptions(options) {
-  if (options.type !== "cookie") {
-    throw new Error("Currently only the following auth types are supported: cookie");
+function checkAuthenticationOptions (options) {
+  if (options.type !== 'cookie') {
+    throw new Error('Currently only the following auth types are supported: cookie');
   }
   if (is.falsy(options.cookieLifetime)) {
-    throw new Error("Please provide the cookieLifetime");
+    throw new Error('Please provide the cookieLifetime');
   }
   if (is.falsy(options.sessionLifetime)) {
-    throw new Error("Please provide the sessionLifetime");
+    throw new Error('Please provide the sessionLifetime');
   }
 }
 
 defaultsFor.login = {
-  usernameField: "username",
-  passwordField: "password",
+  usernameField: 'username',
+  passwordField: 'password',
 
   onSuccess: function (req, res) {
     res.json({
@@ -102,12 +101,12 @@ defaultsFor.login = {
   onError: function (req, res) {
     res.status(401);
     res.json({
-      error: "Username or Password was wrong"
+      error: 'Username or Password was wrong'
     });
   }
 };
 
-function createStandardLoginHandler(auth, users, opts) {
+function createStandardLoginHandler (auth, users, opts) {
   var options = _.defaults(opts || {}, defaultsFor.login);
 
   return function (req, res) {
@@ -127,19 +126,19 @@ function createStandardLoginHandler(auth, users, opts) {
 defaultsFor.logout = {
   onSuccess: function (req, res) {
     res.json({
-      notice: "Logged out!"
+      notice: 'Logged out!'
     });
   },
 
   onError: function (req, res) {
     res.status(401);
     res.json({
-      error: "No session was found"
+      error: 'No session was found'
     });
   }
 };
 
-function createStandardLogoutHandler(auth, opts) {
+function createStandardLogoutHandler (auth, opts) {
   var options = _.defaults(opts || {}, defaultsFor.logout);
 
   return function (req, res) {
@@ -155,8 +154,8 @@ function createStandardLogoutHandler(auth, opts) {
 }
 
 defaultsFor.registration = {
-  usernameField: "username",
-  passwordField: "password",
+  usernameField: 'username',
+  passwordField: 'password',
   acceptedAttributes: [],
   defaultAttributes: {},
 
@@ -169,12 +168,12 @@ defaultsFor.registration = {
   onError: function (req, res) {
     res.status(401);
     res.json({
-      error: "Registration failed"
+      error: 'Registration failed'
     });
   }
 };
 
-function createStandardRegistrationHandler(auth, users, opts) {
+function createStandardRegistrationHandler (auth, users, opts) {
   var options = _.defaults(opts || {}, defaultsFor.registration);
 
   return function (req, res) {
@@ -200,23 +199,23 @@ function createStandardRegistrationHandler(auth, users, opts) {
 }
 
 defaultsFor.changePassword = {
-  passwordField: "password",
+  passwordField: 'password',
 
   onSuccess: function (req, res) {
     res.json({
-      notice: "Changed password!"
+      notice: 'Changed password!'
     });
   },
 
   onError: function (req, res) {
     res.status(401);
     res.json({
-      error: "No session was found"
+      error: 'No session was found'
     });
   }
 };
 
-function createStandardChangePasswordHandler(users, opts) {
+function createStandardChangePasswordHandler (users, opts) {
   var options = _.defaults(opts || {}, defaultsFor.changePassword);
 
   return function (req, res) {
@@ -236,22 +235,22 @@ function createStandardChangePasswordHandler(users, opts) {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief constructor
+// //////////////////////////////////////////////////////////////////////////////
 
-function generateToken() {
+function generateToken () {
   return internal.genRandomAlphaNumbers(32);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deep-copies a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief deep-copies a document
+// //////////////////////////////////////////////////////////////////////////////
 
-function cloneDocument(obj) {
+function cloneDocument (obj) {
   var copy, a;
 
-  if (obj === null || typeof obj !== "object") {
+  if (obj === null || typeof obj !== 'object') {
     return obj;
   }
 
@@ -272,124 +271,120 @@ function cloneDocument(obj) {
   return copy;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether the plain text password matches the encoded one
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks whether the plain text password matches the encoded one
+// //////////////////////////////////////////////////////////////////////////////
 
-function checkPassword(plain, encoded) {
+function checkPassword (plain, encoded) {
   var salted = encoded.substr(3, 8) + plain,
     hex = crypto.sha256(salted);
 
   return (encoded.substr(12) === hex);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief encodes a password
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief encodes a password
+// //////////////////////////////////////////////////////////////////////////////
 
-function encodePassword(password) {
+function encodePassword (password) {
   var salt,
     encoded,
     random;
 
   random = crypto.rand();
   if (random === undefined) {
-    random = "time:" + internal.time();
+    random = 'time:' + internal.time();
   } else {
-    random = "random:" + random;
+    random = 'random:' + random;
   }
 
   salt = crypto.sha256(random);
   salt = salt.substr(0, 8);
 
-  encoded = "$1$" + salt + "$" + crypto.sha256(salt + password);
+  encoded = '$1$' + salt + '$' + crypto.sha256(salt + password);
 
   return encoded;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief constructor
+// //////////////////////////////////////////////////////////////////////////////
 
-function Users(applicationContext, options) {
+function Users (applicationContext, options) {
   this._options = options || {};
   this._collection = null;
 
-  if (this._options.hasOwnProperty("collectionName")) {
+  if (this._options.hasOwnProperty('collectionName')) {
     this._collectionName = this._options.collectionName;
   } else {
-    this._collectionName = applicationContext.collectionName("users");
+    this._collectionName = applicationContext.collectionName('users');
   }
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the collection
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.storage = function () {
-
   if (this._collection === null) {
     this._collection = db._collection(this._collectionName);
 
     if (!this._collection) {
-      throw new Error("users collection not found");
+      throw new Error('users collection not found');
     }
   }
 
   return this._collection;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validate a user identifier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief validate a user identifier
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype._validateIdentifier = function (identifier, allowObject) {
-
   if (allowObject) {
-    if (typeof identifier === "object" && identifier.hasOwnProperty("identifier")) {
+    if (typeof identifier === 'object' && identifier.hasOwnProperty('identifier')) {
       identifier = identifier.identifier;
     }
   }
 
-  if (typeof identifier !== "string") {
+  if (typeof identifier !== 'string') {
     throw new TypeError("invalid type for 'identifier'");
   }
 
   if (identifier.length === 0) {
-    throw new Error("invalid user identifier");
+    throw new Error('invalid user identifier');
   }
 
   return identifier;
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up the users collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sets up the users collection
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.setup = function (options) {
   var journalSize,
     createOptions;
 
-  if (typeof options === "object" && options.hasOwnProperty("journalSize")) {
+  if (typeof options === 'object' && options.hasOwnProperty('journalSize')) {
     journalSize = options.journalSize;
   }
 
   createOptions = {
-    journalSize : journalSize || 2 * 1024 * 1024
+    journalSize: journalSize || 2 * 1024 * 1024
   };
 
   if (!db._collection(this._collectionName)) {
     db._create(this._collectionName, createOptions);
   }
 
-  this.storage().ensureIndex({ type: "hash", fields: [ "identifier" ], sparse: true });
+  this.storage().ensureIndex({ type: 'hash', fields: [ 'identifier' ], sparse: true });
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down the users collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tears down the users collection
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.teardown = function () {
   var c = db._collection(this._collectionName);
@@ -399,18 +394,17 @@ Users.prototype.teardown = function () {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes all users
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief flushes all users
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.flush = function () {
-
   this.storage().truncate();
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a user
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief add a user
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.add = function (identifier, password, active, data) {
   var c = this.storage(),
@@ -418,11 +412,11 @@ Users.prototype.add = function (identifier, password, active, data) {
 
   identifier = this._validateIdentifier(identifier, false);
 
-  if (typeof password !== "string") {
+  if (typeof password !== 'string') {
     throw new TypeError("invalid type for 'password'");
   }
 
-  if (active !== undefined && typeof active !== "boolean") {
+  if (active !== undefined && typeof active !== 'boolean') {
     throw new TypeError("invalid type for 'active'");
   }
   if (active === undefined) {
@@ -431,9 +425,9 @@ Users.prototype.add = function (identifier, password, active, data) {
 
   user = {
     identifier: identifier,
-    password:   encodePassword(password),
-    active:     active,
-    data:       data || {}
+    password: encodePassword(password),
+    active: active,
+    data: data || {}
   };
 
   db._executeTransaction({
@@ -461,9 +455,9 @@ Users.prototype.add = function (identifier, password, active, data) {
   return user;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a user
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update a user
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.updateData = function (identifier, data) {
   var c = this.storage();
@@ -479,7 +473,7 @@ Users.prototype.updateData = function (identifier, data) {
         u = c.firstExample({ identifier: params.identifier });
 
       if (u === null) {
-        throw new Error("user not found");
+        throw new Error('user not found');
       }
       c.update(u._key, params.data, true, false);
     },
@@ -493,9 +487,9 @@ Users.prototype.updateData = function (identifier, data) {
   return true;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set activity flag
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set activity flag
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.setActive = function (identifier, active) {
   var c = this.storage(),
@@ -518,9 +512,9 @@ Users.prototype.setActive = function (identifier, active) {
   return true;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set password
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set password
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.setPassword = function (identifier, password) {
   var c = this.storage(),
@@ -529,7 +523,7 @@ Users.prototype.setPassword = function (identifier, password) {
 
   identifier = this._validateIdentifier(identifier, true);
 
-  if (typeof password !== "string") {
+  if (typeof password !== 'string') {
     throw new TypeError("invalid type for 'password'");
   }
 
@@ -546,9 +540,9 @@ Users.prototype.setPassword = function (identifier, password) {
   return true;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a user
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief remove a user
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.remove = function (identifier) {
   var c = this.storage(),
@@ -564,15 +558,14 @@ Users.prototype.remove = function (identifier) {
 
   try {
     c.remove(user._key);
-  } catch (err) {
-  }
+  } catch (err) {}
 
   return true;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a user
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns a user
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.get = function (identifier) {
   var c = this.storage(),
@@ -583,7 +576,7 @@ Users.prototype.get = function (identifier) {
   user = c.firstExample({ identifier: identifier });
 
   if (user === null) {
-    throw new Error("user not found");
+    throw new Error('user not found');
   }
 
   delete user.password;
@@ -591,9 +584,9 @@ Users.prototype.get = function (identifier) {
   return user;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a user exists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks if a user exists
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.exists = function (identifier) {
   var c = this.storage(),
@@ -604,9 +597,9 @@ Users.prototype.exists = function (identifier) {
   return (user !== null);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a user is valid
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check whether a user is valid
+// //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.isValid = function (identifier, password) {
   var c = this.storage(),
@@ -633,33 +626,29 @@ Users.prototype.isValid = function (identifier, password) {
   return user;
 };
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief constructor
+// //////////////////////////////////////////////////////////////////////////////
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function Sessions(applicationContext, options) {
-
+function Sessions (applicationContext, options) {
   this._applicationContext = applicationContext;
   this._options = options || {};
   this._collection = null;
 
-  if (!this._options.hasOwnProperty("minUpdateResoultion")) {
+  if (!this._options.hasOwnProperty('minUpdateResoultion')) {
     this._options.minUpdateResolution = 10;
   }
 
-  if (this._options.hasOwnProperty("collectionName")) {
+  if (this._options.hasOwnProperty('collectionName')) {
     this._collectionName = this._options.collectionName;
   } else {
-    this._collectionName = applicationContext.collectionName("sessions");
+    this._collectionName = applicationContext.collectionName('sessions');
   }
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a session object from a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a session object from a document
+// //////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype._toObject = function (session) {
   var that = this;
@@ -701,33 +690,32 @@ Sessions.prototype._toObject = function (session) {
   };
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up the sessions
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sets up the sessions
+// //////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.setup = function (options) {
   var journalSize,
     createOptions;
 
-  if (typeof options === "object" && options.hasOwnProperty("journalSize")) {
+  if (typeof options === 'object' && options.hasOwnProperty('journalSize')) {
     journalSize = options.journalSize;
   }
 
   createOptions = {
-    journalSize : journalSize || 4 * 1024 * 1024
+    journalSize: journalSize || 4 * 1024 * 1024
   };
 
   if (!db._collection(this._collectionName)) {
     db._create(this._collectionName, createOptions);
   }
 
-  this.storage().ensureIndex({ type: "hash", fields: ["identifier"]});
+  this.storage().ensureIndex({ type: 'hash', fields: ['identifier']});
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down the sessions
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tears down the sessions
+// //////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.teardown = function () {
   var c = db._collection(this._collectionName);
@@ -737,35 +725,34 @@ Sessions.prototype.teardown = function () {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the collection
+// //////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.storage = function () {
-
   if (this._collection === null) {
     this._collection = db._collection(this._collectionName);
 
     if (!this._collection) {
-      throw new Error("sessions collection not found");
+      throw new Error('sessions collection not found');
     }
   }
 
   return this._collection;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate a new session
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generate a new session
+// //////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.generate = function (identifier, data) {
   var storage, token, session;
 
-  if (typeof identifier !== "string" || identifier.length === 0) {
+  if (typeof identifier !== 'string' || identifier.length === 0) {
     throw new TypeError("invalid type for 'identifier'");
   }
 
-  if (!this._options.hasOwnProperty("sessionLifetime")) {
+  if (!this._options.hasOwnProperty('sessionLifetime')) {
     throw new Error("no value specified for 'sessionLifetime'");
   }
 
@@ -792,8 +779,8 @@ Sessions.prototype.generate = function (identifier, data) {
       return this._toObject(session);
     } catch (err) {
       // we might have generated the same key again
-      if (err.hasOwnProperty("errorNum") &&
-          err.errorNum === internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
+      if (err.hasOwnProperty('errorNum') &&
+        err.errorNum === internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
         // duplicate key, try again
         continue;
       }
@@ -803,24 +790,22 @@ Sessions.prototype.generate = function (identifier, data) {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a session
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update a session
+// //////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.update = function (token, data) {
-
   this.storage().update(token, {
     expires: internal.time() + this._options.sessionLifetime,
     data: data
   }, true, false);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief terminate a session
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief terminate a session
+// //////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.terminate = function (token) {
-
   try {
     this.storage().remove(token);
   } catch (err) {
@@ -828,9 +813,9 @@ Sessions.prototype.terminate = function (token) {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an existing session
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get an existing session
+// //////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.get = function (token) {
   var storage = this.storage(),
@@ -844,7 +829,7 @@ Sessions.prototype.get = function (token) {
 
       return {
         errorNum: internal.errors.ERROR_NO_ERROR.code,
-        session : this._toObject(session)
+        session: this._toObject(session)
       };
     }
 
@@ -861,39 +846,34 @@ Sessions.prototype.get = function (token) {
   };
 };
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief constructor
+// //////////////////////////////////////////////////////////////////////////////
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function CookieAuthentication(applicationContext, options) {
-
+function CookieAuthentication (applicationContext, options) {
   options = options || {};
 
   this._applicationContext = applicationContext;
 
   this._options = {
-    name: options.name || this._applicationContext.name + "-session",
+    name: options.name || this._applicationContext.name + '-session',
     cookieLifetime: options.cookieLifetime || 3600,
-    path: options.path || "/",
+    path: options.path || '/',
     domain: options.domain || undefined,
     secure: options.secure || false,
     httpOnly: options.httpOnly || false
   };
 
-  this._collectionName = applicationContext.collectionName("sessions");
+  this._collectionName = applicationContext.collectionName('sessions');
   this._collection = null;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a cookie from the request
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get a cookie from the request
+// //////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.getTokenFromRequest = function (req) {
-
-  if (!req.hasOwnProperty("cookies")) {
+  if (!req.hasOwnProperty('cookies')) {
     return null;
   }
 
@@ -904,9 +884,9 @@ CookieAuthentication.prototype.getTokenFromRequest = function (req) {
   return req.cookies[this._options.name];
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register a cookie in the request
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief register a cookie in the request
+// //////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.setCookie = function (res, value) {
   var name = this._options.name,
@@ -917,15 +897,15 @@ CookieAuthentication.prototype.setCookie = function (res, value) {
   cookie = {
     name: name,
     value: value,
-    lifeTime: (value === null || value === "") ? 0 : this._options.cookieLifetime,
+    lifeTime: (value === null || value === '') ? 0 : this._options.cookieLifetime,
     path: this._options.path,
     secure: this._options.secure,
     domain: this._options.domain,
     httpOnly: this._options.httpOnly
   };
 
-  if (!res.hasOwnProperty("cookies")) {
-    res.cookies = [ ];
+  if (!res.hasOwnProperty('cookies')) {
+    res.cookies = [];
   }
 
   if (!Array.isArray(res.cookies)) {
@@ -944,12 +924,11 @@ CookieAuthentication.prototype.setCookie = function (res, value) {
   res.cookies.push(cookie);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the request contains authentication data
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check whether the request contains authentication data
+// //////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.getAuthenticationData = function (req) {
-
   var token = this.getTokenFromRequest(req);
 
   if (token === null) {
@@ -961,47 +940,44 @@ CookieAuthentication.prototype.getAuthenticationData = function (req) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate authentication data
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generate authentication data
+// //////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.beginSession = function (req, res, token) {
   this.setCookie(res, token);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete authentication data
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief delete authentication data
+// //////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.endSession = function (req, res) {
-  this.setCookie(res, "");
+  this.setCookie(res, '');
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update authentication data
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update authentication data
+// //////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.updateSession = function (req, res, session) {
   // update the cookie (expire date)
   this.setCookie(res, session._key);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the authentication handler is responsible
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check whether the authentication handler is responsible
+// //////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.isResponsible = function () {
   return true;
 };
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief constructor
+// //////////////////////////////////////////////////////////////////////////////
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function Authentication(applicationContext, sessions, authenticators) {
-
+function Authentication (applicationContext, sessions, authenticators) {
   this._applicationContext = applicationContext;
   this._sessions = sessions;
 
@@ -1012,10 +988,9 @@ function Authentication(applicationContext, sessions, authenticators) {
   this._authenticators = authenticators;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs the authentication
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs the authentication
+// //////////////////////////////////////////////////////////////////////////////
 
 Authentication.prototype.authenticate = function (req) {
   var i,
@@ -1043,9 +1018,9 @@ Authentication.prototype.authenticate = function (req) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief begin a session
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief begin a session
+// //////////////////////////////////////////////////////////////////////////////
 
 Authentication.prototype.beginSession = function (req, res, identifier, data) {
   var session = this._sessions.generate(identifier, data),
@@ -1057,7 +1032,7 @@ Authentication.prototype.beginSession = function (req, res, identifier, data) {
     authenticator = this._authenticators[i];
 
     if (authenticator.isResponsible(req) &&
-        authenticator.beginSession) {
+      authenticator.beginSession) {
       authenticator.beginSession(req, res, session._key, identifier, data);
     }
   }
@@ -1065,9 +1040,9 @@ Authentication.prototype.beginSession = function (req, res, identifier, data) {
   return session;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief terminate a session
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief terminate a session
+// //////////////////////////////////////////////////////////////////////////////
 
 Authentication.prototype.endSession = function (req, res, token) {
   var i,
@@ -1078,7 +1053,7 @@ Authentication.prototype.endSession = function (req, res, token) {
     authenticator = this._authenticators[i];
 
     if (authenticator.isResponsible(req) &&
-        authenticator.endSession) {
+      authenticator.endSession) {
       authenticator.endSession(req, res);
     }
   }
@@ -1086,9 +1061,9 @@ Authentication.prototype.endSession = function (req, res, token) {
   this._sessions.terminate(token);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a session
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update a session
+// //////////////////////////////////////////////////////////////////////////////
 
 Authentication.prototype.updateSession = function (req, res, session) {
   var i,
@@ -1099,7 +1074,7 @@ Authentication.prototype.updateSession = function (req, res, session) {
     authenticator = this._authenticators[i];
 
     if (authenticator.isResponsible(req) &&
-        authenticator.updateSession) {
+      authenticator.updateSession) {
       authenticator.updateSession(req, res, session);
     }
   }
@@ -1107,39 +1082,36 @@ Authentication.prototype.updateSession = function (req, res, session) {
   session.update();
 };
 
-
 // http://stackoverflow.com/questions/783818/how-do-i-create-a-custom-error-in-javascript
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief constructor
+// //////////////////////////////////////////////////////////////////////////////
 
-function UserAlreadyExistsError(message) {
-  this.message = message || "User already exists";
+function UserAlreadyExistsError (message) {
+  this.message = message || 'User already exists';
   this.statusCode = 400;
 }
 
 UserAlreadyExistsError.prototype = new Error();
 
-function UnauthorizedError(message) {
-  this.message = message || "Unauthorized";
+function UnauthorizedError (message) {
+  this.message = message || 'Unauthorized';
   this.statusCode = 401;
 }
 
 UnauthorizedError.prototype = new Error();
 
-
-exports.Users                               = Users;
-exports.Sessions                            = Sessions;
-exports.CookieAuthentication                = CookieAuthentication;
-exports.Authentication                      = Authentication;
-exports.UnauthorizedError                   = UnauthorizedError;
-exports.UserAlreadyExistsError              = UserAlreadyExistsError;
-exports.createStandardLoginHandler          = createStandardLoginHandler;
-exports.createStandardLogoutHandler         = createStandardLogoutHandler;
-exports.createStandardRegistrationHandler   = createStandardRegistrationHandler;
+exports.Users = Users;
+exports.Sessions = Sessions;
+exports.CookieAuthentication = CookieAuthentication;
+exports.Authentication = Authentication;
+exports.UnauthorizedError = UnauthorizedError;
+exports.UserAlreadyExistsError = UserAlreadyExistsError;
+exports.createStandardLoginHandler = createStandardLoginHandler;
+exports.createStandardLogoutHandler = createStandardLogoutHandler;
+exports.createStandardRegistrationHandler = createStandardRegistrationHandler;
 exports.createStandardChangePasswordHandler = createStandardChangePasswordHandler;
-exports.createAuthenticationMiddleware      = createAuthenticationMiddleware;
-exports.createSessionUpdateMiddleware       = createSessionUpdateMiddleware;
-exports.createAuthObject                    = createAuthObject;
-
+exports.createAuthenticationMiddleware = createAuthenticationMiddleware;
+exports.createSessionUpdateMiddleware = createSessionUpdateMiddleware;
+exports.createAuthObject = createAuthObject;

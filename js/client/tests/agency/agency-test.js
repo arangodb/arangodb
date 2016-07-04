@@ -41,10 +41,9 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the agency servers
 ////////////////////////////////////////////////////////////////////////////////
-  
-  var agencyServers = ARGUMENTS;
-  var whoseTurn = 0;    // used to do round robin on agencyServers
 
+  var agencyServers = ARGUMENTS[0].split(" ");
+  var whoseTurn = 0;
   var request = require("@arangodb/request");
 
   function readAgency(list) {
@@ -53,6 +52,7 @@ function agencyTestSuite () {
     var res = request({url: agencyServers[whoseTurn] + "/_api/agency/read", method: "POST",
                        followRedirects: true, body: JSON.stringify(list),
                        headers: {"Content-Type": "application/json"}});
+    
     res.bodyParsed = JSON.parse(res.body);
     return res;
   }
@@ -62,7 +62,8 @@ function agencyTestSuite () {
     // response:
     var res = request({url: agencyServers[whoseTurn] + "/_api/agency/write", method: "POST",
                        followRedirects: true, body: JSON.stringify(list),
-                       headers: {"Content-Type": "application/json"}});
+                       headers: {"Content-Type": "application/json",
+                                 "x-arangodb-agency-mode": "waitForCommitted"}});
     res.bodyParsed = JSON.parse(res.body);
     return res;
   }
@@ -77,9 +78,7 @@ function agencyTestSuite () {
     var res = writeAgency(list);
     assertEqual(res.statusCode, 200);
   }
-
   return {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up
@@ -184,18 +183,70 @@ function agencyTestSuite () {
       res = writeAgency([[{"/a":2},{"/a":{"old":3},"/b":{"oldEmpty":false},"/c":{"isArray":false}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/a"]]), [{a:2}]);
+      // in precondition & multiple
+      writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":[1,2]},"d":false}]]);
+      res = writeAgency([[{"/b":2},{"/a/b/c":{"in":3}}]]);
+      assertEqual(res.statusCode, 200);
+      assertEqual(readAndCheck([["/b"]]), [{b:2}]);
+      res = writeAgency([[{"/b":3},{"/a/e":{"in":3}}]]);
+      assertEqual(res.statusCode, 412);
+      assertEqual(readAndCheck([["/b"]]), [{b:2}]);
+      res = writeAgency([[{"/b":3},{"/a/e":{"in":3},"/a/b/c":{"in":3}}]]);
+      assertEqual(res.statusCode, 412);
+      res = writeAgency([[{"/b":3},{"/a/e":{"in":3},"/a/b/c":{"in":3}}]]);
+      assertEqual(res.statusCode, 412);
+      res = writeAgency([[{"/b":3},{"/a/b/c":{"in":3},"/a/e":{"in":3}}]]);
+      assertEqual(res.statusCode, 412);
+      res = writeAgency([[{"/b":3},{"/a/b/c":{"in":3},"/a/e":{"in":2}}]]);
+      assertEqual(res.statusCode, 200);
+      assertEqual(readAndCheck([["/b"]]), [{b:3}]);
     },
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test a document
+/// @brief test document/transaction assignment
 ////////////////////////////////////////////////////////////////////////////////
 
     testDocument : function () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
                   [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck(  [[{"a":{"_id":"576d1b7becb6374e24ed5a04","index":0,"guid":"60ffa50e-0211-4c60-a305-dcc8063ae2a5","isActive":true,"balance":"$1,050.96","picture":"http://placehold.it/32x32","age":30,"eyeColor":"green","name":{"first":"Maura","last":"Rogers"},"company":"GENESYNK","email":"maura.rogers@genesynk.net","phone":"+1(804)424-2766","address":"501RiverStreet,Wollochet,Vermont,6410","about":"Temporsintofficiaipsumidnullalaboreminimlaborisinlaborumincididuntexcepteurdolore.Sunteumagnadolaborumsunteaquisipsumaliquaaliquamagnaminim.Cupidatatadproidentullamconisietofficianisivelitculpaexcepteurqui.Suntautemollitconsecteturnulla.Commodoquisidmagnaestsitelitconsequatdoloreupariaturaliquaetid.","registered":"Friday,November28,20148:01AM","latitude":"-30.093679","longitude":"10.469577","tags":["laborum","proident","est","veniam","sunt"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CarverDurham"},{"id":1,"name":"DanielleMalone"},{"id":2,"name":"ViolaBell"}],"greeting":"Hello,Maura!Youhave9unreadmessages.","favoriteFruit":"banana"}}],[{"!!@#$%^&*)":{"_id":"576d1b7bb2c1af32dd964c22","index":1,"guid":"e6bda5a9-54e3-48ea-afd7-54915fec48c2","isActive":false,"balance":"$2,631.75","picture":"http://placehold.it/32x32","age":40,"eyeColor":"blue","name":{"first":"Jolene","last":"Todd"},"company":"QUANTASIS","email":"jolene.todd@quantasis.us","phone":"+1(954)418-2311","address":"818ButlerStreet,Berwind,Colorado,2490","about":"Commodoesseveniamadestirureutaliquipduistempor.Auteeuametsuntessenisidolorfugiatcupidatatsintnulla.Sitanimincididuntelitculpasunt.","registered":"Thursday,June12,201412:08AM","latitude":"-7.101063","longitude":"4.105685","tags":["ea","est","sunt","proident","pariatur"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SwansonMcpherson"},{"id":1,"name":"YoungTyson"},{"id":2,"name":"HinesSandoval"}],"greeting":"Hello,Jolene!Youhave5unreadmessages.","favoriteFruit":"strawberry"}}],[{"1234567890":{"_id":"576d1b7b79527b6201ed160c","index":2,"guid":"2d2d7a45-f931-4202-853d-563af252ca13","isActive":true,"balance":"$1,446.93","picture":"http://placehold.it/32x32","age":28,"eyeColor":"blue","name":{"first":"Pickett","last":"York"},"company":"ECSTASIA","email":"pickett.york@ecstasia.me","phone":"+1(901)571-3225","address":"556GrovePlace,Stouchsburg,Florida,9119","about":"Idnulladolorincididuntirurepariaturlaborumutmolliteavelitnonveniaminaliquip.Adametirureesseanimindoloreduisproidentdeserunteaconsecteturincididuntconsecteturminim.Ullamcoessedolorelitextemporexcepteurexcepteurlaboreipsumestquispariaturmagna.ExcepteurpariaturexcepteuradlaborissitquieiusmodmagnalaborisincididuntLoremLoremoccaecat.","registered":"Thursday,January28,20165:20PM","latitude":"-56.18036","longitude":"-39.088125","tags":["ad","velit","fugiat","deserunt","sint"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"BarryCleveland"},{"id":1,"name":"KiddWare"},{"id":2,"name":"LangBrooks"}],"greeting":"Hello,Pickett!Youhave10unreadmessages.","favoriteFruit":"strawberry"}}],[{"":{"_id":"576d1b7bc674d071a2bccc05","index":3,"guid":"14b44274-45c2-4fd4-8c86-476a286cb7a2","isActive":true,"balance":"$1,861.79","picture":"http://placehold.it/32x32","age":27,"eyeColor":"brown","name":{"first":"Felecia","last":"Baird"},"company":"SYBIXTEX","email":"felecia.baird@sybixtex.name","phone":"+1(821)498-2971","address":"571HarrisonAvenue,Roulette,Missouri,9284","about":"Adesseofficianisiexercitationexcepteurametconsecteturessequialiquaquicupidatatincididunt.Nostrudullamcoutlaboreipsumduis.ConsequatsuntlaborumadLoremeaametveniamesseoccaecat.","registered":"Monday,December21,20156:50AM","latitude":"0.046813","longitude":"-13.86172","tags":["velit","qui","ut","aliquip","eiusmod"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CeliaLucas"},{"id":1,"name":"HensonKline"},{"id":2,"name":"ElliottWalker"}],"greeting":"Hello,Felecia!Youhave9unreadmessages.","favoriteFruit":"apple"}}],[{"|}{[]αв¢∂єƒgαв¢∂єƒg":{"_id":"576d1b7be4096344db437417","index":4,"guid":"f789235d-b786-459f-9288-0d2f53058d02","isActive":false,"balance":"$2,011.07","picture":"http://placehold.it/32x32","age":28,"eyeColor":"brown","name":{"first":"Haney","last":"Burks"},"company":"SPACEWAX","email":"haney.burks@spacewax.info","phone":"+1(986)587-2735","address":"197OtsegoStreet,Chesterfield,Delaware,5551","about":"Quisirurenostrudcupidatatconsequatfugiatvoluptateproidentvoluptate.Duisnullaadipisicingofficiacillumsuntlaborisdeseruntirure.Laborumconsecteturelitreprehenderitestcillumlaboresintestnisiet.Suntdeseruntexercitationutauteduisaliquaametetquisvelitconsecteturirure.Auteipsumminimoccaecatincididuntaute.Irureenimcupidatatexercitationutad.Minimconsecteturadipisicingcommodoanim.","registered":"Friday,January16,20155:29AM","latitude":"86.036358","longitude":"-1.645066","tags":["occaecat","laboris","ipsum","culpa","est"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SusannePacheco"},{"id":1,"name":"SpearsBerry"},{"id":2,"name":"VelazquezBoyle"}],"greeting":"Hello,Haney!Youhave10unreadmessages.","favoriteFruit":"apple"}}]]);
+      assertEqual(readAndCheck([["/!!@#$%^&*)/address"]]),[{"!!@#$%^&*)":{"address": "818ButlerStreet,Berwind,Colorado,2490"}}]);
     },
+
+    
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test arrays 
+////////////////////////////////////////////////////////////////////////////////
+
+    testArrays : function () {
+      writeAndCheck([[{"/":[]}]]);
+      assertEqual(readAndCheck([["/"]]),[[]]);
+      writeAndCheck([[{"/":[1,2,3]}]]);
+      assertEqual(readAndCheck([["/"]]),[[1,2,3]]);
+      writeAndCheck([[{"/a":[1,2,3]}]]);
+      assertEqual(readAndCheck([["/"]]),[{a:[1,2,3]}]);
+      writeAndCheck([[{"1":["C","C++","Java","Python"]}]]);
+      assertEqual(readAndCheck([["/1"]]),[{1:["C","C++","Java","Python"]}]);
+      writeAndCheck([[{"1":["C",2.0,"Java","Python"]}]]);
+      assertEqual(readAndCheck([["/1"]]),[{1:["C",2.0,"Java","Python"]}]);
+      writeAndCheck([[{"1":["C",2.0,"Java",{"op":"set","new":12,"ttl":7}]}]]);
+      assertEqual(readAndCheck([["/1"]]),[{"1":["C",2,"Java",{"op":"set","new":12,"ttl":7}]}]);
+      writeAndCheck([[{"1":["C",2.0,"Java",{"op":"set","new":12,"ttl":7,"Array":[12,3]}]}]]);
+      assertEqual(readAndCheck([["/1"]]),[{"1":["C",2,"Java",{"op":"set","new":12,"ttl":7,"Array":[12,3]}]}]);
+      writeAndCheck([[{"2":[[],[],[],[],[[[[[]]]]]]}]]);
+      assertEqual(readAndCheck([["/2"]]),[{"2":[[],[],[],[],[[[[[]]]]]]}]);
+      writeAndCheck([[{"2":[[[[[[]]]]],[],[],[],[[]]]}]]);
+      assertEqual(readAndCheck([["/2"]]),[{"2":[[[[[[]]]]],[],[],[],[[]]]}]);
+      writeAndCheck([[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]]);
+      assertEqual(readAndCheck([["/2"]]),[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]);      
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple transaction
+////////////////////////////////////////////////////////////////////////////////
 
     testTransaction : function () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,4]},"e":12},"d":false}],
@@ -203,6 +254,10 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
                   [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "new" operator
+////////////////////////////////////////////////////////////////////////////////
 
     testOpSetNew : function () {
       writeAndCheck([[{"a/z":{"op":"set","new":12}}]]);
@@ -227,6 +282,10 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "push" operator
+////////////////////////////////////////////////////////////////////////////////
+
     testOpPush : function () {
       writeAndCheck([[{"/a/b/c":{"op":"push","new":"max"}}]]);
       assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);
@@ -241,11 +300,19 @@ function agencyTestSuite () {
                   [{a:{euler:[2.71828182845904523536]}}]);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "remove" operator
+////////////////////////////////////////////////////////////////////////////////
+
     testOpRemove : function () {
       writeAndCheck([[{"/a/euler":{"op":"delete"}}]]);
       assertEqual(readAndCheck([["/a/euler"]]), [{a:{}}]);
     },
      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "prepend" operator
+////////////////////////////////////////////////////////////////////////////////
+
     testOpPrepend : function () {
       writeAndCheck([[{"/a/b/c":{"op":"prepend","new":3.141592653589793}}]]);
       assertEqual(readAndCheck([["/a/b/c"]]),
@@ -267,6 +334,10 @@ function agencyTestSuite () {
                   [{a:{euler:[1.25,2.71828182845904523536]}}]);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "shift" operator
+////////////////////////////////////////////////////////////////////////////////
+
     testOpShift : function () {
       writeAndCheck([[{"/a/f":{"op":"shift"}}]]); // none before
       assertEqual(readAndCheck([["/a/f"]]), [{a:{f:[]}}]);
@@ -277,6 +348,10 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/b/d":{"op":"shift"}}]]); // on existing scalar
       assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);        
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "pop" operator
+////////////////////////////////////////////////////////////////////////////////
 
     testOpPop : function () {
       writeAndCheck([[{"/a/f":{"op":"pop"}}]]); // none before
@@ -290,6 +365,10 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);        
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "increment" operator
+////////////////////////////////////////////////////////////////////////////////
+
     testOpIncrement : function () {
       writeAndCheck([[{"/version":{"op":"delete"}}]]);
       writeAndCheck([[{"/version":{"op":"increment"}}]]); // none before
@@ -298,6 +377,10 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{version:2}]);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "decrement" operator
+////////////////////////////////////////////////////////////////////////////////
+
     testOpDecrement : function () {
       writeAndCheck([[{"/version":{"op":"delete"}}]]);
       writeAndCheck([[{"/version":{"op":"decrement"}}]]); // none before
@@ -305,6 +388,10 @@ function agencyTestSuite () {
       writeAndCheck([[{"/version":{"op":"decrement"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:-2}]);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "op" keyword in other places than as operator
+////////////////////////////////////////////////////////////////////////////////
 
     testOpInStrangePlaces : function () {
       writeAndCheck([[{"/op":12}]]);
@@ -332,6 +419,105 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/op/a/b/d"]]), [{op:{a:{b:{d:{ttl:15}}}}}]);
       writeAndCheck([[{"/op/a/b/d/ttl":{"op":"decrement"}}]]);
       assertEqual(readAndCheck([["/op/a/b/d"]]), [{op:{a:{b:{d:{ttl:14}}}}}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief op delete on top node
+////////////////////////////////////////////////////////////////////////////////
+
+    testOperatorsOnRootNode : function () {
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      writeAndCheck([[{"/":{"op":"increment"}}]]);
+      assertEqual(readAndCheck([["/"]]), [1]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"/":{"op":"decrement"}}]]);
+      assertEqual(readAndCheck([["/"]]), [-1]);
+      writeAndCheck([[{"/":{"op":"push","new":"Hello"}}]]);
+      assertEqual(readAndCheck([["/"]]), [["Hello"]]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"/":{"op":"push","new":"Hello"}}]]);
+      assertEqual(readAndCheck([["/"]]), [["Hello"]]);
+      writeAndCheck([[{"/":{"op":"pop"}}]]);
+      assertEqual(readAndCheck([["/"]]), [[]]);
+      writeAndCheck([[{"/":{"op":"pop"}}]]);
+      assertEqual(readAndCheck([["/"]]), [[]]);
+      writeAndCheck([[{"/":{"op":"push","new":"Hello"}}]]);
+      assertEqual(readAndCheck([["/"]]), [["Hello"]]);
+      writeAndCheck([[{"/":{"op":"shift"}}]]);
+      assertEqual(readAndCheck([["/"]]), [[]]);
+      writeAndCheck([[{"/":{"op":"shift"}}]]);
+      assertEqual(readAndCheck([["/"]]), [[]]);
+      writeAndCheck([[{"/":{"op":"prepend","new":"Hello"}}]]);
+      assertEqual(readAndCheck([["/"]]), [["Hello"]]);
+      writeAndCheck([[{"/":{"op":"shift"}}]]);
+      assertEqual(readAndCheck([["/"]]), [[]]);
+      writeAndCheck([[{"/":{"op":"pop"}}]]);
+      assertEqual(readAndCheck([["/"]]), [[]]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test that order should not matter
+////////////////////////////////////////////////////////////////////////////////
+
+    testOrder : function () {
+      writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
+      assertEqual(readAndCheck([["a/e"],["a/b","d"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test nasty willful attempt to break
+////////////////////////////////////////////////////////////////////////////////
+
+    testOrderEvil : function () {
+      writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+      writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
+      assertEqual(readAndCheck([["a/e"],["a/b","d"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test nasty willful attempt to break
+////////////////////////////////////////////////////////////////////////////////
+
+    testSlashORama : function () {
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"//////////////////////a/////////////////////b//":
+                       {"b///////c":4}}]]);
+      assertEqual(readAndCheck([["/"]]), [{a:{b:{b:{c:4}}}}]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck([[{"////////////////////////": "Hi there!"}]]);
+      assertEqual(readAndCheck([["/"]]), ["Hi there!"]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck(
+        [[{"/////////////////\\/////a/////////////^&%^&$^&%$////////b\\\n//":
+           {"b///////c":4}}]]);
+      assertEqual(readAndCheck([["/"]]),
+                  [{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}]);
     }
   };
 }

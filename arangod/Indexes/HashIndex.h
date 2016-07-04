@@ -98,6 +98,8 @@ class HashIndexIterator final : public IndexIterator {
 
   TRI_doc_mptr_t* next() override;
 
+  void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override;
+
   void reset() override;
 
  private:
@@ -123,13 +125,13 @@ class HashIndexIteratorVPack final : public IndexIterator {
       : _trx(trx),
         _index(index),
         _searchValues(searchValues.get()),
-        _iterator(_searchValues->slice(), true),
+        _iterator(_searchValues->slice()),
         _buffer(),
         _posInBuffer(0) {
     searchValues.release(); // now we have ownership for searchValues
   }
 
-  ~HashIndexIteratorVPack() = default;
+  ~HashIndexIteratorVPack();
 
   TRI_doc_mptr_t* next() override;
 
@@ -198,7 +200,6 @@ class HashIndex final : public PathBasedIndex {
 
   IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,
-                                      arangodb::aql::Ast*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       bool) const override;
@@ -248,15 +249,6 @@ class HashIndex final : public PathBasedIndex {
                        arangodb::aql::AstNode const* other,
                        arangodb::aql::Variable const* reference,
                        std::unordered_set<size_t>& found) const;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Transforms search definition [{eq: v1},{eq: v2},...] to
-  ///        Index key [v1, v2, ...]
-  ///        Throws if input is invalid or there is an operator other than eq.
-  ////////////////////////////////////////////////////////////////////////////////
-
-  void transformSearchValues(arangodb::velocypack::Slice const,
-                             arangodb::velocypack::Builder&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief given an element generates a hash integer

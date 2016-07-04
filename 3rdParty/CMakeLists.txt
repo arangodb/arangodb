@@ -13,12 +13,6 @@ include(ExternalProject)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libev)
 
 ################################################################################
-## OPENSSL
-################################################################################
-
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/OpenSSL)
-
-################################################################################
 ## V8 and ICU
 ################################################################################
 
@@ -40,7 +34,7 @@ if (USE_PRECOMPILED_V8)
 
   set(V8_TARGET_DIR "${V8_DIR}/${V8_TARGET_ARCH}/obj.target")
   set(V8_BIN_DIR "${V8_TARGET_DIR}/tools/gyp")
-  set(ICU_BIN_DIR "${V8_TARGET_DIR}//third_party/icu")
+  set(ICU_BIN_DIR "${V8_TARGET_DIR}/third_party/icu")
 
   set(ICU_VERSION
     "54.1"

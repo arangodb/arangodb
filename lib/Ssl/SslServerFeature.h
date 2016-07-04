@@ -35,8 +35,7 @@ class SslServerFeature final : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
-  void stop() override final;
+  void unprepare() override final;
 
  public:
   SSL_CTX* sslContext() const { return _sslContext; }
@@ -46,8 +45,8 @@ class SslServerFeature final : public application_features::ApplicationFeature {
   std::string _keyfile;
   bool _sessionCache;
   std::string _cipherList;
-  uint64_t _protocol;
-  uint64_t _options;
+  uint64_t _sslProtocol;
+  uint64_t _sslOptions;
   std::string _ecdhCurve;
 
  private:

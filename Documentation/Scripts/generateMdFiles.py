@@ -21,6 +21,7 @@ def brTrim(text):
 
 swagger = None
 fileFilter = None
+blockFilter = None
 dokuBlocks = [{},{}]
 thisVerb = {}
 route = ''
@@ -102,6 +103,15 @@ def getRestBodyParam():
     rc += addText
     return rc
 
+def getRestDescription():
+    #print >>sys.stderr, "RESTDESCRIPTION"
+    if thisVerb['description']:
+        #print >> sys.stderr, thisVerb['description']
+        return thisVerb['description']
+    else:
+        #print >> sys.stderr, "ELSE"
+        return ""
+        
 def getRestReplyBodyParam(param):
     rc = "\n**Reply Body**\n"
 
@@ -115,31 +125,33 @@ def getRestReplyBodyParam(param):
 
 
 SIMPL_REPL_DICT = {
-"@RESTDESCRIPTION"      : "",
-"@RESTURLPARAMETERS"    : "\n**Path Parameters**\n",
-"@RESTQUERYPARAMETERS"  : "\n**Query Parameters**\n",
-"@RESTHEADERPARAMETERS" : "\n**Header Parameters**\n",
-"@RESTRETURNCODES"      : "\n**Return Codes**\n",
-"@PARAMS"               : "\n**Parameters**\n",
-"@RESTPARAMS"           : "",
-"@RESTURLPARAMS"        : "\n**Path Parameters**\n",
-"@RESTQUERYPARAMS"      : "\n**Query Parameters**\n",
-"@RESTBODYPARAM"        : getRestBodyParam,
-"@RESTREPLYBODY"        : getRestReplyBodyParam,
-"@RESTQUERYPARAM"       : "@RESTPARAM",
-"@RESTURLPARAM"         : "@RESTPARAM",
-"@PARAM"                : "@RESTPARAM",
-"@RESTHEADERPARAM"      : "@RESTPARAM",
-"@EXAMPLES"             : "\n**Examples**\n",
-"@RESTPARAMETERS"       : ""
+    "\\"                    : "\\\\",
+    "@RESTDESCRIPTION"      : getRestDescription,
+    "@RESTURLPARAMETERS"    : "\n**Path Parameters**\n",
+    "@RESTQUERYPARAMETERS"  : "\n**Query Parameters**\n",
+    "@RESTHEADERPARAMETERS" : "\n**Header Parameters**\n",
+    "@RESTRETURNCODES"      : "\n**Return Codes**\n",
+    "@PARAMS"               : "\n**Parameters**\n",
+    "@RESTPARAMS"           : "",
+    "@RESTURLPARAMS"        : "\n**Path Parameters**\n",
+    "@RESTQUERYPARAMS"      : "\n**Query Parameters**\n",
+    "@RESTBODYPARAM"        : "", #getRestBodyParam,
+    "@RESTREPLYBODY"        : getRestReplyBodyParam,
+    "@RESTQUERYPARAM"       : "@RESTPARAM",
+    "@RESTURLPARAM"         : "@RESTPARAM",
+    "@PARAM"                : "@RESTPARAM",
+    "@RESTHEADERPARAM"      : "@RESTPARAM",
+    "@EXAMPLES"             : "\n**Examples**\n",
+    "@RESTPARAMETERS"       : ""
 }
 SIMPLE_RX = re.compile(
 r'''
+\\|                                 # the backslash...
 @RESTDESCRIPTION|                   # -> <empty>
 @RESTURLPARAMETERS|                 # -> \n**Path Parameters**\n
 @RESTQUERYPARAMETERS|               # -> \n**Query Parameters**\n
 @RESTHEADERPARAMETERS|              # -> \n**Header Parameters**\n
-@RESTBODYPARAM|                     # -> call post body param
+@RESTBODYPARAM|                     # empty now, comes with the post body -> call post body param
 @RESTRETURNCODES|                   # -> \n**Return Codes**\n
 @PARAMS|                            # -> \n**Parameters**\n
 @RESTPARAMS|                        # -> <empty>
@@ -157,7 +169,7 @@ r'''
 
 def SimpleRepl(match):
     m = match.group(0)
-    #print 'xxxxx ' + m
+    # print 'xxxxx [%s]' % m
     try:
         n = SIMPL_REPL_DICT[m]
         if n == None:
@@ -207,10 +219,11 @@ RX = [
     # there should be no RESTHEADER without brief, so we will fail offensively if by not doing
     #(re.compile(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}"), r"###\g<2>\n`\g<1>`"),
 
-    # Error codes replace
-    (re.compile(r"(####)#+"), r""),
+    # Format error codes from errors.dat
+    (re.compile(r"#####+\n"), r""),
+    (re.compile(r"## (.+\n\n)## (.+\n)"), r"## \g<1>\g<2>"),
     #  (re.compile(r"- (\w+):\s*@LIT{(.+)}"), r"\n*\g<1>* - **\g<2>**:"),
-    (re.compile(r"(.+),(\d+),\"(.+)\",\"(.+)\""), r"\n*\g<2>* - **\g<3>**: \g<4>"),
+    (re.compile(r"(.+),(\d+),\"(.+)\",\"(.+)\""), r'\n* <a name="\g<1>"></a>**\g<2>** - **\g<1>**<br>\n  \g<4>'),
 
     (re.compile(r"TODOSWAGGER.*"),r"")
     ]
@@ -231,7 +244,7 @@ RX2 = [
 
 match_RESTHEADER = re.compile(r"@RESTHEADER\{(.*)\}")
 match_RESTRETURNCODE = re.compile(r"@RESTRETURNCODE\{(.*)\}")
-have_RESTBODYPARAM = re.compile(r"@RESTBODYPARAM")
+have_RESTBODYPARAM = re.compile(r"@RESTBODYPARAM|@RESTDESCRIPTION")
 have_RESTREPLYBODY = re.compile(r"@RESTREPLYBODY")
 have_RESTSTRUCT = re.compile(r"@RESTSTRUCT")
 remove_MULTICR = re.compile(r'\n\n\n*')
@@ -275,6 +288,7 @@ def replaceCode(lines, blockName):
         foundRestBodyParam = False
         foundRestReplyBodyParam = False
         lineR = lines.split('\n')
+        #print lineR
         l = len(lineR)
         r = 0
         while (r < l): 
@@ -283,10 +297,13 @@ def replaceCode(lines, blockName):
                 if foundRestBodyParam:
                     lineR[r] = ''
                 else:
-                    lineR[r] = '@RESTBODYPARAM'
+                    lineR[r] = '@RESTDESCRIPTION'
                 foundRestBodyParam = True
                 r+=1
-                while (len(lineR[r]) > 1):
+                while ((len(lineR[r]) > 0) and
+                       ((lineR[r][0] != '@') or
+                       have_RESTBODYPARAM.search(lineR[r]))):
+                    # print "xxx - %d %s" %(len(lineR[r]), lineR[r])
                     lineR[r] = ''
                     r+=1
     
@@ -316,7 +333,8 @@ def replaceCode(lines, blockName):
                     r+=1
             r+=1
         lines = "\n".join(lineR)
-
+    #print "x" * 70
+    #print lines
     lines = SIMPLE_RX.sub(SimpleRepl, lines)
 
     for (oneRX, repl) in RX2:
@@ -389,9 +407,10 @@ def findStartCode(fd,full_path):
             #print textFile
 
     match = re.findall(r'@startDocuBlock\s*(\w+)', textFile)
-    if match:      
+    if match:
         for find in match:
             #print "8"*80
+            #print find
             textFile = replaceText(textFile, full_path, find)
             #print textFile
 
@@ -407,10 +426,11 @@ def findStartCode(fd,full_path):
     outFD.truncate()
     outFD.write(textFile)
     outFD.close()
-
+#JSF_put_api_replication_synchronize
 
 def replaceText(text, pathOfFile, searchText):
   ''' reads the mdpp and generates the md '''
+  #print '7'*80
   global dokuBlocks
   if not searchText in dokuBlocks[0]:
       print >> sys.stderr, "Failed to locate the docublock '%s' for replacing it into the file '%s'\n have:" % (searchText, pathOfFile)
@@ -418,7 +438,9 @@ def replaceText(text, pathOfFile, searchText):
       print >> sys.stderr, '*' * 80
       print >> sys.stderr, text
       exit(1)
+  #print '7'*80
   #print dokuBlocks[0][searchText]
+  #print '7'*80
   rc= re.sub("@startDocuBlock\s+"+ searchText + "(?:\s+|$)", dokuBlocks[0][searchText], text)
   return rc
 
@@ -495,10 +517,24 @@ def loadDokuBlocks():
 
         #if state == STATE_SEARCH_START:
         #    print dokuBlocks[thisBlockType].keys()
-
+        
+    if blockFilter != None:
+        remainBlocks= {}
+        print "filtering blocks"
+        for oneBlock in dokuBlocks[0]:
+            if blockFilter.match(oneBlock) != None:
+                print "found block %s" % oneBlock
+                #print dokuBlocks[0][oneBlock]
+                remainBlocks[oneBlock] = dokuBlocks[0][oneBlock]
+        dokuBlocks[0] = remainBlocks
+        
     for oneBlock in dokuBlocks[0]:
         try:
+            #print "processing %s" % oneBlock
             dokuBlocks[0][oneBlock] = replaceCode(dokuBlocks[0][oneBlock], oneBlock)
+            #print "6"*80
+            #print dokuBlocks[0][oneBlock]
+            #print "6"*80
         except:
             print >>sys.stderr, "while parsing :\n"  + oneBlock
             raise
@@ -521,6 +557,9 @@ if __name__ == '__main__':
     if len(sys.argv) > 4 and sys.argv[4].strip() != '':
         print "filtering " + sys.argv[4]
         fileFilter = re.compile(sys.argv[4])
+    if len(sys.argv) > 5 and sys.argv[5].strip() != '':
+        print "filtering Docublocks: " + sys.argv[5]
+        blockFilter = re.compile(sys.argv[5])
     f=open(swaggerJson, 'rU')
     swagger= json.load(f)
     f.close()

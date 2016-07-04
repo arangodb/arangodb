@@ -1,62 +1,60 @@
-/*jshint strict: false, unused: false, bitwise: false, esnext: true */
-/*global COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
-/*global CPP_SHORTEST_PATH, CPP_NEIGHBORS, Set, OBJECT_HASH */
+/* jshint strict: false, unused: true, bitwise: false, esnext: true */
+/* global COMPARE_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
+/* global OBJECT_HASH */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, internal query functions
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Aql, internal query functions
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var INTERNAL = require("internal");
-var TRAVERSAL = require("@arangodb/graph/traversal");
-var ArangoError = require("@arangodb").ArangoError;
-var isCoordinator = require("@arangodb/cluster").isCoordinator();
-var underscore = require("lodash");
-var graphModule = require("@arangodb/general-graph");
+var INTERNAL = require('internal');
+var ArangoError = require('@arangodb').ArangoError;
+var isCoordinator = require('@arangodb/cluster').isCoordinator();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cache for compiled regexes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cache for compiled regexes
+// //////////////////////////////////////////////////////////////////////////////
 
+var LikeCache = { };
 var RegexCache = { };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief user functions cache
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief user functions cache
+// //////////////////////////////////////////////////////////////////////////////
 
 var UserFunctions = { };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prefab traversal visitors
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief prefab traversal visitors
+// //////////////////////////////////////////////////////////////////////////////
 
 var DefaultVisitors = {
-  "_AQL::HASATTRIBUTESVISITOR" : {
+  '_AQL::HASATTRIBUTESVISITOR': {
     visitorReturnsResults: true,
     func: function (config, result, vertex, path) {
-      if (typeof config.data === "object" && Array.isArray(config.data.attributes)) {
+      if (typeof config.data === 'object' && Array.isArray(config.data.attributes)) {
         if (config.data.attributes.length === 0) {
           return;
         }
@@ -68,25 +66,25 @@ var DefaultVisitors = {
         var i;
         if (config.data.type === 'any') {
           for (i = 0; i < config.data.attributes.length; ++i) {
-            if (! vertex.hasOwnProperty(config.data.attributes[i])) {
+            if (!vertex.hasOwnProperty(config.data.attributes[i])) {
               continue;
             }
-            if (! allowNull && vertex[config.data.attributes[i]] === null) {
+            if (!allowNull && vertex[config.data.attributes[i]] === null) {
               continue;
             }
-          
+
             return CLONE({ vertex: vertex, path: path });
           }
 
           return;
         }
-          
+
         for (i = 0; i < config.data.attributes.length; ++i) {
-          if (! vertex.hasOwnProperty(config.data.attributes[i])) {
+          if (!vertex.hasOwnProperty(config.data.attributes[i])) {
             return;
           }
-          if (! allowNull &&
-              vertex[config.data.attributes[i]] === null) {
+          if (!allowNull &&
+            vertex[config.data.attributes[i]] === null) {
             return;
           }
         }
@@ -95,11 +93,11 @@ var DefaultVisitors = {
       }
     }
   },
-  "_AQL::PROJECTINGVISITOR" : {
+  '_AQL::PROJECTINGVISITOR': {
     visitorReturnsResults: true,
     func: function (config, result, vertex) {
       var values = { };
-      if (typeof config.data === "object" && Array.isArray(config.data.attributes)) {
+      if (typeof config.data === 'object' && Array.isArray(config.data.attributes)) {
         config.data.attributes.forEach(function (attribute) {
           values[attribute] = vertex[attribute];
         });
@@ -107,19 +105,19 @@ var DefaultVisitors = {
       return values;
     }
   },
-  "_AQL::IDVISITOR" : {
+  '_AQL::IDVISITOR': {
     visitorReturnsResults: true,
-    func:  function (config, result, vertex) {
+    func: function (config, result, vertex) {
       return vertex._id;
     }
   },
-  "_AQL::KEYVISITOR" : {
+  '_AQL::KEYVISITOR': {
     visitorReturnsResults: true,
-    func:  function (config, result, vertex) {
+    func: function (config, result, vertex) {
       return vertex._key;
     }
   },
-  "_AQL::COUNTINGVISITOR" : {
+  '_AQL::COUNTINGVISITOR': {
     visitorReturnsResults: false,
     func: function (config, result) {
       if (result.length === 0) {
@@ -130,30 +128,30 @@ var DefaultVisitors = {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type weight used for sorting and comparing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief type weight used for sorting and comparing
+// //////////////////////////////////////////////////////////////////////////////
 
-var TYPEWEIGHT_NULL      = 0;
-var TYPEWEIGHT_BOOL      = 1;
-var TYPEWEIGHT_NUMBER    = 2;
-var TYPEWEIGHT_STRING    = 4;
-var TYPEWEIGHT_ARRAY     = 8;
-var TYPEWEIGHT_OBJECT    = 16;
+var TYPEWEIGHT_NULL = 0;
+var TYPEWEIGHT_BOOL = 1;
+var TYPEWEIGHT_NUMBER = 2;
+var TYPEWEIGHT_STRING = 4;
+var TYPEWEIGHT_ARRAY = 8;
+var TYPEWEIGHT_OBJECT = 16;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief mapping of time unit names to short name, getter and setter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief mapping of time unit names to short name, getter and setter
+// //////////////////////////////////////////////////////////////////////////////
 
 var unitMapping = {
-  y: ["y", "getUTCFullYear", "setUTCFullYear"],
-  m: ["m", "getUTCMonth", "setUTCMonth"],
-  w: ["w", null, null],
-  d: ["d", "getUTCDate", "setUTCDate"],
-  h: ["h", "getUTCHours", "setUTCHours"],
-  i: ["i", "getUTCMinutes", "setUTCMinutes"],
-  s: ["s", "getUTCSeconds", "setUTCSeconds"],
-  f: ["f", "getUTCMilliseconds", "setUTCMilliseconds"]
+  y: ['y', 'getUTCFullYear', 'setUTCFullYear'],
+  m: ['m', 'getUTCMonth', 'setUTCMonth'],
+  w: ['w', null, null],
+  d: ['d', 'getUTCDate', 'setUTCDate'],
+  h: ['h', 'getUTCHours', 'setUTCHours'],
+  i: ['i', 'getUTCMinutes', 'setUTCMinutes'],
+  s: ['s', 'getUTCSeconds', 'setUTCSeconds'],
+  f: ['f', 'getUTCMilliseconds', 'setUTCMilliseconds']
 };
 
 // aliases
@@ -175,11 +173,11 @@ unitMapping.milliseconds = unitMapping.f;
 unitMapping.millisecond = unitMapping.f;
 unitMapping.ms = unitMapping.f;
 
-var unitMappingArray = [null, "y", "m", "w", "d", "h", "i", "s", "f"];
+var unitMappingArray = [null, 'y', 'm', 'w', 'd', 'h', 'i', 's', 'f'];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief RegExp and cache for ISO duration strings
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief RegExp and cache for ISO duration strings
+// //////////////////////////////////////////////////////////////////////////////
 
 // ISODurationRegex.exec("P1Y2M3W4DT5H6M7.890S")
 // -> ["P1Y2M3W4DT5H6M7.890S", "1", "2", "3", "4", "5", "6", "7", "890"]
@@ -188,11 +186,11 @@ var unitMappingArray = [null, "y", "m", "w", "d", "h", "i", "s", "f"];
 var ISODurationRegex = /^P(?:(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d+))?S)?)?$/i;
 /* jshint +W101 */
 
-var ISODurationCache = {}; 
+var ISODurationCache = {};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief substring ranges for DATE_COMPARE()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief substring ranges for DATE_COMPARE()
+// //////////////////////////////////////////////////////////////////////////////
 
 // 0123_56_89_12_45_78_012_
 var unitStrRanges = {
@@ -220,15 +218,15 @@ unitStrRanges.milliseconds = unitStrRanges.f;
 unitStrRanges.millisecond = unitStrRanges.f;
 unitStrRanges.ms = unitStrRanges.f;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief offsets for day of year calculation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief offsets for day of year calculation
+// //////////////////////////////////////////////////////////////////////////////
 
 var dayOfYearOffsets = [
   0,
-  31,  // + 31 Jan
-  59,  // + 28 Feb*
-  90,  // + 31 Mar
+  31, // + 31 Jan
+  59, // + 28 Feb*
+  90, // + 31 Mar
   120, // + 30 Apr
   151, // + 31 May
   181, // + 30 Jun
@@ -236,14 +234,14 @@ var dayOfYearOffsets = [
   243, // + 31 Aug
   273, // + 30 Sep
   304, // + 31 Oct
-  334  // + 30 Nov
+  334 // + 30 Nov
 ];
 
 var dayOfLeapYearOffsets = [
   0,
-  31,  // + 31 Jan
-  59,  // + 29 Feb*
-  91,  // + 31 Mar
+  31, // + 31 Jan
+  59, // + 29 Feb*
+  91, // + 31 Mar
   121, // + 30 Apr
   152, // + 31 May
   182, // + 30 Jun
@@ -251,12 +249,12 @@ var dayOfLeapYearOffsets = [
   244, // + 31 Aug
   274, // + 30 Sep
   305, // + 31 Oct
-  335  // + 30 Nov
+  335 // + 30 Nov
 ];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup array for days in month calculation (leap year aware)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief lookup array for days in month calculation (leap year aware)
+// //////////////////////////////////////////////////////////////////////////////
 
 var daysInMonth = [
   29, // Feb (in leap year)
@@ -271,45 +269,45 @@ var daysInMonth = [
   30, // Sep
   31, // Oct
   30, // Nov
-  31  // Dec
+  31 // Dec
 ];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief English month names (1-based)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief English month names (1-based)
+// //////////////////////////////////////////////////////////////////////////////
 
 var monthNames = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December"
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December'
 ];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief English weekday names
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief English weekday names
+// //////////////////////////////////////////////////////////////////////////////
 
 var weekdayNames = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday"
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday'
 ];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constants for date difference function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief constants for date difference function
+// //////////////////////////////////////////////////////////////////////////////
 
 // milliseconds per month, counting February as 28 days (compensating later)
 var msPerMonth = [
@@ -318,11 +316,11 @@ var msPerMonth = [
 ];
 
 var msPerUnit = {
-  f:      1,
-  s:    1e3, // 1000
-  i:    6e4, // 1000 * 60
-  h:   36e5, // 1000 * 60 * 60
-  d:  864e5, // 1000 * 60 * 60 * 24
+  f: 1,
+  s: 1e3, // 1000
+  i: 6e4, // 1000 * 60
+  h: 36e5, // 1000 * 60 * 60
+  d: 864e5, // 1000 * 60 * 60 * 24
   w: 6048e5, // 1000 * 60 * 60 * 24 * 7
   m: 0, // evaluates to false
   y: -1 // evaluates to true to distinguish it from months
@@ -347,104 +345,101 @@ msPerUnit.month = msPerUnit.m;
 msPerUnit.years = msPerUnit.y;
 msPerUnit.year = msPerUnit.y;
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clear caches
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief clear caches
+// //////////////////////////////////////////////////////////////////////////////
 
 function clearCaches () {
   'use strict';
 
-  RegexCache        = { 'i' : { }, '' : { } };
+  RegexCache = { 'i': { }, '': { } };
+  LikeCache = { 'i': { }, '': { } };
   ISODurationCache = { };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add zeros for a total length of width chars (left padding by default)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief add zeros for a total length of width chars (left padding by default)
+// //////////////////////////////////////////////////////////////////////////////
 
 function zeropad (n, width, padRight) {
   'use strict';
 
   padRight = padRight || false;
-  n = "" + n;
+  n = '' + n;
   if (padRight) {
-    return n.length >= width ? n : n + new Array(width - n.length + 1).join("0");
+    return n.length >= width ? n : n + new Array(width - n.length + 1).join('0');
   } else {
-    return n.length >= width ? n : new Array(width - n.length + 1).join("0") + n;
+    return n.length >= width ? n : new Array(width - n.length + 1).join('0') + n;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief raise a warning
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief raise a warning
+// //////////////////////////////////////////////////////////////////////////////
 
 function WARN (func, error, data) {
   'use strict';
 
   if (error.code === INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code) {
-    AQL_WARNING(error.code, error.message.replace(/%s/, func)); 
-  }
-  else {
-    var prefix = "";
+    AQL_WARNING(error.code, error.message.replace(/%s/, func));
+  } else {
+    var prefix = '';
     if (func !== null) {
       prefix = "in function '" + func + "()': ";
     }
 
-    if (typeof data === "string") {
+    if (typeof data === 'string') {
       AQL_WARNING(error.code, prefix + error.message.replace(/%s/, data));
-    }
-    else {
+    } else {
       AQL_WARNING(error.code, prefix + error.message);
     }
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief throw a runtime exception
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief throw a runtime exception
+// //////////////////////////////////////////////////////////////////////////////
 
 function THROW (func, error, data, moreMessage) {
   'use strict';
-  
-  var prefix = "";
-  if (func !== null && func !== "") {
+
+  var prefix = '';
+  if (func !== null && func !== '') {
     prefix = "in function '" + func + "()': ";
   }
 
   var err = new ArangoError();
 
   err.errorNum = error.code;
-  if (typeof data === "string") {
+  if (typeof data === 'string') {
     err.errorMessage = prefix + error.message.replace(/%s/, data);
-  }
-  else {
+  } else {
     err.errorMessage = prefix + error.message;
   }
   if (moreMessage !== undefined) {
-    err.errorMessage += "; " + moreMessage;
+    err.errorMessage += '; ' + moreMessage;
   }
 
   throw err;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a database-specific function prefix
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a database-specific function prefix
+// //////////////////////////////////////////////////////////////////////////////
 
 function DB_PREFIX () {
   return INTERNAL.db._name();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reset the user functions and reload them from the database
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief reset the user functions and reload them from the database
+// //////////////////////////////////////////////////////////////////////////////
 
 function reloadUserFunctions () {
   'use strict';
 
   var prefix = DB_PREFIX();
-  var c = INTERNAL.db._collection("_aqlfunctions");
+  var c = INTERNAL.db._collection('_aqlfunctions');
 
   if (c === null) {
     // collection not found. now reset all user functions
@@ -462,14 +457,13 @@ function reloadUserFunctions () {
 
     if (f.code.match(/^\(?function\s+\(/)) {
       code = f.code;
-    }
-    else {
-      code = "(function() { var callback = " + f.code + ";\n return callback; })();";
+    } else {
+      code = '(function() { var callback = ' + f.code + ';\n return callback; })();';
     }
 
     try {
-      var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")");
-      if (typeof res !== "function") {
+      var res = INTERNAL.executeScript(code, undefined, '(user function ' + key + ')');
+      if (typeof res !== 'function') {
         foundError = true;
       }
 
@@ -478,20 +472,18 @@ function reloadUserFunctions () {
         func: res,
         isDeterministic: f.isDeterministic || false
       };
-
-    }
-    catch (err) {
+    } catch (err) {
       // in case a single function is broken, we still continue with the other ones
       // so that at least some functions remain usable
       foundError = true;
     }
   });
-  
+
   // now reset the functions for all databases
   // this ensures that functions of other databases will be reloaded next 
   // time (the reload does not necessarily need to be carried out in the
   // database in which the function is registered)
-  UserFunctions = { }; 
+  UserFunctions = { };
   UserFunctions[prefix] = functions;
 
   if (foundError) {
@@ -499,11 +491,11 @@ function reloadUserFunctions () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a user-function by name
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get a user-function by name
+// //////////////////////////////////////////////////////////////////////////////
 
-function GET_USERFUNCTION (name, config) { 
+function GET_USERFUNCTION (name, config) {
   var prefix = DB_PREFIX(), reloaded = false;
   var key = name.toUpperCase();
 
@@ -513,96 +505,34 @@ function GET_USERFUNCTION (name, config) {
     var visitor = DefaultVisitors[key];
     func = visitor.func;
     config.visitorReturnsResults = visitor.visitorReturnsResults;
-  }
-  else {
-    if (! UserFunctions.hasOwnProperty(prefix)) {
+  } else {
+    if (!UserFunctions.hasOwnProperty(prefix)) {
       reloadUserFunctions();
       reloaded = true;
     }
-  
-    if (! UserFunctions[prefix].hasOwnProperty(key) && ! reloaded) {
+
+    if (!UserFunctions[prefix].hasOwnProperty(key) && !reloaded) {
       // last chance
       reloadUserFunctions();
     }
-   
-    if (! UserFunctions[prefix].hasOwnProperty(key)) {
+
+    if (!UserFunctions[prefix].hasOwnProperty(key)) {
       THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
     }
 
     func = UserFunctions[prefix][key].func;
   }
 
-  if (typeof func !== "function") {
+  if (typeof func !== 'function') {
     THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
   }
 
   return func;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a user-defined visitor from a function name
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_VISITOR (name, config) {
-  var func = GET_USERFUNCTION(name, config);
-
-  return function (config, result, vertex, path) {
-    try {
-      if (config.visitorReturnsResults) {
-        var r = func.apply(null, arguments);
-        if (r !== undefined && r !== null) {
-          result.push(CLONE(FIX_VALUE(r)));
-        }
-      }
-      else {
-        func.apply(null, arguments);
-      }
-    }
-    catch (err) {
-      WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
-    }
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a user-defined filter from a function name
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_FILTER (name, config) {
-  var func = GET_USERFUNCTION(name, config);
-
-  return function (config, vertex, path) {
-    try {
-      var filterResult = func.apply(null, arguments);
-      return FIX_VALUE(filterResult);
-    }
-    catch (err) {
-      WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
-    }
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a user-defined expand filter from a function name
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_EXPANDFILTER (name, config) {
-  var func = GET_USERFUNCTION(name, config);
-
-  return function (config, vertex, edge, path) {
-    try {
-      var filterResult = func.apply(null, arguments);
-      return FIX_VALUE(filterResult);
-    }
-    catch (err) {
-      WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
-    }
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize a function name
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief normalize a function name
+// //////////////////////////////////////////////////////////////////////////////
 
 function NORMALIZE_FNAME (functionName) {
   'use strict';
@@ -616,33 +546,9 @@ function NORMALIZE_FNAME (functionName) {
   return functionName.substr(p + 2);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief filter using a list of examples
-////////////////////////////////////////////////////////////////////////////////
-
-function FILTER (list, examples) {
-  'use strict';
-
-  var result = [ ], i;
-
-  if (examples === undefined || examples === null ||
-    (Array.isArray(examples) && examples.length === 0)) {
-    return list;
-  }
-
-  for (i = 0; i < list.length; ++i) {
-    var element = list[i];
-    if (AQL_MATCHES(element, examples, false)) {
-      result.push(element);
-    }
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find a fulltext index for a certain attribute & collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief find a fulltext index for a certain attribute & collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function INDEX_FULLTEXT (collection, attribute) {
   'use strict';
@@ -651,7 +557,7 @@ function INDEX_FULLTEXT (collection, attribute) {
 
   for (i = 0; i < indexes.length; ++i) {
     var index = indexes[i];
-    if (index.type === "fulltext" && index.fields && index.fields[0] === attribute) {
+    if (index.type === 'fulltext' && index.fields && index.fields[0] === attribute) {
       return index.id;
     }
   }
@@ -659,9 +565,9 @@ function INDEX_FULLTEXT (collection, attribute) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find an index of a certain type for a collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief find an index of a certain type for a collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function INDEX (collection, indexTypes) {
   'use strict';
@@ -681,9 +587,9 @@ function INDEX (collection, indexTypes) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get access to a collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get access to a collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function COLLECTION (name, func) {
   'use strict';
@@ -697,8 +603,7 @@ function COLLECTION (name, func) {
     // system collections need to be accessed slightly differently as they
     // are not returned by the propertyGetter of db
     c = INTERNAL.db._collection(name);
-  }
-  else {
+  } else {
     c = INTERNAL.db[name];
   }
 
@@ -708,44 +613,26 @@ function COLLECTION (name, func) {
   return c;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transforms a parameter into a list
-////////////////////////////////////////////////////////////////////////////////
-
-function TO_LIST (param, isStringHash) {
-  if (! param) {
-    param = isStringHash ? [ ] : [ { } ];
-  }
-  if (typeof param === "string") {
-    param = isStringHash ? [ param ] : { _id : param };
-  }
-  if (! Array.isArray(param)) {
-    param = [param];
-  }
-  return param;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone an object
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief clone an object
+// //////////////////////////////////////////////////////////////////////////////
 
 function CLONE (obj) {
   'use strict';
 
-  if (obj === null || typeof(obj) !== "object") {
+  if (obj === null || typeof (obj) !== 'object') {
     return obj;
   }
 
   var copy;
   if (Array.isArray(obj)) {
-    copy = [ ];
+    copy = [];
     obj.forEach(function (i) {
       copy.push(CLONE(i));
     });
-  }
-  else if (obj instanceof Object) {
+  } else if (obj instanceof Object) {
     copy = { };
-    Object.keys(obj).forEach(function(k) {
+    Object.keys(obj).forEach(function (k) {
       copy[k] = CLONE(obj[k]);
     });
   }
@@ -753,18 +640,18 @@ function CLONE (obj) {
   return copy;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief box a value into the AQL datatype system
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief box a value into the AQL datatype system
+// //////////////////////////////////////////////////////////////////////////////
 
 function FIX_VALUE (value) {
   'use strict';
 
-  var type = typeof(value);
+  var type = typeof (value);
 
   if (value === undefined ||
-      value === null ||
-      (type === 'number' && (isNaN(value) || ! isFinite(value)))) {
+    value === null ||
+    (type === 'number' && (isNaN(value) || !isFinite(value)))) {
     return null;
   }
 
@@ -784,7 +671,7 @@ function FIX_VALUE (value) {
   if (type === 'object') {
     var result = { };
 
-    Object.keys(value).forEach(function(k) {
+    Object.keys(value).forEach(function (k) {
       if (typeof value[k] !== 'function') {
         result[k] = FIX_VALUE(value[k]);
       }
@@ -796,9 +683,9 @@ function FIX_VALUE (value) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the sort type of an operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the sort type of an operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function TYPEWEIGHT (value) {
   'use strict';
@@ -808,11 +695,11 @@ function TYPEWEIGHT (value) {
       return TYPEWEIGHT_ARRAY;
     }
 
-    switch (typeof(value)) {
+    switch (typeof (value)) {
       case 'boolean':
         return TYPEWEIGHT_BOOL;
       case 'number':
-        if (isNaN(value) || ! isFinite(value)) {
+        if (isNaN(value) || !isFinite(value)) {
           // not a number => null
           return TYPEWEIGHT_NULL;
         }
@@ -827,10 +714,10 @@ function TYPEWEIGHT (value) {
   return TYPEWEIGHT_NULL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compile a regex from a string pattern
-////////////////////////////////////////////////////////////////////////////////
-  
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compile a regex from a string pattern
+// //////////////////////////////////////////////////////////////////////////////
+
 function CREATE_REGEX_PATTERN (chars) {
   'use strict';
 
@@ -843,23 +730,17 @@ function CREATE_REGEX_PATTERN (chars) {
     if (c.match(specialChar)) {
       // character with special meaning in a regex
       pattern += '\\' + c;
-    }
-    else if (c === '\t') {
+    } else if (c === '\t') {
       pattern += '\\t';
-    }
-    else if (c === '\r') {
+    } else if (c === '\r') {
       pattern += '\\r';
-    }
-    else if (c === '\n') {
+    } else if (c === '\n') {
       pattern += '\\n';
-    }
-    else if (c === '\b') {
+    } else if (c === '\b') {
       pattern += '\\b';
-    }
-    else if (c === '\f') {
+    } else if (c === '\f') {
       pattern += '\\f';
-    }
-    else {
+    } else {
       pattern += c;
     }
   }
@@ -867,11 +748,21 @@ function CREATE_REGEX_PATTERN (chars) {
   return pattern;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compile a regex from a string pattern
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compile a regex from a string pattern
+// //////////////////////////////////////////////////////////////////////////////
 
 function COMPILE_REGEX (regex, modifiers) {
+  'use strict';
+
+  return new RegExp(AQL_TO_STRING(regex), modifiers);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compile a regex from a string pattern
+// //////////////////////////////////////////////////////////////////////////////
+
+function COMPILE_LIKE (regex, modifiers) {
   'use strict';
 
   regex = AQL_TO_STRING(regex);
@@ -888,34 +779,28 @@ function COMPILE_REGEX (regex, modifiers) {
         // literal \
         pattern += '\\\\';
       }
-      escaped = ! escaped;
-    }
-    else {
+      escaped = !escaped;
+    } else {
       if (c === '%') {
         if (escaped) {
           // literal %
           pattern += '%';
-        }
-        else {
+        } else {
           // wildcard
           pattern += '(.|[\r\n])*';
         }
-      }
-      else if (c === '_') {
+      } else if (c === '_') {
         if (escaped) {
           // literal _
           pattern += '_';
-        }
-        else {
+        } else {
           // wildcard character
           pattern += '(.|[\r\n])';
         }
-      }
-      else if (c.match(specialChar)) {
+      } else if (c.match(specialChar)) {
         // character with special meaning in a regex
         pattern += '\\' + c;
-      }
-      else {
+      } else {
         if (escaped) {
           // found a backslash followed by no special character
           pattern += '\\\\';
@@ -932,40 +817,39 @@ function COMPILE_REGEX (regex, modifiers) {
   return new RegExp('^' + pattern + '$', modifiers);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief call a user function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief call a user function
+// //////////////////////////////////////////////////////////////////////////////
 
 function FCALL_USER (name, parameters) {
   'use strict';
 
   var prefix = DB_PREFIX(), reloaded = false;
-  if (! UserFunctions.hasOwnProperty(prefix)) {
+  if (!UserFunctions.hasOwnProperty(prefix)) {
     reloadUserFunctions();
     reloaded = true;
   }
-  
-  if (! UserFunctions[prefix].hasOwnProperty(name) && ! reloaded) {
+
+  if (!UserFunctions[prefix].hasOwnProperty(name) && !reloaded) {
     // last chance
     reloadUserFunctions();
   }
-  
-  if (! UserFunctions[prefix].hasOwnProperty(name)) {
+
+  if (!UserFunctions[prefix].hasOwnProperty(name)) {
     THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
   }
 
   try {
     return FIX_VALUE(UserFunctions[prefix][name].func.apply(null, parameters));
-  }
-  catch (err) {
+  } catch (err) {
     WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err.stack || String(err)));
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dynamically call a function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief dynamically call a function
+// //////////////////////////////////////////////////////////////////////////////
 
 function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
   var toCall;
@@ -974,40 +858,38 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
   if (name.indexOf('::') > 0) {
     // user-defined function
     var prefix = DB_PREFIX(), reloaded = false;
-    if (! UserFunctions.hasOwnProperty(prefix)) {
+    if (!UserFunctions.hasOwnProperty(prefix)) {
       reloadUserFunctions();
       reloaded = true;
     }
 
-    if (! UserFunctions[prefix].hasOwnProperty(name) && ! reloaded) {
+    if (!UserFunctions[prefix].hasOwnProperty(name) && !reloaded) {
       // last chance
       reloadUserFunctions();
     }
 
-    if (! UserFunctions[prefix].hasOwnProperty(name)) {
+    if (!UserFunctions[prefix].hasOwnProperty(name)) {
       THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
     }
 
     toCall = UserFunctions[prefix][name].func;
-  }
-  else {
+  } else {
     // built-in function
-    if (name === "CALL" || name === "APPLY") {
+    if (name === 'CALL' || name === 'APPLY') {
       THROW(func, INTERNAL.errors.ERROR_QUERY_DISALLOWED_DYNAMIC_CALL, NORMALIZE_FNAME(name));
     }
 
-    if (! exports.hasOwnProperty("AQL_" + name)) {
+    if (!exports.hasOwnProperty('AQL_' + name)) {
       THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
     }
 
-    toCall = exports["AQL_" + name];
+    toCall = exports['AQL_' + name];
   }
 
   if (applyDirect) {
     try {
       return FIX_VALUE(toCall.apply(null, args));
-    }
-    catch (err) {
+    } catch (err) {
       WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
       return null;
     }
@@ -1024,67 +906,55 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
       }
     }
     return result;
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
-    result = [ ];
+  } else if (type === TYPEWEIGHT_ARRAY) {
+    result = [];
     for (i = 0; i < values.length; ++i) {
       args[0] = values[i];
       result[i] = FIX_VALUE(toCall.apply(null, args));
     }
     return result;
   }
-    
+
   WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the numeric value or undefined if it is out of range
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the numeric value or undefined if it is out of range
+// //////////////////////////////////////////////////////////////////////////////
 
-function NUMERIC_VALUE (value) {
+function NUMERIC_VALUE (value, nullify) {
   'use strict';
 
-  if (isNaN(value) || ! isFinite(value)) {
+  if (value === null || isNaN(value) || !isFinite(value)) {
+    if (nullify) {
+      return null;
+    }
     return 0;
   }
 
   return value;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fix a value for a comparison
-////////////////////////////////////////////////////////////////////////////////
-
-function FIX (value) {
-  'use strict';
-
-  if (value === undefined) {
-    return null;
-  }
-
-  return value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the values of an object in the order that they are defined
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the values of an object in the order that they are defined
+// //////////////////////////////////////////////////////////////////////////////
 
 function VALUES (value) {
   'use strict';
 
-  var values = [ ];
+  var values = [];
 
-  Object.keys(value).forEach(function(k) {
+  Object.keys(value).forEach(function (k) {
     values.push(value[k]);
   });
 
   return values;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract key names from an argument list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief extract key names from an argument list
+// //////////////////////////////////////////////////////////////////////////////
 
 function EXTRACT_KEYS (args, startArgument, func) {
   'use strict';
@@ -1095,17 +965,14 @@ function EXTRACT_KEYS (args, startArgument, func) {
     key = args[i];
     if (typeof key === 'string') {
       keys[key] = true;
-    }
-    else if (typeof key === 'number') {
+    } else if (typeof key === 'number') {
       keys[String(key)] = true;
-    }
-    else if (Array.isArray(key)) {
+    } else if (Array.isArray(key)) {
       for (j = 0; j < key.length; ++j) {
         key2 = key[j];
         if (typeof key2 === 'string') {
           keys[key2] = true;
-        }
-        else {
+        } else {
           WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
           return null;
         }
@@ -1116,9 +983,9 @@ function EXTRACT_KEYS (args, startArgument, func) {
   return keys;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the keys of an array or object in a comparable way
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the keys of an array or object in a comparable way
+// //////////////////////////////////////////////////////////////////////////////
 
 function KEYS (value, doSort) {
   'use strict';
@@ -1127,13 +994,12 @@ function KEYS (value, doSort) {
 
   if (Array.isArray(value)) {
     var n = value.length, i;
-    keys = [ ];
+    keys = [];
 
     for (i = 0; i < n; ++i) {
       keys.push(i);
     }
-  }
-  else {
+  } else {
     keys = Object.keys(value);
 
     if (doSort) {
@@ -1145,9 +1011,9 @@ function KEYS (value, doSort) {
   return keys;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the keys of an array or object in a comparable way
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the keys of an array or object in a comparable way
+// //////////////////////////////////////////////////////////////////////////////
 
 function KEYLIST (lhs, rhs) {
   'use strict';
@@ -1160,7 +1026,7 @@ function KEYLIST (lhs, rhs) {
   // lhs & rhs are arrays
   var a, keys = KEYS(lhs);
   for (a in rhs) {
-    if (rhs.hasOwnProperty(a) && ! lhs.hasOwnProperty(a)) {
+    if (rhs.hasOwnProperty(a) && !lhs.hasOwnProperty(a)) {
       keys.push(a);
     }
   }
@@ -1171,9 +1037,9 @@ function KEYLIST (lhs, rhs) {
   return keys;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an indexed value from an array or document (e.g. users[3])
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get an indexed value from an array or document (e.g. users[3])
+// //////////////////////////////////////////////////////////////////////////////
 
 function GET_INDEX (value, index) {
   'use strict';
@@ -1185,19 +1051,17 @@ function GET_INDEX (value, index) {
   var result = null;
   if (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT) {
     result = value[String(index)];
-  }
-  else if (TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY) {
+  } else if (TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY) {
     var i = parseInt(index, 10);
     if (i < 0) {
-      // negative indexes fetch the element from the end, e.g. -1 => value[value.length - 1];
+      // negative indexes fetch the element from the end, e.g. -1 => value[value.length - 1]
       i = value.length + i;
     }
 
     if (i >= 0 && i <= value.length - 1) {
       result = value[i];
     }
-  }
-  else {
+  } else {
     return null;
   }
 
@@ -1208,9 +1072,9 @@ function GET_INDEX (value, index) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize a value for comparison, sorting etc.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief normalize a value for comparison, sorting etc.
+// //////////////////////////////////////////////////////////////////////////////
 
 function NORMALIZE (value) {
   'use strict';
@@ -1219,19 +1083,18 @@ function NORMALIZE (value) {
     return null;
   }
 
-  if (typeof(value) !== "object") {
+  if (typeof (value) !== 'object') {
     return value;
   }
 
   var result;
 
   if (Array.isArray(value)) {
-    result = [ ];
+    result = [];
     value.forEach(function (v) {
       result.push(NORMALIZE(v));
     });
-  }
-  else {
+  } else {
     result = { };
     KEYS(value, true).forEach(function (a) {
       result[a] = NORMALIZE(value[a]);
@@ -1241,9 +1104,9 @@ function NORMALIZE (value) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an attribute from a document (e.g. users.name)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get an attribute from a document (e.g. users.name)
+// //////////////////////////////////////////////////////////////////////////////
 
 function DOCUMENT_MEMBER (value, attributeName) {
   'use strict';
@@ -1261,36 +1124,33 @@ function DOCUMENT_MEMBER (value, attributeName) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a document by its unique id or their unique ids
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get a document by its unique id or their unique ids
+// //////////////////////////////////////////////////////////////////////////////
 
 function DOCUMENT_HANDLE (id) {
   'use strict';
 
   if (TYPEWEIGHT(id) === TYPEWEIGHT_ARRAY) {
-    var result = [ ], i;
+    var result = [], i;
     for (i = 0; i < id.length; ++i) {
       try {
         result.push(INTERNAL.db._document(id[i]));
-      }
-      catch (e1) {
-      }
+      } catch (e1) {}
     }
     return result;
   }
 
   try {
     return INTERNAL.db._document(id);
-  }
-  catch (e2) {
+  } catch (e2) {
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a document by its unique id or their unique ids
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get a document by its unique id or their unique ids
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DOCUMENT (collection, id) {
   'use strict';
@@ -1306,30 +1166,27 @@ function AQL_DOCUMENT (collection, id) {
   }
 
   if (TYPEWEIGHT(id) === TYPEWEIGHT_ARRAY) {
-    var c = COLLECTION(collection, "DOCUMENT");
+    var c = COLLECTION(collection, 'DOCUMENT');
 
-    var result = [ ], i;
+    var result = [], i;
     for (i = 0; i < id.length; ++i) {
       try {
         result.push(c.document(id[i]));
-      }
-      catch (e1) {
-      }
+      } catch (e1) {}
     }
     return result;
   }
 
   try {
-    return COLLECTION(collection, "DOCUMENT").document(id);
-  }
-  catch (e2) {
+    return COLLECTION(collection, 'DOCUMENT').document(id);
+  } catch (e2) {
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get all documents from the specified collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get all documents from the specified collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS (collection, func) {
   'use strict';
@@ -1343,51 +1200,50 @@ function GET_DOCUMENTS (collection, func) {
   return COLLECTION(collection, func).ALL(0, null).documents;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get names of all collections
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get names of all collections
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_COLLECTIONS () {
   'use strict';
 
-  var result = [ ];
+  var result = [];
 
   INTERNAL.db._collections().forEach(function (c) {
     result.push({
-      _id : c._id,
-      name : c.name()
+      _id: c._id,
+      name: c.name()
     });
   });
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the number of documents in a collection
-/// this is an internal function that is not exposed to end users
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the number of documents in a collection
+// / this is an internal function that is not exposed to end users
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_COLLECTION_COUNT (name) {
   'use strict';
 
   if (typeof name !== 'string') {
-    THROW("COLLECTION_COUNT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "COLLECTION_COUNT");
+    THROW('COLLECTION_COUNT', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, 'COLLECTION_COUNT');
   }
 
   var c = INTERNAL.db._collection(name);
   if (c === null || c === undefined) {
-    THROW("COLLECTION_COUNT", INTERNAL.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND, String(name));
+    THROW('COLLECTION_COUNT', INTERNAL.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND, String(name));
   }
   return c.count();
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute ternary operator
-///
-/// the condition should be a boolean value, returns either the truepart
-/// or the falsepart
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief execute ternary operator
+// /
+// / the condition should be a boolean value, returns either the truepart
+// / or the falsepart
+// //////////////////////////////////////////////////////////////////////////////
 
 function TERNARY_OPERATOR (condition, truePart, falsePart) {
   'use strict';
@@ -1398,31 +1254,31 @@ function TERNARY_OPERATOR (condition, truePart, falsePart) {
   return falsePart();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform logical and
-///
-/// both operands must be boolean values, returns a boolean, uses short-circuit
-/// evaluation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform logical and
+// /
+// / both operands must be boolean values, returns a boolean, uses short-circuit
+// / evaluation
+// //////////////////////////////////////////////////////////////////////////////
 
 function LOGICAL_AND (lhs, rhs) {
   'use strict';
 
   var l = lhs();
 
-  if (! l) {
+  if (!l) {
     return l;
   }
 
   return rhs();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform logical or
-///
-/// both operands must be boolean values, returns a boolean, uses short-circuit
-/// evaluation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform logical or
+// /
+// / both operands must be boolean values, returns a boolean, uses short-circuit
+// / evaluation
+// //////////////////////////////////////////////////////////////////////////////
 
 function LOGICAL_OR (lhs, rhs) {
   'use strict';
@@ -1436,21 +1292,21 @@ function LOGICAL_OR (lhs, rhs) {
   return rhs();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform logical negation
-///
-/// the operand must be a boolean values, returns a boolean
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform logical negation
+// /
+// / the operand must be a boolean values, returns a boolean
+// //////////////////////////////////////////////////////////////////////////////
 
 function LOGICAL_NOT (lhs) {
   'use strict';
 
-  return ! AQL_TO_BOOL(lhs);
+  return !AQL_TO_BOOL(lhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform equality check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform equality check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
   'use strict';
@@ -1463,12 +1319,10 @@ function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
   if (quantifier === 1) {
     // NONE
     min = max = 0;
-  }
-  else if (quantifier === 2) {
+  } else if (quantifier === 2) {
     // ALL
     min = max = n;
-  }
-  else if (quantifier === 3) {
+  } else if (quantifier === 3) {
     // ANY
     min = (n === 0 ? 0 : 1);
     max = n;
@@ -1489,8 +1343,7 @@ function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
         // enough matches
         return true;
       }
-    }
-    else {
+    } else {
       if (matches + left < min) {
         // too few matches
         return false;
@@ -1501,11 +1354,11 @@ function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform equality check
-///
-/// returns true if the operands are equal, false otherwise
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform equality check
+// /
+// / returns true if the operands are equal, false otherwise
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_EQUAL (lhs, rhs) {
   'use strict';
@@ -1543,11 +1396,11 @@ function RELATIONAL_EQUAL (lhs, rhs) {
   return (lhs === rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform inequality check
-///
-/// returns true if the operands are unequal, false otherwise
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform inequality check
+// /
+// / returns true if the operands are unequal, false otherwise
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_UNEQUAL (lhs, rhs) {
   'use strict';
@@ -1586,9 +1439,9 @@ function RELATIONAL_UNEQUAL (lhs, rhs) {
   return (lhs !== rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater than check (inner function)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform greater than check (inner function)
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_GREATER_REC (lhs, rhs) {
   'use strict';
@@ -1634,11 +1487,11 @@ function RELATIONAL_GREATER_REC (lhs, rhs) {
   return (lhs > rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater than check
-///
-/// returns true if the left operand is greater than the right operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform greater than check
+// /
+// / returns true if the left operand is greater than the right operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_GREATER (lhs, rhs) {
   'use strict';
@@ -1652,9 +1505,9 @@ function RELATIONAL_GREATER (lhs, rhs) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater equal check (inner function)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform greater equal check (inner function)
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
   'use strict';
@@ -1700,11 +1553,11 @@ function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
   return (lhs >= rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater equal check
-///
-/// returns true if the left operand is greater or equal to the right operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform greater equal check
+// /
+// / returns true if the left operand is greater or equal to the right operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_GREATEREQUAL (lhs, rhs) {
   'use strict';
@@ -1718,9 +1571,9 @@ function RELATIONAL_GREATEREQUAL (lhs, rhs) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less than check (inner function)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform less than check (inner function)
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_LESS_REC (lhs, rhs) {
   'use strict';
@@ -1766,11 +1619,11 @@ function RELATIONAL_LESS_REC (lhs, rhs) {
   return (lhs < rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less than check
-///
-/// returns true if the left operand is less than the right operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform less than check
+// /
+// / returns true if the left operand is less than the right operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_LESS (lhs, rhs) {
   'use strict';
@@ -1784,9 +1637,9 @@ function RELATIONAL_LESS (lhs, rhs) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less equal check (inner function)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform less equal check (inner function)
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
   'use strict';
@@ -1832,11 +1685,11 @@ function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
   return (lhs <= rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less equal check
-///
-/// returns true if the left operand is less or equal to the right operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform less equal check
+// /
+// / returns true if the left operand is less or equal to the right operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_LESSEQUAL (lhs, rhs) {
   'use strict';
@@ -1850,12 +1703,12 @@ function RELATIONAL_LESSEQUAL (lhs, rhs) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform comparison
-///
-/// returns -1 if the left operand is less than the right operand, 1 if it is
-/// greater, 0 if both operands are equal
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform comparison
+// /
+// / returns -1 if the left operand is less than the right operand, 1 if it is
+// / greater, 0 if both operands are equal
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_CMP (lhs, rhs) {
   'use strict';
@@ -1905,11 +1758,11 @@ function RELATIONAL_CMP (lhs, rhs) {
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform in list check
-///
-/// returns true if the left operand is contained in the right operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform in list check
+// /
+// / returns true if the left operand is contained in the right operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_IN (lhs, rhs) {
   'use strict';
@@ -1931,21 +1784,21 @@ function RELATIONAL_IN (lhs, rhs) {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform not-in list check
-///
-/// returns true if the left operand is not contained in the right operand
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform not-in list check
+// /
+// / returns true if the left operand is not contained in the right operand
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_NOT_IN (lhs, rhs) {
   'use strict';
 
-  return ! RELATIONAL_IN(lhs, rhs);
+  return !RELATIONAL_IN(lhs, rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform equality check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform equality check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_EQUAL (lhs, rhs, quantifier) {
   'use strict';
@@ -1953,9 +1806,9 @@ function RELATIONAL_ARRAY_EQUAL (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_EQUAL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform unequality check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform unequality check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_UNEQUAL (lhs, rhs, quantifier) {
   'use strict';
@@ -1963,9 +1816,9 @@ function RELATIONAL_ARRAY_UNEQUAL (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_UNEQUAL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform greater check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_GREATER (lhs, rhs, quantifier) {
   'use strict';
@@ -1973,9 +1826,9 @@ function RELATIONAL_ARRAY_GREATER (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_GREATER);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater equal check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform greater equal check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_GREATEREQUAL (lhs, rhs, quantifier) {
   'use strict';
@@ -1983,9 +1836,9 @@ function RELATIONAL_ARRAY_GREATEREQUAL (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_GREATEREQUAL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform less check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_LESS (lhs, rhs, quantifier) {
   'use strict';
@@ -1993,9 +1846,9 @@ function RELATIONAL_ARRAY_LESS (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_LESS);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less equal check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform less equal check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_LESSEQUAL (lhs, rhs, quantifier) {
   'use strict';
@@ -2003,9 +1856,9 @@ function RELATIONAL_ARRAY_LESSEQUAL (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_LESSEQUAL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform in check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform in check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_IN (lhs, rhs, quantifier) {
   'use strict';
@@ -2013,9 +1866,9 @@ function RELATIONAL_ARRAY_IN (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_IN);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform in check for arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform in check for arrays
+// //////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_ARRAY_NOT_IN (lhs, rhs, quantifier) {
   'use strict';
@@ -2023,9 +1876,9 @@ function RELATIONAL_ARRAY_NOT_IN (lhs, rhs, quantifier) {
   return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_NOT_IN);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform unary plus operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform unary plus operation
+// //////////////////////////////////////////////////////////////////////////////
 
 function UNARY_PLUS (value) {
   'use strict';
@@ -2034,9 +1887,9 @@ function UNARY_PLUS (value) {
   return AQL_TO_NUMBER(+ value);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform unary minus operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform unary minus operation
+// //////////////////////////////////////////////////////////////////////////////
 
 function UNARY_MINUS (value) {
   'use strict';
@@ -2045,9 +1898,9 @@ function UNARY_MINUS (value) {
   return AQL_TO_NUMBER(- value);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform arithmetic plus or string concatenation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform arithmetic plus or string concatenation
+// //////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_PLUS (lhs, rhs) {
   'use strict';
@@ -2057,75 +1910,80 @@ function ARITHMETIC_PLUS (lhs, rhs) {
   return AQL_TO_NUMBER(lhs + rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform arithmetic minus
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform arithmetic minus
+// //////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_MINUS (lhs, rhs) {
   'use strict';
-  
+
   lhs = AQL_TO_NUMBER(lhs);
   rhs = AQL_TO_NUMBER(rhs);
   return AQL_TO_NUMBER(lhs - rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform arithmetic multiplication
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform arithmetic multiplication
+// //////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_TIMES (lhs, rhs) {
   'use strict';
-  
+
   lhs = AQL_TO_NUMBER(lhs);
   rhs = AQL_TO_NUMBER(rhs);
   return AQL_TO_NUMBER(lhs * rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform arithmetic division
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform arithmetic division
+// //////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_DIVIDE (lhs, rhs) {
   'use strict';
 
   lhs = AQL_TO_NUMBER(lhs);
   rhs = AQL_TO_NUMBER(rhs);
-  if (rhs === 0 || rhs === null) {
+  if (rhs === 0 || rhs === null || isNaN(rhs) || !isFinite(rhs)) {
     WARN(null, INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
-    return 0;
+    return null;
   }
 
   return AQL_TO_NUMBER(lhs / rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform arithmetic modulus
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform arithmetic modulus
+// //////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_MODULUS (lhs, rhs) {
   'use strict';
 
   lhs = AQL_TO_NUMBER(lhs);
   rhs = AQL_TO_NUMBER(rhs);
-  if (rhs === 0 || rhs === null) {
+  if (rhs === 0 || rhs === null || isNaN(rhs) || !isFinite(rhs)) {
     WARN(null, INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
-    return 0;
+    return null;
   }
 
   return AQL_TO_NUMBER(lhs % rhs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform string concatenation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform string concatenation
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CONCAT () {
   'use strict';
 
-  var result = '', i;
+  var result = '', what = arguments;
+  if (what.length === 1 && Array.isArray(what[0])) {
+    what = arguments[0];
+  }
 
-  for (i = 0; i < arguments.length; ++i) {
-    var element = arguments[i];
+  var i, n = what.length;
+
+  for (i = 0; i < n; ++i) {
+    var element = what[i];
     var weight = TYPEWEIGHT(element);
     if (weight === TYPEWEIGHT_NULL) {
       continue;
@@ -2136,26 +1994,40 @@ function AQL_CONCAT () {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform string concatenation using a separator character
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief perform string concatenation using a separator character
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CONCAT_SEPARATOR () {
   'use strict';
 
-  var separator, found = false, result = '', i, j;
+  var separator, found = false, result = '', i, element;
+
+  if (arguments.length === 2 && Array.isArray(arguments[1])) {
+    separator = AQL_TO_STRING(arguments[0]);
+    for (i = 0; i < arguments[1].length; ++i) {
+      element = arguments[1][i];
+      if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+        continue;
+      }
+      if (found) {
+        result += separator;
+      }
+      result += AQL_TO_STRING(element);
+      found = true;
+    }
+    return result;
+  }
 
   for (i = 0; i < arguments.length; ++i) {
-    var element = arguments[i];
-    var weight = TYPEWEIGHT(element);
- 
-    if (i > 0 && weight === TYPEWEIGHT_NULL) {
+    element = arguments[i];
+
+    if (i > 0 && TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
       continue;
     }
     if (i === 0) {
       separator = AQL_TO_STRING(element);
-    }
-    else {
+    } else {
       if (found) {
         result += separator;
       }
@@ -2167,9 +2039,9 @@ function AQL_CONCAT_SEPARATOR () {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the length of a string in characters (not bytes)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the length of a string in characters (not bytes)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CHAR_LENGTH (value) {
   'use strict';
@@ -2177,9 +2049,9 @@ function AQL_CHAR_LENGTH (value) {
   return AQL_TO_STRING(value).length;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a string to lower case
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief convert a string to lower case
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LOWER (value) {
   'use strict';
@@ -2187,9 +2059,9 @@ function AQL_LOWER (value) {
   return AQL_TO_STRING(value).toLowerCase();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a string to upper case
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief convert a string to upper case
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UPPER (value) {
   'use strict';
@@ -2197,9 +2069,9 @@ function AQL_UPPER (value) {
   return AQL_TO_STRING(value).toUpperCase();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a substring of the string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a substring of the string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SUBSTRING (value, offset, count) {
   'use strict';
@@ -2211,9 +2083,9 @@ function AQL_SUBSTRING (value, offset, count) {
   return AQL_TO_STRING(value).substr(AQL_TO_NUMBER(offset), count);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief searches a substring in a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief searches a substring in a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CONTAINS (value, search, returnIndex) {
   'use strict';
@@ -2223,8 +2095,7 @@ function AQL_CONTAINS (value, search, returnIndex) {
   var result;
   if (search.length === 0) {
     result = -1;
-  }
-  else {
+  } else {
     result = AQL_TO_STRING(value).indexOf(search);
   }
 
@@ -2235,9 +2106,9 @@ function AQL_CONTAINS (value, search, returnIndex) {
   return (result !== -1);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief searches a substring in a string, using a regex
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief searches a substring in a string, using a regex
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LIKE (value, regex, caseInsensitive) {
   'use strict';
@@ -2249,22 +2120,47 @@ function AQL_LIKE (value, regex, caseInsensitive) {
 
   regex = AQL_TO_STRING(regex);
 
-  if (RegexCache[modifiers][regex] === undefined) {
-    RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
+  if (LikeCache[modifiers][regex] === undefined) {
+    LikeCache[modifiers][regex] = COMPILE_LIKE(regex, modifiers);
   }
 
   try {
-    return RegexCache[modifiers][regex].test(AQL_TO_STRING(value));
-  }
-  catch (err) {
-    WARN("LIKE", INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
+    return LikeCache[modifiers][regex].test(AQL_TO_STRING(value));
+  } catch (err) {
+    WARN('LIKE', INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
     return false;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the leftmost parts of a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief searches a substring in a string, using a regex
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_REGEX_TEST (value, regex, caseInsensitive) {
+  'use strict';
+
+  var modifiers = '';
+  if (caseInsensitive) {
+    modifiers += 'i';
+  }
+
+  regex = AQL_TO_STRING(regex);
+
+  try {
+    if (RegexCache[modifiers][regex] === undefined) {
+      RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
+    }
+
+    return RegexCache[modifiers][regex].test(AQL_TO_STRING(value));
+  } catch (err) {
+    WARN('REGEX', INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
+    return false;
+  }
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the leftmost parts of a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LEFT (value, length) {
   'use strict';
@@ -2272,9 +2168,9 @@ function AQL_LEFT (value, length) {
   return AQL_TO_STRING(value).substr(0, AQL_TO_NUMBER(length));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the rightmost parts of a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the rightmost parts of a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_RIGHT (value, length) {
   'use strict';
@@ -2290,64 +2186,60 @@ function AQL_RIGHT (value, length) {
   return value.substr(left, length);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a trimmed version of a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns a trimmed version of a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TRIM (value, chars) {
   'use strict';
 
   if (chars === 1) {
     return AQL_LTRIM(value);
-  }
-  else if (chars === 2) {
+  } else if (chars === 2) {
     return AQL_RTRIM(value);
-  }
-  else if (chars === null || chars === undefined || chars === 0) {
-    return AQL_TO_STRING(value).replace(new RegExp("(^\\s+|\\s+$)", 'g'), '');
+  } else if (chars === null || chars === undefined || chars === 0) {
+    return AQL_TO_STRING(value).replace(new RegExp('(^\\s+|\\s+$)', 'g'), '');
   }
 
   var pattern = CREATE_REGEX_PATTERN(chars);
-  return AQL_TO_STRING(value).replace(new RegExp("(^[" + pattern + "]+|[" + pattern + "]+$)", 'g'), '');
+  return AQL_TO_STRING(value).replace(new RegExp('(^[' + pattern + ']+|[' + pattern + ']+$)', 'g'), '');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief trim a value from the left
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief trim a value from the left
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LTRIM (value, chars) {
   'use strict';
 
   if (chars === null || chars === undefined) {
-    chars = "^\\s+";
-  }
-  else {
-    chars = "^[" + CREATE_REGEX_PATTERN(chars) + "]+";
+    chars = '^\\s+';
+  } else {
+    chars = '^[' + CREATE_REGEX_PATTERN(chars) + ']+';
   }
 
   return AQL_TO_STRING(value).replace(new RegExp(chars, 'g'), '');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief trim a value from the right
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief trim a value from the right
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_RTRIM (value, chars) {
   'use strict';
 
   if (chars === null || chars === undefined) {
-    chars = "\\s+$";
-  }
-  else {
-    chars = "[" + CREATE_REGEX_PATTERN(chars) + "]+$";
+    chars = '\\s+$';
+  } else {
+    chars = '[' + CREATE_REGEX_PATTERN(chars) + ']+$';
   }
 
   return AQL_TO_STRING(value).replace(new RegExp(chars, 'g'), '');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief split a string using a separator
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief split a string using a separator
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SPLIT (value, separator, limit) {
   'use strict';
@@ -2358,87 +2250,80 @@ function AQL_SPLIT (value, separator, limit) {
 
   if (TYPEWEIGHT(limit) === TYPEWEIGHT_NULL) {
     limit = undefined;
-  }
-  else {
+  } else {
     limit = AQL_TO_NUMBER(limit);
   }
 
   if (limit < 0) {
-    WARN("SPLIT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('SPLIT', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
   if (TYPEWEIGHT(separator) === TYPEWEIGHT_ARRAY) {
     var patterns = [];
-    separator.forEach(function(s) {
+    separator.forEach(function (s) {
       patterns.push(CREATE_REGEX_PATTERN(AQL_TO_STRING(s)));
     });
 
-    return AQL_TO_STRING(value).split(new RegExp(patterns.join("|"), "g"), limit);
+    return AQL_TO_STRING(value).split(new RegExp(patterns.join('|'), 'g'), limit);
   }
 
   return AQL_TO_STRING(value).split(AQL_TO_STRING(separator), limit);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a search value inside a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief replace a search value inside a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SUBSTITUTE (value, search, replace, limit) {
   'use strict';
 
-  var pattern = "", patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
+  var pattern = '', patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
   value = AQL_TO_STRING(value);
 
   if (sWeight === TYPEWEIGHT_OBJECT) {
-    patterns = [ ];
-    KEYS(search, false).forEach(function(k) {
+    patterns = [];
+    KEYS(search, false).forEach(function (k) {
       patterns.push(CREATE_REGEX_PATTERN(k));
       replacements[k] = AQL_TO_STRING(search[k]);
     });
     pattern = patterns.join('|');
     limit = replace;
-  }
-  else if (sWeight === TYPEWEIGHT_STRING) {
+  } else if (sWeight === TYPEWEIGHT_STRING) {
     pattern = CREATE_REGEX_PATTERN(search);
     if (TYPEWEIGHT(replace) === TYPEWEIGHT_NULL) {
-      replacements[search] = "";
-    }
-    else {
+      replacements[search] = '';
+    } else {
       replacements[search] = AQL_TO_STRING(replace);
     }
-  }
-  else if (sWeight === TYPEWEIGHT_ARRAY) {
+  } else if (sWeight === TYPEWEIGHT_ARRAY) {
     if (search.length === 0) {
       // empty list
-      WARN("SUBSTITUTE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      WARN('SUBSTITUTE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return value;
     }
 
-    patterns = [ ];
+    patterns = [];
 
     if (TYPEWEIGHT(replace) === TYPEWEIGHT_ARRAY) {
       // replace each occurrence with a member from the second list
-      search.forEach(function(k, i) {
+      search.forEach(function (k, i) {
         k = AQL_TO_STRING(k);
         patterns.push(CREATE_REGEX_PATTERN(k));
         if (i < replace.length) {
           replacements[k] = AQL_TO_STRING(replace[i]);
-        }
-        else {
-          replacements[k] = "";
+        } else {
+          replacements[k] = '';
         }
       });
-    }
-    else {
+    } else {
       // replace all occurrences with a constant string
       if (TYPEWEIGHT(replace) === TYPEWEIGHT_NULL) {
-        replace = "";
-      }
-      else {
+        replace = '';
+      } else {
         replace = AQL_TO_STRING(replace);
       }
-      search.forEach(function(k, i) {
+      search.forEach(function (k) {
         k = AQL_TO_STRING(k);
         patterns.push(CREATE_REGEX_PATTERN(k));
         replacements[k] = replace;
@@ -2447,26 +2332,25 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
     pattern = patterns.join('|');
   }
 
-  if (pattern === "") {
+  if (pattern === '') {
     return value;
   }
-  
+
   if (TYPEWEIGHT(limit) === TYPEWEIGHT_NULL) {
     limit = undefined;
-  }
-  else {
+  } else {
     limit = AQL_TO_NUMBER(limit);
   }
 
   if (limit < 0) {
-    WARN("SUBSTITUTE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('SUBSTITUTE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  return AQL_TO_STRING(value).replace(new RegExp(pattern, 'g'), function(match) {
+  return AQL_TO_STRING(value).replace(new RegExp(pattern, 'g'), function (match) {
     if (limit === undefined) {
       return replacements[match];
-    } 
+    }
     if (limit > 0) {
       --limit;
       return replacements[match];
@@ -2475,9 +2359,9 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
   });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates the MD5 value for a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generates the MD5 value for a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MD5 (value) {
   'use strict';
@@ -2485,9 +2369,9 @@ function AQL_MD5 (value) {
   return INTERNAL.md5(AQL_TO_STRING(value));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates the SHA1 value for a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generates the SHA1 value for a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SHA1 (value) {
   'use strict';
@@ -2495,9 +2379,9 @@ function AQL_SHA1 (value) {
   return INTERNAL.sha1(AQL_TO_STRING(value));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a hash value for an object
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generates a hash value for an object
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_HASH (value) {
   'use strict';
@@ -2505,32 +2389,32 @@ function AQL_HASH (value) {
   return OBJECT_HASH(value);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the typename for an object
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the typename for an object
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TYPENAME (value) {
   'use strict';
 
   switch (TYPEWEIGHT(value)) {
     case TYPEWEIGHT_BOOL:
-      return "bool";
+      return 'bool';
     case TYPEWEIGHT_NUMBER:
-      return "number";
+      return 'number';
     case TYPEWEIGHT_STRING:
-      return "string";
+      return 'string';
     case TYPEWEIGHT_ARRAY:
-      return "array";
+      return 'array';
     case TYPEWEIGHT_OBJECT:
-      return "object";
+      return 'object';
   }
-    
-  return "null";
+
+  return 'null';
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a random token of the specified length
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generates a random token of the specified length
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_RANDOM_TOKEN (length) {
   'use strict';
@@ -2538,15 +2422,15 @@ function AQL_RANDOM_TOKEN (length) {
   length = AQL_TO_NUMBER(length);
 
   if (length <= 0 || length > 65536) {
-    THROW("RANDOM_TOKEN", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANDOM_TOKEN");
+    THROW('RANDOM_TOKEN', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, 'RANDOM_TOKEN');
   }
 
   return INTERNAL.genRandomAlphaNumbers(length);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds search in value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief finds search in value
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FIND_FIRST (value, search, start, end) {
   'use strict';
@@ -2556,8 +2440,7 @@ function AQL_FIND_FIRST (value, search, start, end) {
     if (start < 0) {
       return -1;
     }
-  }
-  else {
+  } else {
     start = 0;
   }
 
@@ -2566,8 +2449,7 @@ function AQL_FIND_FIRST (value, search, start, end) {
     if (end < start || end < 0) {
       return -1;
     }
-  }
-  else {
+  } else {
     end = undefined;
   }
 
@@ -2578,17 +2460,16 @@ function AQL_FIND_FIRST (value, search, start, end) {
   return AQL_TO_STRING(value).indexOf(AQL_TO_STRING(search), start);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds search in value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief finds search in value
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FIND_LAST (value, search, start, end) {
   'use strict';
 
   if (TYPEWEIGHT(start) !== TYPEWEIGHT_NULL) {
     start = AQL_TO_NUMBER(start);
-  }
-  else {
+  } else {
     start = undefined;
   }
 
@@ -2597,8 +2478,7 @@ function AQL_FIND_LAST (value, search, start, end) {
     if (end < start || end < 0) {
       return -1;
     }
-  }
-  else {
+  } else {
     end = undefined;
   }
 
@@ -2606,26 +2486,23 @@ function AQL_FIND_LAST (value, search, start, end) {
   if (start > 0 || end !== undefined) {
     if (end === undefined) {
       result = AQL_TO_STRING(value).substr(start).lastIndexOf(AQL_TO_STRING(search));
-    }
-    else {
+    } else {
       result = AQL_TO_STRING(value).substr(start, end - start + 1).lastIndexOf(AQL_TO_STRING(search));
     }
     if (result !== -1) {
       result += start;
     }
-  }
-  else {
+  } else {
     result = AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search));
   }
   return result;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to a bool
-///
-/// the operand can have any type, always returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cast to a bool
+// /
+// / the operand can have any type, always returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TO_BOOL (value) {
   'use strict';
@@ -2645,11 +2522,11 @@ function AQL_TO_BOOL (value) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to a number
-///
-/// the operand can have any type, returns a number or null
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cast to a number
+// /
+// / the operand can have any type, returns a number or null
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TO_NUMBER (value) {
   'use strict';
@@ -2663,7 +2540,7 @@ function AQL_TO_NUMBER (value) {
     case TYPEWEIGHT_NUMBER:
       return value;
     case TYPEWEIGHT_STRING:
-      var result = NUMERIC_VALUE(Number(value));
+      var result = NUMERIC_VALUE(Number(value), false);
       return ((TYPEWEIGHT(result) === TYPEWEIGHT_NUMBER) ? result : null);
     case TYPEWEIGHT_ARRAY:
       if (value.length === 0) {
@@ -2672,16 +2549,16 @@ function AQL_TO_NUMBER (value) {
       if (value.length === 1) {
         return AQL_TO_NUMBER(value[0]);
       }
-      // fallthrough intentional
+  // fallthrough intentional
   }
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to a string
-///
-/// the operand can have any type, always returns a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cast to a string
+// /
+// / the operand can have any type, always returns a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TO_STRING (value) {
   'use strict';
@@ -2701,18 +2578,18 @@ function AQL_TO_STRING (value) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to an array
-///
-/// the operand can have any type, always returns a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cast to an array
+// /
+// / the operand can have any type, always returns a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TO_ARRAY (value) {
   'use strict';
 
   switch (TYPEWEIGHT(value)) {
     case TYPEWEIGHT_NULL:
-      return [ ];
+      return [];
     case TYPEWEIGHT_BOOL:
     case TYPEWEIGHT_NUMBER:
     case TYPEWEIGHT_STRING:
@@ -2724,25 +2601,24 @@ function AQL_TO_ARRAY (value) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the array as is, or an empty array
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the array as is, or an empty array
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ARRAYIZE (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    return [ ];
+    return [];
   }
   return value;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type null
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of type null
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_NULL (value) {
   'use strict';
@@ -2750,11 +2626,11 @@ function AQL_IS_NULL (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_NULL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type bool
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of type bool
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_BOOL (value) {
   'use strict';
@@ -2762,11 +2638,11 @@ function AQL_IS_BOOL (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_BOOL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type number
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of type number
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_NUMBER (value) {
   'use strict';
@@ -2774,11 +2650,11 @@ function AQL_IS_NUMBER (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_NUMBER);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type string
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of type string
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_STRING (value) {
   'use strict';
@@ -2786,11 +2662,11 @@ function AQL_IS_STRING (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_STRING);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type array
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of type array
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_ARRAY (value) {
   'use strict';
@@ -2798,11 +2674,11 @@ function AQL_IS_ARRAY (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type object
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of type object
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_OBJECT (value) {
   'use strict';
@@ -2810,15 +2686,15 @@ function AQL_IS_OBJECT (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of a valid datestring
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if value is of a valid datestring
+// /
+// / returns a bool
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_DATESTRING (value) {
   'use strict';
-    
+
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_STRING) {
     return false;
   }
@@ -2833,49 +2709,49 @@ function AQL_IS_DATESTRING (value) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief integer closest to value, not greater than value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief integer closest to value, not greater than value
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FLOOR (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.floor(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.floor(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief integer closest to value and not less than value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief integer closest to value and not less than value
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CEIL (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.ceil(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.ceil(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief integer closest to value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief integer closest to value
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ROUND (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.round(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.round(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief absolute value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief absolute value
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ABS (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.abs(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.abs(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a random value between 0 and 1
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief a random value between 0 and 1
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_RAND () {
   'use strict';
@@ -2883,29 +2759,179 @@ function AQL_RAND () {
   return Math.random();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief square root
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief square root
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SQRT (value) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.sqrt(AQL_TO_NUMBER(value)));
+  return NUMERIC_VALUE(Math.sqrt(AQL_TO_NUMBER(value)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exponentation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief exponentation
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_POW (base, exp) {
   'use strict';
 
-  return NUMERIC_VALUE(Math.pow(AQL_TO_NUMBER(base), AQL_TO_NUMBER(exp)));
+  return NUMERIC_VALUE(Math.pow(AQL_TO_NUMBER(base), AQL_TO_NUMBER(exp)), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the length of a list, document or string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief log(n)
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_LOG (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.log(AQL_TO_NUMBER(value)), true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief log(2)
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_LOG2 (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.log2(AQL_TO_NUMBER(value)), true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief log(10)
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_LOG10 (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.log10(AQL_TO_NUMBER(value)), true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief exp(n)
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_EXP (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.exp(AQL_TO_NUMBER(value)), true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief exp(2)
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_EXP2 (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.pow(2, AQL_TO_NUMBER(value)), true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sin
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_SIN (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.sin(AQL_TO_NUMBER(value)), true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cos
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_COS (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.cos(AQL_TO_NUMBER(value)), true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tan
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_TAN (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.tan(AQL_TO_NUMBER(value)), true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief asin
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_ASIN (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.asin(AQL_TO_NUMBER(value)), true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief acos
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_ACOS (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.acos(AQL_TO_NUMBER(value)), true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief atan
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_ATAN (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.atan(AQL_TO_NUMBER(value)), true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief atan2
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_ATAN2 (value1, value2) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.atan2(AQL_TO_NUMBER(value1), AQL_TO_NUMBER(value2)), true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief radians
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_RADIANS (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(value * (Math.PI / 180));
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief degrees
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_DEGREES (value) {
+  'use strict';
+
+  return NUMERIC_VALUE(value * (180 / Math.PI));
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief pi
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_PI () {
+  'use strict';
+
+  return Math.PI;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the length of a list, document or string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LENGTH (value) {
   'use strict';
@@ -2914,29 +2940,26 @@ function AQL_LENGTH (value) {
 
   if (typeWeight === TYPEWEIGHT_ARRAY) {
     return value.length;
-  }
-  else if (typeWeight === TYPEWEIGHT_OBJECT) {
+  } else if (typeWeight === TYPEWEIGHT_OBJECT) {
     return KEYS(value, false).length;
-  }
-  else if (typeWeight === TYPEWEIGHT_NULL) {
+  } else if (typeWeight === TYPEWEIGHT_NULL) {
     return 0;
-  }
-  else if (typeWeight === TYPEWEIGHT_BOOL) {
+  } else if (typeWeight === TYPEWEIGHT_BOOL) {
     return value ? 1 : 0;
   }
 
   return AQL_TO_STRING(value).length;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the first element of a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the first element of a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FIRST (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    WARN("FIRST", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('FIRST', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -2947,15 +2970,15 @@ function AQL_FIRST (value) {
   return value[0];
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the last element of a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the last element of a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_LAST (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    WARN("LAST", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('LAST', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -2966,15 +2989,15 @@ function AQL_LAST (value) {
   return value[value.length - 1];
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the position of an element in a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the position of an element in a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_POSITION (value, search, returnIndex) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    WARN("POSITION", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('POSITION', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -2993,15 +3016,15 @@ function AQL_POSITION (value, search, returnIndex) {
   return returnIndex ? -1 : false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the nth element in a list, or null if the item does not exist
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the nth element in a list, or null if the item does not exist
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_NTH (value, position) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    WARN("NTH", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('NTH', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3013,67 +3036,65 @@ function AQL_NTH (value, position) {
   return value[position];
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reverse the elements in a list or in a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief reverse the elements in a list or in a string
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_REVERSE (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
-    return value.split("").reverse().join("");
+    return value.split('').reverse().join('');
   }
 
   if (TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY) {
     return CLONE(value).reverse();
   }
-    
-  WARN("REVERSE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+
+  WARN('REVERSE', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a range of values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a range of values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_RANGE (from, to, step) {
   'use strict';
 
   from = AQL_TO_NUMBER(from) || 0;
   to = AQL_TO_NUMBER(to) || 0;
-  
+
   if (step === undefined || step === null) {
     if (from <= to) {
       step = 1;
-    }
-    else {
+    } else {
       step = -1;
     }
   }
-  
+
   step = AQL_TO_NUMBER(step);
 
   // check if we would run into an endless loop
   if (step === 0 || step === null) {
-    WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('RANGE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
   if (from < to && step < 0) {
-    WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('RANGE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
   if (from > to && step > 0) {
-    WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('RANGE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  var result = [ ], i;
+  var result = [], i;
   if (step < 0 && to <= from) {
     for (i = from; i >= to; i += step) {
       result.push(i);
     }
-  }
-  else {
+  } else {
     for (i = from; i <= to; i += step) {
       result.push(i);
     }
@@ -3082,39 +3103,39 @@ function AQL_RANGE (from, to, step) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a list of unique elements from the array
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a list of unique elements from the array
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNIQUE (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("UNIQUE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('UNIQUE', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
-  var keys = { }, result = [ ];
+  var keys = { }, result = [];
 
   values.forEach(function (value) {
     var normalized = NORMALIZE(value);
     var key = JSON.stringify(normalized);
 
-    if (! keys.hasOwnProperty(key)) {
+    if (!keys.hasOwnProperty(key)) {
       keys[key] = normalized;
     }
   });
 
-  Object.keys(keys).forEach(function(k) {
+  Object.keys(keys).forEach(function (k) {
     result.push(keys[k]);
   });
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a list of unique elements from the array
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a list of unique elements from the array
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SORTED_UNIQUE (values) {
   'use strict';
@@ -3129,21 +3150,21 @@ function AQL_SORTED_UNIQUE (values) {
   return unique;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the union (all) of all arguments
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create the union (all) of all arguments
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNION () {
   'use strict';
 
-  var result = [ ], i;
+  var result = [], i;
 
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
-        WARN("UNION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('UNION', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
@@ -3158,9 +3179,9 @@ function AQL_UNION () {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the union (distinct) of all arguments
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create the union (distinct) of all arguments
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNION_DISTINCT () {
   'use strict';
@@ -3172,7 +3193,7 @@ function AQL_UNION_DISTINCT () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
-        WARN("UNION_DISTINCT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('UNION_DISTINCT', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
@@ -3182,54 +3203,54 @@ function AQL_UNION_DISTINCT () {
         var normalized = NORMALIZE(element[j]);
         var key = JSON.stringify(normalized);
 
-        if (! keys.hasOwnProperty(key)) {
+        if (!keys.hasOwnProperty(key)) {
           keys[key] = normalized;
         }
       }
     }
   }
 
-  var result = [ ];
-  Object.keys(keys).forEach(function(k) {
+  var result = [];
+  Object.keys(keys).forEach(function (k) {
     result.push(keys[k]);
   });
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief call a function for each element in the input list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief call a function for each element in the input list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CALL (name) {
   'use strict';
 
-  var args = [ ], i;
+  var args = [], i;
   for (i = 1; i < arguments.length; ++i) {
     args.push(arguments[i]);
   }
 
-  return FCALL_DYNAMIC("CALL", true, null, name, args);
+  return FCALL_DYNAMIC('CALL', true, null, name, args);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief call a function for each element in the input list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief call a function for each element in the input list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_APPLY (name, parameters) {
   'use strict';
 
-  var args = [ ], i;
+  var args = [];
   if (Array.isArray(parameters)) {
     args = args.concat(parameters);
   }
 
-  return FCALL_DYNAMIC("APPLY", true, null, name, args);
+  return FCALL_DYNAMIC('APPLY', true, null, name, args);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes elements from a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief removes elements from a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_REMOVE_VALUES (list, values) {
   'use strict';
@@ -3237,18 +3258,16 @@ function AQL_REMOVE_VALUES (list, values) {
   var type = TYPEWEIGHT(values);
   if (type === TYPEWEIGHT_NULL) {
     return list;
-  }
-  else if (type !== TYPEWEIGHT_ARRAY) {
-    WARN("REMOVE_VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  } else if (type !== TYPEWEIGHT_ARRAY) {
+    WARN('REMOVE_VALUES', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
   type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
-    return [ ];
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
-    var copy = [ ], i;
+    return [];
+  } else if (type === TYPEWEIGHT_ARRAY) {
+    var copy = [], i;
     for (i = 0; i < list.length; ++i) {
       if (RELATIONAL_IN(list[i], values)) {
         continue;
@@ -3258,32 +3277,30 @@ function AQL_REMOVE_VALUES (list, values) {
     return copy;
   }
 
-  WARN("REMOVE_VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('REMOVE_VALUES', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief removes an element from a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_REMOVE_VALUE (list, value, limit) {
   'use strict';
 
   var type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
-    return [ ];
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+    return [];
+  } else if (type === TYPEWEIGHT_ARRAY) {
     if (TYPEWEIGHT(limit) === TYPEWEIGHT_NULL) {
       limit = -1;
     }
 
-    var copy = [ ], i;
+    var copy = [], i;
     for (i = 0; i < list.length; ++i) {
       if (limit === -1 && RELATIONAL_CMP(list[i], value) === 0) {
         continue;
-      }
-      else if (limit > 0 && RELATIONAL_CMP(list[i], value) === 0) {
+      } else if (limit > 0 && RELATIONAL_CMP(list[i], value) === 0) {
         --limit;
         continue;
       }
@@ -3292,49 +3309,45 @@ function AQL_REMOVE_VALUE (list, value, limit) {
     return copy;
   }
 
-  WARN("REMOVE_VALUE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('REMOVE_VALUE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief removes an element from a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_REMOVE_NTH (list, position) {
   'use strict';
 
   var type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
-    return [ ];
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+    return [];
+  } else if (type === TYPEWEIGHT_ARRAY) {
     position = AQL_TO_NUMBER(position);
     if (position >= list.length || position < - list.length) {
       return list;
     }
     if (position === 0) {
       return list.slice(1);
-    }
-    else if (position === - list.length) {
+    } else if (position === - list.length) {
       return list.slice(position + 1);
-    }
-    else if (position === list.length - 1) {
+    } else if (position === list.length - 1) {
       return list.slice(0, position);
-    }
-    else if (position < 0) {
+    } else if (position < 0) {
       return list.slice(0, list.length + position).concat(list.slice(list.length + position + 1));
     }
 
     return list.slice(0, position).concat(list.slice(position + 1));
   }
 
-  WARN("REMOVE_NTH", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('REMOVE_NTH', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an element to a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief adds an element to a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_PUSH (list, value, unique) {
   'use strict';
@@ -3342,12 +3355,11 @@ function AQL_PUSH (list, value, unique) {
   var type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
     return [ value ];
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+  } else if (type === TYPEWEIGHT_ARRAY) {
     if (AQL_TO_BOOL(unique)) {
       if (RELATIONAL_IN(value, list)) {
         return list;
-      } 
+      }
     }
 
     var copy = CLONE(list);
@@ -3355,13 +3367,13 @@ function AQL_PUSH (list, value, unique) {
     return copy;
   }
 
-  WARN("PUSH", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('PUSH', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds elements to a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief adds elements to a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_APPEND (list, values, unique) {
   'use strict';
@@ -3369,8 +3381,7 @@ function AQL_APPEND (list, values, unique) {
   var type = TYPEWEIGHT(values);
   if (type === TYPEWEIGHT_NULL) {
     return list;
-  }
-  else if (type !== TYPEWEIGHT_ARRAY) {
+  } else if (type !== TYPEWEIGHT_ARRAY) {
     values = [ values ];
   }
 
@@ -3387,8 +3398,7 @@ function AQL_APPEND (list, values, unique) {
   type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
     return values;
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+  } else if (type === TYPEWEIGHT_ARRAY) {
     var copy = CLONE(list);
     if (unique) {
       var i;
@@ -3403,13 +3413,13 @@ function AQL_APPEND (list, values, unique) {
     return copy.concat(values);
   }
 
-  WARN("APPEND", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('APPEND', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pops an element from a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief pops an element from a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_POP (list) {
   'use strict';
@@ -3417,10 +3427,9 @@ function AQL_POP (list) {
   var type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
     return null;
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+  } else if (type === TYPEWEIGHT_ARRAY) {
     if (list.length === 0) {
-      return [ ];
+      return [];
     }
     var copy = CLONE(list);
     copy.pop();
@@ -3428,13 +3437,13 @@ function AQL_POP (list) {
     return copy;
   }
 
-  WARN("POP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('POP', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert an element into a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief insert an element into a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNSHIFT (list, value, unique) {
   'use strict';
@@ -3442,12 +3451,11 @@ function AQL_UNSHIFT (list, value, unique) {
   var type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
     return [ value ];
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+  } else if (type === TYPEWEIGHT_ARRAY) {
     if (unique) {
       if (RELATIONAL_IN(value, list)) {
         return list;
-      } 
+      }
     }
 
     var copy = CLONE(list);
@@ -3455,12 +3463,12 @@ function AQL_UNSHIFT (list, value, unique) {
     return copy;
   }
 
-  WARN("UNSHIFT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('UNSHIFT', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pops an element from a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief pops an element from a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SHIFT (list) {
   'use strict';
@@ -3468,10 +3476,9 @@ function AQL_SHIFT (list) {
   var type = TYPEWEIGHT(list);
   if (type === TYPEWEIGHT_NULL) {
     return null;
-  }
-  else if (type === TYPEWEIGHT_ARRAY) {
+  } else if (type === TYPEWEIGHT_ARRAY) {
     if (list.length === 0) {
-      return [ ];
+      return [];
     }
     var copy = CLONE(list);
     copy.shift();
@@ -3479,19 +3486,19 @@ function AQL_SHIFT (list) {
     return copy;
   }
 
-  WARN("SHIFT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('SHIFT', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a slice from an array
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief extract a slice from an array
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SLICE (value, from, to, nonNegative) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
-    WARN("SLICE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('SLICE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
@@ -3508,13 +3515,12 @@ function AQL_SLICE (value, from, to, nonNegative) {
   }
 
   if (nonNegative && (from < 0 || to < 0)) {
-    return [ ];
+    return [];
   }
 
   if (TYPEWEIGHT(to) === TYPEWEIGHT_NULL) {
     to = undefined;
-  }
-  else {
+  } else {
     if (to >= 0) {
       to += from;
     } else {
@@ -3528,9 +3534,9 @@ function AQL_SLICE (value, from, to, nonNegative) {
   return value.slice(from, to);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief subtract lists from other lists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief subtract lists from other lists
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MINUS () {
   'use strict';
@@ -3542,7 +3548,7 @@ function AQL_MINUS () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
-        WARN("MINUS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('MINUS', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
@@ -3554,11 +3560,10 @@ function AQL_MINUS () {
         var contained = keys.hasOwnProperty(key);
 
         if (first) {
-          if (! contained) {
+          if (!contained) {
             keys[key] = normalized;
           }
-        }
-        else if (contained) {
+        } else if (contained) {
           delete keys[key];
         }
       }
@@ -3567,22 +3572,22 @@ function AQL_MINUS () {
     }
   }
 
-  var result = [ ];
-  Object.keys(keys).forEach(function(k) {
+  var result = [];
+  Object.keys(keys).forEach(function (k) {
     result.push(keys[k]);
   });
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the intersection of all arguments
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create the intersection of all arguments
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_INTERSECTION () {
   'use strict';
 
-  var result = [ ], i, first = true, keys = { };
+  var result = [], i, first = true, keys = { };
 
   var func = function (value) {
     var normalized = NORMALIZE(value);
@@ -3594,15 +3599,14 @@ function AQL_INTERSECTION () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
-        WARN("INTERSECTION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('INTERSECTION', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
       if (first) {
         element.forEach(func);
         first = false;
-      }
-      else {
+      } else {
         var j, newKeys = { };
         for (j = 0; j < element.length; ++j) {
           var normalized = NORMALIZE(element[j]);
@@ -3615,26 +3619,68 @@ function AQL_INTERSECTION () {
         keys = newKeys;
         newKeys = null;
       }
-
     }
   }
 
-  Object.keys(keys).forEach(function(k) {
+  Object.keys(keys).forEach(function (k) {
     result.push(keys[k]);
   });
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief flatten a list of lists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create the difference of all arguments, i.e. all unique elements
+// / in the arrays
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_OUTERSECTION () {
+  'use strict';
+
+  var i, keys = { };
+
+  var func = function (value) {
+    var normalized = NORMALIZE(value);
+    var k = JSON.stringify(normalized);
+    if (keys.hasOwnProperty(k)) {
+      ++keys[k][1];
+    } else {
+      keys[k] = [value, 1];
+    }
+  };
+
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
+
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
+        WARN('OUTERSECTION', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
+      }
+
+      element.forEach(func);
+    }
+  }
+
+  var result = [];
+  Object.keys(keys).forEach(function (k) {
+    if (keys[k][1] === 1) {
+      result.push(keys[k][0]);
+    }
+  });
+
+  return result;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief flatten a list of lists
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FLATTEN (values, maxDepth, depth) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("FLATTEN", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('FLATTEN', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3647,9 +3693,9 @@ function AQL_FLATTEN (values, maxDepth, depth) {
     depth = 0;
   }
 
-  var value, result = [ ];
+  var value, result = [];
   var i, n;
-  var p = function(v) {
+  var p = function (v) {
     result.push(v);
   };
 
@@ -3657,8 +3703,7 @@ function AQL_FLATTEN (values, maxDepth, depth) {
     value = values[i];
     if (depth < maxDepth && TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY) {
       AQL_FLATTEN(value, maxDepth, depth + 1).forEach(p);
-    }
-    else {
+    } else {
       result.push(value);
     }
   }
@@ -3666,15 +3711,15 @@ function AQL_FLATTEN (values, maxDepth, depth) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief maximum of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MAX (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("MAX", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('MAX', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3693,15 +3738,15 @@ function AQL_MAX (values) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief minimum of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MIN (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("MIN", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('MIN', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3720,15 +3765,15 @@ function AQL_MIN (values) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sum of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sum of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SUM (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("SUM", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('SUM', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3741,7 +3786,7 @@ function AQL_SUM (values) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        WARN("SUM", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('SUM', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
       result += value;
@@ -3751,15 +3796,15 @@ function AQL_SUM (values) {
   return NUMERIC_VALUE(result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief average of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief average of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_AVERAGE (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("AVERAGE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('AVERAGE', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3772,7 +3817,7 @@ function AQL_AVERAGE (values) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        WARN("AVERAGE", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        WARN('AVERAGE', INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
         return null;
       }
 
@@ -3788,19 +3833,19 @@ function AQL_AVERAGE (values) {
   return NUMERIC_VALUE(sum / j);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief median of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief median of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MEDIAN (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("MEDIAN", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('MEDIAN', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
-  var copy = [ ], current, typeWeight;
+  var copy = [], current, typeWeight;
   var i, n;
 
   for (i = 0, n = values.length; i < n; ++i) {
@@ -3809,7 +3854,7 @@ function AQL_MEDIAN (values) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        WARN("MEDIAN", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        WARN('MEDIAN', INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
         return null;
       }
 
@@ -3831,38 +3876,38 @@ function AQL_MEDIAN (values) {
   return NUMERIC_VALUE(copy[Math.floor(midpoint)]);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the pth percentile of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the pth percentile of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_PERCENTILE (values, p, method) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('PERCENTILE', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
   if (TYPEWEIGHT(p) !== TYPEWEIGHT_NUMBER) {
-    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('PERCENTILE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
   if (p <= 0 || p > 100) {
-    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return null;
-  }
- 
-  if (method === null || method === undefined) {
-    method = "rank";
-  }
-   
-  if (method !== "interpolation" && method !== "rank") {
-    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('PERCENTILE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  var copy = [ ], current, typeWeight;
+  if (method === null || method === undefined) {
+    method = 'rank';
+  }
+
+  if (method !== 'interpolation' && method !== 'rank') {
+    WARN('PERCENTILE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var copy = [], current, typeWeight;
   var i, n;
 
   for (i = 0, n = values.length; i < n; ++i) {
@@ -3871,7 +3916,7 @@ function AQL_PERCENTILE (values, p, method) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        WARN('PERCENTILE', INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
         return null;
       }
 
@@ -3881,15 +3926,14 @@ function AQL_PERCENTILE (values, p, method) {
 
   if (copy.length === 0) {
     return null;
-  }
-  else if (copy.length === 1) {
+  } else if (copy.length === 1) {
     return copy[0];
   }
 
   copy.sort(RELATIONAL_CMP);
 
   var idx, pos;
-  if (method === "interpolation") {
+  if (method === 'interpolation') {
     // interpolation method
     idx = p * (copy.length + 1) / 100;
     pos = Math.floor(idx);
@@ -3899,8 +3943,7 @@ function AQL_PERCENTILE (values, p, method) {
       return NUMERIC_VALUE(copy[copy.length - 1]);
     }
     return NUMERIC_VALUE(delta * (copy[pos] - copy[pos - 1]) + copy[pos - 1]);
-  }
-  else {
+  } else {
     // rank method
     idx = p * (copy.length) / 100;
     pos = Math.ceil(idx);
@@ -3912,15 +3955,15 @@ function AQL_PERCENTILE (values, p, method) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief variance of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief variance of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function VARIANCE (values) {
   'use strict';
 
   if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
-    WARN("VARIANCE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('VARIANCE', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3933,7 +3976,7 @@ function VARIANCE (values) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        WARN("VARIANCE", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        WARN('VARIANCE', INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
         return null;
       }
 
@@ -3949,9 +3992,9 @@ function VARIANCE (values) {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sample variance of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sample variance of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_VARIANCE_SAMPLE (values) {
   'use strict';
@@ -3968,9 +4011,9 @@ function AQL_VARIANCE_SAMPLE (values) {
   return NUMERIC_VALUE(result.value / (result.n - 1));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief population variance of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief population variance of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_VARIANCE_POPULATION (values) {
   'use strict';
@@ -3987,9 +4030,9 @@ function AQL_VARIANCE_POPULATION (values) {
   return NUMERIC_VALUE(result.value / result.n);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief standard deviation of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief standard deviation of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_STDDEV_SAMPLE (values) {
   'use strict';
@@ -4006,9 +4049,9 @@ function AQL_STDDEV_SAMPLE (values) {
   return NUMERIC_VALUE(Math.sqrt(result.value / (result.n - 1)));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief standard deviation of all values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief standard deviation of all values
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_STDDEV_POPULATION (values) {
   'use strict';
@@ -4025,10 +4068,9 @@ function AQL_STDDEV_POPULATION (values) {
   return NUMERIC_VALUE(Math.sqrt(result.value / result.n));
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return at most <limit> documents near a certain point
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return at most <limit> documents near a certain point
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
   'use strict';
@@ -4036,99 +4078,98 @@ function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
   if (TYPEWEIGHT(limit) === TYPEWEIGHT_NULL) {
     // use default value
     limit = 100;
-  }
-  else {
+  } else {
     if (TYPEWEIGHT(limit) !== TYPEWEIGHT_NUMBER) {
-      THROW("NEAR", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      THROW('NEAR', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     }
     limit = AQL_TO_NUMBER(limit);
   }
 
   var weight = TYPEWEIGHT(distanceAttribute);
   if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_STRING) {
-    THROW("NEAR", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    THROW('NEAR', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
 
   if (isCoordinator) {
-    var query = COLLECTION(collection, "NEAR").near(latitude, longitude);
+    var query = COLLECTION(collection, 'NEAR').near(latitude, longitude);
     query._distance = distanceAttribute;
     return query.limit(limit).toArray();
   }
 
-  var idx = INDEX(COLLECTION(collection, "NEAR"), [ "geo1", "geo2" ]);
+  var idx = INDEX(COLLECTION(collection, 'NEAR'), [ 'geo1', 'geo2' ]);
 
   if (idx === null) {
-    THROW("NEAR", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+    THROW('NEAR', INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  return COLLECTION(collection, "NEAR").NEAR(idx.id, latitude, longitude, limit, distanceAttribute);
+  return COLLECTION(collection, 'NEAR').NEAR(idx.id, latitude, longitude, limit, distanceAttribute);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return documents within <radius> around a certain point
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return documents within <radius> around a certain point
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute) {
   'use strict';
 
   var weight = TYPEWEIGHT(distanceAttribute);
   if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_STRING) {
-    THROW("WITHIN", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    THROW('WITHIN', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
 
   weight = TYPEWEIGHT(radius);
   if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_NUMBER) {
-    THROW("WITHIN", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    THROW('WITHIN', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
   radius = AQL_TO_NUMBER(radius);
-  
+
   if (isCoordinator) {
-    var query = COLLECTION(collection, "WITHIN").within(latitude, longitude, radius);
+    var query = COLLECTION(collection, 'WITHIN').within(latitude, longitude, radius);
     query._distance = distanceAttribute;
     return query.toArray();
   }
-  
-  var idx = INDEX(COLLECTION(collection, "WITHIN"), [ "geo1", "geo2" ]);
+
+  var idx = INDEX(COLLECTION(collection, 'WITHIN'), [ 'geo1', 'geo2' ]);
 
   if (idx === null) {
-    THROW("WITHIN", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+    THROW('WITHIN', INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  return COLLECTION(collection, "WITHIN").WITHIN(idx.id, latitude, longitude, radius, distanceAttribute);
+  return COLLECTION(collection, 'WITHIN').WITHIN(idx.id, latitude, longitude, radius, distanceAttribute);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return documents within a bounding rectangle 
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return documents within a bounding rectangle 
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, longitude2) {
   'use strict';
 
   if (TYPEWEIGHT(latitude1) !== TYPEWEIGHT_NUMBER ||
-      TYPEWEIGHT(longitude1) !== TYPEWEIGHT_NUMBER ||
-      TYPEWEIGHT(latitude2) !== TYPEWEIGHT_NUMBER ||
-      TYPEWEIGHT(longitude2) !== TYPEWEIGHT_NUMBER) {
-    WARN("WITHIN_RECTANGLE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    TYPEWEIGHT(longitude1) !== TYPEWEIGHT_NUMBER ||
+    TYPEWEIGHT(latitude2) !== TYPEWEIGHT_NUMBER ||
+    TYPEWEIGHT(longitude2) !== TYPEWEIGHT_NUMBER) {
+    WARN('WITHIN_RECTANGLE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
-  
-  return COLLECTION(collection, "WITHIN_RECTANGLE").withinRectangle(
-    latitude1, 
-    longitude1, 
-    latitude2, 
+
+  return COLLECTION(collection, 'WITHIN_RECTANGLE').withinRectangle(
+    latitude1,
+    longitude1,
+    latitude2,
     longitude2
   ).toArray();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return true if a point is contained inside a polygon
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return true if a point is contained inside a polygon
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_IN_POLYGON (points, latitude, longitude) {
   'use strict';
-  
+
   if (TYPEWEIGHT(points) !== TYPEWEIGHT_ARRAY) {
-    WARN("POINT_IN_POLYGON", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
+    WARN('POINT_IN_POLYGON', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return false;
   }
 
@@ -4141,27 +4182,24 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
       searchLon = latitude[0];
       pointLat = 1;
       pointLon = 0;
-    }
-    else {
+    } else {
       // first list value is latitude, then longitude
       searchLat = latitude[0];
       searchLon = latitude[1];
       pointLat = 0;
       pointLon = 1;
     }
-  }
-  else if (TYPEWEIGHT(latitude) === TYPEWEIGHT_NUMBER &&
-           TYPEWEIGHT(longitude) === TYPEWEIGHT_NUMBER) {
+  } else if (TYPEWEIGHT(latitude) === TYPEWEIGHT_NUMBER &&
+    TYPEWEIGHT(longitude) === TYPEWEIGHT_NUMBER) {
     searchLat = latitude;
     searchLon = longitude;
     pointLat = 0;
     pointLon = 1;
-  }
-  else {
-    WARN("POINT_IN_POLYGON", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  } else {
+    WARN('POINT_IN_POLYGON', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return false;
   }
-  
+
   var i, j = points.length - 1;
   var oddNodes = false;
 
@@ -4170,12 +4208,12 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
       continue;
     }
 
-    if (((points[i][pointLat] < searchLat && points[j][pointLat] >= searchLat) || 
-         (points[j][pointLat] < searchLat && points[i][pointLat] >= searchLat)) &&
-        (points[i][pointLon] <= searchLon || points[j][pointLon] <= searchLon)) {
-      oddNodes ^= ((points[i][pointLon] + (searchLat - points[i][pointLat]) / 
-                   (points[j][pointLat] - points[i][pointLat]) * 
-                    (points[j][pointLon] - points[i][pointLon])) < searchLon);
+    if (((points[i][pointLat] < searchLat && points[j][pointLat] >= searchLat) ||
+      (points[j][pointLat] < searchLat && points[i][pointLat] >= searchLat)) &&
+      (points[i][pointLon] <= searchLon || points[j][pointLon] <= searchLon)) {
+      oddNodes ^= ((points[i][pointLon] + (searchLat - points[i][pointLat]) /
+        (points[j][pointLat] - points[i][pointLat]) *
+        (points[j][pointLon] - points[i][pointLon])) < searchLon);
     }
 
     j = i;
@@ -4188,38 +4226,36 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
   return false;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return documents that match a fulltext query
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return documents that match a fulltext query
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FULLTEXT (collection, attribute, query, limit) {
   'use strict';
 
-  var idx = INDEX_FULLTEXT(COLLECTION(collection, "FULLTEXT"), attribute);
+  var idx = INDEX_FULLTEXT(COLLECTION(collection, 'FULLTEXT'), attribute);
 
   if (idx === null) {
-    THROW("FULLTEXT", INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
+    THROW('FULLTEXT', INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
   }
 
   if (isCoordinator) {
     if (limit !== undefined && limit !== null && limit > 0) {
-      return COLLECTION(collection, "FULLTEXT").fulltext(attribute, query, idx).limit(limit).toArray();
+      return COLLECTION(collection, 'FULLTEXT').fulltext(attribute, query, idx).limit(limit).toArray();
     }
-    return COLLECTION(collection, "FULLTEXT").fulltext(attribute, query, idx).toArray();
+    return COLLECTION(collection, 'FULLTEXT').fulltext(attribute, query, idx).toArray();
   }
 
-  return COLLECTION(collection, "FULLTEXT").FULLTEXT(idx, query, limit).documents;
+  return COLLECTION(collection, 'FULLTEXT').FULLTEXT(idx, query, limit).documents;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the first alternative that's not null until there are no more
-/// alternatives. if neither of the alternatives is a value other than null,
-/// then null will be returned
-///
-/// the operands can have any type
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the first alternative that's not null until there are no more
+// / alternatives. if neither of the alternatives is a value other than null,
+// / then null will be returned
+// /
+// / the operands can have any type
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_NOT_NULL () {
   'use strict';
@@ -4238,13 +4274,13 @@ function AQL_NOT_NULL () {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the first alternative that's a list until there are no more
-/// alternatives. if neither of the alternatives is a list, then null will be
-/// returned
-///
-/// the operands can have any type
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the first alternative that's a list until there are no more
+// / alternatives. if neither of the alternatives is a list, then null will be
+// / returned
+// /
+// / the operands can have any type
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FIRST_LIST () {
   'use strict';
@@ -4263,13 +4299,13 @@ function AQL_FIRST_LIST () {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the first alternative that's a document until there are no
-/// more alternatives. if neither of the alternatives is a document, then null
-/// will be returned
-///
-/// the operands can have any type
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the first alternative that's a document until there are no
+// / more alternatives. if neither of the alternatives is a document, then null
+// / will be returned
+// /
+// / the operands can have any type
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FIRST_DOCUMENT () {
   'use strict';
@@ -4288,12 +4324,12 @@ function AQL_FIRST_DOCUMENT () {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the parts of a document identifier separately
-///
-/// returns a document with the attributes `collection` and `key` or fails if
-/// the individual parts cannot be determined.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the parts of a document identifier separately
+// /
+// / returns a document with the attributes `collection` and `key` or fails if
+// / the individual parts cannot be determined.
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_PARSE_IDENTIFIER (value) {
   'use strict';
@@ -4306,22 +4342,21 @@ function AQL_PARSE_IDENTIFIER (value) {
         key: parts[1]
       };
     }
-    // fall through intentional
-  }
-  else if (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT) {
+  // fall through intentional
+  } else if (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT) {
     if (value.hasOwnProperty('_id')) {
       return AQL_PARSE_IDENTIFIER(value._id);
     }
-    // fall through intentional
+  // fall through intentional
   }
 
-  WARN("PARSE_IDENTIFIER", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('PARSE_IDENTIFIER', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
- 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validates if a document or object is from the specified collection
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief validates if a document or object is from the specified collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_IS_SAME_COLLECTION (collection, value) {
   'use strict';
@@ -4337,20 +4372,20 @@ function AQL_IS_SAME_COLLECTION (collection, value) {
     if (pos !== -1) {
       return value.substr(0, pos) === collection;
     }
-    // fall through intentional
+  // fall through intentional
   }
 
-  WARN("AQL_IS_SAME_COLLECTION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN('AQL_IS_SAME_COLLECTION', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a document has a specific attribute
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check whether a document has a specific attribute
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_HAS (element, name) {
   'use strict';
- 
+
   if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
     return false;
   }
@@ -4358,22 +4393,22 @@ function AQL_HAS (element, name) {
   return element.hasOwnProperty(AQL_TO_STRING(name));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the attribute names of a document as a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the attribute names of a document as a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ATTRIBUTES (element, removeInternal, sort) {
   'use strict';
 
   if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
-    WARN("ATTRIBUTES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('ATTRIBUTES', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
   if (removeInternal) {
-    var result = [ ];
+    var result = [];
 
-    Object.keys(element).forEach(function(k) {
+    Object.keys(element).forEach(function (k) {
       if (k[0] !== '_') {
         result.push(k);
       }
@@ -4389,42 +4424,42 @@ function AQL_ATTRIBUTES (element, removeInternal, sort) {
   return KEYS(element, sort);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the attribute values of a document as a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the attribute values of a document as a list
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_VALUES (element, removeInternal) {
   'use strict';
 
   if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
-    WARN("VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('VALUES', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  var result = [ ], a;
+  var result = [], a;
 
   for (a in element) {
     if (element.hasOwnProperty(a)) {
-      if (a[0] !== '_' || ! removeInternal) {
+      if (a[0] !== '_' || !removeInternal) {
         result.push(element[a]);
-      } 
+      }
     }
   }
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document from two lists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief assemble a document from two lists
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_ZIP (keys, values) {
   'use strict';
 
   if (TYPEWEIGHT(keys) !== TYPEWEIGHT_ARRAY ||
-      TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY ||
-      keys.length !== values.length) {
-    WARN("ZIP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY ||
+    keys.length !== values.length) {
+    WARN('ZIP', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
@@ -4437,23 +4472,23 @@ function AQL_ZIP (keys, values) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unset specific attributes from a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief unset specific attributes from a document
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNSET (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_OBJECT) {
-    WARN("UNSET", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('UNSET', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  var result = { }, keys = EXTRACT_KEYS(arguments, 1, "UNSET");
+  var result = { }, keys = EXTRACT_KEYS(arguments, 1, 'UNSET');
   // copy over all that is left
 
   for (var k in value) {
-    if (value.hasOwnProperty(k) && ! keys.hasOwnProperty(k)) {
+    if (value.hasOwnProperty(k) && !keys.hasOwnProperty(k)) {
       result[k] = CLONE(value[k]);
     }
   }
@@ -4461,52 +4496,51 @@ function AQL_UNSET (value) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unset specific attributes from a document, recursively
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief unset specific attributes from a document, recursively
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNSET_RECURSIVE (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_OBJECT) {
-    WARN("UNSET", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('UNSET', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  var keys = EXTRACT_KEYS(arguments, 1, "UNSET");
+  var keys = EXTRACT_KEYS(arguments, 1, 'UNSET');
   // copy over all that is left
 
   var func = function (value) {
     var result = { };
     for (var k in value) {
-      if (value.hasOwnProperty(k) && ! keys.hasOwnProperty(k)) {
+      if (value.hasOwnProperty(k) && !keys.hasOwnProperty(k)) {
         if (TYPEWEIGHT(value[k]) === TYPEWEIGHT_OBJECT) {
           result[k] = func(value[k], keys);
-        }
-        else {
+        } else {
           result[k] = CLONE(value[k]);
         }
       }
     }
     return result;
   };
- 
+
   return func(value);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief keep specific attributes from a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief keep specific attributes from a document
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_KEEP (value) {
   'use strict';
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_OBJECT) {
-    WARN("KEEP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('KEEP', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
-  var result = { }, keys = EXTRACT_KEYS(arguments, 1, "KEEP");
+  var result = { }, keys = EXTRACT_KEYS(arguments, 1, 'KEEP');
 
   // copy over all that is left
   for (var k in value) {
@@ -4518,9 +4552,9 @@ function AQL_KEEP (value) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge all arguments
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief merge all arguments
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MERGE () {
   'use strict';
@@ -4540,13 +4574,13 @@ function AQL_MERGE () {
   if (arguments.length === 1) {
     element = arguments[0];
     if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
-      WARN("MERGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      WARN('MERGE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return null;
     }
 
     for (i = 0; i < element.length; ++i) {
       if (TYPEWEIGHT(element[i]) !== TYPEWEIGHT_OBJECT) {
-        WARN("MERGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('MERGE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
@@ -4562,14 +4596,13 @@ function AQL_MERGE () {
       element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
-        WARN("MERGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('MERGE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
       if (j === 0) {
         result = element;
-      }
-      else {
+      } else {
         add(element);
       }
       ++j;
@@ -4579,9 +4612,9 @@ function AQL_MERGE () {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge all arguments recursively
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief merge all arguments recursively
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MERGE_RECURSIVE () {
   'use strict';
@@ -4591,11 +4624,10 @@ function AQL_MERGE_RECURSIVE () {
   recurse = function (old, element) {
     var r = CLONE(old);
 
-    Object.keys(element).forEach(function(k) {
+    Object.keys(element).forEach(function (k) {
       if (r.hasOwnProperty(k) && TYPEWEIGHT(element[k]) === TYPEWEIGHT_OBJECT) {
         r[k] = recurse(r[k], element[k]);
-      }
-      else {
+      } else {
         r[k] = element[k];
       }
     });
@@ -4608,7 +4640,7 @@ function AQL_MERGE_RECURSIVE () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
-        WARN("MERGE_RECURSIVE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        WARN('MERGE_RECURSIVE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
 
@@ -4619,18 +4651,18 @@ function AQL_MERGE_RECURSIVE () {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief translate a value, using a lookup document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief translate a value, using a lookup document
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TRANSLATE (value, lookup, defaultValue) {
   'use strict';
 
   if (TYPEWEIGHT(lookup) !== TYPEWEIGHT_OBJECT) {
-    WARN("TRANSLATE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('TRANSLATE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
-  
+
   if (defaultValue === undefined) {
     defaultValue = value;
   }
@@ -4643,11 +4675,11 @@ function AQL_TRANSLATE (value, lookup, defaultValue) {
   return defaultValue;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare an object against a list of examples and return whether the
-/// object matches any of the examples. returns the example index or a bool,
-/// depending on the value of the control flag (3rd) parameter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compare an object against a list of examples and return whether the
+// / object matches any of the examples. returns the example index or a bool,
+// / depending on the value of the control flag (3rd) parameter
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_MATCHES (element, examples, returnIndex) {
   'use strict';
@@ -4656,11 +4688,11 @@ function AQL_MATCHES (element, examples, returnIndex) {
     return false;
   }
 
-  if (! Array.isArray(examples)) {
+  if (!Array.isArray(examples)) {
     examples = [ examples ];
   }
   if (examples.length === 0) {
-    WARN("MATCHES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('MATCHES', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return false;
   }
 
@@ -4670,7 +4702,7 @@ function AQL_MATCHES (element, examples, returnIndex) {
     var example = examples[i];
     var result = true;
     if (TYPEWEIGHT(example) !== TYPEWEIGHT_OBJECT) {
-      WARN("MATCHES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      WARN('MATCHES', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       continue;
     }
 
@@ -4678,7 +4710,7 @@ function AQL_MATCHES (element, examples, returnIndex) {
     for (j = 0; j < keys.length; ++j) {
       key = keys[j];
 
-      if (! RELATIONAL_EQUAL(element[key], example[key])) {
+      if (!RELATIONAL_EQUAL(element[key], example[key])) {
         result = false;
         break;
       }
@@ -4693,12 +4725,12 @@ function AQL_MATCHES (element, examples, returnIndex) {
   return (returnIndex ? -1 : false);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief passthru the argument
-///
-/// this function is marked as non-deterministic so its argument withstands
-/// query optimisation. this function can be used for testing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief passthru the argument
+// /
+// / this function is marked as non-deterministic so its argument withstands
+// / query optimisation. this function can be used for testing
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_PASSTHRU (value) {
   'use strict';
@@ -4706,53 +4738,51 @@ function AQL_PASSTHRU (value) {
   return value;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test helper function
-/// this is no actual function the end user should call
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test helper function
+// / this is no actual function the end user should call
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_TEST_INTERNAL (test, what) {
   'use strict';
   if (test === 'MODIFY_ARRAY') {
-    what[0] = 1; 
-    what[1] = 42; 
-    what[2] = [ 1, 2 ]; 
-    what[3].push([ 1, 2 ]); 
+    what[0] = 1;
+    what[1] = 42;
+    what[2] = [ 1, 2 ];
+    what[3].push([ 1, 2 ]);
     what[4] = { a: 9, b: 2 };
-    what.push("foo");
-    what.push("bar");
+    what.push('foo');
+    what.push('bar');
     what.pop();
-  }
-  else if (test === 'MODIFY_OBJECT') {
-    what.a = 1; 
-    what.b = 3; 
-    what.c = [ 1, 2 ]; 
-    what.d.push([ 1, 2 ]); 
+  } else if (test === 'MODIFY_OBJECT') {
+    what.a = 1;
+    what.b = 3;
+    what.c = [ 1, 2 ];
+    what.d.push([ 1, 2 ]);
     what.e.f = { a: 1, b: 2 };
-    delete what.f; 
-    what.g = "foo";
-  }
-  else if (test === 'DEADLOCK') {
+    delete what.f;
+    what.g = 'foo';
+  } else if (test === 'DEADLOCK') {
     var err = new ArangoError();
     err.errorNum = INTERNAL.errors.ERROR_DEADLOCK.code;
     err.errorMessage = INTERNAL.errors.ERROR_DEADLOCK.message;
     throw err;
   }
-  return what; 
+  return what;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sleep
-///
-/// sleep for the specified duration
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sleep
+// /
+// / sleep for the specified duration
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_SLEEP (duration) {
   'use strict';
 
   duration = AQL_TO_NUMBER(duration);
   if (TYPEWEIGHT(duration) !== TYPEWEIGHT_NUMBER || duration < 0) {
-    WARN("SLEEP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN('SLEEP', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
@@ -4760,11 +4790,11 @@ function AQL_SLEEP (duration) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the current user
-/// note: this might be null if the query is not executed in a context that
-/// has a user
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the current user
+// / note: this might be null if the query is not executed in a context that
+// / has a user
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CURRENT_USER () {
   'use strict';
@@ -4780,10 +4810,10 @@ function AQL_CURRENT_USER () {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the current database name
-/// has a user
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the current database name
+// / has a user
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_CURRENT_DATABASE () {
   'use strict';
@@ -4791,27 +4821,26 @@ function AQL_CURRENT_DATABASE () {
   return INTERNAL.db._name();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief always fail
-///
-/// this function is non-deterministic so it is not executed at query
-/// optimisation time. this function can be used for testing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief always fail
+// /
+// / this function is non-deterministic so it is not executed at query
+// / optimisation time. this function can be used for testing
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FAIL (message) {
   'use strict';
 
   if (TYPEWEIGHT(message) === TYPEWEIGHT_STRING) {
-    THROW("FAIL", INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, message);
+    THROW('FAIL', INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, message);
   }
 
-  THROW("FAIL", INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, "");
+  THROW('FAIL', INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, '');
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function for date creation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief helper function for date creation
+// //////////////////////////////////////////////////////////////////////////////
 
 function MAKE_DATE (args, func) {
   'use strict';
@@ -4832,8 +4861,8 @@ function MAKE_DATE (args, func) {
       // argument is a string
 
       // append zulu time specifier if no other present
-      if (! args[0].match(/([zZ]|[+\-]\d+(:\d+)?)$/) ||
-          (args[0].match(/-\d+(:\d+)?$/) && ! args[0].match(/[tT ]/))) {
+      if (!args[0].match(/([zZ]|[+\-]\d+(:\d+)?)$/) ||
+        (args[0].match(/-\d+(:\d+)?$/) && !args[0].match(/[tT ]/))) {
         args[0] += 'Z';
       }
     }
@@ -4859,12 +4888,10 @@ function MAKE_DATE (args, func) {
 
     if (weight === TYPEWEIGHT_NULL) {
       args[i] = 0;
-    }
-    else {
+    } else {
       if (weight === TYPEWEIGHT_STRING) {
         args[i] = parseInt(args[i], 10);
-      }
-      else if (weight !== TYPEWEIGHT_NUMBER) {
+      } else if (weight !== TYPEWEIGHT_NUMBER) {
         WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
@@ -4892,11 +4919,11 @@ function MAKE_DATE (args, func) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the number of milliseconds since the Unix epoch
-///
-/// this function is evaluated on every call
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the number of milliseconds since the Unix epoch
+// /
+// / this function is evaluated on every call
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_NOW () {
   'use strict';
@@ -4904,266 +4931,251 @@ function AQL_DATE_NOW () {
   return Date.now();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the timestamp of the date passed (in milliseconds)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the timestamp of the date passed (in milliseconds)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_TIMESTAMP () {
   'use strict';
 
   try {
-    return MAKE_DATE(arguments, "DATE_TIMESTAMP").getTime();
-  }
-  catch (err) {
-    WARN("DATE_TIMESTAMP", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE(arguments, 'DATE_TIMESTAMP').getTime();
+  } catch (err) {
+    WARN('DATE_TIMESTAMP', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the ISO string representation of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the ISO string representation of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_ISO8601 () {
   'use strict';
 
   try {
-    var dt = MAKE_DATE(arguments, "DATE_ISO8601");
+    var dt = MAKE_DATE(arguments, 'DATE_ISO8601');
     if (dt === null) {
       return dt;
     }
     return dt.toISOString();
-  }
-  catch (err) {
-    WARN("DATE_ISO8601", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  } catch (err) {
+    WARN('DATE_ISO8601', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the weekday of the date passed (0 = Sunday, 1 = Monday etc.)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the weekday of the date passed (0 = Sunday, 1 = Monday etc.)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_DAYOFWEEK (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_DAYOFWEEK").getUTCDay();
-  }
-  catch (err) {
-    WARN("DATE_DAYOFWEEK", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_DAYOFWEEK').getUTCDay();
+  } catch (err) {
+    WARN('DATE_DAYOFWEEK', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the year of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the year of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_YEAR (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_YEAR").getUTCFullYear();
-  }
-  catch (err) {
-    WARN("DATE_YEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_YEAR').getUTCFullYear();
+  } catch (err) {
+    WARN('DATE_YEAR', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the month of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the month of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_MONTH (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_MONTH").getUTCMonth() + 1;
-  }
-  catch (err) {
-    WARN("DATE_MONTH", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_MONTH').getUTCMonth() + 1;
+  } catch (err) {
+    WARN('DATE_MONTH', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the day of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the day of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_DAY (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_DAY").getUTCDate();
-  }
-  catch (err) {
-    WARN("DATE_DAY", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_DAY').getUTCDate();
+  } catch (err) {
+    WARN('DATE_DAY', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the hours of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the hours of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_HOUR (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_HOUR").getUTCHours();
-  }
-  catch (err) {
-    WARN("DATE_HOUR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_HOUR').getUTCHours();
+  } catch (err) {
+    WARN('DATE_HOUR', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the minutes of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the minutes of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_MINUTE (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_MINUTE").getUTCMinutes();
-  }
-  catch (err) {
-    WARN("DATE_MINUTE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_MINUTE').getUTCMinutes();
+  } catch (err) {
+    WARN('DATE_MINUTE', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the seconds of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the seconds of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_SECOND (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_SECOND").getUTCSeconds();
-  }
-  catch (err) {
-    WARN("DATE_SECOND", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_SECOND').getUTCSeconds();
+  } catch (err) {
+    WARN('DATE_SECOND', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the milliseconds of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the milliseconds of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_MILLISECOND (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_MILLISECOND").getUTCMilliseconds();
-  }
-  catch (err) {
-    WARN("DATE_MILLISECOND", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_MILLISECOND').getUTCMilliseconds();
+  } catch (err) {
+    WARN('DATE_MILLISECOND', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the day of the year of the date passed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the day of the year of the date passed
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_DAYOFYEAR (value) {
   'use strict';
 
   try {
-    var date = MAKE_DATE([ value ], "DATE_DAYOFYEAR");
+    var date = MAKE_DATE([ value ], 'DATE_DAYOFYEAR');
     var m = date.getUTCMonth();
     var d = date.getUTCDate();
     var ly = AQL_DATE_LEAPYEAR(date.getTime());
     // we could duplicate the leap year code here to avoid an extra MAKE_DATE() call...
-    //var yr = date.getUTCFullYear();
-    //var ly = !((yr % 4) || (!(yr % 100) && (yr % 400)));
+    // var yr = date.getUTCFullYear()
+    // var ly = !((yr % 4) || (!(yr % 100) && (yr % 400)))
     return (ly ? (dayOfLeapYearOffsets[m] + d) : (dayOfYearOffsets[m] + d));
-  }
-  catch (err) {
-    WARN("DATE_DAYOFYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  } catch (err) {
+    WARN('DATE_DAYOFYEAR', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the ISO week date of the date passed (1..53)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the ISO week date of the date passed (1..53)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_ISOWEEK (value) {
   'use strict';
 
   try {
-    var date = MAKE_DATE([ value ], "DATE_ISOWEEK");
+    var date = MAKE_DATE([ value ], 'DATE_ISOWEEK');
     date.setUTCHours(0, 0, 0, 0);
     date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
     return Math.ceil((((date - Date.UTC(date.getUTCFullYear(), 0, 1)) / 864e5) + 1) / 7);
-  }
-  catch (err) {
-    WARN("DATE_ISOWEEK", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  } catch (err) {
+    WARN('DATE_ISOWEEK', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return if year of the date passed is a leap year
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return if year of the date passed is a leap year
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_LEAPYEAR (value) {
   'use strict';
 
   try {
-    var yr = MAKE_DATE([ value ], "DATE_LEAPYEAR").getUTCFullYear();
+    var yr = MAKE_DATE([ value ], 'DATE_LEAPYEAR').getUTCFullYear();
     return ((yr % 4 === 0) && (yr % 100 !== 0)) || (yr % 400 === 0);
-  }
-  catch (err) {
-    WARN("DATE_LEAPYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  } catch (err) {
+    WARN('DATE_LEAPYEAR', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the ISO week date of the date passed (1..53)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the ISO week date of the date passed (1..53)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_QUARTER (value) {
   'use strict';
 
   try {
-    return MAKE_DATE([ value ], "DATE_QUARTER").getUTCMonth() / 3 + 1 | 0;
-  }
-  catch (err) {
-    WARN("DATE_QUARTER", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return MAKE_DATE([ value ], 'DATE_QUARTER').getUTCMonth() / 3 + 1 | 0;
+  } catch (err) {
+    WARN('DATE_QUARTER', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return number of days in month of date passed (leap year aware)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return number of days in month of date passed (leap year aware)
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_DAYS_IN_MONTH (value) {
   'use strict';
 
   try {
-    var date = MAKE_DATE([ value ], "DATE_DAYS_IN_MONTH");
+    var date = MAKE_DATE([ value ], 'DATE_DAYS_IN_MONTH');
     var month = date.getUTCMonth() + 1;
     var ly = AQL_DATE_LEAPYEAR(date.getTime());
     return daysInMonth[month === 2 && ly ? 0 : month];
-  }
-  catch (err) {
-    WARN("DATE_DAYS_IN_MONTH", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  } catch (err) {
+    WARN('DATE_DAYS_IN_MONTH', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal function to add to or subtract from given date
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief internal function to add to or subtract from given date
+// //////////////////////////////////////////////////////////////////////////////
 
 function DATE_CALC (value, amount, unit, func) {
   'use strict';
@@ -5179,9 +5191,9 @@ function DATE_CALC (value, amount, unit, func) {
       return null;
     }
 
-    var sign = (func === "DATE_ADD" || func === undefined) ? 1 : -1;
+    var sign = (func === 'DATE_ADD' || func === undefined) ? 1 : -1;
     var m;
-    
+
     // if amount is not a number, then it must be an ISO duration string
     if (TYPEWEIGHT(unit) === TYPEWEIGHT_NULL) {
       if (TYPEWEIGHT(amount) !== TYPEWEIGHT_STRING) {
@@ -5217,7 +5229,7 @@ function DATE_CALC (value, amount, unit, func) {
           }
         }
       }
-      return date.toISOString(); 
+      return date.toISOString();
     } else {
       if (TYPEWEIGHT(unit) !== TYPEWEIGHT_STRING) {
         WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -5228,10 +5240,10 @@ function DATE_CALC (value, amount, unit, func) {
         return null;
       }
       m = unitMapping[unit.toLowerCase()]; // we're sure unit is a string here
-      if (m === "undefined") {
+      if (m === 'undefined') {
         WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
         return null;
-      } else if (m[0] === "w") {
+      } else if (m[0] === 'w') {
         m = unitMapping.d;
         date[m[2]](date[m[1]]() + amount * 7 * sign);
       } else {
@@ -5239,40 +5251,39 @@ function DATE_CALC (value, amount, unit, func) {
       }
       return date.toISOString();
     }
-  }
-  catch (err) {
+  } catch (err) {
     WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return date passed with added amount of time units
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return date passed with added amount of time units
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_ADD (value, amount, unit) {
   'use strict';
-  return DATE_CALC(value, amount, unit, "DATE_ADD");
+  return DATE_CALC(value, amount, unit, 'DATE_ADD');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return date passed with subtracted amount of time units
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return date passed with subtracted amount of time units
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_SUBTRACT (value, amount, unit) {
   'use strict';
-  return DATE_CALC(value, amount, unit, "DATE_SUBTRACT");
+  return DATE_CALC(value, amount, unit, 'DATE_SUBTRACT');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return date difference in given unit, optionally with fractions
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return date difference in given unit, optionally with fractions
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_DIFF (value1, value2, unit, asFloat) {
   'use strict';
 
-  var date1 = MAKE_DATE([ value1 ], "DATE_DIFF");
-  var date2 = MAKE_DATE([ value2 ], "DATE_DIFF");
+  var date1 = MAKE_DATE([ value1 ], 'DATE_DIFF');
+  var date2 = MAKE_DATE([ value2 ], 'DATE_DIFF');
   // Don't return any number if either or both dates are NaN.
   if (date1 === null || date2 === null) {
     // warning issued by MAKE_DATE() already (duplicate warnings in other date function calls???)
@@ -5287,7 +5298,7 @@ function AQL_DATE_DIFF (value1, value2, unit, asFloat) {
   try {
     var divisor = msPerUnit[unit.toLowerCase()];
     if (divisor === undefined) {
-      WARN("DATE_DIFF", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      WARN('DATE_DIFF', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
       return null;
     }
 
@@ -5321,24 +5332,23 @@ function AQL_DATE_DIFF (value1, value2, unit, asFloat) {
       // round towards zero, regardless of sign
       return divisor ? ~~(diff / 12) : ~~diff;
     }
-  }
-  catch (err) {
-    WARN("DATE_DIFF", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  } catch (err) {
+    WARN('DATE_DIFF', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two partial dates, using a substring of the dates
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief compare two partial dates, using a substring of the dates
+// //////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
   try {
     // TODO: Should we handle leap years, so leapling birthdays occur every year?
     // It may result in unexpected behavior if it's used for something else but
     // birthday checking however. Probably best to leave compensation up to user query.
-    var date1 = MAKE_DATE([ value1 ], "DATE_COMPARE");
-    var date2 = MAKE_DATE([ value2 ], "DATE_COMPARE");
+    var date1 = MAKE_DATE([ value1 ], 'DATE_COMPARE');
+    var date2 = MAKE_DATE([ value2 ], 'DATE_COMPARE');
     if (TYPEWEIGHT(date1) === TYPEWEIGHT_NULL || TYPEWEIGHT(date2) === TYPEWEIGHT_NULL) {
       return null;
     }
@@ -5348,7 +5358,7 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
     var start = unitStrRanges[unitRangeStart][0];
     var end = unitStrRanges[unitRangeEnd][1];
     if (start === undefined || end === undefined) {
-      WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      WARN('DATE_COMPARE', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
       return null;
     }
     var yr1 = date1.getUTCFullYear();
@@ -5363,2743 +5373,86 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
     var substr2 = date2.toISOString().slice(start, end);
     // if unitRangeEnd > unitRangeStart, substrings will be empty
     if (!substr1 || !substr2) {
-      WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      WARN('DATE_COMPARE', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
       return null;
     }
     return substr1 === substr2;
   } catch (err) {
-    WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN('DATE_COMPARE', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief format a date (numerical values only)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief format a date (numerical values only)
+// //////////////////////////////////////////////////////////////////////////////
 
 // special escape sequence first, rest ordered by length
 var dateMapRegExp = [
-  "%&", "%yyyyyy", "%yyyy", "%mmmm", "%wwww", "%mmm", "%www", "%fff", "%xxx",
-  "%yy", "%mm", "%dd", "%hh", "%ii", "%ss", "%kk", "%t", "%z", "%w", "%y", "%m",
-  "%d", "%h", "%i", "%s", "%f", "%x", "%k", "%l", "%q", "%a", "%%", "%"
-].join("|");
+  '%&', '%yyyyyy', '%yyyy', '%mmmm', '%wwww', '%mmm', '%www', '%fff', '%xxx',
+  '%yy', '%mm', '%dd', '%hh', '%ii', '%ss', '%kk', '%t', '%z', '%w', '%y', '%m',
+  '%d', '%h', '%i', '%s', '%f', '%x', '%k', '%l', '%q', '%a', '%%', '%'
+].join('|');
 
 function AQL_DATE_FORMAT (value, format) {
   'use strict';
   try {
-    var date = MAKE_DATE([ value ], "DATE_FORMAT");
+    var date = MAKE_DATE([ value ], 'DATE_FORMAT');
     var dateStr = date.toISOString();
     var yr = date.getUTCFullYear();
     var offset = yr < 0 || yr > 9999 ? 3 : 0;
     var dateMap = {
-      "%t": function() { return date.getTime(); },
-      "%z": function() { return dateStr; },
-      "%w": function() { return AQL_DATE_DAYOFWEEK(dateStr); },
-      "%y": function() { return date.getUTCFullYear(); },
+      '%t': function () { return date.getTime(); },
+      '%z': function () { return dateStr; },
+      '%w': function () { return AQL_DATE_DAYOFWEEK(dateStr); },
+      '%y': function () { return date.getUTCFullYear(); },
       // there's no really sensible way to handle negative years, but better not drop the sign
-      "%yy": function() { return (yr < 0 ? "-" : "") + dateStr.slice(2 + offset, 4 + offset); },
+      '%yy': function () { return (yr < 0 ? '-' : '') + dateStr.slice(2 + offset, 4 + offset); },
       // preserves full negative years (-000753 is not reduced to -753 or -0753)
-      "%yyyy": function() { return dateStr.slice(0, 4 + offset); },
+      '%yyyy': function () { return dateStr.slice(0, 4 + offset); },
       // zero-pad 4 digit years to length of 6 and add "+" prefix, keep negative as-is
-      "%yyyyyy": function() { 
+      '%yyyyyy': function () {
         return (yr >= 0 && yr <= 9999)
-          ? "+" + zeropad(dateStr.slice(0, 4 + offset), 6)
+          ? '+' + zeropad(dateStr.slice(0, 4 + offset), 6)
           : dateStr.slice(0, 7);
       },
-      "%m": function() { return date.getUTCMonth() + 1; },
-      "%mm": function() { return dateStr.slice(5 + offset, 7 + offset); },
-      "%d": function() { return date.getUTCDate(); },
-      "%dd": function() { return dateStr.slice(8 + offset, 10 + offset); },
-      "%h": function() { return date.getUTCHours(); },
-      "%hh": function() { return dateStr.slice(11 + offset, 13 + offset); },
-      "%i": function() { return date.getUTCMinutes(); },
-      "%ii": function() { return dateStr.slice(14 + offset, 16 + offset); },
-      "%s": function() { return date.getUTCSeconds(); },
-      "%ss": function() { return dateStr.slice(17 + offset, 19 + offset); },
-      "%f": function() { return date.getUTCMilliseconds(); },
-      "%fff": function() { return dateStr.slice(20 + offset, 23 + offset); },
-      "%x": function() { return AQL_DATE_DAYOFYEAR(dateStr); },
-      "%xxx": function() { return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3); },
-      "%k": function() { return AQL_DATE_ISOWEEK(dateStr); },
-      "%kk": function() { return zeropad(AQL_DATE_ISOWEEK(dateStr), 2); },
-      "%l": function() { return +AQL_DATE_LEAPYEAR(dateStr); },
-      "%q": function() { return AQL_DATE_QUARTER(dateStr); },
-      "%a": function() { return AQL_DATE_DAYS_IN_MONTH(dateStr); },
-      "%mmm": function() { return monthNames[date.getUTCMonth()].substring(0, 3); },
-      "%mmmm": function() { return monthNames[date.getUTCMonth()]; },
-      "%www": function() { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3); },
-      "%wwww": function() { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)]; },
-      "%&": function() { return ""; }, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
-      "%%": function() { return "%"; }, // Allow for literal "%y" using "%%y"
-      "%": function() { return ""; }
+      '%m': function () { return date.getUTCMonth() + 1; },
+      '%mm': function () { return dateStr.slice(5 + offset, 7 + offset); },
+      '%d': function () { return date.getUTCDate(); },
+      '%dd': function () { return dateStr.slice(8 + offset, 10 + offset); },
+      '%h': function () { return date.getUTCHours(); },
+      '%hh': function () { return dateStr.slice(11 + offset, 13 + offset); },
+      '%i': function () { return date.getUTCMinutes(); },
+      '%ii': function () { return dateStr.slice(14 + offset, 16 + offset); },
+      '%s': function () { return date.getUTCSeconds(); },
+      '%ss': function () { return dateStr.slice(17 + offset, 19 + offset); },
+      '%f': function () { return date.getUTCMilliseconds(); },
+      '%fff': function () { return dateStr.slice(20 + offset, 23 + offset); },
+      '%x': function () { return AQL_DATE_DAYOFYEAR(dateStr); },
+      '%xxx': function () { return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3); },
+      '%k': function () { return AQL_DATE_ISOWEEK(dateStr); },
+      '%kk': function () { return zeropad(AQL_DATE_ISOWEEK(dateStr), 2); },
+      '%l': function () { return +AQL_DATE_LEAPYEAR(dateStr); },
+      '%q': function () { return AQL_DATE_QUARTER(dateStr); },
+      '%a': function () { return AQL_DATE_DAYS_IN_MONTH(dateStr); },
+      '%mmm': function () { return monthNames[date.getUTCMonth()].substring(0, 3); },
+      '%mmmm': function () { return monthNames[date.getUTCMonth()]; },
+      '%www': function () { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3); },
+      '%wwww': function () { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)]; },
+      '%&': function () { return ''; }, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
+      '%%': function () { return '%'; }, // Allow for literal "%y" using "%%y"
+      '%': function () { return ''; }
     };
-    var exp = new RegExp(dateMapRegExp, "gi"); 
-    format = format.replace(exp, function(match){
+    var exp = new RegExp(dateMapRegExp, 'gi');
+    format = format.replace(exp, function (match) {
       return dateMap[match.toLowerCase()]();
     });
     return format;
   } catch (err) {
-    WARN("DATE_FORMAT", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN('DATE_FORMAT', INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find all paths through a graph, INTERNAL part called recursively
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_SUB_EDGES (edgeCollections, direction, vertexId) {
-  if (! Array.isArray(edgeCollections)) {
-    edgeCollections = [edgeCollections];
-  }
-
-  var result = [];
-  edgeCollections.forEach(function (edgeCollection) {
-    if (direction === 1) {
-      result = result.concat(edgeCollection.outEdges(vertexId));
-    }
-    else if (direction === 2) {
-      result = result.concat(edgeCollection.inEdges(vertexId));
-    }
-    else if (direction === 3) {
-      result = result.concat(edgeCollection.edges(vertexId));
-    }
-  });
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find all paths through a graph, INTERNAL part called recursively
-////////////////////////////////////////////////////////////////////////////////
-
-function SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) {
-  'use strict';
-
-  var result = [ ];
-
-  if (level >= searchAttributes.minLength) {
-    result.push({
-      vertices : vertices,
-      edges : edges,
-      source : vertices[0],
-      destination : vertices[vertices.length - 1]
-    });
-  }
-
-  if (level + 1 > searchAttributes.maxLength) {
-    return result;
-  }
-
-  var subEdges = GET_SUB_EDGES(
-    searchAttributes.edgeCollection, searchAttributes.direction, vertexId
-  );
-
-  var i, j, k;
-  for (i = 0; i < subEdges.length; ++i) {
-    var subEdge = subEdges[i];
-    var targets = [ ];
-
-    if ((searchAttributes.direction === 1 || searchAttributes.direction === 3) &&
-        (subEdge._to !== vertexId)) {
-      targets.push(subEdge._to);
-    }
-    if ((searchAttributes.direction === 2 || searchAttributes.direction === 3) &&
-        (subEdge._from !== vertexId)) {
-      targets.push(subEdge._from);
-    }
-
-    for (j = 0; j < targets.length; ++j) {
-      var targetId = targets[j];
-
-      if (! searchAttributes.followCycles) {
-        if (visited[targetId]) {
-          continue;
-        }
-        visited[targetId] = true;
-      }
-
-      var clonedEdges = CLONE(edges);
-      var clonedVertices = CLONE(vertices);
-      try {
-        clonedVertices.push(INTERNAL.db._document(targetId));
-        clonedEdges.push(subEdge);
-      }
-      catch (e) {
-        // avoid "document not found error" in case referenced vertices were deleted
-      }
-
-      var connected = SUBNODES(searchAttributes,
-                                     targetId,
-                                     CLONE(visited),
-                                     clonedEdges,
-                                     clonedVertices,
-                                     level + 1);
-      for (k = 0; k < connected.length; ++k) {
-        result.push(connected[k]);
-      }
-
-      if (! searchAttributes.followCycles) {
-        delete visited[targetId];
-      }
-    }
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find all paths through a graph
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_PATHS (vertices, edgeCollection, direction, options) {
-  'use strict';
-
-  direction      = direction || "outbound";
-  followCycles   = followCycles || false;
-
-  if (typeof options === "boolean") {
-    options = { followCycles : options };
-  }
-  else if (typeof options !== "object" || Array.isArray(options)) {
-    options = { };
-  }
-
-  var followCycles   = options.followCycles || false;
-  var minLength      = options.minLength || 0;
-  var maxLength      = options.maxLength || 10;
-
-  if (TYPEWEIGHT(vertices) !== TYPEWEIGHT_ARRAY) {
-    WARN("PATHS", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
-    return null;
-  }
-
-  // validate arguments
-  var searchDirection;
-  if (direction === "outbound") {
-    searchDirection = 1;
-  }
-  else if (direction === "inbound") {
-    searchDirection = 2;
-  }
-  else if (direction === "any") {
-    searchDirection = 3;
-  }
-  else {
-    WARN("PATHS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return null;
-  }
-
-  if (minLength < 0 || maxLength < 0 || minLength > maxLength) {
-    WARN("PATHS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return null;
-  }
-
-  var searchAttributes = {
-    edgeCollection : COLLECTION(edgeCollection, "PATHS"),
-    minLength : minLength,
-    maxLength : maxLength,
-    direction : searchDirection,
-    followCycles : followCycles
-  };
-
-  var result = [ ];
-  var n = vertices.length, i, j;
-  for (i = 0; i < n; ++i) {
-    var vertex = vertices[i];
-    var visited = { };
-
-    visited[vertex._id] = true;
-    var connected = SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
-    for (j = 0; j < connected.length; ++j) {
-      result.push(connected[j]);
-    }
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_paths
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_PATHS (graphName, options) {
-  'use strict';
-
-  var searchDirection;
-  if (! options) {
-    options = {};
-  }
-  var direction      = options.direction || "outbound";
-  var followCycles   = options.followCycles || false;
-  var minLength      = options.minLength || 0;
-  var maxLength      = options.maxLength || 10;
-
-  // check graph exists and load edgeDefintions
-  var graph = DOCUMENT_HANDLE("_graphs/" + graphName);
-  if (! graph) {
-    THROW("GRAPH_PATHS", INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_PATHS");
-  }
-
-  var startCollections = [], edgeCollections = [];
-
-  // validate direction and create edgeCollection array.
-  graph.edgeDefinitions.forEach(function (def) {
-    if (direction === "outbound") {
-      searchDirection = 1;
-      def.from.forEach(function (s) {
-        if (startCollections.indexOf(s) === -1) {
-          startCollections.push(s);
-        }
-      });
-    }
-    else if (direction === "inbound") {
-      searchDirection = 2;
-      def.to.forEach(function (s) {
-        if (startCollections.indexOf(s) === -1) {
-          startCollections.push(s);
-        }
-      });
-    }
-    else if (direction === "any") {
-      def.from.forEach(function (s) {
-        searchDirection = 3;
-        if (startCollections.indexOf(s) === -1) {
-          startCollections.push(s);
-        }
-      });
-      def.to.forEach(function (s) {
-        if (startCollections.indexOf(s) === -1) {
-          startCollections.push(s);
-        }
-      });
-    }
-    else {
-      WARN("GRAPH_PATHS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      return null;
-    }
-    if (edgeCollections.indexOf(def.collection) === -1) {
-      edgeCollections.push(COLLECTION(def.collection, "GRAPH_PATHS"));
-    }
-
-  });
-
-  if (minLength < 0 || maxLength < 0 || minLength > maxLength) {
-    WARN("GRAPH_PATHS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return null;
-  }
-
-  var result = [ ];
-  startCollections.forEach(function (startCollection) {
-
-    var searchAttributes = {
-      edgeCollection : edgeCollections,
-      minLength : minLength,
-      maxLength : maxLength,
-      direction : searchDirection,
-      followCycles : followCycles
-    };
-
-    var vertices = GET_DOCUMENTS(startCollection, "GRAPH_PATHS");
-    var n = vertices.length, i, j;
-    for (i = 0; i < n; ++i) {
-      var vertex = vertices[i];
-      var visited = { };
-
-      visited[vertex._id] = true;
-      var connected = SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
-      for (j = 0; j < connected.length; ++j) {
-        result.push(connected[j]);
-      }
-    }
-
-  });
-
-  return result;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_VISITOR (config, result, vertex, path) {
-  'use strict';
-
-  if (config.trackPaths) {
-    result.push(CLONE({ vertex: vertex, path: path }));
-  }
-  else {
-    result.push(CLONE({ vertex: vertex }));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function SHORTEST_PATH_VISITOR (config, result, vertex, path) {
-  'use strict';
-
-  if (this.includeData) {
-    result.push({
-      vertices: CLONE(path.vertices),
-      edges: CLONE(path.edges),
-      distance: path.edges.length
-    });
-  } else {
-    result.push({
-      vertices: underscore.pluck(path.vertices, "_id"),
-      edges: underscore.pluck(path.edges, "_id"),
-      distance: path.edges.length
-    });
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for neighbors
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_NEIGHBOR_VISITOR (config, result, vertex, path) {
-  'use strict';
-  // The this has to be bound explicitly!
-  // It contains additional options.
-  if (path.edges.length >= this.minDepth) {
-    result.push(CLONE(vertex));
-  }
-
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for edges
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_EDGE_VISITOR (config, result, vertex, path) {
-  'use strict';
-  // The this has to be bound explicitly!
-  // It contains additional options.
-  if (this.hasOwnProperty("minDepth") && path.edges.length < this.minDepth) {
-    return;
-  }
-  if (this.hasOwnProperty("neighborExamples") && !AQL_MATCHES(vertex, this.neighborExamples, false)) {
-    return;
-  }
-  result.push(CLONE(path.edges[path.edges.length - 1]));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for tree traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_TREE_VISITOR (config, result, vertex, path) {
-  'use strict';
-
-  if (result.length === 0) {
-    result.push({ });
-  }
-
-  var current = result[0], connector = config.connect, i;
-
-  for (i = 0; i < path.vertices.length; ++i) {
-    var v = path.vertices[i];
-    if (typeof current[connector] === "undefined") {
-      current[connector] = [ ];
-    }
-    var found = false, j;
-    for (j = 0; j < current[connector].length; ++j) {
-      if (current[connector][j]._id === v._id) {
-        current = current[connector][j];
-        found = true;
-        break;
-      }
-    }
-    if (! found) {
-      current[connector].push(CLONE(v));
-      current = current[connector][current[connector].length - 1];
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief expander callback function for traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_EDGE_EXAMPLE_FILTER (config, vertex, edge, path) {
-  'use strict';
-  if (config.edgeCollectionRestriction) {
-    if (typeof config.edgeCollectionRestriction === "string" ) {
-      config.edgeCollectionRestriction = [config.edgeCollectionRestriction];
-    }
-    if (config.edgeCollectionRestriction.indexOf(edge._id.split("/")[0]) === -1) {
-      return false;
-    }
-  }
-  if (config.expandEdgeExamples) {
-    var e = AQL_MATCHES(edge, config.expandEdgeExamples);
-    return AQL_MATCHES(edge, config.expandEdgeExamples);
-  }
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief vertex filter callback function for traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
-  'use strict';
-  if (config.filterVertexExamples && ! AQL_MATCHES(vertex, config.filterVertexExamples)) {
-    if (config.filterVertexCollections
-      && config.vertexFilterMethod.indexOf("exclude") === -1
-      && config.filterVertexCollections.indexOf(vertex._id.split("/")[0]) === -1
-    ) {
-      if (config.vertexFilterMethod.indexOf("prune") === -1) {
-        return ["exclude"];
-      }
-      return ["prune", "exclude"];
-    }
-    return config.vertexFilterMethod;
-  }
-  if (config.filterVertexCollections
-    && config.filterVertexCollections.indexOf(vertex._id.split("/")[0]) === -1
-  ) {
-    return ["exclude"];
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check typeweights of params.followEdges/params.filterVertices
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples, func) {
-  'use strict';
-
-  if (TYPEWEIGHT(examples) === TYPEWEIGHT_STRING) {
-    // a callback function was supplied. this is considered valid
-    return true;
-  }
-
-  if (TYPEWEIGHT(examples) !== TYPEWEIGHT_ARRAY) {
-    WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return false;
-  }
-  if (examples.length === 0) {
-    WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return false;
-  }
-
-  var i;
-  for (i = 0; i < examples.length; ++i) {
-    if (TYPEWEIGHT(examples[i]) !== TYPEWEIGHT_OBJECT) {
-      WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      return false;
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tranform key to id
-////////////////////////////////////////////////////////////////////////////////
-
-function TO_ID (vertex, collection) {
-  'use strict';
-
-  if (typeof vertex === 'object' && vertex !== null && vertex.hasOwnProperty('_id')) {
-    return vertex._id;
-  }
-
-  if (typeof vertex === 'string' && vertex.indexOf('/') === -1 && collection) {
-    return collection + '/' + vertex;
-  }
-
-  return vertex;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Create basic traversal config
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_CONFIG (func, datasource, startVertex, endVertex, direction, params) {
-  if (params === undefined) {
-    params = { };
-  }
-
-  // check followEdges property
-  if (params.followEdges) {
-    if (! TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.followEdges, func)) {
-      return null;
-    }
-  }
-  // check filterVertices property
-  if (params.filterVertices) {
-    if (! TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.filterVertices, func)) {
-      return null;
-    }
-  }
-
-  if (typeof params.visitor !== "function") {
-    WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return null;
-  }
-
-  if (params.maxDepth === undefined) {
-    // we need to have at least SOME limit to prevent endless iteration
-    params.maxDepth = 256;
-  }
-
-  var config = {
-    distance: params.distance,
-    connect: params.connect,
-    trackPaths: params.paths || false,
-    visitor: params.visitor,
-    visitorReturnsResults: params.visitorReturnsResults || false,
-    maxDepth: params.maxDepth,
-    minDepth: params.minDepth,
-    maxIterations: params.maxIterations,
-    uniqueness: params.uniqueness,
-    strategy: params.strategy,
-    order: params.order,
-    itemOrder: params.itemOrder,
-    weight : params.weight,
-    defaultWeight : params.defaultWeight,
-    prefill : params.prefill,
-    data: params.data,
-    datasource: datasource,
-    expander: direction,
-    direction: direction,
-    startVertex: startVertex,
-    endVertex: endVertex
-  };
-
-  if (typeof params.filter === "function") {
-    config.filter = params.filter;
-  } 
-
-  if (params.followEdges) {
-    if (typeof params.followEdges === 'string') {
-      config.expandFilter = GET_EXPANDFILTER(params.followEdges, params);
-    }
-    else {
-      config.expandFilter = TRAVERSAL_EDGE_EXAMPLE_FILTER;
-      config.expandEdgeExamples = params.followEdges;
-    }
-  }
-  if (params.edgeCollectionRestriction) {
-    config.expandFilter = TRAVERSAL_EDGE_EXAMPLE_FILTER;
-    config.edgeCollectionRestriction = params.edgeCollectionRestriction;
-  }
-
-  if (params.filterVertices) {
-    if (typeof params.filterVertices === 'string') {
-      config.filter = GET_FILTER(params.filterVertices, params);
-    }
-    else {
-      config.filter = TRAVERSAL_VERTEX_FILTER;
-      config.filterVertexExamples = params.filterVertices;
-      config.vertexFilterMethod = params.vertexFilterMethod || ["prune", "exclude"];
-    }
-  }
-
-  if (params.filterVertexCollections) {
-    config.filter = config.filter || TRAVERSAL_VERTEX_FILTER;
-    config.vertexFilterMethod = config.vertexFilterMethod || ["prune", "exclude"];
-    config.filterVertexCollections = params.filterVertexCollections;
-  }
-  if (params._sort) {
-    config.sort = function (l, r) { return l._key < r._key ? -1 : 1; };
-  }
-
-  // start vertex
-  var v = null;
-  try {
-    v = INTERNAL.db._document(startVertex);
-  }
-  catch (err1) {
-  }
-
-  // end vertex
-  var e;
-  if (endVertex !== undefined) {
-    if (typeof endVertex === "string") {
-      try {
-        e = INTERNAL.db._document(endVertex);
-      }
-      catch (err2) {
-      }
-    } else {
-      e = endVertex;
-    }
-  }
-
-  return {
-    config: config,
-    endVertex: e,
-    vertex: v
-  };
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief traverse a graph
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_FUNC (func,
-                         datasource,
-                         startVertex,
-                         endVertex,
-                         direction,
-                         params) {
-  'use strict';
-
-  var info = TRAVERSAL_CONFIG(func, datasource, startVertex, endVertex, direction, params);
-  var result = [ ];
-  if (info.vertex !== null) {
-    var traverser = new TRAVERSAL.Traverser(info.config);
-    traverser.traverse(result, info.vertex, info.endVertex);
-  }
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief CHECK IF RESTRICTION LIST MATCHES
-////////////////////////////////////////////////////////////////////////////////
-
-function FILTER_RESTRICTION (list, restrictionList) {
-  if (! restrictionList) {
-    return list;
-  }
-  if (typeof restrictionList === "string") {
-    restrictionList =  [restrictionList];
-  }
-  var result = [];
-  restrictionList.forEach(function (r) {
-    if (list.indexOf(r) !== -1) {
-      result.push(r);
-    }
-  });
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get all document _ids matching the given examples
-////////////////////////////////////////////////////////////////////////////////
-
-function DOCUMENT_IDS_BY_EXAMPLE (func, collectionList, example) {
-  var res = [ ];
-  if (example === "null" || example === null || ! example) {
-    collectionList.forEach(function (c) {
-      res = res.concat(COLLECTION(c, func).toArray().map(function(t) { return t._id; }));
-    });
-    return res;
-  }
-  if (typeof example === "string") {
-    // Assume it is an _id. Has to fail later on
-    return [ example ];
-  }
-  if (! Array.isArray(example)) {
-    example = [ example ];
-  }
-  var tmp = [ ];
-  example.forEach(function (e) {
-    if (typeof e === "string") {
-      // We have an _id already
-      res.push(e);
-    } 
-    else if (e !== null) {
-      tmp.push(e);
-    }
-  });
-  collectionList.forEach(function (c) {
-    tmp.forEach(function (e) {
-      res = res.concat(COLLECTION(c, func).byExample(e).toArray().map(function(t) {
-        return t._id;
-      }));
-    });
-  });
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getAllDocsByExample
-////////////////////////////////////////////////////////////////////////////////
-
-function DOCUMENTS_BY_EXAMPLE (func, collectionList, example) {
-  var res = [ ];
-  if (example === "null" || example === null || ! example) {
-    collectionList.forEach(function (c) {
-      res = res.concat(COLLECTION(c, func).toArray());
-    });
-    return res;
-  }
-  if (typeof example === "string") {
-    example = [ { _id : example } ];
-  }
-  if (! Array.isArray(example)) {
-    example = [ example ];
-  }
-  var tmp = [ ];
-  example.forEach(function (e) {
-    if (typeof e === "string") {
-      tmp.push({ _id : e });
-    } 
-    else if (e !== null) {
-      tmp.push(e);
-    }
-  });
-  collectionList.forEach(function (c) {
-    tmp.forEach(function (e) {
-      res = res.concat(COLLECTION(c, func).byExample(e).toArray());
-    });
-  });
-  return res;
-}
-
-function RESOLVE_GRAPH_TO_COLLECTIONS (graph, options, funcname) {
-  var collections = {};
-  collections.fromCollections = [];
-  collections.toCollection = [];
-  collections.edgeCollections = [];
-  graph.edgeDefinitions.forEach(function (def) {
-    if (options.direction === "outbound") {
-      collections.edgeCollections = collections.edgeCollections.concat(
-        FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
-      );
-      collections.fromCollections = collections.fromCollections.concat(
-        FILTER_RESTRICTION(def.from, options.startVertexCollectionRestriction)
-      );
-      collections.toCollection = collections.toCollection.concat(
-        FILTER_RESTRICTION(def.to, options.endVertexCollectionRestriction)
-      );
-    }
-    else if (options.direction === "inbound") {
-      collections.edgeCollections = collections.edgeCollections.concat(
-        FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
-      );
-      collections.fromCollections = collections.fromCollections.concat(
-        FILTER_RESTRICTION(def.to, options.endVertexCollectionRestriction)
-      );
-      collections.toCollection = collections.toCollection.concat(
-        FILTER_RESTRICTION(def.from, options.startVertexCollectionRestriction)
-      );
-    }
-    else if (options.direction === "any") {
-      collections.edgeCollections = collections.edgeCollections.concat(
-        FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
-      );
-      collections.fromCollections = collections.fromCollections.concat(
-        FILTER_RESTRICTION(def.from.concat(def.to), options.startVertexCollectionRestriction)
-      );
-      collections.toCollection = collections.toCollection.concat(
-        FILTER_RESTRICTION(def.from.concat(def.to), options.endVertexCollectionRestriction)
-      );
-    }
-    else {
-      WARN(funcname, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      // TODO: check if we need to return more data here
-      return collections;
-    }
-  });
-  collections.orphanCollections = FILTER_RESTRICTION(
-    graph.orphanCollections, options.orphanCollectionRestriction
-  );
-  return collections;
-}
-
-function RESOLVE_GRAPH_TO_FROM_VERTICES (graphname, options, funcname) {
-  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections;
-  if (! graph) {
-    THROW(funcname, INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, funcname);
-  }
-
-  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
-  var removeDuplicates = function(elem, pos, self) {
-    return self.indexOf(elem) === pos;
-  };
-  if (options.includeOrphans) {
-    collections.fromCollections = collections.fromCollections.concat(collections.orphanCollections);
-  }
-  return DOCUMENTS_BY_EXAMPLE(funcname,
-    collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
-  );
-}
-
-function RESOLVE_GRAPH_TO_TO_VERTICES (graphname, options, funcname) {
-  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
-  if (! graph) {
-    THROW(funcname, INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, funcname);
-  }
-
-  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
-  var removeDuplicates = function(elem, pos, self) {
-    return self.indexOf(elem) === pos;
-  };
-
-  return DOCUMENTS_BY_EXAMPLE(funcname,
-    collections.toCollection.filter(removeDuplicates), options.toVertexExample
-  );
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
-////////////////////////////////////////////////////////////////////////////////
-
-function RESOLVE_GRAPH_START_VERTICES (graphName, options, funcname) {
-  // check graph exists and load edgeDefintions
-  var graph = DOCUMENT_HANDLE("_graphs/" + graphName), collections ;
-  if (! graph) {
-    THROW(funcname, INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, funcname);
-  }
-
-  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
-  var removeDuplicates = function(elem, pos, self) {
-    return self.indexOf(elem) === pos;
-  };
-  return DOCUMENTS_BY_EXAMPLE(funcname,
-    collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
-  );
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
-////////////////////////////////////////////////////////////////////////////////
-
-function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options, funcname) {
-  // check graph exists and load edgeDefintions
-
-  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
-  if (! graph) {
-    THROW(funcname, INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, funcname);
-  }
-
-  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
-  var removeDuplicates = function(elem, pos, self) {
-    return self.indexOf(elem) === pos;
-  };
-
-  var result =  {
-    fromVertices : DOCUMENTS_BY_EXAMPLE(funcname,
-      collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
-    ),
-    toVertices : DOCUMENTS_BY_EXAMPLE(funcname,
-      collections.toCollection.filter(removeDuplicates), options.toVertexExample
-    ),
-    edges : DOCUMENTS_BY_EXAMPLE(funcname,
-      collections.edgeCollections.filter(removeDuplicates), options.edgeExamples
-    ),
-    edgeCollections : collections.edgeCollections,
-    fromCollections : collections.fromCollections,
-    toCollection : collections.toCollection
-  };
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief calculate distance of an edge
-////////////////////////////////////////////////////////////////////////////////
-
-function DETERMINE_WEIGHT (edge, weight, defaultWeight) {
-  if (! weight) {
-    return 1;
-  }
-  if (typeof edge[weight] === "number") {
-    return edge[weight];
-  }
-  if (defaultWeight) {
-    return defaultWeight;
-  }
-  return Infinity;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_DISTANCE_VISITOR (config, result, vertex, path) {
-  'use strict';
-
-  if (config.endVertex && config.endVertex === vertex._id) {
-    var dist = 0;
-    path.edges.forEach(function (e) {
-      if (config.weight) {
-        if (typeof e[config.weight] === "number") {
-          dist = dist + e[config.weight];
-        } else if (config.defaultWeight) {
-          dist = dist + config.defaultWeight;
-        }
-      } else {
-        dist++;
-      }
-    });
-    result.push(
-      CLONE({ vertex: vertex, distance: dist , path: path , startVertex : config.startVertex})
-    );
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for traversal
-////////////////////////////////////////////////////////////////////////////////
-
-// NOTE Inject includeData property in this.
-function TRAVERSAL_DIJKSTRA_VISITOR (config, result, node, path) {
-  'use strict';
-  var vertex = node.vertex;
-  var res;
-  if (this.hasOwnProperty("includeData")
-    && this.includeData === true) {
-    res = {
-      vertices: path.vertices,
-      edges: path.edges,
-      distance: node.dist
-    };
-  } else {
-    res = {
-      vertices: underscore.pluck(path.vertices, "_id"),
-      edges: underscore.pluck(path.edges, "_id"),
-      distance: node.dist
-    };
-  }
-  result.push(CLONE(res));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function to determine parameters for SHORTEST_PATH and
-/// GRAPH_SHORTEST_PATH
-////////////////////////////////////////////////////////////////////////////////
-
-function SHORTEST_PATH_PARAMS (params) {
-  'use strict';
-
-  if (params === undefined) {
-    params = { };
-  }
-  else {
-    params = CLONE(params);
-  }
-
-  params.strategy = "dijkstra";
-  params.itemorder = "forward";
-
-  // add user-defined visitor, if specified
-  if (params.hasOwnProperty("visitor")) {
-    if (typeof params.visitor === "string") {
-      params.visitor = GET_VISITOR(params.visitor, params);
-    }
-  } else {
-    // params.visitor = TRAVERSAL_VISITOR;
-    params.visitor = SHORTEST_PATH_VISITOR.bind({
-      includeData: params.includeData || false
-    });
-  }
-
-  if (typeof params.distance === "string") {
-    var name = params.distance.toUpperCase();
-
-    params.distance = function (config, vertex1, vertex2, edge) {
-      return FCALL_USER(name, [ config, vertex1, vertex2, edge ]);
-    };
-  }
-  else {
-    params.distance = undefined;
-  }
-
-  return params;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortest path algorithm
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_SHORTEST_PATH (vertexCollection,
-                            edgeCollection,
-                            startVertex,
-                            endVertex,
-                            direction,
-                            params) {
-  'use strict';
-  var opts = {
-    direction: direction
-  };
-  params = params || {};
-  var vertexCollections = [vertexCollection];
-  var edgeCollections = [edgeCollection];
-  // JS Fallback cases. CPP implementation not working here
-  if (
-      params.hasOwnProperty("distance") ||
-      params.hasOwnProperty("filterVertices") ||
-      params.hasOwnProperty("followEdges") ||
-      isCoordinator
-  ) {
-    params = SHORTEST_PATH_PARAMS(params);
-    var a = TRAVERSAL_FUNC("SHORTEST_PATH",
-                           TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection, "SHORTEST_PATH")),
-                           TO_ID(startVertex, vertexCollection),
-                           TO_ID(endVertex, vertexCollection),
-                           direction,
-                           params);
-    // Did not want to modify traversal dijkstra search.
-    // Might have unforseen side effects.
-    // Internal function visits all vertices on the path.
-    // So we reset the path on every step again.
-    return a[a.length - 1];
-  }
-  // Fall through to new CPP version.
-  if (params.hasOwnProperty("weight") && params.hasOwnProperty("defaultWeight")) {
-    opts.weight = params.weight;
-    opts.defaultWeight = params.defaultWeight;
-  }
-  if (params.hasOwnProperty("includeData")) {
-    opts.includeData = params.includeData;
-  }
-  if (params.hasOwnProperty("followEdges")) {
-    opts.followEdges = params.followEdges;
-  }
-  if (params.hasOwnProperty("filterVertices")) {
-    opts.filterVertices = params.filterVertices;
-  }
-  var i, c;
-  if (params.hasOwnProperty("vertexCollections") && Array.isArray(params.vertexCollections)) {
-    for (i = 0; i < params.vertexCollections.length; ++i) {
-      c = params.vertexCollections[i];
-      if (typeof c === "string") {
-        vertexCollections.push(c);
-      }
-    }
-  }
-  if (params.hasOwnProperty("edgeCollections") && Array.isArray(params.edgeCollections)) {
-    for (i = 0; i < params.edgeCollections.length; ++i) {
-      c = params.edgeCollections[i];
-      if (typeof c === "string") {
-        edgeCollections.push(c);
-      }
-    }
-  }
-
-  // newRes has the format: { vertices: [Doc], edges: [Doc], distance: Number}
-  // oldResult had the format: [ {vertex: Doc} ]
-  return CPP_SHORTEST_PATH(vertexCollections, edgeCollections,
-    TO_ID(startVertex, vertexCollection),
-    TO_ID(endVertex, vertexCollection),
-    opts
-  );
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortest path algorithm
-////////////////////////////////////////////////////////////////////////////////
-
-function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
-  'use strict';
-
-  var graph = graphData, result = [];
-
-  graph.fromVerticesIDs = {};
-  graph.fromVertices.forEach(function (a) {
-    graph.fromVerticesIDs[a._id] = a;
-  });
-  graph.toVerticesIDs = {};
-  graph.toVertices.forEach(function (a) {
-    graph.toVerticesIDs[a._id] = a;
-  });
-  graph.docStore = {};
-
-  var paths = {};
-
-  var vertices = {};
-  graph.edges.forEach(function(e) {
-    if (options.direction === "outbound") {
-      if (!paths[e._from]) {
-        paths[e._from] = {};
-      }
-      paths[e._from][e._to] =  {distance : DETERMINE_WEIGHT(e, options.weight,
-        options.defaultWeight), paths : [{edges : [e], vertices : [e._from, e._to]}]};
-    } else if (options.direction === "inbound") {
-      if (!paths[e._to]) {
-        paths[e._to] = {};
-      }
-      paths[e._to][e._from] =  {distance : DETERMINE_WEIGHT(e, options.weight,
-        options.defaultWeight), paths : [{edges : [e], vertices : [e._to, e._from]}]};
-    } else {
-      if (!paths[e._from]) {
-        paths[e._from] = {};
-      }
-      if (!paths[e._to]) {
-        paths[e._to] = {};
-      }
-
-      if (paths[e._from][e._to]) {
-        paths[e._from][e._to].distance =
-          Math.min(paths[e._from][e._to].distance, DETERMINE_WEIGHT(e, options.weight,
-            options.defaultWeight));
-      } else {
-        paths[e._from][e._to] = {distance : DETERMINE_WEIGHT(e, options.weight,
-          options.defaultWeight), paths : [{edges : [e], vertices : [e._from, e._to]}]};
-      }
-      if (paths[e._to][e._from]) {
-        paths[e._to][e._from].distance =
-          Math.min(paths[e._to][e._from].distance, DETERMINE_WEIGHT(e, options.weight,
-            options.defaultWeight));
-      } else {
-        paths[e._to][e._from] = {distance : DETERMINE_WEIGHT(e, options.weight,
-          options.defaultWeight), paths : [{edges : [e], vertices : [e._to, e._from]}]};
-      }
-    }
-    if (options.noPaths) {
-      try {
-        delete paths[e._to][e._from].paths;
-        delete paths[e._from][e._to].paths;
-      } catch (ignore) {
-      }
-    }
-    vertices[e._to] = 1;
-    vertices[e._from] = 1;
-  });
-  var removeDuplicates = function(elem, pos, self) {
-    return self.indexOf(elem) === pos;
-  };
-  Object.keys(graph.fromVerticesIDs).forEach(function (v) {
-    vertices[v] = 1;
-  });
-
-  var allVertices = Object.keys(vertices);
-  allVertices.forEach(function (k) {
-    allVertices.forEach(function (i) {
-      allVertices.forEach(function (j) {
-        if (i === j ) {
-          if (!paths[i]) {
-            paths[i] = {};
-          }
-          paths[i][j] = null;
-          return;
-        }
-        if (paths[i] && paths[i][k] && paths[i][k].distance >=0
-          && paths[i][k].distance < Infinity &&
-          paths[k] && paths[k][j] && paths[k][j].distance >=0
-          && paths[k][j].distance < Infinity &&
-          ( !paths[i][j] ||
-            paths[i][k].distance + paths[k][j].distance  <= paths[i][j].distance
-            )
-          ) {
-          if (!paths[i][j]) {
-            paths[i][j] = {paths : [], distance : paths[i][k].distance + paths[k][j].distance};
-          }
-          if (paths[i][k].distance + paths[k][j].distance  < paths[i][j].distance) {
-            paths[i][j].distance = paths[i][k].distance+paths[k][j].distance;
-            paths[i][j].paths = [];
-          }
-          if (!options.noPaths) {
-            paths[i][k].paths.forEach(function (p1) {
-              paths[k][j].paths.forEach(function (p2) {
-                paths[i][j].paths.push({
-                  edges : p1.edges.concat(p2.edges),
-                  vertices:  p1.vertices.concat(p2.vertices).filter(removeDuplicates)
-                });
-              });
-            });
-          }
-        }
-
-      });
-
-    });
-  });
-
-  var transformPath = function (paths) {
-    paths.forEach(function (p) {
-      var vTmp = [];
-      p.vertices.forEach(function (v) {
-        if (graph.fromVerticesIDs[v]) {
-          vTmp.push(graph.fromVerticesIDs[v]);
-        } else if (graph.toVerticesIDs[v]) {
-          vTmp.push(graph.toVerticesIDs[v]);
-        } else if (graph.docStore[v]) {
-          vTmp.push(graph.docStore[v]);
-        } else {
-          graph.docStore[v] = DOCUMENT_HANDLE(v);
-          vTmp.push(graph.docStore[v]);
-        }
-      });
-      p.vertices = vTmp;
-    });
-    return paths;
-  };
-
-  Object.keys(paths).forEach(function (from) {
-    if (!graph.fromVerticesIDs[from]) {
-      return;
-    }
-    Object.keys(paths[from]).forEach(function (to) {
-      if (!graph.toVerticesIDs[to]) {
-        return;
-      }
-      if (from === to) {
-        return;
-      }
-      result.push({
-        vertices: paths[from][to].paths[0].vertices,
-        edges: underscore.pluck(paths[from][to].paths[0].edges, "_id"),
-        distance : paths[from][to].distance
-      });
-    });
-  });
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function to determine parameters for TRAVERSAL and
-/// GRAPH_TRAVERSAL
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_PARAMS (params, defaultVisitor) {
-  'use strict';
-
-  if (params === undefined) {
-    params = { };
-  }
-  params = CLONE(params);
-
-  // add user-defined visitor, if specified
-  if (params.hasOwnProperty("visitor")) {
-    if (typeof params.visitor === "string") {
-      params.visitor = GET_VISITOR(params.visitor, params);
-    }
-  } else {
-    params.visitor = defaultVisitor || TRAVERSAL_VISITOR;
-  }
-  return params;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge list of edges with list of examples
-////////////////////////////////////////////////////////////////////////////////
-
-function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
-  var result = [], filter;
-  if (examples === "null") {
-    examples = [{}];
-  }
-  if (!examples) {
-    examples = [{}];
-  }
-  if (typeof examples === "string") {
-    examples = {_id : examples};
-  }
-  if (!Array.isArray(examples)) {
-    examples = [examples];
-  }
-  if (examples.length === 0 || (
-    examples.length === 1 &&
-    Object.keys(examples).length === 0)) {
-    return edges;
-  }
-  edges.forEach(function(edge) {
-    examples.forEach(function(example) {
-      filter = CLONE(example);
-      if (!(filter._id || filter._key)) {
-        filter._id = edge._id;
-      }
-      result.push(filter);
-    });
-  });
-  return result;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Creates parameters for a dijkstra based shortest path traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function CREATE_DIJKSTRA_PARAMS (graphName, options) {
-  var params = TRAVERSAL_PARAMS(options,
-    TRAVERSAL_DIJKSTRA_VISITOR.bind({
-      includeData: options.includeData || false
-    })
-  ),
-    factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
-  params.paths = true;
-  if (options.edgeExamples) {
-    params.followEdges = options.edgeExamples;
-    if (! Array.isArray(params.followEdges)) {
-      params.followEdges = [ params.followEdges ];
-    }
-  }
-  if (options.edgeCollectionRestriction) {
-    params.edgeCollectionRestriction = options.edgeCollectionRestriction;
-  }
-  params.weight = options.weight;
-  params.defaultWeight = options.defaultWeight;
-
-  params = SHORTEST_PATH_PARAMS(params);
-
-  params.strategy = "dijkstramulti";
-
-  // merge other options
-  for (var att in options) {
-    if (options.hasOwnProperty(att) &&
-      !params.hasOwnProperty(att)) {
-      params[att] = options[att];
-    }
-  }
-  
-  var toVertices = RESOLVE_GRAPH_TO_TO_VERTICES(graphName, options);
-  var toVerticesObject = {}; 
-
-  var i;
-  for (i = 0; i < toVertices.length; ++i) {
-    toVerticesObject[TO_ID(toVertices[i])] = false;
-  }
-
-  return {
-    params: params,
-    factory: factory,
-    fromVertices: RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options),
-    toVertices: toVerticesObject
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief calculate shortest paths by dijkstra
-////////////////////////////////////////////////////////////////////////////////
-
-function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
-  var info = CREATE_DIJKSTRA_PARAMS(graphName, options);
-  var result = [];
-  info.fromVertices.forEach(function (v) {
-    var e = TRAVERSAL_FUNC("GRAPH_SHORTEST_PATH",
-      info.factory,
-      TO_ID(v),
-      JSON.parse(JSON.stringify(info.toVertices)),
-      options.direction,
-      info.params
-    );
-    e = underscore.filter(e, function(x) {
-      return x.edges.length > 0;
-    });
-    result = result.concat(e);
-  });
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if an example is set
-////////////////////////////////////////////////////////////////////////////////
-
-function IS_EXAMPLE_SET (example) {
-  return (
-    example && (
-      (Array.isArray(example) && example.length > 0) ||
-      (typeof example === "object" && Object.keys(example) > 0) ||
-       typeof example === "string"
-      )
-  );
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_shortest_paths
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_SHORTEST_PATH (graphName,
-                                  startVertexExample,
-                                  endVertexExample,
-                                  options) {
-  'use strict';
-
-  if (! options) {
-    options = {  };
-  }
-
-  if (! options.direction) {
-    options.direction =  'any';
-  }
-
-  if (isCoordinator) {
-    // Fallback to old JS function if we are in the cluster.
-    options.fromVertexExample = startVertexExample;
-    options.toVertexExample = endVertexExample;
-
-    if (! options.algorithm) {
-      if (! IS_EXAMPLE_SET(startVertexExample) && ! IS_EXAMPLE_SET(endVertexExample)) {
-        options.algorithm = "Floyd-Warshall";
-      }
-    }
-
-    if (options.algorithm === "Floyd-Warshall") {
-      return CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL(
-        RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options, "GRAPH_SHORTEST_PATH"),
-        options);
-    }
-    let tmp = CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(graphName, options);
-    if (options.stopAtFirstMatch && options.stopAtFirstMatch === true && tmp.length > 0) {
-      let tmpDist = Infinity;
-      let tmpRes = {};
-      for (let i = 0; i < tmp.length; ++i) {
-        if (tmp[i].distance < tmpDist) {
-          tmpDist = tmp[i].distance;
-          tmpRes = tmp[i];
-        }
-      }
-      return [tmpRes];
-    }
-    return tmp;
-  }
-
-  if (options.hasOwnProperty('edgeExamples')) {
-    // these two are the same (edgeExamples & filterEdges)...
-    options.filterEdges = options.edgeExamples;
-  }
-
-  let graph = graphModule._graph(graphName);
-  let edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
-  if (options.hasOwnProperty("edgeCollectionRestriction")) {
-    if (!Array.isArray(options.edgeCollectionRestriction)) {
-      if (typeof options.edgeCollectionRestriction === "string") {
-        if (!underscore.contains(edgeCollections, options.edgeCollectionRestriction)) {
-          // Short circuit collection not in graph, cannot find results.
-          return [];
-        }
-        edgeCollections = [options.edgeCollectionRestriction];
-      }
-    } else {
-      edgeCollections = underscore.intersection(edgeCollections, options.edgeCollectionRestriction);
-    }
-  }
-  let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
-
-  let startVertices;
-  if (options.hasOwnProperty("startVertexCollectionRestriction")
-    && Array.isArray(options.startVertexCollectionRestriction)) {
-    startVertices = DOCUMENT_IDS_BY_EXAMPLE(
-      "GRAPH_SHORTEST_PATH", options.startVertexCollectionRestriction, startVertexExample);
-  } 
-  else if (options.hasOwnProperty("startVertexCollectionRestriction") 
-    && typeof options.startVertexCollectionRestriction === 'string') {
-    startVertices = DOCUMENT_IDS_BY_EXAMPLE("GRAPH_SHORTEST_PATH", 
-      [ options.startVertexCollectionRestriction ], startVertexExample);
-  }
-  else {
-    startVertices = DOCUMENT_IDS_BY_EXAMPLE(
-      "GRAPH_SHORTEST_PATH", vertexCollections, startVertexExample);
-  }
-  if (startVertices.length === 0) {
-    return [];
-  }
-
-  let endVertices;
-  if (options.hasOwnProperty("endVertexCollectionRestriction")
-    && Array.isArray(options.endVertexCollectionRestriction)) {
-    endVertices = DOCUMENT_IDS_BY_EXAMPLE(
-      "GRAPH_SHORTEST_PATH", options.endVertexCollectionRestriction, endVertexExample);
-  } 
-  else if (options.hasOwnProperty("endVertexCollectionRestriction")
-    && typeof options.endVertexCollectionRestriction === 'string') {
-    endVertices = DOCUMENT_IDS_BY_EXAMPLE(
-      "GRAPH_SHORTEST_PATH", [ options.endVertexCollectionRestriction ], endVertexExample);
-  } 
-  else {
-    endVertices = DOCUMENT_IDS_BY_EXAMPLE(
-      "GRAPH_SHORTEST_PATH", vertexCollections, endVertexExample);
-  }
-  if (endVertices.length === 0) {
-    return [];
-  }
-
-  let res = [];
-  // Compute all shortest_path pairs.
-  for (let i = 0; i < startVertices.length; ++i) {
-    for (let j = 0; j < endVertices.length; ++j) {
-      if (startVertices[i] !== endVertices[j]) {
-        let p = CPP_SHORTEST_PATH(vertexCollections, edgeCollections,
-          startVertices[i], endVertices[j], options
-        );
-        if (p !== null) {
-          res.push(p);
-        }
-      }
-    }
-  }
-  if (options.stopAtFirstMatch && options.stopAtFirstMatch === true && res.length > 0) {
-    let tmpDist = Infinity;
-    let tmpRes = {};
-    for (let i = 0; i < res.length; ++i) {
-      if (res[i].distance < tmpDist) {
-        tmpDist = res[i].distance;
-        tmpRes = res[i];
-      }
-    }
-    return [tmpRes];
-  }
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief traverse a graph
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_TRAVERSAL (vertexCollection,
-                        edgeCollection,
-                        startVertex,
-                        direction,
-                        params) {
-  'use strict';
-
-  params = TRAVERSAL_PARAMS(params);
-
-  return TRAVERSAL_FUNC("TRAVERSAL",
-                        TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection, "TRAVERSAL")),
-                        TO_ID(startVertex, vertexCollection),
-                        undefined,
-                        direction,
-                        params);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_TRAVERSAL (graphName,
-                              startVertexExample,
-                              direction,
-                              options) {
-  'use strict';
-
-  var result = [];
-  options = TRAVERSAL_PARAMS(options);
-  options.fromVertexExample = startVertexExample;
-  options.direction =  direction;
-
-  var startVertices = RESOLVE_GRAPH_START_VERTICES(graphName, options, "GRAPH_TRAVERSAL");
-  var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
-
-  startVertices.forEach(function (f) {
-    result.push(TRAVERSAL_FUNC("GRAPH_TRAVERSAL",
-      factory,
-      TO_ID(f),
-      undefined,
-      direction,
-      options));
-  });
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function to determine parameters for TRAVERSAL_TREE and
-/// GRAPH_TRAVERSAL_TREE
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_TREE_PARAMS (params, connectName, func) {
-  'use strict';
-
-  if (params === undefined) {
-    params = { };
-  }
-  else {
-    params = CLONE(params);
-  }
-
-  // add user-defined visitor, if specified
-  if (typeof params.visitor === "string") {
-    params.visitor = GET_VISITOR(params.visitor, params);
-  }
-  else {
-    params.visitor = TRAVERSAL_TREE_VISITOR;
-  }
-  
-  params.connect  = AQL_TO_STRING(connectName);
-
-  if (params.connect === "") {
-    THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return null;
-  }
-
-  return params;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief traverse a graph and create a hierarchical result
-/// this function uses the same setup as the TRAVERSE() function but will use
-/// a different visitor to create the result
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_TRAVERSAL_TREE (vertexCollection,
-                             edgeCollection,
-                             startVertex,
-                             direction,
-                             connectName,
-                             params) {
-  'use strict';
-
-  params = TRAVERSAL_TREE_PARAMS(params, connectName, "TRAVERSAL_TREE");
-  if (params === null) {
-    return null;
-  }
-
-  var result = TRAVERSAL_FUNC("TRAVERSAL_TREE",
-                              TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection, "TRAVERSAL_TREE")),
-                              TO_ID(startVertex, vertexCollection),
-                              undefined,
-                              direction,
-                              params);
-
-  if (result.length === 0) {
-    return [ ];
-  }
-
-  return [ result[0][params.connect] ];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_distance
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_DISTANCE_TO (graphName,
-                                startVertexExample,
-                                endVertexExample,
-                                options) {
-  'use strict';
-
-  if (! options) {
-    options = {};
-  }
-  else {
-    options = CLONE(options);
-  }
-  options.includeData = false;
-  if (! options.algorithm) {
-    options.algorithm = "dijkstra";
-  }
-  let paths = AQL_GRAPH_SHORTEST_PATH(
-    graphName, startVertexExample, endVertexExample, options
-  );
-  let result = [];
-  for (let i = 0; i < paths.length; ++i) {
-    let p = paths[i];
-    result.push({
-      startVertex: p.vertices[0],
-      vertex: p.vertices[p.vertices.length - 1],
-      distance: p.distance
-    });
-  }
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_traversal_tree
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_TRAVERSAL_TREE (graphName,
-                                   startVertexExample,
-                                   direction,
-                                   connectName,
-                                   options) {
-  'use strict';
-
-  var result = [];
-  options = TRAVERSAL_TREE_PARAMS(options, connectName, "GRAPH_TRAVERSAL_TREE");
-  if (options === null) {
-    return null;
-  }
-  options.fromVertexExample = startVertexExample;
-  options.direction = direction;
-
-  var startVertices = RESOLVE_GRAPH_START_VERTICES(graphName, options, "GRAPH_TRAVERSAL_TREE");
-  var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
-
-  startVertices.forEach(function (f) {
-    var r = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
-      factory,
-      TO_ID(f),
-      undefined,
-      direction,
-      options);
-    if (r.length > 0) {
-      result.push([ r[0][options.connect] ]);
-    }
-  });
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return connected edges
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_EDGES (edgeCollection,
-                    vertex,
-                    direction,
-                    examples,
-                    options) {
-  'use strict';
-
-  var c = COLLECTION(edgeCollection, "EDGES"), result;
-
-  // validate arguments
-  if (direction === "outbound") {
-    result = FILTER(c.outEdges(vertex), examples);
-    if (options && options.includeVertices) {
-      for (let i = 0; i < result.length; ++i) {
-        try {
-          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._to) };
-        }
-        catch (err) {
-        }
-      }
-    }
-  }
-  else if (direction === "inbound") {
-    result = FILTER(c.inEdges(vertex), examples);
-    if (options && options.includeVertices) {
-      for (let i = 0; i < result.length; ++i) {
-        try {
-          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._from) };
-        }
-        catch (err) {
-        }
-      }
-    }
-  }
-  else if (direction === "any") {
-    if (options && options.includeVertices) {
-      if (Array.isArray(vertex)) {
-        result = [];
-        let tmp;
-        for (let h = 0; h < vertex.length; ++h) {
-          tmp = FILTER(c.inEdges(vertex), examples);
-          for (let i = 0; i < tmp.length; ++i) {
-            try {
-              tmp[i] = { edge: CLONE(tmp[i]), vertex: DOCUMENT_HANDLE(tmp[i]._from) };
-            }
-            catch (err) {
-            }
-          }
-          result = result.concat(tmp);
-          tmp = FILTER(c.outEdges(vertex), examples);
-          for (let i = 0; i < tmp.length; ++i) {
-            try {
-              tmp[i] = { edge: CLONE(tmp[i]), vertex: DOCUMENT_HANDLE(tmp[i]._to) };
-            }
-            catch (err) {
-            }
-          }
-          result = result.concat(tmp);
-        }
-      } else {
-        result = [];
-        let tmp = FILTER(c.inEdges(vertex), examples);
-        for (let i = 0; i < tmp.length; ++i) {
-          try {
-            tmp[i] = { edge: CLONE(tmp[i]), vertex: DOCUMENT_HANDLE(tmp[i]._from) };
-          }
-          catch (err) {
-          }
-        }
-        result = result.concat(tmp);
-        tmp = FILTER(c.outEdges(vertex), examples);
-        for (let i = 0; i < tmp.length; ++i) {
-          try {
-            tmp[i] = { edge: CLONE(tmp[i]), vertex: DOCUMENT_HANDLE(tmp[i]._to) };
-          }
-          catch (err) {
-          }
-        }
-        result = result.concat(tmp);
-      }
-    } else {
-      result = FILTER(c.edges(vertex), examples);
-    }
-  }
-  else {
-    WARN("EDGES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return null;
-  }
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return connected neighbors
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_NEIGHBORS (vertexCollection,
-                        edgeCollection,
-                        vertex,
-                        direction,
-                        examples,
-                        options) {
-  'use strict';
-
-  vertex = TO_ID(vertex, vertexCollection);
-  var collectionFromVertex = vertex.slice(0, vertexCollection.length);
-  if (collectionFromVertex !== vertexCollection) {
-    THROW("NEIGHBORS",
-          INTERNAL.errors.ERROR_GRAPH_INVALID_PARAMETER,
-          "",
-          "specified vertex collection '" + collectionFromVertex +
-          "' does not match start vertex collection '" + vertexCollection + "'");
-
-  } 
-  options = CLONE(options) || {};
-  // Fallback to JS if we are in the cluster
-  // Improve the examples. LocalServer can match String -> _id
-  if (examples !== undefined) {
-    if (typeof examples === "string") {
-      examples = [{_id: examples}];
-    }
-    if (Array.isArray(examples)) {
-      examples = examples.map(function(e) {
-        if (typeof e === "string") {
-          return {_id: e};
-        }
-        return e;
-      });
-    }
-  }
-  let edges = AQL_EDGES(edgeCollection, vertex, direction, examples, { includeVertices: options.includeData });
-  let vertices = [];
-  let distinct = new Set();
-  if (options.includeData) {
-    for (let i = 0; i < edges.length; ++i) {
-      let id;
-      if (direction === "outbound") {
-        id = edges[i].edge._to;
-      }
-      else if (direction === "inbound") {
-        id = edges[i].edge._from;
-      }
-      else {
-        // any
-        if (edges[i].edge._from === vertex) {
-          id = edges[i].edge._to;
-        }
-        else {
-          id = edges[i].edge._from;
-        }
-      }
-      
-      if (!distinct.has(id)) {
-        distinct.add(id);
-        vertices.push(edges[i].vertex);
-      }
-    }
-  }
-  else {
-    for (let i = 0; i < edges.length; ++i) {
-      let id;
-      if (direction === "outbound") {
-        id = edges[i]._to;
-      }
-      else if (direction === "inbound") {
-        id = edges[i]._from;
-      }
-      else {
-        // any
-        if (edges[i]._from === vertex) {
-          id = edges[i]._to;
-        }
-        else {
-          id = edges[i]._from;
-        }
-      }
-
-      if (!distinct.has(id)) {
-        distinct.add(id);
-        vertices.push(id);
-      }
-    }
-  }
-  distinct.clear();
-  return vertices;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_neighbors
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_NEIGHBORS (graphName,
-                              vertexExample,
-                              options) {
-  'use strict';
-  options = CLONE(options) || {};
-  if (! options.hasOwnProperty("direction")) {
-    options.direction =  'any';
-  }
-  var params = {};
-
-  if (isCoordinator) {
-    // JS Fallback for features not yet included in CPP Neighbor version
-    options.fromVertexExample = vertexExample;
-
-    if (options.hasOwnProperty("neighborExamples") && typeof options.neighborExamples === "string") {
-      options.neighborExamples = {_id : options.neighborExamples};
-    }
-    var neighbors = [],
-      factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
-    params = TRAVERSAL_PARAMS();
-    params.paths = true;
-    params.uniqueness = {
-      vertices: "global",
-      edges: "global"
-    };
-    params.minDepth = 1; // Make sure we exclude from depth 1
-    params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
-    params.maxIterations = options.maxIterations;
-    // add user-defined visitor, if specified
-    // (NOT SUPPORTED RIGHT NOW, return format will break)
-    /*
-    if (typeof options.visitor === "string") {
-      params.visitor = GET_VISITOR(options.visitor, options);
-      params.visitorReturnsResults = options.visitorReturnsResults || false;
-    }
-    else {
-    */
-   // Injecting additional options into the Visitor
-     params.visitor = TRAVERSAL_NEIGHBOR_VISITOR.bind({
-       minDepth: options.minDepth === undefined ? 1 : options.minDepth,
-       includeData: options.includeData || false
-     });
-     // }
-    
-    var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_NEIGHBORS");
-    if (options.edgeExamples) {
-      params.followEdges = options.edgeExamples;
-    }
-    if (options.edgeCollectionRestriction) {
-      params.edgeCollectionRestriction = options.edgeCollectionRestriction;
-    }
-    if (options.vertexCollectionRestriction) {
-      params.filterVertexCollections = options.vertexCollectionRestriction;
-    }
-    if (options.endVertexCollectionRestriction) {
-      params.filterVertexCollections = options.endVertexCollectionRestriction;
-    }
-    // merge other options
-    Object.keys(options).forEach(function (att) {
-      if (! params.hasOwnProperty(att)) {
-        params[att] = options[att];
-      }
-    });
-    fromVertices.forEach(function (v) {
-      var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
-        factory,
-        v._id,
-        undefined,
-        options.direction,
-        params);
-
-      neighbors = neighbors.concat(e);
-    });
-    var result = [];
-    let uniqueIds = new Set();
-    neighbors.forEach(function (n) {
-      if (!uniqueIds.has(n._id)) {
-        uniqueIds.add(n._id);
-        if (FILTER([n], options.neighborExamples).length > 0) {
-          if (options.includeData) {
-            result.push(n);
-          } else {
-            result.push(n._id);
-          }
-        }
-      }
-    });
-    uniqueIds.clear();
-    return result;
-  }
-
-
-  params.direction = options.direction;
-  if (options.hasOwnProperty("edgeExamples")) {
-    if (!Array.isArray(options.edgeExamples)) {
-      params.filterEdges = [options.edgeExamples];
-    } else {
-      params.filterEdges = options.edgeExamples;
-    }
-  }
-
-  if (options.hasOwnProperty("neighborExamples")) {
-    if (!Array.isArray(options.neighborExamples)) {
-      params.filterVertices = [options.neighborExamples];
-    } else {
-      params.filterVertices = options.neighborExamples;
-    }
-  }
-
-  let graph = graphModule._graph(graphName);
-  let edgeCollections = graph._edgeCollections().map(function (c) { return c.name();});
-  if (options.hasOwnProperty("edgeCollectionRestriction")) {
-    if (!Array.isArray(options.edgeCollectionRestriction)) {
-      if (typeof options.edgeCollectionRestriction === "string") {
-        if (!underscore.contains(edgeCollections, options.edgeCollectionRestriction)) {
-          // Short circuit collection not in graph, cannot find results.
-          return [];
-        }
-        edgeCollections = [options.edgeCollectionRestriction];
-      }
-    } else {
-      edgeCollections = underscore.intersection(edgeCollections, options.edgeCollectionRestriction);
-    }
-  }
-  let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
-  let startVertices = DOCUMENT_IDS_BY_EXAMPLE("GRAPH_NEIGHBORS", vertexCollections, vertexExample);
-  if (startVertices.length === 0) {
-    return [];
-  }
-  if (options.hasOwnProperty("vertexCollectionRestriction")) {
-    if (!Array.isArray(options.vertexCollectionRestriction)) {
-      if (typeof options.vertexCollectionRestriction === "string") {
-        if (!underscore.contains(vertexCollections, options.vertexCollectionRestriction)) {
-          // Short circuit collection not in graph, cannot find results.
-          return [];
-        }
-        vertexCollections = [options.vertexCollectionRestriction];
-      }
-    } else {
-      vertexCollections = underscore.intersection(vertexCollections, options.vertexCollectionRestriction);
-    }
-  }
-  if (options.hasOwnProperty("minDepth")) {
-    params.minDepth = options.minDepth;
-  }
-  if (options.hasOwnProperty("maxDepth")) {
-    params.maxDepth = options.maxDepth;
-  }
-  if (options.hasOwnProperty("includeData")) {
-    params.includeData = options.includeData;
-  }
-
-  return CPP_NEIGHBORS(vertexCollections, edgeCollections, startVertices, params);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_edges
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_EDGES (graphName,
-                          vertexExample,
-                          options) {
-  'use strict';
-  options = CLONE(options) || {};
-  if (! options.hasOwnProperty("direction")) {
-    options.direction =  'any';
-  }
-  var params = {};
-
-  // JS Fallback for features not yet included in CPP Neighbor version
-  options.fromVertexExample = vertexExample;
-
-  if (options.hasOwnProperty("neighborExamples") && typeof options.neighborExamples === "string") {
-    options.neighborExamples = {_id : options.neighborExamples};
-  }
-  var edges = [],
-    factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
-  params = TRAVERSAL_PARAMS();
-  params.paths = true;
-  params.uniqueness = {
-    vertices: "none",
-    edges: "global"
-  };
-  params.minDepth = 1; // Make sure we exclude from depth 1
-  params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
-  params.maxIterations = options.maxIterations;
-  // add user-defined visitor, if specified
-  // (NOT SUPPORTED RIGHT NOW, return format will break)
-  /*
-  if (typeof options.visitor === "string") {
-    params.visitor = GET_VISITOR(options.visitor, options);
-    params.visitorReturnsResults = options.visitorReturnsResults || false;
-  }
-  else {
-  */
- // Injecting additional options into the Visitor
-  var visitorConfig = {
-    minDepth: options.minDepth === undefined ? 1 : options.minDepth
-  };
-  if (options.hasOwnProperty("neighborExamples")) {
-    visitorConfig.neighborExamples = options.neighborExamples;
-  }
-  params.visitor = TRAVERSAL_EDGE_VISITOR.bind(visitorConfig);
-  
-  var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_EDGES");
-  if (options.edgeExamples) {
-    params.followEdges = options.edgeExamples;
-  }
-  if (options.edgeCollectionRestriction) {
-    params.edgeCollectionRestriction = options.edgeCollectionRestriction;
-  }
-  if (options.vertexCollectionRestriction) {
-    params.filterVertexCollections = options.vertexCollectionRestriction;
-  }
-  if (options.endVertexCollectionRestriction) {
-    params.filterVertexCollections = options.endVertexCollectionRestriction;
-  }
-  // merge other options
-  Object.keys(options).forEach(function (att) {
-    if (! params.hasOwnProperty(att)) {
-      params[att] = options[att];
-    }
-  });
-  fromVertices.forEach(function (v) {
-    var e = TRAVERSAL_FUNC("GRAPH_EDGES",
-      factory,
-      v._id,
-      undefined,
-      options.direction,
-      params);
-
-    edges = edges.concat(e);
-  });
-  var result = [];
-  let uniqueIds = new Set();
-  edges.forEach(function (n) {
-    if (!uniqueIds.has(n._id)) {
-      uniqueIds.add(n._id);
-      if (options.includeData) {
-        result.push(n);
-      } else {
-        result.push(n._id);
-      }
-    }
-  });
-  uniqueIds.clear();
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_vertices
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_VERTICES (graphName,
-                             vertexExamples,
-                             options) {
-  'use strict';
-
-  options = CLONE(options) || {};
-  if (! options.direction) {
-    options.direction =  'any';
-  }
-  if (options.vertexCollectionRestriction) {
-    if (options.direction === "inbound") {
-      options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
-    } else if (options.direction === "outbound")  {
-      options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
-    } else {
-      options.includeOrphans = true;
-      options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
-      options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
-      options.orphanCollectionRestriction = options.vertexCollectionRestriction;
-    }
-  }
-
-  options.fromVertexExample = vertexExamples;
-  return RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_VERTICES");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_common_neighbors
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
-                                     vertex1Examples,
-                                     vertex2Examples,
-                                     options1,
-                                     options2) {
-  'use strict';
-
-  options1 = options1 || {};
-  options2 = options2 || {};
-  if (options1.includeData) {
-    options2.includeData = true;
-  }
-  else if (options2.includeData) {
-    options1.includeData = true;
-  }
-
-  let graph = graphModule._graph(graphName);
-  let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
-  let vertices1 = DOCUMENT_IDS_BY_EXAMPLE("GRAPH_COMMON_NEIGHBORS", vertexCollections, vertex1Examples);
-  let vertices2;
-  if (vertex1Examples === vertex2Examples) {
-    vertices2 = vertices1;
-  } 
-  else {
-    vertices2 = DOCUMENT_IDS_BY_EXAMPLE("GRAPH_COMMON_NEIGHBORS", vertexCollections, vertex2Examples);
-  }
-  // Use ES6 Map. Higher performance then Object.
-  let tmpNeighborsLeft = new Map();
-  let tmpNeighborsRight = new Map();
-  let result = [];
-
-  // Iterate over left side vertex list as left.
-  // Calculate its neighbors as ln
-  // For each entry iterate over right side vertex list as right.
-  // Calculate their neighbors as rn
-  // For each store one entry in result {left: left, right: right, neighbors: intersection(ln, rn)}
-  // All Neighbors are cached in tmpNeighborsLeft and tmpNeighborsRight resp.
-  for (let i = 0; i < vertices1.length; ++i) {
-    let left = vertices1[i];
-    let itemNeighbors;
-    if(tmpNeighborsLeft.has(left)) {
-      itemNeighbors = tmpNeighborsLeft.get(left);
-    } 
-    else {
-      itemNeighbors = AQL_GRAPH_NEIGHBORS(graphName, left, options1);
-      tmpNeighborsLeft.set(left, itemNeighbors);
-    }
-    for (let j = 0; j < vertices2.length; ++j) {
-      let right = vertices2[j];
-      if (left === right) {
-        continue;
-      }
-      let rNeighbors;
-      if(tmpNeighborsRight.has(right)) {
-        rNeighbors = tmpNeighborsRight.get(right);
-      } 
-      else {
-        rNeighbors = AQL_GRAPH_NEIGHBORS(graphName, right, options2);
-        tmpNeighborsRight.set(right, rNeighbors);
-      }
-      let neighbors;
-      if (! options1.includeData) {
-        neighbors = underscore.intersection(itemNeighbors, rNeighbors);
-      }
-      else {
-        // create a quick lookup table for left hand side
-        let lKeys = { };
-        for (let i = 0; i < itemNeighbors.length; ++i) {
-          lKeys[itemNeighbors[i]._id] = true;
-        }
-        // check which elements of the right-hand side are also present in the left hand side lookup  map
-        neighbors = [];
-        for (let i = 0; i < rNeighbors.length; ++i) {
-          if (lKeys.hasOwnProperty(rNeighbors[i]._id)) {
-            neighbors.push(rNeighbors[i]);
-          }
-        }
-      }
-      if (neighbors.length > 0) {
-        result.push({left, right, neighbors});
-      }
-    }
-  }
-  // Legacy Format
-  // result.push(tmpRes);
-  tmpNeighborsLeft.clear();
-  tmpNeighborsRight.clear();
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_common_properties
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_COMMON_PROPERTIES (graphName,
-                                      vertex1Examples,
-                                      vertex2Examples,
-                                      options) {
-  'use strict';
-
-  options = CLONE(options) || {};
-  options.fromVertexExample = vertex1Examples;
-  options.toVertexExample = vertex2Examples;
-  options.direction =  'any';
-  options.ignoreProperties = TO_LIST(options.ignoreProperties, true);
-  options.startVertexCollectionRestriction = options.vertex1CollectionRestriction;
-  options.endVertexCollectionRestriction = options.vertex2CollectionRestriction;
-
-  var g = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_COMMON_PROPERTIES");
-  var g2 = RESOLVE_GRAPH_TO_TO_VERTICES(graphName, options, "GRAPH_COMMON_PROPERTIES");
-  var res = [];
-  var t = {};
-  g.forEach(function (n1) {
-    Object.keys(n1).forEach(function (key) {
-      if (key.indexOf("_") === 0 || options.ignoreProperties.indexOf(key) !== -1) {
-        return;
-      }
-      if (!t[JSON.stringify({key : key , value : n1[key]})]) {
-        t[JSON.stringify({key : key , value : n1[key]})] = {from : [], to : []};
-      }
-      t[JSON.stringify({key : key , value : n1[key]})].from.push(n1);
-    });
-  });
-
-  g2.forEach(function (n1) {
-    Object.keys(n1).forEach(function (key) {
-      if (key.indexOf("_") === 0) {
-        return;
-      }
-      if (!t[JSON.stringify({key : key , value : n1[key]})]) {
-        return;
-      }
-      t[JSON.stringify({key : key , value : n1[key]})].to.push(n1);
-    });
-  });
-
-  var tmp = {};
-  Object.keys(t).forEach(function (r) {
-    t[r].from.forEach(function (f) {
-      if (!tmp[f._id]) {
-        tmp[f._id] = [];
-        tmp[f._id + "|keys"] = [];
-      }
-      t[r].to.forEach(function (t) {
-        if (t._id === f._id) {
-          return;
-        }
-        if (tmp[f._id + "|keys"].indexOf(t._id) === -1) {
-          tmp[f._id + "|keys"].push(t._id);
-          var obj = {_id : t._id};
-          Object.keys(f).forEach(function (fromDoc) {
-            if (t[fromDoc] !== undefined && t[fromDoc] === f[fromDoc]) {
-              obj[fromDoc] = t[fromDoc];
-            }
-          });
-          tmp[f._id].push(obj);
-        }
-      });
-    });
-  });
-  Object.keys(tmp).forEach(function (r) {
-    if (tmp[r].length === 0 || r.indexOf("|keys") !== -1) {
-      return;
-    }
-    var a = {};
-    a[r] = tmp[r];
-    res.push(a);
-
-  });
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Prepares and executes a dijkstra search with predefined result object
-///        The result object will be handed over in each traversal step
-////////////////////////////////////////////////////////////////////////////////
-
-function RUN_DIJKSTRA_WITH_RESULT_HANDLE (func, graphName, options, result, afterEach) {
-  result = result || [];
-  var dijkstraParams = CREATE_DIJKSTRA_PARAMS(graphName, options);
-  dijkstraParams.fromVertices.forEach(function (v) {
-    var info = TRAVERSAL_CONFIG(
-      func,
-      dijkstraParams.factory,
-      TO_ID(v),
-      JSON.parse(JSON.stringify(dijkstraParams.toVertices)),
-      options.direction,
-      dijkstraParams.params
-    );
-    if (info.vertex !== null) {
-      var traverser = new TRAVERSAL.Traverser(info.config);
-      traverser.traverse(result, info.vertex, info.endVertex);
-      if (typeof afterEach === "function") {
-        afterEach(result, info.vertex);
-      }
-    }
-  });
-  return result;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for absolute eccentricity traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
-  'use strict';
-  result[path.vertices[0]._id] = Math.max(node.dist, result[path.vertices[0]._id] || 0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_absolute_eccentricity
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
-  'use strict';
-  options = CLONE(options) || {};
-  if (! options.direction) {
-    options.direction =  'any';
-  }
-  if (! options.algorithm) {
-    options.algorithm = "dijkstra";
-  }
-  options.fromVertexExample = vertexExample;
-  options.toVertexExample = {};
-
-  options.visitor = TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR;
-  return RUN_DIJKSTRA_WITH_RESULT_HANDLE(
-    "ABSOLUTE_ECCENTRICITY",
-    graphName,
-    options,
-    {}
-  );
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for absolute eccentricity traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_ECCENTRICITY_VISITOR (config, result, node, path) {
-  'use strict';
-  if (path.edges.length > 0) {
-    result.current = Math.min(1 / node.dist, result.current || 1);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_eccentricity
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_ECCENTRICITY (graphName, options) {
-  'use strict';
-
-  options = CLONE(options) || {};
-  if (! options.direction) {
-    options.direction =  'any';
-  }
-  if (! options.algorithm) {
-    options.algorithm = "dijkstra";
-  }
-  options.fromVertexExample = {};
-  options.toVertexExample = {};
-  options.visitor = TRAVERSAL_ECCENTRICITY_VISITOR;
-  var result = RUN_DIJKSTRA_WITH_RESULT_HANDLE(
-    "ECCENTRICITY",
-    graphName,
-    options,
-    {
-      vertices: {},
-      max: 0
-    },
-    function (result, vertex) {
-      if (result.current === undefined) {
-        result.vertices[vertex._id] = 0;
-      } else {
-        if (result.current > result.max) {
-          result.max = result.current;
-        }
-        result.vertices[vertex._id] = result.current;
-        delete result.current;
-      }
-    }
-  );
-  var list = result.vertices;
-  Object.keys(list).forEach(function (r) {
-    list[r] /= result.max;
-  });
-  return list;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for absolute closeness traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
-  'use strict';
-  result[path.vertices[0]._id] = result[path.vertices[0]._id] || 0;
-  result[path.vertices[0]._id] += node.dist;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_absolute_closeness
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
-  'use strict';
-  options = CLONE(options) || {};
-  if (! options.direction) {
-    options.direction =  'any';
-  }
-  if (! options.algorithm) {
-    options.algorithm = "dijkstra";
-  }
-  options.fromVertexExample = vertexExample;
-  options.toVertexExample = {};
-
-  options.visitor = TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR;
-  return RUN_DIJKSTRA_WITH_RESULT_HANDLE(
-    "ABSOLUTE_CLOSENESS",
-    graphName,
-    options,
-    {}
-  );
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for absolute closeness traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
-  'use strict';
-  result.current += node.dist;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_closeness
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_CLOSENESS (graphName, options) {
-  'use strict';
-
-  options = CLONE(options) || {};
-  if (! options.direction) {
-    options.direction =  'any';
-  }
-  if (! options.algorithm) {
-    options.algorithm = "dijkstra";
-  }
-  options.fromVertexExample = {};
-  options.toVertexExample = {};
-  options.visitor = TRAVERSAL_CLOSENESS_VISITOR;
-
-  var result = RUN_DIJKSTRA_WITH_RESULT_HANDLE(
-    "CLOSENESS",
-    graphName,
-    options,
-    {
-      vertices: {},
-      current: 0,
-      max: 0
-    },
-    function(result, vertex) {
-      if (result.current !== 0) {
-        result.current = 1 / result.current;
-      }
-      if (result.current > result.max) {
-        result.max = result.current;
-      }
-      result.vertices[vertex._id] = result.current;
-      result.current = 0;
-    }
-  );
-  var list = result.vertices;
-  Object.keys(list).forEach(function (r) {
-    list[r] /= result.max;
-  });
-  return list;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_absolute_betweenness
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
-  'use strict';
-
-  if (typeof options !== "object" || Array.isArray(options)) {
-    options = {};
-  } else {
-    options = CLONE(options);
-  }
-  if (! options.direction) {
-    options.direction =  'any';
-  }
-  options.algorithm = "Floyd-Warshall";
-
-  // Make sure we ONLY extract _ids
-  options.includeData = false;
-  let graph = graphModule._graph(graphName);
-  let vertexCollections = graph._vertexCollections().map(function (c) { return c.name();});
-  let vertexIds = DOCUMENT_IDS_BY_EXAMPLE("GRAPH_ABSOLUTE_BETWEENNESS", vertexCollections, {});
-  let result = {};
-  let distanceMap = AQL_GRAPH_SHORTEST_PATH(graphName, vertexIds , vertexIds, options);
-  for (let k = 0; k < vertexIds.length; k++) {
-    result[vertexIds[k]] = 0;
-  }
-  distanceMap.forEach(function(d) {
-    let startVertex = d.vertices[0];
-    let l = d.vertices.length;
-    let targetVertex = d.vertices[l - 1];
-    let val = 1 / l;
-    d.vertices.forEach(function (v) {
-      if (v === startVertex || v === targetVertex) {
-        return;
-      }
-      result[v] += val;
-    });
-  });
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_betweenness
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_BETWEENNESS (graphName, options) {
-  'use strict';
-
-  options = CLONE(options) || {};
-
-  var result = AQL_GRAPH_ABSOLUTE_BETWEENNESS(graphName, options),  max = 0;
-  Object.keys(result).forEach(function (r) {
-    if (result[r] > max) {
-      max = result[r];
-    }
-  });
-  if (max === 0) {
-    return result;
-  }
-  Object.keys(result).forEach(function (r) {
-    result[r] = result[r] / max;
-  });
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_radius
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_RADIUS (graphName, options) {
-  'use strict';
-
-  options = CLONE(options) || {};
-  if (! options.direction) {
-    options.direction =  'any';
-  }
-  if (! options.algorithm) {
-    options.algorithm = "Floyd-Warshall";
-  }
-
-  var result = AQL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options), min = Infinity;
-  Object.keys(result).forEach(function (r) {
-    if (result[r] === 0) {
-      return;
-    }
-    if (result[r] < min) {
-      min = result[r];
-    }
-  });
-
-  return min;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_aql_general_graph_diameter
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_GRAPH_DIAMETER (graphName, options) {
-  'use strict';
-
-  options = CLONE(options) || {};
-  if (! options.direction) {
-    options.direction =  'any';
-  }
-  if (! options.algorithm) {
-    options.algorithm = "Floyd-Warshall";
-  }
-
-  var result = AQL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options),
-      max = 0;
-  Object.keys(result).forEach(function (r) {
-    if (result[r] > max) {
-      max = result[r];
-    }
-  });
-
-  return max;
-}
-
 
 exports.FCALL_USER = FCALL_USER;
 exports.KEYS = KEYS;
@@ -8146,6 +5499,7 @@ exports.AQL_UPPER = AQL_UPPER;
 exports.AQL_SUBSTRING = AQL_SUBSTRING;
 exports.AQL_CONTAINS = AQL_CONTAINS;
 exports.AQL_LIKE = AQL_LIKE;
+exports.AQL_REGEX_TEST = AQL_REGEX_TEST;
 exports.AQL_LEFT = AQL_LEFT;
 exports.AQL_RIGHT = AQL_RIGHT;
 exports.AQL_TRIM = AQL_TRIM;
@@ -8182,6 +5536,21 @@ exports.AQL_ABS = AQL_ABS;
 exports.AQL_RAND = AQL_RAND;
 exports.AQL_SQRT = AQL_SQRT;
 exports.AQL_POW = AQL_POW;
+exports.AQL_LOG = AQL_LOG;
+exports.AQL_LOG2 = AQL_LOG2;
+exports.AQL_LOG10 = AQL_LOG10;
+exports.AQL_EXP = AQL_EXP;
+exports.AQL_EXP2 = AQL_EXP2;
+exports.AQL_SIN = AQL_SIN;
+exports.AQL_COS = AQL_COS;
+exports.AQL_TAN = AQL_TAN;
+exports.AQL_ASIN = AQL_ASIN;
+exports.AQL_ACOS = AQL_ACOS;
+exports.AQL_ATAN = AQL_ATAN;
+exports.AQL_ATAN2 = AQL_ATAN2;
+exports.AQL_RADIANS = AQL_RADIANS;
+exports.AQL_DEGREES = AQL_DEGREES;
+exports.AQL_PI = AQL_PI;
 exports.AQL_LENGTH = AQL_LENGTH;
 exports.AQL_FIRST = AQL_FIRST;
 exports.AQL_LAST = AQL_LAST;
@@ -8195,9 +5564,9 @@ exports.AQL_UNION = AQL_UNION;
 exports.AQL_UNION_DISTINCT = AQL_UNION_DISTINCT;
 exports.AQL_CALL = AQL_CALL;
 exports.AQL_APPLY = AQL_APPLY;
-exports.AQL_REMOVE_VALUE = AQL_REMOVE_VALUE; 
-exports.AQL_REMOVE_VALUES = AQL_REMOVE_VALUES; 
-exports.AQL_REMOVE_NTH = AQL_REMOVE_NTH; 
+exports.AQL_REMOVE_VALUE = AQL_REMOVE_VALUE;
+exports.AQL_REMOVE_VALUES = AQL_REMOVE_VALUES;
+exports.AQL_REMOVE_NTH = AQL_REMOVE_NTH;
 exports.AQL_PUSH = AQL_PUSH;
 exports.AQL_APPEND = AQL_APPEND;
 exports.AQL_POP = AQL_POP;
@@ -8206,6 +5575,7 @@ exports.AQL_UNSHIFT = AQL_UNSHIFT;
 exports.AQL_SLICE = AQL_SLICE;
 exports.AQL_MINUS = AQL_MINUS;
 exports.AQL_INTERSECTION = AQL_INTERSECTION;
+exports.AQL_OUTERSECTION = AQL_OUTERSECTION;
 exports.AQL_FLATTEN = AQL_FLATTEN;
 exports.AQL_MAX = AQL_MAX;
 exports.AQL_MIN = AQL_MIN;
@@ -8222,30 +5592,6 @@ exports.AQL_WITHIN = AQL_WITHIN;
 exports.AQL_WITHIN_RECTANGLE = AQL_WITHIN_RECTANGLE;
 exports.AQL_IS_IN_POLYGON = AQL_IS_IN_POLYGON;
 exports.AQL_FULLTEXT = AQL_FULLTEXT;
-exports.AQL_PATHS = AQL_PATHS;
-exports.AQL_SHORTEST_PATH = AQL_SHORTEST_PATH;
-exports.AQL_TRAVERSAL = AQL_TRAVERSAL;
-exports.AQL_TRAVERSAL_TREE = AQL_TRAVERSAL_TREE;
-exports.AQL_EDGES = AQL_EDGES;
-exports.AQL_NEIGHBORS = AQL_NEIGHBORS;
-exports.AQL_GRAPH_TRAVERSAL = AQL_GRAPH_TRAVERSAL;
-exports.AQL_GRAPH_TRAVERSAL_TREE = AQL_GRAPH_TRAVERSAL_TREE;
-exports.AQL_GRAPH_EDGES = AQL_GRAPH_EDGES;
-exports.AQL_GRAPH_VERTICES = AQL_GRAPH_VERTICES;
-exports.AQL_GRAPH_PATHS = AQL_GRAPH_PATHS;
-exports.AQL_GRAPH_SHORTEST_PATH = AQL_GRAPH_SHORTEST_PATH;
-exports.AQL_GRAPH_DISTANCE_TO = AQL_GRAPH_DISTANCE_TO;
-exports.AQL_GRAPH_NEIGHBORS = AQL_GRAPH_NEIGHBORS;
-exports.AQL_GRAPH_COMMON_NEIGHBORS = AQL_GRAPH_COMMON_NEIGHBORS;
-exports.AQL_GRAPH_COMMON_PROPERTIES = AQL_GRAPH_COMMON_PROPERTIES;
-exports.AQL_GRAPH_ECCENTRICITY = AQL_GRAPH_ECCENTRICITY;
-exports.AQL_GRAPH_BETWEENNESS = AQL_GRAPH_BETWEENNESS;
-exports.AQL_GRAPH_CLOSENESS = AQL_GRAPH_CLOSENESS;
-exports.AQL_GRAPH_ABSOLUTE_ECCENTRICITY = AQL_GRAPH_ABSOLUTE_ECCENTRICITY;
-exports.AQL_GRAPH_ABSOLUTE_BETWEENNESS = AQL_GRAPH_ABSOLUTE_BETWEENNESS;
-exports.AQL_GRAPH_ABSOLUTE_CLOSENESS = AQL_GRAPH_ABSOLUTE_CLOSENESS;
-exports.AQL_GRAPH_DIAMETER = AQL_GRAPH_DIAMETER;
-exports.AQL_GRAPH_RADIUS = AQL_GRAPH_RADIUS;
 exports.AQL_NOT_NULL = AQL_NOT_NULL;
 exports.AQL_FIRST_LIST = AQL_FIRST_LIST;
 exports.AQL_FIRST_DOCUMENT = AQL_FIRST_DOCUMENT;
@@ -8293,11 +5639,8 @@ exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 exports.reload = reloadUserFunctions;
 exports.clearCaches = clearCaches;
 exports.lookupFunction = GET_USERFUNCTION;
-exports.warnFromFunction = WARN;
+exports.throwFromFunction = THROW;
 exports.fixValue = FIX_VALUE;
 
 // initialize the query engine
 exports.clearCaches();
-//reloadUserFunctions();
-
-

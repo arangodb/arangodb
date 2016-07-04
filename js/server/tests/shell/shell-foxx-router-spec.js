@@ -1,4 +1,4 @@
-/*global describe, it, beforeEach */
+/* global describe, it, beforeEach */
 'use strict';
 const Router = require('@arangodb/foxx/router/router');
 const Tree = require('@arangodb/foxx/router/tree');
@@ -10,44 +10,44 @@ const $_PARAM = Symbol.for('@@parameter'); // named parameter (no routes here, l
 const $_ROUTES = Symbol.for('@@routes'); // routes and child routers
 const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware (not including router.all)
 
-// const _ = require('lodash');
+// const _ = require('lodash')
 // function log(something) {
-//   const seen = new Set();
+//   const seen = new Set()
 //   function objectify(thing) {
-//     if (seen.has(thing)) return thing;
-//     seen.add(thing);
-//     if (!thing) return thing;
-//     if (Array.isArray(thing)) return thing.map(objectify);
-//     if (typeof thing === 'function') return String(thing);
-//     if (typeof thing === 'symbol') return String(thing);
-//     if (typeof thing !== 'object') return thing;
+//     if (seen.has(thing)) return thing
+//     seen.add(thing)
+//     if (!thing) return thing
+//     if (Array.isArray(thing)) return thing.map(objectify)
+//     if (typeof thing === 'function') return String(thing)
+//     if (typeof thing === 'symbol') return String(thing)
+//     if (typeof thing !== 'object') return thing
 //     if (thing.handler) {
-//       return `Context(${thing.handler})`;
+//       return `Context(${thing.handler})`
 //     }
 //     if (thing.tree) {
 //       return {
 //         '@@router': objectify(thing.tree.root)
-//       };
+//       }
 //     }
 //     if (thing.router) {
 //       return {
 //         path: thing.path,
 //         '@@router': objectify(thing.tree.root)
-//       };
+//       }
 //     }
-//     const obj = {};
+//     const obj = {}
 //     if (thing instanceof Map) {
 //       for (const entry of thing.entries()) {
-//         obj[String(entry[0])] = objectify(entry[1]);
+//         obj[String(entry[0])] = objectify(entry[1])
 //       }
 //     } else {
 //       _.each(thing, function (value, key) {
-//         obj[String(key)] = objectify(value);
-//       });
+//         obj[String(key)] = objectify(value)
+//       })
 //     }
-//     return obj;
+//     return obj
 //   }
-//   console.infoLines(JSON.stringify(objectify(something), null, 2));
+//   console.infoLines(JSON.stringify(objectify(something), null, 2))
 // }
 
 describe('Tree', function () {
@@ -68,7 +68,7 @@ describe('Tree', function () {
   let CHILD1;
   let CHILD2;
 
-  function prepareRouter(router, childRouter1, childRouter2) {
+  function prepareRouter (router, childRouter1, childRouter2) {
     router.use('/hello', childRouter1);
     CHILD1 = router._routes[router._routes.length - 1];
     router.use(childRouter2);
@@ -101,30 +101,30 @@ describe('Tree', function () {
       expect(tree.size).to.equal(3);
       expect(tree.get($_TERMINAL).size).to.equal(1);
       expect(tree.get($_TERMINAL).get($_ROUTES))
-      .to.eql([GET_SLASH]);
+        .to.eql([GET_SLASH]);
 
       expect(tree.get('hello').size).to.equal(4);
       expect(tree.get('hello').get($_TERMINAL).size).to.equal(1);
       expect(tree.get('hello').get($_TERMINAL).get($_ROUTES))
-      .to.eql([POST_HELLO]);
+        .to.eql([POST_HELLO]);
 
       expect(tree.get('hello').get('world').size).to.equal(2);
       expect(tree.get('hello').get('world').get($_TERMINAL).size).to.equal(1);
       expect(tree.get('hello').get('world').get($_TERMINAL).get($_ROUTES))
-      .to.eql([GET_HELLO_WORLD]);
+        .to.eql([GET_HELLO_WORLD]);
 
       expect(tree.get('hello').get('world').get($_WILDCARD).size).to.equal(1);
       expect(tree.get('hello').get('world').get($_WILDCARD).get($_MIDDLEWARE))
-      .to.eql([USE_HELLO_WORLD]);
+        .to.eql([USE_HELLO_WORLD]);
 
       expect(tree.get('hello').get($_PARAM).size).to.equal(2);
       expect(tree.get('hello').get($_PARAM).get($_TERMINAL).size).to.equal(1);
       expect(tree.get('hello').get($_PARAM).get($_TERMINAL).get($_ROUTES))
-      .to.eql([GET_HELLO_PARAM]);
+        .to.eql([GET_HELLO_PARAM]);
 
       expect(tree.get('hello').get($_PARAM).get($_WILDCARD).size).to.equal(1);
       expect(tree.get('hello').get($_PARAM).get($_WILDCARD).get($_MIDDLEWARE))
-      .to.eql([USE_HELLO_PARAM]);
+        .to.eql([USE_HELLO_PARAM]);
 
       expect(tree.get('hello').get($_WILDCARD).size).to.equal(1);
       expect(tree.get('hello').get($_WILDCARD).get($_ROUTES).length).to.equal(1);
@@ -134,34 +134,33 @@ describe('Tree', function () {
       expect(child1.get('world').size).to.equal(1);
       expect(child1.get('world').get($_TERMINAL).size).to.equal(1);
       expect(child1.get('world').get($_TERMINAL).get($_ROUTES))
-      .to.eql([GET_WORLD]);
+        .to.eql([GET_WORLD]);
 
       expect(tree.get($_WILDCARD).size).to.equal(2);
       expect(tree.get($_WILDCARD).get($_MIDDLEWARE))
-      .to.eql([USE_SLASH]);
+        .to.eql([USE_SLASH]);
 
       const child2 = tree.get($_WILDCARD).get($_ROUTES)[0].tree.root;
       expect(child2.size).to.equal(4);
       expect(child2.get($_TERMINAL).size).to.equal(1);
       expect(child2.get($_TERMINAL).get($_ROUTES))
-      .to.eql([GET_SLASH2]);
+        .to.eql([GET_SLASH2]);
 
       expect(child2.get('hello').size).to.equal(1);
       expect(child2.get('hello').get('world').size).to.equal(1);
       expect(child2.get('hello').get('world').get($_TERMINAL).size).to.equal(1);
       expect(child2.get('hello').get('world').get($_TERMINAL).get($_ROUTES))
-      .to.eql([GET_HELLO_WORLD2]);
+        .to.eql([GET_HELLO_WORLD2]);
 
       expect(child2.get('potato').size).to.equal(1);
       expect(child2.get('potato').get('salad').size).to.equal(1);
       expect(child2.get('potato').get('salad').get($_TERMINAL).size).to.equal(1);
       expect(child2.get('potato').get('salad').get($_TERMINAL).get($_ROUTES))
-      .to.eql([GET_POTATO_SALAD1, GET_POTATO_SALAD2]);
+        .to.eql([GET_POTATO_SALAD1, GET_POTATO_SALAD2]);
 
       expect(child2.get($_WILDCARD).size).to.equal(1);
       expect(child2.get($_WILDCARD).get($_ROUTES))
-      .to.eql([GET_ALL]);
-
+        .to.eql([GET_ALL]);
     });
   });
 

@@ -44,7 +44,7 @@
     <section class="info" id="information">
       <div class="header">
         <div class="header-icon-container">
-          <img src="foxxes/thumbnail?mount=<%= app.encodedMount() %>" alt="Icon for Service" class="icon" />
+          <img src="<%= app.thumbnailUrl %>" alt="Icon for Service" class="icon" />
         </div>
         <div id="hidden_buttons" style="display: none">
           <button class="delete button-danger" <%=app.isSystem()?"disabled":""%> >Delete</button>
@@ -95,9 +95,10 @@
         <p id="app-info-swagger">Documentation for this service is not yet configured.</p>
       </div>
       <div id="swagger" class="swagger" style="display: none;">
-        <a id="jsonLink" href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
-          SHOW JSON
-        </a>
+        <a id="jsonLink">Swagger</a>
+        <div id="swaggerJsonContent" style="display: none">
+          <div id="swaggerJsonEditor" style="height: 100%;"></div>
+        </div>
         <iframe src="/_db/<%= db %>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
       </div>
       <div id="settings" class="readme" style="display: none;">

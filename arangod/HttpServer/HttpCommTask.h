@@ -52,7 +52,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
  public:
   HttpCommTask(HttpServer*, TRI_socket_t, ConnectionInfo&&,
-               double keepAliveTimeout, std::string const& authenticationRealm);
+               double keepAliveTimeout);
 
  protected:
   ~HttpCommTask();
@@ -111,9 +111,6 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   // this method can be called to clean up when the request handling aborts
   // prematurely
   void resetState(bool close);
-
-  // decides whether or not we should send back a www-authenticate header
-  bool sendWwwAuthenticateHeader() const;
 
  protected:
   bool setup(Scheduler* scheduler, EventLoop loop) override;

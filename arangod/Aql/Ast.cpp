@@ -24,10 +24,13 @@
 #include "Aql/Ast.h"
 #include "Aql/Arithmetic.h"
 #include "Aql/Executor.h"
+#include "Aql/Function.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/collection.h"
 
 #include <velocypack/Iterator.h>
@@ -1062,22 +1065,29 @@ AstNode* Ast::createNodeCollectionDirection(uint64_t direction, AstNode const* c
 AstNode* Ast::createNodeTraversal(char const* vertexVarName,
                                   size_t vertexVarLength,
                                   AstNode const* direction,
-                                  AstNode const* start, AstNode const* graph) {
+                                  AstNode const* start, AstNode const* graph,
+                                  AstNode const* options) {
   if (vertexVarName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   AstNode* node = createNode(NODE_TYPE_TRAVERSAL);
-  node->reserve(3);
+  node->reserve(5);
+
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
 
   node->addMember(direction);
   node->addMember(start);
   node->addMember(graph);
+  node->addMember(options);
 
   AstNode* vertexVar =
       createNodeVariable(vertexVarName, vertexVarLength, false);
   node->addMember(vertexVar);
 
-  TRI_ASSERT(node->numMembers() == 4);
+  TRI_ASSERT(node->numMembers() == 5);
 
   _containsTraversal = true;
 
@@ -1089,17 +1099,18 @@ AstNode* Ast::createNodeTraversal(char const* vertexVarName,
                                   size_t vertexVarLength,
                                   char const* edgeVarName, size_t edgeVarLength,
                                   AstNode const* direction,
-                                  AstNode const* start, AstNode const* graph) {
+                                  AstNode const* start, AstNode const* graph,
+                                  AstNode const* options) {
   if (edgeVarName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   AstNode* node = createNodeTraversal(vertexVarName, vertexVarLength, direction,
-                                      start, graph);
+                                      start, graph, options);
 
   AstNode* edgeVar = createNodeVariable(edgeVarName, edgeVarLength, false);
   node->addMember(edgeVar);
 
-  TRI_ASSERT(node->numMembers() == 5);
+  TRI_ASSERT(node->numMembers() == 6);
 
   _containsTraversal = true;
 
@@ -1112,20 +1123,75 @@ AstNode* Ast::createNodeTraversal(char const* vertexVarName,
                                   char const* edgeVarName, size_t edgeVarLength,
                                   char const* pathVarName, size_t pathVarLength,
                                   AstNode const* direction,
-                                  AstNode const* start, AstNode const* graph) {
+                                  AstNode const* start, AstNode const* graph,
+                                  AstNode const* options) {
   if (pathVarName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   AstNode* node =
       createNodeTraversal(vertexVarName, vertexVarLength, edgeVarName,
-                          edgeVarLength, direction, start, graph);
+                          edgeVarLength, direction, start, graph, options);
 
   AstNode* pathVar = createNodeVariable(pathVarName, pathVarLength, false);
   node->addMember(pathVar);
 
-  TRI_ASSERT(node->numMembers() == 6);
+  TRI_ASSERT(node->numMembers() == 7);
 
   _containsTraversal = true;
+
+  return node;
+}
+
+/// @brief create an AST shortest path node with only vertex variable
+AstNode* Ast::createNodeShortestPath(char const* vertexVarName,
+                                     size_t vertexVarLength, uint64_t direction,
+                                     AstNode const* start,
+                                     AstNode const* target,
+                                     AstNode const* graph,
+                                     AstNode const* options) {
+  if (vertexVarName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  AstNode* node = createNode(NODE_TYPE_SHORTEST_PATH);
+
+  node->reserve(6);
+
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
+  AstNode* dir = createNodeValueInt(direction);
+  node->addMember(dir);
+  node->addMember(start);
+  node->addMember(target);
+  node->addMember(graph);
+  node->addMember(options);
+
+  AstNode* vertexVar =
+      createNodeVariable(vertexVarName, vertexVarLength, false);
+  node->addMember(vertexVar);
+
+  TRI_ASSERT(node->numMembers() == 6);
+
+  return node;
+}
+
+/// @brief create an AST shortest path node with vertex and edge variable
+AstNode* Ast::createNodeShortestPath(
+    char const* vertexVarName, size_t vertexVarLength, char const* edgeVarName,
+    size_t edgeVarLength, uint64_t direction, AstNode const* start,
+    AstNode const* target, AstNode const* graph, AstNode const* options) {
+
+  if (edgeVarName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  AstNode* node = createNodeShortestPath(vertexVarName, vertexVarLength, direction, start, target, graph, options);
+
+  AstNode* edgeVar = createNodeVariable(edgeVarName, edgeVarLength, false);
+  node->addMember(edgeVar);
+
+  TRI_ASSERT(node->numMembers() == 7);
 
   return node;
 }
@@ -1263,11 +1329,26 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         }
 
         // turn node into a collection node
+        char const* name = nullptr;
         VPackValueLength length;
         char const* stringValue = value.getString(length);
-        // TODO: can we get away without registering the string value here?
-        char const* name =
-            _query->registerString(stringValue, static_cast<size_t>(length));
+
+        if (length > 0 && stringValue[0] >= '0' && stringValue[0] <= '9') {
+          // emergency translation of collection id to name
+          arangodb::CollectionNameResolver resolver(_query->vocbase());
+          std::string collectionName = resolver.getCollectionNameCluster(basics::StringUtils::uint64(stringValue, length));
+          if (collectionName.empty()) {
+            THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                          value.copyString().c_str());
+          }
+
+          name = _query->registerString(collectionName.c_str(), collectionName.size());
+        } else {
+          // TODO: can we get away without registering the string value here?
+          name = _query->registerString(stringValue, static_cast<size_t>(length));
+        }
+
+        TRI_ASSERT(name != nullptr);
 
         node = createNodeCollection(name, isWriteCollection
                                               ? TRI_TRANSACTION_WRITE
@@ -1351,6 +1432,23 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         TRI_ASSERT(graphNode->isStringValue());
         std::string graphName = graphNode->getString();
         auto graph = _query->lookupGraphByName(graphName);
+        TRI_ASSERT(graph != nullptr);
+        auto vColls = graph->vertexCollections();
+        for (const auto& n : vColls) {
+          _query->collections()->add(n, TRI_TRANSACTION_READ);
+        }
+        auto eColls = graph->edgeCollections();
+        for (const auto& n : eColls) {
+          _query->collections()->add(n, TRI_TRANSACTION_READ);
+        }
+      }
+    } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
+      auto graphNode = node->getMember(3);
+      if (graphNode->type == NODE_TYPE_VALUE) {
+        TRI_ASSERT(graphNode->isStringValue());
+        std::string graphName = graphNode->getString();
+        auto graph = _query->lookupGraphByName(graphName);
+        TRI_ASSERT(graph != nullptr);
         auto vColls = graph->vertexCollections();
         for (const auto& n : vColls) {
           _query->collections()->add(n, TRI_TRANSACTION_READ);
@@ -2035,7 +2133,7 @@ AstNode* Ast::createArithmeticResultNode(double value) {
     // if the architecture does not use IEEE754 values then this shouldn't do
     // any harm either
     _query->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-    return const_cast<AstNode*>(&ZeroNode);
+    return const_cast<AstNode*>(&NullNode);
   }
 
   return createNodeValueDouble(value);
@@ -2389,7 +2487,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
         if (r == 0) {
           _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-          return const_cast<AstNode*>(&ZeroNode);
+          return const_cast<AstNode*>(&NullNode);
         }
 
         // check if the result would overflow
@@ -2404,7 +2502,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
       if (right->getDoubleValue() == 0.0) {
         _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return const_cast<AstNode*>(&ZeroNode);
+        return const_cast<AstNode*>(&NullNode);
       }
 
       return createArithmeticResultNode(left->getDoubleValue() /
@@ -2421,7 +2519,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
         if (r == 0) {
           _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-          return const_cast<AstNode*>(&ZeroNode);
+          return const_cast<AstNode*>(&NullNode);
         }
 
         // check if the result would overflow
@@ -2435,7 +2533,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
       if (right->getDoubleValue() == 0.0) {
         _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return const_cast<AstNode*>(&ZeroNode);
+        return const_cast<AstNode*>(&NullNode);
       }
 
       return createArithmeticResultNode(
@@ -2519,7 +2617,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
 
-  if (func->externalName == "LENGTH") {
+  if (func->externalName == "LENGTH" || func->externalName == "COUNT") {
     // shortcut LENGTH(collection) to COLLECTION_COUNT(collection)
     auto args = node->getMember(0);
     if (args->numMembers() == 1) {
@@ -2898,11 +2996,11 @@ std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name) {
 
   if (functionName.find(':') == std::string::npos) {
     // prepend default namespace for internal functions
-    return std::make_pair(functionName, true);
+    return std::make_pair(std::move(functionName), true);
   }
 
   // user-defined function
-  return std::make_pair(functionName, false);
+  return std::make_pair(std::move(functionName), false);
 }
 
 /// @brief create a node of the specified type

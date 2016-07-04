@@ -489,15 +489,12 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     std::string const cnameString = cname.copyString();
     isSystem = (!cnameString.empty() && cnameString[0] == '_');
 
-    if (!cnameString.empty()) {
-      TRI_vocbase_col_t* col =
-          TRI_LookupCollectionByNameVocBase(_vocbase, cnameString.c_str());
+    TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, cnameString);
 
-      if (col != nullptr && col->_cid != cid) {
-        // cid change? this may happen for system collections or if we restored
-        // from a dump
-        cid = col->_cid;
-      }
+    if (col != nullptr && col->_cid != cid) {
+      // cid change? this may happen for system collections or if we restored
+      // from a dump
+      cid = col->_cid;
     }
   }
 
@@ -633,7 +630,7 @@ int ContinuousSyncer::startTransaction(VPackSlice const& slice) {
 
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
-  auto trx = std::make_unique<ReplicationTransaction>(_server, _vocbase, tid);
+  auto trx = std::make_unique<ReplicationTransaction>(_server, _vocbase);
 
   int res = trx->begin();
 
@@ -751,11 +748,7 @@ int ContinuousSyncer::renameCollection(VPackSlice const& slice) {
   }
 
   TRI_voc_cid_t const cid = getCid(slice);
-  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
-
-  if (col == nullptr && !cname.empty()) {
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
-  }
+  TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, cname);
 
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -776,15 +769,8 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
 
   TRI_voc_cid_t cid = getCid(slice);
   std::string const cname = getCName(slice);
-  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
-
-  if (col == nullptr && !cname.empty()) {
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
-    if (col != nullptr) {
-      cid = col->_cid;
-    }
-  }
-
+  TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, cname);
+  
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }

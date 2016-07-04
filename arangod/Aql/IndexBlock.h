@@ -100,12 +100,15 @@ class IndexBlock : public ExecutionBlock {
   /// @brief frees the memory for all non-constant expressions
   void cleanupNonConstExpressions();
 
+  /// @brief order a cursor for the index at the specified position
+  OperationCursor* orderCursor(size_t currentIndex);
+
  private:
   /// @brief collection
   Collection const* _collection;
 
   /// @brief document result
-  std::shared_ptr<OperationResult> _result;
+  std::vector<TRI_doc_mptr_t*> _result;
   
   /// @brief document buffer
   std::vector<arangodb::velocypack::Slice> _documents;
@@ -131,10 +134,14 @@ class IndexBlock : public ExecutionBlock {
   /// a vector of RegisterId, used to execute the expression
   std::vector<std::vector<RegisterId>> _inRegs;
 
-  /// @brief _cursor: holds the index cursor found using
-  /// getIndexCursor (if any) so that it can be read in chunks and not
+  /// @brief _cursor: holds the current index cursor found using
+  /// createCursor (if any) so that it can be read in chunks and not
   /// necessarily all at once.
-  std::unique_ptr<arangodb::OperationCursor> _cursor;
+  arangodb::OperationCursor* _cursor;
+  
+  /// @brief a vector of cursors for the index block. cursors can be
+  /// reused
+  std::vector<std::unique_ptr<OperationCursor>> _cursors;
 
   /// @brief _condition: holds the complete condition this Block can serve for
   AstNode const* _condition;

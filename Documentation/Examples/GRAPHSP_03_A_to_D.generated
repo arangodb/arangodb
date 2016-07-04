@@ -1,0 +1,40 @@
+arangosh&gt; db._query(<span class="hljs-string">"FOR a IN circles FILTER a._key == 'A' FOR d IN circles FILTER d._key == 'D' FOR v, e IN OUTBOUND SHORTEST_PATH a TO d GRAPH 'traversalGraph' RETURN [v._key, e._key]"</span>);
+[ 
+  [ 
+    <span class="hljs-string">"A"</span>, 
+    <span class="hljs-literal">null</span> 
+  ], 
+  [ 
+    <span class="hljs-string">"B"</span>, 
+    <span class="hljs-string">"7787"</span> 
+  ], 
+  [ 
+    <span class="hljs-string">"C"</span>, 
+    <span class="hljs-string">"7791"</span> 
+  ], 
+  [ 
+    <span class="hljs-string">"D"</span>, 
+    <span class="hljs-string">"7794"</span> 
+  ] 
+]
+[object ArangoQueryCursor, count: <span class="hljs-number">4</span>, hasMore: <span class="hljs-literal">false</span>]
+arangosh&gt; db._query(<span class="hljs-string">"FOR a IN circles FILTER a._key == 'A' FOR d IN circles FILTER d._key == 'D' FOR v, e IN OUTBOUND SHORTEST_PATH a TO d edges RETURN [v._key, e._key]"</span>);
+[ 
+  [ 
+    <span class="hljs-string">"A"</span>, 
+    <span class="hljs-literal">null</span> 
+  ], 
+  [ 
+    <span class="hljs-string">"B"</span>, 
+    <span class="hljs-string">"7787"</span> 
+  ], 
+  [ 
+    <span class="hljs-string">"C"</span>, 
+    <span class="hljs-string">"7791"</span> 
+  ], 
+  [ 
+    <span class="hljs-string">"D"</span>, 
+    <span class="hljs-string">"7794"</span> 
+  ] 
+]
+[object ArangoQueryCursor, count: <span class="hljs-number">4</span>, hasMore: <span class="hljs-literal">false</span>]

@@ -1,41 +1,41 @@
 'use strict';
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014 triAGENS GmbH, Cologne, Germany
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014 triAGENS GmbH, Cologne, Germany
+// / Copyright 2015 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 var tasks = require('@arangodb/tasks');
 var db = require('@arangodb').db;
 var qb = require('aqb');
 
-var runInDatabase = function() {
+var runInDatabase = function () {
   var busy = false;
   db._executeTransaction({
     collections: {
       read: ['_queues', '_jobs'],
       write: ['_jobs']
     },
-    action: function() {
+    action: function () {
       db._queues.all().toArray()
-        .forEach(function(queue) {
+        .forEach(function (queue) {
           var numBusy = db._jobs.byExample({
             queue: queue._key,
             status: 'progress'
@@ -48,12 +48,12 @@ var runInDatabase = function() {
 
           var jobs = db._createStatement({
             query: (
-              qb.for('job').in('_jobs')
+            qb.for('job').in('_jobs')
               .filter(
                 qb('pending').eq('job.status')
-                .and(qb.ref('@queue').eq('job.queue'))
-                .and(qb.ref('@now').gte('job.delayUntil'))
-              )
+                  .and(qb.ref('@queue').eq('job.queue'))
+                  .and(qb.ref('@now').gte('job.delayUntil'))
+            )
               .sort('job.delayUntil', 'ASC')
               .limit('@max')
               .return('job')
@@ -69,12 +69,12 @@ var runInDatabase = function() {
             busy = true;
           }
 
-          jobs.forEach(function(job) {
+          jobs.forEach(function (job) {
             db._jobs.update(job, {
               status: 'progress'
             });
             tasks.register({
-              command: function(cfg) {
+              command: function (cfg) {
                 var db = require('@arangodb').db;
                 var initialDatabase = db._name();
                 db._useDatabase(cfg.db);
@@ -101,7 +101,7 @@ var runInDatabase = function() {
   }
 };
 
-exports.manage = function() {
+exports.manage = function () {
   var initialDatabase = db._name();
   var now = Date.now();
 
@@ -116,7 +116,7 @@ exports.manage = function() {
     global.KEY_SET('queue-control', 'databases-expire', Date.now() + 30 * 1000);
   }
 
-  databases.forEach(function(database) {
+  databases.forEach(function (database) {
     try {
       db._useDatabase(database);
       global.KEYSPACE_CREATE('queue-control', 1, true);
@@ -143,7 +143,7 @@ exports.manage = function() {
   db._useDatabase(initialDatabase);
 };
 
-exports.run = function() {
+exports.run = function () {
   var options = require('internal').options();
 
   // disable foxx queues
@@ -163,7 +163,7 @@ exports.run = function() {
   global.KEYSPACE_CREATE('queue-control', 1, true);
 
   var initialDatabase = db._name();
-  db._databases().forEach(function(name) {
+  db._databases().forEach(function (name) {
     try {
       db._useDatabase(name);
       db._jobs.updateByExample({
@@ -180,7 +180,7 @@ exports.run = function() {
 
   if (tasks.register !== undefined) {
     tasks.register({
-      command: function() {
+      command: function () {
         require('@arangodb/foxx/queues/manager').manage();
       },
       period: period,

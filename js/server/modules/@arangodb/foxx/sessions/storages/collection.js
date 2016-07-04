@@ -1,26 +1,26 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const assert = require('assert');
 const arangodb = require('@arangodb');
@@ -29,8 +29,7 @@ const UNIQUE_CONSTRAINT = arangodb.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATE
 const db = arangodb.db;
 const aql = arangodb.aql;
 
-
-module.exports = function collectionStorage(cfg) {
+module.exports = function collectionStorage (cfg) {
   if (typeof cfg === 'string' || cfg.isArangoCollection) {
     cfg = {collection: cfg};
   }
@@ -41,7 +40,7 @@ module.exports = function collectionStorage(cfg) {
   const pruneExpired = Boolean(cfg.pruneExpired);
   const ttl = (cfg.ttl || 60 * 60) * 1000;
   const collection = (
-    typeof cfg.collection === 'string'
+  typeof cfg.collection === 'string'
     ? db._collection(cfg.collection)
     : cfg.collection
   );
@@ -97,9 +96,9 @@ module.exports = function collectionStorage(cfg) {
       };
       if (!session._key) {
         // generate a new key
-        let crypto = require("@arangodb/crypto");
+        let crypto = require('@arangodb/crypto');
         while (true) {
-          payload._key = crypto.sha256(crypto.rand() + "-frontend");
+          payload._key = crypto.sha256(crypto.rand() + '-frontend');
           try {
             // test if key is already present in collection
             const meta = collection.save(payload);

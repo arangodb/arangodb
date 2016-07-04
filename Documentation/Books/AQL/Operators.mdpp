@@ -19,6 +19,8 @@ The following comparison operators are supported:
 - *IN* test if a value is contained in an array
 - *NOT IN* test if a value is not contained in an array
 - *LIKE* tests if a string value matches a pattern
+- *=~* tests if a string value matches a regular expression
+- *!~* tests if a string value does not match a regular expression
 
 Each of the comparison operators returns a boolean value if the comparison can
 be evaluated and returns *true* if the comparison evaluates to true, and *false*
@@ -46,22 +48,29 @@ true != null              // true
 "abc" == "abc"            // true
 "abc" == "ABC"            // false
 "foo" LIKE "f%"           // true
+"foo" =~ "^f[o].$"        // true
+"foo" !~ "[a-z]+bar$"     // true
 ```
 
 The *LIKE* operator checks whether its left operand matches the pattern specified
 in its right operand. The pattern can consist of regular characters and wildcards.
 The supported wildcards are *_* to match a single arbitrary character, and *%* to 
 match any number of arbitrary characters. Literal *%* and *_* need to be escaped
-with a backslash.
+with a backslash. Backslashes need to be escaped themselves, which effectively
+means that two reverse solidus characters need to preceed a literal percent sign
+or underscore.
 
 ```
 "abc" LIKE "a%"              // true
 "abc" LIKE "_bc"             // true
-"a_b_foo" LIKE "a\\_b\\_f%"  // true
+"a_b_foo" LIKE "a\\_b\\_foo" // true
 ```
 
 The pattern matching performed by the *LIKE* operator is case-sensitive.
 
+The regular expression operators *=~* and *!~* expect their left-hand operands to
+be strings, and their right-hand operands to be strings containing valid regular
+expressions as specified in the documentation for the AQL function REGEX_TEST.
 
 !SUBSUBSECTION Array comparison operators
 
@@ -94,6 +103,8 @@ Examples:
 ["foo", "bar"] NONE == "bar"     // false
 ["foo", "bar"] ANY == "foo"      // true
 ```
+
+Note that these operators are not optimized yet. Indexes will not be utilized.
 
 !SUBSUBSECTION Logical operators
 
@@ -133,26 +144,20 @@ Some examples for logical operations in AQL:
     ! u.isInvalid
     1 || ! 0
 
-Older versions of ArangoDB required the operands of all logical operators to
-be boolean values and failed when non-boolean values were passed into the 
-operators. Additionally, the result of any logical operation always was a
-boolean value.
-
-This behavior has changed in ArangoDB 2.3. Passing non-boolean values to a
-logical operator is now allowed. Any-non boolean operands will be casted
-to boolean implicitly by the operator, without making the query abort.
+Passing non-boolean values to a logical operator is allowed. Any non-boolean operands 
+will be casted to boolean implicitly by the operator, without making the query abort.
 
 The *conversion to a boolean value* works as follows:
 - `null` will be converted to `false`
 - boolean values remain unchanged
 - all numbers unequal to zero are `true`, zero is `false`
-- the empty string is `false`, all other strings are `true`
+- an empty string is `false`, all other strings are `true`
 - arrays (`[ ]`) and objects / documents (`{ }`) are `true`, regardless of their contents
 
 The result of *logical and* and *logical or* operations can now have any data 
 type and is not necessarily a boolean value.
 
-For example, the following logical operations will return a boolean values:
+For example, the following logical operations will return boolean values:
 
     25 > 1 && 42 != 7                          // true
     22 IN [ 23, 42 ] || 23 NOT IN [ 22, 7 ]    // true
@@ -180,13 +185,20 @@ AQL supports the following arithmetic operators:
 - */* division
 - *%* modulus
 
-The unary plus and unary minus are supported as well.
+Unary plus and unary minus are supported as well:
 
-For exponentiation, there is a [numeric function](Functions/Numeric.md#pow) `POW()`.
+```js
+LET x = -5
+LET y = 1
+RETURN [-x, +y]
+// [5, 1]
+```
+
+For exponentiation, there is a [numeric function](Functions/Numeric.md#pow) *POW()*.
 
 For string concatenation, you must use the [string function](Functions/String.md#concat)
-`CONCAT()`. Combining two strings with a plus operator (`"foo" + "bar"`) will not work!
-Also see [Common Errors](CommonErrors.md)
+*CONCAT()*. Combining two strings with a plus operator (`"foo" + "bar"`) will not work!
+Also see [Common Errors](CommonErrors.md).
 
 Some example arithmetic operations:
 
@@ -200,7 +212,7 @@ Some example arithmetic operations:
 
 The arithmetic operators accept operands of any type. Passing non-numeric values to an 
 arithmetic operator will cast the operands to numbers using the type casting rules 
-applied by the `TO_NUMBER` function:
+applied by the [TO_NUMBER()](Functions/TypeCast.md#tonumber) function:
 
 - `null` will be converted to `0`
 - `false` will be converted to `0`, true will be converted to `1`
@@ -213,8 +225,8 @@ applied by the `TO_NUMBER` function:
   `0`.
 - objects / documents are converted to the number `0`.
 
-An arithmetic operation that produces an invalid value, such as `1 / 0` will also produce 
-a result value of `0`.
+An arithmetic operation that produces an invalid value, such as `1 / 0` (division by zero)
+will also produce a result value of `null`.
 
 Here are a few examples:
 

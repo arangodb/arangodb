@@ -44,7 +44,7 @@ body {
 }
 
 .google-search {
-  margin-right: 114px !important;
+  margin-right: 5%;
   margin-left: 10px !important;
   float: right !important;
 }
@@ -92,75 +92,67 @@ body {
   margin-top: 48px;
 }
 
-.book .book-summary ul.summary li.active > a,
-.book .book-summary ul.summary li a:hover {
-  color: #fff !important;
-}
-
-#logo {
-  display: block;
+.arangodb-logo, .arangodb-logo-small {
+  display: inline;
   float: left;
+  padding-top: 10px;
+  margin-left:5%;
+}
+
+.arangodb-logo img {
+  height: 23px;
+}
+
+.arangodb-logo-small {
+  display: none;
+}
+
+.arangodb-version-switcher {
+  width: 62px;
+  height: 44px;
+  margin-left: 24px;
+  float: left;
+  display: inline;
+  font-weight: bold;
   color: #fff;
-  width: 12%;
-  line-height: 40px;
+  background-color: inherit;
+  border: 0;
 }
 
-#logo img {
-  width: 150px;
-  margin-top: 0px;
-  margin-left: 114px;
+.arangodb-version-switcher option {
+  background-color: white;
+  color: black;
 }
 
-.wrap {
-  display: block;
-  margin: 0 auto;
-  max-width: 1200px;
-  padding: 0 10px;
-}
 
-#header {
+.arangodb-header {
   position: fixed;
   width: 100%;
   height: 48px;
   z-index: 1;
 }
 
-#header .socialIcons-googlegroups a img {
+.arangodb-header .socialIcons-googlegroups a img {
   position: relative;
+  height: 14px;
   top: 3px;
 }
 
-/*
-#header .wrap,
-#header .wrap .clearfix {
-  max-height: 48px;
-}
-*/
-
-.absolute{
-  position: absolute;
-  z-index: 10;
-  right: 0;
-  left: 0;
-  top: 0;
-}
-
-#navmenu {
+.arangodb-navmenu {
   display: block;
   float: right;
   margin: 0px;
 }
 
-#navmenu li {
+.arangodb-navmenu li {
   display: block;
   float: left;
 }
 
-#navmenu li a {
+.arangodb-navmenu li a {
   display: block;
   float: left;
-  padding-left: 10px;
-  padding-right: 10px;
+  padding: 0 10px;
   line-height: 48px;
   font-size: 16px;
   font-weight: 400;
@@ -169,31 +161,19 @@ body {
   font-family: Roboto, Helvetica, sans-serif;
 }
 
-#navmenu li a:hover, #navmenu li.active-tab a {
-  background: #8aa051 !important;
-}
-
-.arangodb_version {
-  float: left;
-  padding-left: 130px;
-  padding-top: 3px;
-  padding-right: 0px;
-  line-height: 40px;
-  font-weight: bold;
-  color: #fff;
-  text-decoration: none;
+.arangodb-navmenu li.active-tab a, .arangodb-navmenu li a:hover {
+  background-color: #88A049 !important;
 }
 
 /** simple responsive updates **/
 
 @media screen and (max-width: 1100px) {
-  #logo {
-    position: absolute;
-    left: -100px;
+  .arangodb-logo {
+    margin-left: 10px;
   }
 
   .google-search {
-    margin-right: -5px !important;
+    margin-right: 5px !important;
   }
 
   .socialIcons {
@@ -202,38 +182,69 @@ body {
 }
 
 
-@media screen and (max-width: 770px) {
-  .google-search {
-    margin-right: -5px !important;
-    width: 200px !important;
+@media screen and (max-width: 800px) {
+
+  .google-search,
+  .google-search .gsc-input-box,
+  .google-search .gsc-input-box input {
+    width: 130px !important;
   }
-  #navmenu {
+
+  .arangodb-navmenu {
+    padding: 0;
+  }
+
+  .arangodb-navmenu li a {
+    font-size: 15px;
+    padding: 0 7px;
+  }
+
+  .arangodb-logo {
     display: none;
   }
-  #navmenu li a { font-size: 0.8em; padding: 0 15px; }
-  #navmenu li a img { width:11px; height:36px; padding-top: 4px; }
-  #logo {
-    width: 100px;
-    height: 50px;
-    position: absolute;
-    top: 4px;
-    left: -100px;
-    z-index: 9999;
-  }
-  #logo img {
-    width: 100px;
-    margin-top:4px;
-    position: absolute;
-    float: left;
-    left: -10px;
+
+  .arangodb-logo-small {
+    display: inline;
+    margin-left: 10px;
   }
 
-  .arangodb_version { display: none !important; }
+  .arangodb-logo-small img {
+    height: 20px;
+  }
+
+  .arangodb-version-switcher {
+    margin: 0;
+    width: 50px;
+  }
+
 }
 
-/** clearfix **/
-.clearfix:after { content: "."; display: block; clear: both; visibility: hidden; line-height: 0; height: 0; }
-.clearfix { display: inline-block; }
+@media screen and (max-width: 480px) {
+  .arangodb-version-switcher {
+    display: none;
+  }
 
-html[xmlns] .clearfix { display: block; }
-* html .clearfix { height: 1%; }
+  .google-search,
+  .google-search .gsc-input-box,
+  .google-search .gsc-input-box input {
+    width: 24px !important;
+  }
+
+  .google-search .gsc-input-box input[style] {
+    background: url(https://docs.arangodb.com/assets/searchIcon.png) left center no-repeat rgb(255, 255, 255) !important;
+  }
+
+  .google-search .gsc-input-box input:focus {
+    width: 200px !important;
+    position: relative;
+    left: -176px;
+    background-position: -9999px -9999px !important;
+  }
+
+}
+
+@media screen and (max-width: 330px) {
+  .arangodb-logo-small, .google-search {
+    display: none;
+  }
+}

@@ -34,10 +34,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 static std::string const ROOT_PATH = "/";
-
-namespace {
-sig_atomic_t MaintenanceMode = 0;
-}
+std::atomic<bool> RestHandlerFactory::_maintenanceMode(false);
 
 namespace {
 class MaintenanceHandler : public RestHandler {
@@ -66,14 +63,16 @@ class MaintenanceHandler : public RestHandler {
 
 RestHandlerFactory::RestHandlerFactory(context_fptr setContext,
                                        void* contextData)
-    : _setContext(setContext), _contextData(contextData), _notFound(nullptr) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets maintenance mode
-////////////////////////////////////////////////////////////////////////////////
+    : _setContext(setContext),
+      _contextData(contextData),
+      _notFound(nullptr) {}
 
 void RestHandlerFactory::setMaintenance(bool value) {
-  MaintenanceMode = value ? 1 : 0;
+  _maintenanceMode.store(value);
+}
+
+bool RestHandlerFactory::isMaintenance() {
+  return _maintenanceMode.load();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +93,7 @@ RestHandler* RestHandlerFactory::createHandler(GeneralRequest* request,
 
   // In the bootstrap phase, we would like that coordinators answer the
   // following to endpoints, but not yet others:
-  if (MaintenanceMode) {
+  if (_maintenanceMode.load()) {
     if ((!ServerState::instance()->isCoordinator() &&
          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
         (path != "/_api/shard-comm" &&

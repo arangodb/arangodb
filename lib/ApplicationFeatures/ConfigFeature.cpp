@@ -24,9 +24,9 @@
 
 #include <iostream>
 
-#include "Logger/Logger.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/IniFileParser.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -51,99 +51,127 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--configuration,-c", "the configuration file or 'none'",
                      new StringParameter(&_file));
 
-  // add --config as an alias for --configuration. both point to the same variable!
+  // add --config as an alias for --configuration. both point to the same
+  // variable!
   options->addHiddenOption("--config", "the configuration file or 'none'",
-                     new StringParameter(&_file));
+                           new StringParameter(&_file));
 
-  options->addOption("--check-configuration", "check the configuration and exists",
+  options->addOption("--check-configuration",
+                     "check the configuration and exists",
                      new BooleanParameter(&_checkConfiguration));
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options) {
-  loadConfigFile(options);
+  loadConfigFile(options, _progname);
 
   if (_checkConfiguration) {
     exit(EXIT_SUCCESS);
   }
 }
 
-void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options) {
+void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
+                                   std::string const& progname) {
   if (StringUtils::tolower(_file) == "none") {
     LOG_TOPIC(DEBUG, Logger::CONFIG) << "use no config file at all";
     return;
   }
 
-  IniFileParser parser(options.get());
+  std::vector<std::string> files;
+  std::set<std::string> seen;
 
   // always prefer an explicitly given config file
-  if (!_file.empty()) {
+  if (_file.empty()) {
+    files.emplace_back(progname);
+  } else {
     LOG_TOPIC(DEBUG, Logger::CONFIG) << "using user supplied conifg file '"
                                      << _file << "'";
+
+    IniFileParser parser(options.get());
 
     if (!parser.parse(_file)) {
       exit(EXIT_FAILURE);
     }
 
-    return;
+    auto includes = parser.includes();
+    files.insert(files.end(), includes.begin(), includes.end());
+
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << "seen @includes: " << includes;
   }
 
-  // clang-format off
-  //
-  // check in order:
-  //
-  //   <PRGNAME>.conf
-  //   ./etc/relative/<PRGNAME>.conf
-  //   ${HOME}/.arangodb/<PRGNAME>.conf
-  //   /etc/arangodb/<PRGNAME>.conf
-  //
-  // clang-format on
+  for (size_t i = 0; i < files.size(); ++i) {
+    auto name = files[i];
 
-  std::string basename = _progname + ".conf";
-  std::string filename =
-      FileUtils::buildFilename(FileUtils::currentDirectory(), basename);
+    if (seen.find(name) != seen.end()) {
+      LOG(FATAL) << "circluar includes, seen '" << name << "' twice";
+      FATAL_ERROR_EXIT();
+    }
 
-  LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
+    seen.insert(name);
 
-  if (!FileUtils::exists(filename)) {
-    filename = FileUtils::buildFilename(FileUtils::currentDirectory(),
-                                        "etc/relative/" + basename);
+    // clang-format off
+    //
+    // check in order:
+    //
+    //   <PRGNAME>.conf
+    //   ./etc/relative/<PRGNAME>.conf
+    //   ${HOME}/.arangodb/<PRGNAME>.conf
+    //   /etc/arangodb/<PRGNAME>.conf
+    //
+    // clang-format on
+
+    std::string basename = name + ".conf";
+    std::string filename =
+        FileUtils::buildFilename(FileUtils::currentDirectory(), basename);
 
     LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
 
     if (!FileUtils::exists(filename)) {
-      filename = FileUtils::buildFilename(FileUtils::homeDirectory(), basename);
+      filename = FileUtils::buildFilename(FileUtils::currentDirectory(),
+                                          "etc/relative/" + basename);
 
       LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
 
       if (!FileUtils::exists(filename)) {
         filename =
-            FileUtils::buildFilename(FileUtils::configDirectory(), basename);
+            FileUtils::buildFilename(FileUtils::homeDirectory(), basename);
 
         LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
 
         if (!FileUtils::exists(filename)) {
-          LOG_TOPIC(DEBUG, Logger::CONFIG) << "cannot find any config file";
-          return;
+          filename =
+              FileUtils::buildFilename(FileUtils::configDirectory(), basename);
+
+          LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
+
+          if (!FileUtils::exists(filename)) {
+            LOG_TOPIC(DEBUG, Logger::CONFIG) << "cannot find any config file";
+            return;
+          }
         }
       }
     }
-  }
 
-  std::string local = filename + ".local";
+    IniFileParser parser(options.get());
 
-  LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking override '" << local << "'";
+    std::string local = filename + ".local";
 
-  if (FileUtils::exists(local)) {
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << local << "'";
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking override '" << local << "'";
 
-    if (!parser.parse(local)) {
+    if (FileUtils::exists(local)) {
+      LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << local << "'";
+
+      if (!parser.parse(local)) {
+        exit(EXIT_FAILURE);
+      }
+    }
+
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << filename << "'";
+
+    if (!parser.parse(filename)) {
       exit(EXIT_FAILURE);
     }
-  }
 
-  LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << filename << "'";
-
-  if (!parser.parse(filename)) {
-    exit(EXIT_FAILURE);
+    auto includes = parser.includes();
+    files.insert(files.end(), includes.begin(), includes.end());
   }
 }

@@ -10,6 +10,13 @@
   #databases {
     height: 140px;
 
+    .no-database {
+      background: $c-white;
+      border-radius: 2px;
+      padding: 40px;
+      text-align: center;
+    }
+
     #logout {
       margin-top: 20px;
     }
@@ -48,6 +55,7 @@
     @extend %flat-select;
     margin-bottom: 30px;
     padding-left: 35px;
+    -moz-appearance: none;
   }
 
   .login-logo-round {

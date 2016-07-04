@@ -192,14 +192,25 @@ void HttpRequest::parseHeader(size_t length) {
           // find a question mark or space
           char* f = pathBegin;
 
+          // get ride of "//"
+          char* g = f;
+
           // do NOT url-decode the path, we need to distingush between
           // "/document/a/b" and "/document/a%2fb"
 
           while (f < valueEnd && *f != '?' && *f != ' ' && *f != '\n') {
-            ++f;
+            *g++ = *f;
+
+            if (*f == '/') {
+              while (f < valueEnd && *f == '/') {
+                ++f;
+              }
+            } else {
+              ++f;
+            }
           }
 
-          pathEnd = f;
+          pathEnd = g;
 
           // look for database name in URL
           if (pathEnd - pathBegin >= 5) {
@@ -229,6 +240,7 @@ void HttpRequest::parseHeader(size_t length) {
 
           // no space, question mark or end-of-line
           if (f == valueEnd) {
+            *pathEnd = '\0';
             paramEnd = paramBegin = pathEnd;
 
             // set full url = complete path
@@ -239,7 +251,7 @@ void HttpRequest::parseHeader(size_t length) {
           else if (*f == ' ' || *f == '\n') {
             *pathEnd = '\0';
 
-            paramEnd = paramBegin = pathEnd;
+            paramEnd = paramBegin = f;
 
             // set full url = complete path
             setFullUrl(pathBegin, pathEnd);
@@ -247,20 +259,24 @@ void HttpRequest::parseHeader(size_t length) {
 
           // found a question mark
           else {
-            paramBegin = f + 1;
-            paramEnd = paramBegin;
+            paramBegin = g + 1;
+            paramEnd = f + 1;
+
+            *g++ = '?';
 
             while (paramEnd < valueEnd && *paramEnd != ' ' &&
                    *paramEnd != '\n') {
-              ++paramEnd;
+              *g++ = *paramEnd++;
             }
+
+            *g = '\0';
+            paramEnd = g;
 
             // set full url = complete path + query parameters
             setFullUrl(pathBegin, paramEnd);
 
             // now that the full url was saved, we can insert the null bytes
             *pathEnd = '\0';
-            *paramEnd = '\0';
           }
 
           if (pathBegin < pathEnd) {

@@ -23,7 +23,6 @@
 
 #include "Basics/Common.h"
 
-#include "ApplicationFeatures/ClientFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -33,6 +32,8 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Restore/RestoreFeature.h"
+#include "Shell/ClientFeature.h"
+#include "Ssl/SslFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -54,6 +55,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RestoreFeature(&server, &ret));
   server.addFeature(new ShutdownFeature(&server, {"Restore"}));
+  server.addFeature(new SslFeature(&server));
   server.addFeature(new TempFeature(&server, "arangorestore"));
   server.addFeature(new VersionFeature(&server));
 

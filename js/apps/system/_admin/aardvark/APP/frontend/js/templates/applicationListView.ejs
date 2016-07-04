@@ -1,7 +1,7 @@
 <script id="applicationListView.ejs" type="text/template">
   <tr class="foxx-store-row">
     <td class="foxx-store-main">
-      <div class="foxx-name"><%=name%></div>
+      <div class="foxx-name"><%=name%><%=legacy?' (legacy)':''%></div>
       <div class="foxx-author"><%=author%></div>
       <div class="foxx-description"><%=description%></div>
     </td>

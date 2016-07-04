@@ -42,12 +42,13 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  void stop() override final;
+  void unprepare() override final;
 
  private:
-  bool _queryTracking = true;
-  std::string _queryCacheMode = "off";
-  uint64_t _queryCacheEntries = 128;
+  bool _queryTracking;
+  double _slowThreshold;
+  std::string _queryCacheMode;
+  uint64_t _queryCacheEntries;
 
  public:
   aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }

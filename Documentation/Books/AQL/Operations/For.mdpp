@@ -4,14 +4,14 @@
 The *FOR* keyword can be to iterate over all elements of an array.
 The general syntax is:
 
-```
-FOR variable-name IN expression
+```js
+FOR variableName IN expression
 ```
 
-There also is a special case for graph traversals:
+There is also a special variant for graph traversals:
 
-```
-FOR vertex-variable-name, edge-variable-name, path-variable-name IN traversal-expression
+```js
+FOR vertexVariableName, edgeVariableName, pathVariableName IN traversalExpression
 ```
 
 For this special case see [the graph traversals chapter](../Graphs/Traversals.md).
@@ -20,7 +20,7 @@ For all other cases read on:
 Each array element returned by *expression* is visited exactly once. It is
 required that *expression* returns an array in all cases. The empty array is
 allowed, too. The current array element is made available for further processing 
-in the variable specified by *variable-name*.
+in the variable specified by *variableName*.
 
 ```
 FOR u IN users
@@ -61,4 +61,3 @@ In this example, there are two array iterations: an outer iteration over the arr
 traversed as many times as there are elements in the outer array.  For each
 iteration, the current values of *users* and *locations* are made available for
 further processing in the variable *u* and *l*.
-

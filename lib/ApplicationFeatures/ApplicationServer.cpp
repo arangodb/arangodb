@@ -25,8 +25,8 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "Basics/StringUtils.h"
-#include "ProgramOptions/ArgumentParser.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/ArgumentParser.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -45,7 +45,13 @@ ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options)
 
 ApplicationServer::~ApplicationServer() {
   for (auto& it : _features) {
-    delete it.second;
+    try {
+      delete it.second;
+    } catch (...) {
+      // we must skip over errors here as we're in the destructor.
+      // we cannot rely on the LoggerFeature being present either, so
+      // we have to suppress errors here
+    }
   }
 
   ApplicationServer::server = nullptr;
@@ -194,7 +200,6 @@ void ApplicationServer::run(int argc, char* argv[]) {
   reportServerProgress(_state);
   start();
 
-
   // wait until we get signaled the shutdown request
   _state = ServerState::IN_WAIT;
   reportServerProgress(_state);
@@ -204,6 +209,11 @@ void ApplicationServer::run(int argc, char* argv[]) {
   _state = ServerState::IN_STOP;
   reportServerProgress(_state);
   stop();
+
+  // unprepare all features
+  _state = ServerState::IN_UNPREPARE;
+  reportServerProgress(_state);
+  unprepare();
 
   // stopped
   _state = ServerState::STOPPED;
@@ -226,6 +236,10 @@ void ApplicationServer::beginShutdown() {
   _stopping = true;
   // TODO: use condition variable for signaling shutdown
   // to run method
+}
+
+void ApplicationServer::shutdownFatalError() {
+  reportServerProgress(ServerState::ABORT);
 }
 
 VPackBuilder ApplicationServer::options(
@@ -259,11 +273,13 @@ void ApplicationServer::collectOptions() {
   _options->addHiddenOption("--dump-dependencies", "dump dependency graph",
                             new BooleanParameter(&_dumpDependencies));
 
-  apply([this](ApplicationFeature* feature) {
-    LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::loadOptions";
-    feature->collectOptions(_options);
-    reportFeatureProgress(_state, feature->name());
-  }, true);
+  apply(
+      [this](ApplicationFeature* feature) {
+        LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::loadOptions";
+        feature->collectOptions(_options);
+        reportFeatureProgress(_state, feature->name());
+      },
+      true);
 }
 
 void ApplicationServer::parseOptions(int argc, char* argv[]) {
@@ -357,18 +373,21 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 
   // first check if a feature references an unknown other feature
   if (failOnMissing) {
-    apply([this](ApplicationFeature* feature) {
-      for (auto& other : feature->requires()) {
-        if (!this->exists(other)) {
-          fail("feature '" + feature->name() +
-               "' depends on unknown feature '" + other + "'");
-        }
-        if (!this->feature(other)->isEnabled()) {
-          fail("enabled feature '" + feature->name() +
-               "' depends on other feature '" + other + "', which is disabled");
-        }
-      }
-    }, true);
+    apply(
+        [this](ApplicationFeature* feature) {
+          for (auto& other : feature->requires()) {
+            if (!this->exists(other)) {
+              fail("feature '" + feature->name() +
+                   "' depends on unknown feature '" + other + "'");
+            }
+            if (!this->feature(other)->isEnabled()) {
+              fail("enabled feature '" + feature->name() +
+                   "' depends on other feature '" + other +
+                   "', which is disabled");
+            }
+          }
+        },
+        true);
   }
 
   // first insert all features, even the inactive ones
@@ -469,14 +488,16 @@ void ApplicationServer::prepare() {
         feature->prepare();
         feature->state(FeatureState::PREPARED);
       } catch (std::exception const& ex) {
-        LOG(ERR) << "caught exception during prepare of feature " << feature->name() << ": " << ex.what();
+        LOG(ERR) << "caught exception during prepare of feature "
+                 << feature->name() << ": " << ex.what();
         // restore original privileges
         if (!privilegesElevated) {
           raisePrivilegesTemporarily();
         }
         throw;
       } catch (...) {
-        LOG(ERR) << "caught unknown exception during prepare of feature " << feature->name();
+        LOG(ERR) << "caught unknown exception during prepare of feature "
+                 << feature->name();
         // restore original privileges
         if (!privilegesElevated) {
           raisePrivilegesTemporarily();
@@ -502,16 +523,19 @@ void ApplicationServer::start() {
       feature->state(FeatureState::STARTED);
       reportFeatureProgress(_state, feature->name());
     } catch (std::exception const& ex) {
-      LOG(ERR) << "caught exception during start of feature " << feature->name() << ": " << ex.what() << ". shutting down";
+      LOG(ERR) << "caught exception during start of feature " << feature->name()
+               << ": " << ex.what() << ". shutting down";
       abortStartup = true;
     } catch (...) {
-      LOG(ERR) << "caught unknown exception during start of feature " << feature->name() << ". shutting down";
+      LOG(ERR) << "caught unknown exception during start of feature "
+               << feature->name() << ". shutting down";
       abortStartup = true;
     }
 
     if (abortStartup) {
       // try to stop all feature that we just started
-      for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+      for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
+           ++it) {
         auto feature = *it;
         if (feature->state() == FeatureState::STARTED) {
           LOG(TRACE) << "forcefully stopping feature " << feature->name();
@@ -532,12 +556,27 @@ void ApplicationServer::start() {
 void ApplicationServer::stop() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::stop";
 
-  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
+       ++it) {
     auto feature = *it;
 
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::stop";
     feature->stop();
     feature->state(FeatureState::STOPPED);
+    reportFeatureProgress(_state, feature->name());
+  }
+}
+
+void ApplicationServer::unprepare() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::unprepare";
+
+  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
+       ++it) {
+    auto feature = *it;
+
+    LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::unprepare";
+    feature->unprepare();
+    feature->state(FeatureState::UNPREPARED);
     reportFeatureProgress(_state, feature->name());
   }
 }

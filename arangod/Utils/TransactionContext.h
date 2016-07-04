@@ -25,6 +25,7 @@
 #define ARANGOD_UTILS_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
+#include "Basics/SmallVector.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Options.h>
@@ -83,7 +84,8 @@ class TransactionContext {
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief order a document ditch for the collection
-  /// this will create one if none exists
+  /// this will create one if none exists. if no ditch can be created, the
+  /// function will return a nullptr!
   //////////////////////////////////////////////////////////////////////////////
 
   DocumentDitch* orderDitch(TRI_document_collection_t*);
@@ -124,6 +126,12 @@ class TransactionContext {
   //////////////////////////////////////////////////////////////////////////////
   
   arangodb::velocypack::Options* getVPackOptions();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get velocypack options for dumping
+  //////////////////////////////////////////////////////////////////////////////
+
+  arangodb::velocypack::Options* getVPackOptionsForDump();
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the transaction
@@ -186,10 +194,13 @@ class TransactionContext {
   
   std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
   
+  SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
+  SmallVector<arangodb::velocypack::Builder*, 32> _builders;
+  
   std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
-  std::unique_ptr<arangodb::velocypack::Builder> _builder;
 
   arangodb::velocypack::Options _options;
+  arangodb::velocypack::Options _dumpOptions;
 
   struct {
     TRI_voc_tid_t id; 

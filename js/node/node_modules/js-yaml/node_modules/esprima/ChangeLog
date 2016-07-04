@@ -1,3 +1,8 @@
+2016-02-02: Version 2.7.2
+
+      * Fix out-of-bound error location in an invalid string literal (issue 1457)
+      * Fix shorthand object destructuring defaults in variable declarations (issue 1459)
+
 2015-12-10: Version 2.7.1
 
       * Do not allow trailing comma in a variable declaration (issue 1360)

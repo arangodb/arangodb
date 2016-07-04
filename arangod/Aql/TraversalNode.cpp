@@ -27,9 +27,8 @@
 #include "Aql/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
+#include "Aql/TraversalOptions.h"
 #include "Indexes/Index.h"
-
-#include <cmath>
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -126,7 +125,8 @@ static TRI_edge_direction_e parseDirection (AstNode const* node) {
 
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                              TRI_vocbase_t* vocbase, AstNode const* direction,
-                             AstNode const* start, AstNode const* graph)
+                             AstNode const* start, AstNode const* graph,
+                             TraversalOptions const& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -134,7 +134,10 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
       _graphObj(nullptr),
-      _condition(nullptr) {
+      _condition(nullptr),
+      _options(options),
+      _specializedNeighborsSearch(false) {
+
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(start != nullptr);
@@ -168,6 +171,8 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                                    "invalid traversal depth");
   }
 
+  std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
+
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
     _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array,
@@ -177,16 +182,32 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
     // List of edge collection names
     for (size_t i = 0; i < edgeCollectionCount; ++i) {
       auto col = graph->getMember(i);
+      TRI_edge_direction_e dir = TRI_EDGE_ANY;
+      
       if (col->type == NODE_TYPE_DIRECTION) {
         // We have a collection with special direction.
-        TRI_edge_direction_e dir = parseDirection(col->getMember(0));
-        _directions.emplace_back(dir);
+        dir = parseDirection(col->getMember(0));
         col = col->getMember(1);
       } else {
-        _directions.emplace_back(baseDirection);
+        dir = baseDirection;
       }
-
+        
       std::string eColName = col->getString();
+      
+      // now do some uniqueness checks for the specified collections
+      auto it = seenCollections.find(eColName);
+      if (it != seenCollections.end()) {
+        if ((*it).second != dir) {
+          std::string msg("conflicting directions specified for collection '" +
+                          std::string(eColName));
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                                         msg);
+        }
+        // do not re-add the same collection!
+        continue;
+      }
+      seenCollections.emplace(eColName, dir);
+      
       auto eColType = resolver->getCollectionTypeCluster(eColName);
       if (eColType != TRI_COL_TYPE_EDGE) {
         std::string msg("collection type invalid for collection '" +
@@ -195,8 +216,10 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
                                        msg);
       }
+      
+      _directions.emplace_back(dir);
       _graphJson.add(arangodb::basics::Json(eColName));
-      _edgeColls.push_back(eColName);
+      _edgeColls.emplace_back(eColName);
     }
   } else {
     if (_edgeColls.empty()) {
@@ -245,15 +268,16 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                                      "invalid start vertex. Must either be an "
                                      "_id string or an object with _id.");
   }
+
+  // Parse options node
 }
 
-TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
-                             TRI_vocbase_t* vocbase,
-                             std::vector<std::string> const& edgeColls,
-                             Variable const* inVariable,
-                             std::string const& vertexId,
-                             std::vector<TRI_edge_direction_e> directions, uint64_t minDepth,
-                             uint64_t maxDepth)
+/// @brief Internal constructor to clone the node.
+TraversalNode::TraversalNode(
+    ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+    std::vector<std::string> const& edgeColls, Variable const* inVariable,
+    std::string const& vertexId, std::vector<TRI_edge_direction_e> directions,
+    uint64_t minDepth, uint64_t maxDepth, TraversalOptions const& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -265,8 +289,9 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _maxDepth(maxDepth),
       _directions(directions),
       _graphObj(nullptr),
-      _condition(nullptr) {
-
+      _condition(nullptr),
+      _options(options),
+      _specializedNeighborsSearch(false) {
   _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
 
   for (auto& it : edgeColls) {
@@ -284,7 +309,8 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
       _graphObj(nullptr),
-      _condition(nullptr) {
+      _condition(nullptr),
+      _specializedNeighborsSearch(false) {
   _minDepth =
       arangodb::basics::JsonHelper::stringUInt64(base.json(), "minDepth");
   _maxDepth =
@@ -446,6 +472,13 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
   if (base.has("pathOutVariable")) {
     _pathOutVariable = varFromJson(plan->getAst(), base, "pathOutVariable");
   }
+
+  // Flags
+  if (base.has("traversalFlags")) {
+    _options = TraversalOptions(base);
+  }
+
+  _specializedNeighborsSearch = arangodb::basics::JsonHelper::getBooleanValue(base.json(), "specializedNeighborsSearch", false);
 }
 
 int TraversalNode::checkIsOutVariable(size_t variableId) const {
@@ -459,6 +492,30 @@ int TraversalNode::checkIsOutVariable(size_t variableId) const {
     return 2;
   }
   return -1;
+}
+
+/// @brief check if all directions are equal
+bool TraversalNode::allDirectionsEqual() const {
+  if (_directions.empty()) {
+    // no directions!
+    return false;
+  }
+  size_t const n = _directions.size();
+  TRI_edge_direction_e const expected = _directions[0];
+
+  for (size_t i = 1; i < n; ++i) {
+    if (_directions[i] != expected) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void TraversalNode::specializeToNeighborsSearch() {
+  TRI_ASSERT(allDirectionsEqual());
+  TRI_ASSERT(!_directions.empty());
+
+  _specializedNeighborsSearch = true;
 }
 
 /// @brief toVelocyPack, for TraversalNode
@@ -531,6 +588,11 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
       }
     }
   }
+    
+  nodes.add("specializedNeighborsSearch", VPackValue(_specializedNeighborsSearch));
+
+  nodes.add(VPackValue("traversalFlags"));
+  _options.toVelocyPack(nodes);
 
   // And close it:
   nodes.close();
@@ -539,8 +601,9 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
 /// @brief clone ExecutionNode recursively
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
-  auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable,
-                             _vertexId, _directions, _minDepth, _maxDepth);
+  auto c =
+      new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable, _vertexId,
+                        _directions, _minDepth, _maxDepth, _options);
 
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
@@ -570,6 +633,10 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
     }
     TRI_ASSERT(pathOutVariable != nullptr);
     c->setPathOutput(pathOutVariable);
+  }
+
+  if (_specializedNeighborsSearch) {
+    c->specializeToNeighborsSearch();
   }
 
   cloneHelper(c, plan, withDependencies, withProperties);
@@ -623,6 +690,9 @@ void TraversalNode::fillTraversalOptions(
   opts.minDepth = _minDepth;
   opts.maxDepth = _maxDepth;
   opts.setCollections(_edgeColls, _directions);
+  opts.useBreadthFirst = _options.useBreadthFirst;
+  opts.uniqueVertices = _options.uniqueVertices;
+  opts.uniqueEdges = _options.uniqueEdges;
 }
 
 /// @brief remember the condition to execute for early traversal abortion.

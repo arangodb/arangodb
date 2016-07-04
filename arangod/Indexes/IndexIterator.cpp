@@ -33,12 +33,14 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIteratorContext::IndexIteratorContext(TRI_vocbase_t* vocbase,
-                                           CollectionNameResolver const* resolver)
-    : vocbase(vocbase), resolver(resolver), ownsResolver(resolver == nullptr) {}
+                                           CollectionNameResolver const* resolver,
+                                           ServerState::RoleEnum serverRole)
+    : vocbase(vocbase), resolver(resolver), serverRole(serverRole), ownsResolver(resolver == nullptr) {}
 
+/*
 IndexIteratorContext::IndexIteratorContext(TRI_vocbase_t* vocbase)
     : IndexIteratorContext(vocbase, nullptr) {}
-
+*/
 IndexIteratorContext::~IndexIteratorContext() {
   if (ownsResolver) {
     delete resolver;
@@ -54,12 +56,14 @@ CollectionNameResolver const* IndexIteratorContext::getResolver() const {
 }
 
 bool IndexIteratorContext::isCluster() const {
-  return arangodb::ServerState::instance()->isRunningInCluster();
+  return arangodb::ServerState::instance()->isRunningInCluster(serverRole);
 }
 
-int IndexIteratorContext::resolveId(char const* handle, TRI_voc_cid_t& cid,
-                                    char const*& key) const {
-  char const* p = strchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
+int IndexIteratorContext::resolveId(char const* handle, size_t length,
+                                    TRI_voc_cid_t& cid,
+                                    char const*& key,
+                                    size_t& outLength) const {
+  char const* p = static_cast<char const*>(memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
 
   if (p == nullptr || *p == '\0') {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
@@ -77,6 +81,7 @@ int IndexIteratorContext::resolveId(char const* handle, TRI_voc_cid_t& cid,
   }
 
   key = p + 1;
+  outLength = length - (key - handle);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -97,8 +102,20 @@ TRI_doc_mptr_t* IndexIterator::next() { return nullptr; }
 /// @brief default implementation for nextBabies
 ////////////////////////////////////////////////////////////////////////////////
 
-void IndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+void IndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& result, size_t batchSize) {
+  result.clear();
+
+  while (true) {
+    TRI_doc_mptr_t* mptr = next();
+    if (mptr == nullptr) {
+      return;
+    }
+    result.emplace_back(mptr);
+    batchSize--;
+    if (batchSize == 0) {
+      return;
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

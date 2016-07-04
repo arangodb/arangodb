@@ -31,8 +31,17 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   explicit BootstrapFeature(application_features::ApplicationServer*);
 
  public:
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
-  void stop() override final;
+  void unprepare() override final;
+
+  bool isReady() const {
+    return _isReady;
+  }
+
+ private:
+  bool _isReady;
+  bool _bark;
 };
 }
 

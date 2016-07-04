@@ -1,7 +1,7 @@
 
 
 @brief ssl cipher list to use
-`--server.ssl-cipher-list cipher-list`
+`--ssl.cipher-list cipher-list`
 
 This option can be used to restrict the server to certain SSL ciphers
 only,

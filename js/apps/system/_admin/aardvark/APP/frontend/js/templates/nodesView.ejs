@@ -24,7 +24,7 @@
       </div>
     </div>
 
-    <div class="pure-g cluster-nodes pure-table pure-table-body">
+    <div class="pure-g cluster-nodes coords-dbs pure-table pure-table-body">
 
       <% _.each(coords, function(node) { %>
 
@@ -36,9 +36,9 @@
           <div class="<%=genClass%> mid"><%= node.role %></div>
 
           <% if(node.status === 'ok') { %>
-            <div class="<%= genClass %> mid"><i class="fa fa-check-circle"></i></div>
+            <div class="<%= genClass %> mid state"><i class="fa fa-check-circle"></i></div>
           <% } else { %>
-            <div class="<%= genClass %> mid"><i class="fa fa-exclamation-circle"></i></div>
+            <div class="<%= genClass %> mid state"><i class="fa fa-exclamation-circle"></i></div>
           <% } %>
 
         </div>

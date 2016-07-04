@@ -68,10 +68,14 @@ TransactionContext::TransactionContext(TRI_vocbase_t* vocbase)
       _resolver(nullptr), 
       _customTypeHandler(),
       _ditches(),
-      _builder(),
-      _options(),
+      _builders{_arena},
+      _stringBuffer(),
+      _options(arangodb::velocypack::Options::Defaults),
+      _dumpOptions(arangodb::velocypack::Options::Defaults),
       _transaction{ 0, false }, 
-      _ownsResolver(false) {}
+      _ownsResolver(false) {
+  _dumpOptions.escapeUnicode = true;        
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the context
@@ -88,6 +92,11 @@ TransactionContext::~TransactionContext() {
     auto& ditch = it.second;
     ditch->ditches()->freeDocumentDitch(ditch, true /* fromTransaction */);
     // If some external entity is still using the ditch, it is kept!
+  }
+
+  // free all VPackBuilders we handed out
+  for (auto& it : _builders) {
+    delete it;
   }
 
   if (_ownsResolver) {
@@ -107,6 +116,8 @@ VPackCustomTypeHandler* TransactionContext::createCustomTypeHandler(TRI_vocbase_
   
 //////////////////////////////////////////////////////////////////////////////
 /// @brief order a document ditch for the collection
+/// this will create one if none exists. if no ditch can be created, the
+/// function will return a nullptr!
 //////////////////////////////////////////////////////////////////////////////
 
 DocumentDitch* TransactionContext::orderDitch(TRI_document_collection_t* document) {
@@ -179,14 +190,17 @@ void TransactionContext::returnStringBuffer(basics::StringBuffer* stringBuffer) 
 //////////////////////////////////////////////////////////////////////////////
 
 VPackBuilder* TransactionContext::leaseBuilder() {
-  if (_builder == nullptr) {
-    _builder.reset(new VPackBuilder());
-  }
-  else {
-    _builder->clear();
+  if (_builders.empty()) {
+    // create a new builder and return it
+    return new VPackBuilder();
   }
 
-  return _builder.release();
+  // re-use an existing builder
+  VPackBuilder* b = _builders.back();
+  b->clear();
+  _builders.pop_back();
+
+  return b;
 }
   
 //////////////////////////////////////////////////////////////////////////////
@@ -194,7 +208,13 @@ VPackBuilder* TransactionContext::leaseBuilder() {
 //////////////////////////////////////////////////////////////////////////////
 
 void TransactionContext::returnBuilder(VPackBuilder* builder) {
-  _builder.reset(builder);
+  try {
+    // put builder back into our vector of builders
+    _builders.emplace_back(builder);
+  } catch (...) {
+    // no harm done. just wipe the builder
+    delete builder;
+  }
 }
   
 //////////////////////////////////////////////////////////////////////////////
@@ -207,6 +227,18 @@ VPackOptions* TransactionContext::getVPackOptions() {
     orderCustomTypeHandler();
   }
   return &_options;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get velocypack options with a custom type handler for dumping
+//////////////////////////////////////////////////////////////////////////////
+  
+VPackOptions* TransactionContext::getVPackOptionsForDump() {
+  if (_customTypeHandler == nullptr) {
+    // this modifies options!
+    orderCustomTypeHandler();
+  }
+  return &_dumpOptions;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

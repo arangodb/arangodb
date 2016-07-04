@@ -43,6 +43,12 @@ li a [class*=" icon_arangodb"] {
   font-size: 14pt;
 }
 
-.fa-minus-circle:hover {
+.fa-plus-circle {
+  color: $c-positive;
+  font-size: 16pt;
+}
+
+.fa-minus-circle:hover,
+.fa-plus-circle:hover {
   cursor: pointer;
 }

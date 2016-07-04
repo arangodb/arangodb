@@ -71,6 +71,9 @@ class Agent : public arangodb::Thread {
   bool fitness() const;
 
   /// @brief Leader ID
+  arangodb::consensus::index_t lastCommited() const;
+
+  /// @brief Leader ID
   arangodb::consensus::id_t leaderID() const;
 
   /// @brief Are we leading?
@@ -86,7 +89,7 @@ class Agent : public arangodb::Thread {
   write_ret_t write(query_t const&);
 
   /// @brief Read from agency
-  read_ret_t read(query_t const&) const;
+  read_ret_t read(query_t const&);
 
   /// @brief Received by followers to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
@@ -96,7 +99,7 @@ class Agent : public arangodb::Thread {
 
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
-  append_entries_t sendAppendEntriesRPC(arangodb::consensus::id_t slave_id);
+  priv_rpc_ret_t sendAppendEntriesRPC(arangodb::consensus::id_t slave_id);
 
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.
@@ -119,9 +122,6 @@ class Agent : public arangodb::Thread {
 
   /// @brief Last log entry
   log_t const& lastLog() const;
-
-  /// @brief Persist term
-  void persist(term_t, arangodb::consensus::id_t);
 
   /// @brief State machine
   State const& state() const;
@@ -180,6 +180,7 @@ class Agent : public arangodb::Thread {
   /// @brief Next compaction after
   arangodb::consensus::index_t _nextCompationAfter;
 };
+
 }
 }
 

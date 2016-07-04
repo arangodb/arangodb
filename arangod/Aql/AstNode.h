@@ -188,7 +188,8 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_OPERATOR_BINARY_ARRAY_IN = 71,
   NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN = 72,
   NODE_TYPE_QUANTIFIER = 73,
-  NODE_TYPE_WITH = 74
+  NODE_TYPE_WITH = 74,
+  NODE_TYPE_SHORTEST_PATH = 75,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -622,6 +623,11 @@ struct AstNode {
       return (strncasecmp(getStringValue(), other, getStringLength()) == 0);
     }
     return (strncmp(getStringValue(), other, getStringLength()) == 0);
+  }
+  
+  /// @brief whether or not a string is equal to another
+  inline bool stringEquals(std::string const& other) const {
+    return (other.size() == getStringLength() && memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
   }
 
   /// @brief return the data value of a node

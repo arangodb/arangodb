@@ -1,13 +1,27 @@
 <script id="clusterView.ejs" type="text/template">
 
+  <div class="headerBar" style="margin-top: -60px">
+    <div class="headerButtonBar">
+      <ul class="headerButtonList">
+      </ul>
+    </div>
+  </div>
+
   <div id="clusterContent" class="innerContent">
 
     <div class="pure-g cluster-values">
 
       <div class="pure-u-1-2 pure-u-md-1-4">
         <div class="valueWrapper">
-          <div id="clusterNodes" class="value"><i class="fa fa-spin fa-circle-o-notch" style="color: rgba(0, 0, 0, 0.64);"></i></div>
-          <div class="graphLabel">Nodes</div>
+          <div id="clusterCoordinators" class="value"><i class="fa fa-spin fa-circle-o-notch" style="color: rgba(0, 0, 0, 0.64);"></i></div>
+          <div class="graphLabel">coordinators</div>
+        </div>
+      </div>
+
+      <div class="pure-u-1-2 pure-u-md-1-4">
+        <div class="valueWrapper">
+          <div id="clusterDBServers" class="value"><i class="fa fa-spin fa-circle-o-notch" style="color: rgba(0, 0, 0, 0.64);"></i></div>
+          <div class="graphLabel">DB Servers</div>
         </div>
       </div>
 
@@ -22,13 +36,6 @@
         <div class="valueWrapper">
           <div id="clusterConnections" class="value"><i class="fa fa-spin fa-circle-o-notch" style="color: rgba(0, 0, 0, 0.64);"></i></div>
           <div class="graphLabel">Connections</div>
-        </div>
-      </div>
-
-      <div class="pure-u-1-2 pure-u-md-1-4">
-        <div class="valueWrapper">
-          <div id="clusterConnectionsAvg" class="value"><i class="fa fa-spin fa-circle-o-notch" style="color: rgba(0, 0, 0, 0.64);"></i></div>
-          <div class="graphLabel">Connections AVG</div>
         </div>
       </div>
 
@@ -54,7 +61,7 @@
       <div class="pure-u-1-1 pure-u-md-12-24 pure-u-lg-6-24">
         <div class="graphWrapper">
           <div id='clusterAverage'></div>
-          <div class="graphLabel">TRANSFER SIZE</div>
+          <div class="graphLabel">AVG Request Time</div>
         </div>
       </div>
 

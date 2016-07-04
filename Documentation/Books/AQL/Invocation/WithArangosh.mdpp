@@ -1,7 +1,8 @@
 !CHAPTER Executing queries from Arangosh 
 
-Within the ArangoDB shell, the *_query* and *_createStatement* methods of the *db* object can be used to execute AQL queries. 
-This chapter also describes how to use bind parameters, counting, statistics and cursors. 
+Within the ArangoDB shell, the *_query* and *_createStatement* methods of the
+*db* object can be used to execute AQL queries. This chapter also describes
+how to use bind parameters, counting, statistics and cursors. 
 
 !SUBSECTION with db._query
 
@@ -40,16 +41,16 @@ It is also possible to use ES6 template strings for generating AQL queries. Ther
 a template string generator function named *aqlQuery*; we call it once to demonstrate
 its result, and once putting it directly into the query:
 
-    ```js
-    var key = 'testKey';
-    aqlQuery`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`;
-    { 
-      "query" : "FOR c IN mycollection FILTER c._key == @value0 RETURN c._key", 
-      "bindVars" : { 
-        "value0" : "testKey" 
-      } 
-    }
-    ```
+```js
+var key = 'testKey';
+aqlQuery`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`;
+{ 
+  "query" : "FOR c IN mycollection FILTER c._key == @value0 RETURN c._key", 
+  "bindVars" : { 
+    "value0" : "testKey" 
+  } 
+}
+```
 
     @startDocuBlockInline 02_workWithAQL_aqlQuery
     @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_aqlQuery}

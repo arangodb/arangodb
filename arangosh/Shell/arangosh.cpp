@@ -23,9 +23,7 @@
 
 #include "Basics/Common.h"
 
-#include "ApplicationFeatures/ClientFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/ConsoleFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -35,6 +33,8 @@
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
+#include "Shell/ClientFeature.h"
+#include "Shell/ConsoleFeature.h"
 #include "Shell/ShellFeature.h"
 #include "Shell/V8ShellFeature.h"
 #include "Ssl/SslFeature.h"

@@ -256,8 +256,7 @@ std::string sslHMAC(char const* key, size_t keyLength, char const* message,
   HMAC(evp_md, key, (int)keyLength, (const unsigned char*)message, messageLen,
        md, &md_len);
 
-  // return value as hex
-  std::string result = StringUtils::encodeHex(std::string((char*)md, md_len));
+  std::string result = std::string((char*)md, md_len);
   TRI_SystemFree(md);
 
   return result;

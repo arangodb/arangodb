@@ -345,15 +345,12 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
 
-    VPackSlice keySlice;
-    TRI_voc_rid_t rid = 0;
-    Transaction::extractKeyAndRevFromDocument(slice, keySlice, rid);
+    VPackSlice keySlice = Transaction::extractKeyFromDocument(slice);
 
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();
-
     auto found = primaryIndex->lookupKey(context->_trx, keySlice);
-    bool deleted = (found == nullptr || found->revisionId() > rid);
+    bool deleted = (found == nullptr || marker != found->getMarkerPtr());
 
     if (deleted) {
       // found a dead document
@@ -477,13 +474,13 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
   if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
     VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
-    VPackSlice const keySlice(Transaction::extractKeyFromDocument(slice));
-    TRI_voc_rid_t const rid = std::stoull(slice.get(StaticStrings::RevString).copyString());
+
+    VPackSlice keySlice = Transaction::extractKeyFromDocument(slice);
 
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();
     auto found = primaryIndex->lookupKey(context->_trx, keySlice);
-    bool deleted = (found == nullptr || found->revisionId() > rid);
+    bool deleted = (found == nullptr || marker != found->getMarkerPtr());
 
     if (deleted) {
       return true;

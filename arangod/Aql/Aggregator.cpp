@@ -171,7 +171,7 @@ void AggregatorSum::reduce(AqlValue const& cmpValue) {
       return;
     }
     if (cmpValue.isNumber()) {
-      double const number = cmpValue.toDouble();
+      double const number = cmpValue.toDouble(trx);
       if (!std::isnan(number) && number != HUGE_VAL &&
           number != -HUGE_VAL) {
         sum += number;
@@ -208,7 +208,7 @@ void AggregatorAverage::reduce(AqlValue const& cmpValue) {
       return;
     }
     if (cmpValue.isNumber()) {
-      double const number = cmpValue.toDouble();
+      double const number = cmpValue.toDouble(trx);
       if (!std::isnan(number) && number != HUGE_VAL &&
           number != -HUGE_VAL) {
         sum += number;
@@ -250,7 +250,7 @@ void AggregatorVarianceBase::reduce(AqlValue const& cmpValue) {
       return;
     }
     if (cmpValue.isNumber()) {
-      double const number = cmpValue.toDouble();
+      double const number = cmpValue.toDouble(trx);
       if (!std::isnan(number) && number != HUGE_VAL &&
           number != -HUGE_VAL) {
         double const delta = number - mean;

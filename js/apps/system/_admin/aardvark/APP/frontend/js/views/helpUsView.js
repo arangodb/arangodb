@@ -1,14 +1,13 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global arangoHelper, Backbone, templateEngine, $, window*/
+/* jshint browser: true */
+/* jshint unused: false */
+/* global arangoHelper, Backbone, templateEngine, $, window*/
 (function () {
-  "use strict";
+  'use strict';
 
   window.HelpUsView = Backbone.View.extend({
+    el: '#content',
 
-    el: "#content",
-
-    template: templateEngine.createTemplate("helpUsView.ejs"),
+    template: templateEngine.createTemplate('helpUsView.ejs'),
 
     render: function () {
       this.$el.html(this.template.render({}));

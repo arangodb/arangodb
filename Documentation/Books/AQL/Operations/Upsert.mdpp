@@ -6,7 +6,7 @@ On a single server, upserts are executed transactionally in an all-or-nothing fa
 For sharded collections, the entire update operation is not transactional.
 
 Each *UPSERT* operation is restricted to a single collection, and the 
-[collection name](../../Users/Appendix/Glossary.html#collection-name) must not be dynamic.
+[collection name](../../Manual/Appendix/Glossary.html#collection-name) must not be dynamic.
 Only a single *UPSERT* statement per collection is allowed per AQL query, and 
 it cannot be followed by read operations that access the same collection, by
 traversal operations, or AQL functions that can read documents.
@@ -14,28 +14,28 @@ traversal operations, or AQL functions that can read documents.
 The syntax for an upsert operation is:
 
 ```
-UPSERT search-expression INSERT insert-expression UPDATE update-expression IN collection options
-UPSERT search-expression INSERT insert-expression REPLACE update-expression IN collection options
+UPSERT searchExpression INSERT insertExpression UPDATE updateExpression IN collection options
+UPSERT searchExpression INSERT insertExpression REPLACE updateExpression IN collection options
 ```
 
 When using the *UPDATE* variant of the upsert operation, the found document will be 
-partially updated, meaning only the attributes specified in *update-expression* will be 
+partially updated, meaning only the attributes specified in *updateExpression* will be 
 updated or added. When using the *REPLACE* variant of upsert, existing documents will 
-be replaced with the contexts of *update-expression*.
+be replaced with the contexts of *updateExpression*.
 
 Updating a document will modify the document's revision number with a server-generated value.
 The system attributes *_id*, *_key* and *_rev* cannot be updated, *_from* and *_to* can.
 
-The *search-expression* contains the document to be looked for. It must be an object 
+The *searchExpression* contains the document to be looked for. It must be an object 
 literal without dynamic attribute names. In case no such document can be found in
 *collection*, a new document will be inserted into the collection as specified in the
-*insert-expression*. 
+*insertExpression*. 
 
-In case at least one document in *collection* matches the *search-expression*, it will
-be updated using the *update-expression*. When more than one document in the collection
-matches the *search-expression*, it is undefined which of the matching documents will
+In case at least one document in *collection* matches the *searchExpression*, it will
+be updated using the *updateExpression*. When more than one document in the collection
+matches the *searchExpression*, it is undefined which of the matching documents will
 be updated. It is therefore often sensible to make sure by other means (such as unique 
-indexes, application logic etc.) that at most one document matches *search-expression*.
+indexes, application logic etc.) that at most one document matches *searchExpression*.
 
 The following query will look in the *users* collection for a document with a specific
 *name* attribute value. If the document exists, its *logins* attribute will be increased

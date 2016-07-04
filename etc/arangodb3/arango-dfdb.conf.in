@@ -4,11 +4,13 @@
 auto-upgrade = false
 upgrade-check = false
 directory= @LOCALSTATEDIR@/lib/arangodb3
-# maximal-journal-size=33554432
 
 [server]
 rest-server = false
-authentication = false
+authentication = true
+# username = root
+# password = 
+
 statistics = false
 # set number of threads to 1 so we don't have concurrency
 threads = 1

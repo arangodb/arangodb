@@ -1,32 +1,32 @@
-/*global describe, it, beforeEach */
+/* global describe, it, beforeEach */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Spec for foxx repository
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Spec for foxx repository
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// / @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
@@ -90,10 +90,9 @@ describe('Model Events', function () {
     expect(repository.beforeCalled).to.equal(true);
     expect(repository.afterCalled).to.equal(true);
   });
-
 });
 
-function addHooks(repo, model, ev, dataToReceive) {
+function addHooks (repo, model, ev, dataToReceive) {
   const random = String(Math.floor(Math.random() * 1000));
 
   repo.on('before' + ev, function (self, data) {

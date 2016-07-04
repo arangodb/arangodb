@@ -1,26 +1,26 @@
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
 
 const NotFound = require('http-errors').NotFound;
 const fs = require('fs');
@@ -30,25 +30,27 @@ const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
 const swaggerJson = require('@arangodb/foxx/legacy/swagger').swaggerJson;
 
-const NOT_FOUND = errors.ERROR_APP_NOT_FOUND.code;
+const NOT_FOUND = errors.ERROR_SERVICE_NOT_FOUND.code;
 const SWAGGER_ROOT = fs.join(internal.startupPath, 'server', 'assets', 'swagger');
 
-
-module.exports = function createSwaggerRouteHandler(foxxMount, opts) {
+module.exports = function createSwaggerRouteHandler (foxxMount, opts) {
   if (!opts) {
     opts = {};
   }
   if (typeof opts === 'function') {
     opts = {before: opts};
   }
+  if (typeof opts === 'string') {
+    opts = {swaggerJson: opts};
+  }
 
-  const defaultAppPath = opts.appPath || foxxMount;
+  const defaultMount = opts.mount || foxxMount;
   const defaultIndexFile = opts.indexFile || 'index.html';
   const defaultSwaggerRoot = opts.swaggerRoot || SWAGGER_ROOT;
   const defaultSwaggerJsonHandler = opts.swaggerJson || swaggerJson;
 
   return function (req, res) {
-    let appPath = defaultAppPath;
+    let mount = defaultMount;
     let indexFile = defaultIndexFile;
     let swaggerRoot = defaultSwaggerRoot;
     if (typeof opts.before === 'function') {
@@ -60,8 +62,8 @@ module.exports = function createSwaggerRouteHandler(foxxMount, opts) {
       if (result.indexFile) {
         indexFile = result.indexFile;
       }
-      if (result.appPath) {
-        appPath = result.appPath;
+      if (result.mount) {
+        mount = result.mount;
       }
       if (result.swaggerRoot) {
         swaggerRoot = result.swaggerRoot;
@@ -83,14 +85,14 @@ module.exports = function createSwaggerRouteHandler(foxxMount, opts) {
       } else if (typeof swaggerJsonHandler === 'function') {
         let foxx;
         try {
-          foxx = FoxxManager.ensureRouted(appPath);
+          foxx = FoxxManager.ensureRouted(mount);
         } catch (e) {
           if (e.isArangoError && e.errorNum === NOT_FOUND) {
             throw new NotFound(e.message);
           }
           throw e;
         }
-        swaggerJsonHandler(req, res, {appPath, foxx});
+        swaggerJsonHandler(req, res, {mount, foxx});
         return;
       } else if (swaggerJsonHandler && typeof swaggerJsonHandler === 'object') {
         res.json(swaggerJsonHandler);

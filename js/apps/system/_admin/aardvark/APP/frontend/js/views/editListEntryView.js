@@ -1,25 +1,24 @@
-/*jshint browser: true, evil: true */
-/*jshint unused: false */
-/*global Backbone, templateEngine, $, window*/
+/* jshint browser: true, evil: true */
+/* jshint unused: false */
+/* global Backbone, templateEngine, $, window*/
 
-(function() {
-  "use strict";
+(function () {
+  'use strict';
 
   window.EditListEntryView = Backbone.View.extend({
+    template: templateEngine.createTemplate('editListEntryView.ejs'),
 
-    template: templateEngine.createTemplate("editListEntryView.ejs"),
-
-    initialize: function(opts) {
+    initialize: function (opts) {
       this.key = opts.key;
       this.value = opts.value;
       this.render();
     },
 
     events: {
-      "click .deleteAttribute": "removeRow"
+      'click .deleteAttribute': 'removeRow'
     },
 
-    render: function() {
+    render: function () {
       $(this.el).html(this.template.render({
         key: this.key,
         value: JSON.stringify(this.value),
@@ -27,30 +26,30 @@
       }));
     },
 
-    isReadOnly: function() {
-      return this.key.indexOf("_") === 0;
+    isReadOnly: function () {
+      return this.key.indexOf('_') === 0;
     },
 
-    getKey: function() {
-      return $(".key").val();
+    getKey: function () {
+      return $('.key').val();
     },
 
-    getValue: function() {
-      var val = $(".val").val();
+    getValue: function () {
+      var val = $('.val').val();
       try {
         val = JSON.parse(val);
       } catch (e) {
         try {
-          eval("val = " + val);
+          eval('val = ' + val);
           return val;
         } catch (e2) {
-          return $(".val").val();
+          return $('.val').val();
         }
       }
       return val;
     },
 
-    removeRow: function() {
+    removeRow: function () {
       this.remove();
     }
   });

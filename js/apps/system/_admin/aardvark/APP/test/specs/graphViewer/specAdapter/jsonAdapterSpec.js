@@ -1,48 +1,44 @@
-/*jshint unused: false */
-/*global beforeEach, afterEach */
-/*global describe, it, expect */
-/*global runs, spyOn, waitsFor */
-/*global window, eb, loadFixtures, document */
-/*global $, _, d3*/
-/*global describeInterface*/
-/*global JSONAdapter*/
+/* jshint unused: false */
+/* global beforeEach, afterEach */
+/* global describe, it, expect */
+/* global runs, spyOn, waitsFor */
+/* global window, eb, loadFixtures, document */
+/* global $, _, d3*/
+/* global describeInterface*/
+/* global JSONAdapter*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Graph functionality
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Graph functionality
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  "use strict";
-
-
+  'use strict';
 
   describe('JSON Adapter', function () {
-
-    describeInterface(new JSONAdapter("", [], [], {}));
+    describeInterface(new JSONAdapter('', [], [], {}));
 
     var adapter,
       nodes,
@@ -51,195 +47,192 @@
       startNode,
       viewer,
 
-      nodeWithID = function(id) {
-        return $.grep(nodes, function(e){
+      nodeWithID = function (id) {
+        return $.grep(nodes, function (e) {
           return e._id === id;
         })[0];
       },
 
-      existNode = function(id) {
+      existNode = function (id) {
         var node = nodeWithID(id);
         expect(node).toBeDefined();
         expect(node._id).toEqual(id);
       },
 
-      existNodes = function(ids) {
+      existNodes = function (ids) {
         _.each(ids, existNode);
-      };
+    };
 
-    beforeEach(function() {
+    beforeEach(function () {
       window.communicationMock(spyOn);
-      jsonPath = "../test_data/";
+      jsonPath = '../test_data/';
       nodes = [];
       edges = [];
       viewer = {};
       // Helper function to easily insert a node into the list
-      nodes.insertNode = function(node) {
+      nodes.insertNode = function (node) {
         this.push(node);
       };
       // Helper function to easily insert edges in the list
-      edges.insertEdge = function(source, target) {
+      edges.insertEdge = function (source, target) {
         this.push({source: source, target: target});
       };
       startNode = 0;
       adapter = new JSONAdapter(jsonPath, nodes, edges, viewer);
     });
 
-    it('should be able to load a tree node from a json file', function() {
+    it('should be able to load a tree node from a json file', function () {
       var callbackCheck;
 
-      runs(function() {
+      runs(function () {
         callbackCheck = false;
-        adapter.loadNodeFromTreeById(startNode, function() {
+        adapter.loadNodeFromTreeById(startNode, function () {
           callbackCheck = true;
         });
       });
 
-      waitsFor(function() {
+      waitsFor(function () {
         return callbackCheck;
       });
 
-      runs(function() {
+      runs(function () {
         existNodes([0, 1, 2, 3, 4]);
         expect(nodes.length).toEqual(5);
       });
     });
 
-    it('should be able to request the number of children centrality', function() {
+    it('should be able to request the number of children centrality', function () {
       var callbackCheck,
-      children;
+        children;
 
-      runs(function() {
+      runs(function () {
         callbackCheck = false;
-        adapter.requestCentralityChildren(startNode, function(count) {
+        adapter.requestCentralityChildren(startNode, function (count) {
           callbackCheck = true;
           children = count;
         });
       });
 
-      waitsFor(function() {
+      waitsFor(function () {
         return callbackCheck;
       });
 
-      runs(function() {
+      runs(function () {
         expect(children).toEqual(4);
       });
     });
 
-    it('should encapsulate all attributes of nodes in _data', function() {
+    it('should encapsulate all attributes of nodes in _data', function () {
       var callbackCheck;
 
-      runs(function() {
-        adapter.loadNodeFromTreeById(1337, function() {
+      runs(function () {
+        adapter.loadNodeFromTreeById(1337, function () {
           callbackCheck = true;
         });
       });
 
-      waitsFor(function() {
+      waitsFor(function () {
         return callbackCheck;
       });
 
-      runs(function() {
+      runs(function () {
         expect(nodes[0]._data).toEqual({
           _id: 1337,
-          name: "Alice",
+          name: 'Alice',
           age: 42
         });
       });
-
     });
 
-    describe('that has already loaded one file', function() {
-
-      beforeEach(function() {
+    describe('that has already loaded one file', function () {
+      beforeEach(function () {
         var callbackCheck;
 
-        runs(function() {
+        runs(function () {
           callbackCheck = false;
-          adapter.loadNodeFromTreeById(startNode, function() {
+          adapter.loadNodeFromTreeById(startNode, function () {
             callbackCheck = true;
           });
         });
 
-        waitsFor(function() {
+        waitsFor(function () {
           return callbackCheck;
         });
       });
 
-      it('should be able to add nodes from another file', function() {
+      it('should be able to add nodes from another file', function () {
         var callbackCheck;
 
-        runs(function() {
+        runs(function () {
           callbackCheck = false;
-          adapter.loadNodeFromTreeById(1, function() {
+          adapter.loadNodeFromTreeById(1, function () {
             callbackCheck = true;
           });
         });
 
-        waitsFor(function() {
+        waitsFor(function () {
           return callbackCheck;
         });
 
-        runs(function() {
+        runs(function () {
           existNodes([0, 1, 2, 3, 4, 5, 6, 7]);
           expect(nodes.length).toEqual(8);
         });
       });
-
     });
 
-    describe('that has loaded several files', function() {
-      beforeEach(function() {
+    describe('that has loaded several files', function () {
+      beforeEach(function () {
         var callbackCheck;
 
-        runs(function() {
+        runs(function () {
           callbackCheck = false;
-          adapter.loadNodeFromTreeById(startNode, function() {
+          adapter.loadNodeFromTreeById(startNode, function () {
             callbackCheck = true;
           });
         });
 
-        waitsFor(function() {
+        waitsFor(function () {
           return callbackCheck;
         });
 
-        runs(function() {
+        runs(function () {
           callbackCheck = false;
-          adapter.loadNodeFromTreeById(1, function() {
+          adapter.loadNodeFromTreeById(1, function () {
             callbackCheck = true;
           });
         });
 
-        waitsFor(function() {
+        waitsFor(function () {
           return callbackCheck;
         });
 
-        runs(function() {
+        runs(function () {
           callbackCheck = false;
-          adapter.loadNodeFromTreeById(2, function() {
+          adapter.loadNodeFromTreeById(2, function () {
             callbackCheck = true;
           });
         });
 
-        waitsFor(function() {
+        waitsFor(function () {
           return callbackCheck;
         });
 
-        it('should not add a node to the list twice', function() {
+        it('should not add a node to the list twice', function () {
           var callbackCheck;
 
-          runs(function() {
+          runs(function () {
             callbackCheck = false;
-            adapter.loadNodeFromTreeById(3, function() {
+            adapter.loadNodeFromTreeById(3, function () {
               callbackCheck = true;
             });
           });
 
-          waitsFor(function() {
+          waitsFor(function () {
             return callbackCheck;
           });
 
-          runs(function() {
+          runs(function () {
             existNodes([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
             expect(nodes.length).toEqual(10);
           });
@@ -247,5 +240,4 @@
       });
     });
   });
-
 }());

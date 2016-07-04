@@ -32,7 +32,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 NonceFeature::NonceFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Nonce"), _size(16 * 1024 * 1024) {
+    : ApplicationFeature(server, "Nonce"), _size(4 * 1024 * 1024) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -51,10 +51,6 @@ void NonceFeature::prepare() {
   }
 }
 
-void NonceFeature::start() {
-  LOG(DEBUG) << "setting nonce hash size to " << _size;
-}
-
-void NonceFeature::stop() {
+void NonceFeature::unprepare() {
   Nonce::destroy();
 }

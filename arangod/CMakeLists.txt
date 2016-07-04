@@ -48,9 +48,6 @@ endif ()
 ################################################################################
 
 if (MSVC)
-  set(ARANGO_MSVC
-    RestServer/WindowsServiceUtils.cpp
-  )
 
   generate_product_version(ProductVersionFiles
     NAME arangod
@@ -74,7 +71,6 @@ else ()
 endif ()
 
 add_executable(${BIN_ARANGOD}
-  ${ARANGO_MSVC}
   ${ProductVersionFiles}
   ${ROCKSDB_FILES}
   Actions/ActionFeature.cpp
@@ -84,6 +80,10 @@ add_executable(${BIN_ARANGOD}
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
   Agency/Constituent.cpp
+  Agency/CleanOutServer.cpp
+  Agency/FailedLeader.cpp
+  Agency/FailedServer.cpp
+  Agency/MoveShard.cpp
   Agency/NotifierThread.cpp
   Agency/NotifyCallback.cpp
   Agency/Node.cpp
@@ -122,6 +122,7 @@ add_executable(${BIN_ARANGOD}
   Aql/ExecutionStats.cpp
   Aql/Executor.cpp
   Aql/Expression.cpp
+  Aql/FunctionDefinitions.cpp
   Aql/Function.cpp
   Aql/Functions.cpp
   Aql/Graphs.cpp
@@ -142,6 +143,9 @@ add_executable(${BIN_ARANGOD}
   Aql/Range.cpp
   Aql/RestAqlHandler.cpp
   Aql/Scopes.cpp
+  Aql/ShortestPathBlock.cpp
+  Aql/ShortestPathNode.cpp
+  Aql/ShortestPathOptions.cpp
   Aql/ShortStringStorage.cpp
   Aql/SortBlock.cpp
   Aql/SortCondition.cpp
@@ -150,6 +154,7 @@ add_executable(${BIN_ARANGOD}
   Aql/TraversalBlock.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
+  Aql/TraversalOptions.cpp
   Aql/V8Expression.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
@@ -204,6 +209,8 @@ add_executable(${BIN_ARANGOD}
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp
   RestHandler/RestAdminLogHandler.cpp
+  RestHandler/RestAqlFunctionsHandler.cpp
+  RestHandler/RestAuthHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
   RestHandler/RestCursorHandler.cpp
@@ -235,6 +242,7 @@ add_executable(${BIN_ARANGOD}
   RestServer/EndpointFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FrontendFeature.cpp
+  RestServer/InitDatabaseFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/RestServerFeature.cpp
   RestServer/ScriptFeature.cpp
@@ -277,7 +285,6 @@ add_executable(${BIN_ARANGOD}
   V8Server/V8QueueJob.cpp
   V8Server/V8TimerTask.cpp
   V8Server/V8Traverser.cpp
-  V8Server/V8VPackWrapper.cpp
   V8Server/v8-actions.cpp
   V8Server/v8-collection-util.cpp
   V8Server/v8-collection.cpp
@@ -290,19 +297,21 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
+  VocBase/AuthInfo.cpp
   VocBase/DatafileStatistics.cpp
   VocBase/Ditch.cpp
-  VocBase/ExampleMatcher.cpp
+  VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
+  VocBase/MasterPointers.cpp
+  VocBase/SingleServerTraversalPath.cpp
+  VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
-  VocBase/auth.cpp
   VocBase/cleanup.cpp
   VocBase/collection.cpp
   VocBase/compactor.cpp
   VocBase/datafile.cpp
   VocBase/document-collection.cpp
-  VocBase/MasterPointers.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp
@@ -355,3 +364,23 @@ install_command_alias(${BIN_ARANGOD}
   arango-dfdb)
 
 install_config(arango-dfdb)
+
+################################################################################
+## arango-secure-installation
+################################################################################
+
+install_command_alias(${BIN_ARANGOD}
+  ${ARANGODB_INSTALL_SBIN}
+  arango-secure-installation)
+
+install_config(arango-secure-installation)
+
+################################################################################
+## arango-init-database
+################################################################################
+
+install_command_alias(${BIN_ARANGOD}
+  ${ARANGODB_INSTALL_SBIN}
+  arango-init-database)
+
+install_config(arango-init-database)

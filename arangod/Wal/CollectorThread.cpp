@@ -49,19 +49,6 @@
 using namespace arangodb;
 using namespace arangodb::wal;
 
-/// @brief convert a slice value into its numeric equivalent
-template <typename T>
-static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
-  VPackSlice v = slice.get(attribute);
-  if (v.isString()) {
-    return static_cast<T>(std::stoull(v.copyString()));
-  }
-  if (v.isNumber()) {
-    return v.getNumber<T>();
-  }
-  return 0;
-}
-
 /// @brief return a reference to an existing datafile statistics struct
 static inline DatafileStatisticsContainer& getDfi(CollectorCache* cache,
                                                   TRI_voc_fid_t fid) {
@@ -986,9 +973,7 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
         // it is only safe to access the queue if this flag is not set
         auto it = _operationsQueue.find(cid);
         if (it == _operationsQueue.end()) {
-          std::vector<CollectorCache*> ops;
-          ops.push_back(cache);
-          _operationsQueue.emplace(cid, ops);
+          _operationsQueue.emplace(cid, std::vector<CollectorCache*>({cache}));
           _logfileManager->increaseCollectQueueSize(logfile);
         } else {
           (*it).second.push_back(cache);

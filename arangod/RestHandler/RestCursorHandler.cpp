@@ -46,6 +46,7 @@ RestCursorHandler::RestCursorHandler(
       _queryRegistry(queryRegistry),
       _queryLock(),
       _query(nullptr),
+      _hasStarted(false),
       _queryKilled(false) {}
 
 RestHandler::status RestCursorHandler::execute() {
@@ -200,8 +201,15 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
+      // TODO generalize
+      auto* httpResponse = dynamic_cast<HttpResponse*>(_response);
+
+      if (httpResponse == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
       arangodb::basics::VelocyPackDumper dumper(
-          &(response->body()), queryResult.context->getVPackOptions());
+          &(httpResponse->body()), queryResult.context->getVPackOptionsForDump());
       dumper.dumpValue(result.slice());
       return;
     }
@@ -244,6 +252,10 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
+  if (_queryKilled) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+  }
+
   TRI_ASSERT(_query == nullptr);
   _query = query;
 }
@@ -267,6 +279,10 @@ bool RestCursorHandler::cancelQuery() {
 
   if (_query != nullptr) {
     _query->killed(true);
+    _queryKilled = true;
+    _hasStarted = true;
+    return true;
+  } else if (!_hasStarted) {
     _queryKilled = true;
     return true;
   }

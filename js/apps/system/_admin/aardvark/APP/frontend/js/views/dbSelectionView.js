@@ -1,37 +1,34 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global templateEngine, window, Backbone, $, arangoHelper */
-(function() {
-  "use strict";
+/* jshint browser: true */
+/* jshint unused: false */
+/* global templateEngine, window, Backbone, $, arangoHelper */
+(function () {
+  'use strict';
   window.DBSelectionView = Backbone.View.extend({
-
-    template: templateEngine.createTemplate("dbSelectionView.ejs"),
+    template: templateEngine.createTemplate('dbSelectionView.ejs'),
 
     events: {
-      "click .dbSelectionLink": "changeDatabase"
+      'click .dbSelectionLink': 'changeDatabase'
     },
 
-    initialize: function(opts) {
+    initialize: function (opts) {
       this.current = opts.current;
     },
 
-    changeDatabase: function(e) {
-      var changeTo = $(e.currentTarget).closest(".dbSelectionLink.tab").attr("id");
+    changeDatabase: function (e) {
+      var changeTo = $(e.currentTarget).closest('.dbSelectionLink.tab').attr('id');
       var url = this.collection.createDatabaseURL(changeTo);
       window.location.replace(url);
     },
 
-    render: function(el) {
-
-      var callback = function(error, list) {
+    render: function (el) {
+      var callback = function (error, list) {
         if (error) {
-          arangoHelper.arangoError("DB","Could not fetch databases");
-        }
-        else {
+          arangoHelper.arangoError('DB', 'Could not fetch databases');
+        } else {
           this.$el = el;
           this.$el.html(this.template.render({
             list: list,
-            current: this.current.get("name")
+            current: this.current.get('name')
           }));
           this.delegateEvents();
         }

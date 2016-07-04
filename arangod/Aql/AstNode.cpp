@@ -172,8 +172,10 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT), "array compare >"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE), "array compare >="},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN), "array compare in"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array compare not in"},
-    {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"}};
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN),
+     "array compare not in"},
+    {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"},
+    {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"}};
 
 /// @brief names for AST node value types
 std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
@@ -366,22 +368,14 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
 
   if (lType == TRI_JSON_OBJECT) {
     // this is a rather exceptional case, so we can
-    // afford the inefficiency to convert to node to
+    // afford the inefficiency to convert the node to
     // JSON for comparison
     // (this saves us from writing our own compare function
     // for array AstNodes)
-    auto lJson = lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
-    auto rJson = rhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+    std::unique_ptr<TRI_json_t> lJson(lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+    std::unique_ptr<TRI_json_t> rJson(rhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
 
-    int res = TRI_CompareValuesJson(lJson, rJson, compareUtf8);
-
-    if (lJson != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, lJson);
-    }
-    if (rJson != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, rJson);
-    }
-    return res;
+    return TRI_CompareValuesJson(lJson.get(), rJson.get(), compareUtf8);
   }
 
   // all things equal
@@ -596,6 +590,7 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     case NODE_TYPE_ARRAY_LIMIT:
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_SHORTEST_PATH:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_OPERATOR_NARY_AND:
@@ -719,6 +714,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_EXAMPLE:
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_SHORTEST_PATH:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_PASSTHRU:
@@ -2356,14 +2352,14 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
       filterNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
     auto limitNode = getMember(3);
-    if (limitNode != nullptr && filterNode != Ast::getNodeNop()) {
+    if (limitNode != nullptr && limitNode != Ast::getNodeNop()) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" LIMIT "));
       limitNode->getMember(0)->stringify(buffer, verbose, failIfLong);
       buffer->appendChar(',');
       limitNode->getMember(1)->stringify(buffer, verbose, failIfLong);
     }
     auto returnNode = getMember(4);
-    if (returnNode != nullptr && filterNode != Ast::getNodeNop()) {
+    if (returnNode != nullptr && returnNode != Ast::getNodeNop()) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" RETURN "));
       returnNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
@@ -2578,6 +2574,7 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_PASSTHRU:
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_SHORTEST_PATH:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_WITH:
@@ -2747,6 +2744,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_PASSTHRU:
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_SHORTEST_PATH:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_OPERATOR_NARY_AND:

@@ -25,15 +25,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const joi = require('joi');
-const Netmask = require('netmask').Netmask;
 const dd = require('dedent');
 const internal = require('internal');
 const db = require('@arangodb').db;
 const errors = require('@arangodb').errors;
-const joinPath = require('path').posix.join;
 const notifications = require('@arangodb/configuration').notifications;
 const examples = require('@arangodb/graph-examples/example-graph');
-const systemStorage = require('@arangodb/foxx/sessions/storages/_system');
 const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
 const cluster = require('@arangodb/cluster');
@@ -42,54 +39,25 @@ const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
 const API_DOCS = require(module.context.fileName('api-docs.json'));
 API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 
-const sessions = systemStorage();
 const router = createRouter();
 module.exports = router;
 
-let trustedProxies = TRUSTED_PROXIES();
-
-let trustedProxyBlocks;
-if (Array.isArray(trustedProxies)) {
-  trustedProxyBlocks = [];
-  trustedProxies.forEach(trustedProxy => {
-    try {
-      trustedProxyBlocks.push(new Netmask(trustedProxy));
-    } catch (e) {
-      console.warn("Error parsing trusted proxy " + trustedProxy, e);
-    }
-  });
-} else {
-  trustedProxyBlocks = null;
-}
-
-let isTrustedProxy = function(proxyAddress) {
-  if (trustedProxies === null) {
-    return true;
-  }
-
-  return trustedProxyBlocks.some(block => {
-    return block.contains(proxyAddress);
-  });
-}
-
 router.get('/config.js', function(req, res) {
-  let basePath = '';
-  if (req.headers.hasOwnProperty('x-forwarded-for')
-      && req.headers.hasOwnProperty('x-script-name')
-      && isTrustedProxy(req.remoteAddress)) {
-    basePath = req.headers['x-script-name'];
-  }
-  res.set('content-type', 'text/javascript');
-  res.send("var frontendConfig = " + JSON.stringify({
-    "basePath": basePath, 
-    "db": req.database, 
-    "authenticationEnabled": global.AUTHENTICATION_ENABLED(),
-    "isCluster": cluster.isCluster()
-  }));
-});
+  const scriptName = req.get('x-script-name');
+  const basePath = req.trustProxy && scriptName || '';
+  res.send(
+    `var frontendConfig = ${JSON.stringify({
+      basePath: basePath,
+      db: req.database,
+      authenticationEnabled: internal.authenticationEnabled(),
+      isCluster: cluster.isCluster()
+    })}`
+  );
+})
+.response(['text/javascript']);
 
 router.get('/whoAmI', function(req, res) {
-  res.json({user: req.session.uid || null});
+  res.json({user: req.arangoUser || null});
 })
 .summary('Return the current user')
 .description(dd`
@@ -98,63 +66,12 @@ router.get('/whoAmI', function(req, res) {
 `);
 
 
-router.post('/logout', function (req, res) {
-  sessions.clear(req.session);
-  delete req.session;
-  res.json({success: true});
-})
-.summary('Log out')
-.description(dd`
-  Destroys the current session and revokes any authentication.
-`);
-
-
-router.post('/login', function (req, res) {
-  const currentDb = db._name();
-  /*
-  const actualDb = req.body.database;
-  if (actualDb !== currentDb) {
-    res.redirect(307, joinPath(
-      '/_db',
-      encodeURIComponent(actualDb),
-      module.context.mount,
-      '/login'
-    ));
-    return;
-  }
-  */
-  const user = req.body.username;
-  const valid = users.isValid(user, req.body.password);
-
-  if (!valid) {
-    res.throw('unauthorized', 'Bad username or password');
-  }
-
-  sessions.setUser(req.session, user);
-  sessions.save(req.session);
-
-  res.json({user});
-})
-.body({
-  username: joi.string().required(),
-  password: joi.string().required().allow('')
-  //database: joi.string().default(db._name())
-}, 'Login credentials.')
-.error('unauthorized', 'Invalid credentials.')
-.summary('Log in')
-.description(dd`
-  Authenticates the user for the active session with a username and password.
-  Creates a new session if none exists.
-`);
-
-
 const authRouter = createRouter();
 router.use(authRouter);
 
-
 authRouter.use((req, res, next) => {
-  if (global.AUTHENTICATION_ENABLED()) {
-    if (!req.session.uid) {
+  if (internal.authenticationEnabled()) {
+    if (!req.arangoUser) {
       res.throw('unauthorized');
     }
   }
@@ -162,7 +79,7 @@ authRouter.use((req, res, next) => {
 });
 
 
-authRouter.get('/api/*', module.context.apiDocumentation({
+router.get('/api/*', module.context.apiDocumentation({
   swaggerJson(req, res) {
     res.json(API_DOCS);
   }
@@ -230,15 +147,14 @@ authRouter.post('/query/explain', function(req, res) {
 
 
 authRouter.post('/query/upload/:user', function(req, res) {
-  let user;
+  let user = req.pathParams.user;
 
   try {
-    user = users.document(req.session.uid);
+    user = users.document(user);
   } catch (e) {
     if (!e.isArangoError || e.errorNum !== ERROR_USER_NOT_FOUND) {
       throw e;
     }
-    sessions.setUser(req.session);
     res.throw('not found');
   }
 
@@ -250,7 +166,7 @@ authRouter.post('/query/upload/:user', function(req, res) {
   .map(query => query.name);
 
   for (const query of req.body) {
-    if (existingQueries.indexOf(query.name) !== -1) {
+    if (existingQueries.indexOf(query.name) === -1) {
       existingQueries.push(query.name);
       user.extra.queries.push(query);
     }
@@ -273,15 +189,14 @@ authRouter.post('/query/upload/:user', function(req, res) {
 
 
 authRouter.get('/query/download/:user', function(req, res) {
-  let user;
+  let user = req.pathParams.user;
 
   try {
-    user = users.document(req.session.uid);
+    user = users.document(user);
   } catch (e) {
     if (!e.isArangoError || e.errorNum !== ERROR_USER_NOT_FOUND) {
       throw e;
     }
-    sessions.setUser(req.session);
     res.throw('not found');
   }
 
@@ -379,3 +294,74 @@ authRouter.get('/job', function(req, res) {
 .description(dd`
   This function returns the job ids of all currently running jobs.
 `);
+
+
+authRouter.get('/graph/:name', function(req, res) {
+  var _ = require("lodash");
+  var name = req.pathParams.name;
+  var gm = require("@arangodb/general-graph");
+  //var traversal = require("@arangodb/graph/traversal");
+
+  var graph = gm._graph(name);
+  var vertexName = graph._vertexCollections()[0].name();
+  var startVertex = db[vertexName].any();
+
+  var aqlQuery = 
+   'FOR v, e, p IN 1..3 ANY "' + startVertex._id + '" GRAPH "' + name + '"' + 
+   'RETURN p'
+  ;
+
+  var cursor = AQL_EXECUTE(aqlQuery);
+
+  var nodesObj = {}, nodesArr = [], edgesObj = {}, edgesArr = [];
+
+  _.each(cursor.json, function(obj) {
+    _.each(obj.edges, function(edge) {
+      if (edge._to && edge._from) {
+        edgesObj[edge._from + edge._to] = {
+          id: edge._id,
+          source: edge._from,
+          color: '#cccccc',
+          target: edge._to
+        };
+      }
+    });
+    var label;
+    _.each(obj.vertices, function(node) {
+      if (node.label) {
+        label = node.label;
+      }
+      else {
+        label = node._id;
+      }
+
+      nodesObj[node._id] = {
+        id: node._id,
+        label: label,
+        size: Math.random(),
+        color: '#2ecc71',
+        x: Math.random(),
+        y: Math.random()
+      };
+    });
+  });
+
+  //array format for sigma.js
+  _.each(edgesObj, function(node) {
+    edgesArr.push(node);
+  });
+  _.each(nodesObj, function(node) {
+    nodesArr.push(node);
+  });
+
+  res.json({
+    nodes: nodesArr,
+    edges: edgesArr
+  });
+
+})
+.summary('Return vertices and edges of a graph.')
+.description(dd`
+  This function returns vertices and edges for a specific graph.
+`);
+

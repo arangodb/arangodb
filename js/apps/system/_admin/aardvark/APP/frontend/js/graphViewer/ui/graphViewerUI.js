@@ -407,7 +407,6 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     },
 
     createSVG = function () {
-  console.log(height);
       return d3.select("#" + container.id + " #background")
         .append("svg")
         .attr("id", "graphViewerSVG")
@@ -633,6 +632,9 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   viewerConfig = viewerConfig || {};
   viewerConfig.zoom = true;
 
+  $('#subNavigationBar .breadcrumb').html(
+    'Graph: ' + adapterConfig.graphName
+  );
 
   svg = createSVG();
 

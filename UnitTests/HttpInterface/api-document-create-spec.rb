@@ -302,10 +302,9 @@ describe ArangoDB do
         newBody = doc.body()
         newBody = newBody.sub!(/^.*"Hallo":"([^"]*)".*$/, '\1')
 
-        newBody.should eq("öäüÖÄÜßあ寿司")
+        newBody.should eq("\\u00F6\\u00E4\\u00FC\\u00D6\\u00C4\\u00DC\\u00DF\\u3042\\u5BFF\\u53F8")
 
-        doc.parsed_response['Hallo'].should eq('öäüÖÄÜßあ寿司')
-        
+        doc.parsed_response['Hallo'].should eq("öäüÖÄÜßあ寿司")
         ArangoDB.delete(location)
 
         ArangoDB.size_collection(@cn).should eq(0)
@@ -347,7 +346,7 @@ describe ArangoDB do
         newBody = doc.body()
         newBody = newBody.sub!(/^.*"Hallo":"([^"]*)".*$/, '\1')
 
-        newBody.should eq("öäüÖÄÜßあ寿司")
+        newBody.should eq("\\u00F6\\u00E4\\u00FC\\u00D6\\u00C4\\u00DC\\u00DF\\u3042\\u5BFF\\u53F8")
 
         doc.parsed_response['Hallo'].should eq('öäüÖÄÜßあ寿司')
         
@@ -392,9 +391,9 @@ describe ArangoDB do
         newBody = doc.body()
         newBody = newBody.sub!(/^.*"Hallo":"([^"]*)".*$/, '\1')
 
-        newBody.should eq("Grüß Gott.")
+        newBody.should eq("Gr\\u00FC\\u00DF Gott.")
 
-        doc.parsed_response['Hallo'].should eq('Grüß Gott.')
+        doc.parsed_response['Hallo'].should eq("Grüß Gott.")
 
         ArangoDB.delete(location)
 
@@ -437,9 +436,9 @@ describe ArangoDB do
         newBody = doc.body()
         newBody = newBody.sub!(/^.*"Hallo":"([^"]*)".*$/, '\1')
 
-        newBody.should eq("Grüß Gott.")
+        newBody.should eq("Gr\\u00FC\\u00DF Gott.")
 
-        doc.parsed_response['Hallo'].should eq('Grüß Gott.')
+        doc.parsed_response['Hallo'].should eq("Grüß Gott.")
 
         ArangoDB.delete(location)
 

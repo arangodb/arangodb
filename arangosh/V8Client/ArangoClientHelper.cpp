@@ -25,9 +25,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpResponse.h"
+#include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"

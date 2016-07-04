@@ -1,0 +1,578 @@
+!CHAPTER Command-Line Options for arangod
+
+!SUBSECTION Endpoint
+@startDocuBlock serverEndpoint
+
+
+!SUBSECTION Reuse address
+
+
+try to reuse address
+`--tcp.reuse-address`
+
+If this boolean option is set to *true* then the socket option
+SO_REUSEADDR is set on all server endpoints, which is the default.
+If this option is set to *false* it is possible that it takes up
+to a minute after a server has terminated until it is possible for
+a new server to use the same endpoint again. This is why this is
+activated by default.
+
+Please note however that under some operating systems this can be
+a security risk because it might be possible for another process
+to bind to the same address and port, possibly hijacking network
+traffic. Under Windows, ArangoDB additionally sets the flag
+SO_EXCLUSIVEADDRUSE as a measure to alleviate this problem.
+
+
+
+!SUBSECTION Enable/disable authentication  
+@startDocuBlock server_authentication
+
+
+!SUBSECTION Enable/disable authentication for UNIX domain sockets
+
+
+disable authentication for requests via UNIX domain sockets
+`--server.authentication-unix-sockets value`
+
+Setting *value* to true will turn off authentication on the server side
+for requests coming in via UNIX domain sockets. With this flag enabled,
+clients located on the same host as the ArangoDB server can use UNIX domain
+sockets to connect to the server without authentication.
+Requests coming in by other means (e.g. TCP/IP) are not affected by this option.
+
+The default value is *false*.
+
+**Note**: this option is only available on platforms that support UNIX
+domain sockets.
+
+
+
+!SUBSECTION Enable/disable authentication for system API requests only
+@startDocuBlock serverAuthenticateSystemOnly
+
+
+!SUBSECTION Enable/disable replication applier
+
+
+Enable/disable the replication applier on server startup
+`--database.replication-applier flag`
+
+If *false* the server will start with replication appliers turned off,
+even if the replication appliers are configured with the *autoStart* option.
+Using the command-line option will not change the value of the *autoStart*
+option in the applier configuration, but will suppress auto-starting the
+replication applier just once.
+
+If the option is not used, ArangoDB will read the applier configuration
+from the file *REPLICATION-APPLIER-CONFIG* on startup, and use the value of the
+*autoStart* attribute from this file.
+
+The default is *true*.
+
+
+
+!SUBSECTION Keep-alive timeout
+@startDocuBlock keep_alive_timeout
+
+
+!SUBSECTION Hide Product header
+
+
+hide the "Server: ArangoDB" header in HTTP responses
+`--http.hide-product-header`
+
+If *true*, the server will exclude the HTTP header "Server: ArangoDB" in
+HTTP responses. If set to *false*, the server will send the header in
+responses.
+
+The default is *false*.
+
+
+
+!SUBSECTION Allow method override
+
+
+allow HTTP method override via custom headers?
+`--http.allow-method-override`
+
+When this option is set to *true*, the HTTP request method will optionally
+be fetched from one of the following HTTP request headers if present in
+the request:
+
+- *x-http-method*
+- *x-http-method-override*
+- *x-method-override*
+
+If the option is set to *true* and any of these headers is set, the
+request method will be overridden by the value of the header. For example,
+this allows issuing an HTTP DELETE request which to the outside world will
+look like an HTTP GET request. This allows bypassing proxies and tools that
+will only let certain request types pass.
+
+Setting this option to *true* may impose a security risk so it should only
+be used in controlled environments.
+
+The default value for this option is *false*.
+
+
+
+!SUBSECTION Server threads
+
+
+number of dispatcher threads
+`--server.threads number`
+
+Specifies the *number* of threads that are spawned to handle HTTP REST
+requests.
+
+
+
+!SUBSECTION Keyfile
+
+
+keyfile containing server certificate
+`--ssl.keyfile filename`
+
+If SSL encryption is used, this option must be used to specify the filename
+of the server private key. The file must be PEM formatted and contain both
+the certificate and the server's private key.
+
+The file specified by *filename* should have the following structure:
+
+```
+# create private key in file "server.key"
+openssl genrsa -des3 -out server.key 1024
+
+# create certificate signing request (csr) in file "server.csr"
+openssl req -new -key server.key -out server.csr
+
+# copy away original private key to "server.key.org"
+cp server.key server.key.org
+
+# remove passphrase from the private key
+openssl rsa -in server.key.org -out server.key
+
+# sign the csr with the key, creates certificate PEM file "server.crt"
+openssl x509 -req -days 365 -in server.csr -signkey server.key -out
+server.crt
+
+# combine certificate and key into single PEM file "server.pem"
+cat server.crt server.key > server.pem
+```
+
+You may use certificates issued by a Certificate Authority or self-signed
+certificates. Self-signed certificates can be created by a tool of your
+choice. When using OpenSSL for creating the self-signed certificate, the
+following commands should create a valid keyfile:
+
+```
+-----BEGIN CERTIFICATE-----
+
+(base64 encoded certificate)
+
+-----END CERTIFICATE-----
+-----BEGIN RSA PRIVATE KEY-----
+
+(base64 encoded private key)
+
+-----END RSA PRIVATE KEY-----
+```
+
+For further information please check the manuals of the tools you use to
+create the certificate.
+
+**Note**: the \-\-ssl.keyfile option must be set if the server is
+started with at least one SSL endpoint.
+
+
+
+!SUBSECTION Cafile
+
+
+CA file
+`--ssl.cafile filename`
+
+This option can be used to specify a file with CA certificates that are
+sent
+to the client whenever the server requests a client certificate. If the
+file is specified, The server will only accept client requests with
+certificates issued by these CAs. Do not specify this option if you want
+clients to be able to connect without specific certificates.
+
+The certificates in *filename* must be PEM formatted.
+
+**Note**: this option is only relevant if at least one SSL endpoint is
+used.
+
+
+
+!SUBSECTION SSL protocol
+
+
+SSL protocol type to use `--ssl.protocol value`
+
+Use this option to specify the default encryption protocol to be used.
+The following variants are available:
+- 1: SSLv2
+- 2: SSLv23
+- 3: SSLv3
+- 4: TLSv1
+- 5: TLSv1.2 (recommended)
+
+The default *value* is 4 (i.e. TLSv1). If available, set it to 5
+(i.e. TLSv1.2), because lower protocol versions are known to be vulnerable
+to POODLE attack variants.
+
+**Note**: this option is only relevant if at least one SSL endpoint is used.
+
+
+
+!SUBSECTION SSL cache
+
+
+whether or not to use SSL session caching
+`--ssl.session-cache value`
+
+Set to true if SSL session caching should be used.
+
+*value* has a default value of *false* (i.e. no caching).
+
+**Note**: this option is only relevant if at least one SSL endpoint is used, and
+only if the client supports sending the session id.
+
+
+
+!SUBSECTION SSL options
+
+
+ssl options to use
+`--ssl.options value`
+
+This option can be used to set various SSL-related options. Individual
+option values must be combined using bitwise OR.
+
+Which options are available on your platform is determined by the OpenSSL
+version you use. The list of options available on your platform might be
+retrieved by the following shell command:
+
+```
+ > grep "#define SSL_OP_.*" /usr/include/openssl/ssl.h
+
+ #define SSL_OP_MICROSOFT_SESS_ID_BUG                    0x00000001L
+ #define SSL_OP_NETSCAPE_CHALLENGE_BUG                   0x00000002L
+ #define SSL_OP_LEGACY_SERVER_CONNECT                    0x00000004L
+ #define SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG         0x00000008L
+ #define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG              0x00000010L
+ #define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER               0x00000020L
+ ...
+```
+
+A description of the options can be found online in the
+[OpenSSL
+documentation](http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html)
+
+**Note**: this option is only relevant if at least one SSL endpoint is
+used.
+
+
+
+!SUBSECTION SSL cipher
+
+
+ssl cipher list to use
+`--ssl.cipher-list cipher-list`
+
+This option can be used to restrict the server to certain SSL ciphers
+only,
+and to define the relative usage preference of SSL ciphers.
+
+The format of *cipher-list* is documented in the OpenSSL documentation.
+
+To check which ciphers are available on your platform, you may use the
+following shell command:
+
+```
+> openssl ciphers -v
+
+ECDHE-RSA-AES256-SHA    SSLv3 Kx=ECDH     Au=RSA  Enc=AES(256)  Mac=SHA1
+ECDHE-ECDSA-AES256-SHA  SSLv3 Kx=ECDH     Au=ECDSA Enc=AES(256)  Mac=SHA1
+DHE-RSA-AES256-SHA      SSLv3 Kx=DH       Au=RSA  Enc=AES(256)  Mac=SHA1
+DHE-DSS-AES256-SHA      SSLv3 Kx=DH       Au=DSS  Enc=AES(256)  Mac=SHA1
+DHE-RSA-CAMELLIA256-SHA SSLv3 Kx=DH       Au=RSA  Enc=Camellia(256)
+Mac=SHA1
+...
+```
+
+The default value for *cipher-list* is "ALL".
+
+**Note**: this option is only relevant if at least one SSL endpoint is used.
+
+
+
+!SUBSECTION Backlog size
+
+
+listen backlog size
+`--tcp.backlog-size`
+
+Allows to specify the size of the backlog for the *listen* system call
+The default value is 10. The maximum value is platform-dependent.
+Specifying
+a higher value than defined in the system header's SOMAXCONN may result in
+a warning on server start. The actual value used by *listen* may also be
+silently truncated on some platforms (this happens inside the *listen*
+system call).
+
+
+
+!SUBSECTION Toggling server statistics 
+
+`--server.statistics value`
+
+If this option is *value* is *false*, then ArangoDB's statistics gathering
+is turned off. Statistics gathering causes regular CPU activity so using this
+option to turn it off might relieve heavy-loaded instances a bit.
+
+
+!SUBSECTION Session timeout
+
+
+time to live for server sessions
+`--server.session-timeout value`
+
+The timeout for web interface sessions, using for authenticating requests
+to the web interface (/_admin/aardvark) and related areas.
+
+Sessions are only used when authentication is turned on.
+
+
+
+!SUBSECTION Foxx queues 
+@startDocuBlock foxxQueues
+
+
+!SUBSECTION Foxx queues poll interval
+@startDocuBlock foxxQueuesPollInterval
+
+
+!SUBSECTION Directory
+
+
+path to the database
+`--database.directory directory`
+
+The directory containing the collections and datafiles. Defaults
+to */var/lib/arango*. When specifying the database directory, please
+make sure the directory is actually writable by the arangod process.
+
+You should further not use a database directory which is provided by a
+network filesystem such as NFS. The reason is that networked filesystems
+might cause inconsistencies when there are multiple parallel readers or
+writers or they lack features required by arangod (e.g. flock()).
+
+`directory`
+
+When using the command line version, you can simply supply the database
+directory as argument.
+
+
+**Examples**
+
+
+```
+> ./arangod --server.endpoint tcp://127.0.0.1:8529 --database.directory
+/tmp/vocbase
+```
+
+
+
+!SUBSECTION Journal size
+@startDocuBlock databaseMaximalJournalSize
+
+
+!SUBSECTION Wait for sync
+@startDocuBlock databaseWaitForSync
+
+
+!SUBSECTION Force syncing of properties
+@startDocuBlock databaseForceSyncProperties
+
+
+!SUBSECTION Enable/disable AQL query tracking
+
+
+disable the query tracking feature
+`--query.tracking flag`
+
+If *true*, the server's AQL slow query tracking feature will be enabled by
+default. Tracking of queries can be disabled by setting the option to *false*.
+
+The default is *true*.
+
+
+!SUBSECTION Threshold for slow AQL queries
+
+
+adjust the threshold for slow AQL queries
+`--query.slow-threshold value`
+
+By setting *value* it can be controlled after what execution time an AQL query
+is considered "slow". Any slow queries that exceed the execution time specified
+in *value* will be logged when they are finished. The threshold value is
+specified in seconds. Tracking of slow queries can be turned off entirely by
+setting the option `--query.tracking` to *false*.
+
+The default value is *10.0*.
+
+
+
+!SUBSECTION Throw collection not loaded error
+
+
+throw collection not loaded error
+`--database.throw-collection-not-loaded-error flag`
+
+Accessing a not-yet loaded collection will automatically load a collection
+on first access. This flag controls what happens in case an operation
+would need to wait for another thread to finalize loading a collection. If
+set to *true*, then the first operation that accesses an unloaded collection
+will load it. Further threads that try to access the same collection while
+it is still loading will get an error (1238, *collection not loaded*). When
+the initial operation has completed loading the collection, all operations
+on the collection can be carried out normally, and error 1238 will not be
+thrown.
+
+If set to *false*, the first thread that accesses a not-yet loaded collection
+will still load it. Other threads that try to access the collection while
+loading will not fail with error 1238 but instead block until the collection
+is fully loaded. This configuration might lead to all server threads being
+blocked because they are all waiting for the same collection to complete
+loading. Setting the option to *true* will prevent this from happening, but
+requires clients to catch error 1238 and react on it (maybe by scheduling
+a retry for later).
+
+The default value is *false*.
+
+
+
+!SUBSECTION AQL Query caching mode
+
+
+whether or not to enable the AQL query result cache
+`--query.cache-mode`
+
+Toggles the AQL query cache behavior. Possible values are:
+
+* *off*: do not use query cache
+* *on*: always use query cache, except for queries that have their *cache*
+  attribute set to *false*
+* *demand*: use query cache only for queries that have their *cache*
+  attribute set to *true*
+  set
+
+
+
+!SUBSECTION AQL Query cache size 
+
+
+maximum number of elements in the query cache per database
+`--query.cache-entries`
+
+Maximum number of query results that can be stored per database-specific
+query cache. If a query is eligible for caching and the number of items in
+the database's query cache is equal to this threshold value, another cached
+query result will be removed from the cache.
+
+This option only has an effect if the query cache mode is set to either
+*on* or *demand*.
+
+
+
+!SUBSECTION Index threads
+
+
+number of background threads for parallel index creation
+`--database.index-threads`
+
+Specifies the *number* of background threads for index creation. When a
+collection contains extra indexes other than the primary index, these other
+indexes can be built by multiple threads in parallel. The index threads
+are shared among multiple collections and databases. Specifying a value of
+*0* will turn off parallel building, meaning that indexes for each collection
+are built sequentially by the thread that opened the collection.
+If the number of index threads is greater than 1, it will also be used to
+built the edge index of a collection in parallel (this also requires the
+edge index in the collection to be split into multiple buckets).
+
+
+
+!SUBSECTION V8 contexts
+
+
+number of V8 contexts for executing JavaScript actions
+`--javascript.v8-contexts number`
+
+Specifies the *number* of V8 contexts that are created for executing
+JavaScript code. More contexts allow execute more JavaScript actions in
+parallel, provided that there are also enough threads available. Please
+note that each V8 context will use a substantial amount of memory and
+requires periodic CPU processing time for garbage collection.
+
+
+
+!SUBSECTION Garbage collection frequency (time-based)
+
+
+JavaScript garbage collection frequency (each x seconds)
+`--javascript.gc-frequency frequency`
+
+Specifies the frequency (in seconds) for the automatic garbage collection of
+JavaScript objects. This setting is useful to have the garbage collection
+still work in periods with no or little numbers of requests.
+
+
+
+!SUBSECTION Garbage collection interval (request-based)
+
+
+JavaScript garbage collection interval (each x requests)
+`--javascript.gc-interval interval`
+
+Specifies the interval (approximately in number of requests) that the
+garbage collection for JavaScript objects will be run in each thread.
+
+
+
+!SUBSECTION V8 options
+
+
+optional arguments to pass to v8
+`--javascript.v8-options options`
+
+Optional arguments to pass to the V8 Javascript engine. The V8 engine will
+run with default settings unless explicit options are specified using this
+option. The options passed will be forwarded to the V8 engine which will
+parse them on its own. Passing invalid options may result in an error being
+printed on stderr and the option being ignored.
+
+Options need to be passed in one string, with V8 option names being prefixed
+with double dashes. Multiple options need to be separated by whitespace.
+To get a list of all available V8 options, you can use
+the value *"--help"* as follows:
+```
+--javascript.v8-options "--help"
+```
+
+Another example of specific V8 options being set at startup:
+
+```
+--javascript.v8-options "--log"
+```
+
+Names and features or usable options depend on the version of V8 being used,
+and might change in the future if a different version of V8 is being used
+in ArangoDB. Not all options offered by V8 might be sensible to use in the
+context of ArangoDB. Use the specific options only if you are sure that
+they are not harmful for the regular database operation.
+

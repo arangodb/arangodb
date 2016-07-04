@@ -36,7 +36,6 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
-#include "V8Server/V8VPackWrapper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
@@ -207,8 +206,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   std::string collectionName(collection->_name);
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true),
-                                          collection->_cid, TRI_TRANSACTION_READ);
+  std::shared_ptr<V8TransactionContext> transactionContext = V8TransactionContext::Create(collection->_vocbase, true); 
+  SingleCollectionTransaction trx(transactionContext, collection->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -217,7 +216,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // We directly read the entire cursor. so batchsize == limit
-  std::shared_ptr<OperationCursor> opCursor =
+  std::unique_ptr<OperationCursor> opCursor =
       trx.indexScan(collectionName, Transaction::CursorType::ALL,
                     Transaction::IndexHandle(), {}, skip, limit, limit, false);
 
@@ -246,7 +245,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = opCursor->customTypeHandler.get();
+  resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler().get();
 
   auto batch = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
   opCursor->getMore(batch);
@@ -290,8 +289,8 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string collectionName(col->_name);
   
-  SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
-                                          col->_cid, TRI_TRANSACTION_READ);
+  std::shared_ptr<V8TransactionContext> transactionContext = V8TransactionContext::Create(col->_vocbase, true); 
+  SingleCollectionTransaction trx(transactionContext, col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -321,7 +320,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = cursor.customTypeHandler.get();
+  resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler().get();
   TRI_V8_RETURN(TRI_VPackToV8(isolate, doc.at(0), &resultOptions));
   TRI_V8_TRY_CATCH_END
 }

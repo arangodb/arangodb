@@ -39,8 +39,11 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestAqlFunctionsHandler.h"
+#include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
@@ -78,37 +81,52 @@ using namespace arangodb::options;
 rest::RestHandlerFactory* RestServerFeature::HANDLER_FACTORY = nullptr;
 rest::AsyncJobManager* RestServerFeature::JOB_MANAGER = nullptr;
 RestServerFeature* RestServerFeature::REST_SERVER = nullptr;
+AuthInfo RestServerFeature::AUTH_INFO;
 
 RestServerFeature::RestServerFeature(
-    application_features::ApplicationServer* server,
-    std::string const& authenticationRealm)
+    application_features::ApplicationServer* server)
     : ApplicationFeature(server, "RestServer"),
       _keepAliveTimeout(300.0),
-      _authenticationRealm(authenticationRealm),
       _allowMethodOverride(false),
       _authentication(true),
       _authenticationUnixSockets(true),
-      _authenticationSystemOnly(false),
+      _authenticationSystemOnly(true),
       _proxyCheck(true),
+      _jwtSecret(""),
       _handlerFactory(nullptr),
       _jobManager(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Agency");
+  startsAfter("CheckVersion");
+  startsAfter("Database");
   startsAfter("Dispatcher");
   startsAfter("Endpoint");
+  startsAfter("FoxxQueues");
+  startsAfter("LogfileManager");
+  startsAfter("Random");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("Agency");
-  startsAfter("LogfileManager");
-  startsAfter("Database");
   startsAfter("Upgrade");
-  startsAfter("CheckVersion");
-  startsAfter("FoxxQueues");
 }
 
 void RestServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
+
+  options->addOldOption("server.disable-authentication",
+                        "server.authentication");
+  options->addOldOption("server.disable-authentication-unix-sockets",
+                        "server.authentication-unix-sockets");
+  options->addOldOption("server.authenticate-system-only",
+                        "server.authentication-system-only");
+  options->addOldOption("server.allow-method-override",
+                        "http.allow-method-override");
+  options->addOldOption("server.hide-product-header",
+                        "http.hide-product-header");
+  options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
+  options->addOldOption("server.default-api-compatibility", "");
+  options->addOldOption("no-server", "server.rest-server");
 
   options->addOption("--server.authentication",
                      "enable or disable authentication for ALL client requests",
@@ -124,6 +142,10 @@ void RestServerFeature::collectOptions(
                      "authentication for requests via UNIX domain sockets",
                      new BooleanParameter(&_authenticationUnixSockets));
 #endif
+
+  options->addOption("--server.jwt-secret",
+                     "secret to use when doing jwt authentication",
+                     new StringParameter(&_jwtSecret));
 
   options->addSection("http", "HttpServer features");
 
@@ -185,6 +207,14 @@ void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                        }),
         _accessControlAllowOrigins.end());
   }
+
+  if (!_jwtSecret.empty()) {
+    if (_jwtSecret.length() > RestServerFeature::_maxSecretLength) {
+      LOG(ERR) << "Given JWT secret too long. Max length is "
+               << RestServerFeature::_maxSecretLength;
+      FATAL_ERROR_EXIT();
+    }
+  }
 }
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request,
@@ -224,18 +254,33 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
     return false;
   }
 
-  VocbaseContext* ctx = new arangodb::VocbaseContext(request, server, vocbase);
+  VocbaseContext* ctx = new arangodb::VocbaseContext(
+      request, vocbase, RestServerFeature::getJwtSecret());
   request->setRequestContext(ctx, true);
 
   // the "true" means the request is the owner of the context
   return true;
 }
 
-void RestServerFeature::prepare() { RestHandlerFactory::setMaintenance(true); }
+void RestServerFeature::generateNewJwtSecret() {
+  _jwtSecret = "";
+  uint16_t m = 254;
+
+  for (size_t i = 0; i < RestServerFeature::_maxSecretLength; i++) {
+    _jwtSecret += (1 + RandomGenerator::interval(m));
+  }
+}
+
+void RestServerFeature::prepare() {
+  if (_jwtSecret.empty()) {
+    generateNewJwtSecret();
+  }
+
+  RestHandlerFactory::setMaintenance(true);
+  REST_SERVER = this;
+}
 
 void RestServerFeature::start() {
-  REST_SERVER = this;
-
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
   JOB_MANAGER = _jobManager.get();
@@ -264,6 +309,10 @@ void RestServerFeature::start() {
               << (_authenticationUnixSockets ? "on" : "off");
 #endif
   }
+
+  // populate the authentication cache. otherwise no one can access the new
+  // database
+  RestServerFeature::AUTH_INFO.outdate();
 }
 
 void RestServerFeature::stop() {
@@ -274,7 +323,9 @@ void RestServerFeature::stop() {
   for (auto& server : _servers) {
     server->stop();
   }
+}
 
+void RestServerFeature::unprepare() {
   for (auto& server : _servers) {
     delete server;
   }
@@ -293,7 +344,7 @@ void RestServerFeature::buildServers() {
 
   // unencrypted HTTP endpoints
   HttpServer* httpServer =
-      new HttpServer(_keepAliveTimeout, _authenticationRealm,
+      new HttpServer(_keepAliveTimeout,
                      _allowMethodOverride, _accessControlAllowOrigins);
 
   // YYY #warning FRANK filter list
@@ -317,7 +368,7 @@ void RestServerFeature::buildServers() {
     SSL_CTX* sslContext = ssl->sslContext();
 
     // https
-    httpServer = new HttpsServer(_keepAliveTimeout, _authenticationRealm,
+    httpServer = new HttpsServer(_keepAliveTimeout,
                                  _allowMethodOverride,
                                  _accessControlAllowOrigins, sslContext);
 
@@ -417,6 +468,10 @@ void RestServerFeature::defineHandlers() {
       queryRegistry);
 
   _handlerFactory->addPrefixHandler(
+      "/_api/aql-builtin",
+      RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
       "/_api/query", RestHandlerCreator<RestQueryHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
@@ -487,6 +542,11 @@ void RestServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/shutdown",
       RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_open/auth", RestHandlerCreator<arangodb::RestAuthHandler>::createData<
+                         std::string const*>,
+      &_jwtSecret);
 
   // ...........................................................................
   // /_admin

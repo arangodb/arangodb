@@ -108,14 +108,26 @@ Graph::Graph(VPackSlice const& info) : _vertexColls(), _edgeColls() {
 
     for (auto const& def : VPackArrayIterator(edgeDefs)) {
       TRI_ASSERT(def.isObject());
-      std::string eCol = arangodb::basics::VelocyPackHelper::getStringValue(
+      try {
+        std::string eCol = arangodb::basics::VelocyPackHelper::getStringValue(
           def, "collection", "");
-      addEdgeCollection(eCol);
+        addEdgeCollection(eCol);
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_GRAPH, "didn't find 'collection' in the graph definition");
+      }
       // TODO what if graph is not in a valid format any more
-      VPackSlice tmp = def.get("from");
-      insertVertexCollections(tmp);
-      tmp = def.get("to");
-      insertVertexCollections(tmp);
+      try {
+        VPackSlice tmp = def.get("from");
+        insertVertexCollections(tmp);
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_GRAPH, "didn't find from-collection in the graph definition");
+      }
+      try {
+        VPackSlice tmp = def.get("to");
+        insertVertexCollections(tmp);
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_GRAPH, "didn't find to-collection in the graph definition");
+      }
     }
   }
   if (slice.hasKey(_attrOrphans)) {

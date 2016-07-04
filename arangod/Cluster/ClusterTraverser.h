@@ -34,21 +34,26 @@ namespace traverser {
 
 class ClusterTraversalPath;
 
-class ClusterTraverser : public Traverser {
+class ClusterTraverser final : public Traverser {
   friend class ClusterTraversalPath;
 
  public:
   ClusterTraverser(
       std::vector<std::string> edgeCollections, TraverserOptions& opts,
-      std::string dbname, Transaction* trx,
+      std::string const& dbname, Transaction* trx,
       std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
           expressions)
       : Traverser(opts, expressions),
         _edgeCols(edgeCollections),
         _dbname(dbname),
-        _vertexGetter(this),
-        _edgeGetter(this),
-        _trx(trx) {}
+        _trx(trx) {
+          _edgeGetter = std::make_unique<ClusterEdgeGetter>(this);
+          if (opts.uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
+            _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
+          } else {
+            _vertexGetter = std::make_unique<VertexGetter>(this);
+          }
+        }
 
   ~ClusterTraverser() {
   }
@@ -64,26 +69,50 @@ class ClusterTraverser : public Traverser {
   bool vertexMatchesCondition(arangodb::velocypack::Slice const&,
                               std::vector<TraverserExpression*> const&);
 
-  class VertexGetter {
+  class VertexGetter : public arangodb::basics::VertexGetter<std::string, std::string> {
    public:
     explicit VertexGetter(ClusterTraverser* traverser)
         : _traverser(traverser) {}
 
-    bool operator()(std::string const&, std::string const&, size_t,
-                    std::string&);
+    virtual ~VertexGetter() = default;
 
-   private:
+    virtual bool getVertex(std::string const&, std::string const&, size_t,
+                           std::string&) override;
+    virtual void reset();
+
+   protected:
     ClusterTraverser* _traverser;
   };
 
-  class EdgeGetter {
+  class UniqueVertexGetter : public VertexGetter {
    public:
-    explicit EdgeGetter(ClusterTraverser* traverser)
+    explicit UniqueVertexGetter(ClusterTraverser* traverser)
+        : VertexGetter(traverser) {}
+
+    ~UniqueVertexGetter() = default;
+
+    bool getVertex(std::string const&, std::string const&, size_t,
+                    std::string&) override;
+
+    void reset() override;
+
+    void setStartVertex(std::string const& id) override {
+      _returnedVertices.emplace(id);
+    }
+
+   private:
+    std::unordered_set<std::string> _returnedVertices;
+  };
+
+  class ClusterEdgeGetter : public arangodb::basics::EdgeGetter<std::string, std::string, size_t> {
+   public:
+    explicit ClusterEdgeGetter(ClusterTraverser* traverser)
         : _traverser(traverser), _continueConst(1) {}
 
-    void operator()(std::string const&,
-                    std::vector<std::string>&, size_t*&,
-                    size_t&, bool&);
+    void getEdge(std::string const&, std::vector<std::string>&, size_t*&,
+                 size_t&) override;
+
+    void getAllEdges(std::string const&, std::unordered_set<std::string>&, size_t depth) override;
 
    private:
     ClusterTraverser* _traverser;
@@ -105,9 +134,9 @@ class ClusterTraverser : public Traverser {
 
   std::string _dbname;
 
-  VertexGetter _vertexGetter;
+  std::unique_ptr<VertexGetter> _vertexGetter;
 
-  EdgeGetter _edgeGetter;
+  std::unique_ptr<ClusterEdgeGetter> _edgeGetter;
 
   arangodb::velocypack::Builder _builder;
 
@@ -120,20 +149,20 @@ class ClusterTraverser : public Traverser {
   std::unique_ptr<arangodb::basics::PathEnumerator<std::string, std::string, size_t>> _enumerator;
 };
 
-class ClusterTraversalPath : public TraversalPath {
+class ClusterTraversalPath final : public TraversalPath {
  public:
   ClusterTraversalPath(
       ClusterTraverser const* traverser,
-      const arangodb::basics::EnumeratedPath<std::string, std::string>& path)
-      : _path(path), _traverser(traverser) {}
+      arangodb::basics::EnumeratedPath<std::string, std::string> const& path)
+      : _path(path), _traverser(traverser) {
+  }
 
   void pathToVelocyPack(Transaction*, arangodb::velocypack::Builder&) override;
 
   void lastEdgeToVelocyPack(Transaction*,
                             arangodb::velocypack::Builder&) override;
 
-  void lastVertexToVelocyPack(Transaction*,
-                              arangodb::velocypack::Builder&) override;
+  aql::AqlValue lastVertexToAqlValue(Transaction*) override;
 
  private:
   arangodb::basics::EnumeratedPath<std::string, std::string> _path;

@@ -1,17 +1,15 @@
-/*global window, Backbone */
-(function() {
-  "use strict";
+/* global window, Backbone */
+(function () {
+  'use strict';
 
   window.AutomaticRetryCollection = Backbone.Collection.extend({
-
     _retryCount: 0,
 
-
-    checkRetries: function() {
+    checkRetries: function () {
       var self = this;
       this.updateUrl();
       if (this._retryCount > 10) {
-        window.setTimeout(function() {
+        window.setTimeout(function () {
           self._retryCount = 0;
         }, 10000);
         window.App.clusterUnreachable();
@@ -20,11 +18,11 @@
       return true;
     },
 
-    successFullTry: function() {
+    successFullTry: function () {
       this._retryCount = 0;
     },
 
-    failureTry: function(retry, ignore, err) {
+    failureTry: function (retry, ignore, err) {
       if (err.status === 401) {
         window.App.requestAuth();
       } else {

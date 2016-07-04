@@ -33,6 +33,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
@@ -48,7 +49,6 @@
 #include "Utils/CursorRepository.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/auth.h"
 #include "VocBase/cleanup.h"
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
@@ -2156,7 +2156,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_server_t* server, TRI_vocbase_type_e type,
       _queries(nullptr),
       _cursorRepository(nullptr),
       _collectionKeys(nullptr),
-      _authInfoLoaded(false),
       _hasCompactor(false),
       _isOwnAppsDirectory(true),
       _replicationApplier(nullptr) {
@@ -2196,8 +2195,6 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 
   TRI_DestroyCondition(&_cleanupCondition);
   TRI_DestroyCondition(&_compactorCondition);
-
-  TRI_DestroyAuthInfo(this);
 
   delete _cursorRepository;
   delete _collectionKeys;
@@ -2326,12 +2323,12 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice);
   while (it.valid()) {
-    std::string key(it.key().copyString());
+    StringRef key(it.key());
     if (key.empty() || key[0] != '_' ||
          (key != StaticStrings::KeyString &&
           key != StaticStrings::IdString &&
           key != StaticStrings::RevString)) {
-      builder.add(std::move(key), it.value());
+      builder.add(key.data(), key.size(), it.value());
     }
     it.next();
   }
@@ -2346,14 +2343,14 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice);
   while (it.valid()) {
-    std::string key(it.key().copyString());
+    StringRef key(it.key());
     if (key.empty() || key[0] != '_' ||
          (key != StaticStrings::KeyString &&
           key != StaticStrings::IdString &&
           key != StaticStrings::RevString &&
           key != StaticStrings::FromString &&
           key != StaticStrings::ToString)) {
-      builder.add(std::move(key), it.value());
+      builder.add(key.data(), key.length(), it.value());
     }
     it.next();
   }

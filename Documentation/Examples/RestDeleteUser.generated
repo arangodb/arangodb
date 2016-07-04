@@ -1,0 +1,12 @@
+shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/user/admin@ourapp &lt;&lt;EOF
+{ 
+}
+EOF
+
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+
+{ 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
+}

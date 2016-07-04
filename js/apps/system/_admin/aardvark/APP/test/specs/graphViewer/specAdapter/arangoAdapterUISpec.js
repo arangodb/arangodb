@@ -1,42 +1,41 @@
-/*jshint unused: false */
-/*global beforeEach, afterEach */
-/*global describe, it, expect*/
-/*global runs, waitsFor, spyOn */
-/*global window, eb, loadFixtures, document */
-/*global $, _, d3*/
-/*global helper, uiMatchers*/
-/*global ArangoAdapterControls */
+/* jshint unused: false */
+/* global beforeEach, afterEach */
+/* global describe, it, expect*/
+/* global runs, waitsFor, spyOn */
+/* global window, eb, loadFixtures, document */
+/* global $, _, d3*/
+/* global helper, uiMatchers*/
+/* global ArangoAdapterControls */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Graph functionality
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Graph functionality
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  "use strict";
+  'use strict';
 
   describe('Arango Adapter UI', function () {
     var adapter, adapterUI, list, prioList;
@@ -44,39 +43,29 @@
     beforeEach(function () {
       prioList = [];
       adapter = {
-        getPrioList: function(){},
-        changeTo: function(){},
-        changeToCollections: function(){},
-        getCollections: function(cb) {
-          cb(["nodes", "newNodes"], ["edges", "newEdges"]);
+        getPrioList: function () {},
+        changeTo: function () {},
+        changeToCollections: function () {},
+        getCollections: function (cb) {
+          cb(['nodes', 'newNodes'], ['edges', 'newEdges']);
         },
-        getGraphs: function(cb) {
-          cb(["graph", "newGraph"]);
+        getGraphs: function (cb) {
+          cb(['graph', 'newGraph']);
         },
-        getGraphName: function() {
-
-        },
-        getEdgeCollection: function() {
-
-        },
-        getNodeCollection: function() {
-
-        },
-        getDirection: function() {
-
-        },
-        loadRandomNode: function() {
-
-        }
+        getGraphName: function () {},
+        getEdgeCollection: function () {},
+        getNodeCollection: function () {},
+        getDirection: function () {},
+        loadRandomNode: function () {}
       };
-      list = document.createElement("ul");
+      list = document.createElement('ul');
       document.body.appendChild(list);
-      list.id = "control_adapter_list";
+      list.id = 'control_adapter_list';
       adapterUI = new ArangoAdapterControls(list, adapter);
       spyOn(adapter, 'changeTo');
       spyOn(adapter, 'changeToCollections');
-      spyOn(adapter, "getCollections").andCallThrough();
-      spyOn(adapter, "getPrioList").andCallFake(function() {
+      spyOn(adapter, 'getCollections').andCallThrough();
+      spyOn(adapter, 'getPrioList').andCallFake(function () {
         return prioList;
       });
       uiMatchers.define(this);
@@ -86,260 +75,256 @@
       document.body.removeChild(list);
     });
 
-    it('should throw errors if not setup correctly', function() {
-      expect(function() {
+    it('should throw errors if not setup correctly', function () {
+      expect(function () {
         var e = new ArangoAdapterControls();
-      }).toThrow("A list element has to be given.");
-      expect(function() {
+      }).toThrow('A list element has to be given.');
+      expect(function () {
         var e = new ArangoAdapterControls(list);
-      }).toThrow("The ArangoAdapter has to be given.");
+      }).toThrow('The ArangoAdapter has to be given.');
     });
 
-    describe('change collections control', function() {
+    describe('change collections control', function () {
+      var idPrefix = '#control_adapter_collections';
 
-      var idPrefix = "#control_adapter_collections";
-
-      beforeEach(function() {
-        runs(function() {
+      beforeEach(function () {
+        runs(function () {
           adapterUI.addControlChangeCollections();
-          expect($("#control_adapter_list " + idPrefix).length).toEqual(1);
-          expect($("#control_adapter_list " + idPrefix)[0]).toConformToListCSS();
-          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_button");
-          expect($(idPrefix + "_modal").length).toEqual(1);
+          expect($('#control_adapter_list ' + idPrefix).length).toEqual(1);
+          expect($('#control_adapter_list ' + idPrefix)[0]).toConformToListCSS();
+          helper.simulateMouseEvent('click', idPrefix.substr(1) + '_button');
+          expect($(idPrefix + '_modal').length).toEqual(1);
         });
       });
 
-      afterEach(function() {
-        waitsFor(function() {
-          return $(idPrefix + "_modal").length === 0;
-        }, 2000, "The modal dialog should disappear.");
+      afterEach(function () {
+        waitsFor(function () {
+          return $(idPrefix + '_modal').length === 0;
+        }, 2000, 'The modal dialog should disappear.');
       });
 
-      it('should be added to the list', function() {
-        runs(function() {
-          $(idPrefix + "_node_collection").prop("selectedIndex", 0);
-          $(idPrefix + "_edge_collection").prop("selectedIndex", 1);
-          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
+      it('should be added to the list', function () {
+        runs(function () {
+          $(idPrefix + '_node_collection').prop('selectedIndex', 0);
+          $(idPrefix + '_edge_collection').prop('selectedIndex', 1);
+          helper.simulateMouseEvent('click', idPrefix.substr(1) + '_submit');
           expect(adapter.changeToCollections).toHaveBeenCalledWith(
-            "newNodes",
-            "newEdges",
+            'newNodes',
+            'newEdges',
             false
           );
         });
       });
 
-      it('should change collections and traversal direction to directed', function() {
-        runs(function() {
+      it('should change collections and traversal direction to directed', function () {
+        runs(function () {
+          $(idPrefix + '_node_collection').prop('selectedIndex', 0);
+          $(idPrefix + '_edge_collection').prop('selectedIndex', 1);
+          $(idPrefix + '_undirected').attr('checked', false);
 
-          $(idPrefix + "_node_collection").prop("selectedIndex", 0);
-          $(idPrefix + "_edge_collection").prop("selectedIndex", 1);
-          $(idPrefix + "_undirected").attr("checked", false);
-
-          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
+          helper.simulateMouseEvent('click', idPrefix.substr(1) + '_submit');
 
           expect(adapter.changeToCollections).toHaveBeenCalledWith(
-            "newNodes",
-            "newEdges",
+            'newNodes',
+            'newEdges',
             false
           );
         });
-
       });
 
-      it('should change collections and traversal direction to undirected', function() {
-        runs(function() {
-          $(idPrefix + "_node_collection").prop("selectedIndex", 0);
-          $(idPrefix + "_edge_collection").prop("selectedIndex", 1);
-          $(idPrefix + "_undirected").attr("checked", true);
+      it('should change collections and traversal direction to undirected', function () {
+        runs(function () {
+          $(idPrefix + '_node_collection').prop('selectedIndex', 0);
+          $(idPrefix + '_edge_collection').prop('selectedIndex', 1);
+          $(idPrefix + '_undirected').attr('checked', true);
 
-          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
+          helper.simulateMouseEvent('click', idPrefix.substr(1) + '_submit');
 
           expect(adapter.changeToCollections).toHaveBeenCalledWith(
-            "newNodes",
-            "newEdges",
+            'newNodes',
+            'newEdges',
             true
           );
         });
       });
 
-      it('should offer the available collections as sorted lists', function() {
-        runs(function() {
-          var docList = document.getElementById(idPrefix.substr(1) + "_node_collection"),
-            edgeList = document.getElementById(idPrefix.substr(1) + "_edge_collection"),
+      it('should offer the available collections as sorted lists', function () {
+        runs(function () {
+          var docList = document.getElementById(idPrefix.substr(1) + '_node_collection'),
+            edgeList = document.getElementById(idPrefix.substr(1) + '_edge_collection'),
             docCollectionOptions = docList.children,
             edgeCollectionOptions = edgeList.children;
 
           expect(adapter.getCollections).toHaveBeenCalled();
 
-          expect(docList).toBeTag("select");
+          expect(docList).toBeTag('select');
           expect(docCollectionOptions.length).toEqual(2);
-          expect(docCollectionOptions[0]).toBeTag("option");
-          expect(docCollectionOptions[1]).toBeTag("option");
+          expect(docCollectionOptions[0]).toBeTag('option');
+          expect(docCollectionOptions[1]).toBeTag('option');
 
-          expect(docCollectionOptions[0].value).toEqual("newNodes");
-          expect(docCollectionOptions[1].value).toEqual("nodes");
+          expect(docCollectionOptions[0].value).toEqual('newNodes');
+          expect(docCollectionOptions[1].value).toEqual('nodes');
 
-          expect(edgeList).toBeTag("select");
+          expect(edgeList).toBeTag('select');
           expect(edgeCollectionOptions.length).toEqual(2);
-          expect(edgeCollectionOptions[0]).toBeTag("option");
-          expect(edgeCollectionOptions[1]).toBeTag("option");
-          expect(edgeCollectionOptions[0].value).toEqual("edges");
-          expect(edgeCollectionOptions[1].value).toEqual("newEdges");
+          expect(edgeCollectionOptions[0]).toBeTag('option');
+          expect(edgeCollectionOptions[1]).toBeTag('option');
+          expect(edgeCollectionOptions[0].value).toEqual('edges');
+          expect(edgeCollectionOptions[1].value).toEqual('newEdges');
 
-          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
+          helper.simulateMouseEvent('click', idPrefix.substr(1) + '_submit');
         });
       });
     });
 
-    describe('change priority list control', function() {
-
+    describe('change priority list control', function () {
       var idPrefix;
 
-      beforeEach(function() {
-        idPrefix = "#control_adapter_priority";
+      beforeEach(function () {
+        idPrefix = '#control_adapter_priority';
         adapterUI.addControlChangePriority();
 
-        expect($("#control_adapter_list " + idPrefix).length).toEqual(1);
-        expect($("#control_adapter_list " + idPrefix)[0]).toConformToListCSS();
-        helper.simulateMouseEvent("click", idPrefix.substr(1) + "_button");
-        expect($(idPrefix + "_modal").length).toEqual(1);
+        expect($('#control_adapter_list ' + idPrefix).length).toEqual(1);
+        expect($('#control_adapter_list ' + idPrefix)[0]).toConformToListCSS();
+        helper.simulateMouseEvent('click', idPrefix.substr(1) + '_button');
+        expect($(idPrefix + '_modal').length).toEqual(1);
       });
 
-      afterEach(function() {
-        waitsFor(function() {
-          return $(idPrefix + "_modal").length === 0;
-        }, 2000, "The modal dialog should disappear.");
+      afterEach(function () {
+        waitsFor(function () {
+          return $(idPrefix + '_modal').length === 0;
+        }, 2000, 'The modal dialog should disappear.');
       });
 
-      it('should be added to the list', function() {
-        runs(function() {
-          $(idPrefix + "_attribute_1").attr("value", "foo");
-          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
+      it('should be added to the list', function () {
+        runs(function () {
+          $(idPrefix + '_attribute_1').attr('value', 'foo');
+          helper.simulateMouseEvent('click', idPrefix.substr(1) + '_submit');
           expect(adapter.changeTo).toHaveBeenCalledWith({
-            prioList: ["foo"]
+            prioList: ['foo']
           });
         });
       });
 
-      it('should not add empty attributes to priority', function() {
-        runs(function() {
-          $(idPrefix + "_attribute_1").attr("value", "");
-          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
+      it('should not add empty attributes to priority', function () {
+        runs(function () {
+          $(idPrefix + '_attribute_1').attr('value', '');
+          helper.simulateMouseEvent('click', idPrefix.substr(1) + '_submit');
           expect(adapter.changeTo).toHaveBeenCalledWith({
             prioList: []
           });
         });
       });
 
-      it('should add a new line to priority on demand', function() {
-        runs(function() {
-          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_attribute_addLine");
-          expect($(idPrefix + "_attribute_1").length).toEqual(1);
-          expect($(idPrefix + "_attribute_2").length).toEqual(1);
-          expect($(idPrefix + "_attribute_addLine").length).toEqual(1);
-          $(idPrefix + "_attribute_1").val("foo");
-          $(idPrefix + "_attribute_2").val("bar");
-          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
+      it('should add a new line to priority on demand', function () {
+        runs(function () {
+          helper.simulateMouseEvent('click', idPrefix.substr(1) + '_attribute_addLine');
+          expect($(idPrefix + '_attribute_1').length).toEqual(1);
+          expect($(idPrefix + '_attribute_2').length).toEqual(1);
+          expect($(idPrefix + '_attribute_addLine').length).toEqual(1);
+          $(idPrefix + '_attribute_1').val('foo');
+          $(idPrefix + '_attribute_2').val('bar');
+          helper.simulateMouseEvent('click', idPrefix.substr(1) + '_submit');
           expect(adapter.changeTo).toHaveBeenCalledWith({
-            prioList: ["foo", "bar"]
+            prioList: ['foo', 'bar']
           });
         });
       });
 
-      it('should add many new lines to priority on demand', function() {
-        runs(function() {
-          var idPrefix = "control_adapter_priority_attribute_";
-          helper.simulateMouseEvent("click", idPrefix + "addLine");
-          helper.simulateMouseEvent("click", idPrefix + "addLine");
-          helper.simulateMouseEvent("click", idPrefix + "addLine");
-          helper.simulateMouseEvent("click", idPrefix + "addLine");
-          expect($("#" + idPrefix + "1").length).toEqual(1);
-          expect($("#" + idPrefix + "2").length).toEqual(1);
-          expect($("#" + idPrefix + "3").length).toEqual(1);
-          expect($("#" + idPrefix + "4").length).toEqual(1);
-          expect($("#" + idPrefix + "5").length).toEqual(1);
+      it('should add many new lines to priority on demand', function () {
+        runs(function () {
+          var idPrefix = 'control_adapter_priority_attribute_';
+          helper.simulateMouseEvent('click', idPrefix + 'addLine');
+          helper.simulateMouseEvent('click', idPrefix + 'addLine');
+          helper.simulateMouseEvent('click', idPrefix + 'addLine');
+          helper.simulateMouseEvent('click', idPrefix + 'addLine');
+          expect($('#' + idPrefix + '1').length).toEqual(1);
+          expect($('#' + idPrefix + '2').length).toEqual(1);
+          expect($('#' + idPrefix + '3').length).toEqual(1);
+          expect($('#' + idPrefix + '4').length).toEqual(1);
+          expect($('#' + idPrefix + '5').length).toEqual(1);
 
-          expect($("#" + idPrefix + "1").val()).toEqual("");
-          expect($("#" + idPrefix + "2").val()).toEqual("");
-          expect($("#" + idPrefix + "3").val()).toEqual("");
-          expect($("#" + idPrefix + "4").val()).toEqual("");
-          expect($("#" + idPrefix + "5").val()).toEqual("");
+          expect($('#' + idPrefix + '1').val()).toEqual('');
+          expect($('#' + idPrefix + '2').val()).toEqual('');
+          expect($('#' + idPrefix + '3').val()).toEqual('');
+          expect($('#' + idPrefix + '4').val()).toEqual('');
+          expect($('#' + idPrefix + '5').val()).toEqual('');
 
-          expect($("#" + idPrefix + "addLine").length).toEqual(1);
-          $("#" + idPrefix + "1").val("foo");
-          $("#" + idPrefix + "2").val("bar");
-          $("#" + idPrefix + "3").val("");
-          $("#" + idPrefix + "4").val("baz");
-          $("#" + idPrefix + "5").val("foxx");
-          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          expect($('#' + idPrefix + 'addLine').length).toEqual(1);
+          $('#' + idPrefix + '1').val('foo');
+          $('#' + idPrefix + '2').val('bar');
+          $('#' + idPrefix + '3').val('');
+          $('#' + idPrefix + '4').val('baz');
+          $('#' + idPrefix + '5').val('foxx');
+          helper.simulateMouseEvent('click', 'control_adapter_priority_submit');
           expect(adapter.changeTo).toHaveBeenCalledWith({
-            prioList: ["foo", "bar", "baz", "foxx"]
+            prioList: ['foo', 'bar', 'baz', 'foxx']
           });
         });
       });
 
-      it('should remove all but the first line', function() {
-        runs(function() {
-          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
-          expect($("#control_adapter_priority_attribute_1_remove").length).toEqual(0);
-          expect($("#control_adapter_priority_attribute_2_remove").length).toEqual(1);
-          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_2_remove");
+      it('should remove all but the first line', function () {
+        runs(function () {
+          helper.simulateMouseEvent('click', 'control_adapter_priority_attribute_addLine');
+          expect($('#control_adapter_priority_attribute_1_remove').length).toEqual(0);
+          expect($('#control_adapter_priority_attribute_2_remove').length).toEqual(1);
+          helper.simulateMouseEvent('click', 'control_adapter_priority_attribute_2_remove');
 
-          expect($("#control_adapter_priority_attribute_addLine").length).toEqual(1);
-          expect($("#control_adapter_priority_attribute_2_remove").length).toEqual(0);
-          expect($("#control_adapter_priority_attribute_2").length).toEqual(0);
+          expect($('#control_adapter_priority_attribute_addLine').length).toEqual(1);
+          expect($('#control_adapter_priority_attribute_2_remove').length).toEqual(0);
+          expect($('#control_adapter_priority_attribute_2').length).toEqual(0);
 
-          $("#control_adapter_priority_attribute_1").attr("value", "foo");
-          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          $('#control_adapter_priority_attribute_1').attr('value', 'foo');
+          helper.simulateMouseEvent('click', 'control_adapter_priority_submit');
           expect(adapter.changeTo).toHaveBeenCalledWith({
-            prioList: ["foo"]
+            prioList: ['foo']
           });
         });
       });
 
-      /* TO_DO
+    /* TO_DO
 
-      it('should load the current prioList from the adapter', function() {
+    it('should load the current prioList from the adapter', function() {
 
-        runs(function() {
-          helper.simulateMouseEvent("click", "control_adapter_priority_cancel");
-        });
+      runs(function() {
+        helper.simulateMouseEvent("click", "control_adapter_priority_cancel")
+      })
 
-        waitsFor(function() {
-          return $("#control_adapter_priority_modal").length === 0;
-        }, 2000, "The modal dialog should disappear.");
+      waitsFor(function() {
+        return $("#control_adapter_priority_modal").length === 0
+      }, 2000, "The modal dialog should disappear.")
 
-        runs(function() {
-          expect($("#control_adapter_priority_cancel").length).toEqual(0);
-          prioList.push("foo");
-          prioList.push("bar");
-          prioList.push("baz");
-          helper.simulateMouseEvent("click", "control_adapter_priority");
-          expect(adapter.getPrioList).wasCalled();
-          var idPrefix = "#control_adapter_priority_attribute_";
-          expect($(idPrefix + "1").length).toEqual(1);
-          expect($(idPrefix + "2").length).toEqual(1);
-          expect($(idPrefix + "3").length).toEqual(1);
-          expect($(idPrefix + "4").length).toEqual(0);
-          expect($(idPrefix + "addLine").length).toEqual(1);
-          expect($(idPrefix + "1_remove").length).toEqual(0);
-          expect($(idPrefix + "2_remove").length).toEqual(1);
-          expect($(idPrefix + "3_remove").length).toEqual(1);
-          expect($(idPrefix + "1").attr("value")).toEqual("foo");
-          expect($(idPrefix + "2").attr("value")).toEqual("bar");
-          expect($(idPrefix + "3").attr("value")).toEqual("baz");
-          expect($("#control_adapter_priority_modal").length).toEqual(1);
-          expect($("#control_adapter_priority_cancel").length).toEqual(1);
-          helper.simulateMouseEvent("click", "control_adapter_priority_cancel");
-        });
-      });
-      */
+      runs(function() {
+        expect($("#control_adapter_priority_cancel").length).toEqual(0)
+        prioList.push("foo")
+        prioList.push("bar")
+        prioList.push("baz")
+        helper.simulateMouseEvent("click", "control_adapter_priority")
+        expect(adapter.getPrioList).wasCalled()
+        var idPrefix = "#control_adapter_priority_attribute_"
+        expect($(idPrefix + "1").length).toEqual(1)
+        expect($(idPrefix + "2").length).toEqual(1)
+        expect($(idPrefix + "3").length).toEqual(1)
+        expect($(idPrefix + "4").length).toEqual(0)
+        expect($(idPrefix + "addLine").length).toEqual(1)
+        expect($(idPrefix + "1_remove").length).toEqual(0)
+        expect($(idPrefix + "2_remove").length).toEqual(1)
+        expect($(idPrefix + "3_remove").length).toEqual(1)
+        expect($(idPrefix + "1").attr("value")).toEqual("foo")
+        expect($(idPrefix + "2").attr("value")).toEqual("bar")
+        expect($(idPrefix + "3").attr("value")).toEqual("baz")
+        expect($("#control_adapter_priority_modal").length).toEqual(1)
+        expect($("#control_adapter_priority_cancel").length).toEqual(1)
+        helper.simulateMouseEvent("click", "control_adapter_priority_cancel")
+      })
+    })
+    */
     });
 
-    it('should be able to add all controls to the list', function() {
+    it('should be able to add all controls to the list', function () {
       adapterUI.addAll();
-      expect($("#control_adapter_list #control_adapter_collections").length).toEqual(1);
-      expect($("#control_adapter_list #control_adapter_priority").length).toEqual(1);
+      expect($('#control_adapter_list #control_adapter_collections').length).toEqual(1);
+      expect($('#control_adapter_list #control_adapter_priority').length).toEqual(1);
     });
   });
 }());

@@ -50,9 +50,6 @@ EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
 
 EnumerateListBlock::~EnumerateListBlock() {}
 
-/// @brief initialize, here we get the inVariable
-int EnumerateListBlock::initialize() { return ExecutionBlock::initialize(); }
-
 int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();  
   int res = ExecutionBlock::initializeCursor(items, pos);
@@ -131,11 +128,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
       for (size_t j = 0; j < toSend; j++) {
         if (j > 0) {
           // re-use already copied AqlValues
-          for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-            res->setValue(j, i, res->getValueReference(0, i));
-            // Note that if this throws, all values will be
-            // deleted properly, since the first row is.
-          }
+          res->copyValuesFromFirstRow(j, cur->getNrRegs());
         }
         // add the new register value . . .
         bool mustDestroy;
@@ -251,7 +244,7 @@ AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDes
     return out;
   }
 
-  return inVarReg.at(_index++, mustDestroy, true);
+  return inVarReg.at(_trx, _index++, mustDestroy, true);
   DEBUG_END_BLOCK();  
 }
 

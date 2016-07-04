@@ -1,5 +1,105 @@
-v3.0.0 (XXXX-XX-XX)
+devel
+-----
+
+* fixed periodic jobs: there should be only one instance running - even if it
+  runs longer than the period
+
+* improved performance of primary index and edge index lookups
+
+* optimizations for AQL `[*]` operator in case no filter, no projection and
+  no offset/limit are used
+
+* added AQL function `OUTERSECTION` to return the symmetric difference of its
+  input arguments
+
+
+v3.0.2 (XXXX-XX-XX)
 -------------------
+
+* added missing SSL support for arangorestore
+
+* improved cluster import performance
+
+
+v3.0.1 (XXXX-XX-XX)
+-------------------
+
+* increase max. number of collections in AQL queries from 32 to 256
+
+* fixed issue #1916: header "authorization" is required" when opening
+  services page
+
+* fixed issue #1915: Explain: member out of range
+
+* fixed issue #1914: fix unterminated buffer
+
+* don't remove lockfile if we are the same (now stale) pid    
+  fixes docker setups (our pid will always be 1)
+
+* do not use revision id comparisons in compaction for determining whether a 
+  revision is obsolete, but marker memory addresses
+  this ensures revision ids don't matter when compacting documents
+
+* escape Unicode characters in JSON HTTP responses
+  this converts UTF-8 characters in HTTP responses of arangod into `\uXXXX`
+  escape sequences. This makes the HTTP responses fit into the 7 bit ASCII
+  character range, which speeds up HTTP response parsing for some clients,
+  namely node.js/v8
+
+* add write before read collections when starting a user transaction
+  this allows specifying the same collection in both read and write mode without
+  unintended side effects
+
+* fixed buffer overrun that occurred when building very large result sets
+
+* index lookup optimizations for primary index and edge index
+
+* fixed "collection is a nullptr" issue when starting a traversal from a transaction
+
+* enable /_api/import on coordinator servers
+
+
+v3.0.0 (2016-06-22)
+-------------------
+
+* minor GUI fixxes
+
+* fix for replication and nonces
+
+
+v3.0.0-rc3 (2016-06-19)
+-----------------------
+
+* renamed various Foxx errors to no longer refer to Foxx services as apps
+
+* adjusted various error messages in Foxx to be more informative
+
+* specifying "files" in a Foxx manifest to be mounted at the service root
+  no longer results in 404s when trying to access non-file routes
+
+* undeclared path parameters in Foxx no longer break the service
+
+* trusted reverse proxy support is now handled more consistently
+
+* ArangoDB request compatibility and user are now exposed in Foxx
+
+* all bundled NPM modules have been upgraded to their latest versions
+
+
+v3.0.0-rc2 (2015-06-12)
+-----------------------
+
+* added option `--server.max-packet-size` for client tools
+
+* renamed option `--server.ssl-protocol` to `--ssl.protocol` in client tools
+  (was already done for arangod, but overlooked for client tools)
+
+* fix handling of `--ssl.protocol` value 5 (TLS v1.2) in client tools, which
+  claimed to support it but didn't
+
+
+v3.0.0-rc1 (2015-06-10)
+-----------------------
 
 * forward ported V8 Comparator bugfix for inline heuristics from 
   https://github.com/v8/v8/commit/5ff7901e24c2c6029114567de5a08ed0f1494c81
@@ -285,6 +385,8 @@ v3.0.0 (XXXX-XX-XX)
 
 v2.8.10 (XXXX-XX-XX)
 --------------------
+
+* fixed "collection is a nullptr" issue when starting a traversal from a transaction
 
 * honor the value of startup option `--database.wait-for-sync` (that is used to control
   whether new collections are created with `waitForSync` set to `true` by default) also

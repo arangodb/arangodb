@@ -181,7 +181,7 @@ void V8DealerFeature::start() {
 
   // try to guess a suitable number of contexts
   if (0 == _nrContexts && 0 == _forceNrContexts) {
-    DispatcherFeature* dispatcher = 
+    DispatcherFeature* dispatcher =
         ApplicationServer::getFeature<DispatcherFeature>("Dispatcher");
 
     _nrContexts = dispatcher->concurrency();
@@ -216,7 +216,7 @@ void V8DealerFeature::start() {
 
   applyContextUpdates();
 
-  DatabaseFeature* database = 
+  DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   loadJavascript(database->vocbase(), "server/initialize.js");
@@ -224,7 +224,7 @@ void V8DealerFeature::start() {
   startGarbageCollection();
 }
 
-void V8DealerFeature::stop() {
+void V8DealerFeature::unprepare() {
   shutdownContexts();
 
   // delete GC thread after all action threads have been stopped
@@ -262,10 +262,12 @@ void V8DealerFeature::collectGarbage() {
   bool preferFree = false;
 
   // the time we'll wait for a signal
-  uint64_t const regularWaitTime = static_cast<uint64_t>(_gcFrequency * 1000.0 * 1000.0);
+  uint64_t const regularWaitTime =
+      static_cast<uint64_t>(_gcFrequency * 1000.0 * 1000.0);
 
   // the time we'll wait for a signal when the previous wait timed out
-  uint64_t const reducedWaitTime = static_cast<uint64_t>(_gcFrequency * 1000.0 * 200.0);
+  uint64_t const reducedWaitTime =
+      static_cast<uint64_t>(_gcFrequency * 1000.0 * 200.0);
 
   while (_stopping == 0) {
     V8Context* context = nullptr;
@@ -417,7 +419,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
 
   // this is for TESTING / DEBUGGING / INIT only
   if (forceContext != -1) {
-    size_t id = (size_t)forceContext;
+    size_t id = static_cast<size_t>(forceContext);
 
     if (id >= _nrContexts) {
       LOG(ERR) << "internal error, not enough contexts";
@@ -462,7 +464,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       }
 
       LOG(DEBUG) << "waiting for V8 context " << id << " to become available";
-      usleep(100 * 1000);
+      usleep(50 * 1000);
     }
 
     if (context == nullptr) {
@@ -483,8 +485,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         _freeContexts.push_back(context);
         _dirtyContexts.pop_back();
         break;
-      } 
-      
+      }
+
       auto currentThread = arangodb::rest::DispatcherThread::current();
 
       if (currentThread != nullptr) {
@@ -682,8 +684,8 @@ void V8DealerFeature::applyContextUpdates() {
         vocbase = DatabaseFeature::DATABASE->vocbase();
       }
 
-      V8Context* context =
-          V8DealerFeature::DEALER->enterContext(vocbase, true, static_cast<ssize_t>(i));
+      V8Context* context = V8DealerFeature::DEALER->enterContext(
+          vocbase, true, static_cast<ssize_t>(i));
 
       if (context == nullptr) {
         LOG(FATAL) << "could not updated V8 context #" << i;
@@ -703,7 +705,7 @@ void V8DealerFeature::applyContextUpdates() {
 
         localContext->Exit();
       }
-        
+
       V8DealerFeature::DEALER->exitContext(context);
 
       LOG(TRACE) << "updated V8 context #" << i;
@@ -732,7 +734,7 @@ void V8DealerFeature::shutdownContexts() {
     }
   }
 
-  // send all busy contexts a termate signal
+  // send all busy contexts a terminate signal
   {
     CONDITION_LOCKER(guard, _contextCondition);
 
@@ -851,8 +853,9 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
 void V8DealerFeature::initializeContext(size_t i) {
   CONDITION_LOCKER(guard, _contextCondition);
 
-  V8PlatformFeature* v8platform = 
-      application_features::ApplicationServer::getFeature<V8PlatformFeature>("V8Platform");
+  V8PlatformFeature* v8platform =
+      application_features::ApplicationServer::getFeature<V8PlatformFeature>(
+          "V8Platform");
   TRI_ASSERT(v8platform != nullptr);
 
   v8::Isolate::CreateParams createParams;
@@ -860,11 +863,6 @@ void V8DealerFeature::initializeContext(size_t i) {
   v8::Isolate* isolate = v8::Isolate::New(createParams);
 
   V8Context* context = _contexts[i] = new V8Context();
-
-  if (context == nullptr) {
-    LOG(FATAL) << "cannot initialize V8 context #" << i;
-    FATAL_ERROR_EXIT();
-  }
 
   TRI_ASSERT(context->_locker == nullptr);
 
@@ -968,7 +966,8 @@ void V8DealerFeature::initializeContext(size_t i) {
 
 void V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase,
                                           std::string const& file, size_t i) {
-  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, static_cast<ssize_t>(i));
+  V8Context* context = V8DealerFeature::DEALER->enterContext(
+      vocbase, true, static_cast<ssize_t>(i));
 
   if (context == nullptr) {
     LOG(FATAL) << "could not load JavaScript files in context #" << i;
@@ -984,7 +983,8 @@ void V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase,
     {
       v8::Context::Scope contextScope(localContext);
 
-      switch (_startupLoader.loadScript(context->_isolate, localContext, file)) {
+      switch (
+          _startupLoader.loadScript(context->_isolate, localContext, file)) {
         case JSLoader::eSuccess:
           LOG(TRACE) << "loaded JavaScript file '" << file << "'";
           break;
@@ -994,7 +994,7 @@ void V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase,
           break;
         case JSLoader::eFailExecute:
           LOG(FATAL) << "error during execution of JavaScript file '" << file
-                    << "'";
+                     << "'";
           FATAL_ERROR_EXIT();
           break;
       }

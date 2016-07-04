@@ -1,21 +1,22 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+/* jshint browser: true */
+/* jshint unused: false */
+/* global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
 (function () {
-  "use strict";
+  'use strict';
 
   window.NodesView = Backbone.View.extend({
-
     el: '#content',
-    template: templateEngine.createTemplate("nodesView.ejs"),
+    template: templateEngine.createTemplate('nodesView.ejs'),
     interval: 5000,
     knownServers: [],
 
     events: {
-      "click .pure-table-body .pure-table-row" : "navigateToNode"
+      'click #nodesContent .pure-table-body .pure-table-row': 'navigateToNode'
     },
 
     initialize: function (options) {
+      var self = this;
+      clearInterval(this.intervalFunction);
 
       if (window.App.isCluster) {
         this.dbServers = options.dbServers;
@@ -23,50 +24,77 @@
         this.updateServerTime();
         this.toRender = options.toRender;
 
-        //start polling with interval
-        window.setInterval(function() {
-          if (window.location.hash === '#cNodes' || window.location.hash === '#dNodes') {
-
-            var callback = function(data) {
-            };
-
+        // start polling with interval
+        this.intervalFunction = window.setInterval(function () {
+          if (window.location.hash === '#cNodes' || window.location.hash === '#dNodes' || window.location.hash === '#nodes') {
+            self.checkNodesState();
           }
         }, this.interval);
       }
     },
 
-    navigateToNode: function(elem) {
+    checkNodesState: function () {
+      var callbackFunction = function (nodes) {
+        _.each(nodes, function (node, name) {
+          _.each($('.pure-table-row'), function (element) {
+            if ($(element).attr('node') === name) {
+              if (node.Status === 'GOOD') {
+                $(element).removeClass('noHover');
+                $(element).find('.state').html('<i class="fa fa-check-circle"></i>');
+              } else {
+                $(element).addClass('noHover');
+                $(element).find('.state').html('<i class="fa fa-exclamation-circle"></i>');
+              }
+            }
+          });
+        });
+      }.bind(this);
 
+      // check cluster state
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_admin/cluster/health'),
+        contentType: 'application/json',
+        processData: false,
+        async: true,
+        success: function (data) {
+          callbackFunction(data.Health);
+        }
+      });
+    },
+
+    navigateToNode: function (elem) {
       if (window.location.hash === '#dNodes') {
         return;
       }
 
+      if ($(elem.currentTarget).hasClass('noHover')) {
+        return;
+      }
+
       var name = $(elem.currentTarget).attr('node');
-      window.App.navigate("#node/" + encodeURIComponent(name), {trigger: true});
+      window.App.navigate('#node/' + encodeURIComponent(name), {trigger: true});
     },
 
     render: function () {
-
-      var callback = function() {
+      var callback = function () {
         this.continueRender();
       }.bind(this);
 
       if (!this.initDoneCoords) {
         this.waitForCoordinators(callback);
-      }
-      else {
+      } else {
         callback();
       }
     },
 
-    continueRender: function() {
+    continueRender: function () {
       var coords;
-
 
       if (this.toRender === 'coordinator') {
         coords = this.coordinators.toJSON();
-      }
-      else {
+      } else {
         coords = this.dbServers.toJSON();
       }
 
@@ -76,23 +104,23 @@
       }));
 
       window.arangoHelper.buildNodesSubNav(this.toRender);
+      this.checkNodesState();
     },
 
-    waitForCoordinators: function(callback) {
-      var self = this; 
+    waitForCoordinators: function (callback) {
+      var self = this;
 
-      window.setTimeout(function() {
+      window.setTimeout(function () {
         if (self.coordinators.length === 0) {
           self.waitForCoordinators(callback);
-        }
-        else {
+        } else {
           this.initDoneCoords = true;
           callback();
         }
       }, 200);
     },
 
-    updateServerTime: function() {
+    updateServerTime: function () {
       this.serverTime = new Date().getTime();
     }
 

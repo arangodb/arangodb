@@ -1,0 +1,24 @@
+.coords-dbs {
+
+  .pure-table-row {
+    &.noHover {
+      cursor: not-allowed !important;
+    }
+
+    &.noHover:hover {
+      cursor: not-allowed !important;
+    }
+  }
+}
+
+#nodesContent {
+  padding-top: 0;
+
+  .pure-table-body {
+    .fa-check-circle,
+    .fa-exclamation-circle {
+      font-size: 15pt;
+    }
+  }
+
+}

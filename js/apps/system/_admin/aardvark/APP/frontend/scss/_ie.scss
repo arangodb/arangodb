@@ -1,0 +1,16 @@
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+
+  div .bigtile .collection-type-icon,
+  div .tile .collection-type-icon {
+    margin-left: 0 !important;
+    position: relative !important;
+    top: -58px !important;
+  }
+
+  .tile .icon_arangodb_edge5 {
+    margin-left: 0 !important;
+    position: relative !important;
+    top: -67px !important;
+  }
+
+}

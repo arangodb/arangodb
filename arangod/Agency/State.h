@@ -25,8 +25,6 @@
 #define ARANGOD_CONSENSUS_STATE_H 1
 
 #include "AgencyCommon.h"
-
-#include "Basics/Thread.h"
 #include "Cluster/ClusterComm.h"
 
 #include <velocypack/vpack.h>
@@ -62,7 +60,7 @@ class State {
                            arangodb::consensus::id_t lid);
 
   /// @brief Log entries (followers)
-  bool log(query_t const& queries, term_t term,
+  index_t log(query_t const& queries, term_t term,
            arangodb::consensus::id_t leaderId, index_t prevLogIndex,
            term_t prevLogTerm);
 

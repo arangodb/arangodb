@@ -27,6 +27,8 @@
 const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
+const internal = require('internal');
+const crypto = require('@arangodb/crypto');
 const marked = require('marked');
 const highlightAuto = require('highlight.js').highlightAuto;
 const errors = require('@arangodb').errors;
@@ -36,18 +38,21 @@ const createRouter = require('@arangodb/foxx/router');
 
 const DEFAULT_THUMBNAIL = module.context.fileName('default-thumbnail.png');
 
+const anonymousRouter = createRouter();
 const router = createRouter();
-module.exports = router;
+anonymousRouter.use(router);
 
+module.exports = anonymousRouter;
 
 router.use((req, res, next) => {
-  if (global.AUTHENTICATION_ENABLED()) {
-    if (!req.session.uid) {
+  if (internal.authenticationEnabled()) {
+    if (!req.arangoUser) {
       res.throw('unauthorized');
     }
   }
   next();
-});
+})
+.header('authorization', joi.string().optional(), 'ArangoDB credentials.');
 
 
 const foxxRouter = createRouter();
@@ -95,9 +100,21 @@ installer.use(function (req, res, next) {
     if (e.isArangoError && [
       errors.ERROR_MODULE_FAILURE.code,
       errors.ERROR_MALFORMED_MANIFEST_FILE.code,
-      errors.ERROR_INVALID_APPLICATION_MANIFEST.code
+      errors.ERROR_INVALID_SERVICE_MANIFEST.code
     ].indexOf(e.errorNum) !== -1) {
       res.throw('bad request', e);
+    }
+    if (
+      e.isArangoError &&
+      e.errorNum === errors.ERROR_SERVICE_NOT_FOUND.code
+    ) {
+      res.throw('not found', e);
+    }
+    if (
+      e.isArangoError &&
+      e.errorNum === errors.ERROR_SERVICE_MOUNTPOINT_CONFLICT.code
+    ) {
+      res.throw('conflict', e);
     }
     throw e;
   }
@@ -261,7 +278,7 @@ foxxRouter.post('/tests', function (req, res) {
 
 foxxRouter.post('/scripts/:name', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
-  const name = req.queryParams.name;
+  const name = req.pathParams.name;
   try {
     res.json(FoxxManager.runScript(name, mount, req.body));
   } catch (e) {
@@ -288,20 +305,6 @@ foxxRouter.patch('/devel', function (req, res) {
 `);
 
 
-foxxRouter.get('/download/zip', function (req, res) {
-  const mount = decodeURIComponent(req.queryParams.mount);
-  const service = FoxxManager.lookupService(mount);
-  const dir = fs.join(fs.makeAbsolute(service.root), service.path);
-  const zipPath = fmUtils.zipDirectory(dir);
-  const name = mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
-  res.download(zipPath, `${name}.zip`);
-})
-.summary('Download a service as zip archive')
-.description(dd`
-  Download a foxx service packed in a zip archive.
-`);
-
-
 router.get('/fishbowl', function (req, res) {
   try {
     FoxxManager.update();
@@ -316,16 +319,58 @@ router.get('/fishbowl', function (req, res) {
 `);
 
 
-router.get('/docs/standalone/*', module.context.apiDocumentation(
-  (req) => ({
-    appPath: decodeURIComponent(req.queryParams.mount)
-  })
+router.post('/download/nonce', function (req, res) {
+  const nonce = crypto.createNonce();
+  res.status('created');
+  res.json({nonce});
+})
+.response('created', joi.object({nonce: joi.string().required()}).required(), 'The created nonce.')
+.summary('Creates a nonce for downloading the service')
+.description(dd`
+  Creates a cryptographic nonce that can be used to download the service without authentication.
+`);
+
+
+anonymousRouter.get('/download/zip', function (req, res) {
+  const nonce = decodeURIComponent(req.queryParams.nonce);
+  const checked = nonce && crypto.checkAndMarkNonce(nonce);
+  if (!checked) {
+    res.throw(403, 'Nonce missing or invalid');
+  }
+  const mount = decodeURIComponent(req.queryParams.mount);
+  const service = FoxxManager.lookupService(mount);
+  const dir = fs.join(fs.makeAbsolute(service.root), service.path);
+  const zipPath = fmUtils.zipDirectory(dir);
+  const name = mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
+  res.download(zipPath, `${name}_${service.manifest.version}.zip`);
+})
+.queryParam('nonce', joi.string().required(), 'Cryptographic nonce that authorizes the download.')
+.summary('Download a service as zip archive')
+.description(dd`
+  Download a foxx service packed in a zip archive.
+`);
+
+
+anonymousRouter.get('/docs/standalone/*', module.context.apiDocumentation(
+  (req, res) => {
+    if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
+      res.throw('unauthorized');
+    }
+    return {
+      mount: decodeURIComponent(req.queryParams.mount)
+    };
+  }
 ));
 
 
-router.get('/docs/*', module.context.apiDocumentation(
-  (req) => ({
-    appPath: decodeURIComponent(req.queryParams.mount),
-    indexFile: 'index-alt.html'
-  })
+anonymousRouter.get('/docs/*', module.context.apiDocumentation(
+  (req, res) => {
+    if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
+      res.throw('unauthorized');
+    }
+    return {
+      mount: decodeURIComponent(req.queryParams.mount),
+      indexFile: 'index-alt.html'
+    };
+  }
 ));

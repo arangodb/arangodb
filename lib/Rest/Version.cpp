@@ -39,6 +39,10 @@
 #include "Basics/build-date.h"
 #include "Basics/conversions.h"
 
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include <rocksdb/version.h>
+#endif
+
 using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
@@ -88,7 +92,6 @@ void Version::initialize() {
   }
 
   Values["architecture"] = (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
-
   Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
@@ -104,6 +107,17 @@ void Version::initialize() {
   Values["v8-version"] = getV8Version();
   Values["vpack-version"] = getVPackVersion();
   Values["zlib-version"] = getZLibVersion();
+
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  Values["assertions"] = "true";
+#else
+  Values["assertions"] = "false";
+#endif
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  Values["rocksdb-version"] = std::to_string(ROCKSDB_MAJOR) + "." + std::to_string(ROCKSDB_MINOR) + "." + std::to_string(ROCKSDB_PATCH);
+#endif  
 
 #ifdef __cplusplus
   Values["cplusplus"] = std::to_string(__cplusplus);
@@ -146,7 +160,7 @@ void Version::initialize() {
 #else
   Values["fd-client-event-handler"] = "select";
 #endif
-
+  
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
   }

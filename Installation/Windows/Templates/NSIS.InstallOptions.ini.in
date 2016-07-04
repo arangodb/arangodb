@@ -1,5 +1,5 @@
 [Settings]
-NumFields=5
+NumFields=9
 
 [Field 1]
 Type=label
@@ -11,8 +11,8 @@ Bottom=20
 
 [Field 2]
 Type=radiobutton
-Text=Install @CPACK_PACKAGE_NAME@ as service into the default directory
-Left=0
+Text=as service into the default directory
+Left=5
 Right=-1
 Top=30
 Bottom=40
@@ -20,8 +20,8 @@ State=1
 
 [Field 3]
 Type=radiobutton
-Text=Install @CPACK_PACKAGE_NAME@ for all users
-Left=0
+Text=for all users
+Left=5
 Right=-1
 Top=40
 Bottom=50
@@ -29,8 +29,8 @@ State=0
 
 [Field 4]
 Type=radiobutton
-Text=Install @CPACK_PACKAGE_NAME@ for the current user
-Left=0
+Text=for the current user
+Left=5
 Right=-1
 Top=50
 Bottom=60
@@ -39,8 +39,42 @@ State=0
 [Field 5]
 Type=CheckBox
 Text=Create @CPACK_PACKAGE_NAME@ Desktop Icon
+Left=160
+Right=-1
+Top=120
+Bottom=130
+State=1
+
+[Field 6]
+Type=Password
+Text=
+Left=5
+Right=60
+Top=90
+Bottom=100
+State=
+
+[Field 7]
+Type=Password
+Text=
+Left=5
+Right=60
+Top=105
+Bottom=115
+State=
+
+[Field 8]
+Type=label
+Text=Install @CPACK_PACKAGE_NAME@
 Left=0
 Right=-1
-Top=80
-Bottom=90
-State=1
+Top=20
+Bottom=29
+
+[Field 9]
+Type=label
+Text="Type password for the ArangoDB root user:"
+Left=0
+Right=-1
+Top=75
+Bottom=85

@@ -54,6 +54,7 @@ int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
       }
     }
 
+    deleteInputVariables();
     _inputRegisterValues = items->slice(pos, whitelist);
   }
 
@@ -135,8 +136,6 @@ FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
 }
 
 FilterBlock::~FilterBlock() {}
-
-int FilterBlock::initialize() { return ExecutionBlock::initialize(); }
 
 /// @brief internal function to get another block
 bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
@@ -315,15 +314,6 @@ bool FilterBlock::hasMore() {
 
   return true;
   DEBUG_END_BLOCK();  
-}
-
-int LimitBlock::initialize() {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-  return TRI_ERROR_NO_ERROR;
 }
 
 int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {

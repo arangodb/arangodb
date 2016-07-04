@@ -404,7 +404,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
                 if (!e->isEdgeAccess && !e->matchesCheck(&trx, tmp)) {
                   add = false;
                   std::string _id = trx.extractIdString(tmp);
-                  filteredIds.emplace_back(_id);
+                  filteredIds.emplace_back(std::move(_id));
                   break;
                 }
               }
@@ -443,10 +443,8 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
       }
     }
 
-    auto transactionContext =
-        std::make_shared<StandaloneTransactionContext>(_vocbase);
-    auto customTypeHandler = transactionContext->orderCustomTypeHandler();
-    VPackOptions options = VPackOptions::Defaults;  // copy defaults
+    auto customTypeHandler = queryResult.context->orderCustomTypeHandler();
+    VPackOptions options = VPackOptions::Defaults; // copy defaults
     options.customTypeHandler = customTypeHandler.get();
 
     arangodb::basics::VPackStringBufferAdapter buffer(

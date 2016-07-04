@@ -11,7 +11,7 @@ The name of the collection to query.
 The attribute that contains the texts.
 
 @RESTBODYPARAM{query,string,required,string}
-The fulltext query. Please refer to [Fulltext queries](../SimpleQueries/FulltextQueries.md)
+The fulltext query. Please refer to [Fulltext queries](../../Manual/Appendix/Deprecated/SimpleQueries/FulltextQueries.html)
   for details.
 
 @RESTBODYPARAM{skip,string,required,string}
@@ -32,12 +32,12 @@ query specified in *query*.
 In order to use the *fulltext* operator, a fulltext index must be defined
 for the collection and the specified attribute.
 
-Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
+Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
 
 Note: the *fulltext* simple query is **deprecated** as of ArangoDB 2.6. 
 This API may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection using the near operator is
-to issue an AQL query using the *FULLTEXT* [AQL function](../Aql/FulltextFunctions.md) 
+to issue an AQL query using the *FULLTEXT* [AQL function](../../AQL/Functions/Fulltext.html) 
 as follows:
 
 

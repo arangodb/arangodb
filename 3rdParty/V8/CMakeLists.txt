@@ -203,8 +203,9 @@ elseif (WIN32)
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS ${V8_DIR}/build/all.gyp)
 
-  set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
-
+  if ("${V8_TARGET_ARCHS}" STREQUAL "")
+    set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
+  endif()
   list(APPEND V8_GYP_ARGS
     -Dcomponent=static_library
     -Dlibrary=static_library
@@ -413,10 +414,16 @@ else ()
     set(V8_LDFLAGS  "${V8_LDFLAGS} -stdlib=libc++")
   endif ()
 
+  if (USE_DEBUG_V8)
+    set(V8_BUILDTYPE Debug)
+  else ()
+    set(V8_BUILDTYPE Release)
+  endif ()
+
   set(V8_COMPILE_ARGS
     -C ${V8_TARGET_DIR}
     -f Makefile.${V8_TARGET_ARCH}
-    BUILDTYPE=Release
+    BUILDTYPE=${V8_BUILDTYPE}
     builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH}
     CC=${CMAKE_C_COMPILER}
     CXX=${CMAKE_CXX_COMPILER}

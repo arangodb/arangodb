@@ -157,7 +157,7 @@ bool RestDocumentHandler::createDocument() {
 
   generateSaved(result, collectionName,
                 TRI_col_type_e(trx.getCollectionType(collectionName)),
-                transactionContext->getVPackOptions(), isMultiple);
+                transactionContext->getVPackOptionsForDump(), isMultiple);
 
   return true;
 }
@@ -280,7 +280,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   // use default options
   generateDocument(result.slice(), generateBody,
-                   transactionContext->getVPackOptions());
+                   transactionContext->getVPackOptionsForDump());
   return true;
 }
 
@@ -468,7 +468,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 
   generateSaved(result, collectionName,
                 TRI_col_type_e(trx.getCollectionType(collectionName)),
-                transactionContext->getVPackOptions(), isArrayCase);
+                transactionContext->getVPackOptionsForDump(), isArrayCase);
 
   return true;
 }
@@ -574,7 +574,7 @@ bool RestDocumentHandler::deleteDocument() {
 
   generateDeleted(result, collectionName,
                   TRI_col_type_e(trx.getCollectionType(collectionName)),
-                  transactionContext->getVPackOptions());
+                  transactionContext->getVPackOptionsForDump());
   return true;
 }
 
@@ -632,6 +632,7 @@ bool RestDocumentHandler::readManyDocuments() {
     return false;
   }
 
-  generateDocument(result.slice(), true, transactionContext->getVPackOptions());
+  generateDocument(result.slice(), true,
+                   transactionContext->getVPackOptionsForDump());
   return true;
 }

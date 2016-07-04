@@ -95,7 +95,7 @@ typedef struct TRI_external_id_s {
 /// @brief external process description
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_external_s {
+struct TRI_external_t {
   char* _executable;
   size_t _numberArguments;
   char** _arguments;
@@ -113,17 +113,17 @@ typedef struct TRI_external_s {
 
   TRI_external_status_e _status;
   int64_t _exitStatus;
-} TRI_external_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief external process status
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_external_status_s {
+struct TRI_external_status_t {
   TRI_external_status_e _status;
   int64_t _exitStatus;
   std::string _errorMessage;
-} TRI_external_status_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts usec and sec into seconds

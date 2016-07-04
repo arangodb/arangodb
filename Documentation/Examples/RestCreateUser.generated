@@ -1,0 +1,19 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/user &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin@example"</span>, 
+  <span class="hljs-string">"password"</span> : <span class="hljs-string">"secure"</span> 
+}
+EOF
+
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+
+{ 
+  <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin@example"</span>, 
+  <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"extra"</span> : { 
+  }, 
+  <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
+}

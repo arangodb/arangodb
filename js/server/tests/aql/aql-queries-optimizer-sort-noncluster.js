@@ -428,6 +428,19 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(99, actual[99].value);
       
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery sorting
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortOnSubquery : function () {
+      var query = "FOR x IN [1,2] LET values = (FOR i IN [x] FILTER i != 2 RETURN i) SORT values RETURN values";
+
+      var actual = getQueryResults(query);
+      assertEqual(2, actual.length);
+      assertEqual([ ], actual[0]);
+      assertEqual([1], actual[1]);
     }
 
   };

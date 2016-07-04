@@ -1,5 +1,13 @@
 include(GNUInstallDirs)
 
+# install the visual studio runtime:
+if (MSVC)
+  set(CMAKE_INSTALL_UCRT_LIBRARIES 1)
+  include(InstallRequiredSystemLibraries)
+  INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION bin COMPONENT Libraries)
+  INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT} DESTINATION bin COMPONENT Libraries)
+endif()
+
 # etc -------------------------------
 set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
 
@@ -46,7 +54,7 @@ FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb3")
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb3-apps")
 
 # logs
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb3")
 
 # package
 set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb3")
@@ -132,7 +140,7 @@ endmacro ()
 
 # installs a config file -------------------------------------------------------
 macro (install_config name)
-  if (MSVC OR DARWIN)
+  if (MSVC OR (DARWIN AND NOT HOMEBREW))
     generate_root_config(${name})
   else ()
     generate_path_config(${name})
@@ -162,9 +170,9 @@ macro (install_command_alias name where alias)
       TARGET ${name}
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
-	      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$(Configuration)/${alias}.exe)
+	      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}.exe)
     install(
-      PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$(Configuration)/${alias}.exe
+      PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}.exe
       DESTINATION ${where})
   else ()
     add_custom_command(
@@ -278,7 +286,12 @@ if (DH_INSTALLINIT AND FAKEROOT)
 endif()
 
 # General
-set(CPACK_PACKAGE_NAME "arangodb3")
+if (DARWIN)
+  set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
+else ()
+  set(CPACK_PACKAGE_NAME "arangodb3")
+endif ()
+
 set(CPACK_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(CPACK_PACKAGE_CONTACT "info@arangodb.com")
 set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
@@ -303,6 +316,7 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://www.arangodb.com/")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_BINARY_DIR}/debian-work/debian/${CPACK_PACKAGE_NAME}/DEBIAN/postinst;${PROJECT_BINARY_DIR}/debian-work/debian/${CPACK_PACKAGE_NAME}/DEBIAN/preinst;${PROJECT_BINARY_DIR}/debian-work/debian/${CPACK_PACKAGE_NAME}/DEBIAN/postrm;${PROJECT_BINARY_DIR}/debian-work/debian/${CPACK_PACKAGE_NAME}/DEBIAN/prerm;")
+
 set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
 configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
 set(CPACK_BUNDLE_PLIST           "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
@@ -313,6 +327,7 @@ set(CPACK_BUNDLE_STARTUP_COMMAND "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bund
 if (MSVC)
   set(CPACK_PACKAGE_NAME "ArangoDB")
   set(CPACK_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Windows/Templates")
+  set(CPACK_PLUGIN_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Windows/Plugins")
   set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL 1)
   set(BITS 64)
 
@@ -332,7 +347,7 @@ if (MSVC)
     DIRECTORY "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons"
     DESTINATION ${TRI_RESOURCEDIR})
 
-  set(CPACK_NSIS_DEFINES "
+  set(CPACK_ARANGODB_NSIS_DEFINES "
     !define BITS ${BITS}
     !define TRI_FRIENDLY_SVC_NAME '${ARANGODB_FRIENDLY_STRING}'
     !define TRI_AARDVARK_URL 'http://127.0.0.1:8529'
@@ -354,7 +369,7 @@ configure_file("${CMAKE_SOURCE_DIR}/Installation/cmake/CMakeCPackOptions.cmake.i
     "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake" @ONLY)
 set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake")
 
-if (NOT(MSVC))
+if (NOT(MSVC OR DARWIN))
   # components
   install(
     FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
@@ -405,7 +420,7 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb3
   DESTINATION ${VARDIR_INSTALL}/log)
 
 ################################################################################

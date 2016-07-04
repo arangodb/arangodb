@@ -113,7 +113,7 @@ class Collection {
     ObjectIterator it(slice);
 
     while (it.valid()) {
-      result.emplace(std::move(it.key().copyString()));
+      result.emplace(std::move(it.key(true).copyString()));
       it.next();
     }
   }
@@ -125,7 +125,7 @@ class Collection {
     ObjectIterator it(slice);
 
     while (it.valid()) {
-      result.emplace_back(it.key().copyString());
+      result.emplace_back(it.key(true).copyString());
       it.next();
     }
   }

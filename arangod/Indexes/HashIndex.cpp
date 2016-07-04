@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
@@ -41,15 +42,14 @@ LookupBuilder::LookupBuilder(
     arangodb::aql::Variable const* reference,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields)
     : _builder(trx), _usesIn(false), _isEmpty(false), _inStorage(trx) {
+
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-  SimpleAttributeEqualityMatcher matcher(fields);
   _coveredFields = fields.size();
   TRI_ASSERT(node->numMembers() == _coveredFields);
 
   std::pair<arangodb::aql::Variable const*,
             std::vector<arangodb::basics::AttributeName>> paramPair;
   std::vector<size_t> storageOrder;
-
 
   for (size_t i = 0; i < _coveredFields; ++i) {
     auto comp = node->getMemberUnchecked(i);
@@ -283,8 +283,7 @@ HashIndexIterator::HashIndexIterator(arangodb::Transaction* trx,
       _buffer(),
       _posInBuffer(0) {
     _index->lookup(_trx, _lookups.lookup(), _buffer);
-  }
-
+}
 
 TRI_doc_mptr_t* HashIndexIterator::next() {
   while (true) {
@@ -308,6 +307,40 @@ TRI_doc_mptr_t* HashIndexIterator::next() {
   }
 }
 
+void HashIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& result, size_t atMost) {
+  result.clear();
+  while (true) {
+    if (_posInBuffer >= _buffer.size()) {
+      if (!_lookups.hasAndGetNext()) {
+        // we're at the end of the lookup values
+        return;
+      }
+
+      // TODO maybe we can hand in result directly and remove the buffer
+
+      // We have to refill the buffer
+      _buffer.clear();
+      _posInBuffer = 0;
+
+      _index->lookup(_trx, _lookups.lookup(), _buffer);
+    }
+
+    if (!_buffer.empty()) {
+      // found something
+      // TODO OPTIMIZE THIS
+      if (_buffer.size() - _posInBuffer < atMost) {
+        atMost = _buffer.size() - _posInBuffer;
+      }
+
+      for (size_t i = _posInBuffer; i < atMost + _posInBuffer; ++i) {
+        result.emplace_back(_buffer.at(i));
+      }
+      _posInBuffer += atMost;
+      return;
+    }
+  }
+}
+
 void HashIndexIterator::reset() {
   _buffer.clear();
   _posInBuffer = 0;
@@ -315,8 +348,12 @@ void HashIndexIterator::reset() {
   _index->lookup(_trx, _lookups.lookup(), _buffer);
 }
 
-
-
+HashIndexIteratorVPack::~HashIndexIteratorVPack() {
+  if (_searchValues != nullptr) {
+    // return the VPackBuilder to the transaction context 
+    _trx->transactionContextPtr()->returnBuilder(_searchValues.release());
+  }
+}
 
 TRI_doc_mptr_t* HashIndexIteratorVPack::next() {
   while (true) {
@@ -587,30 +624,6 @@ int HashIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Transforms search definition [{eq: v1},{eq: v2},...] to
-///        Index key [v1, v2, ...]
-///        Throws if input is invalid or there is an operator other than eq.
-////////////////////////////////////////////////////////////////////////////////
-
-void HashIndex::transformSearchValues(VPackSlice const values,
-                                      VPackBuilder& result) const {
-  if (!values.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Index lookup requires an array of values as input.");
-  }
-  if (values.length() != _fields.size()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Index lookup covers too few elements.");
-  }
-
-  VPackArrayBuilder guard(&result);
-  for (auto const& v : VPackArrayIterator(values, true)) {
-    if (!v.isObject() || !v.hasKey(TRI_SLICE_KEY_EQUAL)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Hash index only allows == comparison.");
-    }
-    result.add(v.get(TRI_SLICE_KEY_EQUAL));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given VelocyPack slices
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -632,6 +645,7 @@ int HashIndex::lookup(arangodb::Transaction* trx,
     return TRI_ERROR_NO_ERROR;
   }
 
+  // TODO: optimize this copying!
   std::vector<TRI_index_element_t*> results;
   try {
     _multiArray->_hashArray->lookupByKey(trx, &key, results);
@@ -763,7 +777,7 @@ int HashIndex::insertMulti(arangodb::Transaction* trx,
         FreeElement(elements[j]);
       }
       for (size_t j = 0; j < i; ++j) {
-        // Remove all allready indexed elements and free them
+        // Remove all already indexed elements and free them
         if (elements[j] != nullptr) {
           removeMultiElement(trx, elements[j], isRollback);
         }
@@ -780,6 +794,7 @@ int HashIndex::batchInsertMulti(
     arangodb::Transaction* trx,
     std::vector<TRI_doc_mptr_t const*> const* documents, size_t numThreads) {
   std::vector<TRI_index_element_t*> elements;
+  elements.reserve(documents->size());
 
   for (auto& doc : *documents) {
     int res = fillElement(elements, doc);
@@ -894,7 +909,8 @@ bool HashIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  SimpleAttributeEqualityMatcher matcher(fields());
+
+  SimpleAttributeEqualityMatcher matcher(_fields);
   return matcher.matchAll(this, node, reference, itemsInIndex, estimatedItems,
                           estimatedCost);
 }
@@ -905,7 +921,7 @@ bool HashIndex::supportsFilterCondition(
 
 IndexIterator* HashIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext*,
-    arangodb::aql::Ast*, arangodb::aql::AstNode const* node,
+    arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool) const {
   TRI_IF_FAILURE("HashIndex::noIterator")  {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -925,9 +941,11 @@ IndexIterator* HashIndex::iteratorForSlice(arangodb::Transaction* trx,
     // Invalid searchValue
     return nullptr;
   }
-  auto builder = std::make_unique<VPackBuilder>();
-  builder->add(searchValues);
-  return new HashIndexIteratorVPack(trx, this, builder);
+  
+  TransactionBuilderLeaser builder(trx);
+  std::unique_ptr<VPackBuilder> keys(builder.steal());
+  keys->add(searchValues);
+  return new HashIndexIteratorVPack(trx, this, keys);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -937,6 +955,7 @@ IndexIterator* HashIndex::iteratorForSlice(arangodb::Transaction* trx,
 arangodb::aql::AstNode* HashIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
-  SimpleAttributeEqualityMatcher matcher(fields());
+
+  SimpleAttributeEqualityMatcher matcher(_fields);
   return matcher.specializeAll(this, node, reference);
 }

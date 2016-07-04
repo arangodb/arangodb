@@ -33,10 +33,9 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpsServer::HttpsServer(
-    double keepAliveTimeout, std::string const& authenticationRealm,
-    bool allowMethodOverride,
+    double keepAliveTimeout, bool allowMethodOverride,
     std::vector<std::string> const& accessControlAllowOrigins, SSL_CTX* ctx)
-    : HttpServer(keepAliveTimeout, authenticationRealm, allowMethodOverride,
+    : HttpServer(keepAliveTimeout, allowMethodOverride,
                  accessControlAllowOrigins),
       _ctx(ctx),
       _verificationMode(SSL_VERIFY_NONE),
@@ -63,7 +62,6 @@ void HttpsServer::setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
 
 HttpCommTask* HttpsServer::createCommTask(TRI_socket_t s,
                                           ConnectionInfo&& info) {
-  return new HttpsCommTask(this, s, std::move(info), _keepAliveTimeout,
-                           _authenticationRealm, _ctx, _verificationMode,
-                           _verificationCallback);
+  return new HttpsCommTask(this, s, std::move(info), _keepAliveTimeout, _ctx,
+                           _verificationMode, _verificationCallback);
 }

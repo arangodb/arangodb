@@ -5,7 +5,7 @@ single server, the replace operation is executed transactionally in an all-or-no
 fashion. For sharded collections, the entire replace operation is not transactional.
 
 Each *REPLACE* operation is restricted to a single collection, and the 
-[collection name](../../Users/Appendix/Glossary.html#collection-name) must not be dynamic.
+[collection name](../../Manual/Appendix/Glossary.html#collection-name) must not be dynamic.
 Only a single *REPLACE* statement per collection is allowed per AQL query, and 
 it cannot be followed by read operations that access the same collection, by
 traversal operations, or AQL functions that can read documents.
@@ -15,7 +15,7 @@ The two syntaxes for a replace operation are:
 
 ```
 REPLACE document IN collection options
-REPLACE key-expression WITH document IN collection options
+REPLACE keyExpression WITH document IN collection options
 ```
 
 *collection* must contain the name of the collection in which the documents should
@@ -35,7 +35,7 @@ FOR u IN users
   REPLACE { name: CONCAT(u.firstName, u.lastName, status: u.status) } IN users
 ```
 
-When using the second syntax, *key-expression* provides the document identification.
+When using the second syntax, *keyExpression* provides the document identification.
 This can either be a string (which must then contain the document key) or a
 document, which must contain a *_key* attribute.
 
@@ -103,8 +103,8 @@ in the replace expression.
 ```
 REPLACE document IN collection options RETURN OLD
 REPLACE document IN collection options RETURN NEW
-REPLACE key-expression WITH document IN collection options RETURN OLD
-REPLACE key-expression WITH document IN collection options RETURN NEW
+REPLACE keyExpression WITH document IN collection options RETURN OLD
+REPLACE keyExpression WITH document IN collection options RETURN NEW
 ```
 
 Following is an example using a variable named `previous` to return the original

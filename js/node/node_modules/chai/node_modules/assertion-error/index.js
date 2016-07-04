@@ -70,7 +70,11 @@ function AssertionError (message, _props, ssf) {
   if (ssf && Error.captureStackTrace) {
     Error.captureStackTrace(this, ssf);
   } else {
-    this.stack = new Error().stack;
+    try {
+      throw new Error();
+    } catch(e) {
+      this.stack = e.stack;
+    }
   }
 }
 

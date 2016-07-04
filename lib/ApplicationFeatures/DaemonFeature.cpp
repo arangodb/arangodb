@@ -62,30 +62,32 @@ void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_daemon) {
-    if (_pidFile.empty()) {
-      LOG(FATAL) << "need --pid-file in --daemon mode";
-      FATAL_ERROR_EXIT();
-    }
+  if (!_daemon) {
+    return;
+  }
+  
+  if (_pidFile.empty()) {
+    LOG(FATAL) << "need --pid-file in --daemon mode";
+    FATAL_ERROR_EXIT();
+  }
 
-    LoggerFeature* logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
-    logger->setBackgrounded(true);
+  LoggerFeature* logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
+  logger->setBackgrounded(true);
 
-    // make the pid filename absolute
-    int err = 0;
-    std::string currentDir = FileUtils::currentDirectory(&err);
+  // make the pid filename absolute
+  int err = 0;
+  std::string currentDir = FileUtils::currentDirectory(&err);
 
-    char* absoluteFile =
-        TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
+  char* absoluteFile =
+    TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
 
-    if (absoluteFile != nullptr) {
-      _pidFile = std::string(absoluteFile);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
-      LOG(DEBUG) << "using absolute pid file '" << _pidFile << "'";
-    } else {
-      LOG(FATAL) << "cannot determine absolute path";
-      FATAL_ERROR_EXIT();
-    }
+  if (absoluteFile != nullptr) {
+    _pidFile = std::string(absoluteFile);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
+    LOG(DEBUG) << "using absolute pid file '" << _pidFile << "'";
+  } else {
+    LOG(FATAL) << "cannot determine absolute path";
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -118,7 +120,7 @@ void DaemonFeature::daemonize() {
   }
 }
 
-void DaemonFeature::stop() {
+void DaemonFeature::unprepare() {
   if (!_daemon) {
     return;
   }

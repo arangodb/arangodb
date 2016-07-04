@@ -26,7 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
+#include "Basics/ShortestPathFinder.h"
 #include "Basics/Traverser.h"
+#include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
@@ -39,43 +41,6 @@ class Builder;
 class Slice;
 }
 namespace traverser {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Template for a vertex id. Is simply a pair of cid and key
-/// NOTE: This struct will never free the value asigned to char const* key
-///       The environment has to make sure that the string it points to is
-///       not freed as long as this struct is in use!
-////////////////////////////////////////////////////////////////////////////////
-
-struct VertexId {
-  TRI_voc_cid_t cid;
-  char const* key;
-
-  VertexId() : cid(0), key("") {}
-
-  VertexId(TRI_voc_cid_t cid, char const* key) : cid(cid), key(key) {}
-
-  bool operator==(VertexId const& other) const {
-    if (cid == other.cid) {
-      return strcmp(key, other.key) == 0;
-    }
-    return false;
-  }
-
-  std::string toString(arangodb::CollectionNameResolver const* resolver) const {
-    return resolver->getCollectionNameCluster(cid) + "/" + std::string(key);
-  }
-};
-
-// EdgeId and VertexId are similar here. both have a key and a cid
-typedef VertexId EdgeId;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper function to convert an _id string into a VertexId
-////////////////////////////////////////////////////////////////////////////////
-
-VertexId IdStringToVertexId(arangodb::CollectionNameResolver const* resolver,
-                            std::string const& vertex);
 
 class TraverserExpression {
  public:
@@ -105,7 +70,8 @@ class TraverserExpression {
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
-  bool matchesCheck(arangodb::Transaction*, arangodb::velocypack::Slice const& element) const;
+  bool matchesCheck(arangodb::Transaction*,
+                    arangodb::velocypack::Slice const& element) const;
 
  protected:
   TraverserExpression()
@@ -115,11 +81,71 @@ class TraverserExpression {
         compareTo(nullptr) {}
 
  private:
-  bool recursiveCheck(arangodb::aql::AstNode const*, arangodb::velocypack::Slice&) const;
+  bool recursiveCheck(arangodb::aql::AstNode const*,
+                      arangodb::velocypack::Slice&) const;
 
   // Required when creating this expression without AST
   std::vector<std::unique_ptr<arangodb::aql::AstNode const>> _nodeRegister;
   std::vector<std::string*> _stringRegister;
+};
+
+class ShortestPath {
+  friend class basics::DynamicDistanceFinder<arangodb::velocypack::Slice,
+                                             arangodb::velocypack::Slice,
+                                             size_t, ShortestPath>;
+  friend class basics::DynamicDistanceFinder<arangodb::velocypack::Slice,
+                                             arangodb::velocypack::Slice,
+                                             double, ShortestPath>;
+  friend class arangodb::basics::ConstDistanceFinder<
+      arangodb::velocypack::Slice, arangodb::velocypack::Slice,
+      arangodb::basics::VelocyPackHelper::VPackStringHash,
+      arangodb::basics::VelocyPackHelper::VPackStringEqual, ShortestPath>;
+
+ public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Constructor. This is an abstract only class.
+  //////////////////////////////////////////////////////////////////////////////
+
+  ShortestPath() : _readDocuments(0) {}
+
+  ~ShortestPath() {}
+
+  /// @brief Clears the path
+  void clear();
+
+  /// @brief Builds only the last edge pointing to the vertex at position as
+  /// VelocyPack
+
+  void edgeToVelocyPack(Transaction*, size_t, arangodb::velocypack::Builder&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Builds only the vertex at position as VelocyPack
+  //////////////////////////////////////////////////////////////////////////////
+
+  void vertexToVelocyPack(Transaction*, size_t, arangodb::velocypack::Builder&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Gets the amount of read documents
+  //////////////////////////////////////////////////////////////////////////////
+
+  size_t getReadDocuments() const { return _readDocuments; }
+
+  /// @brief Gets the length of the path. (Number of vertices)
+
+  size_t length() { return _vertices.size(); };
+
+ private:
+  /// @brief Count how many documents have been read
+  size_t _readDocuments;
+
+  // Convention _vertices.size() -1 === _edges.size()
+  // path is _vertices[0] , _edges[0], _vertices[1] etc.
+
+  /// @brief vertices
+  std::deque<arangodb::velocypack::Slice> _vertices;
+
+  /// @brief edges
+  std::deque<arangodb::velocypack::Slice> _edges;
 };
 
 class TraversalPath {
@@ -151,13 +177,11 @@ class TraversalPath {
   virtual void lastEdgeToVelocyPack(Transaction*,
                                     arangodb::velocypack::Builder&) = 0;
 
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last vertex as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void lastVertexToVelocyPack(Transaction*,
-                                      arangodb::velocypack::Builder&) = 0;
+  virtual aql::AqlValue lastVertexToAqlValue(Transaction*) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents
@@ -174,46 +198,48 @@ class TraversalPath {
 };
 
 struct TraverserOptions {
+  enum UniquenessLevel { NONE, PATH, GLOBAL };
+
  private:
   arangodb::Transaction* _trx;
   std::vector<std::string> _collections;
   std::vector<TRI_edge_direction_e> _directions;
   std::vector<arangodb::Transaction::IndexHandle> _indexHandles;
-  arangodb::velocypack::Builder _builder;
 
  public:
   uint64_t minDepth;
 
   uint64_t maxDepth;
 
-  explicit TraverserOptions(arangodb::Transaction* trx) : _trx(trx), minDepth(1), maxDepth(1) {}
+  bool useBreadthFirst;
+
+  UniquenessLevel uniqueVertices;
+
+  UniquenessLevel uniqueEdges;
+
+  explicit TraverserOptions(arangodb::Transaction* trx)
+      : _trx(trx),
+        minDepth(1),
+        maxDepth(1),
+        useBreadthFirst(false),
+        uniqueVertices(UniquenessLevel::NONE),
+        uniqueEdges(UniquenessLevel::PATH) {}
 
   void setCollections(std::vector<std::string> const&, TRI_edge_direction_e);
-  void setCollections(std::vector<std::string> const&, std::vector<TRI_edge_direction_e> const&);
+  void setCollections(std::vector<std::string> const&,
+                      std::vector<TRI_edge_direction_e> const&);
 
   size_t collectionCount() const;
 
-  bool getCollection(size_t const, std::string&, TRI_edge_direction_e&) const;
+  bool getCollection(size_t, std::string&, TRI_edge_direction_e&) const;
 
   bool getCollectionAndSearchValue(size_t, std::string const&, std::string&,
                                    arangodb::Transaction::IndexHandle&,
-                                   arangodb::velocypack::Builder&);
+                                   arangodb::velocypack::Builder&) const;
 };
 
 class Traverser {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Constructor. This is an abstract only class.
-  //////////////////////////////////////////////////////////////////////////////
-
-  explicit Traverser(arangodb::Transaction* trx)
-      : _readDocuments(0),
-        _filteredPaths(0),
-        _pruneNext(false),
-        _done(true),
-        _opts(trx),
-        _expressions(nullptr) {}
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
@@ -225,8 +251,22 @@ class Traverser {
         _filteredPaths(0),
         _pruneNext(false),
         _done(true),
+        _hasVertexConditions(false),
+        _hasEdgeConditions(false),
         _opts(opts),
-        _expressions(expressions) {}
+        _expressions(expressions) {
+    
+    TRI_ASSERT(_expressions != nullptr);
+    for (auto& it : *_expressions) {
+      for (auto& it2 : it.second) {
+        if (it2->isEdgeAccess) {
+          _hasEdgeConditions = true;
+        } else {
+          _hasVertexConditions = true;
+        }
+      }
+    }
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destructor
@@ -237,7 +277,7 @@ class Traverser {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reset the traverser to use another start vertex
   //////////////////////////////////////////////////////////////////////////////
-  
+
   virtual void setStartVertex(std::string const& value) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -282,6 +322,8 @@ class Traverser {
     _readDocuments = 0;
     return tmp;
   }
+  
+  TraverserOptions const* options() { return &_opts; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Prune the current path prefix. Do not evaluate it any further.
@@ -323,6 +365,13 @@ class Traverser {
   bool _done;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not we have valid expressions
+  //////////////////////////////////////////////////////////////////////////////
+  
+  bool _hasVertexConditions;
+  bool _hasEdgeConditions;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief options for traversal
   //////////////////////////////////////////////////////////////////////////////
 
@@ -335,41 +384,7 @@ class Traverser {
   std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
       _expressions;
 };
-
 }  // traverser
 }  // arangodb
-
-namespace std {
-template <>
-struct hash<arangodb::traverser::VertexId> {
- public:
-  size_t operator()(arangodb::traverser::VertexId const& s) const {
-    size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
-    size_t h2 = static_cast<size_t>(TRI_FnvHashString(s.key));
-    return h1 ^ (h2 << 1);
-  }
-};
-
-template <>
-struct equal_to<arangodb::traverser::VertexId> {
- public:
-  bool operator()(arangodb::traverser::VertexId const& s,
-                  arangodb::traverser::VertexId const& t) const {
-    return s.cid == t.cid && strcmp(s.key, t.key) == 0;
-  }
-};
-
-template <>
-struct less<arangodb::traverser::VertexId> {
- public:
-  bool operator()(arangodb::traverser::VertexId const& lhs,
-                  arangodb::traverser::VertexId const& rhs) {
-    if (lhs.cid != rhs.cid) {
-      return lhs.cid < rhs.cid;
-    }
-    return strcmp(lhs.key, rhs.key) < 0;
-  }
-};
-}
 
 #endif

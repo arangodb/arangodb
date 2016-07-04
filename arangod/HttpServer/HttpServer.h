@@ -54,7 +54,7 @@ class HttpServer : protected TaskManager {
   static int sendChunk(uint64_t, std::string const&);
 
  public:
-  HttpServer(double keepAliveTimeout, std::string const& _authenticationRealm,
+  HttpServer(double keepAliveTimeout,
              bool allowMethodOverride, 
              std::vector<std::string> const& accessControlAllowOrigins);
   virtual ~HttpServer();
@@ -129,9 +129,6 @@ class HttpServer : protected TaskManager {
   void registerHandler(RestHandler* handler, HttpCommTask* task);
 
  protected:
-  // authentication realm
-  std::string const _authenticationRealm;
-
   // active listen tasks
   std::vector<ListenTask*> _listenTasks;
 

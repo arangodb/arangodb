@@ -1,30 +1,33 @@
 !CHAPTER Document functions
 
 AQL provides below listed functions to operate on objects / document values.
-Also see [object access](../Fundamentals/DataTypes.md#objects-documents) for
+Also see [object access](../Fundamentals/DataTypes.md#objects--documents) for
 additional language constructs.
 
 !SUBSECTION ATTRIBUTES()
 
-`ATTRIBUTES(document, removeInternal, sort) → attributes`
+`ATTRIBUTES(document, removeInternal, sort) → strArray`
+
+Return the attribute keys of the *document* as an array. Optionally omit
+system attributes.
 
 - **document** (object): an arbitrary document / object
 - **removeInternal** (bool, *optional*): whether all system attributes (*_key*, *_id* etc.,
   every attribute key that starts with an underscore) shall be omitted in the result.
   The default is *false*.
 - **sort** (bool, *optional*): optionally sort the resulting array alphabetically.
-  The default is *false* and will return the attribute names in a random order.
-- returns **attributes** (array): the attribute keys of the input **document** as an
+  The default is *false* and will return the attribute names in any order.
+- returns **strArray** (array): the attribute keys of the input *document* as an
   array of strings
 
 ```js
-ATTRIBUTES( {"foo": "bar", "_key": "123", "_custom": "yes" } )
+ATTRIBUTES( { "foo": "bar", "_key": "123", "_custom": "yes" } )
 // [ "foo", "_key", "_custom" ]
 
-ATTRIBUTES( {"foo": "bar", "_key": "123", "_custom": "yes" }, true )
+ATTRIBUTES( { "foo": "bar", "_key": "123", "_custom": "yes" }, true )
 // [ "foo" ]
 
-ATTRIBUTES( {"foo": "bar", "_key": "123", "_custom": "yes" }, false, true )
+ATTRIBUTES( { "foo": "bar", "_key": "123", "_custom": "yes" }, false, true )
 // [ "_custom", "_key", "foo" ]
 ```
 
@@ -41,6 +44,10 @@ FOR attributeArray IN attributesPerDocument
         SORT count DESC
         RETURN {attr, count}
 ```
+
+!SUBSECTION COUNT()
+
+This is an alias for [LENGTH()](#length).
 
 !SUBSECTION HAS()
 
@@ -79,7 +86,7 @@ HAS( { }, "name" ) // false
 `IS_SAME_COLLECTION(collectionName, documentHandle) → bool`
 
   collection id as the collection specified in *collection*. *document* can either be
-  a [document handle](../../Users/Appendix/Glossary.html#document-handle) string, or a document with
+  a [document handle](../../Manual/Appendix/Glossary.html#document-handle) string, or a document with
   an *_id* attribute. The function does not validate whether the collection actually
   contains the specified document, but only compares the name of the specified collection
   with the collection name part of the specified document.
@@ -135,14 +142,15 @@ KEEP(doc, [ "firstname", "name", "likes" ])
 
 `LENGTH(doc) → attrCount`
 
-Determine the [number of elements](Array.md#length) in an array,
-the number of attribute keys of an object / document,
-the [amount of documents](Miscellaneous.md#length) in a collection,
-or the [character length](String.md#length) of a string.
+Determine the number of attribute keys of an object / document.
 
 - **doc** (object): a document / object
 - returns **attrCount** (number): the number of attribute keys in *doc*, regardless
   of their values
+
+*LENGTH()* can also determine the [number of elements](Array.md#length) in an array,
+the [amount of documents](Miscellaneous.md#length) in a collection and
+the [character length](String.md#length) of a string.
 
 !SUBSECTION MATCHES()
 
@@ -198,14 +206,15 @@ Merge the documents *document1* to *documentN* into a single document.
 If document attribute keys are ambiguous, the merged result will contain the values
 of the documents contained later in the argument list.
 
-Note that merging will only be done for top-level attributes. If you wish to
-merge sub-attributes, use [MERGE_RECURSIVE()](#mergerecursive) instead.
 
 - **documents** (object, *repeatable*): an arbitrary number of documents as
   multiple arguments, at least 2
 - returns **mergedDocument** (object): a combined document
 
-For example, two documents with distinct attribute names can easily be merged into one:
+Note that merging will only be done for top-level attributes. If you wish to
+merge sub-attributes, use [MERGE_RECURSIVE()](#mergerecursive) instead.
+
+Two documents with distinct attribute names can easily be merged into one:
 
 ```js
 MERGE(
@@ -283,11 +292,11 @@ MERGE_RECURSIVE(
 
 `PARSE_IDENTIFIER(documentHandle) → parts`
 
-Parse a [document handle](../../Users/Appendix/Glossary.html#document-handle) and return its
+Parse a [document handle](../../Manual/Appendix/Glossary.html#document-handle) and return its
 individual parts a separate attributes.
 
 This function can be used to easily determine the
-[collection name](../../Users/Appendix/Glossary.html#collection-name) and key of a given document.
+[collection name](../../Manual/Appendix/Glossary.html#collection-name) and key of a given document.
 
 - **documentHandle** (string|object): a document identifier string (e.g. *_users/1234*)
   or a regular document from a collection. Passing either a non-string or a non-document

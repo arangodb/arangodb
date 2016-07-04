@@ -42,18 +42,38 @@
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
 
-#ifndef VELOCYPACK_HASH
+#ifndef VELOCYPACK_XXHASH
+#ifndef VELOCYPACK_FASTHASH
+#define VELOCYPACK_XXHASH
+#endif
+#endif
+
+#ifdef VELOCYPACK_XXHASH
 // forward for XXH64 function declared elsewhere
 extern "C" unsigned long long XXH64(void const*, size_t, unsigned long long);
 
 #define VELOCYPACK_HASH(mem, size, seed) XXH64(mem, size, seed)
+#endif
 
+#ifdef VELOCYPACK_FASTHASH
+// forward for fasthash64 function declared elsewhere
+uint64_t fasthash64(void const*, size_t, uint64_t);
+
+#define VELOCYPACK_HASH(mem, size, seed) fasthash64(mem, size, seed)
 #endif
 
 namespace arangodb {
 namespace velocypack {
 
 class SliceScope;
+
+class SliceStaticData {
+  friend class Slice;
+  static ValueLength const FixedTypeLengths[256];
+  static ValueType const TypeMap[256];
+  static unsigned int const WidthMap[32];
+  static unsigned int const FirstSubMap[32];
+};
 
 class Slice {
   // This class provides read only access to a VPack value, it is
@@ -124,7 +144,9 @@ class Slice {
   // No destructor, does not take part in memory management,
 
   // get the type for the slice
-  inline ValueType type() const noexcept { return TypeMap[head()]; }
+  inline ValueType type() const noexcept {
+    return SliceStaticData::TypeMap[head()];
+  }
 
   char const* typeName() const { return valueTypeName(type()); }
 
@@ -160,7 +182,9 @@ class Slice {
   }
 
   // check if slice is of the specified type
-  inline bool isType(ValueType t) const noexcept { return TypeMap[*_start] == t; }
+  inline bool isType(ValueType t) const noexcept {
+    return SliceStaticData::TypeMap[*_start] == t;
+  }
 
   // check if slice is a None object
   bool isNone() const noexcept { return isType(ValueType::None); }
@@ -353,9 +377,6 @@ class Slice {
     Slice key = getNthKey(index, false);
     return Slice(key.start() + key.byteSize());
   }
-  
-  // extract the nth key from an Object
-  Slice getNthKey(ValueLength index, bool) const;
   
   // extract the nth value from an Object
   Slice getNthValue(ValueLength index) const {
@@ -651,7 +672,7 @@ class Slice {
   // get the total byte size for the slice, including the head byte
   ValueLength byteSize() const {
     // check if the type has a fixed length first
-    ValueLength l = FixedTypeLengths[head()];
+    ValueLength l = SliceStaticData::FixedTypeLengths[head()];
     if (l != 0) {
       // return fixed length
       return l;
@@ -668,16 +689,41 @@ class Slice {
           return readVariableValueLength<false>(_start + 1);
         }
 
-        VELOCYPACK_ASSERT(h <= 0x12);
-        if (h <= 0x14) {
-          return readInteger<ValueLength>(_start + 1, WidthMap[h]);
+        if (h == 0x01 || h == 0x0a) {
+          // we cannot get here, because the FixedTypeLengths lookup
+          // above will have kicked in already. however, the compiler
+          // claims we'll be reading across the bounds of the input
+          // here...
+          return 1;
         }
-        // fallthrough to exception
-        break;
+
+        VELOCYPACK_ASSERT(h <= 0x0e);
+        return readInteger<ValueLength>(_start + 1,
+                                        SliceStaticData::WidthMap[h]);
+      }
+
+      case ValueType::External: {
+        return 1 + sizeof(char*);
+      }
+
+      case ValueType::UTCDate: {
+        return 1 + sizeof(int64_t);
+      }
+
+      case ValueType::Int: {
+        return static_cast<ValueLength>(1 + (head() - 0x1f));
       }
 
       case ValueType::String: {
-        VELOCYPACK_ASSERT(head() == 0xbf);
+        auto const h = head();
+        VELOCYPACK_ASSERT(h == 0xbf);
+        if (h < 0xbf) {
+          // we cannot get here, because the FixedTypeLengths lookup
+          // above will have kicked in already. however, the compiler
+          // claims we'll be reading across the bounds of the input
+          // here...
+          return h - 0x40;
+        }
         // long UTF-8 String
         return static_cast<ValueLength>(
             1 + 8 + readInteger<ValueLength>(_start + 1, 8));
@@ -746,7 +792,7 @@ class Slice {
   ValueLength findDataOffset(uint8_t head) const noexcept {
     // Must be called for a nonempty array or object at start():
     VELOCYPACK_ASSERT(head <= 0x12);
-    unsigned int fsm = FirstSubMap[head];
+    unsigned int fsm = SliceStaticData::FirstSubMap[head];
     if (fsm <= 2 && _start[2] != 0) {
       return 2;
     }
@@ -758,6 +804,9 @@ class Slice {
     }
     return 9;
   }
+  
+  // get the offset for the nth member from an Array type
+  ValueLength getNthOffset(ValueLength index) const;
 
   Slice makeKey() const;
 
@@ -814,18 +863,19 @@ class Slice {
 
   Slice getFromCompactObject(std::string const& attribute) const;
 
-  // get the offset for the nth member from an Array type
-  ValueLength getNthOffset(ValueLength index) const;
-
   // extract the nth member from an Array
   Slice getNth(ValueLength index) const;
+
+  // extract the nth member from an Object, note that this is the nth
+  // entry in the hash table for types 0x0b to 0x0e
+  Slice getNthKey(ValueLength index, bool translate) const;
 
   // get the offset for the nth member from a compact Array or Object type
   ValueLength getNthOffsetFromCompact(ValueLength index) const;
 
   inline ValueLength indexEntrySize(uint8_t head) const noexcept {
     VELOCYPACK_ASSERT(head <= 0x12);
-    return static_cast<ValueLength>(WidthMap[head]);
+    return static_cast<ValueLength>(SliceStaticData::WidthMap[head]);
   }
 
   // perform a linear search for the specified attribute inside an Object
@@ -857,12 +907,6 @@ class Slice {
     memcpy(&binary[0], _start + 1, sizeof(T));
     return value;
   }
-
- private:
-  static ValueLength const FixedTypeLengths[256];
-  static ValueType const TypeMap[256];
-  static unsigned int const WidthMap[32];
-  static unsigned int const FirstSubMap[32];
 };
 
 // a class for keeping Slice allocations in scope

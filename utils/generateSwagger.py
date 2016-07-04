@@ -273,6 +273,15 @@ def LIT(txt, wordboundary = ['<b>','</b>']):
     return r.sub(subpattern, txt)
 
 ################################################################################
+### @brief LIT
+###
+### \ -> needs to become \\ so \n's in the text can be differciated.
+################################################################################
+
+def BACKSLASH(txt):
+    return txt.replace('\\', '\\\\\\')
+
+################################################################################
 ### @brief Typegraphy
 ################################################################################
 
@@ -292,7 +301,7 @@ def Typography(txt):
     r = rc(r"""@ref [a-zA-Z0-9]+""", MS)
     txt = r.sub("the manual", txt)
     txt = re.sub(r"@endDocuBlock", "", txt)
-
+    txt = BACKSLASH(txt);
     return txt
 
 ################################################################################
@@ -510,6 +519,9 @@ def restheader(cargo, r=Regexen()):
     (fp, last) = cargo
 
     temp = parameters(last).split(',')
+    if temp == "":
+        raise Exception("Invalid restheader value. got empty string. Maybe missing closing bracket? " + path)
+
     (ucmethod, path) = temp[0].split()
 
     #TODO: hier checken, ob der letzte alles hatte (responses)
@@ -528,7 +540,7 @@ def restheader(cargo, r=Regexen()):
         raise Exception("Duplicate route")
 
     if currentDocuBlock == None:
-        raise Exception("No docublock started for this restheader: " + ucmethod + " " + path )
+        raise Exception("No docublock started for this restheader: " + ucmethod + " " + path)
 
     if lastDocuBlock != None and currentDocuBlock == lastDocuBlock:
         raise Exception("No new docublock started for this restheader: " + ucmethod + " " + path  + ' : ' + currentDocuBlock)
@@ -1003,12 +1015,12 @@ def example_arangosh_run(cargo, r=Regexen()):
     except:
         print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
         raise
-    operation['x-examples'][currentExample]= '<details><summary>Example: ' + exampleHeader.strip('\n ') + '</summary><br><br><pre><code class="json">'
+    operation['x-examples'][currentExample]= '\n\n#Example:\n ' + exampleHeader.strip('\n ') + '\n\n<pre><code class="json">'
 
     for line in examplefile.readlines():
         operation['x-examples'][currentExample] += line
 
-    operation['x-examples'][currentExample] += '</code></pre><br></details>\n'
+    operation['x-examples'][currentExample] += '</code></pre>\n\n\n'
 
     line = ""
 

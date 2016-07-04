@@ -1,7 +1,7 @@
 
 
 @brief ssl options to use
-`--server.ssl-options value`
+`--ssl-.options value`
 
 This option can be used to set various SSL-related options. Individual
 option values must be combined using bitwise OR.

@@ -619,7 +619,16 @@ void ADB_WindowsEntryFunction() {
   TRI_Application_Exit_SetExit(ADB_WindowsExitFunction);
 }
 
+TRI_serviceAbort_t serviceAbort = nullptr;
+
+void TRI_SetWindowsServiceAbortFunction(TRI_serviceAbort_t f) {
+  serviceAbort = f;
+}
+
 void ADB_WindowsExitFunction(int exitCode, void* data) {
+  if (serviceAbort != nullptr) {
+    serviceAbort();
+  }
   int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {

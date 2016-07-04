@@ -21,7 +21,7 @@ module.exports.preferredEncodings = preferredEncodings;
  * @private
  */
 
-var simpleEncodingRegExp = /^\s*(\S+?)\s*(?:;(.*))?$/;
+var simpleEncodingRegExp = /^\s*([^\s;]+)\s*(?:;(.*))?$/;
 
 /**
  * Parse the Accept-Encoding header.

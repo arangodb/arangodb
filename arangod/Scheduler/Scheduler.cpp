@@ -221,6 +221,9 @@ std::shared_ptr<VPackBuilder> Scheduler::getUserTask(std::string const& id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Scheduler::unregisterUserTask(std::string const& id) {
+  if (stopping) {
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
   if (id.empty()) {
     return TRI_ERROR_TASK_INVALID_ID;
   }
@@ -258,6 +261,9 @@ int Scheduler::unregisterUserTask(std::string const& id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Scheduler::unregisterUserTasks() {
+  if (stopping) {
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
   while (true) {
     Task* task = nullptr;
 
@@ -304,6 +310,9 @@ int Scheduler::registerTask(Task* task, ssize_t* tn) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Scheduler::unregisterTask(Task* task) {
+  if (stopping) {
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
   SchedulerThread* thread = nullptr;
 
   std::string const taskName(task->name());
@@ -338,6 +347,9 @@ int Scheduler::unregisterTask(Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Scheduler::destroyTask(Task* task) {
+  if (stopping) {
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
   SchedulerThread* thread = nullptr;
   std::string const taskName(task->name());
 
@@ -420,6 +432,9 @@ EventLoop Scheduler::lookupLoopById(uint64_t taskId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Scheduler::registerTask(Task* task, ssize_t* got, ssize_t want) {
+  if (stopping) {
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
   TRI_ASSERT(task != nullptr);
 
   if (task->isUserDefined() && task->id().empty()) {

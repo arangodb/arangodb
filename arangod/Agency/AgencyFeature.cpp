@@ -38,9 +38,9 @@ using namespace arangodb::rest;
 AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Agency"),
       _size(1),
-      _agentId((std::numeric_limits<uint32_t>::max)()),
-      _minElectionTimeout(0.15),
-      _maxElectionTimeout(2.0),
+      _agentId(0),
+      _minElectionTimeout(0.5),
+      _maxElectionTimeout(2.5),
       _notify(false),
       _supervision(false),
       _waitForSync(true),
@@ -104,7 +104,8 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_agentId == (std::numeric_limits<uint32_t>::max)()) {
+  ProgramOptions::ProcessingResult const& result = options->processingResult();
+  if (!result.touched("agency.id")) {
     disable();
     return;
   }
@@ -149,7 +150,8 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_maxElectionTimeout <= 2 * _minElectionTimeout) {
     LOG_TOPIC(WARN, Logger::AGENCY)
-        << "agency.election-timeout-max should probably be chosen longer!";
+      << "agency.election-timeout-max should probably be chosen longer!"
+      << " " << __FILE__ << __LINE__;
   }
 }
 
@@ -158,26 +160,28 @@ void AgencyFeature::prepare() {
 }
 
 void AgencyFeature::start() {
+
   if (!isEnabled()) {
     return;
   }
-
+  
   // TODO: Port this to new options handling
   std::string endpoint;
   std::string port = "8529";
-
+  
   EndpointFeature* endpointFeature =
-      ApplicationServer::getFeature<EndpointFeature>("Endpoint");
+    ApplicationServer::getFeature<EndpointFeature>("Endpoint");
   auto endpoints = endpointFeature->httpEndpoints();
-
+  
   if (!endpoints.empty()) {
-    size_t pos = endpoint.find(':', 10);
-
+    std::string const& tmp = endpoints.front();
+    size_t pos = tmp.find(':',10);
+    
     if (pos != std::string::npos) {
-      port = endpoint.substr(pos + 1, endpoint.size() - pos);
+      port = tmp.substr(pos + 1, tmp.size() - pos);
     }
   }
-
+  
   endpoint = std::string("tcp://localhost:" + port);
 
   _agent.reset(new consensus::Agent(consensus::config_t(
@@ -189,10 +193,23 @@ void AgencyFeature::start() {
   _agent->load();
 }
 
-void AgencyFeature::stop() {
+void AgencyFeature::unprepare() {
+
   if (!isEnabled()) {
     return;
   }
 
   _agent->beginShutdown();
+  
+  if (_agent != nullptr) {
+    int counter = 0;
+    while (_agent->isRunning()) {
+      usleep(100000);
+      // emit warning after 5 seconds
+      if (++counter == 10 * 5) {
+        LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for agent thread to finish";
+      }
+    }
+  }
+
 }

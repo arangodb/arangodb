@@ -30,6 +30,13 @@ std::string const StaticStrings::Binary("binary");
 std::string const StaticStrings::Empty("");
 std::string const StaticStrings::N1800("1800");
 
+// index lookup strings
+std::string const StaticStrings::IndexEq("eq");
+std::string const StaticStrings::IndexIn("in");
+std::string const StaticStrings::IndexLe("le");
+std::string const StaticStrings::IndexLt("lt");
+std::string const StaticStrings::IndexGe("ge");
+std::string const StaticStrings::IndexGt("gt");
 
 // system attribute names
 std::string const StaticStrings::IdString("_id");
@@ -85,12 +92,11 @@ std::string const StaticStrings::ExposedCorsHeaders(
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::Location("location");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
-std::string const StaticStrings::OmitWwwAuthenticate("x-omit-www-authenticate");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::Queue("x-arango-queue");
 std::string const StaticStrings::Server("server");
 std::string const StaticStrings::StartThread("x-arango-start-thread");
-std::string const StaticStrings::WwwAuthenticate("www-authenticate");
+std::string const StaticStrings::WwwAuthenticate("www-authenticate");    
 
 // mime types
 std::string const StaticStrings::MimeTypeJson(
