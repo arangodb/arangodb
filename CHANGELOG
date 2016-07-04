@@ -1,6 +1,11 @@
 v3.0.2 (XXXX-XX-XX)
 -------------------
 
+* make AQL optimizer not skip "use-indexes-rule", even if enough execution plans 
+  have been created already
+
+* fix double precision value loss in VelocyPack JSON parser
+
 * added missing SSL support for arangorestore
 
 * improved cluster import performance
