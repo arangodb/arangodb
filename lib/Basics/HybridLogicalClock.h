@@ -111,6 +111,19 @@ class HybridLogicalClock {
     return r;
   }
 
+  static uint64_t decodeTimeStampWithCheck(std::string const& s) {
+    // Returns 0 if format is not valid
+    uint64_t r = 0;
+    for (size_t i = 0; i < s.size(); i++) {
+      char c = decodeTable[static_cast<uint8_t>(s[i])];
+      if (c < 0) {
+        return 0;
+      }
+      r = (r << 6) | static_cast<uint8_t>(c);
+    }
+    return r;
+  }
+
  private:
   // Helper to get the physical time in milliseconds since the epoch:
   uint64_t getPhysicalTime() {

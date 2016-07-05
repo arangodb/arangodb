@@ -590,12 +590,8 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
 
     TRI_voc_rid_t rid = 0;
 
-    try {
-      rid = StringUtils::uint64_check(s, e - s);
-      isValid = true;
-    } catch (...) {
-      isValid = false;
-    }
+    rid = HybridLogicalClock::decodeTimeStampWithCheck(std::string(s, e-s));
+    isValid = (rid != 0);
 
     return rid;
   }
@@ -606,17 +602,14 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
     if (found) {
       TRI_voc_rid_t rid = 0;
 
-      try {
-        rid = StringUtils::uint64_check(etag2);
-        isValid = true;
-      } catch (...) {
-        isValid = false;
-      }
+      rid = HybridLogicalClock::decodeTimeStampWithCheck(etag2);
+      isValid = (rid != 0);
 
       return rid;
     }
   }
 
+  isValid = false;
   return 0;
 }
 
