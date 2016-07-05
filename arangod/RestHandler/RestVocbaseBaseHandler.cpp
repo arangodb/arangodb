@@ -610,7 +610,6 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
     }
   }
 
-  isValid = false;
   return 0;
 }
 
