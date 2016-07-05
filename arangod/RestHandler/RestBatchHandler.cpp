@@ -151,20 +151,13 @@ RestHandler::status RestBatchHandler::execute() {
     HttpRequest* request = new HttpRequest(httpRequest->connectionInfo(),
                                            headerStart, headerLength, false);
 
-    if (request == nullptr) {
-      generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                    TRI_ERROR_OUT_OF_MEMORY);
-
-      return status::FAILED;
-    }
-
     // we do not have a client task id here
     request->setClientTaskId(0);
 
     // inject the request context from the framing (batch) request
     // the "false" means the context is not responsible for resource handling
-    request->setRequestContext(request->requestContext(), false);
-    request->setDatabaseName(request->databaseName());
+    request->setRequestContext(_request->requestContext(), false);
+    request->setDatabaseName(_request->databaseName());
 
     if (bodyLength > 0) {
       LOG(TRACE) << "part body is '" << std::string(bodyStart, bodyLength)
