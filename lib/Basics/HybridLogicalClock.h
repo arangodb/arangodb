@@ -113,6 +113,9 @@ class HybridLogicalClock {
 
   static uint64_t decodeTimeStampWithCheck(std::string const& s) {
     // Returns 0 if format is not valid
+    if (s.size() > 11) {
+      return 0;
+    }
     uint64_t r = 0;
     for (size_t i = 0; i < s.size(); i++) {
       char c = decodeTable[static_cast<uint8_t>(s[i])];
