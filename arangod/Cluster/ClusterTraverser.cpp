@@ -469,7 +469,7 @@ void ClusterTraverser::addVertexToVelocyPack(std::string const& id,
   auto cached = _vertices.find(id);
   // All vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
-  result.addExternal((*cached).second->data());
+  result.add(VPackSlice((*cached).second->data()));
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -481,7 +481,7 @@ void ClusterTraverser::addEdgeToVelocyPack(std::string const& id,
   auto cached = _edges.find(id);
   // All edges are cached!!
   TRI_ASSERT(cached != _edges.end());
-  result.addExternal((*cached).second->data());
+  result.add(VPackSlice((*cached).second->data()));
 }
 
 aql::AqlValue ClusterTraverser::lastVertexToAqlValue() {
