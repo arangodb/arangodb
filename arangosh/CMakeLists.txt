@@ -235,6 +235,39 @@ else ()
 endif ()
 
 ################################################################################
+## arangovpack
+################################################################################
+
+if (MSVC)
+  generate_product_version(ProductVersionFiles_arangovpack
+    NAME arangovpack
+    FILE_DESCRIPTION ${ARANGO_VPACK_FRIENDLY_STRING}
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
+    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
+    VERSION_REVISION ${BUILD_ID}
+  )
+endif ()
+
+add_executable(${BIN_ARANGOVPACK}
+  ${ProductVersionFiles_arangovpack}
+  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  VPack/VPackFeature.cpp
+  VPack/arangovpack.cpp
+)
+
+target_link_libraries(${BIN_ARANGOVPACK}
+  ${LIB_ARANGO}
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
+)
+
+install(
+  TARGETS ${BIN_ARANGOVPACK}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+################################################################################
 ## foxx-manager
 ################################################################################
 
