@@ -854,6 +854,9 @@ bool RocksDBIndex::supportsSortCondition(
   // by default no sort conditions are supported
   if (itemsInIndex > 0) {
     estimatedCost = itemsInIndex * std::log2(static_cast<double>(itemsInIndex));
+    // slightly penalize this type of index against other indexes which
+    // are in memory
+    estimatedCost *= 1.05;
   } else {
     estimatedCost = 0.0;
   }
