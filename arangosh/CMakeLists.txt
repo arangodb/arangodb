@@ -267,6 +267,12 @@ install(
   TARGETS ${BIN_ARANGOVPACK}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangovpack zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangovpack zlibstatic) # v8_build includes ICU build
+endif ()
+
 ################################################################################
 ## foxx-manager
 ################################################################################

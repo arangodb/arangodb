@@ -40,6 +40,22 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief portably and safely reads a number
+////////////////////////////////////////////////////////////////////////////////
+  
+template <typename T>
+static inline T ReadNumber(uint8_t const* source, uint32_t length) {
+  T value = 0;
+  uint64_t x = 0;
+  uint8_t const* end = source + length;
+  do {
+    value += static_cast<T>(*source++) << x;
+    x += 8;
+  } while (source < end);
+  return value;
+}
+
 static std::string ConvertFromHex(std::string const& value) {
   std::string result;
   result.reserve(value.size());
@@ -74,13 +90,31 @@ static std::string ConvertFromHex(std::string const& value) {
   return result;
 }
 
+// custom type value handler, used for deciphering the _id attribute
+struct CustomTypeHandler : public VPackCustomTypeHandler {
+  CustomTypeHandler() = default;
+  ~CustomTypeHandler() = default; 
+
+  void dump(VPackSlice const& value, VPackDumper* dumper,
+            VPackSlice const& base) override final {
+    dumper->appendString(toString(value, nullptr, base));
+  }
+  
+  std::string toString(VPackSlice const& value, VPackOptions const* options,
+                       VPackSlice const& base) override final {
+    uint64_t cid = ReadNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
+    return "collection id " + std::to_string(cid);
+  }
+};
+
+
 VPackFeature::VPackFeature(application_features::ApplicationServer* server,
                            int* result)
     : ApplicationFeature(server, "VPack"),
       _result(result),
-      _prettyPrint(false),
+      _prettyPrint(true),
       _hexInput(false),
-      _printNonJson(false) {
+      _printNonJson(true) {
   requiresElevatedPrivileges(false);
   setOptional(false);
 }
@@ -126,11 +160,14 @@ void VPackFeature::start() {
   if (_hexInput) {
     s = ConvertFromHex(s);
   }
+
+  auto customTypeHandler = std::make_unique<CustomTypeHandler>();
   
   VPackOptions options;
   options.prettyPrint = _prettyPrint;
   options.unsupportedTypeBehavior = 
     (_printNonJson ? VPackOptions::ConvertUnsupportedType : VPackOptions::FailOnUnsupportedType);
+  options.customTypeHandler = customTypeHandler.get();
 
   try {
     VPackValidator validator(&options);
