@@ -2071,11 +2071,17 @@ TRI_voc_tick_t TRI_NewTickServer() { return ++CurrentTick; }
 /// @brief create a new tick, using a hybrid logical clock
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tick_t TRI_NewTickServerHLC(void) {
+TRI_voc_tick_t TRI_HybridLogicalClock(void) {
   return hybridLogicalClock.getTimeStamp();
 }
 
-TRI_voc_tick_t TRI_NewTickServerHLC(TRI_voc_tick_t received) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new tick, using a hybrid logical clock, this variant
+/// is supposed to be called when a time stamp is received in network
+/// communications.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_tick_t TRI_HybridLogicalClock(TRI_voc_tick_t received) {
   return hybridLogicalClock.getTimeStamp(received);
 }
 

@@ -28,6 +28,7 @@
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/Timers.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
@@ -3383,7 +3384,7 @@ int TRI_document_collection_t::update(Transaction* trx,
     // make sure our local tick is at least as high as the remote tick
     TRI_UpdateTickServer(revisionId);
   } else {
-    revisionId = TRI_NewTickServer();
+    revisionId = TRI_HybridLogicalClock();
   }
     
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
@@ -3439,8 +3440,8 @@ int TRI_document_collection_t::update(Transaction* trx,
     if (options.recoveryMarker == nullptr) {
       mergeObjectsForUpdate(
         trx, VPackSlice(oldHeader->vpack()), newSlice, isEdgeCollection,
-        std::to_string(revisionId), options.mergeObjects, options.keepNull,
-        *builder.get());
+        HybridLogicalClock::encodeTimeStamp(revisionId),
+        options.mergeObjects, options.keepNull, *builder.get());
  
       if (ServerState::isDBServer(trx->serverRole())) {
         // Need to check that no sharding keys have changed:
@@ -3534,13 +3535,11 @@ int TRI_document_collection_t::replace(Transaction* trx,
     if (!oldRev.isString()) {
       return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
     }
-    VPackValueLength length;
-    char const* p = oldRev.getString(length);
-    revisionId = arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
+    revisionId = HybridLogicalClock::decodeTimeStamp(oldRev.copyString());
     // make sure our local tick is at least as high as the remote tick
     TRI_UpdateTickServer(revisionId);
   } else {
-    revisionId = TRI_NewTickServer();
+    revisionId = TRI_HybridLogicalClock();
   }
   
   int res;
@@ -3586,7 +3585,9 @@ int TRI_document_collection_t::replace(Transaction* trx,
     TransactionBuilderLeaser builder(trx);
     newObjectForReplace(
         trx, VPackSlice(oldHeader->vpack()),
-        newSlice, fromSlice, toSlice, isEdgeCollection, std::to_string(revisionId), *builder.get());
+        newSlice, fromSlice, toSlice, isEdgeCollection,
+        HybridLogicalClock::encodeTimeStamp(revisionId),
+        *builder.get());
 
     if (ServerState::isDBServer(trx->serverRole())) {
       // Need to check that no sharding keys have changed:
@@ -3651,16 +3652,14 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
   if (options.isRestore) {
     VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(slice);
     if (!oldRev.isString()) {
-      revisionId = TRI_NewTickServer();
+      revisionId = TRI_HybridLogicalClock();
     } else {
-      VPackValueLength length;
-      char const* p = oldRev.getString(length);
-      revisionId = arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
+      revisionId = HybridLogicalClock::decodeTimeStamp(oldRev.copyString());
       // make sure our local tick is at least as high as the remote tick
       TRI_UpdateTickServer(revisionId);
     }
   } else {
-    revisionId = TRI_NewTickServer();
+    revisionId = TRI_HybridLogicalClock();
   }
   
   TransactionBuilderLeaser builder(trx);
@@ -4124,8 +4123,8 @@ int TRI_document_collection_t::newObjectForInsert(
   VPackSlice s = value.get(StaticStrings::KeyString);
   if (s.isNone()) {
     TRI_ASSERT(!isRestore);   // need key in case of restore
-    newRev = TRI_NewTickServer();
-    std::string keyString = _keyGenerator->generate(newRev);
+    newRev = TRI_HybridLogicalClock();
+    std::string keyString = _keyGenerator->generate(TRI_NewTickServer());
     if (keyString.empty()) {
       return TRI_ERROR_ARANGO_OUT_OF_KEYS;
     }
@@ -4180,9 +4179,9 @@ int TRI_document_collection_t::newObjectForInsert(
     newRevSt = oldRev.copyString();
   } else {
     if (newRev == 0) {
-      newRev = TRI_NewTickServer();
+      newRev = TRI_HybridLogicalClock();
     }
-    newRevSt = std::to_string(newRev);
+    newRevSt = HybridLogicalClock::encodeTimeStamp(newRev);
   }
   builder.add(StaticStrings::RevString, VPackValue(newRevSt));
   

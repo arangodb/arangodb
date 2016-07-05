@@ -32,6 +32,7 @@
 #include "Aql/QueryList.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
@@ -2291,9 +2292,7 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
 
   VPackSlice r(slice.get(StaticStrings::RevString));
   if (r.isString()) {
-    VPackValueLength length;
-    char const* p = r.getString(length);
-    return arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
+    return HybridLogicalClock::decodeTimeStamp(r.copyString());
   }
   if (r.isInteger()) {
     return r.getNumber<TRI_voc_rid_t>();
