@@ -425,6 +425,7 @@ module.exports =
         this.main.context.options = this.options;
         this.main.context.use = undefined;
         this.main.context.apiDocumentation = undefined;
+        this.main.context.graphql = undefined;
         this.main.context.registerType = undefined;
         const foxxConsole = require('@arangodb/foxx/legacy/console')(this.mount);
         this.main[$_MODULE_CONTEXT].console = foxxConsole;

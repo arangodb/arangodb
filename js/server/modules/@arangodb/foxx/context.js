@@ -29,6 +29,7 @@ const fs = require('fs');
 const internal = require('internal');
 const mimeTypes = require('mime-types');
 const createSwaggerRouteHandler = require('@arangodb/foxx/swagger');
+const createGraphQLRoutes = require('@arangodb/foxx/graphql');
 
 module.exports =
   class FoxxContext {
@@ -39,6 +40,10 @@ module.exports =
 
     apiDocumentation (opts) {
       return createSwaggerRouteHandler(this.mount, opts);
+    }
+
+    graphql (opts) {
+      return createGraphQLRoutes(opts);
     }
 
     use (path, router, name) {
