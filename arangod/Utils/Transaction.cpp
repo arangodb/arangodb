@@ -3231,6 +3231,10 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollectionCoordinator
         idx.reset(new arangodb::HashIndex(v));
       } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
         idx.reset(new arangodb::SkiplistIndex(v));
+#ifdef ARANGODB_ENABLE_ROCKSDB
+      } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX) {
+        idx.reset(new arangodb::RocksDBIndex(v));
+#endif
       }
       if (idx != nullptr) {
         indexes.push_back(idx);
