@@ -121,6 +121,10 @@ Filename conventions
 ====================
 Special patterns in the test filenames are used to select tests to be executed or skipped depending on parameters:
 
+-server
+-------
+Make use of existing external server. (example scripts/unittest http_server --server tcp://127.0.0.1:8529/ )
+
 -cluster
 --------
 These tests will only run if clustering is tested. (option 'cluster' needs to be true).
