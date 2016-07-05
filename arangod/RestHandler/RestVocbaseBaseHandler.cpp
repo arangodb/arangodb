@@ -23,7 +23,6 @@
 
 #include "RestVocbaseBaseHandler.h"
 #include "Basics/conversions.h"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -591,7 +590,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
 
     TRI_voc_rid_t rid = 0;
 
-    rid = HybridLogicalClock::decodeTimeStampWithCheck(std::string(s, e-s));
+    rid = TRI_StringToRidWithCheck(std::string(s, e-s));
     isValid = (rid != 0);
 
     return rid;
@@ -603,7 +602,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
     if (found) {
       TRI_voc_rid_t rid = 0;
 
-      rid = HybridLogicalClock::decodeTimeStampWithCheck(etag2);
+      rid = TRI_StringToRidWithCheck(etag2);
       isValid = (rid != 0);
 
       return rid;

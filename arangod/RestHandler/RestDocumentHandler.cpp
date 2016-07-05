@@ -224,7 +224,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     builder.add(StaticStrings::KeyString, VPackValue(key));
     if (ifRid != 0) {
       options.ignoreRevs = false;
-      builder.add(StaticStrings::RevString, VPackValue(std::to_string(ifRid)));
+      builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(ifRid)));
     }
   }
   VPackSlice search = builder.slice();
@@ -402,7 +402,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
         builder->add(StaticStrings::KeyString, VPackValue(key));
         if (revision != 0) {
           builder->add(StaticStrings::RevString,
-                       VPackValue(std::to_string(revision)));
+              VPackValue(TRI_RidToString(revision)));
         }
       }
       body = builder->slice();
@@ -515,7 +515,8 @@ bool RestDocumentHandler::deleteDocument() {
       builder.add(StaticStrings::KeyString, VPackValue(key));
       if (revision != 0) {
         opOptions.ignoreRevs = false;
-        builder.add(StaticStrings::RevString, VPackValue(std::to_string(revision)));
+        builder.add(StaticStrings::RevString,
+            VPackValue(TRI_RidToString(revision)));
       }
     }
     search = builder.slice();

@@ -23,7 +23,6 @@
 
 #include "v8-vocbaseprivate.h"
 #include "Basics/conversions.h"
-#include "Basics/HybridLogicalClock.h"
 #include "VocBase/KeyGenerator.h"
 #include "V8/v8-conv.h"
 
@@ -182,14 +181,12 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
       return true;
     }
     v8::String::Utf8Value str(revObj);
-    uint64_t rid
-        = HybridLogicalClock::decodeTimeStamp(std::string(*str, str.length()));
+    uint64_t rid = TRI_StringToRidWithCheck(std::string(*str, str.length()));
 
     if (rid == 0) {
       return false;
     }
-    builder.add(StaticStrings::RevString, VPackValue(
-        HybridLogicalClock::encodeTimeStamp(rid)));
+    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
     return true;
   }
 

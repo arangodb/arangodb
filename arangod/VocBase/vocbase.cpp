@@ -2292,7 +2292,7 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
 
   VPackSlice r(slice.get(StaticStrings::RevString));
   if (r.isString()) {
-    return HybridLogicalClock::decodeTimeStamp(r.copyString());
+    return TRI_StringToRid(r.copyString());
   }
   if (r.isInteger()) {
     return r.getNumber<TRI_voc_rid_t>();
@@ -2354,3 +2354,28 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
     it.next();
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Convert a revision ID to a string
+////////////////////////////////////////////////////////////////////////////////
+
+std::string TRI_RidToString(TRI_voc_rid_t rid) {
+  return HybridLogicalClock::encodeTimeStamp(rid);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Convert a string into a revision ID, no check variant
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr) {
+  return HybridLogicalClock::decodeTimeStamp(ridStr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Convert a string into a revision ID, returns 0 if format invalid
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_rid_t TRI_StringToRidWithCheck(std::string const& ridStr) {
+  return HybridLogicalClock::decodeTimeStampWithCheck(ridStr);
+}
+

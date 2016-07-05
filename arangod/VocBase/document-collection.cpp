@@ -3440,8 +3440,8 @@ int TRI_document_collection_t::update(Transaction* trx,
     if (options.recoveryMarker == nullptr) {
       mergeObjectsForUpdate(
         trx, VPackSlice(oldHeader->vpack()), newSlice, isEdgeCollection,
-        HybridLogicalClock::encodeTimeStamp(revisionId),
-        options.mergeObjects, options.keepNull, *builder.get());
+        TRI_RidToString(revisionId), options.mergeObjects, options.keepNull,
+        *builder.get());
  
       if (ServerState::isDBServer(trx->serverRole())) {
         // Need to check that no sharding keys have changed:
@@ -3535,7 +3535,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     if (!oldRev.isString()) {
       return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
     }
-    revisionId = HybridLogicalClock::decodeTimeStamp(oldRev.copyString());
+    revisionId = TRI_StringToRid(oldRev.copyString());
     // make sure our local tick is at least as high as the remote tick
     TRI_UpdateTickServer(revisionId);
   } else {
@@ -3586,8 +3586,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     newObjectForReplace(
         trx, VPackSlice(oldHeader->vpack()),
         newSlice, fromSlice, toSlice, isEdgeCollection,
-        HybridLogicalClock::encodeTimeStamp(revisionId),
-        *builder.get());
+        TRI_RidToString(revisionId), *builder.get());
 
     if (ServerState::isDBServer(trx->serverRole())) {
       // Need to check that no sharding keys have changed:
@@ -3654,9 +3653,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     if (!oldRev.isString()) {
       revisionId = TRI_HybridLogicalClock();
     } else {
-      revisionId = HybridLogicalClock::decodeTimeStamp(oldRev.copyString());
-      // make sure our local tick is at least as high as the remote tick
-      TRI_UpdateTickServer(revisionId);
+      revisionId = TRI_StringToRid(oldRev.copyString());
     }
   } else {
     revisionId = TRI_HybridLogicalClock();
@@ -4181,7 +4178,7 @@ int TRI_document_collection_t::newObjectForInsert(
     if (newRev == 0) {
       newRev = TRI_HybridLogicalClock();
     }
-    newRevSt = HybridLogicalClock::encodeTimeStamp(newRev);
+    newRevSt = TRI_RidToString(newRev);
   }
   builder.add(StaticStrings::RevString, VPackValue(newRevSt));
   
