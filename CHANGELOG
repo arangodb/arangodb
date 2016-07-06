@@ -27,6 +27,8 @@ devel
 v3.0.2 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1929
+
 * make arangodump dump the attribute `isSystem` when dumping the structure
   of a collection, additionally make arangorestore not fail when the attribute
   is missing
