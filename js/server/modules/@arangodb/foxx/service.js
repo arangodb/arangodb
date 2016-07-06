@@ -399,6 +399,19 @@ module.exports =
       return module.exports;
     }
 
+    executeScript (name, argv) {
+      var scripts = this.manifest.scripts;
+      // Only run setup/teardown scripts if they exist
+      if (!scripts[name] && (name === 'setup' || name === 'teardown')) {
+        return undefined;
+      }
+      return this.run(scripts[name], {
+        foxxContext: {
+          argv: argv ? (Array.isArray(argv) ? argv : [argv]) : []
+        }
+      });
+    }
+
     _reset () {
       this.requireCache = {};
       const lib = this.manifest.lib || '.';
