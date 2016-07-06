@@ -850,8 +850,11 @@ function runScript(scriptName, mount, options) {
   );
 
   var service = lookupService(mount);
-
-  return executeScript(scriptName, service, options) || null;
+  if (service.isDevelopment && scriptName !== 'setup') {
+    service.executeScript('setup');
+  }
+  ensureRouted(mount);
+  return service.executeScript(scriptName, options) || null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -884,12 +887,6 @@ function readme(mount) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a Foxx service's tests
-///
-/// Input:
-/// * mount: the mount path starting with a "/"
-///
-/// Output:
-/// -
 ////////////////////////////////////////////////////////////////////////////////
 
 function runTests(mount, options) {
@@ -900,6 +897,10 @@ function runTests(mount, options) {
   );
 
   var service = lookupService(mount);
+  if (service.isDevelopment) {
+    service.executeScript('setup');
+  }
+  ensureRouted(mount);
   var reporter = options ? options.reporter : null;
   return require('@arangodb/foxx/mocha').run(service, reporter);
 }
