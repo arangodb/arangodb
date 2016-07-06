@@ -1617,11 +1617,12 @@ AqlValue Functions::Min(arangodb::aql::Query* query,
   VPackSlice slice = materializer.slice(value, false);
 
   VPackSlice minValue;
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   for (auto const& it : VPackArrayIterator(slice)) {
     if (it.isNull()) {
       continue;
     }
-    if (minValue.isNone() || arangodb::basics::VelocyPackHelper::compare(it, minValue, true) < 0) {
+    if (minValue.isNone() || arangodb::basics::VelocyPackHelper::compare(it, minValue, true, options) < 0) {
       minValue = it;
     }
   }
@@ -1646,8 +1647,9 @@ AqlValue Functions::Max(arangodb::aql::Query* query,
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(value, false);
   VPackSlice maxValue;
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   for (auto const& it : VPackArrayIterator(slice)) {
-    if (maxValue.isNone() || arangodb::basics::VelocyPackHelper::compare(it, maxValue, true) > 0) {
+    if (maxValue.isNone() || arangodb::basics::VelocyPackHelper::compare(it, maxValue, true, options) > 0) {
       maxValue = it;
     }
   }
@@ -3111,6 +3113,7 @@ AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   try {
     TransactionBuilderLeaser builder(trx);
     builder->openArray();
@@ -3138,7 +3141,7 @@ AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
         builder->add(it);
         continue;
       }
-      if (arangodb::basics::VelocyPackHelper::compare(r, it, false) == 0) {
+      if (arangodb::basics::VelocyPackHelper::compare(r, it, false, options) == 0) {
         --limit;
         continue;
       }
