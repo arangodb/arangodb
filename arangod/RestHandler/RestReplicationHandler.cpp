@@ -1285,7 +1285,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     return TRI_ERROR_NO_ERROR;
   }
 
-  VocbaseCollectionInfo params(_vocbase, name.c_str(), slice);
+  VocbaseCollectionInfo params(_vocbase, name.c_str(), slice, true);
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(params.doCompact() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
