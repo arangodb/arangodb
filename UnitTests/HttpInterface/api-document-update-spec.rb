@@ -273,7 +273,7 @@ describe ArangoDB do
         
         # update document, invalid revision
         cmd = "/_api/document/#{did}"
-        hdr = { "if-match" => "'abcd'" }
+        hdr = { "if-match" => "'*abcd'" }
         doc = ArangoDB.log_put("#{prefix}-rev-invalid", cmd, :headers => hdr, :body => body)
 
         doc.code.should eq(400)

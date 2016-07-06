@@ -197,7 +197,7 @@ describe ArangoDB do
         
         # delete document, invalid revision
         cmd = "/_api/document/#{did}"
-        hdr = { "if-match" => "'abcd'" }
+        hdr = { "if-match" => "'*abcd'" }
         doc = ArangoDB.log_delete("#{prefix}-rev-invalid", cmd, :headers => hdr)
 
         doc.code.should eq(400)

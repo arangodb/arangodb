@@ -287,7 +287,7 @@ describe ArangoDB do
 
         # get document, if-match with different rev
         cmd = "/_api/document/#{did}"
-        hdr = { "if-match" => "\"348574#{rev}\"" }
+        hdr = { "if-match" => "\"348574\"" }
         doc = ArangoDB.log_get("#{prefix}-if-match-other", cmd, :headers => hdr)
 
         doc.code.should eq(412)
