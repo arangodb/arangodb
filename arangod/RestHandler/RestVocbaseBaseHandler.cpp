@@ -310,7 +310,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
   createResponse(GeneralResponse::ResponseCode::NOT_MODIFIED);
   _response->setHeaderNC(StaticStrings::Etag,
-                         "\"" + StringUtils::itoa(rid) + "\"");
+                         "\"" + TRI_RidToString(rid) + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
