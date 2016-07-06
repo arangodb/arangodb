@@ -840,11 +840,20 @@ bool RocksDBIndex::supportsSortCondition(
 
       if (coveredAttributes >= sortCondition->numAttributes()) {
         // sort is fully covered by index. no additional sort costs!
-        estimatedCost = 0.0;
+        // forward iteration does not have high costs
+        estimatedCost = itemsInIndex * 0.001;
+        if (sortCondition->isDescending()) {
+          // reverse iteration has higher costs than forward iteration
+          estimatedCost *= 4;
+        }
         return true;
       } else if (coveredAttributes > 0) {
         estimatedCost = (itemsInIndex / coveredAttributes) *
                         std::log2(static_cast<double>(itemsInIndex));
+        if (sortCondition->isAscending()) {
+          // reverse iteration is more expensive
+          estimatedCost *= 4;
+        }
         return true;
       }
     }
