@@ -720,7 +720,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
     updateBuilder.clear();
 
     size_t const n = res->size();
-      
+
     bool const isMultiple = (n > 1);
     if (isMultiple) {
       insertBuilder.openArray();
@@ -750,20 +750,21 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           AqlValue const& updateDoc = res->getValueReference(i, updateRegisterId);
 
           if (updateDoc.isObject()) {
-            VPackSlice toUpdate = updateDoc.slice();
-         
-            keyBuilder.clear();
-            keyBuilder.openObject();
-            keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
-            keyBuilder.close();
-            if (isMultiple) {
-              VPackBuilder tmp = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
-              updateBuilder.add(tmp.slice());
-              upRows.emplace_back(dstRow);
-            } else {
-              updateBuilder = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+            if (updateDoc.length() > 0) {
+              VPackSlice toUpdate = updateDoc.slice();
+          
+              keyBuilder.clear();
+              keyBuilder.openObject();
+              keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
+              keyBuilder.close();
+              if (isMultiple) {
+                VPackBuilder tmp = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+                updateBuilder.add(tmp.slice());
+                upRows.emplace_back(dstRow);
+              } else {
+                updateBuilder = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+              }
             }
-
           } else {
             errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
           }
