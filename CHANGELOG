@@ -16,6 +16,8 @@ devel
 * added AQL function `OUTERSECTION` to return the symmetric difference of its
   input arguments
 
+* Foxx manifests of installed services are now saved to disk with indentation
+
 
 v3.0.2 (XXXX-XX-XX)
 -------------------
