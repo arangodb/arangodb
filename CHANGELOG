@@ -13,8 +13,6 @@ v3.0.2 (XXXX-XX-XX)
 * make AQL query optimizer not skip "use-indexes-rule", even if enough 
   plans have been created already
 
-* fix double precision loss in VelocyPack parser
-
 * make AQL optimizer not skip "use-indexes-rule", even if enough execution plans 
   have been created already
 
