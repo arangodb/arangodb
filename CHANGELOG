@@ -48,7 +48,9 @@ v3.0.2 (XXXX-XX-XX)
 
 * improved cluster import performance
 
-* fix foxx thumbnails on DC/OS
+* fix Foxx thumbnails on DC/OS
+
+* fix Foxx configuration not being saved
 
 
 v3.0.1 (XXXX-XX-XX)
