@@ -212,7 +212,7 @@ describe ArangoDB do
 
         # get document, if-none-match with different rev
         cmd = "/_api/document/#{did}"
-        hdr = { "if-none-match" => "\"54454#{rev}\"" }
+        hdr = { "if-none-match" => "\"54454\"" }
         doc = ArangoDB.log_get("#{prefix}-if-none-match-other", cmd, :headers => hdr)
 
         doc.code.should eq(200)
