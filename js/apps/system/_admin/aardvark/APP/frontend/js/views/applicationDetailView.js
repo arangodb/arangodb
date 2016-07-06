@@ -261,9 +261,10 @@
             arangoHelper.arangoError("DB","Could not get current database");
           }
           else {
+            var mount = this.model.get('mount');
             $(this.el).html(this.template.render({
               app: this.model,
-              db: db,
+              baseUrl: arangoHelper.databaseUrl('', db),
               mode: mode
             }));
 
@@ -387,9 +388,7 @@
     },
 
     appUrl: function (currentDB) {
-      return window.location.origin + '/_db/'
-      + encodeURIComponent(currentDB)
-      + this.model.get('mount');
+      return arangoHelper.databaseUrl(this.model.get('mount'), currentDB)
     },
 
     applyConfig: function() {
