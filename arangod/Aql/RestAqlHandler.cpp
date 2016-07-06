@@ -920,5 +920,5 @@ void RestAqlHandler::sendResponse(
     GeneralResponse::ResponseCode code, VPackSlice const slice,
     arangodb::TransactionContext* transactionContext) {
   createResponse(code);
-  writeResult(slice, *(transactionContext->getVPackOptions()));
+  writeResult(slice, *(transactionContext->getVPackOptionsForDump()));
 }
