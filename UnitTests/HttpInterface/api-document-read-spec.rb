@@ -11,7 +11,7 @@ describe ArangoDB do
   before do  
     @rePath = Regexp.new('^/_db/[^/]+/_api/document/[a-zA-Z0-9_@:\.\-]+/\d+$')
     @reFull = Regexp.new('^[a-zA-Z0-9_\-]+/\d+$')
-    @reRev  = Regexp.new('^[0-9]+$')
+    @reRev  = Regexp.new('^[-_0-9a-zA-Z]+$')
   end
 
 ################################################################################
@@ -564,7 +564,7 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         
-        hdr = { "if-match" => "'abcd'" }
+        hdr = { "if-match" => "'*abcd'" }
         doc = ArangoDB.log_head("#{prefix}-head-rev-invalid", cmd, :headers => hdr)
         
         doc.code.should eq(400)
