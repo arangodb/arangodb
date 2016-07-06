@@ -1458,6 +1458,10 @@ function _toggleDevelopment (mount, activate) {
   var service = lookupService(mount);
   service.development(activate);
   utils.updateService(mount, service.toJSON());
+  if (!activate) {
+    // Make sure setup changes from devmode are respected
+    service.executeScript('setup');
+  }
   reloadRouting();
   return service;
 }

@@ -21,6 +21,8 @@ devel
 * Foxx tests and scripts in development mode should now always respect updated
   files instead of loading stale modules
 
+* When disabling Foxx development mode the setup script is now re-run
+
 
 v3.0.2 (XXXX-XX-XX)
 -------------------
