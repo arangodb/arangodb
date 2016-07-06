@@ -995,10 +995,6 @@ function foxxRouting (req, res, options, next) {
         app = foxxManager.lookupService(mount);
       }
 
-      if (app.isBroken) {
-        throw app.error;
-      }
-
       options.routing = flattenRoutingTree(buildRoutingTree([foxxManager.routes(mount)]));
     }
   } catch (err1) {
