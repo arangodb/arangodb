@@ -297,7 +297,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   builder.add(StaticStrings::IdString,
               VPackValue(assembleDocumentId(collectionName, key, false)));
   builder.add(StaticStrings::KeyString, VPackValue(key));
-  builder.add(StaticStrings::RevString, VPackValue(std::to_string(rev)));
+  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev)));
   builder.close();
 
   generatePreconditionFailed(builder.slice());

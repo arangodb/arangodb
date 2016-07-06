@@ -1159,11 +1159,6 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
 
   LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->_info.name() << "'";
   
-  // make sure our local tick is now at least as high as the highest revision id used in this collection
-  if (document->_info.revision() > 0) {
-    TRI_UpdateTickServer(document->_info.revision());
-  }
-
   // update the real statistics for the collection
   try {
     for (auto& it : openState._stats) {
@@ -3271,14 +3266,6 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     newSlice = slice;
   }
     
-  if (options.isRestore) {
-    // make sure our local tick is at least as high as the remote tick
-    VPackSlice revSlice = newSlice.get(StaticStrings::RevString);
-    if (revSlice.isString()) {
-      TRI_UpdateTickServer(StringUtils::uint64(revSlice.copyString()));
-    }
-  }
-
   TRI_ASSERT(mptr != nullptr);
   mptr->setVPack(nullptr);
 
@@ -3378,11 +3365,7 @@ int TRI_document_collection_t::update(Transaction* trx,
     if (!oldRev.isString()) {
       return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
     }
-    VPackValueLength length;
-    char const* p = oldRev.getString(length);
-    revisionId = arangodb::basics::StringUtils::uint64(p, static_cast<size_t>(length));
-    // make sure our local tick is at least as high as the remote tick
-    TRI_UpdateTickServer(revisionId);
+    revisionId = TRI_StringToRid(oldRev.copyString());
   } else {
     revisionId = TRI_HybridLogicalClock();
   }
@@ -3536,8 +3519,6 @@ int TRI_document_collection_t::replace(Transaction* trx,
       return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
     }
     revisionId = TRI_StringToRid(oldRev.copyString());
-    // make sure our local tick is at least as high as the remote tick
-    TRI_UpdateTickServer(revisionId);
   } else {
     revisionId = TRI_HybridLogicalClock();
   }
@@ -3661,7 +3642,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
   
   TransactionBuilderLeaser builder(trx);
   newObjectForRemove(
-      trx, slice, std::to_string(revisionId), *builder.get());
+      trx, slice, TRI_RidToString(revisionId), *builder.get());
 
   prevRev = VPackSlice();
 
