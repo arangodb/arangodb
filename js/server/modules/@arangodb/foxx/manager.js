@@ -815,7 +815,7 @@ function patchManifestFile(servicePath, patchData) {
     );
   }
   Object.assign(manifest, patchData);
-  fs.write(filename, JSON.stringify(manifest));
+  fs.write(filename, JSON.stringify(manifest, null, 2));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
