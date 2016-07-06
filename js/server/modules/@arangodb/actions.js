@@ -2080,14 +2080,15 @@ function rewriteRequest (req, res, options, next) {
 function pathHandler (req, res, options, next) {
   'use strict';
 
-  var filename, encodedFilename;
-  filename = fs.join(options.path, fs.join.apply(fs.join, req.suffix));
+  var filepath, root, filename, encodedFilename;
+  filepath = fs.join(...req.suffix);
+  root = options.path;
 
-  if (options.hasOwnProperty('root')) {
-    var root = options.root;
-    filename = fs.join(root, filename);
-    encodedFilename = filename;
+  if (options.root) {
+    root = fs.join(options.root, root);
   }
+  filename = fs.join(root, filepath);
+  encodedFilename = filename;
   if (fs.exists(filename)) {
     res.responseCode = exports.HTTP_OK;
     res.contentType = options.type || mimeTypes.lookup(filename) || MIME_DEFAULT;
@@ -2108,11 +2109,11 @@ function pathHandler (req, res, options, next) {
       }
     }
     res.bodyFromFile = encodedFilename;
-  }
-  else {
+  } else {
+    console.warn(`File not found "${req.url}": file "${filepath}" does not exist in "${root}".`);
     res.responseCode = exports.HTTP_NOT_FOUND;
-    res.contentType = "text/plain";
-    res.body = "cannot find file '" + filename + "'";
+    res.contentType = 'text/plain';
+    res.body = `cannot find file "${filepath}"`;
   }
 }
 
