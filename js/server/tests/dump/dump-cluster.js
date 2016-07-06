@@ -61,9 +61,6 @@ function dumpTestSuite () {
     
     testEmpty : function () {
       var c = db._collection("UnitTestsDumpEmpty");
-	require("internal").print("_______________+++++++");
-
-	require("internal").print(c);
       var p = c.properties();
 
       assertEqual(2, c.type()); // document
