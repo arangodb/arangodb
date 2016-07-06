@@ -24,6 +24,8 @@ v3.0.2 (XXXX-XX-XX)
 
 * fix foxx thumbnails on DC/OS
 
+* fix foxx app access from within the frontend on DC/OS
+
 
 v3.0.1 (XXXX-XX-XX)
 -------------------
