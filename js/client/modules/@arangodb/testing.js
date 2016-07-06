@@ -1103,7 +1103,8 @@ function runArangoDumpRestore (options, instanceInfo, which, database) {
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
-    'server.database': database
+    'server.database': database,
+    'include-system-collections': 'true'
   };
 
   let exe;

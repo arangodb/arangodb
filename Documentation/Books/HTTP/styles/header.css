@@ -44,7 +44,7 @@ body {
 }
 
 .google-search {
-  margin-right: 5%;
+  margin-right: 10px;
   margin-left: 10px !important;
   float: right !important;
 }
@@ -95,8 +95,8 @@ body {
 .arangodb-logo, .arangodb-logo-small {
   display: inline;
   float: left;
-  padding-top: 10px;
-  margin-left:5%;
+  padding-top: 12px;
+  margin-left: 10px;
 }
 
 .arangodb-logo img {

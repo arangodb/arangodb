@@ -127,13 +127,13 @@ module.exports =
         const def = definitions[name];
         if (!def) {
           warnings.push(`Unexpected option "${name}"`);
-          return;
+          return warnings;
         }
 
         if (def.required === false && (rawValue === undefined || rawValue === null || rawValue === '')) {
           delete this.options.configuration[name];
           this.configuration[name] = def.default;
-          return;
+          return warnings;
         }
 
         const validate = parameterTypes[def.type];
@@ -397,6 +397,19 @@ module.exports =
 
       module.load(filename);
       return module.exports;
+    }
+
+    executeScript (name, argv) {
+      var scripts = this.manifest.scripts;
+      // Only run setup/teardown scripts if they exist
+      if (!scripts[name] && (name === 'setup' || name === 'teardown')) {
+        return undefined;
+      }
+      return this.run(scripts[name], {
+        foxxContext: {
+          argv: argv ? (Array.isArray(argv) ? argv : [argv]) : []
+        }
+      });
     }
 
     _reset () {
