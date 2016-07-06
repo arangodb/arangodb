@@ -145,8 +145,8 @@ class VocbaseCollectionInfo {
   bool _waitForSync;  // if true, wait for msync
 
  public:
-  VocbaseCollectionInfo(){};
-  ~VocbaseCollectionInfo(){};
+  VocbaseCollectionInfo() {};
+  ~VocbaseCollectionInfo() {};
 
   explicit VocbaseCollectionInfo(CollectionInfo const&);
 
@@ -154,10 +154,12 @@ class VocbaseCollectionInfo {
                         TRI_voc_size_t, arangodb::velocypack::Slice const&);
 
   VocbaseCollectionInfo(TRI_vocbase_t*, char const*,
-                        arangodb::velocypack::Slice const&);
+                        arangodb::velocypack::Slice const&,
+                        bool forceIsSystem);
 
   VocbaseCollectionInfo(TRI_vocbase_t*, char const*, TRI_col_type_e,
-                        arangodb::velocypack::Slice const&);
+                        arangodb::velocypack::Slice const&,
+                        bool forceIsSystem);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Creates a new VocbaseCollectionInfo from the json content of a file

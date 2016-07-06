@@ -295,7 +295,7 @@ bool State::createCollection(std::string const& name) {
   body.close();
 
   VocbaseCollectionInfo parameters(_vocbase, name.c_str(),
-                                   TRI_COL_TYPE_DOCUMENT, body.slice());
+                                   TRI_COL_TYPE_DOCUMENT, body.slice(), false);
   TRI_vocbase_col_t const* collection =
       TRI_CreateCollectionVocBase(_vocbase, parameters, parameters.id(), true);
 

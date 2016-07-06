@@ -1449,7 +1449,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   VocbaseCollectionInfo parameters(vocbase, name.c_str(), collectionType,
-                                   infoSlice);
+                                   infoSlice, false);
 
   if (ServerState::instance()->isCoordinator()) {
     CreateCollectionCoordinator(args, collectionType, vocbase->_name,
