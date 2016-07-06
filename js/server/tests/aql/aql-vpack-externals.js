@@ -152,6 +152,25 @@ function aqlVPackExternalsTestSuite () {
      
       assertEqual([ 1, 2 ], cursor.next());
       assertEqual([ 1, 2, 3 ], cursor.next());
+    },
+
+    testIdAccessInMinMax: function () {
+      let coll = db._collection(collName);
+      let ecoll = db._collection(edgeColl);
+      coll.truncate();
+      ecoll.truncate();
+      coll.insert({ _key: "a", w: 1});
+      coll.insert({ _key: "b", w: 2});
+      coll.insert({ _key: "c", w: 3});
+      ecoll.insert({ _from: coll.name() + "/a", _to: coll.name() + "/b", w: 1});
+      ecoll.insert({ _from: coll.name() + "/b", _to: coll.name() + "/c", w: 2});
+      ecoll.insert({ _from: coll.name() + "/a", _to: coll.name() + "/a", w: 3});
+
+      const query = `FOR x IN ANY '${collName}/a' ${edgeColl} COLLECT ct = x.w >= 1 INTO g RETURN MAX(g)`;
+      const cursor = db._query(query);
+      var doc = cursor.next();
+      delete doc.x._rev;
+      assertEqual({ "x" : { "_key" : "b", "_id" : collName + "/b", "w" : 2 } }, doc); 
     }
   };
 
