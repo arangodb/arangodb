@@ -1,3 +1,21 @@
+// Try to set the version number early, jQuery not available yet
+document.addEventListener("DOMContentLoaded", function(event) {
+  var bookVersion = gitbook.state.root.match(/\/(\d\.\d(\.\d)?|devel)\//);
+  var switcher = document.getElementsByClassName("arangodb-version-switcher")[0];
+  if (bookVersion) {
+    switcher.value = bookVersion[1];
+  } else {
+    switcher.style.display = "none";
+  }
+});
+
+$(document).ready(function() {
+  var bookVersion = gitbook.state.root.match(/\/(\d\.\d|devel)\//);
+  if (bookVersion) {
+    $(".arangodb-version-switcher").val(bookVersion[1]);
+  } 
+});
+
 window.onload = function(){
 window.localStorage.removeItem(":keyword");
 
@@ -24,7 +42,7 @@ function appendHeader() {
   //render header
   //rerenderNavbar();
   function addGoogleSrc() {
-    var cx = '002866056653122356950:ju52xx-w-w8';
+    var cx = '010085642145132923492:kbcwpospe8w';
     var gcse = document.createElement('script');
     gcse.type = 'text/javascript';
     gcse.async = true;
@@ -43,9 +61,13 @@ function appendHeader() {
     window.location.href = urlSplit.join("/") + "/" + e.target.getAttribute("data-book") + "/index.html";
   });
 
-  var bookVersion = gitbook.state.root.match(/\/(\d\.\d|devel)\//);
+  // set again using jQuery to accommodate non-standard browsers (*cough* IE *cough*)
+  var bookVersion = gitbook.state.root.match(/\/(\d\.\d(\.\d)?|devel)\//);
+  var switcher = $(".arangodb-version-switcher");
   if (bookVersion) {
-    $(".arangodb-version-switcher").val(bookVersion[1]);
+    switcher.val(bookVersion[1]);
+  } else {
+    switcher.hide();
   }
   
   $(".arangodb-version-switcher").on("change", function(e) {
