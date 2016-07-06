@@ -135,7 +135,7 @@
         if (typeof callback === 'function') {
           callback(err ? err.responseJSON : err, data);
         }
-      }.bind(this), 'POST', 'tests', options);
+      }, 'POST', 'tests', options);
     },
 
     isSystem: function () {
@@ -165,7 +165,9 @@
       }.bind(this);
       xhr.onerror = cb;
       xhr.open('GET', 'foxxes/thumbnail?mount=' + this.encodedMount());
-      xhr.setRequestHeader('Authorization', 'bearer ' + window.arangoHelper.getCurrentJwt());
+      if (window.arangoHelper.getCurrentJwt()) {
+        xhr.setRequestHeader('Authorization', 'bearer ' + window.arangoHelper.getCurrentJwt());
+      }
       xhr.send();
     }
   });
