@@ -1,6 +1,20 @@
 v3.0.2 (XXXX-XX-XX)
 -------------------
 
+* make arangodump dump the attribute `isSystem` when dumping the structure
+  of a collection, additionally make arangorestore not fail when the attribute
+  is missing
+
+* fixed "Could not extract custom attribute" issue when using COLLECT with
+  MIN/MAX functions in some contexts
+
+* honor presence of persistent index for sorting
+
+* make AQL query optimizer not skip "use-indexes-rule", even if enough 
+  plans have been created already
+
+* fix double precision loss in VelocyPack parser
+
 * make AQL optimizer not skip "use-indexes-rule", even if enough execution plans 
   have been created already
 
