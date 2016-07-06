@@ -308,15 +308,6 @@
       },
 
 
-      jshint: {
-        options: {
-          laxbreak: true
-        },
-        default: [
-          '<%=project.standalone.js %>'
-        ]
-      },
-
       uglify: {
         default1: {
           files: {
@@ -397,7 +388,6 @@
 
     grunt.registerTask('default', [
       'sass:dev',
-      'jshint:default',
       'replace',
       'concat',
       'concat_in_order:default',
@@ -410,7 +400,6 @@
 
     grunt.registerTask('devel', [
       'sass:dev',
-      'jshint:default',
       'replace',
       'concat',
       'concat_in_order:default',
@@ -421,7 +410,6 @@
 
     grunt.registerTask('deploy', [
       'sass:dev',
-      'jshint:default',
       'replace',
       'imagemin',
       'concat',
