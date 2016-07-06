@@ -163,8 +163,10 @@
         cb();
       }.bind(this);
       xhr.onerror = cb;
-      xhr.open("GET", "foxxes/thumbnail?mount=" + this.encodedMount());
-      xhr.setRequestHeader('Authorization', 'bearer ' + window.arangoHelper.getCurrentJwt());
+      xhr.open('GET', 'foxxes/thumbnail?mount=' + this.encodedMount());
+      if (window.arangoHelper.getCurrentJwt()) {
+        xhr.setRequestHeader('Authorization', 'bearer ' + window.arangoHelper.getCurrentJwt());
+      }
       xhr.send();
     }
   });
