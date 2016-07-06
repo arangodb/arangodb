@@ -126,13 +126,13 @@ module.exports = class FoxxService {
       const def = definitions[name];
       if (!def) {
         warnings.push(`Unexpected option "${name}"`);
-        return;
+        return warnings;
       }
 
       if (def.required === false && (rawValue === undefined || rawValue === null || rawValue === '')) {
         delete this.options.configuration[name];
         this.configuration[name] = def.default;
-        return;
+        return warnings;
       }
 
       const validate = parameterTypes[def.type];
