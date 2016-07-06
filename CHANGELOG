@@ -18,6 +18,9 @@ devel
 
 * Foxx manifests of installed services are now saved to disk with indentation
 
+* Foxx tests and scripts in development mode should now always respect updated
+  files instead of loading stale modules
+
 
 v3.0.2 (XXXX-XX-XX)
 -------------------
