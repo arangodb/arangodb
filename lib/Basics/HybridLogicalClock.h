@@ -103,22 +103,30 @@ class HybridLogicalClock {
   }
 
   static uint64_t decodeTimeStamp(std::string const& s) {
+    return decodeTimeStamp(s.c_str(), s.size());
+  }
+
+  static uint64_t decodeTimeStamp(char const* p, size_t len) {
     uint64_t r = 0;
-    for (size_t i = 0; i < s.size(); i++) {
+    for (size_t i = 0; i < len; i++) {
       r = (r << 6) |
-          static_cast<uint8_t>(decodeTable[static_cast<uint8_t>(s[i])]);
+          static_cast<uint8_t>(decodeTable[static_cast<uint8_t>(p[i])]);
     }
     return r;
   }
 
   static uint64_t decodeTimeStampWithCheck(std::string const& s) {
+    return decodeTimeStampWithCheck(s.c_str(), s.size());
+  }
+
+  static uint64_t decodeTimeStampWithCheck(char const* p, size_t len) {
     // Returns 0 if format is not valid
-    if (s.size() > 11) {
+    if (len > 11) {
       return 0;
     }
     uint64_t r = 0;
-    for (size_t i = 0; i < s.size(); i++) {
-      char c = decodeTable[static_cast<uint8_t>(s[i])];
+    for (size_t i = 0; i < len; i++) {
+      char c = decodeTable[static_cast<uint8_t>(p[i])];
       if (c < 0) {
         return 0;
       }
