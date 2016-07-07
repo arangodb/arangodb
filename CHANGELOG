@@ -1,6 +1,10 @@
 v3.0.2 (XXXX-XX-XX)
 -------------------
 
+* fixed assertion failure in case multiple remove operations were used in the same query
+
+* fixed upsert behavior in case upsert was used in a loop with the same document example 
+
 * fixed issue #1930
 
 * don't expose local file paths in Foxx error messages
