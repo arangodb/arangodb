@@ -30,9 +30,7 @@
 #if !defined(TRI_HAVE_SYS_IOCTL_H) && !defined(TRI_WIN32_CONSOLE)
 
 int TRI_ColumnsWidth(void) {
-  char* e;
-
-  e = getenv("COLUMNS");
+  char* e = getenv("COLUMNS");
 
   if (e != 0) {
     int c = (int)TRI_Int32String(e);
@@ -64,5 +62,18 @@ void TRI_SetStdinVisibility(bool visible) {
     tty.c_lflag &= ~ECHO;
   }
   (void)tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+#else
+#ifdef _WIN32
+  HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE); 
+  DWORD mode;
+  GetConsoleMode(hStdin, &mode);
+              
+  if (visible) {
+    mode |= ENABLE_ECHO_INPUT;
+  } else {
+    mode &= ~ENABLE_ECHO_INPUT;
+  }
+  SetConsoleMode(hStdin, mode);
+#endif
 #endif
 }
