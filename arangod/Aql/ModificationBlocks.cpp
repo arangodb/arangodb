@@ -72,6 +72,16 @@ ModificationBlock::~ModificationBlock() {}
 
 /// @brief get some - this accumulates all input and calls the work() method
 AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
+  // for UPSERT operations, we read and write data in the same collection
+  // we cannot use any batching here because if the search document is not
+  // found, the UPSERTs INSERT operation may create it. after that, the
+  // search document is present and we cannot use an already queried result
+  // from the initial search batch
+  if (getPlanNode()->getType() == ExecutionNode::NodeType::UPSERT) {
+    atLeast = 1;
+    atMost = 1;
+  }
+  
   std::vector<AqlItemBlock*> blocks;
   std::unique_ptr<AqlItemBlock> replyBlocks;
 
@@ -267,6 +277,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       keyBuilder.openArray();
     }
 
+    std::string key;
     int errorCode = TRI_ERROR_NO_ERROR;
     // loop over the complete block
     // build the request block
@@ -274,13 +285,13 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       AqlValue const& a = res->getValueReference(i, registerId);
 
       // only copy 1st row of registers inherited from previous frame(s)
-      inheritRegisters(res, result.get(), i, dstRow);
+      inheritRegisters(res, result.get(), i, dstRow + i);
 
-      std::string key;
       errorCode = TRI_ERROR_NO_ERROR;
 
       if (a.isObject()) {
-        // value is an array. now extract the _key attribute
+        // value is an object. now extract the _key attribute
+        key.clear();
         errorCode = extractKey(a, key);
       } else if (a.isString()) {
         // value is a string
@@ -300,6 +311,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         handleResult(errorCode, ep->_options.ignoreErrors);
       }
     }
+
     if (isMultiple) {
       // We have to close the array
       keyBuilder.close();
@@ -534,16 +546,20 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
       object.clear();
       object.openArray();
     }
+      
+    std::string key;
 
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
+      inheritRegisters(res, result.get(), i, dstRow + i);
+
       AqlValue const& a = res->getValueReference(i, docRegisterId);
 
       int errorCode = TRI_ERROR_NO_ERROR;
-      std::string key;
 
       if (a.isObject()) {
         // value is an object
+        key.clear();
         if (hasKeyVariable) {
           // seperate key specification
           AqlValue const& k = res->getValueReference(i, keyRegisterId);
@@ -730,6 +746,8 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
     upRows.clear();
 
     int errorCode;
+    std::string key;
+
     // loop over the complete block
     // Prepare both builders
     for (size_t i = 0; i < n; ++i) {
@@ -738,12 +756,11 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
       // only copy 1st row of registers inherited from previous frame(s)
       inheritRegisters(res, result.get(), i, dstRow);
 
-      std::string key;
-
       errorCode = TRI_ERROR_NO_ERROR;
 
       if (a.isObject()) {
         // old document present => update case
+        key.clear();
         errorCode = extractKey(a, key);
 
         if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -950,16 +967,20 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     if (isMultiple) {
       object.openArray();
     }
+      
+    std::string key;
 
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
+      inheritRegisters(res, result.get(), i, dstRow + i);
+
       AqlValue const& a = res->getValueReference(i, docRegisterId);
 
       int errorCode = TRI_ERROR_NO_ERROR;
-      std::string key;
 
       if (a.isObject()) {
         // value is an object
+        key.clear();
         if (hasKeyVariable) {
           // seperate key specification
           AqlValue const& k = res->getValueReference(i, keyRegisterId);
@@ -975,7 +996,6 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
       }
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
-
         if (hasKeyVariable) {
           keyBuilder.clear();
           keyBuilder.openObject();

@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine, JSONEditor */
+/* global Backbone, $, window, arangoHelper, templateEngine, JSONEditor */
 /* global document, _ */
 
 (function () {
@@ -8,9 +8,9 @@
 
   var createDocumentLink = function (id) {
     var split = id.split('/');
-    return 'collection/'
-      + encodeURIComponent(split[0]) + '/'
-      + encodeURIComponent(split[1]);
+    return 'collection/' +
+      encodeURIComponent(split[0]) + '/' +
+      encodeURIComponent(split[1]);
   };
 
   window.DocumentView = Backbone.View.extend({
@@ -91,7 +91,7 @@
     },
 
     deleteDocumentModal: function () {
-      var buttons = [], tableContent = [];
+      var buttons = []; var tableContent = [];
       tableContent.push(
         window.modalView.createReadOnlyEntry(
           'doc-delete-button',
@@ -127,7 +127,7 @@
           } else {
             successFunction();
           }
-        }.bind(this);
+        };
         this.collection.deleteEdge(this.colid, this.docid, callbackEdge);
       } else {
         var callbackDoc = function (error) {
@@ -136,7 +136,7 @@
           } else {
             successFunction();
           }
-        }.bind(this);
+        };
         this.collection.deleteDocument(this.colid, this.docid, callbackDoc);
       }
     },
@@ -150,11 +150,11 @@
 
     fillInfo: function () {
       var mod = this.collection.first();
-      var _id = mod.get('_id'),
-        _key = mod.get('_key'),
-        _rev = mod.get('_rev'),
-        _from = mod.get('_from'),
-        _to = mod.get('_to');
+      var _id = mod.get('_id');
+      var _key = mod.get('_key');
+      var _rev = mod.get('_rev');
+      var _from = mod.get('_from');
+      var _to = mod.get('_to');
 
       $('#document-type').css('margin-left', '10px');
       $('#document-type').text('_id:');
@@ -201,7 +201,9 @@
 
       var container = document.getElementById('documentEditor');
       var options = {
-        change: function () {self.jsonContentChanged();},
+        change: function () {
+          self.jsonContentChanged();
+        },
         search: true,
         mode: 'tree',
         modes: ['tree', 'code'],
@@ -220,7 +222,7 @@
     saveDocument: function () {
       if ($('#saveDocumentButton').attr('disabled') === undefined) {
         if (this.collection.first().attributes._id.substr(0, 1) === '_') {
-          var buttons = [], tableContent = [];
+          var buttons = []; var tableContent = [];
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'doc-save-system-button',

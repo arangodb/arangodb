@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, EJS, $, window, arangoHelper, templateEngine */
+/* global Backbone, $, window */
 
 (function () {
   'use strict';
@@ -44,20 +44,20 @@
       var self = this;
       var currentPage = this.collection.getPage();
       var totalPages = this.collection.getLastPageNumber();
-      var target = $(this.paginationDiv),
-        options = {
-          page: currentPage,
-          lastPage: totalPages,
-          click: function (i) {
-            var split = window.location.hash.split('/');
-            if (split[2] === 'documents') {
-              options.page = i;
-              window.location.hash = split[0] + '/' + split[1] + '/' + split[2] + '/' + i;
-            } else {
-              self.jumpTo(i);
-              options.page = i;
-            }
+      var target = $(this.paginationDiv);
+      var options = {
+        page: currentPage,
+        lastPage: totalPages,
+        click: function (i) {
+          var split = window.location.hash.split('/');
+          if (split[2] === 'documents') {
+            options.page = i;
+            window.location.hash = split[0] + '/' + split[1] + '/' + split[2] + '/' + i;
+          } else {
+            self.jumpTo(i);
+            options.page = i;
           }
+        }
       };
       target.html('');
       target.pagination(options);

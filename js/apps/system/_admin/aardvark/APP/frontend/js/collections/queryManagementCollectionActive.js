@@ -11,7 +11,6 @@
     },
 
     killRunningQuery: function (id, callback) {
-      var self = this;
       $.ajax({
         url: frontendConfig.basePath + '/_api/query/' + encodeURIComponent(id),
         type: 'DELETE',

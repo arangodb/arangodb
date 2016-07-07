@@ -1545,7 +1545,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         // subqueries that modify data must not be optimized away
         continue;
       }
-      // will remove calculation when we get here
+      // will remove subquery when we get here
     } 
 
     auto outvars = n->getVariablesSetHere();
