@@ -1,6 +1,6 @@
 /* jshint unused: false */
 /* global window, $, Backbone, document, arangoCollectionModel*/
-/* global arangoHelper, btoa, dashboardView, arangoDatabase, _, frontendConfig */
+/* global $, arangoHelper, btoa, dashboardView, arangoDatabase, _, frontendConfig */
 
 (function () {
   'use strict';
@@ -41,6 +41,7 @@
       'logs': 'logs',
       'helpus': 'helpUs',
       'graph2/:name': 'graph2',
+      'graph2/:name/settings': 'graph2settings',
       'support': 'support'
     },
 
@@ -677,12 +678,22 @@
         this.waitForInit(this.graph2.bind(this), name);
         return;
       }
-      if (!this.graphViewer2) {
-        this.graphViewer2 = new window.GraphViewer2({
-          name: name
-        });
-      }
+      this.graphViewer2 = new window.GraphViewer2({
+        name: name
+      });
       this.graphViewer2.render();
+    },
+
+    graph2settings: function (name, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.graph2settings.bind(this), name);
+        return;
+      }
+      this.graphSettingsView = new window.GraphSettingsView({
+        name: name
+      });
+      this.graphSettingsView.render();
     },
 
     helpUs: function (initialized) {
