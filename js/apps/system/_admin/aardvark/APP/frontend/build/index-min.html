@@ -1041,8 +1041,10 @@ if (list.length > 0) {
           </div>
         </div>
      
-        <div class="pure-g pure-table pure-table-body"> <% _.each(specific, function(val, key) { %> <div class="<%= genClass %> left"><%=key%></div>
-            <div class="<%= genClass %> left"><%=val%></div> <% }); %> </div>
+        <div class="pure-g pure-table pure-table-body"> <% _.each(specific, function(val, key) { %> <div class="<%= genClass %> left"><%=val.name%></div>
+            <div class="<%= genClass %> left"> <% var VALUE; %> <% if (val.value) { %> <% VALUE = val.value %> <% } else { %> <% VALUE = val.default %> <% } %> <% if (val.type === 'string') { %> <input type="text" value="<%=VALUE%>" placeholder=""></input> <% } %> <% if (val.type === 'color') { %> <input type='color' name='color' value="<%=VALUE%>"/> <% } %> <% if (val.type === 'select') { %> <div class="<%= genClass %> left">
+                  <select> <% _.each(val, function(option, optKey) { %> <% if (option.name) { %> <option> <%=option.name%> </option> <% } %> <% }); %> </select>
+                </div> <% } %> </div> <% }); %> </div>
 
       </div>
 
@@ -1063,22 +1065,37 @@ if (list.length > 0) {
           </div>
         </div>
      
-        <div class="pure-g pure-table pure-table-body"> <% _.each(general, function(val, key) { %> <div class="<%= genClass %> left"><%=key%></div>
-            <div class="<%= genClass %> left"><%=val%></div> <% }); %> </div>
+        <div class="pure-g pure-table pure-table-body"> <% _.each(general, function(val, key) { %> <div class="<%= genClass %> left"><%=key%></div> <% if (val.type === 'select') { %> <div class="<%= genClass %> left">
+                  <select> <% _.each(val, function(option, optKey) { %> <% if (option.name) { %> <option> <%=option.name%> </option> <% } %> <% }); %> </select>
+                </div> <% } %> <% if (val.type === 'numeric') { %> <input type="text" id="<%=val %>" value="<%=val.value %>" placeholder=""></input> <% } %> <% }); %> </div>
 
       </div>
 
     <button id="saveGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Save</button>
+    <button id="saveGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Restore defaults</button>
   </div></script><script id="graphViewer2.ejs" type="text/template"><div class="graphContent" id="graphContainer">
 
     <div class="headerBar">
       <div class="headerButtonBar" style="margin: 0;">
         <ul class="headerButtonList">
           <li class="enabled">
-            <a id="addDocument" class="headerButton">
-              <span title="Add new document">
-                <i class="fa fa-file fa-stack-1x"></i>
-                <i class="fa fa-plus fa-stack-1x fa-top"></i>
+            <a id="graph-fullscreen-btn" class="headerButton">
+              <span title="Switch to fullscreen mode">
+                <i class="fa fa-television"></i>
+              </span>
+            </a>
+          </li>
+          <li class="enabled">
+            <a id="downloadPNG" class="headerButton">
+              <span title="Download visible graph as png image">
+                <i class="fa fa-camera fa-stack-1x"></i>
+              </span>
+            </a>
+          </li>
+          <li class="enabled">
+            <a id="selectNodes" class="headerButton">
+              <span title="Download visible graph as png image">
+                <i class="fa fa-pencil fa-stack-1x"></i>
               </span>
             </a>
           </li>
@@ -1086,7 +1103,7 @@ if (list.length > 0) {
       </div>
     </div>
 
-    <div id="graph-fullscreen-btn"><i class="fa fa-television"></i></div>
+    <!--<div id="graph-fullscreen-btn"><i class="fa fa-desktop"></i></div>-->
     <div id="graph-container" oncontextmenu="return false;"></div>
   </div></script><script id="graphViewGroupByEntry.ejs" type="text/template"><div class="control-group">
   <label for="<%=type %>_<%=id%>" class="control-label">Attribute <%=id%></label>
@@ -2706,4 +2723,4 @@ var cutByResolution = function (str) {
   </div>
 
   <div id="workMonitorContent" class="innerContent">
-  </div></script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span>VERSION: </span><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1467885481708"></script><script src="app.js?version=1467885481708"></script></body></html>
+  </div></script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span>VERSION: </span><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1467901818158"></script><script src="app.js?version=1467901818158"></script></body></html>
