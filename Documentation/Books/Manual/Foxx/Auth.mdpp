@@ -4,45 +4,7 @@
 
 Authenticators allow implementing basic password mechanism using simple built-in hashing functions.
 
-**Examples**
-
-```js
-const auth = createAuth();
-
-// Use the sessions middleware
-const sessionsMiddleware = require('@arangodb/foxx/sessions');
-const sessions = sessionsMiddleware({
-  storage: module.context.collection('sessions'),
-  transports: 'cookie'
-});
-module.context.use(sessions);
-
-// Create a router
-const createRouter = require('@arangodb/foxx/router');
-const router = createRouter();
-module.context.use(router);
-
-// Define a login route
-const joi = require('joi');
-const users = module.context.collection('users');
-router.post('/login', function (req, res) {
-  let user = users.firstExample({
-    username: req.body.username
-  });
-  const valid = auth.verify(
-    user ? user.authData : {},
-    req.body.password
-  );
-  if (!valid) res.throw('unauthorized');
-  req.session.uid = user._key;
-  req.sessionStorage.save(req.session);
-  res.send({sucess: true});
-})
-.body(joi.object({
-  username: joi.string().required(),
-  password: joi.string().required()
-}).required(), 'Credentials');
-```
+For a full example of sessions with authentication and registration see the example in the [chapter on User Management](Users.md).
 
 !SECTION Creating an authenticator
 
@@ -75,11 +37,11 @@ Creates an authenticator.
 
 Returns an authenticator.
 
-!SECTION Creating hash objects
+!SECTION Creating authentication data objects
 
-`auth.create(password): Hash`
+`auth.create(password): AuthData`
 
-Creates a hash object for the given password with the following properties:
+Creates an authentication data object for the given password with the following properties:
 
 * **method**: `string`
 
@@ -99,9 +61,9 @@ Creates a hash object for the given password with the following properties:
 
   A password to hash.
 
-Returns the hash object.
+Returns the authentication data object.
 
-!SECTION Validating passwords against hash objects
+!SECTION Validating passwords against authentication data objects
 
 `auth.verify([hash, [password]]): boolean`
 
@@ -109,9 +71,9 @@ Verifies the given password against the given hash using a constant time string 
 
 **Arguments**
 
-* **hash**: `Hash` (optional)
+* **hash**: `AuthData` (optional)
 
-  A hash object generated with the *create* method.
+  A authentication data object generated with the *create* method.
 
 * **password**: `string` (optional)
 
