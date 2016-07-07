@@ -12,7 +12,6 @@ if (MSVC)
   INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT} DESTINATION bin COMPONENT Libraries)
 endif()
 
-# This stuff here is only required for Windows7. later versions seem to handle / paths correctly
 file(TO_NATIVE_PATH "${CMAKE_INSTALL_FULL_SYSCONFDIR}" ETCDIR_NATIVE)
 STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
 
