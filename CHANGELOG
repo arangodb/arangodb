@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #1930
+
 * added option `--skip-lines` for arangoimp
   this allows skipping the first few lines from the import file in case the
   CSV or TSV import are used

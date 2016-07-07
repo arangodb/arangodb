@@ -326,10 +326,16 @@ void ConsoleFeature::printLine(std::string const& s) {
 void ConsoleFeature::printErrorLine(std::string const& s) { printLine(s); }
 
 std::string ConsoleFeature::readPassword(std::string const& message) {
-  std::string password;
-
   printContinuous(message);
 
+  std::string password = readPassword();
+  ConsoleFeature::printLine("");
+
+  return password;
+}
+
+std::string ConsoleFeature::readPassword() {
+  std::string password;
 #ifdef TRI_HAVE_TERMIOS_H
   TRI_SetStdinVisibility(false);
   std::getline(std::cin, password);
@@ -338,8 +344,6 @@ std::string ConsoleFeature::readPassword(std::string const& message) {
 #else
   std::getline(std::cin, password);
 #endif
-  ConsoleFeature::printLine("");
-
   return password;
 }
 
